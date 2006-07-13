@@ -147,17 +147,6 @@ class TestCommands(ExternalBase):
         self.runbzr('revert')
         os.chdir('..')
 
-    def test_mv_modes(self):
-        """Test two modes of operation for mv"""
-        self.runbzr('init')
-        self.build_tree(['a', 'c', 'subdir/'])
-        self.run_bzr_captured(['add', self.test_dir])
-        self.run_bzr_captured(['mv', 'a', 'b'])
-        self.run_bzr_captured(['mv', 'b', 'subdir'])
-        self.run_bzr_captured(['mv', 'subdir/b', 'a'])
-        self.run_bzr_captured(['mv', 'a', 'c', 'subdir'])
-        self.run_bzr_captured(['mv', 'subdir/a', 'subdir/newa'])
-
     def test_main_version(self):
         """Check output from version command and master option is reasonable"""
         # output is intentionally passed through to stdout so that we
@@ -677,81 +666,20 @@ class OldTests(ExternalBase):
         out = capture("help ci")
         out.index('aliases: ')
 
-        progress("can't rename unversioned file")
-        runbzr("rename test.txt new-test.txt", 3)
-
-        progress("adding a file")
-
-        runbzr("add test.txt")
-        self.assertEquals(capture("unknowns"), '')
-
-        progress("rename newly-added file")
-        runbzr("rename test.txt hello.txt")
-        self.assert_(os.path.exists("hello.txt"))
-        self.assert_(not os.path.exists("test.txt"))
-
-        self.assertEquals(capture("revno"), '0\n')
-
-        progress("add first revision")
-        runbzr(['commit', '-m', 'add first revision'])
-
-        progress("more complex renames")
-        os.mkdir("sub1")
-        runbzr("rename hello.txt sub1", 3)
-        runbzr("rename hello.txt sub1/hello.txt", 3)
-        runbzr("move hello.txt sub1", 3)
-
-        runbzr("add sub1")
-        runbzr("rename sub1 sub2")
-        runbzr("move hello.txt sub2")
-        self.assertEqual(capture("relpath sub2/hello.txt"),
-                         pathjoin("sub2", "hello.txt\n"))
-
-        self.assert_(exists("sub2"))
-        self.assert_(exists("sub2/hello.txt"))
-        self.assert_(not exists("sub1"))
-        self.assert_(not exists("hello.txt"))
-
-        runbzr(['commit', '-m', 'commit with some things moved to subdirs'])
-
-        mkdir("sub1")
-        runbzr('add sub1')
-        runbzr('move sub2/hello.txt sub1')
-        self.assert_(not exists('sub2/hello.txt'))
-        self.assert_(exists('sub1/hello.txt'))
-        runbzr('move sub2 sub1')
-        self.assert_(not exists('sub2'))
-        self.assert_(exists('sub1/sub2'))
-
-        runbzr(['commit', '-m', 'rename nested subdirectories'])
-
-        chdir('sub1/sub2')
-        self.assertEquals(capture('root')[:-1],
-                          pathjoin(self.test_dir, 'branch1'))
-        runbzr('move ../hello.txt .')
-        self.assert_(exists('./hello.txt'))
-        self.assertEquals(capture('relpath hello.txt'),
-                          pathjoin('sub1', 'sub2', 'hello.txt') + '\n')
-        self.assertEquals(capture('relpath ../../sub1/sub2/hello.txt'), pathjoin('sub1', 'sub2', 'hello.txt\n'))
-        runbzr(['commit', '-m', 'move to parent directory'])
-        chdir('..')
-        self.assertEquals(capture('relpath sub2/hello.txt'), pathjoin('sub1', 'sub2', 'hello.txt\n'))
-
-        runbzr('move sub2/hello.txt .')
-        self.assert_(exists('hello.txt'))
-
         f = file('hello.txt', 'wt')
         f.write('some nice new content\n')
         f.close()
 
+        runbzr("add hello.txt")
+        
         f = file('msg.tmp', 'wt')
         f.write('this is my new commit\nand it has multiple lines, for fun')
         f.close()
 
         runbzr('commit -F msg.tmp')
 
-        self.assertEquals(capture('revno'), '5\n')
-        runbzr('export -r 5 export-5.tmp')
+        self.assertEquals(capture('revno'), '1\n')
+        runbzr('export -r 1 export-1.tmp')
         runbzr('export export.tmp')
 
         runbzr('log')

@@ -227,7 +227,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
 
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
-                                 'c-funky<file-id> quiji%bo'])
+                                 'c-funky<file-id> quiji\'"%bo'])
         try:
             main_wt.commit("Commit one", rev_id="rev-A")
         except IllegalPath: 

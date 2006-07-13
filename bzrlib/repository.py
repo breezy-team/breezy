@@ -2152,11 +2152,25 @@ class CommitBuilder(object):
         versionedfile.clear_cache()
 
 
-# Copied from xml.sax.saxutils
+_unescape_map = {
+    'apos':"'",
+    'quot':'"',
+    'amp':'&',
+    'lt':'<',
+    'gt':'>'
+}
+
+
+def _unescaper(match, _map=_unescape_map):
+    return _map[match.group(1)]
+
+
+_unescape_re = None
+
+
 def _unescape_xml(data):
-    """Unescape &amp;, &lt;, and &gt; in a string of data.
-    """
-    data = data.replace("&lt;", "<")
-    data = data.replace("&gt;", ">")
-    # must do ampersand last
-    return data.replace("&amp;", "&")
+    """Unescape predefined XML entities in a string of data."""
+    global _unescape_re
+    if _unescape_re is None:
+	_unescape_re = re.compile('\&([^;]*);')
+    return _unescape_re.sub(_unescaper, data)

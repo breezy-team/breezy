@@ -23,6 +23,7 @@ import re
 
 import bzrlib
 from bzrlib.branch import Branch
+from bzrlib import workingtree
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -156,6 +157,26 @@ class TestDiff(ExternalBase):
                               "+contents of branch1/file\n"
                               "\n", subst_dates(out))
 
+    def test_diff_revno_branches(self):
+        self.example_branches()
+        print >> open('branch2/file', 'wb'), 'even newer content'
+        self.run_bzr_captured(['commit', '-m', 'update file once more', 'branch2'])
+
+        out, err = self.run_bzr_captured(['diff', '-r', 'revno:1:branch2..revno:1:branch1'],
+                                         retcode=0)
+        self.assertEquals('', err)
+        self.assertEquals('', out)
+        out, ett = self.run_bzr_captured(['diff', '-r', 'revno:2:branch2..revno:1:branch1'],
+                                         retcode=1)
+        self.assertEquals('', err)
+        self.assertEqualDiff("=== modified file 'file'\n"
+                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "@@ -1,1 +1,1 @@\n"
+                              "-new content\n"
+                              "+contents of branch1/file\n"
+                              "\n", subst_dates(out))
+
     def example_branch2(self):
         self.build_tree(['branch1/', 'branch1/file1'], line_endings='binary')
         self.capture('init branch1')
@@ -172,6 +193,15 @@ class TestDiff(ExternalBase):
         print >> open('branch1/file1', 'wb'), 'new line'
         output = self.run_bzr_captured(['diff', '-r', '1..', 'branch1'], retcode=1)
         self.assertTrue('\n-original line\n+new line\n' in output[0])
+
+    def test_diff_across_rename(self):
+        """The working tree path should always be considered for diffing"""
+        self.make_example_branch()
+        self.run_bzr('diff', '-r', '0..1', 'hello', retcode=1)
+        wt = workingtree.WorkingTree.open_containing('.')[0]
+        wt.rename_one('hello', 'hello1')
+        self.run_bzr('diff', 'hello1', retcode=1)
+        self.run_bzr('diff', '-r', '0..1', 'hello1', retcode=1)
 
 
 class TestCheckoutDiff(TestDiff):
