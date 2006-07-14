@@ -161,6 +161,9 @@ IN DEVELOPMENT
       This allows you to parse an email with the bundle inline.
       (John Arbash Meinel, #49182)
 
+    * Fix Branch.get_parent() to handle the case when the parent is not 
+      accessible (John Arbash Meinel, #52976)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over

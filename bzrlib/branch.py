@@ -1173,7 +1173,11 @@ class BzrBranch(Branch):
             # turn it into a url
             if parent.startswith('/'):
                 parent = urlutils.local_path_to_url(parent.decode('utf8'))
-            return urlutils.join(self.base[:-1], parent)
+            try:
+                return urlutils.join(self.base[:-1], parent)
+            except errors.InvalidURLJoin, e:
+                # TODO jam 20060714 Should this be a warning?
+                mutter('cannot reach parent, returning None: %s', e)
         return None
 
     def get_push_location(self):
