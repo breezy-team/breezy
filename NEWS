@@ -161,6 +161,8 @@ IN DEVELOPMENT
       This allows you to parse an email with the bundle inline.
       (John Arbash Meinel, #49182)
 
+    * Use the right suffixes for loading plugins (John Arbash Meinel, #51810)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over

@@ -111,14 +111,12 @@ def load_from_dirs(dirs):
     Plugins are loaded into bzrlib.plugins.NAME, and can be found there
     for future reference.
     """
-    # The problem with imp.get_suffixes() is that it doesn't include
-    # .pyo which is technically valid
-    # It also means that "testmodule.so" will show up as both test and testmodule
-    # though it is only valid as 'test'
-    # but you should be careful, because "testmodule.py" loads as testmodule.
-    suffixes = imp.get_suffixes()
-    suffixes.append(('.pyo', 'rb', imp.PY_COMPILED))
-    package_entries = ['__init__.py', '__init__.pyc', '__init__.pyo']
+    # Get the list of valid python suffixes for __init__.py?
+    # this includes .py, .pyc, and .pyo (depending on if we are running -O)
+    # but it doesn't include compiled modules (.so, .dll, etc)
+    valid_suffixes = [suffix for suffix, mod_type, flags in imp.get_suffixes()
+                              if flags in (imp.PY_SOURCE, imp.PY_COMPILED)]
+    package_entries = ['__init__'+suffix for suffix in valid_suffixes]
     for d in dirs:
         if not d:
             continue
@@ -137,7 +135,7 @@ def load_from_dirs(dirs):
                 else: # This directory is not a package
                     continue
             else:
-                for suffix_info in suffixes:
+                for suffix_info in imp.get_suffixes():
                     if f.endswith(suffix_info[0]):
                         f = f[:-len(suffix_info[0])]
                         if suffix_info[2] == imp.C_EXTENSION and f.endswith('module'):
