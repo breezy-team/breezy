@@ -178,7 +178,7 @@ class Transport(object):
 
     # implementations can override this if it is more efficient
     # for them to combine larger read chunks together
-    _max_readv_combine = 100
+    _max_readv_combine = 50
     # It is better to read this much more data in order, rather
     # than doing another seek. Even for the local filesystem,
     # there is a benefit in just reading.
@@ -188,7 +188,7 @@ class Transport(object):
     #       dynamically, by measuring the seek time versus the
     #       read / data size time. Though for sftp the round trip
     #       is hidden in the read()
-    _bytes_to_read_before_seek = 500
+    _bytes_to_read_before_seek = 0
 
     def __init__(self, base):
         super(Transport, self).__init__()
@@ -361,6 +361,13 @@ class Transport(object):
         """
         raise NotImplementedError(self.get)
 
+    def _get_seekable(self, relpath):
+        """Get a file where we intend to seek, rather than read everything.
+
+        Default implementation just returns the file from get()
+        """
+        return self.get(relpath)
+
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
@@ -370,7 +377,7 @@ class Transport(object):
         if not offsets:
             return
 
-        fp = self.get(relpath)
+        fp = self._get_seekable(relpath)
 
         # We are going to iterate multiple times, we need a list
         offsets = list(offsets)
@@ -382,6 +389,11 @@ class Transport(object):
                                limit=self._max_readv_combine,
                                fudge_factor=self._bytes_to_read_before_seek)
 
+        trans_name = self.__class__.__name__
+        loc = trans_name.find('Transport')
+        if loc != -1:
+            trans_name = trans_name[:loc]
+        short_fname = relpath[:15]
         # Cache the results, but only until they have been fulfilled
         data_map = {}
         for start, size, sublists in coalesced:
@@ -391,9 +403,10 @@ class Transport(object):
                 key = (start+offset, subsize)
                 data_map[key] = data[offset:offset+subsize]
 
-            mutter('readv of %s collapsed %s offsets =>'
-                   ' start %s len %s n chunks %s',
-                   relpath, len(offsets), start, size, len(sublists))
+            mutter('%s readv of %s collapsed %s offsets =>'
+                   ' start %s len %s n chunks %s queue size %s',
+                   trans_name, short_fname, len(offsets),
+                   start, size, len(sublists), len(data_map))
 
             # Now that we've read some data, see if we can yield 
             # anything back

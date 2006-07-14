@@ -314,7 +314,7 @@ class SFTPTransport (Transport):
     """Transport implementation for SFTP access"""
 
     _do_prefetch = _default_do_prefetch
-    _max_readv_combine = 0 # Allow readv to collapse everything
+    _max_readv_combine = 100
     # Having to round trip to the server means a lot of latency.
     # So it is better to download extra bytes.
     # For my network (jam), to my local server, I have
@@ -322,7 +322,7 @@ class SFTPTransport (Transport):
     # between me and school is 160KB/s and 34us = 5440 bytes
     # between myself and bazaar-vcs.org 160KB/s * 107ms = 17120 bytes
     # 4KiB seemed a reasonable tradeoff
-    _bytes_to_read_before_seek = 4192
+    _bytes_to_read_before_seek = 4096
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
@@ -434,24 +434,13 @@ class SFTPTransport (Transport):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
 
-    def get_partial(self, relpath, start, length=None):
-        """
-        Get just part of a file.
-
-        :param relpath: Path to the file, relative to base
-        :param start: The starting position to read from
-        :param length: The length to read. A length of None indicates
-                       read to the end of the file.
-        :return: A file-like object containing at least the specified bytes.
-                 Some implementations may return objects which can be read
-                 past this length, but this is not guaranteed.
-        """
-        # TODO: implement get_partial_multi to help with knit support
-        f = self.get(relpath)
-        f.seek(start)
-        if self._do_prefetch and hasattr(f, 'prefetch'):
-            f.prefetch()
-        return f
+    # def _get_seekable(self, relpath):
+    #     """Similar to get() but don't request prefetch()"""
+    #     try:
+    #         path = self._remote_path(relpath)
+    #         return self._sftp.file(path, mode='rb')
+    #     except (IOError, paramiko.SSHException), e:
+    #         self._translate_io_exception(e, path, ': error retrieving')
 
     def put(self, relpath, f, mode=None):
         """
