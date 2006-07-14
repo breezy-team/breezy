@@ -68,13 +68,13 @@ class RevisionBuildEditor(svn.delta.Editor):
         rev = Revision(revision_id=revid, parent_ids=parent_ids)
 
         rev.timestamp = 1.0 * svn.core.secs_from_timestr(
-            self._svn_revprops['date'], None)
+            self._svn_revprops[2], None) #date
         rev.timezone = None
 
-        rev.committer = self._svn_revprops['author']
+        rev.committer = self._svn_revprops[0] # author
         if rev.committer is None:
             rev.committer = ""
-        rev.message = self._svn_revprops['message']
+        rev.message = self._svn_revprops[1] # message
 
         rev.properties = self._revprops
         return rev
@@ -269,24 +269,24 @@ class InterSvnRepository(InterRepository):
             (path, until_revnum) = self.source.parse_revision_id(revision_id)
         
         needed = []
-        for (branch, paths, revnum, author, date, message) in \
-            self.source._log.get_branch_log(path, until_revnum):
+        for (branch, _, revnum) in \
+            self.source._log.follow_history(path, until_revnum):
             revid = self.source.generate_revision_id(revnum, branch)
 
             if not self.target.has_revision(revid):
-                needed.append((branch, revnum, revid, {
-                    'author': author, 'date': date, 'message': message}))
+                needed.append((branch, revnum, revid))
 
         num = 0
         needed.reverse()
         prev_revnum = 0
         prev_inv = Inventory()
-        for (branch, revnum, revid, svn_props) in needed:
+        for (branch, revnum, revid) in needed:
             pb.update('copying revision', num+1, len(needed)+1)
             num += 1
 
             editor = RevisionBuildEditor(self.source, self.target, branch, 
-                                         revnum, prev_inv, revid, svn_props)
+                                         revnum, prev_inv, revid, 
+                                     self.source._log.get_revision_info(revnum))
 
             edit, edit_baton = svn.delta.make_editor(editor)
 

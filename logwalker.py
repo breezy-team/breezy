@@ -21,7 +21,6 @@ from bzrlib.trace import mutter
 
 import os
 import shelve
-from cStringIO import StringIO
 
 from svn.core import SubversionException
 import svn.ra
@@ -37,6 +36,8 @@ def create_cache_dir(uuid):
 
 It is used for performance reasons only and can be removed 
 without losing data.
+
+See http://bazaar-vcs.org/BzrSvn for more information.
 """)
 
     dir = os.path.join(cache_dir, uuid)
@@ -123,20 +124,10 @@ class LogWalker(object):
                     revision="Revision number %d" % to_revnum)
             raise
 
-        self.save()
-
-    def save(self):
-        pickle.dump(self.revisions, open(self.cache_file, 'w'))
-
     def follow_history(self, branch_path, revnum):
-        for (branch, paths, rev, _, _, _) in self.get_branch_log(branch_path, 
-                                                                 revnum):
-            yield (branch, paths, rev)
-
-    def get_branch_log(self, branch_path, from_revnum, to_revnum=0, limit=0):
         """Return iterator over all the revisions between from_revnum and 
         to_revnum that touch branch_path."""
-        assert from_revnum >= to_revnum
+        assert revnum >= 0
 
         if not branch_path is None and not self.scheme.is_branch(branch_path):
             raise NotSvnBranchPath(branch_path)
@@ -144,17 +135,12 @@ class LogWalker(object):
         if branch_path:
             branch_path = branch_path.strip("/")
 
-        if max(from_revnum, to_revnum) > self.last_revnum:
-            self.fetch_revisions(self.last_revnum, max(from_revnum, to_revnum))
-
+        if revnum > self.last_revnum:
+            self.fetch_revisions(self.last_revnum, revnum)
 
         continue_revnum = None
-        num = 0
-        for i in range(abs(from_revnum-to_revnum)+1):
-            if to_revnum < from_revnum:
-                i = from_revnum - i
-            else:
-                i = from_revnum + i
+        for i in range(revnum+1):
+            i = revnum - i
 
             if i == 0:
                 continue
@@ -183,9 +169,7 @@ class LogWalker(object):
             assert branch_path is None or len(changed_paths) <= 1
 
             for bp in changed_paths:
-                num = num + 1
-                yield (bp, changed_paths[bp], i, rev['author'], rev['date'], 
-                       rev['message'])
+                yield (bp, changed_paths[bp], i)
 
             if (not branch_path is None and 
                 branch_path in rev['paths'] and 
@@ -195,40 +179,6 @@ class LogWalker(object):
                 # FIXME: What if copyfrom_path is not a branch path?
                 continue_revnum = rev['paths'][branch_path][2]
                 branch_path = rev['paths'][branch_path][1]
-
-            if limit and num == limit:
-                return
-
-    def get_offspring(self, path, orig_revnum, revnum):
-        """Check which files in revnum directly descend from path in orig_revnum."""
-        assert orig_revnum <= revnum
-
-        ancestors = [path]
-        dest = (path, orig_revnum)
-
-        for i in range(revnum-orig_revnum):
-            paths = self.revisions[str(i+1+orig_revnum)]['paths']
-            for p in paths:
-                new_ancestors = list(ancestors)
-
-                if paths[p][0] in ('R', 'A') and paths[p][1]:
-                    if paths[p][1:3] == dest:
-                        new_ancestors.append(p)
-
-                    for s in ancestors:
-                        if s.startswith(paths[p][1]+"/"):
-                            new_ancestors.append(s.replace(paths[p][1], p, 1))
-
-                ancestors = new_ancestors
-
-                if paths[p][0] in ('R', 'D'):
-                    for s in ancestors:
-                        if s == p or s.startswith(p+"/"):
-                            new_ancestors.remove(s)
-
-                ancestors = new_ancestors
-
-        return ancestors
 
     def find_branches(self, revnum):
         created_branches = {}
@@ -258,4 +208,4 @@ class LogWalker(object):
         if revnum > self.last_revnum:
             self.fetch_revisions(self.saved_revnum, revnum, pb)
         rev = self.revisions[str(revnum)]
-        return (rev['author'], rev['message'], rev['date'])
+        return (rev['author'], rev['message'], rev['date'], rev['paths'])

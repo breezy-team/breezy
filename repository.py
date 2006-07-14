@@ -289,7 +289,7 @@ class SvnRepository(Repository):
                                     SVN_PROP_BZR_MERGE, "").splitlines():
             ancestry.extend(l.split("\n"))
 
-        for (branch, paths, rev, _, _, _) in self._log.get_branch_log(path, revnum - 1, 0):
+        for (branch, paths, rev) in self._log.follow_history(path, revnum - 1):
             ancestry.append(self.generate_revision_id(rev, branch))
 
         ancestry.append(None)
@@ -327,13 +327,14 @@ class SvnRepository(Repository):
     def revision_parents(self, revision_id, merged_data=None):
         (path, revnum) = self.parse_revision_id(revision_id)
 
-        parent_ids = []
-        parent_path = None
-
-        for (branch, paths, rev, a, b, c) in self._log.get_branch_log(path, revnum - 1, 0, 1):
+        try:
+            (branch, paths, rev) = self._log.follow_history(path, revnum - 1).next()
             parent_revnum = rev
             parent_path = branch
-            parent_ids.append(self.generate_revision_id(rev, branch))
+            parent_ids = [self.generate_revision_id(rev, branch)]
+        except StopIteration:
+            parent_path = None
+            parent_ids = []
        
         if merged_data is None:
             if parent_path is None:
@@ -381,7 +382,7 @@ class SvnRepository(Repository):
 
             bzr_props[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = svn_props[name].decode('utf8')
 
-        (rev.committer, rev.message, date) = self._log.get_revision_info(revnum)
+        (rev.committer, rev.message, date, _) = self._log.get_revision_info(revnum)
 
         if rev.committer is None:
             rev.committer = ""
@@ -400,53 +401,16 @@ class SvnRepository(Repository):
         return map(self.get_revision, revision_ids)
 
     def add_revision(self, rev_id, rev, inv=None, config=None):
-        raise NotImplementedError()
+        raise NotImplementedError(self.add_revision)
 
     def fileid_involved_between_revs(self, from_revid, to_revid):
-        # TODO
-        raise NotImplementedError()
+        raise NotImplementedError(self.fileid_involved_by_set)
 
     def fileid_involved(self, last_revid=None):
-        raise NotImplementedError()
+        raise NotImplementedError(self.fileid_involved)
 
     def fileids_altered_by_revision_ids(self, revision_ids):
-        # FIXME: Now that the log cache is local, simplify this 
-        # function.
-        ranges = {}
-        interested = {}
-
-        # First, figure out for which revisions to fetch 
-        # the logs. Keeps the range as narrow as possible to 
-        # save bandwidth (and thus increase speed)
-        for revid in revision_ids:
-            (path, revnum) = self.parse_revision_id(revid)
-
-            if not ranges.has_key(path):
-                ranges[path] = (revnum, revnum)
-                interested[path] = [revnum]
-            else:
-                (min, max) = ranges[path]
-                
-                if revnum < min: 
-                    min = revnum
-                if revnum > max:
-                    max = revnum
-                
-                interested[path].append(revnum)
-
-        result = {}
-
-        for branch_path in ranges:
-            for (branch, paths, revnum, _, _, _) in self._log.get_branch_log(path, ranges[branch_path][1], ranges[branch_path][0]):
-                if not revnum in interested[branch_path]:
-                    continue
-                for path in paths:
-                    (file_id, revid) = self.path_to_file_id(revnum, path)
-                    if not result.has_key(file_id):
-                        result[file_id] = []
-                    result[file_id].append(revid)
-
-        return result
+        raise NotImplementedError(self.fileids_altered_by_revision_ids)
 
     def fileid_involved_by_set(self, changes):
         ids = []
