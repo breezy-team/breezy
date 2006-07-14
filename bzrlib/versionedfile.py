@@ -53,11 +53,12 @@ class VersionedFile(object):
     def __init__(self, access_mode):
         self.finished = False
         self._access_mode = access_mode
+        self._cache_data = False
 
     def copy_to(self, name, transport):
         """Copy this versioned file to name on transport."""
         raise NotImplementedError(self.copy_to)
-    
+
     @deprecated_method(zero_eight)
     def names(self):
         """Return a list of all the versions in this versioned file.
@@ -173,8 +174,19 @@ class VersionedFile(object):
         if self._access_mode != 'w':
             raise errors.ReadOnlyObjectDirtiedError(self)
 
+    def enable_cache(self):
+        """Tell this versioned file that it should cache any data it reads.
+        
+        This is advisory, implementations do not have to support caching.
+        """
+        pass
+    
     def clear_cache(self):
-        """Remove any data cached in the versioned file object."""
+        """Remove any data cached in the versioned file object.
+
+        This only needs to be supported if caches are supported
+        """
+        pass
 
     def clone_text(self, new_version_id, old_version_id, parents):
         """Add an identical text to old_version_id as new_version_id.

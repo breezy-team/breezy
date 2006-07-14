@@ -374,11 +374,19 @@ class KnitVersionedFile(VersionedFile):
         """
         # write all the data
         pos = self._data.add_raw_record(data)
+        offset = 0
         index_entries = []
         for (version_id, options, parents, size) in records:
-            index_entries.append((version_id, options, pos, size, parents))
-            pos += size
+            index_entries.append((version_id, options, pos+offset,
+                                  size, parents))
+            if self._data._do_cache:
+                self._data._cache[version_id] = data[offset:offset+size]
+            offset += size
         self._index.add_versions(index_entries)
+
+    def enable_cache(self):
+        """Start caching data for this knit"""
+        self._data.enable_cache()
 
     def clear_cache(self):
         """Clear the data cache only."""
@@ -1284,12 +1292,23 @@ class _KnitData(_KnitComponentFile):
     def __init__(self, transport, filename, mode, create=False, file_mode=None):
         _KnitComponentFile.__init__(self, transport, filename, mode)
         self._checked = False
+        # TODO: jam 20060713 conceptually, this could spill to disk
+        #       if the cached size gets larger than a certain amount
+        #       but it complicates the model a bit, so for now just use
+        #       a simple dictionary
+        self._cache = {}
+        self._do_cache = False
         if create:
             self._transport.put(self._filename, StringIO(''), mode=file_mode)
 
+    def enable_cache(self):
+        """Enable caching of reads."""
+        self._do_cache = True
+
     def clear_cache(self):
         """Clear the record cache."""
-        pass
+        self._do_cache = False
+        self._cache = {}
 
     def _open_file(self):
         try:
@@ -1331,6 +1350,8 @@ class _KnitData(_KnitComponentFile):
         size, sio = self._record_to_data(version_id, digest, lines)
         # write to disk
         start_pos = self._transport.append(self._filename, sio)
+        if self._do_cache:
+            self._cache[version_id] = sio.getvalue()
         return start_pos, size
 
     def _parse_record_header(self, version_id, raw_data):
@@ -1369,22 +1390,35 @@ class _KnitData(_KnitComponentFile):
 
         This unpacks enough of the text record to validate the id is
         as expected but thats all.
-
-        It will actively recompress currently cached records on the
-        basis that that is cheaper than I/O activity.
         """
         # setup an iterator of the external records:
         # uses readv so nice and fast we hope.
         if len(records):
             # grab the disk data needed.
-            raw_records = self._transport.readv(self._filename,
-                [(pos, size) for version_id, pos, size in records])
+            if self._cache:
+                # Don't check _cache if it is empty
+                needed_offsets = [(pos, size) for version_id, pos, size
+                                              in records
+                                              if version_id not in self._cache]
+            else:
+                needed_offsets = [(pos, size) for version_id, pos, size
+                                               in records]
+
+            raw_records = self._transport.readv(self._filename, needed_offsets)
+                
 
         for version_id, pos, size in records:
-            pos, data = raw_records.next()
-            # validate the header
-            df, rec = self._parse_record_header(version_id, data)
-            df.close()
+            if version_id in self._cache:
+                # This data has already been validated
+                data = self._cache[version_id]
+            else:
+                pos, data = raw_records.next()
+                if self._do_cache:
+                    self._cache[version_id] = data
+
+                # validate the header
+                df, rec = self._parse_record_header(version_id, data)
+                df.close()
             yield version_id, data
 
     def read_records_iter(self, records):
@@ -1402,18 +1436,40 @@ class _KnitData(_KnitComponentFile):
         # 4168   calls to parse_record       in 2880
 
         # Get unique records, sorted by position
-        needed_records = sorted(set(records), key=operator.itemgetter(1))
+        have_records = []
+        if self._cache:
+            needed_records = set()
+            for record in records:
+                if record[0] in self._cache:
+                    have_records.append(record[0])
+                else:
+                    needed_records.add(record)
+            needed_records = sorted(needed_records, key=operator.itemgetter(1))
+        else:
+            needed_records = sorted(set(records), key=operator.itemgetter(1))
 
         # We take it that the transport optimizes the fetching as good
         # as possible (ie, reads continuous ranges.)
-        response = self._transport.readv(self._filename,
-            [(pos, size) for version_id, pos, size in needed_records])
+        if needed_records:
+            response = self._transport.readv(self._filename,
+                [(pos, size) for version_id, pos, size in needed_records])
+        else:
+            response = []
 
         record_map = {}
+
+        if have_records:
+            for version_id in have_records:
+                data = self._cache[version_id]
+                content, digest = self._parse_record(version_id, data)
+                record_map[version_id] = (digest, content)
+
         for (record_id, pos, size), (pos, data) in \
             izip(iter(needed_records), response):
             content, digest = self._parse_record(record_id, data)
             record_map[record_id] = (digest, content)
+            if self._do_cache:
+                self._cache[record_id] = data
 
         for version_id, pos, size in records:
             digest, content = record_map[version_id]
