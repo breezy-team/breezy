@@ -183,7 +183,9 @@ class LogWalker(object):
         if revnum > self.last_revnum:
             self.fetch_revisions(self.saved_revnum, revnum, pb)
         rev = self.revisions[str(revnum)]
-        return (rev['author'], rev['message'], rev['date'], rev['paths'])
+        return (rev['author'].decode('utf-8', 'ignore'),
+                rev['message'].decode('utf-8', 'ignore'), 
+                rev['date'], rev['paths'])
 
     def follow_local_history(self, branch_path, revnum):
         for (bp, paths, rev) in self.follow_history(branch_path, revnum):
