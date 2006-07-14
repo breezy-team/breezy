@@ -176,6 +176,10 @@ class Transport(object):
     as an argument (ie always iterate, never index)
     """
 
+    # implementations can override this if it is more efficient
+    # for them to combine larger read chunks together
+    _max_readv_combine = 50
+
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
@@ -353,43 +357,73 @@ class Transport(object):
         :offsets: A list of (offset, size) tuples.
         :return: A list or generator of (offset, data) tuples
         """
-        def do_combined_read(combined_offsets):
-            total_size = 0
-            for offset, size in combined_offsets:
-                total_size += size
-            mutter('readv coalesced %d reads.', len(combined_offsets))
-            offset = combined_offsets[0][0]
-            fp.seek(offset)
-            data = fp.read(total_size)
-            pos = 0
-            for offset, size in combined_offsets:
-                yield offset, data[pos:pos + size]
-                pos += size
+        sorted_offsets = sorted(offsets)
+        if sorted_offsets != offsets:
+            warning('** requested a readv with out-of-order components: %s' 
+                    % (offsets,))
 
-        if not len(offsets):
+        if not offsets:
             return
+
         fp = self.get(relpath)
-        pending_offsets = deque(offsets)
-        combined_offsets = []
-        while len(pending_offsets):
-            offset, size = pending_offsets.popleft()
-            if not combined_offsets:
-                combined_offsets = [[offset, size]]
+        for start, size, sublists in \
+                self._coalesce_offsets(offsets, self._max_readv_combine):
+            fp.seek(start)
+            data = fp.read(size)
+
+            mutter('readv of %s collapsed %s offsets =>'
+                   ' start %s len %s n chunks %s',
+                   relpath, len(offsets), start, size, len(sublists))
+
+            for offset, subsize in sublists:
+                yield start+offset, data[offset:offset+subsize]
+
+
+    @staticmethod
+    def _coalesce_offsets(offsets, limit):
+        """Yield coalesced offsets.
+
+        With a long list of neighboring requests, combine them
+        into a single large request, while retaining the original
+        offsets.
+        Turns  [(15, 10), (25, 10)] => [(15, 20, [(0, 10), (10, 10)])]
+
+        :param offsets: A list of (start, length) pairs
+        :param limit: Only combine a maximum of this many pairs
+                      Some transports penalize multiple reads more than
+                      others, and sometimes it is better to return early.
+                      0 means no limit
+        :return: a generator of [(start, total_length, 
+                                  [(inner_offset, length)])]
+                (start, total_length) is where to start, and how much to read
+                and (inner_offset, length) is how those chunks should be
+                split up.
+        """
+        last_end = None
+        cur_start = None
+        cur_total = None
+        cur_subranges = []
+
+        for start, size in offsets:
+            end = start + size
+            if (last_end is not None 
+                and start <= last_end
+                and start >= cur_start
+                and (limit <= 0 or len(cur_subranges) < limit)):
+                cur_total = end - cur_start
+                cur_subranges.append((start-cur_start, size))
             else:
-                if (len (combined_offsets) < 50 and
-                    combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
-                    # combatible offset:
-                    combined_offsets.append([offset, size])
-                else:
-                    # incompatible, or over the threshold issue a read and yield
-                    pending_offsets.appendleft((offset, size))
-                    for result in do_combined_read(combined_offsets):
-                        yield result
-                    combined_offsets = []
-        # whatever is left is a single coalesced request
-        if len(combined_offsets):
-            for result in do_combined_read(combined_offsets):
-                yield result
+                if cur_start is not None:
+                    yield (cur_start, cur_total, cur_subranges)
+                cur_start = start
+                cur_total = size
+                cur_subranges = [(0, size)]
+            last_end = end
+
+        if cur_start is not None:
+            yield (cur_start, cur_total, cur_subranges)
+
+        return
 
     def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
