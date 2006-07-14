@@ -1551,6 +1551,127 @@ class WorkingTree3(WorkingTree):
             self.branch.unlock()
 
 
+class WorkingTree4(WorkingTree3):
+    """This is the Format 4 working tree.
+
+    This differs from WorkingTree3 by:
+     - having a consolidated internal dirstate.
+
+    This is new in bzr TODO FIXME SETMEBEFORE MERGE.
+    """
+
+    def __init__(self, basedir,
+                 branch,
+                 _inventory=None,
+                 _control_files=None,
+                 _format=None,
+                 _bzrdir=None):
+        """Construct a WorkingTree for basedir.
+
+        If the branch is not supplied, it is opened automatically.
+        If the branch is supplied, it must be the branch for this basedir.
+        (branch.base is not cross checked, because for remote branches that
+        would be meaningless).
+        """
+        self._format = _format
+        self.bzrdir = _bzrdir
+        from bzrlib.hashcache import HashCache
+        from bzrlib.trace import note, mutter
+        assert isinstance(basedir, basestring), \
+            "base directory %r is not a string" % basedir
+        basedir = safe_unicode(basedir)
+        mutter("opening working tree %r", basedir)
+        self._branch = branch
+        assert isinstance(self.branch, bzrlib.branch.Branch), \
+            "branch %r is not a Branch" % self.branch
+        self.basedir = realpath(basedir)
+        # if branch is at our basedir and is a format 6 or less
+        # assume all other formats have their own control files.
+        assert isinstance(_control_files, LockableFiles), \
+            "_control_files must be a LockableFiles, not %r" % _control_files
+        self._control_files = _control_files
+        # update the whole cache up front and write to disk if anything changed;
+        # in the future we might want to do this more selectively
+        # two possible ways offer themselves : in self._unlock, write the cache
+        # if needed, or, when the cache sees a change, append it to the hash
+        # cache file, and have the parser take the most recent entry for a
+        # given path only.
+        cache_filename = self.bzrdir.get_workingtree_transport(None).local_abspath('stat-cache')
+        hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
+        hc.read()
+        # is this scan needed ? it makes things kinda slow.
+        #hc.scan()
+
+        if hc.needs_write:
+            mutter("write hc")
+            hc.write()
+
+        if _inventory is None:
+            self._set_inventory(self.read_working_inventory())
+        else:
+            self._set_inventory(_inventory)
+        self._dirty = None
+        self._parent_revisions = None
+
+    def _new_tree(self):
+        """Initialize the state in this tree to be a new tree."""
+        self._parent_revisions = [NULL_REVISION]
+        self._inventory = Inventory()
+        self._dirty = True
+
+    def unlock(self):
+        """Unlock in format 4 trees needs to write the entire dirstate."""
+        if self._control_files._lock_count == 1:
+            if self._hashcache.needs_write:
+                self._hashcache.write()
+            # eventually we should do signature checking during read locks for
+            # dirstate updates.
+            if self._control_files._lock_mode == 'w':
+                if self._dirty:
+                    self._write_dirstate()
+        # reverse order of locking.
+        try:
+            return self._control_files.unlock()
+        finally:
+            self.branch.unlock()
+
+    def _write_dirstate(self):
+        """Write the full dirstate to disk."""
+        # in progress - not ready yet.
+        return
+        state_header = 'Bzr dirstate format 1'
+        checksum_line = ''
+        lines = [state_header, checksum_line]
+        lines.append("%s" % " ".join(self._parent_revisions))
+        kind_map = {
+            'root_directory':'r',
+            'file':'f',
+            'directory':'d',
+            'link':'l',
+            }
+        # root is not yielded by iter_entries_by_dir
+        entry = self._inventory.root
+        lines.append(kind_map[entry.kind])
+        lines.append('') # dir stats dont matter.
+        lines.append('') # and they have no sha1/link target
+        lines.append(entry.file_id)
+        lines.append('/')
+        lines.append('null:')
+        lines.append('')
+        lines.append('')
+        lines.append('')
+        lines.append('')
+        lines.append('')
+        lines.append('')
+        for path, entry in self._inventory.iter_entries_by_dir():
+            lines.append(kind_map[entry.kind])
+            lines.append(path)
+            # lines.append(entry.stat_blob)
+            # lines.append(entry.dirstate_value)
+
+        self._control_files.put_utf8('dirstate', '\n'.join(lines))
+        
+
 def get_conflicted_stem(path):
     for suffix in CONFLICT_SUFFIXES:
         if path.endswith(suffix):
@@ -1820,11 +1941,82 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return self.get_format_string()
 
 
-# formats which have no format string are not discoverable
-# and not independently creatable, so are not registered.
+class WorkingTreeFormat4(WorkingTreeFormat3):
+    """The first consolidated dirstate working tree format.
+
+    This format:
+        - exists within a metadir controlling .bzr
+        - includes an explicit version marker for the workingtree control
+          files, separate from the BzrDir format
+        - modifies the hash cache format
+        - is new in bzr TODO FIXME SETBEFOREMERGE
+        - uses a LockDir to guard access to it.
+    """
+
+    def get_format_string(self):
+        """See WorkingTreeFormat.get_format_string()."""
+        return "Bazaar-NG Working Tree format 4"
+
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 4"
+
+    def initialize(self, a_bzrdir, revision_id=None):
+        """See WorkingTreeFormat.initialize().
+        
+        revision_id allows creating a working tree at a different
+        revision than the branch is at.
+        """
+        if not isinstance(a_bzrdir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        transport = a_bzrdir.get_workingtree_transport(self)
+        control_files = self._open_control_files(a_bzrdir)
+        control_files.create_lock()
+        control_files.lock_write()
+        control_files.put_utf8('format', self.get_format_string())
+        branch = a_bzrdir.open_branch()
+        if revision_id is None:
+            revision_id = branch.last_revision()
+        inv = Inventory() 
+        wt = WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
+                         branch,
+                         inv,
+                         _format=self,
+                         _bzrdir=a_bzrdir,
+                         _control_files=control_files)
+        wt._new_tree()
+        wt.lock_write()
+        try:
+            wt._write_inventory(inv)
+            wt.set_root_id(inv.root.file_id)
+            wt.set_last_revision(revision_id)
+            wt.set_pending_merges([])
+            build_tree(wt.basis_tree(), wt)
+        finally:
+            control_files.unlock()
+            wt.unlock()
+        return wt
+
+
+    def _open(self, a_bzrdir, control_files):
+        """Open the tree itself.
+        
+        :param a_bzrdir: the dir for the tree.
+        :param control_files: the control files for the tree.
+        """
+        return WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
+                           branch=a_bzrdir.open_branch(),
+                           _format=self,
+                           _bzrdir=a_bzrdir,
+                           _control_files=control_files)
+
+
 __default_format = WorkingTreeFormat3()
 WorkingTreeFormat.register_format(__default_format)
+WorkingTreeFormat.register_format(WorkingTreeFormat4())
 WorkingTreeFormat.set_default_format(__default_format)
+# formats which have no format string are not discoverable
+# and not independently creatable, so are not registered.
 _legacy_formats = [WorkingTreeFormat2(),
                    ]
 

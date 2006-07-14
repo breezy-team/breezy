@@ -211,6 +211,62 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertEqual([], tree.pending_merges())
 
 
+class TestWorkingTreeFormat4(TestCaseWithTransport):
+    """Tests specific to WorkingTreeFormat4."""
+
+    def test_disk_layout(self):
+        control = bzrdir.BzrDir.create(self.get_url())
+        control.create_repository()
+        control.create_branch()
+        tree = workingtree.WorkingTreeFormat4().initialize(control)
+        # we want:
+        # format 'Bazaar-NG Working Tree format 4'
+        # inventory = blank inventory
+        # pending-merges = ''
+        # stat-cache = ??
+        # no inventory.basis yet
+        t = control.get_workingtree_transport(None)
+        self.assertEqualDiff('Bazaar-NG Working Tree format 4',
+                             t.get('format').read())
+        self.assertEqualDiff('<inventory format="5">\n'
+                             '</inventory>\n',
+                             t.get('inventory').read())
+        self.assertEqualDiff('### bzr hashcache v5\n',
+                             t.get('stat-cache').read())
+        self.assertFalse(t.has('inventory.basis'))
+        # no last-revision file means 'None' or 'NULLREVISION'
+        self.assertFalse(t.has('last-revision'))
+        # TODO RBC 20060210 do a commit, check the inventory.basis is created 
+        # correctly and last-revision file becomes present.
+
+    def test_uses_lockdir(self):
+        """WorkingTreeFormat4 uses its own LockDir:
+            
+            - lock is a directory
+            - when the WorkingTree is locked, LockDir can see that
+        """
+        # this test could be factored into a subclass of tests common to both
+        # format 3 and 4, but for now its not much of an issue as there is only one in common.
+        t = self.get_transport()
+        url = self.get_url()
+        dir = bzrdir.BzrDirMetaFormat1().initialize(url)
+        repo = dir.create_repository()
+        branch = dir.create_branch()
+        try:
+            tree = workingtree.WorkingTreeFormat3().initialize(dir)
+        except errors.NotLocalUrl:
+            raise TestSkipped('Not a local URL')
+        self.assertIsDirectory('.bzr', t)
+        self.assertIsDirectory('.bzr/checkout', t)
+        self.assertIsDirectory('.bzr/checkout/lock', t)
+        our_lock = LockDir(t, '.bzr/checkout/lock')
+        self.assertEquals(our_lock.peek(), None)
+        tree.lock_write()
+        self.assertTrue(our_lock.peek())
+        tree.unlock()
+        self.assertEquals(our_lock.peek(), None)
+
+
 class TestFormat2WorkingTree(TestCaseWithTransport):
     """Tests that are specific to format 2 trees."""
 

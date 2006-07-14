@@ -3,3 +3,4 @@
 # 
 
 Test osutils.file_kind for more than just regular files and directories
+Set the introduction version of WorkingTreeFormat4 in workingtree.py.
