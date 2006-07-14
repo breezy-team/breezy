@@ -44,7 +44,7 @@ from bzrlib.option import Option
 import bzrlib.osutils
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
-from bzrlib import trace
+import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, be_quiet
 
 plugin_cmds = {}
