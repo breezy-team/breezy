@@ -364,6 +364,9 @@ See http://bazaar-vcs.org/BzrSvn for details.
             parent_ids = []
        
         if merged_data is None:
+            # FIXME: Optimization: If the nearest cached bzr:merge in upper
+            # and lower direction from this one are equal, then 
+            # this revnum has no extra parents
             if parent_path is None:
                 old_merge = ""
             else:
