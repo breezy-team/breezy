@@ -1362,27 +1362,7 @@ class WorkingTree(bzrlib.tree.Tree):
         between multiple working trees, i.e. via shared storage, then we 
         would probably want to lock both the local tree, and the branch.
         """
-        # FIXME: We want to write out the hashcache only when the last lock on
-        # this working copy is released.  Peeking at the lock count is a bit
-        # of a nasty hack; probably it's better to have a transaction object,
-        # which can do some finalization when it's either successfully or
-        # unsuccessfully completed.  (Denys's original patch did that.)
-        # RBC 20060206 hooking into transaction will couple lock and transaction
-        # wrongly. Hooking into unlock on the control files object is fine though.
-        
-        # TODO: split this per format so there is no ugly if block
-        if self._hashcache.needs_write and (
-            # dedicated lock files
-            self._control_files._lock_count==1 or 
-            # shared lock files
-            (self._control_files is self.branch.control_files and 
-             self._control_files._lock_count==3)):
-            self._hashcache.write()
-        # reverse order of locking.
-        try:
-            return self._control_files.unlock()
-        finally:
-            self.branch.unlock()
+        raise NotImplementedError(self.unlock)
 
     @needs_write_lock
     def update(self):
@@ -1483,6 +1463,25 @@ class WorkingTree(bzrlib.tree.Tree):
         return conflicts
 
 
+class WorkingTree2(WorkingTree):
+    """This is the Format 2 working tree.
+
+    This was the first weave based working tree. 
+     - uses os locks for locking.
+     - uses the branch last-revision.
+    """
+
+    def unlock(self):
+        # we share control files:
+        if self._hashcache.needs_write and self._control_files._lock_count==3:
+            self._hashcache.write()
+        # reverse order of locking.
+        try:
+            return self._control_files.unlock()
+        finally:
+            self.branch.unlock()
+
+
 class WorkingTree3(WorkingTree):
     """This is the Format 3 working tree.
 
@@ -1541,6 +1540,15 @@ class WorkingTree3(WorkingTree):
         except StopIteration:
             raise ConflictFormatError()
         return ConflictList.from_stanzas(RioReader(confile))
+
+    def unlock(self):
+        if self._hashcache.needs_write and self._control_files._lock_count==1:
+            self._hashcache.write()
+        # reverse order of locking.
+        try:
+            return self._control_files.unlock()
+        finally:
+            self.branch.unlock()
 
 
 def get_conflicted_stem(path):
@@ -1681,7 +1689,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                 branch.unlock()
         revision = branch.last_revision()
         inv = Inventory() 
-        wt = WorkingTree(a_bzrdir.root_transport.local_abspath('.'),
+        wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
@@ -1709,7 +1717,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        return WorkingTree(a_bzrdir.root_transport.local_abspath('.'),
+        return WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
                            _bzrdir=a_bzrdir)
