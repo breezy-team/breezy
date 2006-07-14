@@ -62,6 +62,8 @@ class SvnBranch(Branch):
         self._format = SvnBranchFormat()
         mutter("Connected to branch at %r" % self.branch_path)
         self._generate_revision_history(self.repository._latest_revnum)
+        #self.repository.get_fileid_map(self.repository._latest_revnum,
+        #                               self.branch_path)
 
     def check(self):
         """See Branch.Check.

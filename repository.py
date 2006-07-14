@@ -321,11 +321,12 @@ See http://bazaar-vcs.org/BzrSvn for details.
         except StopIteration:
             parent_path = None
             parent_ids = []
+
+        # if the branch didn't change, bzr:merge can't have changed
+        if not path in self._log.get_revision_info(revnum)[3]:
+            return parent_ids
        
         if merged_data is None:
-            # FIXME: Optimization: If the nearest cached bzr:merge in upper
-            # and lower direction from this one are equal, then 
-            # this revnum has no extra parents
             new_merge = self._get_branch_prop(path, revnum, 
                                            SVN_PROP_BZR_MERGE, "").splitlines()
 
@@ -523,6 +524,9 @@ See http://bazaar-vcs.org/BzrSvn for details.
         return default
 
     def _get_dir_proplist(self, path, revnum):
+        # find previous ancestor in which properties could've been changed
+        revnum = self._log.find_latest_change(path, revnum)
+
         (props, _) = self._cache_get_dir(path, revnum)
         return props
 
