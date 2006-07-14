@@ -45,6 +45,9 @@ class TestWhoami(ExternalBase):
         bzr_email = os.environ.get('BZR_EMAIL')
         if bzr_email is not None:
             del os.environ['BZR_EMAIL']
+        bzremail = os.environ.get('BZREMAIL')
+        if bzremail is not None:
+            del os.environ['BZREMAIL']
         try:
             whoami = self.run_bzr("whoami")[0]
             self.assertEquals('Branch Identity <branch@identi.ty>\n', whoami)
@@ -58,9 +61,17 @@ class TestWhoami(ExternalBase):
             self.assertEquals('Different ID <other@environ.ment>\n', whoami)
             whoami_email = self.run_bzr("whoami", "--email")[0]
             self.assertEquals('other@environ.ment\n', whoami_email)
+            del os.environ['BZR_EMAIL']
+            os.environ['BZREMAIL'] = 'Yet Another ID <yetother@environ.ment>'
+            whoami, warn = self.run_bzr("whoami")
+            self.assertEquals('Yet Another ID <yetother@environ.ment>\n', whoami)
+            self.assertTrue(len(warn) > 0)
+            del os.environ['BZREMAIL']
         finally:
             if bzr_email is not None:
                 os.environ['BZR_EMAIL'] = bzr_email
+            if bzremail is not None:
+                os.environ['BZREMAIL'] = bzremail
 
     def test_whoami_utf8(self):
         """verify that an identity can be in utf-8."""
