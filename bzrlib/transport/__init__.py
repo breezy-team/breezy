@@ -357,27 +357,46 @@ class Transport(object):
         :offsets: A list of (offset, size) tuples.
         :return: A list or generator of (offset, data) tuples
         """
-        sorted_offsets = sorted(offsets)
-        if sorted_offsets != offsets:
-            warning('** requested a readv with out-of-order components: %s' 
-                    % (offsets,))
-
         if not offsets:
             return
 
         fp = self.get(relpath)
-        for start, size, sublists in \
-                self._coalesce_offsets(offsets, self._max_readv_combine):
+
+        # We are going to iterate multiple times, we need a list
+        offsets = list(offsets)
+        sorted_offsets = sorted(offsets)
+
+        # turn the list of offsets into a stack
+        offsets.reverse()
+        coalesced = self._coalesce_offsets(sorted_offsets,
+                                           self._max_readv_combine)
+
+        # Cache the results, but only until they have been fulfilled
+        data_map = {}
+        for start, size, sublists in coalesced:
             fp.seek(start)
             data = fp.read(size)
+            for offset, subsize in sublists:
+                key = (start+offset, subsize)
+                data_map[key] = data[offset:offset+subsize]
 
             mutter('readv of %s collapsed %s offsets =>'
                    ' start %s len %s n chunks %s',
                    relpath, len(offsets), start, size, len(sublists))
 
-            for offset, subsize in sublists:
-                yield start+offset, data[offset:offset+subsize]
+            # Now that we've read some data, see if we can yield 
+            # anything back
+            while offsets:
+                if offsets[-1] not in data_map:
+                    # We can't yield anything yet, the next entry
+                    # isn't ready
+                    break
+                key = offsets.pop()
+                this_data = data_map.pop(key)
+                yield key[0], this_data
 
+        # If we got here, we should have processed all entries
+        assert len(offsets) == 0
 
     @staticmethod
     def _coalesce_offsets(offsets, limit):

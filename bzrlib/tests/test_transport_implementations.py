@@ -995,3 +995,16 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertEqual(d[1], (1, '1'))
         self.assertEqual(d[2], (3, '34'))
         self.assertEqual(d[3], (9, '9'))
+
+    def test_readv_out_of_order(self):
+        transport = self.get_transport()
+        if transport.is_readonly():
+            file('a', 'w').write('0123456789')
+        else:
+            transport.put('a', StringIO('01234567890'))
+
+        d = list(transport.readv('a', ((1, 1), (9, 1), (0, 1), (3, 2))))
+        self.assertEqual(d[0], (1, '1'))
+        self.assertEqual(d[1], (9, '9'))
+        self.assertEqual(d[2], (0, '0'))
+        self.assertEqual(d[3], (3, '34'))

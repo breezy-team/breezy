@@ -314,7 +314,11 @@ class SFTPTransport (Transport):
     """
     Transport implementation for SFTP access.
     """
+
     _do_prefetch = _default_do_prefetch
+    _max_readv_combine = 0 # Allow readv to collapse everything
+    # TODO: jam 20060714 for sftp, it is even better to even collapse nearby 
+    #       ranges and get extra data, in exchange for one less round trip
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
