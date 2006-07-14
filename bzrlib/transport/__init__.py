@@ -178,7 +178,17 @@ class Transport(object):
 
     # implementations can override this if it is more efficient
     # for them to combine larger read chunks together
-    _max_readv_combine = 50
+    _max_readv_combine = 100
+    # It is better to read this much more data in order, rather
+    # than doing another seek. Even for the local filesystem,
+    # there is a benefit in just reading.
+    # TODO: jam 20060714 Do some real benchmarking to figure out
+    #       where the biggest benefit between combining reads and
+    #       and seeking is. It should even be possible to do this
+    #       dynamically, by measuring the seek time versus the
+    #       read / data size time. Though for sftp the round trip
+    #       is hidden in the read()
+    _bytes_to_read_before_seek = 500
 
     def __init__(self, base):
         super(Transport, self).__init__()
@@ -369,7 +379,8 @@ class Transport(object):
         # turn the list of offsets into a stack
         offsets.reverse()
         coalesced = self._coalesce_offsets(sorted_offsets,
-                                           self._max_readv_combine)
+                               limit=self._max_readv_combine,
+                               fudge_factor=self._bytes_to_read_before_seek)
 
         # Cache the results, but only until they have been fulfilled
         data_map = {}
@@ -399,7 +410,7 @@ class Transport(object):
         assert len(offsets) == 0
 
     @staticmethod
-    def _coalesce_offsets(offsets, limit):
+    def _coalesce_offsets(offsets, limit, fudge_factor):
         """Yield coalesced offsets.
 
         With a long list of neighboring requests, combine them
@@ -412,6 +423,9 @@ class Transport(object):
                       Some transports penalize multiple reads more than
                       others, and sometimes it is better to return early.
                       0 means no limit
+        :param fudge_factor: All transports have some level of 'it is
+                better to read some more data and throw it away rather 
+                than seek', so collapse if we are 'close enough'
         :return: a generator of [(start, total_length, 
                                   [(inner_offset, length)])]
                 (start, total_length) is where to start, and how much to read
@@ -426,7 +440,7 @@ class Transport(object):
         for start, size in offsets:
             end = start + size
             if (last_end is not None 
-                and start <= last_end
+                and start <= last_end + fudge_factor
                 and start >= cur_start
                 and (limit <= 0 or len(cur_subranges) < limit)):
                 cur_total = end - cur_start

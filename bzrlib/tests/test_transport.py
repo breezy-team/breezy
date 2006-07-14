@@ -102,9 +102,10 @@ class TestTransport(TestCase):
 
 class TestCoalesceOffsets(TestCase):
     
-    def check(self, expected, offsets, limit=0):
+    def check(self, expected, offsets, limit=0, fudge=0):
         coalesce = Transport._coalesce_offsets
-        self.assertEqual(expected, list(coalesce(offsets, limit=limit)))
+        self.assertEqual(expected, list(coalesce(offsets,
+                                        limit=limit, fudge_factor=fudge)))
 
     def test_coalesce_empty(self):
         self.check([], [])
@@ -148,6 +149,13 @@ class TestCoalesceOffsets(TestCase):
                    ], [(10, 10), (20, 10), (30, 10), (40, 10),
                        (50, 10), (60, 10), (70, 10), (80, 10),
                        (90, 10), (100, 10)])
+
+    def test_coalesce_fudge(self):
+        self.check([(10, 30, [(0, 10), (20, 10)]),
+                    (100, 10, [(0, 10),]),
+                   ], [(10, 10), (30, 10), (100, 10)],
+                   fudge=10
+                  )
 
 
 class TestMemoryTransport(TestCase):

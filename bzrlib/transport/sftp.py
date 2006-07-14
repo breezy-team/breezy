@@ -311,14 +311,18 @@ class SFTPLock(object):
 
 
 class SFTPTransport (Transport):
-    """
-    Transport implementation for SFTP access.
-    """
+    """Transport implementation for SFTP access"""
 
     _do_prefetch = _default_do_prefetch
     _max_readv_combine = 0 # Allow readv to collapse everything
-    # TODO: jam 20060714 for sftp, it is even better to even collapse nearby 
-    #       ranges and get extra data, in exchange for one less round trip
+    # Having to round trip to the server means a lot of latency.
+    # So it is better to download extra bytes.
+    # For my network (jam), to my local server, I have
+    # a bandwidth of 6MB/s, and latency of 220us = 1320 bytes
+    # between me and school is 160KB/s and 34us = 5440 bytes
+    # between myself and bazaar-vcs.org 160KB/s * 107ms = 17120 bytes
+    # 4KiB seemed a reasonable tradeoff
+    _bytes_to_read_before_seek = 4192
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
