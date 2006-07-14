@@ -219,8 +219,8 @@ class HttpTransportBase(Transport):
         :param return: A list or generator of (offset, data) tuples
         """
         ranges, tail_amount = self.offsets_to_ranges(offsets)
-        mutter('readv of %s %s => %s tail:%s',
-                relpath, offsets, ranges, tail_amount)
+        mutter('readv of %s %s => %s',
+                relpath, len(offsets), ranges)
         code, f = self._get(relpath, ranges, tail_amount)
         for start, size in offsets:
             f.seek(start, (start < 0) and 2 or 0)
