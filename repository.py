@@ -18,7 +18,7 @@ import bzrlib
 from bzrlib.branch import BranchCheckResult
 from bzrlib.config import config_dir
 from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile, 
-                           NoSuchRevision)
+                           NoSuchRevision, NotBranchError)
 from bzrlib.graph import Graph
 from bzrlib.inventory import ROOT_ID
 from bzrlib.lockable_files import LockableFiles, TransportLock
@@ -156,6 +156,7 @@ class SvnRepository(Repository):
     by using the RA (remote access) API from subversion
     """
     def __init__(self, bzrdir, transport):
+        from fileids import SimpleFileIdMap
         _revision_store = None
 
         assert isinstance(transport, Transport)
@@ -168,7 +169,6 @@ class SvnRepository(Repository):
 
         self.uuid = svn.ra.get_uuid(self.ra)
         self.base = transport.base
-        self.path_map = {}
         self.text_cache = {}
         self.dir_cache = {}
         self.scheme = bzrdir.scheme
@@ -188,6 +188,9 @@ class SvnRepository(Repository):
         self.branchprop_cache = shelve.open(os.path.join(
                                             self.create_cache_dir(),
                                             'branchprops'))
+
+        self.fileid_map = SimpleFileIdMap(self._log, self.create_cache_dir())
+
 
     def create_cache_dir(self):
         if not os.path.exists(cache_dir):
@@ -214,10 +217,17 @@ See http://bazaar-vcs.org/BzrSvn for details.
         assert revision_id != None
         return self.revision_tree(revision_id).inventory
 
+    def get_fileid_map(self, revnum, path, pb=None):
+        return self.fileid_map.get_map(self.uuid, revnum, path, pb)
+
     def path_to_file_id(self, revnum, path):
         """Generate a bzr file id from a Subversion file name. 
         
         This implementation DOES NOT track renames.
+
+        :param revnum: Revision number.
+        :param path: Absolute path.
+        :return: Tuple with file id and revision id.
         """
         assert isinstance(revnum, int)
         assert isinstance(path, basestring)
@@ -225,67 +235,16 @@ See http://bazaar-vcs.org/BzrSvn for details.
 
         path = path.strip("/")
 
-        if self.path_map.has_key((revnum, path)):
-            return self.path_map[(revnum, path)]
+        (bp, rp) = self.scheme.unprefix(path)
 
-        (path_branch, filename) = self.scheme.unprefix(path)
+        revid = self.generate_revision_id(revnum, bp)
 
-        if filename == "":
-            return (ROOT_ID, self.generate_revision_id(revnum, path_branch))
+        map = self.get_fileid_map(revnum, bp)
 
-        introduced_revision_id = None
-        last_changed_revid = None
-        for (branch, paths, rev) in self._log.follow_history(path_branch, 
-                                                             revnum):
-            expected_path = ("%s/%s" % (branch, filename)).strip("/")
+        if not map.has_key(rp):
+            raise NoSuchFile(path=rp)
 
-            revid = self.generate_revision_id(rev, branch)
-
-            if not expected_path in paths:
-                parent_changed = False
-                for p in paths:
-                    if (osutils.is_inside(p, expected_path) and 
-                        paths[p][0] != 'M' and 
-                        not self.scheme.is_branch(p)):
-                        parent_changed = True
-
-                if parent_changed:
-                    introduced_revision_id = revid
-                    if last_changed_revid is None:
-                        last_changed_revid = revid
-                    break
-
-            if self.path_map.has_key((rev, expected_path)):
-                file_id, old_revid = self.path_map[(rev, expected_path)]
-                if last_changed_revid is None:
-                    revid = old_revid
-                else:
-                    revid = last_changed_revid
-                self.path_map[(revnum, path)] = (file_id, revid)
-                return self.path_map[(revnum, path)]
-
-            if not expected_path in paths:
-                # File changed in this revision
-                continue
-
-            if last_changed_revid is None:
-                last_changed_revid = revid
-            
-            introduced_revision_id = revid
-
-            if paths[expected_path][0] in ('A', 'R'):
-                break
-
-        if introduced_revision_id is None:
-            raise NoSuchFile(path=filename)
-
-        assert last_changed_revid is not None
-
-        file_id = "%s-%s" % (introduced_revision_id, escape_svn_path(filename))
-        assert file_id != None
-
-        self.path_map[(revnum, path)] = (file_id, last_changed_revid)
-        return (file_id, last_changed_revid)
+        return map[rp]
 
     def all_revision_ids(self):
         raise NotImplementedError(self.all_revision_ids)
@@ -367,13 +326,14 @@ See http://bazaar-vcs.org/BzrSvn for details.
             # FIXME: Optimization: If the nearest cached bzr:merge in upper
             # and lower direction from this one are equal, then 
             # this revnum has no extra parents
-            if parent_path is None:
+            new_merge = self._get_branch_prop(path, revnum, 
+                                           SVN_PROP_BZR_MERGE, "").splitlines()
+
+            if len(new_merge) == 0 or parent_path is None:
                 old_merge = ""
             else:
                 old_merge = self._get_branch_prop(parent_path, parent_revnum, 
                         SVN_PROP_BZR_MERGE, "").splitlines()
-            new_merge = self._get_branch_prop(path, revnum, 
-                                           SVN_PROP_BZR_MERGE, "").splitlines()
 
             assert (len(old_merge) == len(new_merge) or 
                     len(old_merge) + 1 == len(new_merge))

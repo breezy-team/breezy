@@ -41,20 +41,20 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = logwalker.LogWalker(NoBranchingScheme(), repos_url=repos_url)
 
-        self.assertEqual(1, len(list(walker.get_branch_log("", 1, 0))))
+        self.assertEqual(1, len(list(walker.follow_history("", 1))))
 
     def test_get_branch_invalid_revision(self):
         repos_url = self.make_client("a", "dc")
         walker = logwalker.LogWalker(NoBranchingScheme(), repos_url=repos_url)
         self.assertRaises(NoSuchRevision, list, 
-                          walker.get_branch_log("/", 20, 1))
+                          walker.follow_history("/", 20))
 
     def test_invalid_branch_path(self):
         repos_url = self.make_client("a", "dc")
         walker = logwalker.LogWalker(NoBranchingScheme(), repos_url=repos_url)
 
         self.assertRaises(logwalker.NotSvnBranchPath, list, 
-                          walker.get_branch_log("foobar", 0, 0))
+                          walker.follow_history("foobar", 0))
 
     def test_branch_log_all(self):
         repos_url = self.make_client("a", "dc")
@@ -66,7 +66,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         walker = logwalker.LogWalker(TrunkBranchingScheme(), 
                                      repos_url=repos_url)
 
-        self.assertEqual(1, len(list(walker.get_branch_log(None, 1, 0))))
+        self.assertEqual(1, len(list(walker.follow_history(None, 1))))
 
     def test_branch_log_specific(self):
         repos_url = self.make_client("a", "dc")
@@ -82,8 +82,8 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         walker = logwalker.LogWalker(TrunkBranchingScheme(), 
                                      repos_url=repos_url)
 
-        self.assertEqual(1, len(list(walker.get_branch_log("branches/brancha",
-            1, 0))))
+        self.assertEqual(1, len(list(walker.follow_history("branches/brancha",
+            1))))
 
     def test_follow_history(self):
         repos_url = self.make_client("a", "dc")
@@ -128,7 +128,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         walker = logwalker.LogWalker(TrunkBranchingScheme(), 
                                      repos_url=repos_url)
 
-        items = list(walker.get_branch_log("branches/abranch", 2, 0))
+        items = list(walker.follow_history("branches/abranch", 2))
         self.assertEqual(2, len(items))
 
 

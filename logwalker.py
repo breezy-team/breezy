@@ -184,3 +184,25 @@ class LogWalker(object):
             self.fetch_revisions(self.saved_revnum, revnum, pb)
         rev = self.revisions[str(revnum)]
         return (rev['author'], rev['message'], rev['date'], rev['paths'])
+
+    def follow_local_history(self, branch_path, revnum):
+        for (bp, paths, rev) in self.follow_history(branch_path, revnum):
+            new_paths = {}
+            for p, data in paths.items():
+                assert p.startswith(bp)
+                p = p[len(bp):].strip("/") # remove branch path
+                if data[1] is not None:
+                    (cbp, crp) = self.scheme.unprefix(data[1])
+                    # TODO: See if data[1]:data[2] is the same branch as 
+                    # the current branch. The current code doesn't handle
+                    # replaced branches very well
+                    related = (cbp == bp)
+
+                    if related:
+                        data = (data[0], crp, data[2])
+                    else:
+                        data = (data[0], None, None)
+                        # FIXME: Add children of data[1] to new_paths
+
+                new_paths[p] = data
+            yield (bp, new_paths, rev)
