@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.config import config_dir
 from bzrlib.errors import NoSuchRevision, BzrError, NotBranchError
 from bzrlib.progress import ProgressBar, DummyProgress
 from bzrlib.trace import mutter
@@ -26,25 +25,6 @@ from cStringIO import StringIO
 from svn.core import SubversionException
 import svn.ra
 
-cache_dir = os.path.join(config_dir(), 'svn-cache')
-
-def create_cache_dir(uuid):
-    if not os.path.exists(cache_dir):
-        os.mkdir(cache_dir)
-
-        open(os.path.join(cache_dir, "README"), 'w').write(
-"""This directory contains information cached by the bzr-svn plugin.
-
-It is used for performance reasons only and can be removed 
-without losing data.
-""")
-
-    dir = os.path.join(cache_dir, uuid)
-    if not os.path.exists(dir):
-        os.mkdir(dir)
-    return dir
-
-
 class NotSvnBranchPath(BzrError):
     def __init__(self, branch_path):
         BzrError.__init__(self, 
@@ -54,7 +34,7 @@ class NotSvnBranchPath(BzrError):
 
 
 class LogWalker(object):
-    def __init__(self, scheme, ra=None, uuid=None, last_revnum=None, repos_url=None, pb=None):
+    def __init__(self, scheme, ra=None, cache_dir=None, last_revnum=None, repos_url=None, pb=None):
         if ra is None:
             callbacks = svn.ra.callbacks2_t()
             ra = svn.ra.open2(repos_url.encode('utf8'), callbacks, None, None)
@@ -62,20 +42,17 @@ class LogWalker(object):
             if root != repos_url:
                 svn.ra.reparent(ra, root.encode('utf8'))
 
-        if not uuid:
-            uuid = svn.ra.get_uuid(ra)
-
-        self.uuid = uuid
-
         if last_revnum is None:
             last_revnum = svn.ra.get_latest_revnum(ra)
 
-        self.cache_file = os.path.join(create_cache_dir(uuid), 'log')
         self.ra = ra
         self.scheme = scheme
 
         # Try to load cache from file
-        self.revisions = shelve.open(self.cache_file)
+        if cache_dir is not None:
+            self.revisions = shelve.open(os.path.join(cache_dir, 'log'))
+        else:
+            self.revisions = {}
         self.saved_revnum = max(len(self.revisions)-1, 0)
 
         if self.saved_revnum < last_revnum:
@@ -124,9 +101,6 @@ class LogWalker(object):
             raise
 
         self.save()
-
-    def save(self):
-        pickle.dump(self.revisions, open(self.cache_file, 'w'))
 
     def follow_history(self, branch_path, revnum):
         for (branch, paths, rev, _, _, _) in self.get_branch_log(branch_path, 
