@@ -101,6 +101,31 @@ IN DEVELOPMENT
      were removed. So it is safe to uncommit after a merge, fix something,
      and commit again. (John Arbash Meinel, #32526, #31426)
 
+   * HTTP support has been updated. When using pycurl we now support 
+     connection keep-alive, which reduces dns requests and round trips.
+     And for both urllib and pycurl we support multi-range requests, 
+     which decreasing round-trips. Performance results for
+     ``time bzr branch http://bazaar-vcs.org/bzr/bzr.dev/``
+     original: 22m45s total
+     new pycurl: 7m18s total
+     new urllib: 9m49s total
+
+     revno 1864 has 6279 ancestors
+     revno 1800 has 5889 ancestors
+     revno 1500 has 2504 ancestors
+     ``bzr branch -r 1500 http://bazaar-vcs.org/bzr/bzr.dev/``
+     ``time bzr pull``
+     original: 19m32s total
+     new pycurl: 5m23s total
+     new urllib: 7m00s total
+
+     ``bzr branch -r 1800 http://bazaar-vcs.org/bzr/bzr.dev/``
+     ``time bzr pull``
+     original: 4m13s total
+     new pycurl: 4m07s total
+     new urllib: 1m45s total
+     (Michael Ellerman, Johan Rydberg, John Arbash Meinel, #46768)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 

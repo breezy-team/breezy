@@ -34,7 +34,8 @@ from bzrlib.errors import (TransportNotPossible, NoSuchFile,
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import (HttpTransportBase, HttpServer,
-                                   response, _extract_headers)
+                                   response, _extract_headers,
+                                   _pycurl_errors)
 
 try:
     import pycurl
@@ -126,8 +127,11 @@ class PyCurlTransport(HttpTransportBase):
         abspath = self._real_abspath(relpath)
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
-        # This means "NO BODY" not 'nobody'
+        # Make sure we do a GET request. versions > 7.14.1 also set the
+        # NO BODY flag, but we'll do it ourselves in case it is an older
+        # pycurl version
         curl.setopt(pycurl.NOBODY, 0)
+        curl.setopt(pycurl.HTTPGET, 1)
 
         data = StringIO()
         header = StringIO()
@@ -207,12 +211,11 @@ class PyCurlTransport(HttpTransportBase):
             curl.perform()
         except pycurl.error, e:
             # XXX: There seem to be no symbolic constants for these values.
-            if e[0] == 6:
-                # TODO: jam 20060713 This should really be a ConnectionError
-                #       rather than NoSuchFile if we fail to connect.
-                # couldn't resolve host
-                raise NoSuchFile(curl.getinfo(pycurl.EFFECTIVE_URL), e)
-            elif e[0] == 7:
+            url = curl.getinfo(pycurl.EFFECTIVE_URL)
+            mutter('got pycurl error: %s, %s, %s, url: %s ',
+                    e[0], _pycurl_errors.errorcode[e[0]], e, url)
+            if e[0] in (_pycurl_errors.CURLE_COULDNT_RESOLVE_HOST,
+                        _pycurl_errors.CURLE_COULDNT_CONNECT):
                 self._raise_curl_connection_error(curl)
             # jam 20060713 The code didn't use to re-raise the exception here
             # but that seemed bogus
