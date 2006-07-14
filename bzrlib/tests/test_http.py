@@ -171,50 +171,23 @@ class TestOffsets(TestCase):
 
     def test_offsets_to_ranges_simple(self):
         to_range = HttpTransportBase.offsets_to_ranges
-        ranges, tail = to_range([(10, 1)])
+        ranges = to_range([(10, 1)])
         self.assertEqual([[10, 10]], ranges)
-        self.assertEqual(0, tail)
 
-        ranges, tail = to_range([(0, 1), (1, 1)])
+        ranges = to_range([(0, 1), (1, 1)])
         self.assertEqual([[0, 1]], ranges)
-        self.assertEqual(0, tail)
 
-        ranges, tail = to_range([(1, 1), (0, 1)])
+        ranges = to_range([(1, 1), (0, 1)])
         self.assertEqual([[0, 1]], ranges)
-        self.assertEqual(0, tail)
 
     def test_offset_to_ranges_overlapped(self):
         to_range = HttpTransportBase.offsets_to_ranges
 
-        ranges, tail = to_range([(10, 1), (20, 2), (22, 5)])
-        self.assertEquals(tuple(ranges[0]), (10, 10))
-        self.assertEquals(tuple(ranges[1]), (20, 26))
-        self.assertEquals(tail, 0)
+        ranges = to_range([(10, 1), (20, 2), (22, 5)])
+        self.assertEqual([[10, 10], [20, 26]], ranges)
 
-        ranges, tail = to_range([(10, 1), (11, 2), (22, 5), (-4, 4)])
-        self.assertEquals(tuple(ranges[0]), (10, 12))
-        self.assertEquals(tuple(ranges[1]), (22, 26))
-        self.assertEquals(tail, 4)
-
-    def test_offset_to_ranges_tail(self):
-        to_range = HttpTransportBase.offsets_to_ranges
-
-        ranges, tail = to_range([(-4, 4), (-8, 8)])
-        self.assertEquals(tuple(ranges), ())
-        self.assertEquals(tail, 8)
-
-    def test_offset_to_ranges_fudge(self):
-        to_range = HttpTransportBase.offsets_to_ranges
-
-        ranges, tail = to_range([(10, 1), (20, 2)], fudge_factor=9)
-        self.assertEquals(tuple(ranges[0]), (10, 21))
-        self.assertEquals(len(ranges), 1)
-        self.assertEquals(tail, 0)
-
-        ranges, tail = to_range([(10, 1), (20, 2)], fudge_factor=8)
-        self.assertEquals(tuple(ranges[0]), (10, 10))
-        self.assertEquals(tuple(ranges[1]), (20, 21))
-        self.assertEquals(tail, 0)
+        ranges = to_range([(10, 1), (11, 2), (22, 5)])
+        self.assertEqual([[10, 12], [22, 26]], ranges)
 
 
 class TestRangeHeader(TestCase):

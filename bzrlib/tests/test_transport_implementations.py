@@ -996,6 +996,3 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertEqual(d[2], (3, '34'))
         self.assertEqual(d[3], (9, '9'))
 
-        d = list(transport.readv('a', ((-1, 1), (-7, 2))))
-        self.assertEqual(d[0], (9, '9'))
-        self.assertEqual(d[1], (3, '34'))

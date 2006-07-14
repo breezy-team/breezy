@@ -366,23 +366,8 @@ class Transport(object):
                 yield offset, data[pos:pos + size]
                 pos += size
 
-        # Allow all Transports to implement negative offsets
-        # If they haven't fast-pathed readv(), then we
-        # support it by getting the file length and subtracting.
-        def normalize_offsets(offsets):
-            stat = None
-            new_offsets = []
-            for (offset, size) in offsets:
-                if offset < 0:
-                    if stat is None:
-                        stat = self.stat(relpath)
-                    offset = stat.st_size + offset
-                new_offsets.append((offset, size))
-            return new_offsets
-        
         if not len(offsets):
             return
-        offsets = normalize_offsets(offsets)
         fp = self.get(relpath)
         pending_offsets = deque(offsets)
         combined_offsets = []
@@ -391,7 +376,7 @@ class Transport(object):
             if not combined_offsets:
                 combined_offsets = [[offset, size]]
             else:
-                if (len (combined_offsets) < 50 and
+                if (len(combined_offsets) < 50 and
                     combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
                     # combatible offset:
                     combined_offsets.append([offset, size])

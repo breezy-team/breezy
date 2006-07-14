@@ -197,13 +197,12 @@ class HttpTransportBase(Transport):
         code, response_file = self._get(relpath, None)
         return response_file
 
-    def _get(self, relpath, ranges, tail_amount=0):
+    def _get(self, relpath, ranges):
         """Get a file, or part of a file.
 
         :param relpath: Path relative to transport base URL
         :param byte_range: None to get the whole file;
             or [(start,end)] to fetch parts of a file.
-        :param tail_amount: How much data to fetch from the tail of the file.
 
         :returns: (http_code, result_file)
 
@@ -218,10 +217,10 @@ class HttpTransportBase(Transport):
         :param offsets: A list of (offset, size) tuples.
         :param return: A list or generator of (offset, data) tuples
         """
-        ranges, tail_amount = self.offsets_to_ranges(offsets)
-        mutter('readv of %s %s => %s',
+        ranges = self.offsets_to_ranges(offsets)
+        mutter('http readv of %s collapsed %s offsets => %s',
                 relpath, len(offsets), ranges)
-        code, f = self._get(relpath, ranges, tail_amount)
+        code, f = self._get(relpath, ranges)
         for start, size in offsets:
             f.seek(start, (start < 0) and 2 or 0)
             start = f.tell()
@@ -230,39 +229,31 @@ class HttpTransportBase(Transport):
             yield start, data
 
     @staticmethod
-    def offsets_to_ranges(offsets, fudge_factor=0):
+    def offsets_to_ranges(offsets):
         """Turn a list of offsets and sizes into a list of byte ranges.
 
         :param offsets: A list of tuples of (start, size).  An empty list
             is not accepted.
-        :param fudge_factor: Fudge together ranges that are fudge_factor
-            bytes apart
-
-        :return: a list of inclusive byte ranges (start, end) and the 
-            amount of data to fetch from the tail of the file. 
+        :return: a list of inclusive byte ranges (start, end) 
             Adjacent ranges will be combined.
         """
         # Make sure we process sorted offsets
         offsets = sorted(offsets)
 
-        max_negative = 0
         prev_end = None
         combined = []
 
         for start, size in offsets:
-            if start < 0:
-                max_negative = min(start, max_negative)
+            end = start + size - 1
+            if prev_end is None:
+                combined.append([start, end])
+            elif start <= prev_end + 1:
+                combined[-1][1] = end
             else:
-                end = start + size - 1
-                if prev_end is None:
-                    combined.append([start, end])
-                elif start <= prev_end + 1 + fudge_factor:
-                    combined[-1][1] = end
-                else:
-                    combined.append([start, end])
-                prev_end = end
+                combined.append([start, end])
+            prev_end = end
 
-        return combined, -max_negative
+        return combined
 
     def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
