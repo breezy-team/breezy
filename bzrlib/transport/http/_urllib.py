@@ -92,7 +92,7 @@ class HttpTransport_urllib(HttpTransportBase):
         request.add_header('User-Agent',
                            'bzr/%s (urllib)' % (bzrlib.__version__,))
         if ranges or tail_amount:
-            bytes = 'bytes=' + self.range_header(ranges, tail_amount))
+            bytes = 'bytes=' + self.range_header(ranges, tail_amount)
             request.add_header('Range', bytes)
         response = opener.open(request)
         return response
