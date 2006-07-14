@@ -2,10 +2,10 @@
 
 import re
 
+from bzrlib import errors, tsort
 from bzrlib.branch import Branch
 import bzrlib.commands
 from bzrlib.config import extract_email_address
-from bzrlib import errors
 from bzrlib.workingtree import WorkingTree
 
 
@@ -154,3 +154,39 @@ class cmd_statistics(bzrlib.commands.Command):
 
 
 bzrlib.commands.register_command(cmd_statistics)
+
+
+class cmd_ancestor_growth(bzrlib.commands.Command):
+    """Figure out the ancestor graph for LOCATION"""
+
+    takes_args = ['location?']
+
+    encoding_type = 'replace'
+
+    def run(self, location='.'):
+        try:
+            wt = WorkingTree.open_containing(location)[0]
+        except errors.NoWorkingTree:
+            b = Branch.open(location)
+            last_rev = b.last_revision()
+        else:
+            b = wt.branch
+            last_rev = wt.last_revision()
+
+        b.lock_read()
+        try:
+            graph = b.repository.get_revision_graph(last_rev)
+        finally:
+            b.unlock()
+
+        revno = 0
+        cur_parents = 0
+        sorted_graph = tsort.merge_sort(graph.iteritems(), last_rev)
+        for num, node_name, depth, isend in reversed(sorted_graph):
+            cur_parents += 1
+            if depth == 0:
+                revno += 1
+                self.outf.write('%4d, %4d\n' % (revno, cur_parents))
+
+
+bzrlib.commands.register_command(cmd_ancestor_growth)
