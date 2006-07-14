@@ -122,7 +122,7 @@ IN DEVELOPMENT
      ``bzr branch -r 1800 http://bazaar-vcs.org/bzr/bzr.dev/``
      ``time bzr pull``
      original: 4m13s total
-     new pycurl: 4m07s total
+     new pycurl: 1m14s total
      new urllib: 1m45s total
      (Michael Ellerman, Johan Rydberg, John Arbash Meinel, #46768)
 

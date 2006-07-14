@@ -375,7 +375,7 @@ class HttpTransportBase(Transport):
         if tail_amount:
             strings.append('-%d' % tail_amount)
 
-        return 'bytes=' + ','.join(strings)
+        return ','.join(strings)
 
 
 #---------------- test server facilities ----------------

@@ -225,18 +225,18 @@ class TestRangeHeader(TestCase):
         self.assertEqual(value, range_header(ranges, tail))
 
     def test_range_header_single(self):
-        self.check_header('bytes=0-9', ranges=[[0,9]])
-        self.check_header('bytes=100-109', ranges=[[100,109]])
+        self.check_header('0-9', ranges=[[0,9]])
+        self.check_header('100-109', ranges=[[100,109]])
 
     def test_range_header_tail(self):
-        self.check_header('bytes=-10', tail=10)
-        self.check_header('bytes=-50', tail=50)
+        self.check_header('-10', tail=10)
+        self.check_header('-50', tail=50)
 
     def test_range_header_multi(self):
-        self.check_header('bytes=0-9,100-200,300-5000',
+        self.check_header('0-9,100-200,300-5000',
                           ranges=[(0,9), (100, 200), (300,5000)])
 
     def test_range_header_mixed(self):
-        self.check_header('bytes=0-9,300-5000,-50',
+        self.check_header('0-9,300-5000,-50',
                           ranges=[(0,9), (300,5000)],
                           tail=50)
