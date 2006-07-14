@@ -16,6 +16,7 @@
 
 import bzrlib
 from bzrlib.branch import BranchCheckResult
+from bzrlib.config import config_dir
 from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile, 
                            NoSuchRevision)
 from bzrlib.graph import Graph
@@ -34,6 +35,7 @@ import svn.core
 
 import os
 from cStringIO import StringIO
+import shelve
 
 import branch
 import logwalker
@@ -45,6 +47,8 @@ SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
+
+cache_dir = os.path.join(config_dir(), 'svn-cache')
 
 _unsafe = "%/-\t "
 def escape_svn_path(id):
@@ -177,8 +181,31 @@ class SvnRepository(Repository):
 
         self._latest_revnum = svn.ra.get_latest_revnum(self.ra)
 
-        self._log = logwalker.LogWalker(self.scheme, self.ra, self.uuid, 
-                self._latest_revnum)
+        self._log = logwalker.LogWalker(self.scheme, self.ra, 
+                                        self.create_cache_dir(), 
+                                        self._latest_revnum)
+
+        self.branchprop_cache = shelve.open(os.path.join(
+                                            self.create_cache_dir(),
+                                            'branchprops'))
+
+    def create_cache_dir(self):
+        if not os.path.exists(cache_dir):
+            os.mkdir(cache_dir)
+
+            open(os.path.join(cache_dir, "README"), 'w').write(
+    """This directory contains information cached by the bzr-svn plugin.
+
+It is used for performance reasons only and can be removed 
+without losing data.
+
+See http://bazaar-vcs.org/BzrSvn for details.
+""")
+
+        dir = os.path.join(cache_dir, self.uuid)
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+        return dir
 
     def _check(self, revision_ids):
         return BranchCheckResult(self)
@@ -285,7 +312,7 @@ class SvnRepository(Repository):
 
         ancestry = []
 
-        for l in self._get_dir_prop(path, revnum, 
+        for l in self._get_branch_prop(path, revnum, 
                                     SVN_PROP_BZR_MERGE, "").splitlines():
             ancestry.extend(l.split("\n"))
 
@@ -340,9 +367,9 @@ class SvnRepository(Repository):
             if parent_path is None:
                 old_merge = ""
             else:
-                old_merge = self._get_dir_prop(parent_path, parent_revnum, 
+                old_merge = self._get_branch_prop(parent_path, parent_revnum, 
                         SVN_PROP_BZR_MERGE, "").splitlines()
-            new_merge = self._get_dir_prop(path, revnum, 
+            new_merge = self._get_branch_prop(path, revnum, 
                                            SVN_PROP_BZR_MERGE, "").splitlines()
 
             assert (len(old_merge) == len(new_merge) or 
@@ -374,7 +401,7 @@ class SvnRepository(Repository):
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revision_id, parent_ids=parent_ids)
 
-        svn_props = self._get_dir_proplist(path, revnum)
+        svn_props = self._get_branch_proplist(path, revnum)
         bzr_props = {}
         for name in svn_props:
             if not name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
@@ -520,6 +547,18 @@ class SvnRepository(Repository):
             return props[name]
         return None
 
+    def _get_branch_proplist(self, path, revnum):
+        key = "%s:%d" % (path, revnum)
+        if not self.branchprop_cache.has_key(key):
+            self.branchprop_cache[key] = self._get_dir_proplist(path, revnum)
+        return self.branchprop_cache[key]
+
+    def _get_branch_prop(self, path, revnum, name, default=None):
+        props = self._get_branch_proplist(path, revnum)
+        if props.has_key(name):
+            return props[name]
+        return default
+
     def _get_dir_proplist(self, path, revnum):
         (props, _) = self._cache_get_dir(path, revnum)
         return props
@@ -532,7 +571,7 @@ class SvnRepository(Repository):
         assert isinstance(revnum, int)
         assert isinstance(path, basestring)
 
-        (props, _) = self._cache_get_dir(path, revnum)
+        props = self._get_dir_proplist(path, revnum)
         if props.has_key(name):
             return props[name]
         return default
