@@ -53,6 +53,8 @@ import warnings
 
 from bzrlib import bzrdir, errors, osutils, urlutils
 from bzrlib.atomicfile import AtomicFile
+import bzrlib.branch
+import bzrlib.bzrdir as bzrdir
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import (BzrCheckError,
@@ -95,13 +97,12 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         DEPRECATED_PARAMETER,
         zero_eight,
         )
-
-from bzrlib.textui import show_status
-import bzrlib.tree
-from bzrlib.transform import build_tree
 from bzrlib.trace import mutter, note
+from bzrlib.transform import build_tree
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
+from bzrlib.textui import show_status
+import bzrlib.tree
 import bzrlib.ui
 import bzrlib.xml5
 
@@ -268,8 +269,7 @@ class WorkingTree(bzrlib.tree.Tree):
             # share control object
             self._control_files = self.branch.control_files
         else:
-            # only ready for format 3
-            assert isinstance(self._format, WorkingTreeFormat3)
+            # assume all other formats have their own control files.
             assert isinstance(_control_files, LockableFiles), \
                     "_control_files must be a LockableFiles, not %r" \
                     % _control_files
@@ -1724,7 +1724,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
           files, separate from the BzrDir format
         - modifies the hash cache format
         - is new in bzr 0.8
-        - uses a LockDir to guard access to the repository
+        - uses a LockDir to guard access for writes.
     """
 
     def get_format_string(self):
@@ -1794,7 +1794,14 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        control_files = self._open_control_files(a_bzrdir)
+        return self._open(a_bzrdir, self._open_control_files(a_bzrdir))
+
+    def _open(self, a_bzrdir, control_files):
+        """Open the tree itself.
+        
+        :param a_bzrdir: the dir for the tree.
+        :param control_files: the control files for the tree.
+        """
         return WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
