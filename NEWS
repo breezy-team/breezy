@@ -107,7 +107,7 @@ IN DEVELOPMENT
      which decreasing round-trips. Performance results for
      ``time bzr branch http://bazaar-vcs.org/bzr/bzr.dev/``
      original: 22m45s total
-     new pycurl: 7m18s total
+     new pycurl: 6m57s total
      new urllib: 9m49s total
 
      revno 1864 has 6279 ancestors
@@ -116,7 +116,7 @@ IN DEVELOPMENT
      ``bzr branch -r 1500 http://bazaar-vcs.org/bzr/bzr.dev/``
      ``time bzr pull``
      original: 19m32s total
-     new pycurl: 5m23s total
+     new pycurl: 5m05s total
      new urllib: 7m00s total
 
      ``bzr branch -r 1800 http://bazaar-vcs.org/bzr/bzr.dev/``
