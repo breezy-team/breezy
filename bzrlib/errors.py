@@ -970,6 +970,14 @@ class MissingProgressBarFinish(BzrNewError):
     """A nested progress bar was not 'finished' correctly."""
 
 
+class InvalidProgressBarType(BzrNewError):
+    """Environment variable BZR_PROGRESS_BAR='%(bar_type)s is not a supported type
+Select one of: %(valid_types)s"""
+
+    def __init__(self, bar_type, valid_types):
+        BzrNewError.__init__(self, bar_type=bar_type, valid_types=valid_types)
+
+
 class UnsupportedOperation(BzrNewError):
     """The method %(mname)s is not supported on objects of type %(tname)s."""
     def __init__(self, method, method_self):

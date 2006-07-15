@@ -368,6 +368,9 @@ def parse_args(command, argv, alias_argv=None):
             if argsover:
                 args.append(a)
                 continue
+            elif a == '-':
+                args.append(a)
+                continue
             elif a == '--':
                 # We've received a standalone -- No more flags
                 argsover = True
