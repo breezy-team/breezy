@@ -19,9 +19,10 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
 from bzrlib.trace import mutter
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import TestSkipped, TestCase
 
 import format
+from fileids import SimpleFileIdMap
 from tests import TestCaseWithSubversionRepository, RENAMES
 
 class TestComplexFileids(TestCaseWithSubversionRepository):
@@ -133,3 +134,16 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
                             "branches/mybranch/dir/file")
         self.assertEqual(fileid, inv1.path2id("dir/file"))
         self.assertEqual("svn-v1:1@%s-trunk" % repository.uuid, revid)
+
+class TestFileMapping(TestCase):
+    def apply_mappings(self, mappings):
+        map = {}
+        for r in mappings:
+            map = SimpleFileIdMap._apply_changes(map, r, mappings[r])
+        return map
+
+    def test_simple(self):
+        map = self.apply_mappings({"svn-v1:1@uuid-": {"foo": ('A', None, None)}})
+        self.assertEqual({'': ('TREE_ROOT', 'svn-v1:1@uuid-'), 
+                               'foo': ('svn-v1:1@uuid--foo', 'svn-v1:1@uuid-')
+                         }, map)
