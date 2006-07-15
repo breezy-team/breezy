@@ -1,0 +1,13 @@
+Installation
+============
+
+Installation of bzr-git requires several things:
+
+1) bzr 0.9
+2) symlink the directory containing __init__.py from bzr-git - i.e. this source
+   tree - into either ~/.bazaar/plugins/git, or wherever bzrlib is as
+   bzrlib/plugins/git.
+3) stgit should be installed, or otherwise make 'stgit' be available to python.
+   You can test this via 'python -c "import stgit"'. If that generates any
+   error, then stgit is not correctly installed. stgit is used to provide 
+   python parsing of the output of git commands.

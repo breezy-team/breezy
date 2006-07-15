@@ -1,0 +1,9 @@
+bzr-git, a plugin for bzr that adds git support.
+
+This is (c) 2006 Canonical Limited, and licenced under the GNU GPL Version 2.
+Please see COPYING for the full text of the licence.
+
+This was originally written as a proof of concept at Europython 2006, using
+stgit's convenience methods for accessing gits head and parsing git output.
+
+Please see INSTALL for installation instructions, and TODO for future plans.

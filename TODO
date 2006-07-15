@@ -1,0 +1,11 @@
+Todo
+====
+
+- revision inventory synthesis, a-la bzr-hg.
+- file content data access.
+- native cloning - so bzr branch fromgit togit works.
+- conversion pulling - so bzr init; bzr pull fromgit works.
+- remove the dependency on stgit - the amount of code reuse is trivial compared
+  to the installation overhead of a dependency. 
+- possibly generate a factored out generic 'git' python module if our native
+  bindings become big enough.
