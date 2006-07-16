@@ -130,10 +130,15 @@ class bzr_build(build):
 ########################
 
 if 'bdist_wininst' in sys.argv:
+    import glob
+    # doc files
+    docs = glob.glob('doc/*.htm') + ['doc/default.css']
     # python's distutils-based win32 installer
     ARGS = {'scripts': ['bzr', 'tools/win32/bzr-win32-bdist-postinstall.py'],
             # install the txt files from bzrlib.doc.api.
             'package_data': {'bzrlib': ['doc/api/*.txt']},
+            # help pages
+            'data_files': [('Doc/Bazaar-NG', docs)],
            }
 
     ARGS.update(META_INFO)
