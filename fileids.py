@@ -160,9 +160,7 @@ class SimpleFileIdMap(FileIdMap):
                     if find_children is None:
                         warn('incomplete data for %r' % p)
                     else:
-                        mutter('find children of %r:%r' % (data[1], data[2]))
                         for c in find_children(data[1], data[2]):
-                            mutter('child: %r -> %r' % (c, c.replace(data[1], p, 1)))
                             map[c.replace(data[1], p, 1)] = generate_file_id(revid, c), revid
 
             elif data[0] == 'M':

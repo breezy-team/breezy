@@ -450,6 +450,42 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         rev = newrepos.get_revision("svn-v1:1@%s-" % oldrepos.uuid)
         self.assertEqual([], rev.parent_ids)
 
+    def test_fetch_crosscopy(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/adir/afile': "data", 
+                         'dc/trunk/adir/stationary': None,
+                         'dc/branches/abranch': None})
+        self.client_add("dc/trunk")
+        self.client_add("dc/branches")
+        self.client_commit("dc", "Initial commit")
+
+        self.client_copy("dc/trunk/adir", "dc/branches/abranch/bdir")
+        self.client_commit("dc", "Cross copy commit")
+
+        self.build_tree({"dc/branches/abranch/bdir/afile": "otherdata"})
+        self.client_commit("dc", "Change data")
+
+        self.build_tree({"dc/branches/abranch/bdir/bfile": "camel",
+                      "dc/branches/abranch/bdir/stationary/traveller": "data"})
+        self.client_add("dc/branches/abranch/bdir/bfile")
+        self.client_add("dc/branches/abranch/bdir/stationary/traveller")
+        self.client_commit("dc", "Change dir")
+
+        oldrepos = Repository.open("svn+"+repos_url+"/trunk")
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        copyrev = "svn-v1:2@%s-branches%%2fabranch" % oldrepos.uuid
+        prevrev = "svn-v1:3@%s-branches%%2fabranch" % oldrepos.uuid
+        lastrev = "svn-v1:4@%s-branches%%2fabranch" % oldrepos.uuid
+        oldrepos.copy_content_into(newrepos, lastrev)
+
+        inventory = newrepos.get_inventory(lastrev)
+        self.assertEqual(prevrev, 
+                         inventory[inventory.path2id("bdir/afile")].revision)
+
+        inventory = newrepos.get_inventory(prevrev)
+        self.assertEqual(copyrev, 
+                         inventory[inventory.path2id("bdir/stationary")].revision)
 
 class TestSvnRevisionTree(TestCaseWithSubversionRepository):
     def setUp(self):

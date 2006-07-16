@@ -125,6 +125,7 @@ class RevisionBuildEditor(svn.delta.Editor):
                 ie.revision = revision_id
                 return file_id
 
+        self.dir_revnum[file_id] = self.revnum
         self.dir_baserev[file_id] = []
         ie = self.inventory.add_path(relpath, 'directory', file_id)
         if ie:
@@ -137,7 +138,8 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def change_dir_prop(self, id, name, value, pool):
         if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
-            self.dir_revnum[id] = int(value)
+            if len(self.dir_baserev[id]) > 0:
+                self.dir_revnum[id] = int(value)
         elif name == SVN_PROP_BZR_MERGE:
             if id != ROOT_ID:
                 mutter('rogue %r on non-root directory' % SVN_PROP_BZR_MERGE)
