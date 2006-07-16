@@ -117,6 +117,7 @@ class SvnRaTransport(Transport):
 
         else:
             self.ra = ra
+            mutter('svn reparent %r' % self.svn_url)
             svn.ra.reparent(self.ra, self.svn_url.encode('utf8'))
 
     def has(self, relpath):

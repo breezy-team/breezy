@@ -189,7 +189,27 @@ class LogWalker(object):
 
     
     def find_latest_change(self, path, revnum):
-        while revnum > 0 and not path in self.revisions[str(revnum)]['paths']:
+        while revnum > 0 and not self.touches_path(path, revnum):
             revnum = revnum - 1
         return revnum
 
+    def touches_path(self, path, revnum):
+        return (path in self.revisions[str(revnum)]['paths'])
+
+    def find_children(self, path, revnum):
+        # TODO: Find children by walking history, or use 
+        # cache?
+        mutter("svn ls -r %d '%r'" % (revnum, path))
+
+        try:
+            (dirents, _, _) = svn.ra.get_dir(
+                self.ra, path.encode('utf8'), revnum)
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
+                return
+            raise
+
+        for p in dirents:
+            yield os.path.join(path, p)
+            for c in self.find_children(os.path.join(path, p), revnum):
+                yield c

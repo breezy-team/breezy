@@ -46,6 +46,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.inventory = prev_inventory.copy()
         self.revid = revid
         self.revnum = revnum
+        self.id_map = source.get_fileid_map(revnum, branch_path)
         self.source = source
         self.target = target
         self.transact = target.get_transaction()
@@ -113,7 +114,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         relpath = self.relpath(path)
         if relpath is None:
             return ROOT_ID
-        file_id, revision_id = self.get_file_id(path, self.revnum)
+        file_id, revision_id = self.id_map[relpath]
 
         if copyfrom_path:
             base_file_id, base_revid = self.get_file_id(copyfrom_path, copyfrom_revnum)
@@ -207,7 +208,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         actual_checksum = md5_strings(lines)
         assert checksum is None or checksum == actual_checksum
 
-        file_id, revision_id = self.get_file_id(path, self.revnum)
+        file_id, revision_id = self.id_map[relpath]
         file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
         if not file_weave.has_version(revision_id):
             file_weave.add_lines(revision_id, self.file_parents, lines)

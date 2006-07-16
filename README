@@ -10,8 +10,8 @@ You will need at least version 0.9 of Bazaar-NG (currently unreleased).
 
 You also need a fairly recent version of the Python bindings to the 
 Subversion libraries. At the moment, the svn plugin only works with 
-Subversion 1.5 (trunk). I plan to submit patches against the python-subversion 
-package in Ubuntu Edgy later.
+Subversion 1.5 (trunk). I have submitted patches against the python-subversion 
+package in Ubuntu Edgy later (bug #51304 on Launchpad).
 
 == Features ==
 
@@ -86,8 +86,6 @@ In the future, I also hope to support:
  * Performance. Network-wise (both bandwidth and roundtrips), the plugin is in
    good shape. However, it is currently quite CPU-intensive for no good reason 
    and I hope to make a couple of improvements in that area.
-
-     * Keep on-disk cache of file-ids to path mappings
 
 	 * Override implementation of get_revision_delta(). Will speed up 'bzr log -v'
 	

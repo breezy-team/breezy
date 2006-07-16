@@ -179,6 +179,7 @@ class SvnRepository(Repository):
 
         mutter("Connected to repository with UUID %s" % self.uuid)
 
+        mutter('svn latest-revnum')
         self._latest_revnum = svn.ra.get_latest_revnum(self.ra)
 
         self._log = logwalker.LogWalker(self.scheme, self.ra, 
@@ -241,10 +242,10 @@ See http://bazaar-vcs.org/BzrSvn for details.
 
         map = self.get_fileid_map(revnum, bp)
 
-        if not map.has_key(rp):
+        try:
+            return map[rp]
+        except KeyError:
             raise NoSuchFile(path=rp)
-
-        return map[rp]
 
     def all_revision_ids(self):
         raise NotImplementedError(self.all_revision_ids)
@@ -466,9 +467,10 @@ See http://bazaar-vcs.org/BzrSvn for details.
     def _cache_get_dir(self, path, revnum):
         assert path != None
         path = path.lstrip("/")
-        if self.dir_cache.has_key(path) and \
-           self.dir_cache[path].has_key(revnum):
-            return self.dir_cache[path][revnum]
+        try:
+           return self.dir_cache[path][revnum]
+        except KeyError:
+            pass
 
         mutter("svn ls -r %d '%r'" % (revnum, path))
 
@@ -512,10 +514,25 @@ See http://bazaar-vcs.org/BzrSvn for details.
         return None
 
     def _get_branch_proplist(self, path, revnum):
-        key = "%s:%d" % (path, revnum)
-        if not self.branchprop_cache.has_key(key):
-            self.branchprop_cache[key] = self._get_dir_proplist(path, revnum)
-        return self.branchprop_cache[key]
+        # Search backwards in the cache
+        for i in range(revnum):
+            i = revnum - i
+
+            key = "%s:%d" % (path, i)
+
+            try:
+                proplist = self.branchprop_cache[key]
+            except: 
+                pass
+
+            if self._log.touches_path(path, i):
+                proplist = self._get_dir_proplist(path, i)
+                break
+
+        for j in range(i, revnum-i):
+            self.branchprop_cache["%s:%d" % (path, j)] = proplist
+
+        return proplist
 
     def _get_branch_prop(self, path, revnum, name, default=None):
         props = self._get_branch_proplist(path, revnum)
@@ -539,9 +556,10 @@ See http://bazaar-vcs.org/BzrSvn for details.
         assert isinstance(path, basestring)
 
         props = self._get_dir_proplist(path, revnum)
-        if props.has_key(name):
+        try:
             return props[name]
-        return default
+        except KeyError:
+            return default
 
     def _get_file(self, path, revnum):
         (_, stream) = self._cache_get_file(path, revnum)
@@ -606,8 +624,10 @@ class SvnRepositoryRenaming(SvnRepository):
         assert isinstance(path, basestring)
         assert revnum >= 0
 
-        if self.path_map.has_key(revnum) and self.path_map[revnum].has_key(path):
+        try:
             return self.path_map[revnum][path]
+        except:
+            pass
 
         mutter('creating file id for %r:%d' % (path, revnum))
 

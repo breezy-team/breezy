@@ -46,18 +46,27 @@ def generate_file_id(revid, path):
     (uuid, branch, revnum) = parse_svn_revision_id(revid)
     return generate_svn_file_id(uuid, revnum, branch, path)
 
-def copy_ids(base_map, orig_branch, map, dest_branch):
-    for p in base_map:
-        if p == orig_branch or p.startswith(orig_branch+"/"):
-            map[p.replace(orig_branch, dest_branch, 1)] = base_map[p]
-    return map
 
-def new_ids(base_map, orig_parent, map, dest_revid, dest_parent):
-    for p in base_map:
-        if p.startswith(orig_parent+"/"):
-            new_p = p.replace(orig_parent, dest_parent, 1)
-            map[new_p] = generate_file_id(dest_revid, new_p), dest_revid
-    return map
+def get_local_changes(paths, scheme, uuid):
+    new_paths = {}
+    names = paths.keys()
+    names.sort()
+    for p in names:
+        data = paths[p]
+        new_p = scheme.unprefix(p)[1]
+        if data[1] is not None:
+            (cbp, crp) = scheme.unprefix(data[1])
+
+            # Branch copy
+            if (crp == "" and new_p == ""):
+                data = ('M', None, None)
+            else:
+                data = (data[0], crp, generate_svn_revision_id(
+                    uuid, data[2], cbp))
+
+        new_paths[new_p] = data
+    return new_paths
+
 
 class FileIdMap(object):
     """ File id store. 
@@ -73,12 +82,16 @@ class FileIdMap(object):
                 access_mode='w', create=True)
 
     def save(self, revid, parent_revids, _map):
+        # FIXME: use VersionedFile.annotate_iter() to find versions?
         mutter('saving file id map for %r' % revid)
-        def createline((p, v)):
-            return "\t".join([p, v[0], v[1]]) + "\n"
+        def createline(p):
+            return "\t".join([p, _map[p][0], _map[p][1]]) + "\n"
+
+        keys = _map.keys()
+        keys.sort()
         
         self.cache_weave.add_lines(revid, parent_revids, 
-                                   map(createline, _map.items()))
+                                   map(createline, keys))
 
     def load(self, revid):
         map = {}
@@ -93,7 +106,7 @@ class FileIdMap(object):
         todo = []
         parent_revs = []
         map = {"": (ROOT_ID, None)} # No history -> empty map
-        for (bp, paths, rev) in self.follow_local_history(uuid,branch, revnum):
+        for (bp, paths, rev) in self._log.follow_history(branch, revnum):
             revid = generate_svn_revision_id(uuid, rev, bp)
             try:
                 map = self.load(revid)
@@ -111,12 +124,19 @@ class FileIdMap(object):
         todo.reverse()
 
         i = 0
-        for (revid, changes) in todo:
+        for (revid, global_changes) in todo:
+            changes = get_local_changes(global_changes, self._log.scheme,
+                                        uuid)
             mutter('generating file id map for %r' % revid)
             if pb is not None:
                 pb.update('generating file id map', i, len(todo))
 
-            map = self._apply_changes(map, revid, changes)
+            def find_children(path, revid):
+                (_, bp, revnum) = parse_svn_revision_id(revid)
+                for p in self._log.find_children(bp+"/"+path, revnum):
+                    yield self._log.scheme.unprefix(p)[1]
+
+            map = self._apply_changes(map, revid, changes, find_children)
             self.save(revid, parent_revs, map)
             parent_revs = [revid]
             i = i + 1
@@ -125,42 +145,10 @@ class FileIdMap(object):
             pb.clear()
         return map
 
-    def find_children(self, uuid, path, revnum):
-        (bp, rp) = self._log.scheme.unprefix(path)
-        map = self.get_map(uuid, revnum, bp)
-        for m in map:
-            if m.startswith(rp+"/"):
-                yield m[len(rp)+1:]
-
-    def follow_local_history(self, uuid, branch_path, revnum):
-        for (bp, paths, rev) in self._log.follow_history(branch_path, revnum):
-            new_paths = {}
-            names = paths.keys()
-            names.sort()
-            for p in names:
-                data = paths[p]
-                assert p.startswith(bp)
-                new_p = p[len(bp):].strip("/") # remove branch path
-                if data[1] is not None:
-                    (cbp, crp) = self._log.scheme.unprefix(data[1])
-                    # TODO: See if data[1]:data[2] is the same branch as 
-                    # the current branch. The current code doesn't handle
-                    # replaced branches very well
-                    related = (cbp == bp)
-
-                    if related:
-                        data = (data[0], crp, data[2])
-                    else:
-                        warn('unrelated, non-branch copy from %r:%d to %r' %
-                                (data[1], data[2], p))
-                        data = (data[0], None, None)
-
-                new_paths[new_p] = data
-            yield (bp, new_paths, rev)
 
 class SimpleFileIdMap(FileIdMap):
     @staticmethod
-    def _apply_changes(base_map, revid, changes):
+    def _apply_changes(base_map, revid, changes, find_children=None):
         map = copy(base_map)
 
         map[""] = (ROOT_ID, revid)
@@ -172,7 +160,7 @@ class SimpleFileIdMap(FileIdMap):
             if data[0] in ('D', 'R'):
                 assert map.has_key(p)
                 del map[p]
-                # FIXME: Delete all children of p
+                # Delete all children of p as well
                 for c in map.keys():
                     if c.startswith(p+"/"):
                         del map[c]
@@ -182,10 +170,14 @@ class SimpleFileIdMap(FileIdMap):
 
                 if not data[1] is None:
                     mutter('%r:%s copied from %r:%s' % (p, revid, data[1], data[2]))
-                    if p == "" and data[1] == "":
-                        map = copy_ids(base_map, cbp, map, bp)
+                    if find_children is None:
+                        warn('incomplete data for %r' % p)
                     else:
-                        map = new_ids(base_map, data[1], map, revid, p)
+                        mutter('find children of %r:%r' % (data[1], data[2]))
+                        for c in find_children(data[1], data[2]):
+                            mutter('child: %r -> %r' % (c, c.replace(data[1], p, 1)))
+                            map[c.replace(data[1], p, 1)] = generate_file_id(revid, c), revid
+
             elif data[0] == 'M':
                 if p == "":
                     map[p] = (ROOT_ID, "")

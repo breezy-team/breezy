@@ -147,3 +147,14 @@ class TestFileMapping(TestCase):
         self.assertEqual({'': ('TREE_ROOT', 'svn-v1:1@uuid-'), 
                                'foo': ('svn-v1:1@uuid--foo', 'svn-v1:1@uuid-')
                          }, map)
+
+    def test_copy(self):
+        map = self.apply_mappings(
+                {"svn-v1:1@uuid-": {"foo": ('A', None, None), 
+                                   "foo/blie": ('A', None, None),
+                                   "foo/bla": ('A', None, None)},
+                "svn-v1:2@uuid-": {"foob": ('A', 'foo', 1), 
+                                   "foob/bla": ('M', None, None)}
+                })
+        self.assertTrue(map.has_key("foob/bla"))
+        self.assertTrue(map.has_key("foob/blie"))
