@@ -136,10 +136,11 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.assertEqual("svn-v1:1@%s-trunk" % repository.uuid, revid)
 
 class TestFileMapping(TestCase):
-    def apply_mappings(self, mappings):
+    def apply_mappings(self, mappings, find_children=None):
         map = {}
         for r in mappings:
-            map = SimpleFileIdMap._apply_changes(map, r, mappings[r])
+            map = SimpleFileIdMap._apply_changes(map, r, mappings[r], 
+                                                 find_children)
         return map
 
     def test_simple(self):
@@ -149,12 +150,16 @@ class TestFileMapping(TestCase):
                          }, map)
 
     def test_copy(self):
+        def find_children(path, revid):
+            if path == "foo":
+                yield "foo/blie"
+                yield "foo/bla"
         map = self.apply_mappings(
                 {"svn-v1:1@uuid-": {"foo": ('A', None, None), 
                                    "foo/blie": ('A', None, None),
                                    "foo/bla": ('A', None, None)},
                 "svn-v1:2@uuid-": {"foob": ('A', 'foo', 1), 
                                    "foob/bla": ('M', None, None)}
-                })
+                }, find_children)
         self.assertTrue(map.has_key("foob/bla"))
         self.assertTrue(map.has_key("foob/blie"))

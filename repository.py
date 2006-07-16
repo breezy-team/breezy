@@ -514,6 +514,8 @@ See http://bazaar-vcs.org/BzrSvn for details.
         return None
 
     def _get_branch_proplist(self, path, revnum):
+        i = 0
+        proplist = {}
         # Search backwards in the cache
         for i in range(revnum):
             i = revnum - i

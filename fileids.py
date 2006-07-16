@@ -22,7 +22,8 @@ from bzrlib.transport import get_transport
 from bzrlib.knit import KnitVersionedFile
 from warnings import warn
 
-import pickle
+import os
+import shelve
 from copy import copy
 import logwalker
 from repository import (escape_svn_path, generate_svn_revision_id, 
@@ -77,28 +78,14 @@ class FileIdMap(object):
     """
     def __init__(self, log, cache_dir):
         self._log = log
-        self.cache_weave = KnitVersionedFile('fileids-v%d' % MAPPING_VERSION, 
-                get_transport(cache_dir),
-                access_mode='w', create=True)
+        self.cache_dict = shelve.open(os.path.join(cache_dir, 'fileids-v1'))
 
     def save(self, revid, parent_revids, _map):
-        # FIXME: use VersionedFile.annotate_iter() to find versions?
         mutter('saving file id map for %r' % revid)
-        def createline(p):
-            return "\t".join([p, _map[p][0], _map[p][1]]) + "\n"
-
-        keys = _map.keys()
-        keys.sort()
-        
-        self.cache_weave.add_lines(revid, parent_revids, 
-                                   map(createline, keys))
+        self.cache_dict[revid] = _map
 
     def load(self, revid):
-        map = {}
-        for l in self.cache_weave.get_lines(revid):
-            (svn_path, fileid, revid) = l.strip("\n").split("\t") 
-            map[svn_path] = (fileid, revid)
-        return map
+        return self.cache_dict[revid]
 
     def get_map(self, uuid, revnum, branch, pb=None):
         """Make sure the map is up to date until revnum."""
@@ -113,7 +100,7 @@ class FileIdMap(object):
                 # found the nearest cached map
                 parent_revs = [revid]
                 break
-            except RevisionNotPresent:
+            except KeyError:
                 todo.append((revid, paths))
                 continue
         
