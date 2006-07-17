@@ -32,8 +32,10 @@ class TestSetup(TestCase):
 
     def test_build(self):
         """ test cmd `python setup.py build`
-        
-        This typically catches new subdirectories which weren't added to setup.py
+
+        This test ensure that build process run correct.
+        Ensure that man generator works correct.
+        Also can catches new subdirectories which weren't added to setup.py
         """
         self.log('test_build running in %s' % os.getcwd())
         try:
