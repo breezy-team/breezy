@@ -131,7 +131,7 @@ class TreeBuildEditor(svn.delta.Editor):
 
     def change_file_prop(self, id, name, value, pool):
         if name == svn.core.SVN_PROP_EXECUTABLE:
-            self.is_executable = (value == svn.core.SVN_PROP_EXECUTABLE_VALUE)
+            self.is_executable = (value != None)
         elif name == svn.core.SVN_PROP_SPECIAL:
             self.is_symlink = (value == svn.core.SVN_PROP_SPECIAL_VALUE)
         elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:

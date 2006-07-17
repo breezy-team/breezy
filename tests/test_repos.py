@@ -376,9 +376,11 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
     def test_fetch_executable(self):
         repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/bla': "data"})
+        self.build_tree({'dc/bla': "data", 'dc/blie': "data2"})
         self.client_add("dc/bla")
+        self.client_add("dc/blie")
         self.client_set_prop("dc/bla", "svn:executable", "*")
+        self.client_set_prop("dc/blie", "svn:executable", "")
         self.client_commit("dc", "My Message")
         oldrepos = Repository.open("svn+"+repos_url)
         dir = BzrDir.create("f")
@@ -387,6 +389,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertTrue(newrepos.has_revision("svn-v1:1@%s-" % oldrepos.uuid))
         inv1 = newrepos.get_inventory("svn-v1:1@%s-" % oldrepos.uuid)
         self.assertTrue(inv1[inv1.path2id("bla")].executable)
+        self.assertTrue(inv1[inv1.path2id("blie")].executable)
 
     def test_fetch_symlink(self):
         repos_url = self.make_client('d', 'dc')

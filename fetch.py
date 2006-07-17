@@ -52,7 +52,6 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.transact = target.get_transaction()
         self.weave_store = target.weave_store
     
-        self.dir_revnum = {}
         self.dir_baserev = {}
 
         self._parent_ids = None
@@ -101,8 +100,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         del self.inventory[file_id]
 
     def close_directory(self, id):
-        revid = self.source.generate_revision_id(self.dir_revnum[id], 
-                                                 self.branch_path)
+        revid = self.revid
 
         if id != ROOT_ID:
             self.inventory[id].revision = revid
@@ -116,7 +114,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             return ROOT_ID
         file_id, revision_id = self.id_map[relpath]
 
-        if copyfrom_path:
+        if copyfrom_path is not None:
             base_file_id, base_revid = self.get_file_id(copyfrom_path, copyfrom_revnum)
             (bp, rev) = self.source.parse_revision_id(base_revid)
             if base_file_id == file_id and bp == self.branch_path:
@@ -125,7 +123,6 @@ class RevisionBuildEditor(svn.delta.Editor):
                 ie.revision = revision_id
                 return file_id
 
-        self.dir_revnum[file_id] = self.revnum
         self.dir_baserev[file_id] = []
         ie = self.inventory.add_path(relpath, 'directory', file_id)
         if ie:
@@ -137,10 +134,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         return self.add_directory(path, parent_baton, path, base_revnum, pool)
 
     def change_dir_prop(self, id, name, value, pool):
-        if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
-            if len(self.dir_baserev[id]) > 0:
-                self.dir_revnum[id] = int(value)
-        elif name == SVN_PROP_BZR_MERGE:
+        if name == SVN_PROP_BZR_MERGE:
             if id != ROOT_ID:
                 mutter('rogue %r on non-root directory' % SVN_PROP_BZR_MERGE)
                 return
@@ -154,6 +148,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         elif name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
             self._revprops[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = value
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
+                      svn.core.SVN_PROP_ENTRY_COMMITTED_REV,
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
                       svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
                       svn.core.SVN_PROP_ENTRY_UUID,
@@ -164,7 +159,8 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def change_file_prop(self, id, name, value, pool):
         if name == svn.core.SVN_PROP_EXECUTABLE: 
-            self.is_executable = (value == svn.core.SVN_PROP_EXECUTABLE_VALUE)
+            # Strange, you'd expect executable to match svn.core.SVN_PROP_EXECUTABLE_VALUE, but that's not how SVN behaves.
+            self.is_executable = (value != None)
         elif (name == svn.core.SVN_PROP_SPECIAL):
             self.is_symlink = (value == svn.core.SVN_PROP_SPECIAL_VALUE)
         elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
