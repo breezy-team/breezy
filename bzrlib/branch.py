@@ -97,10 +97,10 @@ class Branch(object):
         
     @staticmethod
     def open(base, _unsupported=False):
-        """Open the repository rooted at base.
+        """Open the branch rooted at base.
 
-        For instance, if the repository is at URL/.bzr/repository,
-        Repository.open(URL) -> a Repository instance.
+        For instance, if the branch is at URL/.bzr/branch,
+        Branch.open(URL) -> a Branch instance.
         """
         control = bzrdir.BzrDir.open(base, _unsupported)
         return control.open_branch(_unsupported)
@@ -993,21 +993,27 @@ class BzrBranch(Branch):
         return self.control_files.is_locked()
 
     def lock_write(self):
-        # TODO: test for failed two phase locks. This is known broken.
-        self.control_files.lock_write()
         self.repository.lock_write()
+        try:
+            self.control_files.lock_write()
+        except:
+            self.repository.unlock()
+            raise
 
     def lock_read(self):
-        # TODO: test for failed two phase locks. This is known broken.
-        self.control_files.lock_read()
         self.repository.lock_read()
+        try:
+            self.control_files.lock_read()
+        except:
+            self.repository.unlock()
+            raise
 
     def unlock(self):
         # TODO: test for failed two phase locks. This is known broken.
         try:
-            self.repository.unlock()
-        finally:
             self.control_files.unlock()
+        finally:
+            self.repository.unlock()
         
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:

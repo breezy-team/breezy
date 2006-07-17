@@ -51,11 +51,11 @@ import stat
 from time import time
 import warnings
 
+from bzrlib import bzrdir, errors, osutils, urlutils
 from bzrlib.atomicfile import AtomicFile
+import bzrlib.branch
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
-import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-import bzrlib.errors as errors
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
                            ConflictFormatError,
@@ -96,14 +96,12 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         DEPRECATED_PARAMETER,
         zero_eight,
         )
-
-from bzrlib.textui import show_status
-import bzrlib.tree
-from bzrlib.transform import build_tree
 from bzrlib.trace import mutter, note
+from bzrlib.transform import build_tree
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
-import bzrlib.urlutils as urlutils
+from bzrlib.textui import show_status
+import bzrlib.tree
 import bzrlib.ui
 import bzrlib.xml5
 
@@ -270,8 +268,7 @@ class WorkingTree(bzrlib.tree.Tree):
             # share control object
             self._control_files = self.branch.control_files
         else:
-            # only ready for format 3
-            assert isinstance(self._format, WorkingTreeFormat3)
+            # assume all other formats have their own control files.
             assert isinstance(_control_files, LockableFiles), \
                     "_control_files must be a LockableFiles, not %r" \
                     % _control_files
@@ -356,7 +353,7 @@ class WorkingTree(bzrlib.tree.Tree):
         :return: The WorkingTree that contains 'path', and the rest of path
         """
         if path is None:
-            path = os.getcwdu()
+            path = osutils.getcwd()
         control, relpath = bzrdir.BzrDir.open_containing(path)
 
         return control.open_workingtree(), relpath
@@ -656,9 +653,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         try:
             merges_file = self._control_files.get_utf8('pending-merges')
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
+        except NoSuchFile:
             return []
         p = []
         for l in merges_file.readlines():
@@ -770,7 +765,25 @@ class WorkingTree(bzrlib.tree.Tree):
                 elif self.is_ignored(fp[1:]):
                     c = 'I'
                 else:
-                    c = '?'
+                    # we may not have found this file, because of a unicode issue
+                    f_norm, can_access = osutils.normalized_filename(f)
+                    if f == f_norm or not can_access:
+                        # No change, so treat this file normally
+                        c = '?'
+                    else:
+                        # this file can be accessed by a normalized path
+                        # check again if it is versioned
+                        # these lines are repeated here for performance
+                        f = f_norm
+                        fp = from_dir_relpath + '/' + f
+                        fap = from_dir_abspath + '/' + f
+                        f_ie = inv.get_child(from_dir_id, f)
+                        if f_ie:
+                            c = 'V'
+                        elif self.is_ignored(fp[1:]):
+                            c = 'I'
+                        else:
+                            c = '?'
 
                 fk = file_kind(fap)
 
@@ -1002,9 +1015,15 @@ class WorkingTree(bzrlib.tree.Tree):
 
             fl = []
             for subf in os.listdir(dirabs):
-                if (subf != '.bzr'
-                    and (subf not in dir_entry.children)):
-                    fl.append(subf)
+                if subf == '.bzr':
+                    continue
+                if subf not in dir_entry.children:
+                    subf_norm, can_access = osutils.normalized_filename(subf)
+                    if subf_norm != subf and can_access:
+                        if subf_norm not in dir_entry.children:
+                            fl.append(subf_norm)
+                    else:
+                        fl.append(subf)
             
             fl.sort()
             for subf in fl:
@@ -1081,7 +1100,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if hasattr(self, '_ignorelist'):
             return self._ignorelist
 
-        l = bzrlib.DEFAULT_IGNORE[:]
+        l = []
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
             l.extend([line.rstrip("\n\r").decode('utf-8') 
@@ -1434,6 +1453,9 @@ class WorkingTree(bzrlib.tree.Tree):
     def set_conflicts(self, arg):
         raise UnsupportedOperation(self.set_conflicts, self)
 
+    def add_conflicts(self, arg):
+        raise UnsupportedOperation(self.add_conflicts, self)
+
     @needs_read_lock
     def conflicts(self):
         conflicts = ConflictList()
@@ -1498,6 +1520,13 @@ class WorkingTree3(WorkingTree):
     def set_conflicts(self, conflicts):
         self._put_rio('conflicts', conflicts.to_stanzas(), 
                       CONFLICT_HEADER_1)
+
+    @needs_write_lock
+    def add_conflicts(self, new_conflicts):
+        conflict_set = set(self.conflicts())
+        conflict_set.update(set(list(new_conflicts)))
+        self.set_conflicts(ConflictList(sorted(conflict_set,
+                                               key=Conflict.sort_key)))
 
     @needs_read_lock
     def conflicts(self):
@@ -1694,7 +1723,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
           files, separate from the BzrDir format
         - modifies the hash cache format
         - is new in bzr 0.8
-        - uses a LockDir to guard access to the repository
+        - uses a LockDir to guard access for writes.
     """
 
     def get_format_string(self):
@@ -1764,7 +1793,14 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        control_files = self._open_control_files(a_bzrdir)
+        return self._open(a_bzrdir, self._open_control_files(a_bzrdir))
+
+    def _open(self, a_bzrdir, control_files):
+        """Open the tree itself.
+        
+        :param a_bzrdir: the dir for the tree.
+        :param control_files: the control files for the tree.
+        """
         return WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,

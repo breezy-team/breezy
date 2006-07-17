@@ -22,6 +22,7 @@ from ntpath import (abspath as _nt_abspath,
                     join as _nt_join,
                     normpath as _nt_normpath,
                     realpath as _nt_realpath,
+                    splitdrive as _nt_splitdrive,
                     )
 import os
 from os import listdir
@@ -215,14 +216,27 @@ def _posix_realpath(path):
     return posixpath.realpath(path.encode(_fs_enc)).decode(_fs_enc)
 
 
+def _win32_fixdrive(path):
+    """Force drive letters to be consistent.
+
+    win32 is inconsistent whether it returns lower or upper case
+    and even if it was consistent the user might type the other
+    so we force it to uppercase
+    running python.exe under cmd.exe return capital C:\\
+    running win32 python inside a cygwin shell returns lowercase c:\\
+    """
+    drive, path = _nt_splitdrive(path)
+    return drive.upper() + path
+
+
 def _win32_abspath(path):
     # Real _nt_abspath doesn't have a problem with a unicode cwd
-    return _nt_abspath(unicode(path)).replace('\\', '/')
+    return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_realpath(path):
     # Real _nt_realpath doesn't have a problem with a unicode cwd
-    return _nt_realpath(unicode(path)).replace('\\', '/')
+    return _win32_fixdrive(_nt_realpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_pathjoin(*args):
@@ -230,19 +244,37 @@ def _win32_pathjoin(*args):
 
 
 def _win32_normpath(path):
-    return _nt_normpath(unicode(path)).replace('\\', '/')
+    return _win32_fixdrive(_nt_normpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_getcwd():
-    return os.getcwdu().replace('\\', '/')
+    return _win32_fixdrive(os.getcwdu().replace('\\', '/'))
 
 
 def _win32_mkdtemp(*args, **kwargs):
-    return tempfile.mkdtemp(*args, **kwargs).replace('\\', '/')
+    return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
 
 
 def _win32_rename(old, new):
-    fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+    """We expect to be able to atomically replace 'new' with old.
+
+    On win32, if new exists, it must be moved out of the way first,
+    and then deleted. 
+    """
+    try:
+        fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+    except OSError, e:
+        if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
+            # If we try to rename a non-existant file onto cwd, we get 
+            # EPERM or EACCES instead of ENOENT, this will raise ENOENT 
+            # if the old path doesn't exist, sometimes we get EACCES
+            # On Linux, we seem to get EBUSY, on Mac we get EINVAL
+            os.lstat(old)
+        raise
+
+
+def _mac_getcwd():
+    return unicodedata.normalize('NFKC', os.getcwdu())
 
 
 # Default is to just use the python builtins, but these can be rebound on
@@ -288,6 +320,8 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
+elif sys.platform == 'darwin':
+    getcwd = _mac_getcwd
 
 
 def get_terminal_encoding():
@@ -761,39 +795,35 @@ def normalizes_filenames():
     return _platform_normalizes_filenames
 
 
+def _accessible_normalized_filename(path):
+    """Get the unicode normalized path, and if you can access the file.
+
+    On platforms where the system normalizes filenames (Mac OSX),
+    you can access a file by any path which will normalize correctly.
+    On platforms where the system does not normalize filenames 
+    (Windows, Linux), you have to access a file by its exact path.
+
+    Internally, bzr only supports NFC/NFKC normalization, since that is 
+    the standard for XML documents.
+
+    So return the normalized path, and a flag indicating if the file
+    can be accessed by that path.
+    """
+
+    return unicodedata.normalize('NFKC', unicode(path)), True
+
+
+def _inaccessible_normalized_filename(path):
+    __doc__ = _accessible_normalized_filename.__doc__
+
+    normalized = unicodedata.normalize('NFKC', unicode(path))
+    return normalized, normalized == path
+
+
 if _platform_normalizes_filenames:
-    def unicode_filename(path):
-        """Make sure 'path' is a properly normalized filename.
-
-        On platforms where the system normalizes filenames (Mac OSX),
-        you can access a file by any path which will normalize
-        correctly.
-        Internally, bzr only supports NFC/NFKC normalization, since
-        that is the standard for XML documents.
-        So we return an normalized path, and indicate this has been
-        properly normalized.
-
-        :return: (path, is_normalized) Return a path which can
-                access the file, and whether or not this path is
-                normalized.
-        """
-        return unicodedata.normalize('NFKC', path), True
+    normalized_filename = _accessible_normalized_filename
 else:
-    def unicode_filename(path):
-        """Make sure 'path' is a properly normalized filename.
-
-        On platforms where the system does not normalize filenames 
-        (Windows, Linux), you have to access a file by its exact path.
-        Internally, bzr only supports NFC/NFKC normalization, since
-        that is the standard for XML documents.
-        So we return the original path, and indicate if this is
-        properly normalized.
-
-        :return: (path, is_normalized) Return a path which can
-                access the file, and whether or not this path is
-                normalized.
-        """
-        return path, unicodedata.normalize('NFKC', path) == path
+    normalized_filename = _inaccessible_normalized_filename
 
 
 def terminal_width():

@@ -202,6 +202,14 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         tree.unlock()
         self.assertEquals(our_lock.peek(), None)
 
+    def test_missing_pending_merges(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        control.create_repository()
+        control.create_branch()
+        tree = workingtree.WorkingTreeFormat3().initialize(control)
+        tree._control_files._transport.delete("pending-merges")
+        self.assertEqual([], tree.pending_merges())
+
 
 class TestFormat2WorkingTree(TestCaseWithTransport):
     """Tests that are specific to format 2 trees."""
@@ -306,8 +314,8 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
 
     def test__get_ignore_rules_as_regex(self):
         tree = self.make_branch_and_tree('.')
-        # test against the default rules.
-        reference_output = tree._combine_ignore_rules(bzrlib.DEFAULT_IGNORE)[0]
+        self.build_tree_contents([('.bzrignore', 'CVS\n.hg\n')])
+        reference_output = tree._combine_ignore_rules(['CVS', '.hg'])[0]
         regex_rules = tree._get_ignore_rules_as_regex()[0]
         self.assertEqual(len(reference_output[1]), regex_rules[0].groups)
         self.assertEqual(reference_output[1], regex_rules[1])

@@ -44,7 +44,7 @@ from bzrlib.option import Option
 import bzrlib.osutils
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
-from bzrlib import trace
+import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, be_quiet
 
 plugin_cmds = {}
@@ -368,6 +368,9 @@ def parse_args(command, argv, alias_argv=None):
             if argsover:
                 args.append(a)
                 continue
+            elif a == '-':
+                args.append(a)
+                continue
             elif a == '--':
                 # We've received a standalone -- No more flags
                 argsover = True
@@ -596,6 +599,7 @@ def run_bzr(argv):
         elif a == '--lsprof':
             opt_lsprof = True
         elif a == '--lsprof-file':
+            opt_lsprof = True
             opt_lsprof_file = argv[i + 1]
             i += 1
         elif a == '--no-plugins':
@@ -669,7 +673,9 @@ def display_command(func):
             if not hasattr(e, 'errno'):
                 raise
             if e.errno != errno.EPIPE:
-                raise
+                # Win32 raises IOError with errno=0 on a broken pipe
+                if sys.platform != 'win32' or e.errno != 0:
+                    raise
             pass
         except KeyboardInterrupt:
             pass
@@ -688,11 +694,9 @@ def main(argv):
 
 def run_bzr_catch_errors(argv):
     try:
-        try:
-            return run_bzr(argv)
-        finally:
-            # do this here inside the exception wrappers to catch EPIPE
-            sys.stdout.flush()
+        return run_bzr(argv)
+        # do this here inside the exception wrappers to catch EPIPE
+        sys.stdout.flush()
     except Exception, e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now

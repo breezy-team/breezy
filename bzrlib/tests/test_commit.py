@@ -507,3 +507,16 @@ class TestCommit(TestCaseWithTransport):
             ('deleted', 'filetoremove'),
             ],
             reporter.calls)
+
+    def test_commit_removals_respects_filespec(self):
+        """Commit respects the specified_files for removals."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b'])
+        tree.add(['a', 'b'])
+        tree.commit('added a, b')
+        tree.remove(['a', 'b'])
+        Commit().commit(message='removed a', working_tree=tree, 
+                        specific_files='a')
+        basis = tree.basis_tree().inventory
+        self.assertIs(None, basis.path2id('a'))
+        self.assertFalse(basis.path2id('b') is None)

@@ -17,11 +17,12 @@
 """Tests for the urlutils wrapper."""
 
 import os
+import re
 import sys
 
+from bzrlib import osutils, urlutils
 import bzrlib
 from bzrlib.errors import InvalidURL, InvalidURLJoin
-import bzrlib.urlutils as urlutils
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
 
@@ -256,7 +257,7 @@ class TestUrlToPath(TestCase):
 
     def test_win32_local_path_to_url(self):
         to_url = urlutils._win32_local_path_to_url
-        self.assertEqual('file:///c:/path/to/foo',
+        self.assertEqual('file:///C:/path/to/foo',
             to_url('C:/path/to/foo'))
         # BOGUS: on win32, ntpath.abspath will strip trailing
         #       whitespace, so this will always fail
@@ -264,7 +265,7 @@ class TestUrlToPath(TestCase):
         #       and thus will succeed
         # self.assertEqual('file:///C:/path/to/foo%20',
         #     to_url('C:/path/to/foo '))
-        self.assertEqual('file:///c:/path/to/f%20oo',
+        self.assertEqual('file:///C:/path/to/f%20oo',
             to_url('C:/path/to/f oo'))
 
         try:
@@ -272,15 +273,15 @@ class TestUrlToPath(TestCase):
         except UnicodeError:
             raise TestSkipped("local encoding cannot handle unicode")
 
-        self.assertEqual('file:///d:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
+        self.assertEqual('file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
 
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
-        self.assertEqual('c:/path/to/foo',
+        self.assertEqual('C:/path/to/foo',
             from_url('file:///C|/path/to/foo'))
-        self.assertEqual(u'd:/path/to/r\xe4ksm\xf6rg\xe5s',
+        self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
-        self.assertEqual(u'd:/path/to/r\xe4ksm\xf6rg\xe5s',
+        self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d:/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
 
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
@@ -380,8 +381,8 @@ class TestUrlToPath(TestCase):
 
         test('http://foo', 'http://foo')
         if sys.platform == 'win32':
-            test('c:/foo/path', 'file:///C|/foo/path')
-            test('c:/foo/path', 'file:///C:/foo/path')
+            test('C:/foo/path', 'file:///C|/foo/path')
+            test('C:/foo/path', 'file:///C:/foo/path')
         else:
             test('/foo/path', 'file:///foo/path')
 
@@ -464,3 +465,30 @@ class TestUrlToPath(TestCase):
         test('http://host/', 'http://host', 'http://host/')
         #test('.', 'http://host/', 'http://host')
         test('http://host', 'http://host/', 'http://host')
+
+
+class TestCwdToURL(TestCaseInTempDir):
+    """Test that local_path_to_url works base on the cwd"""
+
+    def test_dot(self):
+        # This test will fail if getcwd is not ascii
+        os.mkdir('mytest')
+        os.chdir('mytest')
+
+        url = urlutils.local_path_to_url('.')
+        self.assertEndsWith(url, '/mytest')
+
+    def test_non_ascii(self):
+        try:
+            os.mkdir(u'dod\xe9')
+        except UnicodeError:
+            raise TestSkipped('cannot create unicode directory')
+
+        os.chdir(u'dod\xe9')
+
+        # On Mac OSX this directory is actually: 
+        #   u'/dode\u0301' => '/dode\xcc\x81
+        # but we should normalize it back to 
+        #   u'/dod\xe9' => '/dod\xc3\xa9'
+        url = urlutils.local_path_to_url('.')
+        self.assertEndsWith(url, '/dod%C3%A9')
