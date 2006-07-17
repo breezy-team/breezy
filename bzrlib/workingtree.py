@@ -54,7 +54,6 @@ import warnings
 from bzrlib import bzrdir, errors, osutils, urlutils
 from bzrlib.atomicfile import AtomicFile
 import bzrlib.branch
-import bzrlib.bzrdir as bzrdir
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import (BzrCheckError,
