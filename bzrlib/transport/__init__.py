@@ -184,10 +184,7 @@ class Transport(object):
     # there is a benefit in just reading.
     # TODO: jam 20060714 Do some real benchmarking to figure out
     #       where the biggest benefit between combining reads and
-    #       and seeking is. It should even be possible to do this
-    #       dynamically, by measuring the seek time versus the
-    #       read / data size time. Though for sftp the round trip
-    #       is hidden in the read()
+    #       and seeking is. Consider a runtime auto-tune.
     _bytes_to_read_before_seek = 0
 
     def __init__(self, base):
@@ -382,11 +379,6 @@ class Transport(object):
                                limit=self._max_readv_combine,
                                fudge_factor=self._bytes_to_read_before_seek)
 
-        trans_name = self.__class__.__name__
-        loc = trans_name.find('Transport')
-        if loc != -1:
-            trans_name = trans_name[:loc]
-        short_fname = relpath[:15]
         # Cache the results, but only until they have been fulfilled
         data_map = {}
         for start, size, sublists in coalesced:
@@ -396,24 +388,17 @@ class Transport(object):
                 key = (start+offset, subsize)
                 data_map[key] = data[offset:offset+subsize]
 
-            # nice for debugging, but really fills the log file
-            # mutter('%s readv of %s collapsed %s offsets =>'
-            #        ' start %s len %s n chunks %s queue size %s',
-            #        trans_name, short_fname, len(offsets),
-            #        start, size, len(sublists), len(data_map))
-
-            # Now that we've read some data, see if we can yield 
-            # anything back
+            # Now that we've read some data, see if we can yield anything back
             while offsets:
                 if offsets[-1] not in data_map:
-                    # We can't yield anything yet, the next entry
-                    # isn't ready
+                    # We can't yield anything yet, the next entry isn't ready
                     break
                 key = offsets.pop()
                 this_data = data_map.pop(key)
                 yield key[0], this_data
 
         # If we got here, we should have processed all entries
+        # We don't always reach here if someone is double iterating
         assert len(offsets) == 0
 
     @staticmethod

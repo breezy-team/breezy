@@ -101,6 +101,10 @@ IN DEVELOPMENT
      were removed. So it is safe to uncommit after a merge, fix something,
      and commit again. (John Arbash Meinel, #32526, #31426)
 
+   * Performance improvements for sftp. Branching and pulling are now up to
+     2x faster. (John Arbash Meinel)
+
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
