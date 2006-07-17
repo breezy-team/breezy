@@ -124,8 +124,18 @@ def format_command (params, cmd, name):
             # correct indenting and wrapping.
             wrapped = textwrap.fill(l, initial_indent='',
                                     subsequent_indent=30*' ')
-            option_str = option_str + wrapped + '\n'       
-    return subsection_header + option_str + "\n" + doc + "\n"
+            option_str = option_str + wrapped + '\n'
+
+    aliases_str = ""
+    if cmd.aliases:
+        if len(cmd.aliases) > 1:
+            aliases_str += '\n    Aliases: '
+        else:
+            aliases_str += '\n    Alias: '
+        aliases_str += ', '.join(cmd.aliases)
+        aliases_str += '\n'
+
+    return subsection_header + option_str + aliases_str + "\n" + doc + "\n"
 
 
 ##
