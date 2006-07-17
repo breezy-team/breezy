@@ -1078,7 +1078,7 @@ class cmd_init_repository(Command):
 
 
 class cmd_diff(Command):
-    """Show differences in working tree.
+    """Show differences in the working tree or between revisions.
     
     If files are listed, only the changes in those files are listed.
     Otherwise, all changes for the tree are listed.
@@ -1088,11 +1088,17 @@ class cmd_diff(Command):
 
     examples:
         bzr diff
+            Shows the difference in the working tree versus the last commit
         bzr diff -r1
+            Difference between the working tree and revision 1
         bzr diff -r1..2
+            Difference between revision 2 and revision 1
         bzr diff --diff-prefix old/:new/
+            Same as 'bzr diff' but prefix paths with old/ and new/
         bzr diff bzr.mine bzr.dev
+            Show the differences between the two working trees
         bzr diff foo.c
+            Show just the differences for 'foo.c'
     """
     # TODO: Option to use external diff command; could be GNU diff, wdiff,
     #       or a graphical diff.
@@ -1142,6 +1148,10 @@ class cmd_diff(Command):
                 # FIXME diff those two files. rbc 20051123
                 raise BzrCommandError("Files are in different branches")
             file_list = None
+        except NotBranchError:
+            # Don't raise an error when bzr diff is called from
+            # outside a working tree.
+            tree1, tree2 = None, None
         if revision is not None:
             if tree2 is not None:
                 raise BzrCommandError("Can't specify -r with two branches")
@@ -1820,6 +1830,13 @@ class cmd_whoami(Command):
                 self.outf.write(c.username() + '\n')
             return
 
+        # display a warning if an email address isn't included in the given name.
+        try:
+            config.extract_email_address(name)
+        except BzrError, e:
+            warning('"%s" does not seem to contain an email address.  '
+                    'This is allowed, but not recommended.', name)
+        
         # use global config unless --branch given
         if branch:
             c = Branch.open_containing('.')[0].get_config()
@@ -2620,10 +2637,10 @@ class cmd_uncommit(Command):
     takes_args = ['location?']
     aliases = []
 
-    def run(self, location=None, 
+    def run(self, location=None,
             dry_run=False, verbose=False,
             revision=None, force=False):
-        from bzrlib.log import log_formatter
+        from bzrlib.log import log_formatter, show_log
         import sys
         from bzrlib.uncommit import uncommit
 
@@ -2637,18 +2654,33 @@ class cmd_uncommit(Command):
             tree = None
             b = control.open_branch()
 
+        rev_id = None
         if revision is None:
             revno = b.revno()
-            rev_id = b.last_revision()
         else:
-            revno, rev_id = revision[0].in_history(b)
-        if rev_id is None:
-            print 'No revisions to uncommit.'
+            # 'bzr uncommit -r 10' actually means uncommit
+            # so that the final tree is at revno 10.
+            # but bzrlib.uncommit.uncommit() actually uncommits
+            # the revisions that are supplied.
+            # So we need to offset it by one
+            revno = revision[0].in_history(b).revno+1
 
-        for r in range(revno, b.revno()+1):
-            rev_id = b.get_rev_id(r)
-            lf = log_formatter('short', to_file=sys.stdout,show_timezone='original')
-            lf.show(r, b.repository.get_revision(rev_id), None)
+        if revno <= b.revno():
+            rev_id = b.get_rev_id(revno)
+        if rev_id is None:
+            self.outf.write('No revisions to uncommit.\n')
+            return 1
+
+        lf = log_formatter('short',
+                           to_file=self.outf,
+                           show_timezone='original')
+
+        show_log(b,
+                 lf,
+                 verbose=False,
+                 direction='forward',
+                 start_revision=revno,
+                 end_revision=b.revno())
 
         if dry_run:
             print 'Dry-run, pretending to remove the above revisions.'
