@@ -165,8 +165,10 @@ def show_pending_merges(new, to_file):
     for merge in new.pending_merges():
         ignore.add(merge)
         try:
+            from bzrlib.osutils import terminal_width
+            width = terminal_width()
             m_revision = branch.repository.get_revision(merge)
-            print >> to_file, ' ', line_log(m_revision, 77)
+            print >> to_file, ' ', line_log(m_revision, width - 3)
             inner_merges = branch.repository.get_ancestry(merge)
             assert inner_merges[0] == None
             inner_merges.pop(0)
@@ -175,7 +177,7 @@ def show_pending_merges(new, to_file):
                 if mmerge in ignore:
                     continue
                 mm_revision = branch.repository.get_revision(mmerge)
-                print >> to_file, '   ', line_log(mm_revision, 75)
+                print >> to_file, '   ', line_log(mm_revision, width - 5)
                 ignore.add(mmerge)
         except errors.NoSuchRevision:
             print >> to_file, ' ', merge

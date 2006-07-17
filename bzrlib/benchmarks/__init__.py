@@ -57,7 +57,7 @@ class Benchmark(ExternalBase):
         
         No files change are included.
         """
-        tree = BzrDir.create_standalone_workingtree(directory_name)
+        tree = bzrdir.BzrDir.create_standalone_workingtree(directory_name)
         tree.lock_write()
         tree.branch.lock_write()
         tree.branch.repository.lock_write()
@@ -82,7 +82,7 @@ class Benchmark(ExternalBase):
         commit in its revision-history is a merge another commit in the other
         tree.
         """
-        tree = BzrDir.create_standalone_workingtree(directory_name)
+        tree = bzrdir.BzrDir.create_standalone_workingtree(directory_name)
         tree.lock_write()
         try:
             tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
