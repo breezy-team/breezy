@@ -15,8 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
-from bzrlib.errors import NotBranchError, NotLocalUrl
+from bzrlib.errors import NotBranchError, NotLocalUrl, NoRepositoryPresent
 from bzrlib.lockable_files import TransportLock
+from bzrlib.progress import ProgressBar
 from bzrlib.transport.local import LocalTransport
 import bzrlib.urlutils as urlutils
 
@@ -62,10 +63,18 @@ class SvnRemoteAccess(BzrDir):
 
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
         """See BzrDir.sprout()."""
-        # TODO: honor force_new_repo
         result = BzrDirFormat.get_default_format().initialize(url)
         repo = self.open_repository()
-        result_repo = repo.clone(result, revision_id, basis)
+        if force_new_repo:
+            result_repo = repo.clone(result, revision_id, basis)
+        else:
+            try:
+                result_repo = result.find_repository()
+                result_repo.fetch(repo, revision_id=revision_id, 
+                                  pb=ProgressBar())
+            except NoRepositoryPresent:
+                result_repo = repo.clone(result, revision_id, basis)
+
         branch = self.open_branch()
         branch.sprout(result, revision_id)
         result.create_workingtree()

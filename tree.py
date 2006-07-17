@@ -133,7 +133,7 @@ class TreeBuildEditor(svn.delta.Editor):
         if name == svn.core.SVN_PROP_EXECUTABLE:
             self.is_executable = (value != None)
         elif name == svn.core.SVN_PROP_SPECIAL:
-            self.is_symlink = (value == svn.core.SVN_PROP_SPECIAL_VALUE)
+            self.is_symlink = (value != None)
         elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.last_file_rev = int(value)
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
@@ -177,6 +177,9 @@ class TreeBuildEditor(svn.delta.Editor):
         if self.is_symlink:
             ie.kind = 'symlink'
             ie.symlink_target = file_data[len("link "):]
+            ie.text_sha1 = None
+            ie.text_size = None
+            ie.text_id = None
         else:
             ie.text_sha1 = osutils.sha_string(file_data)
             ie.text_size = len(file_data)

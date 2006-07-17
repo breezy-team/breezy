@@ -162,7 +162,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             # Strange, you'd expect executable to match svn.core.SVN_PROP_EXECUTABLE_VALUE, but that's not how SVN behaves.
             self.is_executable = (value != None)
         elif (name == svn.core.SVN_PROP_SPECIAL):
-            self.is_symlink = (value == svn.core.SVN_PROP_SPECIAL_VALUE)
+            self.is_symlink = (value != None)
         elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.last_file_rev = int(value)
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
@@ -221,6 +221,9 @@ class RevisionBuildEditor(svn.delta.Editor):
         if self.is_symlink:
             ie.kind = 'symlink'
             ie.symlink_target = lines[0][len("link "):]
+            ie.text_sha1 = None
+            ie.text_size = None
+            ie.text_id = None
         else:
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
@@ -281,7 +284,8 @@ class InterSvnRepository(InterRepository):
         prev_revnum = 0
         prev_inv = Inventory()
         for (branch, revnum, revid) in needed:
-            pb.update('copying revision', num+1, len(needed)+1)
+            if pb is not None:
+                pb.update('copying revision', num+1, len(needed)+1)
             num += 1
 
             editor = RevisionBuildEditor(self.source, self.target, branch, 
@@ -303,7 +307,8 @@ class InterSvnRepository(InterRepository):
             prev_inv = editor.inventory
             prev_revnum = revnum
 
-        pb.clear()
+        if pb is not None:
+            pb.clear()
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=ProgressBar()):
