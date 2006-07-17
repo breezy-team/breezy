@@ -490,7 +490,8 @@ class TestKnitCaching(KnitTests):
             return lst[0]
 
         val = read_one_raw('text-1')
-        self.assertEqual({'text-1':val[1]}, k._data._cache)
+        self.failUnless('text-1' in k._data._cache)
+        self.assertEqual(val[1], k._data._cache['text-1'])
 
         k.clear_cache()
         # After clear, new reads are not cached
@@ -529,6 +530,7 @@ class TestKnitCaching(KnitTests):
         self.assertEqual({}, k._data._cache)
 
     def test_cache_read(self):
+        # Test at the KnitVersionedFile level, rather than _KnitData
         k = self.create_knit()
         k.enable_cache()
 
