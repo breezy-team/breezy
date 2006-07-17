@@ -314,15 +314,15 @@ class SFTPTransport (Transport):
     """Transport implementation for SFTP access"""
 
     _do_prefetch = _default_do_prefetch
-    _max_readv_combine = int(os.environ.get('sftp_max_combine', 200))
-    # Having to round trip to the server means a lot of latency.
-    # So it is better to download extra bytes.
-    # For my network (jam), to my local server, I have
-    # a bandwidth of 6MB/s, and latency of 220us = 1320 bytes
-    # between me and school is 160KB/s and 34us = 5440 bytes
-    # between myself and bazaar-vcs.org 160KB/s * 107ms = 17120 bytes
-    # 4KiB seemed a reasonable tradeoff
-    _bytes_to_read_before_seek = int(os.environ.get('sftp_bytes', 4096))
+    # TODO: jam 20060717 Conceivably these could be configurable, either
+    #       by auto-tuning at run-time, or by a configuration (per host??)
+    #       but the performance curve is pretty flat, so just going with
+    #       reasonable defaults.
+    _max_readv_combine = 200
+    # Having to round trip to the server means waiting for a response,
+    # so it is better to download extra bytes.
+    # 8KiB had good performance for both local and remote network operations
+    _bytes_to_read_before_seek = 8192
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')

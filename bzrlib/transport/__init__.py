@@ -403,10 +403,11 @@ class Transport(object):
                 key = (start+offset, subsize)
                 data_map[key] = data[offset:offset+subsize]
 
-            mutter('%s readv of %s collapsed %s offsets =>'
-                   ' start %s len %s n chunks %s queue size %s',
-                   trans_name, short_fname, len(offsets),
-                   start, size, len(sublists), len(data_map))
+            # nice for debugging, but really fills the log file
+            # mutter('%s readv of %s collapsed %s offsets =>'
+            #        ' start %s len %s n chunks %s queue size %s',
+            #        trans_name, short_fname, len(offsets),
+            #        start, size, len(sublists), len(data_map))
 
             # Now that we've read some data, see if we can yield 
             # anything back
