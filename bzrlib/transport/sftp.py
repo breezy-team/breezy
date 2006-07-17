@@ -434,15 +434,6 @@ class SFTPTransport (Transport):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
 
-    if not os.environ.get('sftp_prefetch'):
-        def _get_seekable(self, relpath):
-            """Similar to get() but don't request prefetch()"""
-            try:
-                path = self._remote_path(relpath)
-                return self._sftp.file(path, mode='rb')
-            except (IOError, paramiko.SSHException), e:
-                self._translate_io_exception(e, path, ': error retrieving')
-
     def put(self, relpath, f, mode=None):
         """
         Copy the file-like or string object into the location.

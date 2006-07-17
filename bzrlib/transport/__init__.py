@@ -361,13 +361,6 @@ class Transport(object):
         """
         raise NotImplementedError(self.get)
 
-    def _get_seekable(self, relpath):
-        """Get a file where we intend to seek, rather than read everything.
-
-        Default implementation just returns the file from get()
-        """
-        return self.get(relpath)
-
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
@@ -377,7 +370,7 @@ class Transport(object):
         if not offsets:
             return
 
-        fp = self._get_seekable(relpath)
+        fp = self.get(relpath)
 
         # We are going to iterate multiple times, we need a list
         offsets = list(offsets)
