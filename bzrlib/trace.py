@@ -256,6 +256,8 @@ def disable_test_log((test_log_hdlr, old_trace_file, old_trace_depth)):
 
 def report_exception(exc_info, err_file):
     exc_type, exc_object, exc_tb = exc_info
+    # Log the full traceback to ~/.bzr.log
+    log_exception_quietly()
     if (isinstance(exc_object, IOError)
         and getattr(exc_object, 'errno', None) == errno.EPIPE):
         print >>err_file, "bzr: broken pipe"

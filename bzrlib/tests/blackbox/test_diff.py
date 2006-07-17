@@ -157,6 +157,26 @@ class TestDiff(ExternalBase):
                               "+contents of branch1/file\n"
                               "\n", subst_dates(out))
 
+    def test_diff_revno_branches(self):
+        self.example_branches()
+        print >> open('branch2/file', 'wb'), 'even newer content'
+        self.run_bzr_captured(['commit', '-m', 'update file once more', 'branch2'])
+
+        out, err = self.run_bzr_captured(['diff', '-r', 'revno:1:branch2..revno:1:branch1'],
+                                         retcode=0)
+        self.assertEquals('', err)
+        self.assertEquals('', out)
+        out, ett = self.run_bzr_captured(['diff', '-r', 'revno:2:branch2..revno:1:branch1'],
+                                         retcode=1)
+        self.assertEquals('', err)
+        self.assertEqualDiff("=== modified file 'file'\n"
+                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "@@ -1,1 +1,1 @@\n"
+                              "-new content\n"
+                              "+contents of branch1/file\n"
+                              "\n", subst_dates(out))
+
     def example_branch2(self):
         self.build_tree(['branch1/', 'branch1/file1'], line_endings='binary')
         self.capture('init branch1')
