@@ -163,3 +163,11 @@ class TestFileMapping(TestCase):
                 }, find_children)
         self.assertTrue(map.has_key("foob/bla"))
         self.assertTrue(map.has_key("foob/blie"))
+
+    def test_touchparent(self):
+        map = self.apply_mappings(
+                {"svn-v1:1@uuid-": {"foo": ('A', None, None), 
+                                   "foo/bla": ('A', None, None)},
+                "svn-v1:2@uuid-": {"foo/bla": ('M', None, None)}
+                })
+        self.assertEqual("svn-v1:2@uuid-", map["foo"][1])

@@ -314,14 +314,14 @@ See http://bazaar-vcs.org/BzrSvn for details.
     def revision_parents(self, revision_id, merged_data=None):
         (path, revnum) = self.parse_revision_id(revision_id)
 
-        try:
-            (branch, paths, rev) = self._log.follow_history(path, revnum - 1).next()
-            parent_revnum = rev
-            parent_path = branch
-            parent_ids = [self.generate_revision_id(rev, branch)]
-        except StopIteration:
-            parent_path = None
-            parent_ids = []
+        parent_path = None
+        parent_ids = []
+        for (branch, paths, rev) in self._log.follow_history(path, revnum):
+            if rev < revnum:
+                parent_revnum = rev
+                parent_path = branch
+                parent_ids = [self.generate_revision_id(rev, branch)]
+                break
 
         # if the branch didn't change, bzr:merge can't have changed
         if not path in self._log.get_revision_info(revnum)[3]:

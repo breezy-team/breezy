@@ -117,7 +117,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         if copyfrom_path is not None:
             base_file_id, base_revid = self.get_file_id(copyfrom_path, copyfrom_revnum)
             (bp, rev) = self.source.parse_revision_id(base_revid)
-            if base_file_id == file_id and bp == self.branch_path:
+            if base_file_id == file_id: 
                 self.dir_baserev[file_id] = [base_revid]
                 ie = self.inventory[file_id]
                 ie.revision = revision_id
