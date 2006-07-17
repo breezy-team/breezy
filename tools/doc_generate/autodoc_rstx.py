@@ -203,7 +203,7 @@ Files
 
 **On Windows**: ``C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf``
 
-Contains the default user config. Only one section, ``[DEFAULT]`` is allowed.
+Contains the default user config. At least one section, ``[DEFAULT]`` is required.
 A typical default config file may be similiar to::
 
     [DEFAULT]
