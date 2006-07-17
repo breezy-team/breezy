@@ -101,6 +101,9 @@ IN DEVELOPMENT
      were removed. So it is safe to uncommit after a merge, fix something,
      and commit again. (John Arbash Meinel, #32526, #31426)
 
+   * 'bzr init' now also works on remote locations.
+     (Wouter van Heyst, #48904)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
