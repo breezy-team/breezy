@@ -19,7 +19,8 @@ import svn.ra
 from svn.core import Pool, SubversionException
 
 from bzrlib.delta import compare_trees
-from bzrlib.errors import UnsupportedOperation, BzrError, InvalidRevisionId
+from bzrlib.errors import (UnsupportedOperation, BzrError, InvalidRevisionId, 
+                           DivergedBranches)
 from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.osutils as osutils
 from bzrlib.repository import CommitBuilder
@@ -272,11 +273,13 @@ class SvnCommitBuilder(CommitBuilder):
 
         mutter('opening branch %r' % elements)
 
-        for el in elements:
-            if el == "":
-                continue
+        for i in range(1, len(elements)):
+            if i == len(elements):
+                revnum = self.base_revnum
+            else:
+                revnum = -1
             ret.append(svn.delta.editor_invoke_open_directory(self.editor, 
-                    el, ret[-1], self.base_revnum, self.pool))
+                "/".join(elements[0:i+1]), ret[-1], revnum, self.pool))
 
         return ret
 
@@ -363,5 +366,10 @@ def push_as_merged(target, source, revision_id):
                 return old_tree.get_file_text(ie.file_id)
             builder.modified_file_text(ie.file_id, [], get_text)
 
-    return builder.commit(rev.message)
+    try:
+        return builder.commit(rev.message)
+    except SubversionException, (_, num):
+        if num == svn.core.SVN_ERR_FS_TXN_OUT_OF_DATE:
+            raise DivergedBranches(source, target)
+        raise
 
