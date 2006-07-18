@@ -247,7 +247,7 @@ def handle_response(url, code, headers, data):
             content_type = headers['Content-Type']
         except KeyError:
             raise errors.InvalidHttpContentType(url, '',
-                msg = 'Missing Content-Type')
+                msg='Missing Content-Type')
 
         if _is_multipart(content_type):
             # Full fledged multipart response
@@ -273,6 +273,7 @@ def handle_response(url, code, headers, data):
     # TODO: jam 20060713 Properly handle redirects (302 Found, etc)
     #       The '_get' code says to follow redirects, we probably 
     #       should actually handle the return values
-
-    raise errors.InvalidHttpResponse(url, "Unknown response code %s" % (code,))
+    else:
+        raise errors.InvalidHttpResponse(url, "Unknown response code %s" 
+                                              % (code,))
 

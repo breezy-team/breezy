@@ -152,8 +152,7 @@ class PyCurlTransport(HttpTransportBase):
         if code == 404:
             raise NoSuchFile(abspath)
         if code != 200:
-            raise errors.InvalidHttpResponse(abspath,
-                'Expected a 200 or 404 response, not: %s' % code)
+            self._raise_curl_http_error(curl, 'expected 200 or 404 for full response.')
 
         return code, data
 
@@ -185,10 +184,15 @@ class PyCurlTransport(HttpTransportBase):
         raise ConnectionError('curl connection error (%s) on %s'
                               % (os.strerror(curl_errno), url))
 
-    def _raise_curl_http_error(self, curl):
+    def _raise_curl_http_error(self, curl, info=None):
         code = curl.getinfo(pycurl.HTTP_CODE)
         url = curl.getinfo(pycurl.EFFECTIVE_URL)
-        raise errors.InvalidHttpResponse(url, 'http error code %d' % (code,))
+        if info is None:
+            msg = ''
+        else:
+            msg = ': ' + info
+        raise errors.InvalidHttpResponse(url, 'Unable to handle http code %d%s'
+                                              % (code,msg))
 
     def _set_curl_options(self, curl):
         """Set options for all requests"""
