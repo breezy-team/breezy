@@ -161,7 +161,10 @@ class TreeBuildEditor(svn.delta.Editor):
 
         file_id, revision_id = self.get_file_id(path, self.revnum)
 
-        ie = self.tree._inventory.add_path(relpath, 'file', file_id)
+        if self.is_symlink:
+            ie = self.tree._inventory.add_path(relpath, 'symlink', file_id)
+        else:
+            ie = self.tree._inventory.add_path(relpath, 'file', file_id)
         ie.revision = revision_id
 
         if self.file_stream:
@@ -175,7 +178,6 @@ class TreeBuildEditor(svn.delta.Editor):
                 "checksum mismatch: %r != %r" % (checksum, actual_checksum))
 
         if self.is_symlink:
-            ie.kind = 'symlink'
             ie.symlink_target = file_data[len("link "):]
             ie.text_sha1 = None
             ie.text_size = None

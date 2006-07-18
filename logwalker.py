@@ -183,8 +183,11 @@ class LogWalker(object):
         if revnum > self.last_revnum:
             self.fetch_revisions(self.saved_revnum, revnum, pb)
         rev = self.revisions[str(revnum)]
-        return (rev['author'].decode('utf-8', 'ignore'),
-                rev['message'].decode('utf-8', 'ignore'), 
+        if rev['author'] is None:
+            author = None
+        else:
+            author = rev['author'].decode('utf-8', 'ignore')
+        return (author, rev['message'].decode('utf-8', 'ignore'), 
                 rev['date'], rev['paths'])
 
     

@@ -214,12 +214,13 @@ class RevisionBuildEditor(svn.delta.Editor):
 
         if file_id in self.inventory:
             ie = self.inventory[file_id]
+        elif self.is_symlink:
+            ie = self.inventory.add_path(relpath, 'symlink', file_id)
         else:
             ie = self.inventory.add_path(relpath, 'file', file_id)
         ie.revision = revision_id
 
         if self.is_symlink:
-            ie.kind = 'symlink'
             ie.symlink_target = lines[0][len("link "):]
             ie.text_sha1 = None
             ie.text_size = None
