@@ -19,7 +19,6 @@
 There are separate implementation modules for each http client implementation.
 """
 
-from collections import deque
 from cStringIO import StringIO
 import errno
 import mimetools
@@ -75,7 +74,7 @@ def extract_auth(url, password_manager):
     return url
 
 
-def _extract_headers(header_file, skip_first=True):
+def _extract_headers(header_file, skip_first=True, body_is_header=True):
     """Extract the mapping for an rfc822 header
 
     This is a helper function for the test suite, and for _pycurl.
@@ -84,12 +83,24 @@ def _extract_headers(header_file, skip_first=True):
     :param header_file: A file-like object to read
     :param skip_first: HTTP headers start with the HTTP response as
                        the first line. Skip this line while parsing
+    :param body_is_header: When pycurl gets a redirect request, it saves
+            both the redirect headers and the final headers in the header
+            file. Which means we really want the latter headers, not the
+            former.
     :return: mimetools.Message object
     """
     header_file.seek(0, 0)
     if skip_first:
         header_file.readline()
     m = mimetools.Message(header_file)
+    if body_is_header:
+        m.rewindbody()
+        remaining = header_file.read()
+        # Ignore some extra whitespace, but if we have acutal content
+        # lines, then the later content superceeds the eariler.
+        if remaining.strip() != '':
+            return _extract_headers(StringIO(remaining), skip_first=skip_first,
+                                    body_is_header=True)
     return m
 
 

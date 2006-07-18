@@ -393,6 +393,30 @@ mbp@source\r
 """)
 
 
+_redirect_response = (206, """HTTP/1.1 301 Moved Permanently\r
+Date: Tue, 18 Jul 2006 20:29:22 GMT\r
+Server: Apache/2.0.54 (Ubuntu) PHP/4.4.0-3ubuntu1 mod_ssl/2.0.54 OpenSSL/0.9.7g\r
+Location: http://bazaar-vcs.org/bzr/bzr.dev/.bzr/repository/inventory.knit\r
+Content-Length: 272\r
+Keep-Alive: timeout=15, max=100\r
+Connection: Keep-Alive\r
+Content-Type: text/html; charset=iso-8859-1\r
+\r
+HTTP/1.1 206 Partial Content\r
+Date: Tue, 18 Jul 2006 20:29:23 GMT\r
+Server: Apache/2.0.54 (Ubuntu) PHP/4.4.0-3ubuntu1 mod_ssl/2.0.54 OpenSSL/0.9.7g\r
+Last-Modified: Tue, 18 Jul 2006 20:24:59 GMT\r
+ETag: "be8213-83958c-f0d3dcc0"\r
+Accept-Ranges: bytes\r
+Content-Length: 425\r
+Content-Range: bytes 8623075-8623499/8623500\r
+Keep-Alive: timeout=15, max=100\r
+Connection: Keep-Alive\r
+Content-Type: text/plain; charset=UTF-8\r
+\r
+""")
+
+
 # This is made up
 _invalid_response = (444, """HTTP/1.1 444 Bad Response\r
 Date: Tue, 11 Jul 2006 04:32:56 GMT\r
@@ -414,8 +438,8 @@ Content-Type: text/html; charset=iso-8859-1\r
 # want to parse are here
 class TestExtractHeader(TestCase):
     
-    def use_response(self, response):
-        self.headers = http._extract_headers(StringIO(response[1]))
+    def use_response(self, response, **kwargs):
+        self.headers = http._extract_headers(StringIO(response[1]), **kwargs)
 
     def check_header(self, header, value):
         self.assertEqual(value, self.headers[header])
@@ -449,6 +473,20 @@ class TestExtractHeader(TestCase):
         self.check_header('Content-Type',
                           'multipart/byteranges; boundary=418470f848b63279b')
 
+    def test_redirect(self):
+        """We default to returning the last group of headers in the file."""
+        self.use_response(_redirect_response)
+        self.check_header('Content-Range', 'bytes 8623075-8623499/8623500')
+        self.check_header('Content-Type', 'text/plain; charset=UTF-8')
+
+    def test_redirect_body_is_body(self):
+        """Check that we parse the right portion if body_is_header is True"""
+        self.use_response(_redirect_response, body_is_header=False)
+        self.assertRaises(KeyError, self.headers.__getitem__, 'Content-Range')
+        self.check_header('Content-Type', 'text/html; charset=iso-8859-1')
+        self.check_header('Location',
+            'http://bazaar-vcs.org/bzr/bzr.dev/.bzr/repository/inventory.knit')
+                       
 
 class TestHandleResponse(TestCase):
     
