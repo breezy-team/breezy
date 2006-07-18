@@ -17,6 +17,7 @@
 
 import datetime
 import re
+import bisect
 from bzrlib.errors import BzrError, NoSuchRevision, NoCommits
 
 _marker = []
@@ -148,7 +149,10 @@ class RevisionSpec(object):
             raise NoSuchRevision(branch, str(self.spec))
 
     def in_history(self, branch):
-        revs = branch.revision_history()
+        if branch:
+            revs = branch.revision_history()
+        else:
+            revs = None
         return self._match_on_and_check(branch, revs)
 
         # FIXME: in_history is somewhat broken,
@@ -189,10 +193,21 @@ class RevisionSpec_revno(RevisionSpec):
 
     def _match_on(self, branch, revs):
         """Lookup a revision by revision number"""
-        try:
-            return RevisionInfo(branch, int(self.spec))
-        except ValueError:
-            return RevisionInfo(branch, None)
+        if self.spec.find(':') == -1:
+            try:
+                return RevisionInfo(branch, int(self.spec))
+            except ValueError:
+                return RevisionInfo(branch, None)
+        else:
+            from branch import Branch
+            revname = self.spec[self.spec.find(':')+1:]
+            other_branch = Branch.open_containing(revname)[0]
+            try:
+                revno = int(self.spec[:self.spec.find(':')])
+            except ValueError:
+                return RevisionInfo(other_branch, None)
+            revid = other_branch.get_rev_id(revno)
+            return RevisionInfo(other_branch, revno)
 
 SPEC_TYPES.append(RevisionSpec_revno)
 
@@ -248,6 +263,18 @@ class RevisionSpec_tag(RevisionSpec):
 SPEC_TYPES.append(RevisionSpec_tag)
 
 
+class RevisionSpec_revs:
+    def __init__(self, revs, branch):
+        self.revs = revs
+        self.branch = branch
+    def __getitem__(self, index):
+        r = self.branch.repository.get_revision(self.revs[index])
+        # TODO: Handle timezone.
+        return datetime.datetime.fromtimestamp(r.timestamp)
+    def __len__(self):
+        return len(self.revs)
+
+
 class RevisionSpec_date(RevisionSpec):
     prefix = 'date:'
     _date_re = re.compile(
@@ -295,14 +322,15 @@ class RevisionSpec_date(RevisionSpec):
 
             dt = datetime.datetime(year=year, month=month, day=day,
                     hour=hour, minute=minute, second=second)
-        first = dt
-        for i in range(len(revs)):
-            r = branch.repository.get_revision(revs[i])
-            # TODO: Handle timezone.
-            dt = datetime.datetime.fromtimestamp(r.timestamp)
-            if first <= dt:
-                return RevisionInfo(branch, i+1)
-        return RevisionInfo(branch, None)
+        branch.lock_read()
+        try:
+            rev = bisect.bisect(RevisionSpec_revs(revs, branch), dt)
+        finally:
+            branch.unlock()
+        if rev == len(revs):
+            return RevisionInfo(branch, None)
+        else:
+            return RevisionInfo(branch, rev + 1)
 
 SPEC_TYPES.append(RevisionSpec_date)
 

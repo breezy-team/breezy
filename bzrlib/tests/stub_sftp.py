@@ -22,6 +22,7 @@ Adapted from the one in paramiko's unit tests.
 import os
 from paramiko import ServerInterface, SFTPServerInterface, SFTPServer, SFTPAttributes, \
     SFTPHandle, SFTP_OK, AUTH_SUCCESSFUL, OPEN_SUCCEEDED
+import sys
 
 from bzrlib.osutils import pathjoin
 from bzrlib.trace import mutter
@@ -64,23 +65,50 @@ class StubSFTPServer (SFTPServerInterface):
 
     def __init__(self, server, root, home=None):
         SFTPServerInterface.__init__(self, server)
+        # All paths are actually relative to 'root'.
+        # this is like implementing chroot().
         self.root = root
         if home is None:
-            self.home = self.root
+            self.home = ''
         else:
+            assert home.startswith(self.root), \
+                    "home must be a subdirectory of root (%s vs %s)" \
+                    % (home, root)
             self.home = home[len(self.root):]
-        if (len(self.home) > 0) and (self.home[0] == '/'):
+        if self.home.startswith('/'):
             self.home = self.home[1:]
         server._test_case.log('sftpserver - new connection')
 
     def _realpath(self, path):
+        # paths returned from self.canonicalize() always start with
+        # a path separator. So if 'root' is just '/', this would cause
+        # a double slash at the beginning '//home/dir'. 
+        if self.root == '/':
+            return self.canonicalize(path)
         return self.root + self.canonicalize(path)
 
-    def canonicalize(self, path):
-        if os.path.isabs(path):
-            return os.path.normpath(path)
-        else:
-            return os.path.normpath('/' + os.path.join(self.home, path))
+    if sys.platform == 'win32':
+        def canonicalize(self, path):
+            # Win32 sftp paths end up looking like
+            #     sftp://host@foo/h:/foo/bar
+            # which means absolute paths look like:
+            #     /h:/foo/bar
+            # and relative paths stay the same:
+            #     foo/bar
+            # win32 needs to use the Unicode APIs. so we require the 
+            # paths to be utf8 (Linux just uses bytestreams)
+            thispath = path.decode('utf8')
+            if path.startswith('/'):
+                # Abspath H:/foo/bar
+                return os.path.normpath(thispath[1:])
+            else:
+                return os.path.normpath(os.path.join(self.home, thispath))
+    else:
+        def canonicalize(self, path):
+            if os.path.isabs(path):
+                return os.path.normpath(path)
+            else:
+                return os.path.normpath('/' + os.path.join(self.home, path))
 
     def chattr(self, path, attr):
         try:
@@ -93,7 +121,13 @@ class StubSFTPServer (SFTPServerInterface):
         path = self._realpath(path)
         try:
             out = [ ]
-            flist = os.listdir(path)
+            # TODO: win32 incorrectly lists paths with non-ascii if path is not
+            # unicode. However on Linux the server should only deal with
+            # bytestreams and posix.listdir does the right thing 
+            if sys.platform == 'win32':
+                flist = [f.encode('utf8') for f in os.listdir(path)]
+            else:
+                flist = os.listdir(path)
             for fname in flist:
                 attr = SFTPAttributes.from_stat(os.stat(pathjoin(path, fname)))
                 attr.filename = fname
@@ -127,6 +161,7 @@ class StubSFTPServer (SFTPServerInterface):
                 fd = os.open(path, flags)
         except OSError, e:
             return SFTPServer.convert_errno(e.errno)
+
         if (flags & os.O_CREAT) and (attr is not None):
             attr._flags &= ~attr.FLAG_PERMISSIONS
             SFTPServer.set_file_attr(path, attr)
@@ -139,7 +174,7 @@ class StubSFTPServer (SFTPServerInterface):
             fstr = 'rb'
         try:
             f = os.fdopen(fd, fstr)
-        except OSError, e:
+        except (IOError, OSError), e:
             return SFTPServer.convert_errno(e.errno)
         fobj = StubSFTPHandle()
         fobj.filename = path

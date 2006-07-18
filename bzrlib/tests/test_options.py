@@ -15,8 +15,6 @@ class OptionTests(TestCase):
         eq = self.assertEquals
         eq(parse_args(cmd_commit(), ['--help']),
            ([], {'help': True}))
-        eq(parse_args(cmd_status(), ['--all']),
-           ([], {'all': True}))
         eq(parse_args(cmd_commit(), ['--message=biter']),
            ([], {'message': 'biter'}))
         ## eq(parse_args(cmd_log(),  '-r 500'.split()),
@@ -46,7 +44,11 @@ class OptionTests(TestCase):
 
     def test_unknown_short_opt(self):
         out, err = self.run_bzr_captured(['help', '-r'], retcode=3)
-        self.assertContainsRe(err, r'unknown short option')
+        self.assertContainsRe(err, r'unknown option')
+
+    def test_allow_dash(self):
+        """Test that we can pass a plain '-' as an argument."""
+        self.assertEqual((['-'], {}), parse_args(cmd_commit(), ['-']))
 
 
 #     >>> parse_args('log -r 500'.split())

@@ -27,6 +27,7 @@ from bzrlib.osutils import abspath
 from bzrlib.repository import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.uncommit import uncommit
+from bzrlib.urlutils import local_path_from_url
 from bzrlib.workingtree import WorkingTree
 
 
@@ -52,28 +53,43 @@ class TestPush(ExternalBase):
         tree_b.commit('commit c')
         # initial push location must be empty
         self.assertEqual(None, branch_b.get_push_location())
+
         # test push for failure without push location set
         os.chdir('branch_a')
         out = self.runbzr('push', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: No push location known or specified.\n'))
+
+        # test not remembered if cannot actually push
+        self.run_bzr('push', '../path/which/doesnt/exist', retcode=3)
+        out = self.run_bzr('push', retcode=3)
+        self.assertEquals(
+                ('', 'bzr: ERROR: No push location known or specified.\n'),
+                out)
+
         # test implicit --remember when no push location set, push fails
-        out = self.runbzr('push ../branch_b', retcode=3)
+        out = self.run_bzr('push', '../branch_b', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: These branches have diverged.  '
                     'Try a merge then push with overwrite.\n'))
         self.assertEquals(abspath(branch_a.get_push_location()),
                           abspath(branch_b.bzrdir.root_transport.base))
+
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/c')
-        self.runbzr('push')
-        self.assertEquals(abspath(branch_a.get_push_location()),
-                          abspath(branch_b.bzrdir.root_transport.base))
+        out = self.run_bzr('push')
+        path = branch_a.get_push_location()
+        self.assertEquals(('Using saved location: %s\n' 
+                           % (local_path_from_url(path),)
+                          , 'All changes applied successfully.\n'
+                            '1 revision(s) pushed.\n'), out)
+        self.assertEqual(path,
+                         branch_b.bzrdir.root_transport.base)
         # test explicit --remember
-        self.runbzr('push ../branch_c --remember')
-        self.assertEquals(abspath(branch_a.get_push_location()),
-                          abspath(branch_c.bzrdir.root_transport.base))
+        self.run_bzr('push', '../branch_c', '--remember')
+        self.assertEquals(branch_a.get_push_location(),
+                          branch_c.bzrdir.root_transport.base)
     
     def test_push_without_tree(self):
         # bzr push from a branch that does not have a checkout should work.
@@ -137,3 +153,10 @@ class TestPush(ExternalBase):
         self.assertFalse(pushed_repo.has_revision('a-2'))
         self.assertTrue(pushed_repo.has_revision('b-1'))
 
+    def test_push_funky_id(self):
+        t = self.make_branch_and_tree('tree')
+        os.chdir('tree')
+        self.build_tree(['filename'])
+        t.add('filename', 'funky-chars<>%&;"\'')
+        t.commit('commit filename')
+        self.run_bzr('push', '../new-tree')

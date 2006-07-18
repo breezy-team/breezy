@@ -16,6 +16,8 @@
 
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter
+from bzrlib import tree
+
 
 class TreeDelta(object):
     """Describes changes from one tree to another.
@@ -89,6 +91,7 @@ class TreeDelta(object):
             
 
     def show(self, to_file, show_ids=False, show_unchanged=False):
+        """output this delta in status-like form to to_file."""
         def show_list(files):
             for item in files:
                 path, fid, kind = item[:3]
@@ -140,8 +143,9 @@ class TreeDelta(object):
             show_list(self.unchanged)
 
 
-
-def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None):
+def compare_trees(old_tree, new_tree, want_unchanged=False, 
+                  specific_files=None, extra_trees=None, 
+                  require_versioned=False):
     """Describe changes from one tree to another.
 
     Returns a TreeDelta with details of added, modified, renamed, and
@@ -156,9 +160,18 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
         the next.
 
     specific_files
-        If true, only check for changes to specified names or
-        files within them.  Any unversioned files given have no effect
-        (but this might change in the future).
+        If supplied, only check for changes to specified names or
+        files within them.  When mapping filenames to ids, all matches in all
+        trees (including optional extra_trees) are used, and all children of
+        matched directories are included.
+
+    extra_trees
+        If non-None, a list of more trees to use for looking up file_ids from
+        paths
+
+    require_versioned
+        If true, an all files are required to be versioned, and
+        PathsNotVersionedError will be thrown if they are not.
     """
     # NB: show_status depends on being able to pass in non-versioned files and
     # report them as unknown
@@ -166,15 +179,20 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
     try:
         new_tree.lock_read()
         try:
+            trees = (new_tree, old_tree)
+            if extra_trees is not None:
+                trees = trees + tuple(extra_trees)
+            specific_file_ids = tree.find_ids_across_trees(specific_files, 
+                trees, require_versioned=require_versioned)
             return _compare_trees(old_tree, new_tree, want_unchanged,
-                                  specific_files)
+                                  specific_file_ids)
         finally:
             new_tree.unlock()
     finally:
         old_tree.unlock()
 
 
-def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
+def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
 
     from osutils import is_inside_any
     
@@ -185,78 +203,147 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
 
     # TODO: Rather than iterating over the whole tree and then filtering, we
     # could diff just the specified files (if any) and their subtrees.  
-    # Perhaps should take a list of file-ids instead?   Need to indicate any
-    # ids or names which were not found in the trees.
 
-    for file_id in old_tree:
-        if file_id in new_tree:
-            old_ie = old_inv[file_id]
-            new_ie = new_inv[file_id]
+    old_files = old_tree.list_files()
+    new_files = new_tree.list_files()
 
-            kind = old_ie.kind
-            assert kind == new_ie.kind
-            
-            assert kind in InventoryEntry.known_kinds, \
-                   'invalid file kind %r' % kind
+    more_old = True
+    more_new = True
 
-            if kind == 'root_directory':
-                continue
-            
-            if specific_files:
-                if (not is_inside_any(specific_files, old_inv.id2path(file_id)) 
-                    and not is_inside_any(specific_files, new_inv.id2path(file_id))):
-                    continue
+    added = {}
+    removed = {}
 
-            # temporary hack until all entries are populated before clients 
-            # get them
-            old_path = old_inv.id2path(file_id)
-            new_path = new_inv.id2path(file_id)
-            old_ie._read_tree_state(old_path, old_tree)
-            new_ie._read_tree_state(new_path, new_tree)
-            text_modified, meta_modified = new_ie.detect_changes(old_ie)
+    def get_next(iter):
+        try:
+            return iter.next()
+        except StopIteration:
+            return None, None, None, None, None
+    old_path, old_class, old_kind, old_file_id, old_entry = get_next(old_files)
+    new_path, new_class, new_kind, new_file_id, new_entry = get_next(new_files)
 
-            # TODO: Can possibly avoid calculating path strings if the
-            # two files are unchanged and their names and parents are
-            # the same and the parents are unchanged all the way up.
-            # May not be worthwhile.
-            
-            if (old_ie.name != new_ie.name
-                or old_ie.parent_id != new_ie.parent_id):
-                delta.renamed.append((old_path,
-                                      new_path,
-                                      file_id, kind,
-                                      text_modified, meta_modified))
-            elif text_modified or meta_modified:
-                delta.modified.append((new_path, file_id, kind,
-                                       text_modified, meta_modified))
-            elif want_unchanged:
-                delta.unchanged.append((new_path, file_id, kind))
+
+    def check_matching(old_path, old_entry, new_path, new_entry):
+        """We have matched up 2 file_ids, check for changes."""
+        assert old_entry.kind == new_entry.kind
+
+        if old_entry.kind == 'root_directory':
+            return
+
+        if specific_file_ids:
+            if (old_file_id not in specific_file_ids and 
+                new_file_id not in specific_file_ids):
+                return
+
+        # temporary hack until all entries are populated before clients 
+        # get them
+        old_entry._read_tree_state(old_path, old_tree)
+        new_entry._read_tree_state(new_path, new_tree)
+        text_modified, meta_modified = new_entry.detect_changes(old_entry)
+        
+        # If the name changes, or the parent_id changes, we have a rename
+        # (if we move a parent, that doesn't count as a rename for the file)
+        if (old_entry.name != new_entry.name 
+            or old_entry.parent_id != new_entry.parent_id):
+            delta.renamed.append((old_path,
+                                  new_path,
+                                  old_entry.file_id, old_entry.kind,
+                                  text_modified, meta_modified))
+        elif text_modified or meta_modified:
+            delta.modified.append((new_path, new_entry.file_id, new_entry.kind,
+                                   text_modified, meta_modified))
+        elif want_unchanged:
+            delta.unchanged.append((new_path, new_entry.file_id, new_entry.kind))
+
+
+    def handle_old(path, entry):
+        """old entry without a new entry match
+
+        Check to see if a matching new entry was already seen as an
+        added file, and switch the pair into being a rename.
+        Otherwise just mark the old entry being removed.
+        """
+        if entry.file_id in added:
+            # Actually this is a rename, we found a new file_id earlier
+            # at a different location, so it is no-longer added
+            x_new_path, x_new_entry = added.pop(entry.file_id)
+            check_matching(path, entry, x_new_path, x_new_entry)
         else:
-            kind = old_inv.get_file_kind(file_id)
-            if kind == 'root_directory':
-                continue
-            old_path = old_inv.id2path(file_id)
-            if specific_files:
-                if not is_inside_any(specific_files, old_path):
-                    continue
-            delta.removed.append((old_path, file_id, kind))
+            # We have an old_file_id which doesn't line up with a new_file_id
+            # So this file looks to be removed
+            assert entry.file_id not in removed
+            removed[entry.file_id] = path, entry
 
-    mutter('start looking for new files')
-    for file_id in new_inv:
-        if file_id in old_inv or file_id not in new_tree:
-            continue
-        kind = new_inv.get_file_kind(file_id)
-        if kind == 'root_directory':
-            continue
-        new_path = new_inv.id2path(file_id)
-        if specific_files:
-            if not is_inside_any(specific_files, new_path):
+    def handle_new(path, entry):
+        """new entry without an old entry match
+        
+        Check to see if a matching old entry was already seen as a
+        removal, and change the pair into a rename.
+        Otherwise just mark the new entry as an added file.
+        """
+        if entry.file_id in removed:
+            # We saw this file_id earlier at an old different location
+            # it is no longer removed, just renamed
+            x_old_path, x_old_entry = removed.pop(entry.file_id)
+            check_matching(x_old_path, x_old_entry, path, entry)
+        else:
+            # We have a new file which does not match an old file
+            # mark it as added
+            assert entry.file_id not in added
+            added[entry.file_id] = path, entry
+
+    while old_path or new_path:
+        # list_files() returns files in alphabetical path sorted order
+        if old_path == new_path:
+            if old_file_id == new_file_id:
+                # This is the common case, the files are in the same place
+                # check if there were any content changes
+
+                if old_file_id is None:
+                    # We have 2 unversioned files, no deltas possible???
+                    pass
+                else:
+                    check_matching(old_path, old_entry, new_path, new_entry)
+            else:
+                # The ids don't match, so we have to handle them both
+                # separately.
+                if old_file_id is not None:
+                    handle_old(old_path, old_entry)
+
+                if new_file_id is not None:
+                    handle_new(new_path, new_entry)
+
+            # The two entries were at the same path, so increment both sides
+            old_path, old_class, old_kind, old_file_id, old_entry = get_next(old_files)
+            new_path, new_class, new_kind, new_file_id, new_entry = get_next(new_files)
+        elif new_path is None or (old_path is not None and old_path < new_path):
+            # Assume we don't match, only process old_path
+            if old_file_id is not None:
+                handle_old(old_path, old_entry)
+            # old_path came first, so increment it, trying to match up
+            old_path, old_class, old_kind, old_file_id, old_entry = get_next(old_files)
+        elif new_path is not None:
+            # new_path came first, so increment it, trying to match up
+            if new_file_id is not None:
+                handle_new(new_path, new_entry)
+            new_path, new_class, new_kind, new_file_id, new_entry = get_next(new_files)
+
+    # Now we have a set of added and removed files, mark them all
+    for old_path, old_entry in removed.itervalues():
+        if specific_file_ids:
+            if not old_entry.file_id in specific_file_ids:
                 continue
-        delta.added.append((new_path, file_id, kind))
-            
+        delta.removed.append((old_path, old_entry.file_id, old_entry.kind))
+    for new_path, new_entry in added.itervalues():
+        if specific_file_ids:
+            if not new_entry.file_id in specific_file_ids:
+                continue
+        delta.added.append((new_path, new_entry.file_id, new_entry.kind))
+
     delta.removed.sort()
     delta.added.sort()
     delta.renamed.sort()
+    # TODO: jam 20060529 These lists shouldn't need to be sorted
+    #       since we added them in alphabetical order.
     delta.modified.sort()
     delta.unchanged.sort()
 

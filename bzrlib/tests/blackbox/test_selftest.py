@@ -84,13 +84,13 @@ class TestOptions(TestCase):
         out, err = self.run_bzr('selftest', '--benchmark', 'workingtree_implementations')
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
         self.assertEqual(
-            'running tests...\nRunning tests: .\nCleaning up: .\ntests passed\n',
+            'running tests...\ntests passed\n',
             err)
         
 
 class TestRunBzr(ExternalBase):
 
-    def run_bzr_captured(self, argv, retcode=0, stdin=None):
+    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None):
         self.stdin = stdin
 
     def test_stdin(self):

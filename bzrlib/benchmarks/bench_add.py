@@ -16,28 +16,15 @@
 """Tests for bzr add performance."""
 
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.benchmarks import Benchmark
 
 
-class TestAdd(ExternalBase):
+class AddBenchmark(Benchmark):
 
     def test_one_add_kernel_like_tree(self):
         """Adding a kernel sized tree should be bearable (<5secs) fast.""" 
-        # a kernel tree has ~10000 and 500 directory, with most files around 
-        # 3-4 levels deep. 
-        # we simulate this by three levels of dirs named 0-7, givin 512 dirs,
-        # and 20 files each.
-        # on roberts machine this originally took: 25936ms/32244ms
-        # after low hanging fruit                :  9692ms/13911ms
-        self.run_bzr('init')
-        files = []
-        for outer in range(8):
-            files.append("%s/" % outer)
-            for middle in range(8):
-                files.append("%s/%s/" % (outer, middle))
-                for inner in range(8):
-                    prefix = "%s/%s/%s/" % (outer, middle, inner)
-                    files.append(prefix)
-                    files.extend([prefix + str(foo) for foo in range(20)])
-        self.build_tree(files)
+        self.make_kernel_like_tree()
+        # on roberts machine: this originally took:  25936ms/32244ms
+        # after making smart_add use the parent_ie:   5033ms/ 9368ms
+        # plain os.walk takes 213ms on this tree
         self.time(self.run_bzr, 'add')

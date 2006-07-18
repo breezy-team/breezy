@@ -1,15 +1,15 @@
-# (C) 2006 Canonical Ltd
-
+# Copyright (C) 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -22,7 +22,7 @@ For concrete class tests see this file, and for storage formats tests
 also see this file.
 """
 
-from stat import *
+from stat import S_ISDIR
 from StringIO import StringIO
 
 import bzrlib
@@ -50,7 +50,7 @@ class TestDefaultFormat(TestCase):
         try:
             # the default branch format is used by the meta dir format
             # which is not the default bzrdir format at this point
-            dir = bzrdir.BzrDirMetaFormat1().initialize('memory:/')
+            dir = bzrdir.BzrDirMetaFormat1().initialize('memory:///')
             result = dir.create_repository()
             self.assertEqual(result, 'A bzr repository dir')
         finally:
@@ -428,3 +428,10 @@ class TestRepositoryConverter(TestCaseWithTransport):
             pb.finished()
         repo = repo_dir.open_repository()
         self.assertTrue(isinstance(target_format, repo._format.__class__))
+
+
+class TestMisc(TestCase):
+    
+    def test_unescape_xml(self):
+        """We get some kind of error when malformed entities are passed"""
+        self.assertRaises(KeyError, repository._unescape_xml, 'foo&bar;') 

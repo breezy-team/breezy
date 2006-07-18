@@ -29,16 +29,24 @@ it.
 import errno
 from collections import deque
 from copy import deepcopy
-from stat import *
+import re
+from stat import S_ISDIR
 import sys
 from unittest import TestSuite
 import urllib
 import urlparse
+import warnings
 
-from bzrlib.trace import mutter, warning
+import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import DependencyNotPresent
-from bzrlib.symbol_versioning import *
+import bzrlib.osutils as osutils
+from bzrlib.osutils import pumpfile
+from bzrlib.symbol_versioning import (deprecated_passed, deprecated_method, deprecated_function, 
+        DEPRECATED_PARAMETER,
+        zero_eight)
+from bzrlib.trace import mutter, warning
+import bzrlib.urlutils as urlutils
 
 # {prefix: [transport_classes]}
 # Transports are inserted onto the list LIFO and tried in order; as a result
@@ -58,7 +66,7 @@ def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
     # working, etc.
     global _protocol_handlers
     if deprecated_passed(override):
-        warn("register_transport(override) is deprecated")
+        warnings.warn("register_transport(override) is deprecated")
     _protocol_handlers.setdefault(prefix, []).insert(0, klass)
 
 
@@ -126,6 +134,36 @@ def register_urlparse_netloc_protocol(protocol):
         urlparse.uses_netloc.append(protocol)
 
 
+def split_url(url):
+    # TODO: jam 20060606 urls should only be ascii, or they should raise InvalidURL
+    if isinstance(url, unicode):
+        url = url.encode('utf-8')
+    (scheme, netloc, path, params,
+     query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+    username = password = host = port = None
+    if '@' in netloc:
+        username, host = netloc.split('@', 1)
+        if ':' in username:
+            username, password = username.split(':', 1)
+            password = urllib.unquote(password)
+        username = urllib.unquote(username)
+    else:
+        host = netloc
+
+    if ':' in host:
+        host, port = host.rsplit(':', 1)
+        try:
+            port = int(port)
+        except ValueError:
+            # TODO: Should this be ConnectionError?
+            raise errors.TransportError('%s: invalid port number' % port)
+    host = urllib.unquote(host)
+
+    path = urllib.unquote(path)
+
+    return (scheme, username, password, host, port, path)
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -187,7 +225,6 @@ class Transport(object):
         if isinstance(from_file, basestring):
             to_file.write(from_file)
         else:
-            from bzrlib.osutils import pumpfile
             pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
@@ -254,6 +291,16 @@ class Transport(object):
             raise errors.PathNotChild(abspath, self.base)
         pl = len(self.base)
         return abspath[pl:].strip('/')
+
+    def local_abspath(self, relpath):
+        """Return the absolute path on the local filesystem.
+
+        This function will only be defined for Transports which have a
+        physical local filesystem representation.
+        """
+        # TODO: jam 20060426 Should this raise NotLocalUrl instead?
+        raise errors.TransportNotPossible('This is not a LocalTransport,'
+            ' so there is no local representation for a path')
 
     def has(self, relpath):
         """Does the file relpath exist?
@@ -633,6 +680,13 @@ class Transport(object):
         return False
 
 
+# jam 20060426 For compatibility we copy the functions here
+# TODO: The should be marked as deprecated
+urlescape = urlutils.escape
+urlunescape = urlutils.unescape
+_urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<path>.*)$')
+
+
 def get_transport(base):
     """Open a transport to access a URL or directory.
 
@@ -642,40 +696,54 @@ def get_transport(base):
     # handler for the scheme?
     global _protocol_handlers
     if base is None:
-        base = u'.'
-    else:
-        base = unicode(base)
+        base = '.'
+
+    last_err = None
+
+    def convert_path_to_url(base, error_str):
+        m = _urlRE.match(base)
+        if m:
+            # This looks like a URL, but we weren't able to 
+            # instantiate it as such raise an appropriate error
+            raise errors.UnsupportedProtocol(base, last_err)
+        # This doesn't look like a protocol, consider it a local path
+        new_base = urlutils.local_path_to_url(base)
+        mutter('converting os path %r => url %s', base, new_base)
+        return new_base
+
+    # Catch any URLs which are passing Unicode rather than ASCII
+    try:
+        base = base.encode('ascii')
+    except UnicodeError:
+        # Only local paths can be Unicode
+        base = convert_path_to_url(base,
+            'URLs must be properly escaped (protocol: %s)')
+    
     for proto, factory_list in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
-            t = _try_transport_factories(base, factory_list)
+            t, last_err = _try_transport_factories(base, factory_list)
             if t:
                 return t
+
+    # We tried all the different protocols, now try one last time
+    # as a local protocol
+    base = convert_path_to_url(base, 'Unsupported protocol: %s')
+
     # The default handler is the filesystem handler, stored as protocol None
-    return _try_transport_factories(base, _protocol_handlers[None])
+    return _try_transport_factories(base, _protocol_handlers[None])[0]
 
 
 def _try_transport_factories(base, factory_list):
+    last_err = None
     for factory in factory_list:
         try:
-            return factory(base)
+            return factory(base), None
         except DependencyNotPresent, e:
             mutter("failed to instantiate transport %r for %r: %r" %
                     (factory, base, e))
+            last_err = e
             continue
-    return None
-
-
-def urlescape(relpath):
-    """Escape relpath to be a valid url."""
-    if isinstance(relpath, unicode):
-        relpath = relpath.encode('utf-8')
-    return urllib.quote(relpath)
-
-
-def urlunescape(relpath):
-    """Unescape relpath from url format."""
-    return urllib.unquote(relpath)
-    # TODO de-utf8 it last. relpath = utf8relpath.decode('utf8')
+    return None, last_err
 
 
 class Server(object):
@@ -802,7 +870,7 @@ register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTrans
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
-register_lazy_transport('memory:/', 'bzrlib.transport.memory', 'MemoryTransport')
+register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
 register_lazy_transport('vfat+', 

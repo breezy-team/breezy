@@ -1,9 +1,25 @@
+# Copyright (C) 2005, 2006 by Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 import os
 from StringIO import StringIO
 
 from bzrlib.branch import Branch
 from bzrlib.builtins import merge
-from bzrlib.commit import commit
+from bzrlib.conflicts import ConflictList, TextConflict
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
 from bzrlib.merge import transform_tree, merge_inner
 from bzrlib.osutils import pathjoin
@@ -124,3 +140,9 @@ class TestMerge(TestCaseWithTransport):
                     this_tree=tree_b, ignore_zero=False)
         log = self._get_log()
         self.failUnless('All changes applied successfully.\n' in log)
+
+    def test_merge_inner_conflicts(self):
+        tree_a = self.make_branch_and_tree('a')
+        tree_a.set_conflicts(ConflictList([TextConflict('patha')]))
+        merge_inner(tree_a.branch, tree_a, tree_a, this_tree=tree_a)
+        self.assertEqual(1, len(tree_a.conflicts()))

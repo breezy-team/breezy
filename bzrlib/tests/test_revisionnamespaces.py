@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,36 @@ from bzrlib.revisionspec import RevisionSpec
 
 class TestRevisionNamespaces(TestCaseWithTransport):
 
+    def test_revno_n_path(self):
+        """Test revision specifiers.
+
+        These identify revisions by date, etc."""
+        wta = self.make_branch_and_tree('a')
+        ba = wta.branch
+        
+        wta.commit('Commit one', rev_id='a@r-0-1')
+        wta.commit('Commit two', rev_id='a@r-0-2')
+        wta.commit('Commit three', rev_id='a@r-0-3')
+
+        wtb = self.make_branch_and_tree('b')
+        bb = wtb.branch
+
+        wtb.commit('Commit one', rev_id='b@r-0-1')
+        wtb.commit('Commit two', rev_id='b@r-0-2')
+        wtb.commit('Commit three', rev_id='b@r-0-3')
+
+        self.assertEquals(RevisionSpec('revno:1:a/').in_history(ba),
+                          (1, 'a@r-0-1'))
+        # The argument of in_history should be ignored since it is
+        # redundant with the path in the spec.
+        self.assertEquals(RevisionSpec('revno:1:a/').in_history(None),
+                          (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('revno:1:a/').in_history(bb),
+                          (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('revno:2:b/').in_history(None),
+                          (2, 'b@r-0-2'))
+
+
     def test_revision_namespaces(self):
         """Test revision specifiers.
 
@@ -50,6 +80,8 @@ class TestRevisionNamespaces(TestCaseWithTransport):
 
         self.assertEquals(RevisionSpec('date:today').in_history(b),
                           (2, 'a@r-0-2'))
+        self.assertRaises(NoSuchRevision,
+                          RevisionSpec('date:tomorrow').in_history, b)
         self.assertEquals(RevisionSpec('date:yesterday').in_history(b),
                           (1, 'a@r-0-1'))
         self.assertEquals(RevisionSpec('before:date:today').in_history(b),

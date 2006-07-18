@@ -33,9 +33,12 @@ class TestCommit(ExternalBase):
     def test_05_empty_commit(self):
         """Commit of tree with no versioned files should fail"""
         # If forced, it should succeed, but this is not tested here.
-        self.runbzr("init")
+        self.run_bzr("init")
         self.build_tree(['hello.txt'])
-        self.runbzr("commit -m empty", retcode=3)
+        result = self.run_bzr("commit", "-m", "empty", retcode=3)
+        self.assertEqual(('', 'bzr: ERROR: no changes to commit.'
+                              ' use --unchanged to commit anyhow\n'),
+                         result)
 
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
@@ -284,3 +287,16 @@ class TestCommit(ExternalBase):
         # version or the u2 version.
         self.build_tree_contents([('u1/hosts', 'merge resolution\n')])
         self.run_bzr('commit', '-m', 'checkin merge of the offline work from u1', 'u1')
+
+    def test_commit_respects_spec_for_removals(self):
+        """Commit with a file spec should only commit removals that match"""
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['file-a', 'dir-a/', 'dir-a/file-b'])
+        t.add(['file-a', 'dir-a', 'dir-a/file-b'])
+        t.commit('Create')
+        t.remove(['file-a', 'dir-a/file-b'])
+        os.chdir('dir-a')
+        result = self.run_bzr('commit', '.', '-m' 'removed file-b')[1]
+        self.assertNotContainsRe(result, 'file-a')
+        result = self.run_bzr('status')[0]
+        self.assertContainsRe(result, 'removed:\n  file-a')

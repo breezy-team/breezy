@@ -72,6 +72,9 @@ DEFAULT_IGNORE = [
                   'stamp-h.in',
                   'stamp-h1',
                   '{arch}',
+                  # Our setup tests dump .python-eggs in the bzr source tree
+                  # root
+                  './.python-eggs',
                   ]
 
 IGNORE_FILENAME = ".bzrignore"
@@ -85,6 +88,7 @@ if sys.platform == 'darwin':
     sys.platform = 'darwin'
 else:
     import locale
+# XXX: This probably belongs in osutils instead
 user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
