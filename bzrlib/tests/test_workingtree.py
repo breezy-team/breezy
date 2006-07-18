@@ -246,10 +246,32 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
 
     
     def test_gen_file_id(self):
-        self.assertStartsWith(bzrlib.workingtree.gen_file_id('bar'), 'bar-')
-        self.assertStartsWith(bzrlib.workingtree.gen_file_id('Mwoo oof\t m'), 'Mwoooofm-')
-        self.assertStartsWith(bzrlib.workingtree.gen_file_id('..gam.py'), 'gam.py-')
-        self.assertStartsWith(bzrlib.workingtree.gen_file_id('..Mwoo oof\t m'), 'Mwoooofm-')
+        gen_file_id = bzrlib.workingtree.gen_file_id
+
+        # We try to use the filename if possible
+        self.assertStartsWith(gen_file_id('bar'), 'bar-')
+
+        # but we squash capitalization, and remove non word characters
+        self.assertStartsWith(gen_file_id('Mwoo oof\t m'), 'mwoooofm-')
+
+        # We also remove leading '.' characters to prevent hidden file-ids
+        self.assertStartsWith(gen_file_id('..gam.py'), 'gam.py-')
+        self.assertStartsWith(gen_file_id('..Mwoo oof\t m'), 'mwoooofm-')
+
+        # we remove unicode characters, and still don't end up with a 
+        # hidden file id
+        self.assertStartsWith(gen_file_id(u'\xe5\xb5.txt'), 'txt-')
+        
+        # We truncate long filenames to be friendly to OS. This is
+        # less important with case squashing, because we do less escaping
+        # (A long all-caps filename used to create a *huge* filename on disk)
+        fid = gen_file_id('A'*50 + '.txt')
+        self.assertStartsWith(fid, 'a'*20 + '-')
+
+        # restricting length happens after the other actions, so
+        # we preserv as much as possible
+        fid = gen_file_id('\xe5\xb5..aBcd\tefGhijKLMnop\tqrstuvwxyz')
+        self.assertStartsWith(fid, 'abcdefghijklmnopqrst-')
 
     def test_next_id_suffix(self):
         bzrlib.workingtree._gen_id_suffix = None

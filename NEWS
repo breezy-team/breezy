@@ -161,6 +161,10 @@ IN DEVELOPMENT
       This allows you to parse an email with the bundle inline.
       (John Arbash Meinel, #49182)
 
+    * Change the file id generator to squash a little bit more. Helps when
+      working with long filenames on windows. (Also helps for unicode filenames
+      not generating hidden files). (John Arbash Meinel, #43801)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over

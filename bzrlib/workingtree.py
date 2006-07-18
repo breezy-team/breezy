@@ -106,11 +106,9 @@ import bzrlib.ui
 import bzrlib.xml5
 
 
-# the regex here does the following:
-# 1) remove any weird characters; we don't escape them but rather
-# just pull them out
- # 2) match leading '.'s to make it not hidden
-_gen_file_id_re = re.compile(r'[^\w.]|(^\.*)')
+# the regex removes any weird characters; we don't escape them 
+# but rather just pull them out
+_gen_file_id_re = re.compile(r'[^\w.]')
 _gen_id_suffix = None
 _gen_id_serial = 0
 
@@ -138,11 +136,20 @@ def gen_file_id(name):
 
     The uniqueness is supplied from _next_id_suffix.
     """
-    # XXX TODO: squash the filename to lowercase.
-    # XXX TODO: truncate the filename to something like 20 or 30 chars.
-    # XXX TODO: consider what to do with ids that look like illegal filepaths
-    # on platforms we support.
-    return _gen_file_id_re.sub('', name) + _next_id_suffix()
+    # The real randomness is in the _next_id_suffix, the
+    # rest of the identifier is just to be nice.
+    # So we:
+    # 1) Remove non-ascii word characters to keep the ids portable
+    # 2) squash to lowercase, so the file id doesn't have to
+    #    be escaped (case insensitive filesystems would bork for ids
+    #    that only differred in case without escaping).
+    # 3) truncate the filename to 20 chars. Long filenames also bork on some
+    #    filesystems
+    # 4) Removing starting '.' characters to prevent the file ids from
+    #    being considered hidden.
+    ascii_word_only = _gen_file_id_re.sub('', name.lower())
+    short_no_dots = ascii_word_only.lstrip('.')[:20]
+    return short_no_dots + _next_id_suffix()
 
 
 def gen_root_id():
