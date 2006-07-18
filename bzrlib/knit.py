@@ -704,8 +704,8 @@ class KnitVersionedFile(VersionedFile):
         # c = component_id, m = method, p = position, s = size, n = next
         records = [(c, p, s) for c, (m, p, s, n) in position_map.iteritems()]
         record_map = {}
-        for component_id, content, digest in\
-            self._data.read_records_iter(records): 
+        for component_id, content, digest in \
+                self._data.read_records_iter_unsorted(records):
             method, position, size, next = position_map[component_id]
             record_map[component_id] = method, content, digest, next
                           
@@ -1452,55 +1452,72 @@ class _KnitData(_KnitComponentFile):
         """
         if len(records) == 0:
             return
-        # profiling notes:
-        # 60890  calls for 4168 extractions in 5045, 683 internal.
-        # 4168   calls to readv              in 1411
-        # 4168   calls to parse_record       in 2880
 
-        # Get unique records, sorted by position
-        have_records = []
+        # Get a map of requested items. So that we can guarantee
+        # the returned list is in the same order as the requested list
+        # Unfortunately read_records_iter API doesn't require that
+        # the same version is not requested 2x. Otherwise we could
+        # just iterate over the values from read_records_iter_unsorted
+        # and only cache what is returned out of order.
+        record_map = dict((version_id, (content, digest))
+                          for version_id, content, digest
+                           in self.read_records_iter_unsorted(records))
+
+        for version_id, pos, size in records:
+            content, digest = record_map[version_id]
+            yield version_id, content, digest
+
+    def read_records_iter_unsorted(self, records):
+        """Read text records from data file and yield result.
+
+        The result will be returned in whatever is the fastest to read.
+        Not by the order requested. Also, multiple requests for the same
+        record will only yield 1 response.
+        :param records: A list of (version_id, pos, len) entries
+        :return: Yields (version_id, contents, digest) in the order
+                 read, not the order requested
+        """
+        if not records:
+            return
+
         if self._cache:
+            # Skip records we have alread seen
+            yielded_records = set()
             needed_records = set()
             for record in records:
                 if record[0] in self._cache:
-                    have_records.append(record[0])
+                    if record[0] in yielded_records:
+                        continue
+                    yielded_records.add(record[0])
+                    data = self._cache[record[0]]
+                    content, digest = self._parse_record(record[0], data)
+                    yield (record[0], content, digest)
                 else:
                     needed_records.add(record)
             needed_records = sorted(needed_records, key=operator.itemgetter(1))
         else:
             needed_records = sorted(set(records), key=operator.itemgetter(1))
 
-        # We take it that the transport optimizes the fetching as good
-        # as possible (ie, reads continuous ranges.)
-        if needed_records:
-            response = self._transport.readv(self._filename,
-                [(pos, size) for version_id, pos, size in needed_records])
-        else:
-            response = []
+        if not needed_records:
+            return
 
-        record_map = {}
+        # The transport optimizes the fetching as well 
+        # (ie, reads continuous ranges.)
+        readv_response = self._transport.readv(self._filename,
+            [(pos, size) for version_id, pos, size in needed_records])
 
-        if have_records:
-            for version_id in have_records:
-                data = self._cache[version_id]
-                content, digest = self._parse_record(version_id, data)
-                record_map[version_id] = (digest, content)
-
-        for (record_id, pos, size), (pos, data) in \
-            izip(iter(needed_records), response):
-            content, digest = self._parse_record(record_id, data)
-            record_map[record_id] = (digest, content)
+        for (version_id, pos, size), (pos, data) in \
+                izip(iter(needed_records), readv_response):
+            content, digest = self._parse_record(version_id, data)
             if self._do_cache:
-                self._cache[record_id] = data
-
-        for version_id, pos, size in records:
-            digest, content = record_map[version_id]
+                self._cache[version_id] = data
             yield version_id, content, digest
 
     def read_records(self, records):
         """Read records into a dictionary."""
         components = {}
-        for record_id, content, digest in self.read_records_iter(records):
+        for record_id, content, digest in \
+                self.read_records_iter_unsorted(records):
             components[record_id] = (content, digest)
         return components
 
