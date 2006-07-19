@@ -19,7 +19,7 @@ from bzrlib.progress import ProgressBar, DummyProgress
 from bzrlib.trace import mutter
 
 import os
-import shelve
+from bsddb import dbshelve as shelve
 
 from svn.core import SubversionException
 import svn.ra

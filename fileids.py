@@ -23,8 +23,7 @@ from bzrlib.knit import KnitVersionedFile
 from warnings import warn
 
 import os
-import shelve
-from copy import copy
+from bsddb import dbshelve as shelve
 import logwalker
 from repository import (escape_svn_path, generate_svn_revision_id, 
                         parse_svn_revision_id, MAPPING_VERSION)
@@ -87,18 +86,31 @@ class FileIdMap(object):
     def load(self, revid):
         return self.cache_dict[revid]
 
+    def apply_changes(self, uuid, revnum, branch, global_changes, map):
+        changes = get_local_changes(global_changes, self._log.scheme,
+                                        uuid)
+
+        def find_children(path, revid):
+            (_, bp, revnum) = parse_svn_revision_id(revid)
+            for p in self._log.find_children(bp+"/"+path, revnum):
+                yield self._log.scheme.unprefix(p)[1]
+
+        revid = generate_svn_revision_id(uuid, revnum, branch)
+
+        return self._apply_changes(map, revid, changes, find_children)
+
     def get_map(self, uuid, revnum, branch, pb=None):
         """Make sure the map is up to date until revnum."""
         # First, find the last cached map
         todo = []
-        parent_revs = []
+        next_parent_revs = []
         map = {"": (ROOT_ID, None)} # No history -> empty map
         for (bp, paths, rev) in self._log.follow_history(branch, revnum):
             revid = generate_svn_revision_id(uuid, rev, bp)
             try:
                 map = self.load(revid)
                 # found the nearest cached map
-                parent_revs = [revid]
+                next_parent_revs = [revid]
                 break
             except KeyError:
                 todo.append((revid, paths))
@@ -123,21 +135,21 @@ class FileIdMap(object):
                 for p in self._log.find_children(bp+"/"+path, revnum):
                     yield self._log.scheme.unprefix(p)[1]
 
+            parent_revs = next_parent_revs
             map = self._apply_changes(map, revid, changes, find_children)
-            self.save(revid, parent_revs, map)
-            parent_revs = [revid]
+            next_parent_revs = [revid]
             i = i + 1
 
         if pb is not None:
             pb.clear()
+
+        self.save(revid, parent_revs, map)
         return map
 
 
 class SimpleFileIdMap(FileIdMap):
     @staticmethod
-    def _apply_changes(base_map, revid, changes, find_children=None):
-        map = copy(base_map)
-
+    def _apply_changes(map, revid, changes, find_children=None):
         map[""] = (ROOT_ID, revid)
 
         sorted_paths = changes.keys()

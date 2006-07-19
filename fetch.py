@@ -41,12 +41,12 @@ def md5_strings(strings):
     return s.hexdigest()
 
 class RevisionBuildEditor(svn.delta.Editor):
-    def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, svn_revprops):
+    def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, svn_revprops, id_map):
         self.branch_path = branch_path
         self.inventory = prev_inventory.copy()
         self.revid = revid
         self.revnum = revnum
-        self.id_map = source.get_fileid_map(revnum, branch_path)
+        self.id_map = id_map
         self.source = source
         self.target = target
         self.transact = target.get_transaction()
@@ -273,25 +273,30 @@ class InterSvnRepository(InterRepository):
             (path, until_revnum) = self.source.parse_revision_id(revision_id)
         
         needed = []
-        for (branch, _, revnum) in \
+        for (branch, changes, revnum) in \
             self.source._log.follow_history(path, until_revnum):
             revid = self.source.generate_revision_id(revnum, branch)
 
             if not self.target.has_revision(revid):
-                needed.append((branch, revnum, revid))
+                needed.append((branch, revnum, revid, changes))
 
         num = 0
         needed.reverse()
         prev_revnum = 0
         prev_inv = Inventory()
-        for (branch, revnum, revid) in needed:
+        for (branch, revnum, revid, changes) in needed:
             if pb is not None:
                 pb.update('copying revision', num+1, len(needed)+1)
             num += 1
 
+            self.source.transform_idmap(self.source.uuid, 
+                                        revnum, branch, 
+                                        changes, id_map)
+
             editor = RevisionBuildEditor(self.source, self.target, branch, 
                                          revnum, prev_inv, revid, 
-                                     self.source._log.get_revision_info(revnum))
+                                     self.source._log.get_revision_info(revnum),
+                                     id_map)
 
             edit, edit_baton = svn.delta.make_editor(editor)
 
