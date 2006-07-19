@@ -414,6 +414,9 @@ Keep-Alive: timeout=15, max=100\r
 Connection: Keep-Alive\r
 Content-Type: text/plain; charset=UTF-8\r
 \r
+""", """this data intentionally removed, 
+this is not meant to be tested by
+handle_response, just _extract_headers
 """)
 
 
@@ -438,8 +441,8 @@ Content-Type: text/html; charset=iso-8859-1\r
 # want to parse are here
 class TestExtractHeader(TestCase):
     
-    def use_response(self, response, **kwargs):
-        self.headers = http._extract_headers(StringIO(response[1]), **kwargs)
+    def use_response(self, response):
+        self.headers = http._extract_headers(response[1], 'http://foo')
 
     def check_header(self, header, value):
         self.assertEqual(value, self.headers[header])
@@ -479,20 +482,53 @@ class TestExtractHeader(TestCase):
         self.check_header('Content-Range', 'bytes 8623075-8623499/8623500')
         self.check_header('Content-Type', 'text/plain; charset=UTF-8')
 
-    def test_redirect_body_is_body(self):
-        """Check that we parse the right portion if body_is_header is True"""
-        self.use_response(_redirect_response, body_is_header=False)
-        self.assertRaises(KeyError, self.headers.__getitem__, 'Content-Range')
-        self.check_header('Content-Type', 'text/html; charset=iso-8859-1')
-        self.check_header('Location',
-            'http://bazaar-vcs.org/bzr/bzr.dev/.bzr/repository/inventory.knit')
-                       
+    def test_empty(self):
+        self.assertRaises(errors.InvalidHttpResponse,
+            http._extract_headers, '', 'bad url')
+
+    def test_no_opening_http(self):
+        # Remove the HTTP line from the header
+        first, txt = _full_text_response[1].split('\r\n', 1)
+        self.assertRaises(errors.InvalidHttpResponse,
+            http._extract_headers, txt, 'missing HTTTP')
+
+    def test_trailing_whitespace(self):
+        # Test that we ignore bogus whitespace on the end
+        code, txt, body = _full_text_response
+        txt += '\r\n\n\n\n\n'
+        self.use_response((code, txt, body))
+
+        self.check_header('Date', 'Tue, 11 Jul 2006 04:32:56 GMT')
+        self.check_header('Content-Length', '35')
+        self.check_header('Content-Type', 'text/plain; charset=UTF-8')
+
+    def test_trailing_non_http(self):
+        # Test that we ignore bogus stuff on the end
+        code, txt, body = _full_text_response
+        txt = txt + 'Foo: Bar\r\nBaz: Bling\r\n\r\n'
+        self.use_response((code, txt, body))
+
+        self.check_header('Date', 'Tue, 11 Jul 2006 04:32:56 GMT')
+        self.check_header('Content-Length', '35')
+        self.check_header('Content-Type', 'text/plain; charset=UTF-8')
+        self.assertRaises(KeyError, self.headers.__getitem__, 'Foo')
+
+    def test_extra_whitespace(self):
+        # Test that we read an HTTP response, even with extra whitespace
+        code, txt, body = _redirect_response
+        # Find the second HTTP location
+        loc = txt.find('HTTP', 5)
+        txt = txt[:loc] + '\r\n\n' + txt[loc:]
+        self.use_response((code, txt, body))
+        self.check_header('Content-Range', 'bytes 8623075-8623499/8623500')
+        self.check_header('Content-Type', 'text/plain; charset=UTF-8')
+
 
 class TestHandleResponse(TestCase):
     
     def get_response(self, a_response):
         """Process a supplied response, and return the result."""
-        headers = http._extract_headers(StringIO(a_response[1]))
+        headers = http._extract_headers(a_response[1], 'http://foo')
         return response.handle_response('http://foo', a_response[0], headers,
                                         StringIO(a_response[2]))
 
@@ -532,7 +568,7 @@ class TestHandleResponse(TestCase):
     def test_full_text_no_content_type(self):
         # We should not require Content-Type for a full response
         a_response = _full_text_response
-        headers = http._extract_headers(StringIO(a_response[1]))
+        headers = http._extract_headers(a_response[1], 'http://foo')
         del headers['Content-Type']
         out = response.handle_response('http://foo', a_response[0], headers,
                                         StringIO(a_response[2]))
@@ -541,7 +577,7 @@ class TestHandleResponse(TestCase):
     def test_missing_no_content_type(self):
         # Without Content-Type we should still raise NoSuchFile on a 404
         a_response = _missing_response
-        headers = http._extract_headers(StringIO(a_response[1]))
+        headers = http._extract_headers(a_response[1], 'http://missing')
         del headers['Content-Type']
         self.assertRaises(errors.NoSuchFile,
             response.handle_response, 'http://missing', a_response[0], headers,
@@ -549,7 +585,7 @@ class TestHandleResponse(TestCase):
 
     def test_missing_content_type(self):
         a_response = _single_range_response
-        headers = http._extract_headers(StringIO(a_response[1]))
+        headers = http._extract_headers(a_response[1], 'http://nocontent')
         del headers['Content-Type']
         self.assertRaises(errors.InvalidHttpContentType,
             response.handle_response, 'http://nocontent', a_response[0],
@@ -557,7 +593,7 @@ class TestHandleResponse(TestCase):
 
     def test_missing_content_range(self):
         a_response = _single_range_response
-        headers = http._extract_headers(StringIO(a_response[1]))
+        headers = http._extract_headers(a_response[1], 'http://nocontent')
         del headers['Content-Range']
         self.assertRaises(errors.InvalidHttpResponse,
             response.handle_response, 'http://nocontent', a_response[0],

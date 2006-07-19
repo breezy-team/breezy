@@ -34,6 +34,7 @@ from warnings import warn
 import BaseHTTPServer, SimpleHTTPServer, socket, time
 import threading
 
+from bzrlib import errors
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError, InvalidURL)
 from bzrlib.branch import Branch
@@ -74,33 +75,47 @@ def extract_auth(url, password_manager):
     return url
 
 
-def _extract_headers(header_file, skip_first=True, body_is_header=True):
-    """Extract the mapping for an rfc822 header
+def _extract_headers(header_text, url):
+    """Extract the mapping for an rfc2822 header
 
-    This is a helper function for the test suite, and for _pycurl.
+    This is a helper function for the test suite and for _pycurl.
     (urllib already parses the headers for us)
 
-    :param header_file: A file-like object to read
-    :param skip_first: HTTP headers start with the HTTP response as
-                       the first line. Skip this line while parsing
-    :param body_is_header: When pycurl gets a redirect request, it saves
-            both the redirect headers and the final headers in the header
-            file. Which means we really want the latter headers, not the
-            former.
-    :return: mimetools.Message object
+    In the case that there are multiple headers inside the file,
+    the last one is returned.
+
+    :param header_text: A string of header information.
+        This expects that the first line of a header will always be HTTP ...
+    :param url: The url we are parsing, so we can raise nice errors
+    :return: mimetools.Message object, which basically acts like a case 
+        insensitive dictionary.
     """
-    header_file.seek(0, 0)
-    if skip_first:
-        header_file.readline()
-    m = mimetools.Message(header_file)
-    if body_is_header:
-        m.rewindbody()
-        remaining = header_file.read()
-        # Ignore some extra whitespace, but if we have acutal content
-        # lines, then the later content superceeds the eariler.
-        if remaining.strip() != '':
-            return _extract_headers(StringIO(remaining), skip_first=skip_first,
-                                    body_is_header=True)
+    first_header = True
+    remaining = header_text
+
+    if not remaining:
+        raise errors.InvalidHttpResponse(url, 'Empty headers')
+
+    while remaining:
+        header_file = StringIO(remaining)
+        first_line = header_file.readline()
+        if not first_line.startswith('HTTP'):
+            if first_header: # The first header *must* start with HTTP
+                raise errors.InvalidHttpResponse(url,
+                    'Opening header line did not start with HTTP: %s' 
+                    % (first_line,))
+                assert False, 'Opening header line was not HTTP'
+            else:
+                break # We are done parsing
+        first_header = False
+        m = mimetools.Message(header_file)
+
+        # mimetools.Message parses the first header up to a blank line
+        # So while there is remaining data, it probably means there is
+        # another header to be parsed.
+        # Get rid of any preceeding whitespace, which if it is all whitespace
+        # will get rid of everything.
+        remaining = header_file.read().lstrip()
     return m
 
 

@@ -24,7 +24,7 @@
 # It's probably safer to just always revalidate.  mbp 20060321
 
 import os
-from StringIO import StringIO
+from cStringIO import StringIO
 
 from bzrlib import errors
 import bzrlib
@@ -34,8 +34,8 @@ from bzrlib.errors import (TransportNotPossible, NoSuchFile,
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import (HttpTransportBase, HttpServer,
-                                   response, _extract_headers,
-                                   _pycurl_errors)
+                                   _extract_headers,
+                                   response, _pycurl_errors)
 
 try:
     import pycurl
@@ -175,7 +175,7 @@ class PyCurlTransport(HttpTransportBase):
 
         code = curl.getinfo(pycurl.HTTP_CODE)
         # mutter('url: %s header:\n%s', abspath, header.getvalue())
-        headers = _extract_headers(header, skip_first=True)
+        headers = _extract_headers(header.getvalue(), abspath)
         # handle_response will raise NoSuchFile, etc based on the response code
         return code, response.handle_response(abspath, code, headers, data)
 
