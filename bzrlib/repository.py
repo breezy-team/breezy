@@ -2014,9 +2014,9 @@ class CommitBuilder(object):
             self._revprops.update(revprops)
 
         if timestamp is None:
-            self._timestamp = time.time()
-        else:
-            self._timestamp = long(timestamp)
+            timestamp = time.time()
+        # Restrict resolution to 1ms
+        self._timestamp = round(timestamp, 3)
 
         if timezone is None:
             self._timezone = local_time_offset()

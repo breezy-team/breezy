@@ -520,3 +520,26 @@ class TestCommit(TestCaseWithTransport):
         basis = tree.basis_tree().inventory
         self.assertIs(None, basis.path2id('a'))
         self.assertFalse(basis.path2id('b') is None)
+
+    def test_commit_saves_1ms_timestamp(self):
+        """Passing in a timestamp is saved with 1ms resolution"""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.add('a')
+        tree.commit('added a', timestamp=1153248633.4186721, timezone=0,
+                    rev_id='a1')
+
+        rev = tree.branch.repository.get_revision('a1')
+        self.assertEqual(1153248633.419, rev.timestamp)
+
+    def test_commit_has_1ms_resolution(self):
+        """Allowing commit to generate the timestamp also has 1ms resolution"""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.add('a')
+        tree.commit('added a', rev_id='a1')
+
+        rev = tree.branch.repository.get_revision('a1')
+        timestamp = rev.timestamp
+        timestamp_1ms = round(timestamp, 3)
+        self.assertEqual(timestamp_1ms, timestamp)
