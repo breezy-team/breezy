@@ -113,7 +113,9 @@ def get_user_ignores():
     try:
         f = open(path, 'rb')
     except (IOError, OSError), e:
-        if e.errno not in (errno.ENOENT,):
+        # open() shouldn't return an IOError without errno, but just in case
+        err = getattr(e, 'errno', None)
+        if err not in (errno.ENOENT,):
             raise
         # Create the ignore file, and just return the default
         # We want to ignore if we can't write to the file

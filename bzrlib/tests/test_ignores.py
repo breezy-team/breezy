@@ -35,11 +35,14 @@ class TestParseIgnoreFile(TestCase):
                 '#comment\n'
                 ' xx \n' # whitespace
                 ))
-        self.assertEqual(['./rootdir', 'randomfile*'
-                          , 'path/from/ro?t'
-                          , u'unicode\xb5'
-                          , 'dos'
-                          , ' xx '], ignored)
+        self.assertEqual(['./rootdir',
+                          'randomfile*',
+                          'path/from/ro?t',
+                          u'unicode\xb5',
+                          'dos',
+                          ' xx ',
+                         ], ignored)
+
     def test_parse_empty(self):
         ignored = ignores.parse_ignore_file(StringIO(''))
         self.assertEqual([], ignored)
