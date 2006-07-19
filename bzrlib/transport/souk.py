@@ -120,6 +120,14 @@ limited to a directory?
 # data rather than passing it as a string; they could perhaps pass an
 # iterator-like callback that will gradually yield data; it probably needs a
 # close() method that will always be closed to do any necessary cleanup.
+#
+# TODO: Transport should probably not implicitly connect from its constructor;
+# it's quite useful to be able to deal with Transports representing locations
+# without actually opening it.
+#
+# TODO: Better name for this.
+#
+# TODO: Split the actual smart server from the ssh encoding of it.
 
 
 from cStringIO import StringIO
@@ -597,6 +605,10 @@ class SoukTCPClient(SoukTransport):
         super(SoukTCPClient, self).__init__(url)
         self._scheme, self._username, self._password, self._host, self._port, self._path = \
                 transport.split_url(url)
+        try:
+            self._port = int(self._port)
+        except (ValueError, TypeError), e:
+            raise errors.InvalidURL(path=url, extra="invalid port %s" % self._port)
 
     def _connect_to_server(self):
         self._socket = socket.socket()
