@@ -1450,22 +1450,40 @@ class _KnitData(_KnitComponentFile):
         will be read in the given order.  Yields (version_id,
         contents, digest).
         """
-        if len(records) == 0:
+        n_records = len(records)
+        if n_records == 0:
             return
 
-        # Get a map of requested items. So that we can guarantee
-        # the returned list is in the same order as the requested list
-        # Unfortunately read_records_iter API doesn't require that
-        # the same version is not requested 2x. Otherwise we could
-        # just iterate over the values from read_records_iter_unsorted
-        # and only cache what is returned out of order.
-        record_map = dict((version_id, (content, digest))
-                          for version_id, content, digest
-                           in self.read_records_iter_unsorted(records))
+        record_requests = {}
+        for record in records:
+            y = record_requests.setdefault(record, 0)
+            y += 1
 
-        for version_id, pos, size in records:
-            content, digest = record_map[version_id]
-            yield version_id, content, digest
+        # Keep track of where we are in the record list
+        # Alternatively we could turn this into a new list
+        # reverse it, and pop off the end, that would let
+        # us assert that we had gotten through the whole thing
+        record_stack = iter(records)
+        next_record = record_stack.next()
+
+        yield_count = 0
+        record_map = {}
+        for version_id, content, digest in \
+                self.read_records_iter_unsorted(records):
+            record_map[version_id] = (content, digest)
+
+            while next_record[0] in record_map:
+                next_content, next_digest = record_map[next_record[0]]
+                record_requests[next_record] -= 1
+                if record_requests[next_record] == 0:
+                    del record_map.pop[next_record]
+                yield_count += 1
+                yield next_record[0], next_content, next_digest
+                next_record = record_stack.next()
+
+        # When we get this far, the record_stack should be empty
+        assert yield_count == n_records
+        assert record_map == {}, 'We still have records queued up'
 
     def read_records_iter_unsorted(self, records):
         """Read text records from data file and yield result.
