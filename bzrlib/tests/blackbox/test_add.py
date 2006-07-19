@@ -19,6 +19,8 @@
 
 import os
 
+from bzrlib import ignores
+
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -26,6 +28,8 @@ class TestAdd(ExternalBase):
         
     def test_add_reports(self):
         """add command prints the names of added files."""
+        ignores.set_user_ignores(['./.bazaar'])
+
         self.runbzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
         self.build_tree_contents([('.bzrignore', 'CVS\n')])
@@ -38,12 +42,13 @@ class TestAdd(ExternalBase):
                            'added dir',
                            'added dir/sub.txt',
                            'added top.txt',
-                           'ignored 1 file(s).'],
+                           'ignored 2 file(s).'],
                           results)
         out = self.run_bzr_captured(['add', '-v'], retcode=0)[0]
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['If you wish to add some of these files, please'\
                            ' add them by name.',
+                           'ignored .bazaar matching "./.bazaar"',
                            'ignored CVS matching "CVS"'],
                           results)
 
@@ -61,6 +66,8 @@ class TestAdd(ExternalBase):
 
         "bzr add" should add the parent(s) as necessary.
         """
+        ignores.set_user_ignores(['./.bazaar'])
+
         self.runbzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
@@ -84,6 +91,8 @@ class TestAdd(ExternalBase):
 
         "bzr add" should do this happily.
         """
+        ignores.set_user_ignores(['./.bazaar'])
+
         self.runbzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
@@ -95,9 +104,10 @@ class TestAdd(ExternalBase):
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
         from bzrlib.workingtree import WorkingTree
-        
+
+        ignores.set_user_ignores(['./.bazaar'])
         eq = self.assertEqual
-        ass = self.assert_
+        ass = self.assertTrue
         chdir = os.chdir
         
         t = self.make_branch_and_tree('.')

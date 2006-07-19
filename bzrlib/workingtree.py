@@ -51,7 +51,8 @@ import stat
 from time import time
 import warnings
 
-from bzrlib import bzrdir, errors, osutils, urlutils
+import bzrlib
+from bzrlib import bzrdir, errors, ignores, osutils, urlutils
 from bzrlib.atomicfile import AtomicFile
 import bzrlib.branch
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
@@ -374,7 +375,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         inv = self._inventory
         for path, ie in inv.iter_entries():
-            if bzrlib.osutils.lexists(self.abspath(path)):
+            if osutils.lexists(self.abspath(path)):
                 yield ie.file_id
 
     def __repr__(self):
@@ -446,7 +447,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return relpath(self.basedir, path)
 
     def has_filename(self, filename):
-        return bzrlib.osutils.lexists(self.abspath(filename))
+        return osutils.lexists(self.abspath(filename))
 
     def get_file(self, file_id):
         return self.get_file_byname(self.id2path(file_id))
@@ -536,7 +537,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if not inv.has_id(file_id):
             return False
         path = inv.id2path(file_id)
-        return bzrlib.osutils.lexists(self.abspath(path))
+        return osutils.lexists(self.abspath(path))
 
     def has_or_had_id(self, file_id):
         if file_id == self.inventory.root.file_id:
@@ -720,8 +721,8 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         inv = self._inventory
         # Convert these into local objects to save lookup times
-        pathjoin = bzrlib.osutils.pathjoin
-        file_kind = bzrlib.osutils.file_kind
+        pathjoin = osutils.pathjoin
+        file_kind = osutils.file_kind
 
         # transport.base ends in a slash, we want the piece
         # between the last two slashes
@@ -1097,17 +1098,24 @@ class WorkingTree(bzrlib.tree.Tree):
 
         Cached in the Tree object after the first call.
         """
-        if hasattr(self, '_ignorelist'):
-            return self._ignorelist
+        ignorelist = getattr(self, '_ignorelist', None)
+        if ignorelist is not None:
+            return ignorelist
 
-        l = []
+        ignore_globs = bzrlib.DEFAULT_IGNORE[:]
+
+        ignore_globs.extend(ignores.get_user_ignores())
+
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
-            l.extend([line.rstrip("\n\r").decode('utf-8') 
-                      for line in f.readlines()])
-        self._ignorelist = l
-        self._ignore_regex = self._combine_ignore_rules(l)
-        return l
+            try:
+                ignore_globs.extend(ignores.parse_ignore_file(f))
+            finally:
+                f.close()
+
+        self._ignorelist = ignore_globs
+        self._ignore_regex = self._combine_ignore_rules(ignore_globs)
+        return ignore_globs
 
     def _get_ignore_rules_as_regex(self):
         """Return a regex of the ignore rules and a mapping dict.

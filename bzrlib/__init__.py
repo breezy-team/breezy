@@ -17,66 +17,6 @@
 """bzr library"""
 
 
-# please keep these sorted (in C locale order) to aid merging
-DEFAULT_IGNORE = [
-                  '#*#',
-                  '*$',
-                  '*,v',
-                  '*.BAK',
-                  '*.a',
-                  '*.bak',
-                  '*.elc',
-                  '*.exe',
-                  '*.la',
-                  '*.lo',
-                  '*.o',
-                  '*.o',
-                  '*.obj',
-                  '*.orig',
-                  '*.py[oc]',
-                  '*.so',
-                  '*.tmp',
-                  '.*.tmp',
-                  '*~',
-                  '.#*',
-                  '.*.sw[nop]',
-                  '.sw[nop]',    # vim editing nameless file
-                  '.DS_Store',
-                  '.arch-ids',
-                  '.arch-inventory',
-                  '.bzr.log',
-                  '.del-*',
-                  '.hg',
-                  '.git',
-                  '.jamdeps'
-                  '.libs',
-                  '.make.state',
-                  '.sconsign*',
-                  '.svn',
-                  '.tmp*',
-                  'BitKeeper',
-                  'CVS',
-                  'CVS.adm',
-                  'RCS',
-                  'SCCS',
-                  'TAGS',
-                  '_darcs',
-                  'aclocal.m4',
-                  'autom4te*',
-                  'config.h',
-                  'config.h.in',
-                  'config.log',
-                  'config.status',
-                  'config.sub',
-                  'stamp-h',
-                  'stamp-h.in',
-                  'stamp-h1',
-                  '{arch}',
-                  # Our setup tests dump .python-eggs in the bzr source tree
-                  # root
-                  './.python-eggs',
-                  ]
-
 IGNORE_FILENAME = ".bzrignore"
 
 import os
@@ -108,9 +48,18 @@ if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
 else:
     version_string = '%d.%d.%d%s%d' % version_info
-__version__ = version_string 
+__version__ = version_string
 
-from bzrlib.symbol_versioning import deprecated_function, zero_seven
+from bzrlib.symbol_versioning import (deprecated_function,
+                                      zero_seven,
+                                      zero_nine,
+                                      deprecated_list,
+                                     )
+
+# Kept for compatibility with 0.8, it is considered deprecated to modify it
+DEFAULT_IGNORE = deprecated_list(zero_nine, 'DEFAULT_IGNORE', [],
+                    'Consider using bzrlib.ignores.add_unique_user_ignores')
+
 
 @deprecated_function(zero_seven)
 def get_bzr_revision():

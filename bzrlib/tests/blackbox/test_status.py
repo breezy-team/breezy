@@ -28,10 +28,9 @@ from os import mkdir, chdir
 import sys
 from tempfile import TemporaryFile
 
+from bzrlib import bzrdir, errors, ignores
 import bzrlib.branch
 from bzrlib.builtins import merge
-import bzrlib.bzrdir as bzrdir
-import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.status import show_tree_status
@@ -41,10 +40,12 @@ from bzrlib.workingtree import WorkingTree
 
 class BranchStatus(TestCaseWithTransport):
     
-    def test_branch_status(self): 
+    def test_branch_status(self):
         """Test basic branch status"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
+
+        ignores.set_user_ignores(['./.bazaar'])
 
         # status with nothing
         tof = StringIO()
@@ -68,6 +69,8 @@ class BranchStatus(TestCaseWithTransport):
         """Tests branch status with revisions"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
+
+        ignores.set_user_ignores(['./.bazaar'])
 
         tof = StringIO()
         self.build_tree(['hello.c', 'bye.c'])
@@ -139,6 +142,8 @@ class BranchStatus(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
 
+        ignores.set_user_ignores(['./.bazaar'])
+
         self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
         wt.add('directory')
         wt.add('test.c')
@@ -199,6 +204,8 @@ class CheckoutStatus(BranchStatus):
 class TestStatus(TestCaseWithTransport):
 
     def test_status(self):
+        ignores.set_user_ignores(['./.bazaar'])
+
         self.run_bzr("init")
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status")[0]
