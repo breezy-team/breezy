@@ -221,8 +221,8 @@ See http://bazaar-vcs.org/BzrSvn for details.
     def get_fileid_map(self, revnum, path, pb=None):
         return self.fileid_map.get_map(self.uuid, revnum, path, pb)
 
-	def transform_fileid_map(self, uuid, revnum, branch, changes, map):
-		return self.fileid_map.apply_changes(uuid, revnum, branch, changes, map)
+    def transform_fileid_map(self, uuid, revnum, branch, changes, map):
+        return self.fileid_map.apply_changes(uuid, revnum, branch, changes, map)
 
     def path_to_file_id(self, revnum, path):
         """Generate a bzr file id from a Subversion file name. 

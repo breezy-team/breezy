@@ -284,12 +284,16 @@ class InterSvnRepository(InterRepository):
         needed.reverse()
         prev_revnum = 0
         prev_inv = Inventory()
+        prev_revid = None
         for (branch, revnum, revid, changes) in needed:
             if pb is not None:
                 pb.update('copying revision', num+1, len(needed)+1)
             num += 1
 
-            self.source.transform_idmap(self.source.uuid, 
+            if prev_revid is None or self.target.has_revision(prev_revid):
+                id_map = self.source.get_fileid_map(revnum, branch)
+            else:
+                self.source.transform_fileid_map(self.source.uuid, 
                                         revnum, branch, 
                                         changes, id_map)
 
@@ -312,6 +316,7 @@ class InterSvnRepository(InterRepository):
 
             prev_inv = editor.inventory
             prev_revnum = revnum
+            prev_revid = revid
 
         if pb is not None:
             pb.clear()
