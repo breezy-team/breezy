@@ -22,6 +22,7 @@ import time
 import unittest
 import warnings
 
+from bzrlib import osutils
 import bzrlib
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
@@ -395,6 +396,9 @@ class MockProgress(_BaseProgressBar):
     def clear(self):
         self.calls.append(('clear',))
 
+    def note(self, msg, *args):
+        self.calls.append(('note', msg, args))
+
 
 class TestTestResult(TestCase):
 
@@ -405,44 +409,54 @@ class TestTestResult(TestCase):
         mypb = MockProgress()
         mypb.update('Running tests', 0, 4)
         last_calls = mypb.calls[:]
+
         result = bzrlib.tests._MyResult(self._log_file,
                                         descriptions=0,
                                         verbosity=1,
                                         pb=mypb)
         self.assertEqual(last_calls, mypb.calls)
 
+        def shorten(s):
+            """Shorten a string based on the terminal width"""
+            return result._ellipsise_unimportant_words(s,
+                                 osutils.terminal_width())
+
         # an error 
         result.startTest(dummy_test)
         # starting a test prints the test name
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 0, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 0, None)]
+        self.assertEqual(last_calls, mypb.calls)
         result.addError(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', 'ERROR        ', 1, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', 'ERROR        ', 1, None),
+                       ('note', shorten(dummy_test.id() + ': ERROR'), ())
+                      ]
+        self.assertEqual(last_calls, mypb.calls)
 
         # a failure
         result.startTest(dummy_test)
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 1, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 1, None)]
+        self.assertEqual(last_calls, mypb.calls)
+        last_calls += [('update', 'FAIL         ', 2, None),
+                       ('note', shorten(dummy_test.id() + ': FAIL'), ())
+                      ]
         result.addFailure(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', 'FAIL         ', 2, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        self.assertEqual(last_calls, mypb.calls)
 
         # a success
         result.startTest(dummy_test)
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 2, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 2, None)]
+        self.assertEqual(last_calls, mypb.calls)
         result.addSuccess(dummy_test)
-        self.assertEqual(last_calls + [('update', 'OK           ', 3, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', 'OK           ', 3, None)]
+        self.assertEqual(last_calls, mypb.calls)
 
         # a skip
         result.startTest(dummy_test)
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 3, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 3, None)]
+        self.assertEqual(last_calls, mypb.calls)
         result.addSkipped(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', 'SKIP         ', 4, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', 'SKIP         ', 4, None)]
+        self.assertEqual(last_calls, mypb.calls)
 
     def test_elapsed_time_with_benchmarking(self):
         result = bzrlib.tests._MyResult(self._log_file,
