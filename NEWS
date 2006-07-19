@@ -104,6 +104,14 @@ IN DEVELOPMENT
    * 'bzr init' now also works on remote locations.
      (Wouter van Heyst, #48904)
 
+   * HTTP support has been updated. When using pycurl we now support 
+     connection keep-alive, which reduces dns requests and round trips.
+     And for both urllib and pycurl we support multi-range requests, 
+     which decreases the number of round-trips. Performance results for
+     ``bzr branch http://bazaar-vcs.org/bzr/bzr.dev/`` is not 2-3x faster.
+     And ``bzr pull`` in an existing branch is as much as 4x faster.
+     (Michael Ellerman, Johan Rydberg, John Arbash Meinel, #46768)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
