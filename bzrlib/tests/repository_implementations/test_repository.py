@@ -147,9 +147,9 @@ class TestRepository(TestCaseWithRepository):
         tree = wt.branch.repository.revision_tree('revision-1')
         self.assertEqual(list(tree.list_files()), [])
         tree = wt.branch.repository.revision_tree(None)
-        self.assertEqual(len(tree.list_files()), 0)
+        self.assertEqual([], list(tree.list_files()))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
-        self.assertEqual(len(tree.list_files()), 0)
+        self.assertEqual([], list(tree.list_files()))
 
     def test_fetch(self):
         # smoke test fetch to ensure that the convenience function works.
