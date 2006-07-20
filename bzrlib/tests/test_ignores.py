@@ -107,3 +107,32 @@ class TestUserIgnores(TestCaseInTempDir):
         self.assertEqual(['xxx'], added)
         self.assertEqual(['foo', './bar', u'b\xe5z', 'xxx'],
                          ignores.get_user_ignores())
+
+
+class TestRuntimeIgnores(TestCase):
+
+    def setUp(self):
+        TestCase.setUp(self)
+
+        orig = ignores._runtime_ignores
+        def restore():
+            ignores._runtime_ignores = orig
+        self.addCleanup(restore)
+        # For the purposes of these tests, we must have no
+        # runtime ignores
+        ignores._runtime_ignores = set()
+
+    def test_add(self):
+        """Test that we can add an entry to the list."""
+        self.assertEqual(set(), ignores.get_runtime_ignores())
+
+        ignores.add_runtime_ignores(['foo'])
+        self.assertEqual(set(['foo']), ignores.get_runtime_ignores())
+
+    def test_add_duplicate(self):
+        """Adding the same ignore twice shouldn't add a new entry."""
+        ignores.add_runtime_ignores(['foo', 'bar'])
+        self.assertEqual(set(['foo', 'bar']), ignores.get_runtime_ignores())
+
+        ignores.add_runtime_ignores(['bar'])
+        self.assertEqual(set(['foo', 'bar']), ignores.get_runtime_ignores())

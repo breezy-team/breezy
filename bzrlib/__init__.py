@@ -58,7 +58,8 @@ from bzrlib.symbol_versioning import (deprecated_function,
 
 # Kept for compatibility with 0.8, it is considered deprecated to modify it
 DEFAULT_IGNORE = deprecated_list(zero_nine, 'DEFAULT_IGNORE', [],
-                    'Consider using bzrlib.ignores.add_unique_user_ignores')
+                    'Consider using bzrlib.ignores.add_unique_user_ignores'
+                    ' or bzrlib.ignores.add_runtime_ignores')
 
 
 @deprecated_function(zero_seven)

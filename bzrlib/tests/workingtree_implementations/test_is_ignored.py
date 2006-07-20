@@ -166,3 +166,20 @@ class TestIsIgnored(TestCaseWithWorkingTree):
             self.assertEqual('*.py[co]', tree.is_ignored('foo.pyc'))
         finally:
             list.remove(bzrlib.DEFAULT_IGNORE, '*.py[co]')
+
+    def test_runtime_ignores(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('.bzrignore', '')])
+        ignores.set_user_ignores([])
+
+        orig_runtime = ignores._runtime_ignores
+        try:
+            ignores._runtime_ignores = set()
+            self.assertEqual(None, tree.is_ignored('.shelf'))
+
+            tree._ignorelist = None
+            ignores.add_runtime_ignores(['./.shelf'])
+            self.assertEqual(set(['./.shelf']), ignores.get_runtime_ignores())
+            self.assertEqual('./.shelf', tree.is_ignored('.shelf'))
+        finally:
+            ignores._runtime_ignores = orig_runtime

@@ -349,8 +349,12 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
         # which causes this test to fail so force the DEFAULT_IGNORE
         # list to be empty
         orig_default = bzrlib.DEFAULT_IGNORE
+        # Also make sure the runtime ignore list is empty
+        orig_runtime = ignores._runtime_ignores
         try:
             bzrlib.DEFAULT_IGNORE = []
+            ignores._runtime_ignores = set()
+
             self.build_tree_contents([('.bzrignore', 'CVS\n.hg\n')])
             reference_output = tree._combine_ignore_rules(['CVS', '.hg'])[0]
             regex_rules = tree._get_ignore_rules_as_regex()[0]
@@ -358,3 +362,4 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
             self.assertEqual(reference_output[1], regex_rules[1])
         finally:
             bzrlib.DEFAULT_IGNORE = orig_default
+            ignores._runtime_ignores = orig_runtime

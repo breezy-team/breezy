@@ -1109,7 +1109,8 @@ class WorkingTree(bzrlib.tree.Tree):
         if ignorelist is not None:
             return ignorelist
 
-        ignore_globs = bzrlib.DEFAULT_IGNORE[:]
+        ignore_globs = (bzrlib.DEFAULT_IGNORE[:] +
+                        list(ignores.get_runtime_ignores()))
 
         ignore_globs.extend(ignores.get_user_ignores())
 

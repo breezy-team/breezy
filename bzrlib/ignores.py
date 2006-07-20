@@ -175,3 +175,26 @@ def add_unique_user_ignores(new_ignores):
         f.close()
 
     return to_add
+
+
+_runtime_ignores = set()
+
+
+def add_runtime_ignores(ignores):
+    """Add some ignore patterns that only exists in memory.
+
+    This is used by some plugins that want bzr to ignore files,
+    but don't want to change a users ignore list.
+    (Such as a conversion script, that needs to ignore some files,
+    but must preserve as much of the exact content boing converted.)
+
+    :param ignores: A list or generator of ignore patterns.
+    :return: None
+    """
+    global _runtime_ignores
+    _runtime_ignores.update(set(ignores))
+
+
+def get_runtime_ignores():
+    """Get the current set of runtime ignores."""
+    return _runtime_ignores
