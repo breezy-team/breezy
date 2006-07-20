@@ -2721,15 +2721,15 @@ class cmd_serve(Command):
         ]
 
     def run(self, port=None, inet=False, directory=None):
-        from bzrlib.transport import souk
+        from bzrlib.transport import smart
         from bzrlib.transport import get_transport
         if directory is None:
             directory = os.getcwd()
         t = get_transport(directory)
         if inet:
-            server = souk.SoukStreamServer(sys.stdin, sys.stdout, t)
+            server = smart.SmartStreamServer(sys.stdin, sys.stdout, t)
         elif port is not None:
-            server = souk.SoukTCPServer(t, port=port)
+            server = smart.SmartTCPServer(t, port=port)
         server.serve()
 
 

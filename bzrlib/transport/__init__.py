@@ -932,5 +932,5 @@ register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
 register_lazy_transport('bzr://',
-                        'bzrlib.transport.souk',
-                        'SoukTCPClient')
+                        'bzrlib.transport.smart',
+                        'SmartTCPTransport')

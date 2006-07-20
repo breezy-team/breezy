@@ -32,7 +32,7 @@ from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
                            InvalidURL)
 from bzrlib.osutils import getcwd
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
-from bzrlib.transport import memory, souk
+from bzrlib.transport import memory, smart
 import bzrlib.transport
 import bzrlib.urlutils as urlutils
 
@@ -1016,7 +1016,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         try:
             client = transport.get_smart_client()
             # XXX: should be a more general class
-            self.assertIsInstance(client, souk.SmartStreamClient)
+            self.assertIsInstance(client, smart.SmartStreamClient)
         except errors.NoSmartServer:
             # as long as we got it we're fine
             pass

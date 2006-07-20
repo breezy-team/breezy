@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for souk transport"""
+"""Tests for smart transport"""
 
 # all of this deals with byte strings so this is safe
 from cStringIO import StringIO
@@ -23,9 +23,9 @@ import sys
 
 import bzrlib
 from bzrlib import tests, errors, bzrdir
-from bzrlib.transport import local, memory, souk, get_transport
+from bzrlib.transport import local, memory, smart, get_transport
 
-## class SoukURLTests(tests.TestCase):
+## class SmartURLTests(tests.TestCase):
 ##     """Tests for handling of URLs and detection of smart servers"""
 ## 
 ##     def test_bzr_url_is_smart(self):
@@ -36,14 +36,14 @@ class SmartClientTests(tests.TestCase):
     def test_construct_smart_stream_client(self):
         # make a new client; this really wants two fifos or sockets
         # but the constructor should not do any IO
-        client = souk.SmartStreamClient(None, None)
+        client = smart.SmartStreamClient(None, None)
 
 
 class TCPClientTests(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TCPClientTests, self).setUp()
-        self.transport_readonly_server = souk.SoukTCPServer_for_testing
+        self.transport_readonly_server = smart.SmartTCPServer_for_testing
 
     def test_plausible_url(self):
         self.assert_(self.get_readonly_url().startswith('bzr://'))
@@ -51,17 +51,17 @@ class TCPClientTests(tests.TestCaseWithTransport):
     def test_get_client_from_transport(self):
         t = self.get_readonly_transport()
         client = t.get_smart_client()
-        self.assertIsInstance(client, souk.SmartStreamClient)
+        self.assertIsInstance(client, smart.SmartStreamClient)
 
 
 
-class BasicSoukTests(tests.TestCase):
+class BasicSmartTests(tests.TestCase):
     
-    def test_souk_query_version(self):
+    def test_smart_query_version(self):
         """Feed a canned query version to a server"""
         to_server = StringIO('hello\n')
         from_server = StringIO()
-        server = souk.SoukStreamServer(to_server, from_server, local.LocalTransport('file:///'))
+        server = smart.SmartStreamServer(to_server, from_server, local.LocalTransport('file:///'))
         server._serve_one_request()
         self.assertEqual('bzr server\0011\n',
                          from_server.getvalue())
@@ -71,7 +71,7 @@ class BasicSoukTests(tests.TestCase):
         transport.put('testfile', StringIO('contents\nof\nfile\n'))
         to_server = StringIO('get\001./testfile\n')
         from_server = StringIO()
-        server = souk.SoukStreamServer(to_server, from_server, transport)
+        server = smart.SmartStreamServer(to_server, from_server, transport)
         server._serve_one_request()
         self.assertEqual('ok\n'
                          '17\n'
@@ -84,12 +84,12 @@ class BasicSoukTests(tests.TestCase):
         class FlakyTransport(object):
             def get(self, path):
                 raise Exception("some random exception from inside server")
-        server = souk.SoukTCPServer(backing_transport=FlakyTransport())
+        server = smart.SmartTCPServer(backing_transport=FlakyTransport())
         server.start_background_thread()
         try:
-            conn = souk.SoukTCPClient(server.get_url())
+            transport = smart.SmartTCPTransport(server.get_url())
             try:
-                conn.get('something')
+                transport.get('something')
             except errors.TransportError, e:
                 self.assertContainsRe(str(e), 'some random exception')
             else:
@@ -106,7 +106,7 @@ class BasicSoukTests(tests.TestCase):
         args = [sys.executable, sys.argv[0], 'serve', '--inet']
         child = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                  close_fds=True)
-        conn = souk.SoukStreamClient(to_server=child.stdin, from_server=child.stdout)
+        conn = smart.SmartStreamClient(to_server=child.stdin, from_server=child.stdout)
         conn.query_version()
         conn.query_version()
         conn.disconnect()
@@ -114,7 +114,7 @@ class BasicSoukTests(tests.TestCase):
         self.assertEquals(0, returncode)
 
 
-class SoukTCPTests(tests.TestCase):
+class SmartTCPTests(tests.TestCase):
     """Tests for connection to TCP server.
     
     All of these tests are run with a server running on another thread serving
@@ -122,48 +122,39 @@ class SoukTCPTests(tests.TestCase):
     """
 
     def setUp(self):
-        super(SoukTCPTests, self).setUp()
+        super(SmartTCPTests, self).setUp()
         self.backing_transport = memory.MemoryTransport()
-        self.server = souk.SoukTCPServer(self.backing_transport)
+        self.server = smart.SmartTCPServer(self.backing_transport)
         self.server.start_background_thread()
-        self.conn = souk.SoukTCPClient(self.server.get_url())
+        self.transport = smart.SmartTCPTransport(self.server.get_url())
 
     def tearDown(self):
-        if hasattr(self, 'conn'):
-            self.conn.disconnect()
-        if hasattr(self, 'server'):
+        if getattr(self, 'transport', None):
+            self.transport.disconnect()
+        if getattr(self, 'server', None):
             self.server.stop_background_thread()
-        super(SoukTCPTests, self).tearDown()
+        super(SmartTCPTests, self).tearDown()
         
     def test_start_tcp_server(self):
         url = self.server.get_url()
         self.assertContainsRe(url, r'^bzr://127\.0\.0\.1:[0-9]{2,}/')
 
-    def test_connect_to_tcp_server(self):
-        self.conn.query_version()
-
-    def test_multiple_requests(self):
-        version = self.conn.query_version()
-        self.assertEqual(1, version)
-        version = self.conn.query_version()
-        self.assertEqual(1, version)
-
-    def test_souk_transport_has(self):
-        """Checking for file existence over souk."""
+    def test_smart_transport_has(self):
+        """Checking for file existence over smart."""
         self.backing_transport.put("foo", StringIO("contents of foo\n"))
-        self.assertTrue(self.conn.has("foo"))
-        self.assertFalse(self.conn.has("non-foo"))
+        self.assertTrue(self.transport.has("foo"))
+        self.assertFalse(self.transport.has("non-foo"))
 
-    def test_souk_transport_get(self):
-        """Read back a file over souk."""
+    def test_smart_transport_get(self):
+        """Read back a file over smart."""
         self.backing_transport.put("foo", StringIO("contents\nof\nfoo\n"))
-        fp = self.conn.get("foo")
+        fp = self.transport.get("foo")
         self.assertEqual('contents\nof\nfoo\n', fp.read())
         
     def test_get_error_enoent(self):
         """Error reported from server getting nonexistent file."""
         try:
-            self.conn.get('not a file')
+            self.transport.get('not a file')
         except errors.NoSuchFile, e:
             self.assertEqual('/not a file', e.path)
         else:
@@ -173,45 +164,41 @@ class SoukTCPTests(tests.TestCase):
         """Test that cloning reuses the same connection."""
         # we create a real connection not a loopback one, but it will use the
         # same server and pipes
-        conn = self.conn
-        conn2 = souk.SoukTransport(self.conn.base, clone_from=self.conn)
-        conn.query_version()
-        conn2.query_version()
+        conn2 = smart.SmartTransport(self.transport.base, clone_from=self.transport)
 
     def test_remote_path(self):
         self.assertEquals('/foo/bar',
-                          self.conn._remote_path('foo/bar'))
+                          self.transport._remote_path('foo/bar'))
 
     def test_clone_changes_base(self):
         """Cloning transport produces one with a new base location"""
-        conn = self.conn
-        conn2 = conn.clone('subdir')
-        self.assertEquals(conn.base + 'subdir/',
+        conn2 = self.transport.clone('subdir')
+        self.assertEquals(self.transport.base + 'subdir/',
                           conn2.base)
 
     def test_open_dir(self):
         """Test changing directory"""
-        conn = self.conn
+        transport = self.transport
         self.backing_transport.mkdir('toffee')
         self.backing_transport.mkdir('toffee/apple')
-        self.assertEquals('/toffee', conn._remote_path('toffee'))
-        self.assertTrue(conn.has('toffee'))
-        sub_conn = conn.clone('toffee')
+        self.assertEquals('/toffee', transport._remote_path('toffee'))
+        self.assertTrue(transport.has('toffee'))
+        sub_conn = transport.clone('toffee')
         self.assertTrue(sub_conn.has('apple'))
 
     def test_open_bzrdir(self):
-        """Open an existing bzrdir over souk transport"""
-        conn = self.conn
+        """Open an existing bzrdir over smart transport"""
+        transport = self.transport
         t = self.backing_transport
         bzrdir.BzrDirFormat.get_default_format().initialize_on_transport(t)
-        result_dir = bzrdir.BzrDir.open_containing_from_transport(conn)
+        result_dir = bzrdir.BzrDir.open_containing_from_transport(transport)
 
 
-class SoukServerTests(tests.TestCaseWithTransport):
+class SmartServerTests(tests.TestCaseWithTransport):
     """Test that call directly into the server logic, bypassing the network."""
 
     def test_hello(self):
-        server = souk.SoukServer(None)
+        server = smart.SmartServer(None)
         response = server.dispatch_command('hello', ())
         self.assertEqual(('bzr server', '1'), response.args)
         self.assertEqual(None, response.body)
@@ -224,7 +211,7 @@ class SoukServerTests(tests.TestCaseWithTransport):
         wt.add('hello')
         wt.commit(message='add hello', rev_id='rev-1')
         
-        server = souk.SoukServer(self.get_transport())
+        server = smart.SmartServer(self.get_transport())
         response = server.dispatch_command('get_bundle', ('.', 'rev-1'))
         self.assert_(response.body.startswith('# Bazaar revision bundle '),
                      "doesn't look like a bundle: %r" % response.body)
