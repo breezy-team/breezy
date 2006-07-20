@@ -2029,21 +2029,24 @@ def show_version():
 
 class cmd_version(Command):
     """Show version of bzr."""
+
     @display_command
     def run(self):
         show_version()
 
+
 class cmd_rocks(Command):
     """Statement of optimism."""
+
     hidden = True
+
     @display_command
     def run(self):
         print "it sure does!"
 
 
 class cmd_find_merge_base(Command):
-    """Find and print a base revision for merging two branches.
-    """
+    """Find and print a base revision for merging two branches."""
     # TODO: Options to specify revisions on either side, as if
     #       merging only part of the history.
     takes_args = ['branch', 'other']
