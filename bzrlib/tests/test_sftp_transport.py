@@ -15,8 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+from operator import lt, gt
 import socket
 import threading
+import time
 
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
@@ -232,3 +234,22 @@ class SFTPFullHandshakingTest(TestCaseWithSFTPServer):
         from bzrlib.transport.sftp import SFTPFullAbsoluteServer
         self.transport_server = SFTPFullAbsoluteServer
         self.get_transport()
+
+
+class SFTPLatencyKnob(TestCaseWithSFTPServer):
+    """Test that the testing SFTPServer's latency knob works."""
+
+    def test_make_transport_slow(self):
+        # change the latency knob to 100ms. We take about 40ms for a 
+        # loopback connection ordinarily.
+        self.get_server().add_latency = 0.1
+        self.assertConnectionTime(gt)
+
+    def assertConnectionTime(self, operator):
+        start_time = time.time()
+        transport = self.get_transport()
+        stop_time = time.time()
+        self.failUnless(operator(stop_time - start_time, 0.1))
+
+    def test_default_fast(self):
+        self.assertConnectionTime(lt)
