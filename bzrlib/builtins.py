@@ -24,8 +24,20 @@ import os.path
 import sys
 
 import bzrlib
-from bzrlib import (branch, bundle, bzrdir, config, errors, log, osutils,
-                    repository, transport, ui, urlutils)
+from bzrlib import (
+    branch,
+    bundle,
+    bzrdir,
+    config,
+    errors,
+    ignores,
+    log,
+    osutils,
+    repository,
+    transport,
+    ui,
+    urlutils,
+    )
 from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bundle import read_bundle_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
@@ -1490,7 +1502,7 @@ class cmd_ignore(Command):
         from bzrlib.atomicfile import AtomicFile
         if old_default_rules is not None:
             # dump the rules and exit
-            for pattern in bzrlib.DEFAULT_IGNORE:
+            for pattern in ignores.OLD_DEFAULTS:
                 print pattern
             return
         if name_pattern is None:
@@ -2018,21 +2030,24 @@ def show_version():
 
 class cmd_version(Command):
     """Show version of bzr."""
+
     @display_command
     def run(self):
         show_version()
 
+
 class cmd_rocks(Command):
     """Statement of optimism."""
+
     hidden = True
+
     @display_command
     def run(self):
         print "it sure does!"
 
 
 class cmd_find_merge_base(Command):
-    """Find and print a base revision for merging two branches.
-    """
+    """Find and print a base revision for merging two branches."""
     # TODO: Options to specify revisions on either side, as if
     #       merging only part of the history.
     takes_args = ['branch', 'other']

@@ -16,15 +16,16 @@
 
 import errno
 import urllib, urllib2
+import errno
+from StringIO import StringIO
 
 import bzrlib  # for the version
-from bzrlib.errors import BzrError
+from bzrlib.errors import (TransportNotPossible, NoSuchFile, BzrError,
+                           TransportError, ConnectionError)
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
-from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
-from bzrlib.errors import (TransportNotPossible, NoSuchFile,
-                           TransportError, ConnectionError)
-
+from bzrlib.transport.http import (HttpTransportBase, HttpServer,
+                                   extract_auth, response)
 
 register_urlparse_netloc_protocol('http+urllib')
 
@@ -42,21 +43,24 @@ class Request(urllib2.Request):
 
 
 class HttpTransport_urllib(HttpTransportBase):
-    """Python urllib transport for http and https.
-    """
+    """Python urllib transport for http and https."""
 
     # TODO: Implement pipelined versions of all of the *_multi() functions.
 
-    def __init__(self, base):
+    def __init__(self, base, from_transport=None):
         """Set the base path where files will be stored."""
         super(HttpTransport_urllib, self).__init__(base)
+        # HttpTransport_urllib doesn't maintain any per-transport state yet
+        # so nothing to do with from_transport
 
-    def _get(self, relpath, ranges):
+    def _get(self, relpath, ranges, tail_amount=0):
         path = relpath
         try:
             path = self._real_abspath(relpath)
-            response = self._get_url_impl(path, method='GET', ranges=ranges)
-            return response.code, response
+            resp = self._get_url_impl(path, method='GET', ranges=ranges,
+                                      tail_amount=tail_amount)
+            return resp.code, response.handle_response(path,
+                                resp.code, resp.headers, resp)
         except urllib2.HTTPError, e:
             mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
@@ -72,16 +76,11 @@ class HttpTransport_urllib(HttpTransportBase):
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
 
-    def _get_url_impl(self, url, method, ranges):
+    def _get_url_impl(self, url, method, ranges, tail_amount=0):
         """Actually pass get request into urllib
 
         :returns: urllib Response object
         """
-        if ranges:
-            range_string = ranges
-        else:
-            range_string = 'all'
-        mutter("get_url %s [%s]" % (url, range_string))
         manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
         url = extract_auth(url, manager)
         auth_handler = urllib2.HTTPBasicAuthHandler(manager)
@@ -90,10 +89,11 @@ class HttpTransport_urllib(HttpTransportBase):
         request.method = method
         request.add_header('Pragma', 'no-cache')
         request.add_header('Cache-control', 'max-age=0')
-        request.add_header('User-Agent', 'bzr/%s (urllib)' % bzrlib.__version__)
-        if ranges:
-            assert len(ranges) == 1
-            request.add_header('Range', 'bytes=%d-%d' % ranges[0])
+        request.add_header('User-Agent',
+                           'bzr/%s (urllib)' % (bzrlib.__version__,))
+        if ranges or tail_amount:
+            bytes = 'bytes=' + self.range_header(ranges, tail_amount)
+            request.add_header('Range', bytes)
         response = opener.open(request)
         return response
 
