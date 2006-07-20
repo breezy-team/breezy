@@ -25,13 +25,14 @@ from cStringIO import StringIO
 import stat
 import sys
 
+from bzrlib import errors
 from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
                            LockError, PathError,
                            TransportNotPossible, ConnectionError,
                            InvalidURL)
 from bzrlib.osutils import getcwd
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
-from bzrlib.transport import memory
+from bzrlib.transport import memory, souk
 import bzrlib.transport
 import bzrlib.urlutils as urlutils
 
@@ -1003,3 +1004,19 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertEqual(d[1], (1, '1'))
         self.assertEqual(d[2], (3, '34'))
         self.assertEqual(d[3], (9, '9'))
+
+    def test_get_smart_client(self):
+        """All transports must either give a smart client, or know they can't.
+
+        For some transports such as http this might depend on probing to see 
+        what's actually present on the other end.  (But we can adjust for that 
+        in the future.)
+        """
+        transport = self.get_transport()
+        try:
+            client = transport.get_smart_client()
+            # XXX: should be a more general class
+            self.assertIsInstance(client, souk.SmartStreamClient)
+        except errors.NoSmartServer:
+            # as long as we got it we're fine
+            pass

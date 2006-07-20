@@ -29,8 +29,30 @@ from bzrlib.transport import local, memory, souk, get_transport
 ##     """Tests for handling of URLs and detection of smart servers"""
 ## 
 ##     def test_bzr_url_is_smart(self):
-##         t = get_transport('bzr://pippin-took/')
-##         self.assertEquals(t.has_smart_server(), True)
+
+
+class SmartClientTests(tests.TestCase):
+
+    def test_construct_smart_stream_client(self):
+        # make a new client; this really wants two fifos or sockets
+        # but the constructor should not do any IO
+        client = souk.SmartStreamClient(None, None)
+
+
+class TCPClientTests(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TCPClientTests, self).setUp()
+        self.transport_readonly_server = souk.SoukTCPServer_for_testing
+
+    def test_plausible_url(self):
+        self.assert_(self.get_readonly_url().startswith('bzr://'))
+
+    def test_get_client_from_transport(self):
+        t = self.get_readonly_transport()
+        client = t.get_smart_client()
+        self.assertIsInstance(client, souk.SmartStreamClient)
+
 
 
 class BasicSoukTests(tests.TestCase):

@@ -395,6 +395,13 @@ class Transport(object):
         """
         raise NotImplementedError(self.get)
 
+    def get_smart_client(self):
+        """Return a smart client for this transport if possible.
+
+        :raises NoSmartServer: if no smart server client is available.
+        """
+        raise errors.NoSmartServer(self.base)
+
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 

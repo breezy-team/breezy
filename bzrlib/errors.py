@@ -1027,3 +1027,10 @@ class MalformedPatches(BadBundle): pass
 
 
 class MalformedFooter(BadBundle): pass
+
+
+class NoSmartServer(BzrNewError):
+    """No smart server available at %(url)s"""
+
+    def __init__(self, url):
+        self.url = url

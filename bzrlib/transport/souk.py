@@ -128,6 +128,12 @@ limited to a directory?
 # TODO: Better name for this.
 #
 # TODO: Split the actual smart server from the ssh encoding of it.
+#
+# TODO: Perhaps support file-level readwrite operations over the transport
+# too.
+#
+# TODO: SmartBzrDir class, proxying all Branch etc methods across to another
+# branch doing file-level operations.
 
 
 from cStringIO import StringIO
@@ -435,8 +441,7 @@ class SoukTransport(sftp.SFTPUrlHandling):
             self._connect_to_server()
         else:
             # reuse same connection
-            self._to_server = clone_from._to_server
-            self._from_server = clone_from._from_server
+            self._client = clone_from._client
 
     def clone(self, relative_url):
         """Make a new SoukTransport related to me, sharing the same connection.
@@ -455,6 +460,9 @@ class SoukTransport(sftp.SFTPUrlHandling):
     def is_readonly(self):
         """Souk protocol currently only supports readonly operations."""
         return True
+
+    def get_smart_client(self):
+        return self._client
     
     def query_version(self):
         """Return protocol version number of the server."""
@@ -536,17 +544,16 @@ class SoukTransport(sftp.SFTPUrlHandling):
             raise BzrProtocolError('bad trailer on get: %r' % (resp,))
 
     def _recv_bulk(self):
-        return _recv_bulk(self._from_server)
+        return self._client._recv_bulk()
 
     def _send_tuple(self, args):
-        _send_tuple(self._to_server, args)
+        self._client._send_tuple(args)
 
     def _recv_tuple(self):
-        return _recv_tuple(self._from_server)
+        return self._client._recv_tuple()
 
     def disconnect(self):
-        self._to_server.close()
-        self._from_server.close()
+        self._client.disconnect()
 
     def append(self, relpath, from_file):
         raise errors.TransportNotPossible("writing to souk servers not supported yet")
@@ -591,11 +598,33 @@ class SoukTransport(sftp.SFTPUrlHandling):
 
 class SoukStreamClient(SoukTransport):
     """Connection to smart server over externally provided fifos"""
+
     def __init__(self, from_server, to_server):
         ## super(SoukTCPClient, self).__init__('bzr://<pipe>/')
         self.base = 'bzr://<pipe>/'
+        self._client = SmartStreamClient(from_server, to_server)
+
+
+class SmartStreamClient(object):
+    """Connection to smart server over two streams"""
+
+    def __init__(self, from_server, to_server):
         self._from_server = from_server
         self._to_server = to_server
+
+    def _send_tuple(self, args):
+        _send_tuple(self._to_server, args)
+
+    def disconnect(self):
+        """Close connection to the server"""
+        self._to_server.close()
+        self._from_server.close()
+
+    def _recv_bulk(self):
+        return _recv_bulk(self._from_server)
+
+    def _recv_tuple(self):
+        return _recv_tuple(self._from_server)
 
 
 class SoukTCPClient(SoukTransport):
@@ -618,13 +647,15 @@ class SoukTCPClient(SoukTransport):
                     (self._host, self._port, os.strerror(result)))
         # TODO: May be more efficient to just treat them as sockets
         # throughout?  But what about pipes to ssh?...
-        self._to_server = self._socket.makefile('w')
-        self._from_server = self._socket.makefile('r')
+        to_server = self._socket.makefile('w')
+        from_server = self._socket.makefile('r')
+        self._client = SmartStreamClient(from_server, to_server)
 
     def disconnect(self):
         super(SoukTCPClient, self).disconnect()
+        # XXX: Is closing the socket as well as closing the files really
+        # necessary?
         self._socket.close()
-
 
 
 def get_test_permutations():
