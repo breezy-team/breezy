@@ -35,17 +35,17 @@ class TestParseIgnoreFile(TestCase):
                 '#comment\n'
                 ' xx \n' # whitespace
                 ))
-        self.assertEqual(['./rootdir',
+        self.assertEqual(set(['./rootdir',
                           'randomfile*',
                           'path/from/ro?t',
                           u'unicode\xb5',
                           'dos',
                           ' xx ',
-                         ], ignored)
+                         ]), ignored)
 
     def test_parse_empty(self):
         ignored = ignores.parse_ignore_file(StringIO(''))
-        self.assertEqual([], ignored)
+        self.assertEqual(set([]), ignored)
 
 
 class TestUserIgnores(TestCaseInTempDir):
@@ -55,7 +55,7 @@ class TestUserIgnores(TestCaseInTempDir):
         ignore_path = config.user_ignore_config_filename()
         self.failIfExists(ignore_path)
         user_ignores = ignores.get_user_ignores()
-        self.assertEqual(ignores.USER_DEFAULTS, user_ignores)
+        self.assertEqual(set(ignores.USER_DEFAULTS), user_ignores)
 
         self.failUnlessExists(ignore_path)
         f = open(ignore_path, 'rb')
@@ -63,31 +63,31 @@ class TestUserIgnores(TestCaseInTempDir):
             entries = ignores.parse_ignore_file(f)
         finally:
             f.close()
-        self.assertEqual(ignores.USER_DEFAULTS, user_ignores)
+        self.assertEqual(set(ignores.USER_DEFAULTS), entries)
 
     def test_use_existing(self):
         patterns = ['*.o', '*.py[co]', u'\xe5*']
         ignores.set_user_ignores(patterns)
 
         user_ignores = ignores.get_user_ignores()
-        self.assertEqual(patterns, user_ignores)
+        self.assertEqual(set(patterns), user_ignores)
 
     def test_use_empty(self):
         ignores.set_user_ignores([])
         ignore_path = config.user_ignore_config_filename()
         self.check_file_contents(ignore_path, '')
 
-        self.assertEqual([], ignores.get_user_ignores())
+        self.assertEqual(set([]), ignores.get_user_ignores())
 
     def test_set(self):
         patterns = ['*.py[co]', '*.py[oc]']
         ignores.set_user_ignores(patterns)
 
-        self.assertEqual(patterns, ignores.get_user_ignores())
+        self.assertEqual(set(patterns), ignores.get_user_ignores())
 
         patterns = ['vim', '*.swp']
         ignores.set_user_ignores(patterns)
-        self.assertEqual(patterns, ignores.get_user_ignores())
+        self.assertEqual(set(patterns), ignores.get_user_ignores())
 
     def test_add(self):
         """Test that adding will not duplicate ignores"""
@@ -97,7 +97,7 @@ class TestUserIgnores(TestCaseInTempDir):
         patterns = ['foo', './bar', u'b\xe5z']
         added = ignores.add_unique_user_ignores(patterns)
         self.assertEqual(patterns, added)
-        self.assertEqual(patterns, ignores.get_user_ignores())
+        self.assertEqual(set(patterns), ignores.get_user_ignores())
 
     def test_add_unique(self):
         """Test that adding will not duplicate ignores"""
@@ -105,7 +105,7 @@ class TestUserIgnores(TestCaseInTempDir):
 
         added = ignores.add_unique_user_ignores(['xxx', './bar', 'xxx'])
         self.assertEqual(['xxx'], added)
-        self.assertEqual(['foo', './bar', u'b\xe5z', 'xxx'],
+        self.assertEqual(set(['foo', './bar', u'b\xe5z', 'xxx']),
                          ignores.get_user_ignores())
 
 

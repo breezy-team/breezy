@@ -158,7 +158,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual(None, tree.is_ignored('foo.pyc'))
 
         # Must reset the list so that it reads a new one
-        tree._ignorelist = None
+        tree._ignoreset = None
 
         # use list.append() to get around the deprecation warnings
         list.append(bzrlib.DEFAULT_IGNORE, '*.py[co]')
@@ -175,11 +175,11 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         orig_runtime = ignores._runtime_ignores
         try:
             ignores._runtime_ignores = set()
-            self.assertEqual(None, tree.is_ignored('.shelf'))
+            self.assertEqual(None, tree.is_ignored('foobar.py'))
 
-            tree._ignorelist = None
-            ignores.add_runtime_ignores(['./.shelf'])
-            self.assertEqual(set(['./.shelf']), ignores.get_runtime_ignores())
-            self.assertEqual('./.shelf', tree.is_ignored('.shelf'))
+            tree._ignoreset = None
+            ignores.add_runtime_ignores(['./foobar.py'])
+            self.assertEqual(set(['./foobar.py']), ignores.get_runtime_ignores())
+            self.assertEqual('./foobar.py', tree.is_ignored('foobar.py'))
         finally:
             ignores._runtime_ignores = orig_runtime

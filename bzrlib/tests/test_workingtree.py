@@ -356,7 +356,8 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
             ignores._runtime_ignores = set()
 
             self.build_tree_contents([('.bzrignore', 'CVS\n.hg\n')])
-            reference_output = tree._combine_ignore_rules(['CVS', '.hg'])[0]
+            reference_output = tree._combine_ignore_rules(
+                                    set(['CVS', '.hg']))[0]
             regex_rules = tree._get_ignore_rules_as_regex()[0]
             self.assertEqual(len(reference_output[1]), regex_rules[0].groups)
             self.assertEqual(reference_output[1], regex_rules[1])

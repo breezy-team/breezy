@@ -97,19 +97,19 @@ USER_DEFAULTS = [
 
 def parse_ignore_file(f):
     """Read in all of the lines in the file and turn it into an ignore list"""
-    ignored = []
+    ignored = set()
     for line in f.read().decode('utf8').split('\n'):
         line = line.rstrip('\r\n')
         if not line or line.startswith('#'):
             continue
-        ignored.append(line)
+        ignored.add(line)
     return ignored
 
 
 def get_user_ignores():
     """Get the list of user ignored files, possibly creating it."""
     path = config.user_ignore_config_filename()
-    patterns = USER_DEFAULTS[:]
+    patterns = set(USER_DEFAULTS)
     try:
         f = open(path, 'rb')
     except (IOError, OSError), e:
@@ -157,7 +157,7 @@ def add_unique_user_ignores(new_ignores):
     :param new_ignores: A list of ignore patterns
     :return: The list of ignores that were added
     """
-    ignored = set(get_user_ignores())
+    ignored = get_user_ignores()
     to_add = []
     for ignore in new_ignores:
         if ignore not in ignored:
