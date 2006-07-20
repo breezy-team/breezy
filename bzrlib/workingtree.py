@@ -1842,18 +1842,26 @@ class WorkingTreeTestProviderAdapter(object):
         self._transport_readonly_server = transport_readonly_server
         self._formats = formats
     
+    def _clone_test(self, test, bzrdir_format, workingtree_format, variation):
+        """Clone test for adaption."""
+        new_test = deepcopy(test)
+        new_test.transport_server = self._transport_server
+        new_test.transport_readonly_server = self._transport_readonly_server
+        new_test.bzrdir_format = bzrdir_format
+        new_test.workingtree_format = workingtree_format
+        def make_new_test_id():
+            new_id = "%s(%s)" % (test.id(), variation)
+            return lambda: new_id
+        new_test.id = make_new_test_id()
+        return new_test
+    
     def adapt(self, test):
         from bzrlib.tests import TestSuite
         result = TestSuite()
         for workingtree_format, bzrdir_format in self._formats:
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.bzrdir_format = bzrdir_format
-            new_test.workingtree_format = workingtree_format
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), workingtree_format.__class__.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
+            new_test = self._clone_test(
+                test,
+                bzrdir_format,
+                workingtree_format, workingtree_format.__class__.__name__)
             result.addTest(new_test)
         return result
