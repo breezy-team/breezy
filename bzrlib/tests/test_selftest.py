@@ -695,24 +695,3 @@ class TestSelftest(TestCase):
         self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
-
-    def test_run_bzr_subprocess(self):
-        """The run_bzr_helper_external comand behaves nicely."""
-        result = self.run_bzr_subprocess('--version')
-        result = self.run_bzr_subprocess('--version', retcode=None)
-        self.assertContainsRe(result[0], 'is free software')
-        self.assertRaises(AssertionError, self.run_bzr_subprocess, 
-                          '--versionn')
-        result = self.run_bzr_subprocess('--versionn', retcode=3)
-        result = self.run_bzr_subprocess('--versionn', retcode=None)
-        self.assertContainsRe(result[1], 'unknown command')
-        err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
-                                      retcode=3)[1]
-        self.assertContainsRe(err, 'No known merge type magic merge')
-
-    def test_run_bzr_error(self):
-        out, err = self.run_bzr_error(['^$'], 'rocks', retcode=0)
-        self.assertEqual(out, 'it sure does!\n')
-
-        out, err = self.run_bzr_error(["'foobarbaz' is not a versioned file"],
-                                      'file-id', 'foobarbaz')
