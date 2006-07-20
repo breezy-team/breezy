@@ -44,6 +44,9 @@ IN DEVELOPMENT
    * 'bzr selftest' now shows a progress bar with the number of tests, and 
      progress made. 'make check' shows tests in -v mode, to be more useful
      for the PQM status window. (Robert Collins).
+     When using a progress bar, failed tests are printed out, rather than
+     being overwritten by the progress bar until the suite finishes.
+     (John Arbash Meinel)
 
    * 'bzr selftest --benchmark' will run a new benchmarking selftest.
      'bzr selftest --benchmark --lsprof-timed' will use lsprofile to generate
@@ -177,6 +180,10 @@ IN DEVELOPMENT
     * Make the bundle reader extra lines before and after the bundle text.
       This allows you to parse an email with the bundle inline.
       (John Arbash Meinel, #49182)
+
+    * Change the file id generator to squash a little bit more. Helps when
+      working with long filenames on windows. (Also helps for unicode filenames
+      not generating hidden files). (John Arbash Meinel, #43801)
 
   INTERNALS:
 

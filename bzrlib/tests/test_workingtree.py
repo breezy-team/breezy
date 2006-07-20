@@ -247,10 +247,37 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
 
     
     def test_gen_file_id(self):
-        self.assertStartsWith(bzrlib.workingtree.gen_file_id('bar'), 'bar-')
-        self.assertStartsWith(bzrlib.workingtree.gen_file_id('Mwoo oof\t m'), 'Mwoooofm-')
-        self.assertStartsWith(bzrlib.workingtree.gen_file_id('..gam.py'), 'gam.py-')
-        self.assertStartsWith(bzrlib.workingtree.gen_file_id('..Mwoo oof\t m'), 'Mwoooofm-')
+        gen_file_id = bzrlib.workingtree.gen_file_id
+
+        # We try to use the filename if possible
+        self.assertStartsWith(gen_file_id('bar'), 'bar-')
+
+        # but we squash capitalization, and remove non word characters
+        self.assertStartsWith(gen_file_id('Mwoo oof\t m'), 'mwoooofm-')
+
+        # We also remove leading '.' characters to prevent hidden file-ids
+        self.assertStartsWith(gen_file_id('..gam.py'), 'gam.py-')
+        self.assertStartsWith(gen_file_id('..Mwoo oof\t m'), 'mwoooofm-')
+
+        # we remove unicode characters, and still don't end up with a 
+        # hidden file id
+        self.assertStartsWith(gen_file_id(u'\xe5\xb5.txt'), 'txt-')
+        
+        # Our current method of generating unique ids adds 33 characters
+        # plus an serial number (log10(N) characters)
+        # to the end of the filename. We now restrict the filename portion to
+        # be <= 20 characters, so the maximum length should now be approx < 60
+
+        # Test both case squashing and length restriction
+        fid = gen_file_id('A'*50 + '.txt')
+        self.assertStartsWith(fid, 'a'*20 + '-')
+        self.failUnless(len(fid) < 60)
+
+        # restricting length happens after the other actions, so
+        # we preserve as much as possible
+        fid = gen_file_id('\xe5\xb5..aBcd\tefGhijKLMnop\tqrstuvwxyz')
+        self.assertStartsWith(fid, 'abcdefghijklmnopqrst-')
+        self.failUnless(len(fid) < 60)
 
     def test_next_id_suffix(self):
         bzrlib.workingtree._gen_id_suffix = None
