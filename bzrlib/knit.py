@@ -807,7 +807,7 @@ class KnitVersionedFile(VersionedFile):
         try:
             pb.update('Walking content.', count, total)
             for version_id, data, sha_value in \
-                self._data.read_records_iter(version_id_records):
+                self._data.read_records_iter_unsorted(version_id_records):
                 pb.update('Walking content.', count, total)
                 method = self._index.get_method(version_id)
                 version_idx = self._index.lookup(version_id)
