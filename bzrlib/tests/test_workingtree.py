@@ -262,16 +262,21 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
         # hidden file id
         self.assertStartsWith(gen_file_id(u'\xe5\xb5.txt'), 'txt-')
         
-        # We truncate long filenames to be friendly to OS. This is
-        # less important with case squashing, because we do less escaping
-        # (A long all-caps filename used to create a *huge* filename on disk)
+        # Our current method of generating unique ids adds 33 characters
+        # plus an serial number (log10(N) characters)
+        # to the end of the filename. We now restrict the filename portion to
+        # be <= 20 characters, so the maximum length should now be approx < 60
+
+        # Test both case squashing and length restriction
         fid = gen_file_id('A'*50 + '.txt')
         self.assertStartsWith(fid, 'a'*20 + '-')
+        self.failUnless(len(fid) < 60)
 
         # restricting length happens after the other actions, so
-        # we preserv as much as possible
+        # we preserve as much as possible
         fid = gen_file_id('\xe5\xb5..aBcd\tefGhijKLMnop\tqrstuvwxyz')
         self.assertStartsWith(fid, 'abcdefghijklmnopqrst-')
+        self.failUnless(len(fid) < 60)
 
     def test_next_id_suffix(self):
         bzrlib.workingtree._gen_id_suffix = None
