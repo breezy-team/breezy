@@ -125,8 +125,6 @@ limited to a directory?
 # it's quite useful to be able to deal with Transports representing locations
 # without actually opening it.
 #
-# TODO: Better name for this.
-#
 # TODO: Split the actual smart server from the ssh encoding of it.
 #
 # TODO: Perhaps support file-level readwrite operations over the transport

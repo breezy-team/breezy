@@ -43,16 +43,26 @@ class TCPClientTests(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TCPClientTests, self).setUp()
+        # We're allowed to set  the transport class here, so that we don't use
+        # the default or a parameterized class, but rather use the
+        # TestCaseWithTransport infrastructure to set up a smart server and
+        # transport.
+        #
+        # At the momen the SmartServer transport is only readonly, but
+        # TestCaseWithTransport tries to make sure the transport is writable.
         self.transport_readonly_server = smart.SmartTCPServer_for_testing
 
     def test_plausible_url(self):
         self.assert_(self.get_readonly_url().startswith('bzr://'))
 
+    def test_probe_transport(self):
+        t = self.get_readonly_transport()
+        self.assertIsInstance(t, smart.SmartTransport)
+
     def test_get_client_from_transport(self):
         t = self.get_readonly_transport()
         client = t.get_smart_client()
         self.assertIsInstance(client, smart.SmartStreamClient)
-
 
 
 class BasicSmartTests(tests.TestCase):
