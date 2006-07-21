@@ -234,8 +234,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
             return
 
         if specific_file_ids:
-            if (old_file_id not in specific_file_ids and 
-                new_file_id not in specific_file_ids):
+            if (old_entry.file_id not in specific_file_ids and 
+                new_entry.file_id not in specific_file_ids):
                 return
 
         # temporary hack until all entries are populated before clients 
