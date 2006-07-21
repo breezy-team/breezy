@@ -471,7 +471,7 @@ class TestNonAscii(TestCaseWithTransport):
     def test_ignore(self):
         bzr = self.run_bzr_decode
 
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
         fname2 = self.info['filename'] + '2.txt'
         open(fname2, 'wb').write('ignored\n')
 

@@ -45,7 +45,7 @@ class BranchStatus(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
 
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
 
         # status with nothing
         tof = StringIO()
@@ -70,7 +70,7 @@ class BranchStatus(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
 
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
 
         tof = StringIO()
         self.build_tree(['hello.c', 'bye.c'])
@@ -142,7 +142,7 @@ class BranchStatus(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
 
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
 
         self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
         wt.add('directory')
@@ -204,7 +204,7 @@ class CheckoutStatus(BranchStatus):
 class TestStatus(TestCaseWithTransport):
 
     def test_status(self):
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
 
         self.run_bzr("init")
         self.build_tree(['hello.txt'])

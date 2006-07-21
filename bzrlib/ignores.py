@@ -97,19 +97,19 @@ USER_DEFAULTS = [
 
 def parse_ignore_file(f):
     """Read in all of the lines in the file and turn it into an ignore list"""
-    ignored = []
+    ignored = set()
     for line in f.read().decode('utf8').split('\n'):
         line = line.rstrip('\r\n')
         if not line or line.startswith('#'):
             continue
-        ignored.append(line)
+        ignored.add(line)
     return ignored
 
 
 def get_user_ignores():
     """Get the list of user ignored files, possibly creating it."""
     path = config.user_ignore_config_filename()
-    patterns = USER_DEFAULTS[:]
+    patterns = set(USER_DEFAULTS)
     try:
         f = open(path, 'rb')
     except (IOError, OSError), e:
@@ -121,7 +121,7 @@ def get_user_ignores():
         # We want to ignore if we can't write to the file
         # since get_* should be a safe operation
         try:
-            set_user_ignores(USER_DEFAULTS)
+            _set_user_ignores(USER_DEFAULTS)
         except (IOError, OSError), e:
             if e.errno not in (errno.EPERM,):
                 raise
@@ -133,11 +133,14 @@ def get_user_ignores():
         f.close()
 
 
-def set_user_ignores(patterns):
+def _set_user_ignores(patterns):
     """Fill out the user ignore file with the given patterns
 
     This may raise an error if it doesn't have permission to
     write to the user ignore file.
+    This is mostly used for testing, since it would be
+    bad form to rewrite a user's ignore list.
+    bzrlib only writes this file if it does not exist.
     """
     ignore_path = config.user_ignore_config_filename()
     config.ensure_config_dir_exists()
@@ -157,7 +160,7 @@ def add_unique_user_ignores(new_ignores):
     :param new_ignores: A list of ignore patterns
     :return: The list of ignores that were added
     """
-    ignored = set(get_user_ignores())
+    ignored = get_user_ignores()
     to_add = []
     for ignore in new_ignores:
         if ignore not in ignored:
@@ -175,3 +178,26 @@ def add_unique_user_ignores(new_ignores):
         f.close()
 
     return to_add
+
+
+_runtime_ignores = set()
+
+
+def add_runtime_ignores(ignores):
+    """Add some ignore patterns that only exists in memory.
+
+    This is used by some plugins that want bzr to ignore files,
+    but don't want to change a users ignore list.
+    (Such as a conversion script, that needs to ignore some files,
+    but must preserve as much of the exact content boing converted.)
+
+    :param ignores: A list or generator of ignore patterns.
+    :return: None
+    """
+    global _runtime_ignores
+    _runtime_ignores.update(set(ignores))
+
+
+def get_runtime_ignores():
+    """Get the current set of runtime ignores."""
+    return _runtime_ignores

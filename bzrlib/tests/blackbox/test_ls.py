@@ -28,7 +28,7 @@ class TestLS(TestCaseWithTransport):
         super(TestLS, self).setUp()
         
         # Create a simple branch that can be used in testing
-        ignores.set_user_ignores(['./.bazaar', 'user-ignore'])
+        ignores._set_user_ignores(['./.bazaar', 'user-ignore'])
 
         self.wt = self.make_branch_and_tree('.')
         self.build_tree_contents([

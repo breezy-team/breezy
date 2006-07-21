@@ -1105,22 +1105,23 @@ class WorkingTree(bzrlib.tree.Tree):
 
         Cached in the Tree object after the first call.
         """
-        ignorelist = getattr(self, '_ignorelist', None)
-        if ignorelist is not None:
-            return ignorelist
+        ignoreset = getattr(self, '_ignoreset', None)
+        if ignoreset is not None:
+            return ignoreset
 
-        ignore_globs = bzrlib.DEFAULT_IGNORE[:]
+        ignore_globs = set(bzrlib.DEFAULT_IGNORE)
+        ignore_globs.update(ignores.get_runtime_ignores())
 
-        ignore_globs.extend(ignores.get_user_ignores())
+        ignore_globs.update(ignores.get_user_ignores())
 
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
             try:
-                ignore_globs.extend(ignores.parse_ignore_file(f))
+                ignore_globs.update(ignores.parse_ignore_file(f))
             finally:
                 f.close()
 
-        self._ignorelist = ignore_globs
+        self._ignoreset = ignore_globs
         self._ignore_regex = self._combine_ignore_rules(ignore_globs)
         return ignore_globs
 
@@ -1130,7 +1131,7 @@ class WorkingTree(bzrlib.tree.Tree):
         :return: (ignore rules compiled regex, dictionary mapping rule group 
         indices to original rule.)
         """
-        if getattr(self, '_ignorelist', None) is None:
+        if getattr(self, '_ignoreset', None) is None:
             self.get_ignore_list()
         return self._ignore_regex
 

@@ -343,18 +343,24 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
     def test__get_ignore_rules_as_regex(self):
         tree = self.make_branch_and_tree('.')
         # Setup the default ignore list to be empty
-        ignores.set_user_ignores([])
+        ignores._set_user_ignores([])
 
         # some plugins (shelf) modifies the DEFAULT_IGNORE list in memory
         # which causes this test to fail so force the DEFAULT_IGNORE
         # list to be empty
         orig_default = bzrlib.DEFAULT_IGNORE
+        # Also make sure the runtime ignore list is empty
+        orig_runtime = ignores._runtime_ignores
         try:
             bzrlib.DEFAULT_IGNORE = []
+            ignores._runtime_ignores = set()
+
             self.build_tree_contents([('.bzrignore', 'CVS\n.hg\n')])
-            reference_output = tree._combine_ignore_rules(['CVS', '.hg'])[0]
+            reference_output = tree._combine_ignore_rules(
+                                    set(['CVS', '.hg']))[0]
             regex_rules = tree._get_ignore_rules_as_regex()[0]
             self.assertEqual(len(reference_output[1]), regex_rules[0].groups)
             self.assertEqual(reference_output[1], regex_rules[1])
         finally:
             bzrlib.DEFAULT_IGNORE = orig_default
+            ignores._runtime_ignores = orig_runtime
