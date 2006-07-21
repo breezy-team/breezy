@@ -809,6 +809,7 @@ class cmd_update(Command):
     'bzr revert' instead of 'bzr commit' after the update.
     """
     takes_args = ['dir?']
+    aliases = ['up']
 
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
