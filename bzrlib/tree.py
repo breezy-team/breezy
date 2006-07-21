@@ -221,7 +221,10 @@ class RevisionTree(Tree):
 
     def list_files(self):
         # The only files returned by this are those from the version
-        for path, entry in self.inventory.iter_entries():
+        entries = self.inventory.iter_entries()
+        # skip the root for compatability with the current apis.
+        entries.next()
+        for path, entry in entries:
             yield path, 'V', entry.kind, entry.file_id, entry
 
     def get_symlink_target(self, file_id):

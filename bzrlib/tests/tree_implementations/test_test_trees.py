@@ -16,6 +16,7 @@
 
 """Tests for the test trees used by the tree_implementations tests."""
 
+from bzrlib import inventory 
 from bzrlib.tests.tree_implementations import TestCaseWithTree
 
 
@@ -26,4 +27,4 @@ class TestTreeShapes(TestCaseWithTree):
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
-        self.assertEqual([], list(iter(tree)))
+        self.assertEqual([inventory.ROOT_ID], list(iter(tree)))

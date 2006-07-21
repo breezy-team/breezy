@@ -749,8 +749,11 @@ def install_revision(repository, rev, revision_tree):
 
     inv = revision_tree.inventory
     
+    # backwards compatability hack: skip the root id.
+    entries = inv.iter_entries()
+    entries.next()
     # Add the texts that are not already present
-    for path, ie in inv.iter_entries():
+    for path, ie in entries:
         w = repository.weave_store.get_weave_or_empty(ie.file_id,
                 repository.get_transaction())
         if ie.revision not in w:
