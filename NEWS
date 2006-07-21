@@ -185,6 +185,9 @@ IN DEVELOPMENT
       working with long filenames on windows. (Also helps for unicode filenames
       not generating hidden files). (John Arbash Meinel, #43801)
 
+    * Restore terminal mode on C-c while reading sftp password.  (#48923, 
+      Nicholas Allen, Martin Pool)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
