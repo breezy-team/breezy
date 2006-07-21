@@ -23,10 +23,9 @@ import os
 import sys
 
 #import bzrlib specific imports here
-import bzrlib.config as config
+from bzrlib import config, errors, osutils, urlutils
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-import bzrlib.errors as errors
 from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 
 
@@ -353,6 +352,29 @@ class TestBranchConfig(TestCaseWithTransport):
         self.assertFalse(b.get_config().has_explicit_nickname())
         b.nick = 'foo'
         self.assertTrue(b.get_config().has_explicit_nickname())
+
+    def test_config_url(self):
+        """The Branch.get_config will use section that uses a local url"""
+        branch = self.make_branch('branch')
+        self.assertEqual('branch', branch.nick)
+
+        locations = config.locations_config_filename()
+        config.ensure_config_dir_exists()
+        local_url = urlutils.local_path_to_url('branch')
+        open(locations, 'wb').write('[%s]\nnickname = foobar' 
+                                    % (local_url,))
+        self.assertEqual('foobar', branch.nick)
+
+    def test_config_local_path(self):
+        """The Branch.get_config will use a local system path"""
+        branch = self.make_branch('branch')
+        self.assertEqual('branch', branch.nick)
+
+        locations = config.locations_config_filename()
+        config.ensure_config_dir_exists()
+        open(locations, 'wb').write('[%s/branch]\nnickname = barry' 
+                                    % (osutils.getcwd().encode('utf8'),))
+        self.assertEqual('barry', branch.nick)
 
 
 class TestGlobalConfigItems(TestCase):
