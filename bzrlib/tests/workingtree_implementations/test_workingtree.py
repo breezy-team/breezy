@@ -49,7 +49,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_list_files_sorted(self):
         tree = self.make_branch_and_tree('.')
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
         self.build_tree(['dir/', 'file', 'dir/file', 'dir/b',
                          'dir/subdir/', 'a', 'dir/subfile',
                          'zz_dir/', 'zz_dir/subfile'])

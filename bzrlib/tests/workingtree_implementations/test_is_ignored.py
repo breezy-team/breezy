@@ -136,7 +136,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
 
     def test_mixed_is_ignored(self):
         tree = self.make_branch_and_tree('.')
-        ignores.set_user_ignores(['*.py[co]', './.shelf'])
+        ignores._set_user_ignores(['*.py[co]', './.shelf'])
         self.build_tree_contents([('.bzrignore', './rootdir\n*.swp\n')])
 
         self.assertEqual('*.py[co]', tree.is_ignored('foo.pyc'))
@@ -153,7 +153,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
 
         # No configured ignores
         self.build_tree_contents([('.bzrignore', '')])
-        ignores.set_user_ignores([])
+        ignores._set_user_ignores([])
 
         self.assertEqual(None, tree.is_ignored('foo.pyc'))
 
@@ -170,7 +170,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
     def test_runtime_ignores(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('.bzrignore', '')])
-        ignores.set_user_ignores([])
+        ignores._set_user_ignores([])
 
         orig_runtime = ignores._runtime_ignores
         try:

@@ -64,7 +64,7 @@ class TestBadFiles(TestCaseWithTransport):
             return
 
         # Ignore the .bazaar/ home directory that is created
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
 
         # status with nothing
         verify_status(self, wt, [])

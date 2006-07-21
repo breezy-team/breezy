@@ -121,7 +121,7 @@ def get_user_ignores():
         # We want to ignore if we can't write to the file
         # since get_* should be a safe operation
         try:
-            set_user_ignores(USER_DEFAULTS)
+            _set_user_ignores(USER_DEFAULTS)
         except (IOError, OSError), e:
             if e.errno not in (errno.EPERM,):
                 raise
@@ -133,11 +133,14 @@ def get_user_ignores():
         f.close()
 
 
-def set_user_ignores(patterns):
+def _set_user_ignores(patterns):
     """Fill out the user ignore file with the given patterns
 
     This may raise an error if it doesn't have permission to
     write to the user ignore file.
+    This is mostly used for testing, since it would be
+    bad form to rewrite a user's ignore list.
+    bzrlib only writes this file if it does not exist.
     """
     ignore_path = config.user_ignore_config_filename()
     config.ensure_config_dir_exists()

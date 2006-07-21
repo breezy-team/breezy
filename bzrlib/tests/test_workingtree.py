@@ -343,7 +343,7 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
     def test__get_ignore_rules_as_regex(self):
         tree = self.make_branch_and_tree('.')
         # Setup the default ignore list to be empty
-        ignores.set_user_ignores([])
+        ignores._set_user_ignores([])
 
         # some plugins (shelf) modifies the DEFAULT_IGNORE list in memory
         # which causes this test to fail so force the DEFAULT_IGNORE

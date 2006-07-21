@@ -99,7 +99,7 @@ class TestSmartAdd(TestCaseWithTransport):
     def test_add_dry_run(self):
         """Test a dry run add, make sure nothing is added."""
         from bzrlib.commands import run_bzr
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
         eq = self.assertEqual
         wt = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
@@ -118,7 +118,7 @@ class TestSmartAdd(TestCaseWithTransport):
         from bzrlib.commands import run_bzr
         wt = self.make_branch_and_tree('.')
         # The default ignore list includes '*.py[co]', but not CVS
-        ignores.set_user_ignores(['./.bazaar', '*.py[co]'])
+        ignores._set_user_ignores(['./.bazaar', '*.py[co]'])
         self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS',
                         'inertiatic/foo.pyc'])
         added, ignored = smart_add_tree(wt, u'.')
