@@ -51,8 +51,10 @@ import stat
 from time import time
 import warnings
 
-from bzrlib import bzrdir, errors, osutils, urlutils
+import bzrlib
+from bzrlib import bzrdir, errors, ignores, osutils, urlutils
 from bzrlib.atomicfile import AtomicFile
+import bzrlib.branch
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import (BzrCheckError,
@@ -95,22 +97,19 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         DEPRECATED_PARAMETER,
         zero_eight,
         )
-
-from bzrlib.textui import show_status
-import bzrlib.tree
-from bzrlib.transform import build_tree
 from bzrlib.trace import mutter, note
+from bzrlib.transform import build_tree
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
+from bzrlib.textui import show_status
+import bzrlib.tree
 import bzrlib.ui
 import bzrlib.xml5
 
 
-# the regex here does the following:
-# 1) remove any weird characters; we don't escape them but rather
-# just pull them out
- # 2) match leading '.'s to make it not hidden
-_gen_file_id_re = re.compile(r'[^\w.]|(^\.*)')
+# the regex removes any weird characters; we don't escape them 
+# but rather just pull them out
+_gen_file_id_re = re.compile(r'[^\w.]')
 _gen_id_suffix = None
 _gen_id_serial = 0
 
@@ -138,11 +137,20 @@ def gen_file_id(name):
 
     The uniqueness is supplied from _next_id_suffix.
     """
-    # XXX TODO: squash the filename to lowercase.
-    # XXX TODO: truncate the filename to something like 20 or 30 chars.
-    # XXX TODO: consider what to do with ids that look like illegal filepaths
-    # on platforms we support.
-    return _gen_file_id_re.sub('', name) + _next_id_suffix()
+    # The real randomness is in the _next_id_suffix, the
+    # rest of the identifier is just to be nice.
+    # So we:
+    # 1) Remove non-ascii word characters to keep the ids portable
+    # 2) squash to lowercase, so the file id doesn't have to
+    #    be escaped (case insensitive filesystems would bork for ids
+    #    that only differred in case without escaping).
+    # 3) truncate the filename to 20 chars. Long filenames also bork on some
+    #    filesystems
+    # 4) Removing starting '.' characters to prevent the file ids from
+    #    being considered hidden.
+    ascii_word_only = _gen_file_id_re.sub('', name.lower())
+    short_no_dots = ascii_word_only.lstrip('.')[:20]
+    return short_no_dots + _next_id_suffix()
 
 
 def gen_root_id():
@@ -268,8 +276,7 @@ class WorkingTree(bzrlib.tree.Tree):
             # share control object
             self._control_files = self.branch.control_files
         else:
-            # only ready for format 3
-            assert isinstance(self._format, WorkingTreeFormat3)
+            # assume all other formats have their own control files.
             assert isinstance(_control_files, LockableFiles), \
                     "_control_files must be a LockableFiles, not %r" \
                     % _control_files
@@ -375,7 +382,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         inv = self._inventory
         for path, ie in inv.iter_entries():
-            if bzrlib.osutils.lexists(self.abspath(path)):
+            if osutils.lexists(self.abspath(path)):
                 yield ie.file_id
 
     def __repr__(self):
@@ -447,7 +454,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return relpath(self.basedir, path)
 
     def has_filename(self, filename):
-        return bzrlib.osutils.lexists(self.abspath(filename))
+        return osutils.lexists(self.abspath(filename))
 
     def get_file(self, file_id):
         return self.get_file_byname(self.id2path(file_id))
@@ -537,7 +544,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if not inv.has_id(file_id):
             return False
         path = inv.id2path(file_id)
-        return bzrlib.osutils.lexists(self.abspath(path))
+        return osutils.lexists(self.abspath(path))
 
     def has_or_had_id(self, file_id):
         if file_id == self.inventory.root.file_id:
@@ -721,8 +728,8 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         inv = self._inventory
         # Convert these into local objects to save lookup times
-        pathjoin = bzrlib.osutils.pathjoin
-        file_kind = bzrlib.osutils.file_kind
+        pathjoin = osutils.pathjoin
+        file_kind = osutils.file_kind
 
         # transport.base ends in a slash, we want the piece
         # between the last two slashes
@@ -1098,17 +1105,25 @@ class WorkingTree(bzrlib.tree.Tree):
 
         Cached in the Tree object after the first call.
         """
-        if hasattr(self, '_ignorelist'):
-            return self._ignorelist
+        ignoreset = getattr(self, '_ignoreset', None)
+        if ignoreset is not None:
+            return ignoreset
 
-        l = []
+        ignore_globs = set(bzrlib.DEFAULT_IGNORE)
+        ignore_globs.update(ignores.get_runtime_ignores())
+
+        ignore_globs.update(ignores.get_user_ignores())
+
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
-            l.extend([line.rstrip("\n\r").decode('utf-8') 
-                      for line in f.readlines()])
-        self._ignorelist = l
-        self._ignore_regex = self._combine_ignore_rules(l)
-        return l
+            try:
+                ignore_globs.update(ignores.parse_ignore_file(f))
+            finally:
+                f.close()
+
+        self._ignoreset = ignore_globs
+        self._ignore_regex = self._combine_ignore_rules(ignore_globs)
+        return ignore_globs
 
     def _get_ignore_rules_as_regex(self):
         """Return a regex of the ignore rules and a mapping dict.
@@ -1116,7 +1131,7 @@ class WorkingTree(bzrlib.tree.Tree):
         :return: (ignore rules compiled regex, dictionary mapping rule group 
         indices to original rule.)
         """
-        if getattr(self, '_ignorelist', None) is None:
+        if getattr(self, '_ignoreset', None) is None:
             self.get_ignore_list()
         return self._ignore_regex
 
@@ -1724,7 +1739,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
           files, separate from the BzrDir format
         - modifies the hash cache format
         - is new in bzr 0.8
-        - uses a LockDir to guard access to the repository
+        - uses a LockDir to guard access for writes.
     """
 
     def get_format_string(self):
@@ -1794,7 +1809,14 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        control_files = self._open_control_files(a_bzrdir)
+        return self._open(a_bzrdir, self._open_control_files(a_bzrdir))
+
+    def _open(self, a_bzrdir, control_files):
+        """Open the tree itself.
+        
+        :param a_bzrdir: the dir for the tree.
+        :param control_files: the control files for the tree.
+        """
         return WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,

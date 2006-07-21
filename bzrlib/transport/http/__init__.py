@@ -19,9 +19,9 @@
 There are separate implementation modules for each http client implementation.
 """
 
-from collections import deque
 from cStringIO import StringIO
 import errno
+import mimetools
 import os
 import posixpath
 import re
@@ -30,14 +30,18 @@ import urlparse
 import urllib
 from warnings import warn
 
-from bzrlib.transport import Transport, register_transport, Server
+# TODO: load these only when running http tests
+import BaseHTTPServer, SimpleHTTPServer, socket, time
+import threading
+
+from bzrlib import errors
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError, InvalidURL)
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
-# TODO: load these only when running http tests
-import BaseHTTPServer, SimpleHTTPServer, socket, time
-import threading
+from bzrlib.transport import Transport, register_transport, Server
+from bzrlib.transport.http.response import (HttpMultipartRangeResponse,
+                                            HttpRangeResponse)
 from bzrlib.ui import ui_factory
 
 
@@ -69,6 +73,50 @@ def extract_auth(url, password_manager):
         password_manager.add_password(None, host, username, password)
     url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
     return url
+
+
+def _extract_headers(header_text, url):
+    """Extract the mapping for an rfc2822 header
+
+    This is a helper function for the test suite and for _pycurl.
+    (urllib already parses the headers for us)
+
+    In the case that there are multiple headers inside the file,
+    the last one is returned.
+
+    :param header_text: A string of header information.
+        This expects that the first line of a header will always be HTTP ...
+    :param url: The url we are parsing, so we can raise nice errors
+    :return: mimetools.Message object, which basically acts like a case 
+        insensitive dictionary.
+    """
+    first_header = True
+    remaining = header_text
+
+    if not remaining:
+        raise errors.InvalidHttpResponse(url, 'Empty headers')
+
+    while remaining:
+        header_file = StringIO(remaining)
+        first_line = header_file.readline()
+        if not first_line.startswith('HTTP'):
+            if first_header: # The first header *must* start with HTTP
+                raise errors.InvalidHttpResponse(url,
+                    'Opening header line did not start with HTTP: %s' 
+                    % (first_line,))
+                assert False, 'Opening header line was not HTTP'
+            else:
+                break # We are done parsing
+        first_header = False
+        m = mimetools.Message(header_file)
+
+        # mimetools.Message parses the first header up to a blank line
+        # So while there is remaining data, it probably means there is
+        # another header to be parsed.
+        # Get rid of any preceeding whitespace, which if it is all whitespace
+        # will get rid of everything.
+        remaining = header_file.read().lstrip()
+    return m
 
 
 class HttpTransportBase(Transport):
@@ -195,58 +243,43 @@ class HttpTransportBase(Transport):
         :param offsets: A list of (offset, size) tuples.
         :param return: A list or generator of (offset, data) tuples
         """
-        # Ideally we would pass one big request asking for all the ranges in
-        # one go; however then the server will give a multipart mime response
-        # back, and we can't parse them yet.  So instead we just get one range
-        # per region, and try to coallesce the regions as much as possible.
-        #
-        # The read-coallescing code is not quite regular enough to have a
-        # single driver routine and
-        # helper method in Transport.
-        def do_combined_read(combined_offsets):
-            # read one coalesced block
-            total_size = 0
-            for offset, size in combined_offsets:
-                total_size += size
-            mutter('readv coalesced %d reads.', len(combined_offsets))
-            offset = combined_offsets[0][0]
-            byte_range = (offset, offset + total_size - 1)
-            code, result_file = self._get(relpath, [byte_range])
-            if code == 206:
-                for off, size in combined_offsets:
-                    result_bytes = result_file.read(size)
-                    assert len(result_bytes) == size
-                    yield off, result_bytes
-            elif code == 200:
-                data = result_file.read(offset + total_size)[offset:offset + total_size]
-                pos = 0
-                for offset, size in combined_offsets:
-                    yield offset, data[pos:pos + size]
-                    pos += size
-                del data
-        if not len(offsets):
-            return
-        pending_offsets = deque(offsets)
-        combined_offsets = []
-        while len(pending_offsets):
-            offset, size = pending_offsets.popleft()
-            if not combined_offsets:
-                combined_offsets = [[offset, size]]
+        ranges = self.offsets_to_ranges(offsets)
+        mutter('http readv of %s collapsed %s offsets => %s',
+                relpath, len(offsets), ranges)
+        code, f = self._get(relpath, ranges)
+        for start, size in offsets:
+            f.seek(start, (start < 0) and 2 or 0)
+            start = f.tell()
+            data = f.read(size)
+            assert len(data) == size
+            yield start, data
+
+    @staticmethod
+    def offsets_to_ranges(offsets):
+        """Turn a list of offsets and sizes into a list of byte ranges.
+
+        :param offsets: A list of tuples of (start, size).  An empty list
+            is not accepted.
+        :return: a list of inclusive byte ranges (start, end) 
+            Adjacent ranges will be combined.
+        """
+        # Make sure we process sorted offsets
+        offsets = sorted(offsets)
+
+        prev_end = None
+        combined = []
+
+        for start, size in offsets:
+            end = start + size - 1
+            if prev_end is None:
+                combined.append([start, end])
+            elif start <= prev_end + 1:
+                combined[-1][1] = end
             else:
-                if (len (combined_offsets) < 500 and
-                    combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
-                    # combatible offset:
-                    combined_offsets.append([offset, size])
-                else:
-                    # incompatible, or over the threshold issue a read and yield
-                    pending_offsets.appendleft((offset, size))
-                    for result in do_combined_read(combined_offsets):
-                        yield result
-                    combined_offsets = []
-        # whatever is left is a single coalesced request
-        if len(combined_offsets):
-            for result in do_combined_read(combined_offsets):
-                yield result
+                combined.append([start, end])
+            prev_end = end
+
+        return combined
 
     def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
@@ -343,6 +376,25 @@ class HttpTransportBase(Transport):
         else:
             return self.__class__(self.abspath(offset))
 
+    @staticmethod
+    def range_header(ranges, tail_amount):
+        """Turn a list of bytes ranges into a HTTP Range header value.
+
+        :param offsets: A list of byte ranges, (start, end). An empty list
+        is not accepted.
+
+        :return: HTTP range header string.
+        """
+        strings = []
+        for start, end in ranges:
+            strings.append('%d-%d' % (start, end))
+
+        if tail_amount:
+            strings.append('-%d' % tail_amount)
+
+        return ','.join(strings)
+
+
 #---------------- test server facilities ----------------
 # TODO: load these only when running tests
 
@@ -434,6 +486,7 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
                                                 RequestHandlerClass)
         self.test_case = test_case
+
 
 class HttpServer(Server):
     """A test server for http transports."""
