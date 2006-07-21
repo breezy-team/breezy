@@ -108,3 +108,50 @@ class TestCompareTrees(TestCaseWithTransport):
         self.assertEqual([], d.removed)
         self.assertEqual([('b/c', 'e', 'c-id', 'file', False, True)], d.renamed)
         self.assertEqual([], d.modified)
+
+    def test_subset_file(self):
+        empty_tree = self.tree.branch.repository.revision_tree(
+                        revision.NULL_REVISION)
+
+        d = delta.compare_trees(empty_tree, self.tree.basis_tree(),
+                                specific_files=['a'])
+        self.assertEqual([('a', 'a-id', 'file')], d.added)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        self.assertEqual([], d.modified)
+
+    def test_subset_multiple(self):
+        empty_tree = self.tree.branch.repository.revision_tree(
+                        revision.NULL_REVISION)
+
+        d = delta.compare_trees(empty_tree, self.tree,
+                                specific_files=['a', 'b/c'])
+        self.assertEqual([('a', 'a-id', 'file'),
+                          ('b/c', 'c-id', 'file'),
+                         ], d.added)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        self.assertEqual([], d.modified)
+
+    def test_subset_dir(self):
+        """Restricting to a directory checks the dir, and all children."""
+        empty_tree = self.tree.branch.repository.revision_tree(
+                        revision.NULL_REVISION)
+
+        d = delta.compare_trees(empty_tree, self.tree,
+                                specific_files=['b'])
+        self.assertEqual([('b', 'b-id', 'directory'),
+                          ('b/c', 'c-id', 'file'),
+                         ], d.added)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        self.assertEqual([], d.modified)
+
+    def test_unknown(self):
+        self.build_tree(['tree/unknown'])
+        # Unknowns are not reported by compare_trees
+        d = delta.compare_trees(self.tree.basis_tree(), self.tree)
+        self.assertEqual([], d.added)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        self.assertEqual([], d.modified)
