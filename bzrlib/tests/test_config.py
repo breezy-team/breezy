@@ -23,7 +23,12 @@ import os
 import sys
 
 #import bzrlib specific imports here
-from bzrlib import config, errors, osutils, urlutils
+from bzrlib import (
+    config,
+    errors,
+    osutils,
+    urlutils,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
