@@ -196,6 +196,19 @@ Environment
 **EMAIL**
                 E-Mail address of the user. Overriddes default user config.
 
+**BZR_EDITOR**
+                Editor for editing commit messages
+
+**EDITOR**
+                Editor for editing commit messages
+
+**BZR_PLUGIN_PATH**
+                Paths where bzr should look for plugins
+
+**BZR_HOME**
+                Home directory for bzr
+
+
 Files
 =====
 
