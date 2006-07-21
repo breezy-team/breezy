@@ -826,6 +826,9 @@ class cmd_update(Command):
             conflicts = tree.update()
             revno = tree.branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
+            if tree.pending_merges():
+                note('Your local commits will show now as pending merges with '
+                     '`bzr status`, and can be commited with `bzr commit`.')
             if conflicts != 0:
                 return 1
             else:
@@ -1754,9 +1757,10 @@ class cmd_commit(Command):
             raise BzrCommandError("Commit refused because there are unknown "
                                   "files in the working tree.")
         except errors.BoundBranchOutOfDate, e:
-            raise BzrCommandError(str(e)
-                                  + ' Either unbind, update, or'
-                                    ' pass --local to commit.')
+            raise BzrCommandError(str(e) + "\n"
+                'To commit to master branch, do update and then commit, or '  \
+                'push if the branches have not diverged.\nYou can also pass ' \
+                '--local to commit to continue working offline.')
 
 
 class cmd_check(Command):
