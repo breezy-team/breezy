@@ -376,6 +376,16 @@ class TestBranchConfig(TestCaseWithTransport):
                                     % (osutils.getcwd().encode('utf8'),))
         self.assertEqual('barry', branch.nick)
 
+    def test_config_creates_local(self):
+        """Creating a new entry in config uses a local path."""
+        branch = self.make_branch('branch')
+        branch.set_push_location('http://foobar')
+        locations = config.locations_config_filename()
+        local_path = osutils.getcwd().encode('utf8')
+        # Surprisingly ConfigObj doesn't create a trailing newline
+        self.check_file_contents(locations,
+            '[%s/branch]\npush_location = http://foobar' % (local_path,))
+
 
 class TestGlobalConfigItems(TestCase):
 
