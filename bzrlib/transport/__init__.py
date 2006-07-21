@@ -164,6 +164,21 @@ def split_url(url):
     return (scheme, username, password, host, port, path)
 
 
+class _CoalescedOffset(object):
+    """A data container for keeping track of coalesced offsets."""
+
+    __slots__ = ['start', 'length', 'ranges']
+
+    def __init__(self, start, length, ranges):
+        self.start = start
+        self.length = length
+        self.ranges = ranges
+
+    def __cmp__(self, other):
+        return cmp((self.start, self.length, self.ranges),
+                   (other.start, other.length, other.ranges))
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -374,32 +389,26 @@ class Transport(object):
         sorted_offsets = sorted(offsets)
 
         # turn the list of offsets into a stack
-        offsets.reverse()
+        offset_stack = iter(offsets)
+        cur_offset_and_size = offset_stack.next()
         coalesced = self._coalesce_offsets(sorted_offsets,
                                limit=self._max_readv_combine,
                                fudge_factor=self._bytes_to_read_before_seek)
 
         # Cache the results, but only until they have been fulfilled
         data_map = {}
-        for start, size, sublists in coalesced:
-            fp.seek(start)
-            data = fp.read(size)
-            for offset, subsize in sublists:
-                key = (start+offset, subsize)
-                data_map[key] = data[offset:offset+subsize]
+        for c_offset in coalesced:
+            fp.seek(c_offset.start)
+            data = fp.read(c_offset.length)
+            for suboffset, subsize in c_offset.ranges:
+                key = (c_offset.start+suboffset, subsize)
+                data_map[key] = data[suboffset:suboffset+subsize]
 
             # Now that we've read some data, see if we can yield anything back
-            while offsets:
-                if offsets[-1] not in data_map:
-                    # We can't yield anything yet, the next entry isn't ready
-                    break
-                key = offsets.pop()
-                this_data = data_map.pop(key)
-                yield key[0], this_data
-
-        # If we got here, we should have processed all entries
-        # We don't always reach here if someone is double iterating
-        assert len(offsets) == 0
+            while cur_offset_and_size in data_map:
+                this_data = data_map.pop(cur_offset_and_size)
+                yield cur_offset_and_size[0], this_data
+                cur_offset_and_size = offset_stack.next()
 
     @staticmethod
     def _coalesce_offsets(offsets, limit, fudge_factor):
@@ -418,35 +427,29 @@ class Transport(object):
         :param fudge_factor: All transports have some level of 'it is
                 better to read some more data and throw it away rather 
                 than seek', so collapse if we are 'close enough'
-        :return: a generator of [(start, total_length, 
-                                  [(inner_offset, length)])]
-                (start, total_length) is where to start, and how much to read
-                and (inner_offset, length) is how those chunks should be
-                split up.
+        :return: yield _CoalescedOffset objects, which have members for wher
+                to start, how much to read, and how to split those 
+                chunks back up
         """
         last_end = None
-        cur_start = None
-        cur_total = None
-        cur_subranges = []
+        cur = _CoalescedOffset(None, None, [])
 
         for start, size in offsets:
             end = start + size
             if (last_end is not None 
                 and start <= last_end + fudge_factor
-                and start >= cur_start
-                and (limit <= 0 or len(cur_subranges) < limit)):
-                cur_total = end - cur_start
-                cur_subranges.append((start-cur_start, size))
+                and start >= cur.start
+                and (limit <= 0 or len(cur.ranges) < limit)):
+                cur.length = end - cur.start
+                cur.ranges.append((start-cur.start, size))
             else:
-                if cur_start is not None:
-                    yield (cur_start, cur_total, cur_subranges)
-                cur_start = start
-                cur_total = size
-                cur_subranges = [(0, size)]
+                if cur.start is not None:
+                    yield cur
+                cur = _CoalescedOffset(start, size, [(0, size)])
             last_end = end
 
-        if cur_start is not None:
-            yield (cur_start, cur_total, cur_subranges)
+        if cur.start is not None:
+            yield cur
 
         return
 

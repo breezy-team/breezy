@@ -28,7 +28,8 @@ from bzrlib.errors import (NoSuchFile, FileExists,
                            UnsupportedProtocol,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
-from bzrlib.transport import (_get_protocol_handlers,
+from bzrlib.transport import (_CoalescedOffset,
+                              _get_protocol_handlers,
                               _get_transport_modules,
                               get_transport,
                               register_lazy_transport,
@@ -104,8 +105,9 @@ class TestCoalesceOffsets(TestCase):
     
     def check(self, expected, offsets, limit=0, fudge=0):
         coalesce = Transport._coalesce_offsets
-        self.assertEqual(expected, list(coalesce(offsets,
-                                        limit=limit, fudge_factor=fudge)))
+        exp = [_CoalescedOffset(*x) for x in expected]
+        out = list(coalesce(offsets, limit=limit, fudge_factor=fudge))
+        self.assertEqual(exp, out)
 
     def test_coalesce_empty(self):
         self.check([], [])
