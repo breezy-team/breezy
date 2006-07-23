@@ -108,7 +108,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         try:
             try:
                 wt.lock_read()
-            except:
+            except errors.LockError:
                 # any error here means the locks are exclusive in some 
                 # manner
                 self.assertFalse(wt.is_locked())
