@@ -495,11 +495,15 @@ class Transport(object):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
-    def append(self, relpath, f):
-        """Append the text in the file-like or string object to 
-        the supplied location.
+    def append(self, relpath, f, mode=None):
+        """Append bytes to a file.
 
-        returns the length of f before the content was written to it.
+        The file is created if it does not already exist.
+
+        :param mode: Unix mode for newly created files.  This is not used for existing
+            files.
+
+        :returns: the length of f before the content was written to it.
         """
         raise NotImplementedError(self.append)
 

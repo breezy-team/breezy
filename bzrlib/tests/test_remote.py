@@ -37,7 +37,7 @@ class BasicRemoteObjectTests(tests.TestCaseInTempDir):
         self.transport = smart.SmartTCPTransport(self.server.get_url())
         self.client = self.transport.get_smart_client()
         # make a branch that can be opened over the smart transport
-        BzrDir.create_standalone_workingtree('.')
+        self.local_wt = BzrDir.create_standalone_workingtree('.')
 
     def test_create_remote_bzrdir(self):
         b = remote.RemoteBzrDir(self.transport)
@@ -47,6 +47,20 @@ class BasicRemoteObjectTests(tests.TestCaseInTempDir):
         # create a standalone branch in the working directory
         b = remote.RemoteBzrDir(self.transport)
         branch = b.open_branch()
+
+    def test_remote_repository(self):
+        b = BzrDir.open_from_transport(self.transport)
+        repo = b.open_repository()
+        self.assertFalse(repo.has_revision('23123123'))
+        self.local_wt.commit(message='test commit', 
+                             rev_id='rev-1',
+                             allow_pointless=True)
+        self.assertTrue(repo.has_revision('rev-1'))
+
+    def test_remote_branch_revision_history(self):
+        b = BzrDir.open_from_transport(self.transport).open_branch()
+        rh = b.revision_history()
+        self.assertEqual(len(rh), 0)
 
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a SmartTransport"""

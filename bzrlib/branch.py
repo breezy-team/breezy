@@ -285,7 +285,7 @@ class Branch(object):
 
     def revision_history(self):
         """Return sequence of revision hashes on to this branch."""
-        raise NotImplementedError('revision_history is abstract')
+        raise NotImplementedError(self.revision_history)
 
     def revno(self):
         """Return current revision number for this branch.

@@ -48,13 +48,16 @@ def test_suite():
         'bzrlib.tests.branch_implementations.test_pull',
         'bzrlib.tests.branch_implementations.test_update',
         ]
+    combinations = [(format, format._matchingbzrdir) for format in 
+         BranchFormat._formats.values() + _legacy_formats]
+    # TODO: To usefully test the SmartServer, we need to specify the bzrdir
+    # format, branch format, and also the transport.
     adapter = BranchTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        [(format, format._matchingbzrdir) for format in 
-         BranchFormat._formats.values() + _legacy_formats])
+        combinations)
     loader = TestLoader()
     adapt_modules(test_branch_implementations, adapter, loader, result)
     return result

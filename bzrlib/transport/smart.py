@@ -180,21 +180,43 @@ def _send_tuple(to_file, args):
     to_file.flush()
 
 
-# TODO: this only actually accomodates a single block; possibly should support
-# multiple chunks?
-def _recv_bulk(from_file):
-    chunk_len = from_file.readline()
-    try:
-        chunk_len = int(chunk_len)
-    except ValueError:
-        raise BzrProtocolError("bad chunk length line %r" % chunk_len)
-    bulk = from_file.read(chunk_len)
-    if len(bulk) != chunk_len:
-        raise BzrProtocolError("short read fetching bulk data chunk")
-    return bulk
+class SmartProtocolBase(object):
+    """Methods common to client and server"""
+
+    def _send_bulk_data(self, body):
+        """Send chunked body data"""
+        assert isinstance(body, str)
+        self._out.write('%d\n' % len(body))
+        self._out.write(body)
+        self._out.write('done\n')
+        self._out.flush()
+
+    # TODO: this only actually accomodates a single block; possibly should support
+    # multiple chunks?
+    def _recv_bulk(self):
+        chunk_len = self._in.readline()
+        try:
+            chunk_len = int(chunk_len)
+        except ValueError:
+            raise BzrProtocolError("bad chunk length line %r" % chunk_len)
+        bulk = self._in.read(chunk_len)
+        if len(bulk) != chunk_len:
+            raise BzrProtocolError("short read fetching bulk data chunk")
+        self._recv_trailer()
+        return bulk
+
+    def _recv_tuple(self):
+        return _recv_tuple(self._in)
+
+    def _recv_trailer(self):
+        resp = self._recv_tuple()
+        if resp == ('done', ):
+            return
+        else:
+            self._translate_error(resp)
 
 
-class SmartStreamServer(object):
+class SmartStreamServer(SmartProtocolBase):
     """Handles smart commands coming over a stream.
 
     The stream may be a pipe connected to sshd, or a tcp socket, or an
@@ -217,6 +239,9 @@ class SmartStreamServer(object):
         self._in = in_file
         self._out = out_file
         self.smart_server = SmartServer(backing_transport)
+        # server can call back to us to get bulk data - this is not really
+        # ideal, they should get it per request instead
+        self.smart_server._recv_body = self._recv_bulk
 
     def _recv_tuple(self):
         """Read a request from the client and return as a tuple.
@@ -229,19 +254,11 @@ class SmartStreamServer(object):
         """Send response header"""
         return _send_tuple(self._out, args)
 
-    def _send_bulk_data(self, body):
-        """Send chunked body data"""
-        assert isinstance(body, str)
-        self._out.write('%d\n' % len(body))
-        self._out.write(body)
-        self._out.write('done\n')
-        self._out.flush()
-
     def _send_error_and_disconnect(self, exception):
         self._send_tuple(('error', str(exception)))
         self._out.flush()
-        self._out.close()
-        self._in.close()
+        ## self._out.close()
+        ## self._in.close()
 
     def _serve_one_request(self):
         """Read one request from input, process, send back a response.
@@ -259,6 +276,8 @@ class SmartStreamServer(object):
                 self._send_bulk_data(response.body)
         except errors.NoSuchFile, e:
             self._send_tuple(('enoent', e.path))
+        except errors.FileExists, e:
+            self._send_tuple(('FileExists', e.path))
         except KeyboardInterrupt:
             raise
         except Exception, e:
@@ -291,6 +310,9 @@ class SmartServer(object):
     creates responses.
     """
 
+    # TODO: Better way of representing the body for commands that take it,
+    # and allow it to be streamed into the server.
+    
     def __init__(self, backing_transport):
         self._backing_transport = backing_transport
         
@@ -305,6 +327,27 @@ class SmartServer(object):
     def do_get(self, relpath):
         backing_file = self._backing_transport.get(relpath)
         return SmartServerResponse(('ok',), backing_file.read())
+
+    def _optional_mode(self, mode):
+        if mode == '':
+            return None
+        else:
+            return int(mode)
+
+    def do_mkdir(self, relpath, mode):
+        self._backing_transport.mkdir(relpath, self._optional_mode(mode))
+        return SmartServerResponse(('ok',))
+
+    def do_put(self, relpath, mode):
+        self._backing_transport.put(relpath, 
+                StringIO(self._recv_body()), 
+                self._optional_mode(mode))
+        return SmartServerResponse(('ok',))
+
+    def do_append(self, relpath, mode):
+        old_length = self._backing_transport.append(relpath, StringIO(self._recv_body()),
+                self._optional_mode(mode))
+        return SmartServerResponse(('appended', '%d' % old_length))
 
     def do_get_bundle(self, path, revision_id):
         # open transport relative to our base
@@ -456,14 +499,14 @@ class SmartTransport(sftp.SFTPUrlHandling):
         return SmartTransport(new_url, clone_from=self)
 
     def is_readonly(self):
-        """Smart protocol currently only supports readonly operations."""
-        return True
-
-    def get_smart_client(self):
-        return self._client
-    
-    def _unparse_url(self, path):
-        """Return URL for a path.
+        """Smart server transport can do read/write file operations."""
+        return False
+                                                   
+    def get_smart_client(self):                    
+        return self._client                        
+                                                   
+    def _unparse_url(self, path):                  
+        """Return URL for a path.                 l
 
         :see: SFTPUrlHandling._unparse_url
         """
@@ -487,7 +530,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
 
         :see: Transport.has()
         """
-        resp = self._call('has', self._remote_path(relpath))
+        resp = self._client._call('has', self._remote_path(relpath))
         if resp == ('yes', ):
             return True
         elif resp == ('no', ):
@@ -503,36 +546,55 @@ class SmartTransport(sftp.SFTPUrlHandling):
         mutter("%s.get %s", self, relpath)
         remote = self._remote_path(relpath)
         mutter("  remote path: %s", remote)
-        resp = self._call('get', remote)
+        resp = self._client._call('get', remote)
         if resp != ('ok', ):
             self._translate_error(resp)
-        body = self._recv_bulk()
-        self._recv_trailer()
-        ret = StringIO(body)
-        ## print '  got %d bytes: %s' % (len(body), body[:30])
-        return ret
+        return StringIO(self._client._recv_bulk())
 
-    def _recv_trailer(self):
-        resp = self._recv_tuple()
-        if resp == ('done', ):
-            return
+    def _optional_mode(self, mode):
+        if mode is None:
+            return ''
         else:
-            self._translate_error(resp)
+            return '%d' % mode
 
-    def _call(self, *args):
-        self._send_tuple(args)
-        return self._recv_tuple()
+    def mkdir(self, relpath, mode=None):
+        resp = self._client._call('mkdir', 
+                                  self._remote_path(relpath), 
+                                  self._optional_mode(mode))
+        self._translate_error(resp)
+
+    def put(self, relpath, upload_file, mode=None):
+        # FIXME: upload_file is probably not safe for non-ascii characters -
+        # should probably just pass all parameters as length-delimited
+        # strings?
+        resp = self._client._call_with_upload('put', 
+                                              (self._remote_path(relpath), 
+                                               self._optional_mode(mode)),
+                                              upload_file.read())
+        self._translate_error(resp)
+
+    def append(self, relpath, from_file, mode=None):
+        resp = self._client._call_with_upload('append',
+                                              (self._remote_path(relpath), 
+                                               self._optional_mode(mode)),
+                                              from_file.read())
+        if resp[0] == 'appended':
+            return int(resp[1])
+        self._translate_error(resp)
 
     def _translate_error(self, resp):
         """Raise an exception from a response"""
         what = resp[0]
-        if what == 'enoent':
+        if what == 'ok':
+            return
+        elif what == 'enoent':
             raise errors.NoSuchFile(resp[1])
+        elif what == 'error':
+            raise BzrProtocolError(unicode(resp[1]))
+        elif what == 'FileExists':
+            raise errors.FileExists(resp[1])
         else:
-            raise BzrProtocolError('bad trailer on get: %r' % (resp,))
-
-    def _recv_bulk(self):
-        return self._client._recv_bulk()
+            raise BzrProtocolError('unexpected smart server error: %r' % (resp,))
 
     def _send_tuple(self, args):
         self._client._send_tuple(args)
@@ -543,19 +605,10 @@ class SmartTransport(sftp.SFTPUrlHandling):
     def disconnect(self):
         self._client.disconnect()
 
-    def append(self, relpath, from_file):
-        raise errors.TransportNotPossible("writing to smart servers not supported yet")
-
     def delete(self, relpath):
         raise errors.TransportNotPossible('readonly transport')
 
     def delete_tree(self, relpath):
-        raise errors.TransportNotPossible('readonly transport')
-
-    def put(self, relpath, f, mode=None):
-        raise errors.TransportNotPossible('readonly transport')
-
-    def mkdir(self, relpath, mode=None):
         raise errors.TransportNotPossible('readonly transport')
 
     def rmdir(self, relpath):
@@ -584,29 +637,40 @@ class SmartTransport(sftp.SFTPUrlHandling):
         return BogusLock(relpath)
 
 
-class SmartStreamClient(object):
+class SmartStreamClient(SmartProtocolBase):
     """Connection to smart server over two streams"""
 
     def __init__(self, from_server, to_server):
-        self._from_server = from_server
-        self._to_server = to_server
+        self._in = from_server
+        self._out = to_server
 
     def __del__(self):
         self.disconnect()
 
     def _send_tuple(self, args):
-        _send_tuple(self._to_server, args)
+        _send_tuple(self._out, args)
 
     def disconnect(self):
         """Close connection to the server"""
-        self._to_server.close()
-        self._from_server.close()
+        if getattr(self, '_out'):
+            self._out.close()
+        if getattr(self, '_in'):
+            self._in.close()
 
-    def _recv_bulk(self):
-        return _recv_bulk(self._from_server)
+    def _call(self, *args):
+        self._send_tuple(args)
+        return self._recv_tuple()
 
-    def _recv_tuple(self):
-        return _recv_tuple(self._from_server)
+    def _call_with_upload(self, method, args, body):
+        """Call an rpc, supplying bulk upload data.
+
+        :param method: method name to call
+        :param args: parameter args tuple
+        :param body: upload body as a byte string
+        """
+        self._send_tuple((method,) + args)
+        self._send_bulk_data(body)
+        return self._recv_tuple()
 
     def query_version(self):
         """Return protocol version number of the server."""

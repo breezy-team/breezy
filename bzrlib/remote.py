@@ -15,9 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib import branch, errors
+from bzrlib import branch, errors, repository
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
-from bzrlib.branch import Branch
+from bzrlib.branch import Branch, BranchFormat
 from bzrlib.trace import mutter
 from bzrlib.transport.smart import SmartTransport
 
@@ -42,16 +42,75 @@ class RemoteBzrDir(BzrDir):
     def __init__(self, transport):
         BzrDir.__init__(self, transport, RemoteBzrDirFormat)
         self.client = transport.get_smart_client()
+        # this object holds a delegated bzrdir that uses file-level operations
+        # to talk to the other side
+        self._real_bzrdir = BzrDirFormat.get_default_format().open(transport, _found=True)
+        self._repository = None
+        self._branch = None
+
+    def open_repository(self):
+        # OK just very fake response for now
+        if not self._repository:
+            self._repository = self._real_bzrdir.open_repository()
+        return self._repository
 
     def open_branch(self):
+        # Very fake - use file-level transport
         return RemoteBranch(self, self.client)
 
+    def get_branch_transport(self, branch_format):
+        return self._real_bzrdir.get_branch_transport(branch_format)
 
-class RemoteBranch(branch.BzrBranch5):
+
+class RemoteRepositoryFormat(repository.RepositoryFormatKnit1):
+    """Format for repositories accessed over rpc.
+
+    Instances of this repository are represented by RemoteRepository 
+    instances.
+    """
+
+    _matchingbzrdir = RemoteBzrDirFormat
+
+
+class RemoteRepository(repository.Repository):
+    """Repository accessed over rpc.
+
+    For the moment everything is delegated to IO-like operations over 
+    the transport.
+    """
+
+
+
+class RemoteBranchFormat(branch.BranchFormat):
+
+    def open(self, a_bzrdir):
+        return RemoteBranch(a_bzrdir, a_bzrdir.client)
+
+
+class RemoteBranch(branch.Branch):
+    """Branch stored on a server accessed by HPSS RPC.
+
+    At the moment most operations are mapped down to simple file operations.
+    """
 
     def __init__(self, my_bzrdir, smart_client):
         self.bzrdir = my_bzrdir
         self.client = smart_client
+        self.transport = my_bzrdir.transport
+        self.repository = self.bzrdir.open_repository()
+        real_format = BranchFormat.get_default_format()
+        self._real_branch = real_format.open(my_bzrdir, _found=True)
+
+    def lock_read(self):
+        pass
+
+    def unlock(self):
+        # TODO: implement write locking, passed through to the other end?  Or
+        # perhaps we should not lock but rather do higher-level operations?
+        pass
+
+    def revision_history(self):
+        return self._real_branch.revision_history()
 
 
 # when first loaded, register this format.

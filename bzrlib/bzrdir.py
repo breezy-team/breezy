@@ -319,7 +319,7 @@ class BzrDir(object):
         repository format that that uses for bzrdirformat.create_workingtree,
         create_branch and create_repository.
 
-        The WorkingTree object is returned.
+        :return: The WorkingTree object.
         """
         t = get_transport(safe_unicode(base))
         if not isinstance(t, LocalTransport):
