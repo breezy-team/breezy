@@ -409,7 +409,9 @@ class SmartTCPServer(object):
         to_client = conn.makefile('w')
         handler = SmartStreamServer(from_client, to_client,
                 self.backing_transport)
-        handler.serve()
+        connection_thread = threading.Thread(None, handler.serve, name='smart-server-child')
+        connection_thread.setDaemon(True)
+        connection_thread.start()
 
     def start_background_thread(self):
         self._server_thread = threading.Thread(None,
