@@ -105,6 +105,8 @@ def os_specific_subprocess_params():
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
+if 'sftp_prefetch' in os.environ:
+    _default_do_prefetch = bool(int(os.environ['sftp_prefetch']))
 
 # Paramiko 1.5 tries to open a socket.AF_UNIX in order to connect
 # to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
@@ -318,11 +320,11 @@ class SFTPTransport (Transport):
     #       by auto-tuning at run-time, or by a configuration (per host??)
     #       but the performance curve is pretty flat, so just going with
     #       reasonable defaults.
-    _max_readv_combine = 200
+    _max_readv_combine = int(os.environ.get('sftp_max_combine', 200))
     # Having to round trip to the server means waiting for a response,
     # so it is better to download extra bytes.
     # 8KiB had good performance for both local and remote network operations
-    _bytes_to_read_before_seek = 8192
+    _bytes_to_read_before_seek = int(os.environ.get('sftp_bytes', 8192))
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
