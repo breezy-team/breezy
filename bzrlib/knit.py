@@ -73,7 +73,6 @@ import os
 import sys
 import warnings
 
-from bzrlib import disk_backed_cache
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
@@ -1290,16 +1289,13 @@ class _KnitData(_KnitComponentFile):
 
     HEADER = "# bzr knit data 8\n"
 
-    # If caching is enabled, don't let it grow larger than this
-    # in memory (before writing to disk)
-    _max_memory_cache_size = 10*1024*1024
-
     def __init__(self, transport, filename, mode, create=False, file_mode=None):
         _KnitComponentFile.__init__(self, transport, filename, mode)
         self._checked = False
-
-        # This starts off as a plain dict, because if we aren't caching
-        # we don't want any overhead for lookups
+        # TODO: jam 20060713 conceptually, this could spill to disk
+        #       if the cached size gets larger than a certain amount
+        #       but it complicates the model a bit, so for now just use
+        #       a simple dictionary
         self._cache = {}
         self._do_cache = False
         if create:
@@ -1307,29 +1303,11 @@ class _KnitData(_KnitComponentFile):
 
     def enable_cache(self):
         """Enable caching of reads."""
-        if not self._do_cache:
-            self._do_cache = True
-            self._cache = disk_backed_cache.DiskBackedCache(
-                            # Cache things in RAM. Only spill to disk if the 
-                            # Transport says we should cache (all remote 
-                            # transports return True, local transports 
-                            # return False)
-                            use_disk=self._transport.should_cache(),
-                            # If the same entry is added twice, we have a
-                            # bug somewhere
-                            allow_replace=False,
-                            # TODO: This is a policy bit. If we cross the
-                            #       threshold, do we dump everything to disk,
-                            #       or do we just dump new stuff
-                            flush_all=False,
-                            max_size=self._max_memory_cache_size
-                            )
+        self._do_cache = True
 
     def clear_cache(self):
         """Clear the record cache."""
         self._do_cache = False
-        # Caching is now disabled, so switch back to a plain dict
-        self._cache.clear()
         self._cache = {}
 
     def _open_file(self):

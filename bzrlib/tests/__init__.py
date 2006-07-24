@@ -1254,7 +1254,6 @@ def test_suite():
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_diff',
-                   'bzrlib.tests.test_disk_backed_cache',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_emptytree',
                    'bzrlib.tests.test_errors',
