@@ -30,6 +30,7 @@ from bzrlib.errors import (FileExists,
                            UninitializableFormat,
                            NotBranchError,
                            )
+from bzrlib.inventory import Inventory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
@@ -426,7 +427,7 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         # a inventory with no parents and the revision has parents..
         # i.e. a ghost.
         repo = self.make_repository('inventory_with_unnecessary_ghost')
-        inv = bzrlib.tree.EmptyTree().inventory
+        inv = Inventory()
         sha1 = repo.add_inventory('ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,

@@ -221,6 +221,9 @@ class _MyResult(unittest._TextTestResult):
             self.stream.write('E')
         elif self.dots:
             self.pb.update(self._ellipsise_unimportant_words('ERROR', 13), self.testsRun, None)
+            self.pb.note(self._ellipsise_unimportant_words(
+                            test.id() + ': ERROR',
+                            osutils.terminal_width()))
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -234,6 +237,9 @@ class _MyResult(unittest._TextTestResult):
             self.stream.write('F')
         elif self.dots:
             self.pb.update(self._ellipsise_unimportant_words('FAIL', 13), self.testsRun, None)
+            self.pb.note(self._ellipsise_unimportant_words(
+                            test.id() + ': FAIL',
+                            osutils.terminal_width()))
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -1264,7 +1270,9 @@ def test_suite():
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_http',
+                   'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_identitymap',
+                   'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lockdir',
@@ -1323,10 +1331,10 @@ def test_suite():
         ]
     suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     from bzrlib.transport import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
-    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:

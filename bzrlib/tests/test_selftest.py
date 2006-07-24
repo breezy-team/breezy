@@ -22,6 +22,7 @@ import time
 import unittest
 import warnings
 
+from bzrlib import osutils
 import bzrlib
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
@@ -440,6 +441,9 @@ class MockProgress(_BaseProgressBar):
     def clear(self):
         self.calls.append(('clear',))
 
+    def note(self, msg, *args):
+        self.calls.append(('note', msg, args))
+
 
 class TestTestResult(TestCase):
 
@@ -450,44 +454,54 @@ class TestTestResult(TestCase):
         mypb = MockProgress()
         mypb.update('Running tests', 0, 4)
         last_calls = mypb.calls[:]
+
         result = bzrlib.tests._MyResult(self._log_file,
                                         descriptions=0,
                                         verbosity=1,
                                         pb=mypb)
         self.assertEqual(last_calls, mypb.calls)
 
+        def shorten(s):
+            """Shorten a string based on the terminal width"""
+            return result._ellipsise_unimportant_words(s,
+                                 osutils.terminal_width())
+
         # an error 
         result.startTest(dummy_test)
         # starting a test prints the test name
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 0, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 0, None)]
+        self.assertEqual(last_calls, mypb.calls)
         result.addError(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', 'ERROR        ', 1, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', 'ERROR        ', 1, None),
+                       ('note', shorten(dummy_test.id() + ': ERROR'), ())
+                      ]
+        self.assertEqual(last_calls, mypb.calls)
 
         # a failure
         result.startTest(dummy_test)
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 1, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 1, None)]
+        self.assertEqual(last_calls, mypb.calls)
+        last_calls += [('update', 'FAIL         ', 2, None),
+                       ('note', shorten(dummy_test.id() + ': FAIL'), ())
+                      ]
         result.addFailure(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', 'FAIL         ', 2, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        self.assertEqual(last_calls, mypb.calls)
 
         # a success
         result.startTest(dummy_test)
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 2, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 2, None)]
+        self.assertEqual(last_calls, mypb.calls)
         result.addSuccess(dummy_test)
-        self.assertEqual(last_calls + [('update', 'OK           ', 3, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', 'OK           ', 3, None)]
+        self.assertEqual(last_calls, mypb.calls)
 
         # a skip
         result.startTest(dummy_test)
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 3, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 3, None)]
+        self.assertEqual(last_calls, mypb.calls)
         result.addSkipped(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', 'SKIP         ', 4, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', 'SKIP         ', 4, None)]
+        self.assertEqual(last_calls, mypb.calls)
 
     def test_elapsed_time_with_benchmarking(self):
         result = bzrlib.tests._MyResult(self._log_file,
@@ -726,24 +740,3 @@ class TestSelftest(TestCase):
         self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
-
-    def test_run_bzr_subprocess(self):
-        """The run_bzr_helper_external comand behaves nicely."""
-        result = self.run_bzr_subprocess('--version')
-        result = self.run_bzr_subprocess('--version', retcode=None)
-        self.assertContainsRe(result[0], 'is free software')
-        self.assertRaises(AssertionError, self.run_bzr_subprocess, 
-                          '--versionn')
-        result = self.run_bzr_subprocess('--versionn', retcode=3)
-        result = self.run_bzr_subprocess('--versionn', retcode=None)
-        self.assertContainsRe(result[1], 'unknown command')
-        err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
-                                      retcode=3)[1]
-        self.assertContainsRe(err, 'No known merge type magic merge')
-
-    def test_run_bzr_error(self):
-        out, err = self.run_bzr_error(['^$'], 'rocks', retcode=0)
-        self.assertEqual(out, 'it sure does!\n')
-
-        out, err = self.run_bzr_error(["'foobarbaz' is not a versioned file"],
-                                      'file-id', 'foobarbaz')

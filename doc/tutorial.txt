@@ -128,7 +128,7 @@ guess that Bazaar-NG makes, then three options exist:
      % bzr whoami --branch 'Your Name <email@example.com>'
  
  1. Setting the email address in the
- ``~/.bazaar/bazaar.conf`` by adding the following lines. Please note that
+ ``~/.bazaar/bazaar.conf`` [1]_ by adding the following lines. Please note that
  ``[DEFAULT]`` is case sensitive::
 
     [DEFAULT]
@@ -144,6 +144,13 @@ guess that Bazaar-NG makes, then three options exist:
  1. Overriding the two previous options by setting the global environment
  variable ``$BZREMAIL`` or ``$EMAIL`` (``$BZREMAIL`` will take precedence) 
  to your full email address.
+
+.. [1] On Windows, the users configuration files can be found in the
+   application data directory. So instead of ``~/.bazaar/branch.conf``
+   the configuration file can be found as: 
+   ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\branch.conf``.
+   The same is true for ``locations.conf``, ``ignore``, and the
+   ``plugins`` directory.
 
 Creating a branch
 =================
@@ -358,11 +365,21 @@ add an ignored file.  Ignore patterns have no effect on versioned files;
 they only determine whether unversioned files are reported as unknown or
 ignored.
 
-The ''.bzrignore'' file should normally be versioned, so that new copies
+The ``.bzrignore`` file should normally be versioned, so that new copies
 of the branch see the same patterns::
 
     % bzr add .bzrignore
     % bzr commit -m "Add ignore patterns"
+
+
+Global Ignores
+--------------
+
+There are some ignored files which are not project specific, but more user
+specific. Things like editor temporary files, or personal temporary files.
+Rather than add these ignores to every project, bzr supports a global
+ignore file in ``~/.bazaar/ignore`` [1]_. It has the same syntax as the
+per-project ignore file.
 
 
 Examining history

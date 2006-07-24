@@ -604,6 +604,11 @@ def locations_config_filename():
     return pathjoin(config_dir(), 'locations.conf')
 
 
+def user_ignore_config_filename():
+    """Return the user default ignore filename"""
+    return pathjoin(config_dir(), 'ignore')
+
+
 def _auto_user_id():
     """Calculate automatic user identification.
 

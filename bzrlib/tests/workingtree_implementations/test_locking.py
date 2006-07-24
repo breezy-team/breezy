@@ -87,7 +87,8 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # manually unlock the branch, preparing a LockNotHeld error.
         wt.branch.unlock()
         # the branch *may* still be locked here, if its an all-in-one
-        # implementation
+        # implementation because there is a single lock object with three
+        # references on it, and unlocking the branch only drops this by two
         self.assertRaises(errors.LockNotHeld, wt.unlock)
         # but now, the tree must be unlocked
         self.assertFalse(wt.is_locked())
@@ -108,7 +109,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         try:
             try:
                 wt.lock_read()
-            except:
+            except errors.LockError:
                 # any error here means the locks are exclusive in some 
                 # manner
                 self.assertFalse(wt.is_locked())
