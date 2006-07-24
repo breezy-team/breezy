@@ -228,7 +228,7 @@ class TestAddNonNormalized(TestCaseWithTransport):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
             smart_add_tree(self.wt, [u'a\u030a'])
-            self.assertEqual([(u'\xe5', 'file')],
+            self.assertEqual([('', 'root_directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in 
                         self.wt.inventory.iter_entries()])
         finally:
@@ -240,7 +240,7 @@ class TestAddNonNormalized(TestCaseWithTransport):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
             smart_add_tree(self.wt, [])
-            self.assertEqual([(u'\xe5', 'file')],
+            self.assertEqual([('', 'root_directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in 
                         self.wt.inventory.iter_entries()])
         finally:
