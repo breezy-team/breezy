@@ -15,14 +15,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib import branch, errors, repository
+from bzrlib import bzrdir, branch, errors, repository
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.branch import Branch, BranchFormat
 from bzrlib.trace import mutter
 from bzrlib.transport.smart import SmartTransport
 
 
-class RemoteBzrDirFormat(BzrDirFormat):
+class RemoteBzrDirFormat(bzrdir.BzrDirMetaFormat1):
     """Format representing bzrdirs accessed via a smart server"""
     
     def probe_transport(self, transport):
@@ -78,7 +78,6 @@ class RemoteRepository(repository.Repository):
     For the moment everything is delegated to IO-like operations over 
     the transport.
     """
-
 
 
 class RemoteBranchFormat(branch.BranchFormat):

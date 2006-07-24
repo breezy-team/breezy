@@ -349,6 +349,14 @@ class SmartServer(object):
                 self._optional_mode(mode))
         return SmartServerResponse(('appended', '%d' % old_length))
 
+    def do_delete(self, relpath):
+        self._backing_transport.delete(relpath)
+        return SmartServerResponse(('ok',))
+
+    def do_rename(self, rel_from, rel_to):
+        self._backing_transport.rename(rel_from, rel_to)
+        return SmartServerResponse(('ok',))
+
     def do_get_bundle(self, path, revision_id):
         # open transport relative to our base
         t = self._backing_transport.clone(path)
@@ -584,6 +592,16 @@ class SmartTransport(sftp.SFTPUrlHandling):
             return int(resp[1])
         self._translate_error(resp)
 
+    def delete(self, relpath):
+        resp = self._client._call('delete', self._remote_path(relpath))
+        self._translate_error(resp)
+
+    def rename(self, rel_from, rel_to):
+        resp = self._client._call('rename', 
+                                  self._remote_path(rel_from),
+                                  self._remote_path(rel_to))
+        self._translate_error(resp)
+
     def _translate_error(self, resp):
         """Raise an exception from a response"""
         what = resp[0]
@@ -607,9 +625,6 @@ class SmartTransport(sftp.SFTPUrlHandling):
     def disconnect(self):
         self._client.disconnect()
 
-    def delete(self, relpath):
-        raise errors.TransportNotPossible('readonly transport')
-
     def delete_tree(self, relpath):
         raise errors.TransportNotPossible('readonly transport')
 
@@ -619,24 +634,27 @@ class SmartTransport(sftp.SFTPUrlHandling):
     def stat(self, relpath):
         raise errors.TransportNotPossible('smart client does not support stat()')
 
+    def lock_read(self, relpath):
+        raise errors.TransportNotPossible('OS locks not supported on smart transport')
+
     def lock_write(self, relpath):
-        raise errors.TransportNotPossible('readonly transport')
+        raise errors.TransportNotPossible('OS locks not supported on smart transport')
 
     def listable(self):
         return False
 
-    def lock_read(self, relpath):
-        """Lock the given file for shared (read) access.
-        :return: A lock object, which should be passed to Transport.unlock()
-        """
-        # The old RemoteBranch ignore lock for reading, so we will
-        # continue that tradition and return a bogus lock object.
-        class BogusLock(object):
-            def __init__(self, path):
-                self.path = path
-            def unlock(self):
-                pass
-        return BogusLock(relpath)
+    ## def lock_read(self, relpath):
+    ##     """Lock the given file for shared (read) access.
+    ##     :return: A lock object, which should be passed to Transport.unlock()
+    ##     """
+    ##     # The old RemoteBranch ignore lock for reading, so we will
+    ##     # continue that tradition and return a bogus lock object.
+    ##     class BogusLock(object):
+    ##         def __init__(self, path):
+    ##             self.path = path
+    ##         def unlock(self):
+    ##             pass
+    ##     return BogusLock(relpath)
 
 
 class SmartStreamClient(SmartProtocolBase):

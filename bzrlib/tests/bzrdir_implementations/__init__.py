@@ -47,4 +47,23 @@ def test_suite():
         formats)
     loader = TestLoader()
     adapt_modules(test_bzrdir_implementations, adapter, loader, result)
+
+    ## >>>>>>>
+    from bzrlib.transport.smart import SmartTCPServer_for_testing
+    from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
+    from bzrlib.repository import RepositoryFormatKnit1
+
+    transport_server = SmartTCPServer_for_testing
+    smart_server_suite = TestSuite()
+    adapt_to_smart_server = BzrDirTestProviderAdapter(
+            transport_server, 
+            None,
+            [(RemoteBzrDirFormat())])
+    adapt_modules(test_bzrdir_implementations,
+                  adapt_to_smart_server, 
+                  TestLoader(),
+                  smart_server_suite)
+    result.addTests(smart_server_suite)
+    ## >>>>>>>
+
     return result
