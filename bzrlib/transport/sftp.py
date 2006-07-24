@@ -17,8 +17,11 @@
 
 """Implementation of Transport over SFTP, using paramiko."""
 
-# TODO: Remove the transport-based lock_read and lock_write methods, it should
-# be possible for the transport to just say it doesn't support them.
+# TODO: Remove the transport-based lock_read and lock_write methods.  They'll
+# then raise TransportNotPossible, which will break remote access to any
+# formats which rely on OS-level locks.  That should be fine as those formats
+# are pretty old, but these combinations may have to be removed from the test
+# suite.
 
 import errno
 import getpass

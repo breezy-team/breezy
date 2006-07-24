@@ -971,23 +971,37 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.check_transport_contents('bar', transport2, 'foo')
 
     def test_lock_write(self):
+        """Test transport-level write locks.
+
+        These are deprecated and transports may decline to support them.
+        """
         transport = self.get_transport()
         if transport.is_readonly():
             self.assertRaises(TransportNotPossible, transport.lock_write, 'foo')
             return
         transport.put('lock', StringIO())
-        lock = transport.lock_write('lock')
+        try:
+            lock = transport.lock_write('lock')
+        except errors.TransportNotPossible:
+            return
         # TODO make this consistent on all platforms:
         # self.assertRaises(LockError, transport.lock_write, 'lock')
         lock.unlock()
 
     def test_lock_read(self):
+        """Test transport-level read locks.
+
+        These are deprecated and transports may decline to support them.
+        """
         transport = self.get_transport()
         if transport.is_readonly():
             file('lock', 'w').close()
         else:
             transport.put('lock', StringIO())
-        lock = transport.lock_read('lock')
+        try:
+            lock = transport.lock_read('lock')
+        except errors.TransportNotPossible:
+            return
         # TODO make this consistent on all platforms:
         # self.assertRaises(LockError, transport.lock_read, 'lock')
         lock.unlock()
