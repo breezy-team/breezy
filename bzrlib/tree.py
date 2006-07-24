@@ -336,5 +336,11 @@ class InterTree(InterObject):
 
     _optimisers = set()
 
+    def compare(self):
+        """Compare source and target.
 
-
+        :return: A TreeDelta.
+        """
+        # imported later to avoid circular imports
+        from bzrlib.delta import compare_trees
+        return compare_trees(self.source, self.target)

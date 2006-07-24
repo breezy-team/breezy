@@ -14,18 +14,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for the test trees used by the tree_implementations tests."""
+"""Tests for the InterTree.compare() function."""
 
 from bzrlib import inventory 
-from bzrlib.tests.tree_implementations import TestCaseWithTree
+from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 
 
-class TestTreeShapes(TestCaseWithTree):
+class TestCompare(TestCaseWithTwoTrees):
 
-    def test_empty_tree_no_parents(self):
-        tree = self.make_branch_and_tree('.')
-        tree = self.get_tree_no_parents_no_content(tree)
-        self.assertEqual([], tree.get_parent_ids())
-        self.assertEqual([], tree.conflicts())
-        self.assertEqual([], list(tree.unknowns()))
-        self.assertEqual([inventory.ROOT_ID], list(iter(tree)))
+    def test_compare_empty_trees(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_no_content(tree2)
+        d = self.intertree_class(tree1, tree2).compare()
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        self.assertEqual([], d.modified)

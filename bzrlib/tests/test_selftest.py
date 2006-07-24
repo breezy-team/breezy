@@ -369,6 +369,54 @@ class TestTreeProviderAdapter(TestCase):
             revision_tree_from_workingtree)
 
 
+class TestInterTreeProviderAdapter(TestCase):
+    """A group of tests that test the InterTreeTestAdapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        # for InterTree tests we want the machinery to bring up two trees in
+        # each instance: the base one, and the one we are interacting with.
+        # because each optimiser can be direction specific, we need to test
+        # each optimiser in its chosen direction.
+        # unlike the TestProviderAdapter we dont want to automatically add a
+        # parameterised one for WorkingTree - the optimisers will tell us what
+        # ones to add.
+        from bzrlib.tests.tree_implementations import (
+            return_parameter,
+            revision_tree_from_workingtree
+            )
+        from bzrlib.tests.intertree_implementations import (
+            InterTreeTestProviderAdapter,
+            )
+        from bzrlib.workingtree import WorkingTreeFormat2, WorkingTreeFormat3
+        input_test = TestInterTreeProviderAdapter(
+            "test_adapted_tests")
+        server1 = "a"
+        server2 = "b"
+        format1 = WorkingTreeFormat2()
+        format2 = WorkingTreeFormat3()
+        formats = [(str, format1, format2, False, True),
+            (int, format2, format1, False, True)]
+        adapter = InterTreeTestProviderAdapter(server1, server2, formats)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].intertree_class, formats[0][0])
+        self.assertEqual(tests[0].workingtree_format, formats[0][1])
+        self.assertEqual(tests[0].workingtree_to_test_tree, formats[0][2])
+        self.assertEqual(tests[0].workingtree_format_to, formats[0][3])
+        self.assertEqual(tests[0].workingtree_to_test_tree_to, formats[0][4])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].intertree_class, formats[1][0])
+        self.assertEqual(tests[1].workingtree_format, formats[1][1])
+        self.assertEqual(tests[1].workingtree_to_test_tree, formats[1][2])
+        self.assertEqual(tests[1].workingtree_format_to, formats[1][3])
+        self.assertEqual(tests[1].workingtree_to_test_tree_to, formats[1][4])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+
 class TestTestCaseWithTransport(TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 

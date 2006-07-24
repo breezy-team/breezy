@@ -63,17 +63,23 @@ class TestTreeImplementationSupport(TestCaseWithTransport):
 
 class TestCaseWithTree(TestCaseWithBzrDir):
 
-    def make_branch_and_tree(self, relpath, format=None):
-        made_control = self.make_bzrdir(relpath, format=format)
+    def make_branch_and_tree(self, relpath):
+        made_control = self.make_bzrdir(relpath, format=
+            self.workingtree_format._matchingbzrdir)
         made_control.create_repository()
         made_control.create_branch()
         return self.workingtree_format.initialize(made_control)
 
-    def get_tree_no_parents_no_content(self):
-        # make a working tree with the right shape
-        tree = self.make_branch_and_tree('.')
+    def get_tree_no_parents_no_content(self, empty_tree, converter=None):
+        """Make a tree with no parents and no contents from empty_tree.
+        
+        :param empty_tree: A working tree with no content and no parents to
+            modify.
+        """
         # convert that to the final shape
-        return self.workingtree_to_test_tree(tree)
+        if converter is None:
+            converter = self.workingtree_to_test_tree
+        return converter(empty_tree)
 
 
 class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
