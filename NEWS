@@ -198,6 +198,8 @@ IN DEVELOPMENT
       importer to log time to import modules and regex compilation time to 
       sys.stderr (John Arbash Meinel)
 
+    * "RevisionTree" is now in bzrlib/revisiontree.py. (Robert Collins)
+
 bzr 0.8.2  2006-05-17
   
   BUG FIXES:

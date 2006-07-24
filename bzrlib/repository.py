@@ -33,6 +33,7 @@ from bzrlib.lockdir import LockDir
 from bzrlib.osutils import (safe_unicode, rand_bytes, compact_date, 
                             local_time_offset)
 from bzrlib.revision import NULL_REVISION, Revision
+from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore, WeaveStore
 from bzrlib.store.text import TextStore
 from bzrlib.symbol_versioning import (deprecated_method,
@@ -40,7 +41,6 @@ from bzrlib.symbol_versioning import (deprecated_method,
         )
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note
-from bzrlib.tree import RevisionTree
 from bzrlib.tsort import topo_sort
 from bzrlib.weave import WeaveFile
 
