@@ -109,6 +109,7 @@ class TestInventory(TestCase):
             inv.add_path(*args)
 
         self.assertEqual([
+            ('', ROOT_ID),
             ('Makefile', 'makefile-id'),
             ('doc', 'doc-id'),
             ('src', 'src-id'),

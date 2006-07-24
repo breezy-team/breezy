@@ -22,7 +22,6 @@ import bzrlib
 import bzrlib.errors as errors
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
-from bzrlib.tree import EmptyTree
 from bzrlib.workingtree import WorkingTree
 
 
