@@ -38,11 +38,13 @@ import errno
 import os
 import sys
 
-from bzrlib.trace import mutter
 from bzrlib.errors import LockError
+from bzrlib.osutils import realpath
+from bzrlib.trace import mutter
 
 
 class _base_Lock(object):
+
     def _open(self, filename, filemode):
         try:
             self.f = open(filename, filemode)
@@ -75,23 +77,45 @@ try:
     import fcntl
 
     class _fcntl_FileLock(_base_Lock):
+
         f = None
 
-        def unlock(self):
+        def _unlock(self):
             fcntl.lockf(self.f, fcntl.LOCK_UN)
+            self._clear_f()
+
+        def _clear_f(self):
+            """Clear the self.f attribute cleanly."""
             self.f.close()
             del self.f 
 
+
     class _fcntl_WriteLock(_fcntl_FileLock):
+
+        open_locks = {}
+
         def __init__(self, filename):
             # standard IO errors get exposed directly.
             self._open(filename, 'wb')
             try:
+                self.filename = realpath(filename)
+                if self.filename in self.open_locks:
+                    self._clear_f() 
+                    raise LockError("Lock already held.")
+                # reserve a slot for this lock - even if the lockf call fails, 
+                # at thisi point unlock() will be called, because self.f is set.
+                # TODO: make this fully threadsafe, if we decide we care.
+                self.open_locks[self.filename] = self.filename
                 fcntl.lockf(self.f, fcntl.LOCK_EX)
             except IOError, e:
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
                 raise LockError(e)
+
+        def unlock(self):
+            del self.open_locks[self.filename]
+            self._unlock()
+
 
     class _fcntl_ReadLock(_fcntl_FileLock):
 
@@ -104,6 +128,10 @@ try:
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
                 raise LockError(e)
+
+        def unlock(self):
+            self._unlock()
+
 
     WriteLock = _fcntl_WriteLock
     ReadLock = _fcntl_ReadLock
