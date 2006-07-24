@@ -180,7 +180,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.check_transport_contents('another contents\nfor d\n', t, 'd')
 
         self.assertRaises(NoSuchFile,
-                          t.put, 'path/doesnt/exist/c', 'contents')
+                          t.put, 'path/doesnt/exist/c', StringIO('contents'))
 
     def test_put_permissions(self):
         t = self.get_transport()
@@ -572,9 +572,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         t.mkdir('adir')
         t.mkdir('adir/bdir')
         t.rmdir('adir/bdir')
-        self.assertRaises(NoSuchFile, t.stat, 'adir/bdir')
+        self.assertFalse(t.has('adir/bdir'))
         t.rmdir('adir')
-        self.assertRaises(NoSuchFile, t.stat, 'adir')
+        self.assertFalse(t.has('adir'))
 
     def test_rmdir_not_empty(self):
         """Deleting a non-empty directory raises an exception
@@ -608,6 +608,8 @@ class TestTransportImplementation(TestCaseInTempDir):
         t.mkdir('adir/asubdir')
         t.mkdir('bdir')
         t.mkdir('bdir/bsubdir')
+        # any kind of PathError would be OK, though we normally expect
+        # DirectoryNotEmpty
         self.assertRaises(PathError, t.rename, 'bdir', 'adir')
         # nothing was changed so it should still be as before
         self.assertTrue(t.has('bdir/bsubdir'))
