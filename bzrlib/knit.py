@@ -704,7 +704,7 @@ class KnitVersionedFile(VersionedFile):
         records = [(c, p, s) for c, (m, p, s, n) in position_map.iteritems()]
         record_map = {}
         for component_id, content, digest in \
-                self._data.read_records_iter_unsorted(records):
+                self._data.read_records_iter(records):
             method, position, size, next = position_map[component_id]
             record_map[component_id] = method, content, digest, next
                           
@@ -806,7 +806,7 @@ class KnitVersionedFile(VersionedFile):
         try:
             pb.update('Walking content.', count, total)
             for version_id, data, sha_value in \
-                self._data.read_records_iter_unsorted(version_id_records):
+                self._data.read_records_iter(version_id_records):
                 pb.update('Walking content.', count, total)
                 method = self._index.get_method(version_id)
                 version_idx = self._index.lookup(version_id)
@@ -1424,48 +1424,6 @@ class _KnitData(_KnitComponentFile):
     def read_records_iter(self, records):
         """Read text records from data file and yield result.
 
-        Each passed record is a tuple of (version_id, pos, len) and
-        will be read in the given order.  Yields (version_id,
-        contents, digest).
-        """
-        n_records = len(records)
-        if n_records == 0:
-            return
-
-        record_requests = {}
-        for record in records:
-            y = record_requests.setdefault(record, 0)
-            y += 1
-
-        # Keep track of where we are in the record list
-        # Alternatively we could turn this into a new list
-        # reverse it, and pop off the end, that would let
-        # us assert that we had gotten through the whole thing
-        record_stack = iter(records)
-        next_record = record_stack.next()
-
-        yield_count = 0
-        record_map = {}
-        for version_id, content, digest in \
-                self.read_records_iter_unsorted(records):
-            record_map[version_id] = (content, digest)
-
-            while next_record[0] in record_map:
-                next_content, next_digest = record_map[next_record[0]]
-                record_requests[next_record] -= 1
-                if record_requests[next_record] == 0:
-                    del record_map.pop[next_record]
-                yield_count += 1
-                yield next_record[0], next_content, next_digest
-                next_record = record_stack.next()
-
-        # When we get this far, the record_stack should be empty
-        assert yield_count == n_records
-        assert record_map == {}, 'We still have records queued up'
-
-    def read_records_iter_unsorted(self, records):
-        """Read text records from data file and yield result.
-
         The result will be returned in whatever is the fastest to read.
         Not by the order requested. Also, multiple requests for the same
         record will only yield 1 response.
@@ -1513,7 +1471,7 @@ class _KnitData(_KnitComponentFile):
         """Read records into a dictionary."""
         components = {}
         for record_id, content, digest in \
-                self.read_records_iter_unsorted(records):
+                self.read_records_iter(records):
             components[record_id] = (content, digest)
         return components
 
