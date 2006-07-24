@@ -75,10 +75,9 @@ class TextUIFactory(CLIUIFactory):
         """
         prompt = (prompt % kwargs).encode(sys.stdout.encoding, 'replace')
         prompt += ': '
-        try:
-            return getpass.getpass(prompt)
-        except KeyboardInterrupt:
-            return None
+        # There's currently no way to say 'i decline to enter a password'
+        # as opposed to 'my password is empty' -- does it matter?
+        return getpass.getpass(prompt)
 
     def nested_progress_bar(self):
         """Return a nested progress bar.
