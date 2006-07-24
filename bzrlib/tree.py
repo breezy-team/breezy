@@ -25,6 +25,7 @@ import bzrlib
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib import errors
 from bzrlib.inventory import Inventory
+from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
 from bzrlib.trace import mutter, note
@@ -320,3 +321,20 @@ def _find_children_across_trees(specified_ids, trees):
         interesting_ids.update(new_pending)
         pending = new_pending
     return interesting_ids
+
+
+class InterTree(InterObject):
+    """This class represents operations taking place between two Trees.
+
+    Its instances have methods like 'compare' and contain references to the
+    source and target trees these operations are to be carried out on.
+
+    clients of bzrlib should not need to use InterTree directly, rather they
+    should use the convenience methods on Tree such as 'Tree.compare()' which
+    will pass through to InterTree as appropriate.
+    """
+
+    _optimisers = set()
+
+
+
