@@ -55,3 +55,31 @@ class TestInterTree(TestCaseWithTransport):
         self.assertIsInstance(optimiser, InterTree)
         optimiser = InterTree.get(tree2, tree)
         self.assertIsInstance(optimiser, InterTree)
+
+
+class RecordingOptimiser(InterTree):
+
+    calls = []
+
+    def compare(self):
+        self.calls.append(('compare',))
+    
+    @classmethod
+    def is_compatible(klass, source, target):
+        return True
+
+
+class TestTree(TestCaseWithTransport):
+
+    def test_compare_calls_InterTree_compare(self):
+        old_optimisers = InterTree._optimisers
+        try:
+            InterTree._optimisers = set()
+            RecordingOptimiser.calls = []
+            InterTree.register_optimiser(RecordingOptimiser)
+            tree = self.make_branch_and_tree('1')
+            tree2 = self.make_branch_and_tree('2')
+            tree.compare(tree2)
+        finally:
+            InterTree._optimisers = old_optimisers
+        self.assertEqual([('compare',)], RecordingOptimiser.calls)

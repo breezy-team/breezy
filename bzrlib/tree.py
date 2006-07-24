@@ -51,6 +51,15 @@ class Tree(object):
     trees or versioned trees.
     """
     
+    def compare(self, other):
+        """Compare this tree with other.
+
+        :param other: A tre to compare with.
+        The comparison will be performed by an InterTree object looked up on 
+        self and other.
+        """
+        return InterTree.get(self, other).compare()
+    
     def conflicts(self):
         """Get a list of the conflicts in the tree.
 
