@@ -790,6 +790,10 @@ class TestCase(unittest.TestCase):
         :param retcode: The status code that is expected.  Defaults to 0.  If
         None is supplied, the status code is not checked.
         """
+        # TODO: this ought to remove BZR_PDB when running the subprocess- the
+        # user probably doesn't want to debug it, and anyhow since its files
+        # are redirected they can't usefully get at it.  It just makes the
+        # test suite hang.
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         args = list(args)
         process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 

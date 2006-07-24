@@ -274,10 +274,6 @@ class SmartStreamServer(SmartProtocolBase):
             self._send_tuple(response.args)
             if response.body is not None:
                 self._send_bulk_data(response.body)
-        except errors.NoSuchFile, e:
-            self._send_tuple(('enoent', e.path))
-        except errors.FileExists, e:
-            self._send_tuple(('FileExists', e.path))
         except KeyboardInterrupt:
             raise
         except Exception, e:
@@ -318,7 +314,7 @@ class SmartServer(object):
         
     def do_hello(self):
         """Answer a version request with my version."""
-        return SmartServerResponse(('bzr server', '1'))
+        return SmartServerResponse(('ok', '1'))
 
     def do_has(self, relpath):
         r = self._backing_transport.has(relpath) and 'yes' or 'no'
@@ -334,16 +330,6 @@ class SmartServer(object):
         else:
             return int(mode)
 
-    def do_mkdir(self, relpath, mode):
-        self._backing_transport.mkdir(relpath, self._optional_mode(mode))
-        return SmartServerResponse(('ok',))
-
-    def do_put(self, relpath, mode):
-        self._backing_transport.put(relpath, 
-                StringIO(self._recv_body()), 
-                self._optional_mode(mode))
-        return SmartServerResponse(('ok',))
-
     def do_append(self, relpath, mode):
         old_length = self._backing_transport.append(relpath, StringIO(self._recv_body()),
                 self._optional_mode(mode))
@@ -351,11 +337,23 @@ class SmartServer(object):
 
     def do_delete(self, relpath):
         self._backing_transport.delete(relpath)
-        return SmartServerResponse(('ok',))
+
+    def do_mkdir(self, relpath, mode):
+        self._backing_transport.mkdir(relpath, self._optional_mode(mode))
+
+    def do_move(self, rel_from, rel_to):
+        self._backing_transport.move(rel_from, rel_to)
+
+    def do_put(self, relpath, mode):
+        self._backing_transport.put(relpath, 
+                StringIO(self._recv_body()), 
+                self._optional_mode(mode))
 
     def do_rename(self, rel_from, rel_to):
         self._backing_transport.rename(rel_from, rel_to)
-        return SmartServerResponse(('ok',))
+
+    def do_rmdir(self, relpath):
+        self._backing_transport.rmdir(relpath)
 
     def do_get_bundle(self, path, revision_id):
         # open transport relative to our base
@@ -372,7 +370,17 @@ class SmartServer(object):
         func = getattr(self, 'do_' + cmd, None)
         if func is None:
             raise BzrProtocolError("bad request %r" % (cmd,))
-        return func(*args)
+        try:
+            result = func(*args)
+            if result is None: 
+                result = SmartServerResponse(('ok',))
+            return result
+        except errors.NoSuchFile, e:
+            return SmartServerResponse(('NoSuchFile', e.path))
+        except errors.FileExists, e:
+            return SmartServerResponse(('FileExists', e.path))
+        except errors.DirectoryNotEmpty, e:
+            return SmartServerResponse(('DirectoryNotEmpty', e.path))
 
 
 class SmartTCPServer(object):
@@ -597,9 +605,20 @@ class SmartTransport(sftp.SFTPUrlHandling):
         self._translate_error(resp)
 
     def rename(self, rel_from, rel_to):
-        resp = self._client._call('rename', 
-                                  self._remote_path(rel_from),
-                                  self._remote_path(rel_to))
+        self._call('rename', 
+                   self._remote_path(rel_from),
+                   self._remote_path(rel_to))
+
+    def move(self, rel_from, rel_to):
+        self._call('move', 
+                   self._remote_path(rel_from),
+                   self._remote_path(rel_to))
+
+    def rmdir(self, relpath):
+        resp = self._call('rmdir', self._remote_path(relpath))
+
+    def _call(self, method, *args):
+        resp = self._client._call(method, *args)
         self._translate_error(resp)
 
     def _translate_error(self, resp):
@@ -607,12 +626,14 @@ class SmartTransport(sftp.SFTPUrlHandling):
         what = resp[0]
         if what == 'ok':
             return
-        elif what == 'enoent':
+        elif what == 'NoSuchFile':
             raise errors.NoSuchFile(resp[1])
         elif what == 'error':
             raise BzrProtocolError(unicode(resp[1]))
         elif what == 'FileExists':
             raise errors.FileExists(resp[1])
+        elif what == 'DirectoryNotEmpty':
+            raise errors.DirectoryNotEmpty(resp[1])
         else:
             raise BzrProtocolError('unexpected smart server error: %r' % (resp,))
 
@@ -628,17 +649,8 @@ class SmartTransport(sftp.SFTPUrlHandling):
     def delete_tree(self, relpath):
         raise errors.TransportNotPossible('readonly transport')
 
-    def rmdir(self, relpath):
-        raise errors.TransportNotPossible('readonly transport')
-
     def stat(self, relpath):
         raise errors.TransportNotPossible('smart client does not support stat()')
-
-    def lock_read(self, relpath):
-        raise errors.TransportNotPossible('OS locks not supported on smart transport')
-
-    def lock_write(self, relpath):
-        raise errors.TransportNotPossible('OS locks not supported on smart transport')
 
     def listable(self):
         return False
@@ -697,7 +709,7 @@ class SmartStreamClient(SmartProtocolBase):
         # XXX: should make sure it's empty
         self._send_tuple(('hello',))
         resp = self._recv_tuple()
-        if resp == ('bzr server', '1'):
+        if resp == ('ok', '1'):
             return 1
         else:
             raise BzrProtocolError("bad response %r" % (resp,))

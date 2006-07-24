@@ -70,7 +70,7 @@ class BasicSmartTests(tests.TestCase):
         from_server = StringIO()
         server = smart.SmartStreamServer(to_server, from_server, local.LocalTransport('file:///'))
         server._serve_one_request()
-        self.assertEqual('bzr server\0011\n',
+        self.assertEqual('ok\0011\n',
                          from_server.getvalue())
 
     def test_canned_get_response(self):
@@ -207,7 +207,7 @@ class SmartServerTests(tests.TestCaseWithTransport):
     def test_hello(self):
         server = smart.SmartServer(None)
         response = server.dispatch_command('hello', ())
-        self.assertEqual(('bzr server', '1'), response.args)
+        self.assertEqual(('ok', '1'), response.args)
         self.assertEqual(None, response.body)
         
     def test_get_bundle(self):
