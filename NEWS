@@ -191,6 +191,12 @@ IN DEVELOPMENT
     * Timestamps are rounded to 1ms, and revision entries can be recreated
       exactly. (John Arbash Meinel, Jamie Wilkinson, #40693)
 
+    * Branch.base has changed to a URL, but ~/.bazaar/locations.conf should
+      use local paths, since it is user visible (John Arbash Meinel, #53653)
+
+    * ``bzr status foo`` when foo was unversioned used to cause a full delta
+      to be generated (John Arbash Meinel, #53638)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
@@ -230,6 +236,9 @@ IN DEVELOPMENT
     * New command line option '--profile-imports', which will install a custom
       importer to log time to import modules and regex compilation time to 
       sys.stderr (John Arbash Meinel)
+
+    * 'EmptyTree' is now deprecated, please use repository.revision_tree(None)
+      instead. (Robert Collins)
 
 bzr 0.8.2  2006-05-17
   
