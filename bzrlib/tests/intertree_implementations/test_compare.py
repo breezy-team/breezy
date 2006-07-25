@@ -28,6 +28,90 @@ class TestCompare(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_to_tree_no_parents_no_content(tree2)
         d = self.intertree_class(tree1, tree2).compare()
+        self.assertEqual([], d.added)
+        self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+
+    def test_empty_to_abc_content(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+        d = self.intertree_class(tree1, tree2).compare()
+        self.assertEqual([('a', 'a-id', 'file'),
+                          ('b', 'b-id', 'directory'),
+                          ('b/c', 'c-id', 'file'),
+                         ], d.added)
         self.assertEqual([], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+
+    def test_abc_content_to_empty(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_no_content(tree2)
+        d = self.intertree_class(tree1, tree2).compare()
+        self.assertEqual([], d.added)
+        self.assertEqual([], d.modified)
+        self.assertEqual([('a', 'a-id', 'file'),
+                          ('b', 'b-id', 'directory'),
+                          ('b/c', 'c-id', 'file'),
+                         ], d.removed)
+        self.assertEqual([], d.renamed)
+
+    def test_content_modification(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_2(tree2)
+        d = self.intertree_class(tree1, tree2).compare()
+        self.assertEqual([], d.added)
+        self.assertEqual([('a', 'a-id', 'file', True, False)], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        
+    def test_meta_modification(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_3(tree2)
+        d = self.intertree_class(tree1, tree2).compare()
+        self.assertEqual([], d.added)
+        self.assertEqual([('b/c', 'c-id', 'file', False, True)], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+
+    def test_file_rename(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_4(tree2)
+        d = self.intertree_class(tree1, tree2).compare()
+        self.assertEqual([], d.added)
+        self.assertEqual([], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([('a', 'd', 'a-id', 'file', False, False)], d.renamed)
+
+    def test_file_rename_and_modification(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_5(tree2)
+        d = self.intertree_class(tree1, tree2).compare()
+        self.assertEqual([], d.added)
+        self.assertEqual([], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([('a', 'd', 'a-id', 'file', True, False)], d.renamed)
+
+    def test_file_rename_and_meta_modification(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_6(tree2)
+        d = self.intertree_class(tree1, tree2).compare()
+        self.assertEqual([], d.added)
+        self.assertEqual([], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([('b/c', 'e', 'c-id', 'file', False, True)], d.renamed)
