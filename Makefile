@@ -64,8 +64,8 @@ installer: exe copy_docs
 
 # win32 python's distutils-based installer
 # require to have python interpreter installed on win32
-python-installer:
-	python setup.py bdist_wininst --target-version=2.4 --title="Bazaar-NG" --install-script="bzr-win32-bdist-postinstall.py"
+python-installer: docs
+	python setup.py bdist_wininst --title="Bazaar-NG" --install-script="bzr-win32-bdist-postinstall.py"
 
 
 # clean on win32 all installer-related files and directories
