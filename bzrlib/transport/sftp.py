@@ -456,7 +456,7 @@ class SFTPTransport (Transport):
         # We are going to iterate multiple times, we need a list
         offsets = list(offsets)
 
-        #return self._combine_and_readv(fp, offsets)
+        return self._combine_and_readv(fp, offsets)
         # paramiko.readv() doesn't support reads > 65536 bytes yet
         # Check if any requests are > 64K, if so, we need to switch to
         # the old seek + read method
