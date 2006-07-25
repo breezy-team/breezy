@@ -124,8 +124,18 @@ def format_command (params, cmd, name):
             # correct indenting and wrapping.
             wrapped = textwrap.fill(l, initial_indent='',
                                     subsequent_indent=30*' ')
-            option_str = option_str + wrapped + '\n'       
-    return subsection_header + option_str + "\n" + doc + "\n"
+            option_str = option_str + wrapped + '\n'
+
+    aliases_str = ""
+    if cmd.aliases:
+        if len(cmd.aliases) > 1:
+            aliases_str += '\n    Aliases: '
+        else:
+            aliases_str += '\n    Alias: '
+        aliases_str += ', '.join(cmd.aliases)
+        aliases_str += '\n'
+
+    return subsection_header + option_str + aliases_str + "\n" + doc + "\n"
 
 
 ##
@@ -186,6 +196,19 @@ Environment
 **EMAIL**
                 E-Mail address of the user. Overriddes default user config.
 
+**BZR_EDITOR**
+                Editor for editing commit messages
+
+**EDITOR**
+                Editor for editing commit messages
+
+**BZR_PLUGIN_PATH**
+                Paths where bzr should look for plugins
+
+**BZR_HOME**
+                Home directory for bzr
+
+
 Files
 =====
 
@@ -193,7 +216,7 @@ Files
 
 **On Windows**: ``C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf``
 
-Contains the default user config. Only one section, ``[DEFAULT]`` is allowed.
+Contains the default user config. At least one section, ``[DEFAULT]`` is required.
 A typical default config file may be similiar to::
 
     [DEFAULT]

@@ -105,6 +105,7 @@ def format_command (params, cmd):
     doc = "%s\n" % (cmd.__doc__)
     docsplit = cmd.__doc__.split('\n')
     doc = '\n'.join([docsplit[0]] + [line[4:] for line in docsplit[1:]])
+
     option_str = ""
     options = cmd.options()
     if options:
@@ -123,7 +124,17 @@ def format_command (params, cmd):
             wrapped = textwrap.fill(l, initial_indent='',
                                     subsequent_indent=30*' ')
             option_str = option_str + wrapped + '\n'       
-    return subsection_header + option_str + "\n" + doc + "\n"
+
+    aliases_str = ""
+    if cmd.aliases:
+        if len(cmd.aliases) > 1:
+            aliases_str += '\nAliases: '
+        else:
+            aliases_str += '\nAlias: '
+        aliases_str += ', '.join(cmd.aliases)
+        aliases_str += '\n'
+
+    return subsection_header + option_str + aliases_str + "\n" + doc + "\n"
 
 
 man_preamble = """\
@@ -174,11 +185,23 @@ E-Mail address of the user. Overrides default user config.
 .TP
 .I "EMAIL"
 E-Mail address of the user. Overriddes default user config.
+.TP
+.I "BZR_EDITOR"
+Editor for editing commit messages
+.TP
+.I "EDITOR"
+Editor for editing commit messages
+.TP
+.I "BZR_PLUGIN_PATH"
+Paths where bzr should look for plugins
+.TP
+.I "BZR_HOME"
+Home directory for bzr
 .SH "FILES"
 .TP
-.I "~/.bazaar/bazaar.conf/"
-Contains the default user config. Only one section, [DEFAULT] is allowed. A 
-typical default config file may be similiar to:
+.I "~/.bazaar/bazaar.conf"
+Contains the default user config. At least one section, [DEFAULT] is required.
+A typical default config file may be similiar to:
 .br
 .br
 .B [DEFAULT]
