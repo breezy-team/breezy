@@ -105,14 +105,12 @@ def os_specific_subprocess_params():
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
-if 'sftp_prefetch' in os.environ:
-    _default_do_prefetch = bool(int(os.environ['sftp_prefetch']))
 
 # Paramiko 1.5 tries to open a socket.AF_UNIX in order to connect
 # to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
 # so we get an AttributeError exception. So we will not try to
 # connect to an agent if we are on win32 and using Paramiko older than 1.6
-_use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0)) 
+_use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
 
 
 _ssh_vendor = None
@@ -433,6 +431,20 @@ class SFTPTransport (Transport):
             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
                 f.prefetch()
             return f
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, path, ': error retrieving')
+
+    def readv(self, relpath, offsets):
+        """See Transport.readv()"""
+        # We overload the default readv() because we want to use a file
+        # that does not have prefetch enabled.
+        if not offsets:
+            return
+
+        try:
+            path = self._remote_path(relpath)
+            fp = self._sftp.file(path, mode='rb')
+            return self._seek_and_read(fp, offsets)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
 

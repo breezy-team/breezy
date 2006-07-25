@@ -383,7 +383,17 @@ class Transport(object):
             return
 
         fp = self.get(relpath)
+        return self._seek_and_read(fp, offsets)
 
+    def _seek_and_read(self, fp, offsets):
+        """An implementation of readv that uses fp.seek and fp.read.
+
+        This uses _coalesce_offsets to issue larger reads and fewer seeks.
+
+        :param fp: A file-like object that supports seek() and read(size)
+        :param offsets: A list of offsets to be read from the given file.
+        :return: yield (pos, data) tuples for each request
+        """
         # We are going to iterate multiple times, we need a list
         offsets = list(offsets)
         sorted_offsets = sorted(offsets)
@@ -398,6 +408,9 @@ class Transport(object):
         # Cache the results, but only until they have been fulfilled
         data_map = {}
         for c_offset in coalesced:
+            # TODO: jam 20060724 it might be faster to not issue seek if 
+            #       we are already at the right location. This should be
+            #       benchmarked.
             fp.seek(c_offset.start)
             data = fp.read(c_offset.length)
             for suboffset, subsize in c_offset.ranges:
