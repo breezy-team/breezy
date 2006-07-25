@@ -38,12 +38,12 @@ Overall
   pipelines.
 
   Recommended values are 
-    0- OK, 
-    1- Conflicts in merge-like operations, or changes are present in
+    0. OK, 
+    1. Conflicts in merge-like operations, or changes are present in
        diff-like operations. 
-    2- Unrepresentable diff changes (i.e. binary files that we cannot show 
+    2. Unrepresentable diff changes (i.e. binary files that we cannot show 
        a diff of).
-    3- An error or exception has occurred.
+    3. An error or exception has occurred.
 
 Evolving interfaces
 -------------------
@@ -260,7 +260,7 @@ Choose whichever is appropriate: if adding a new command, or a new command
 option, then you should be writing a UI test.  If you are both adding UI
 functionality and library functionality, you will want to write tests for 
 both the UI and the core behaviours.  We call UI tests 'blackbox' tests
-and they are found in bzrlib/tests/blackbox/*.py. 
+and they are found in ``bzrlib/tests/blackbox/*.py``. 
 
 When writing blackbox tests please honour the following conventions:
 
@@ -305,6 +305,7 @@ to run just the blackbox tests, run::
 
 To skip a particular test (or set of tests), you need to use a negative
 match, like so::
+
   ./bzr selftest '^(?!.*blackbox)'  
 
 
@@ -365,7 +366,7 @@ to the correct URL, because we don't know what encoding the server expects
 for those characters.  (Although this is not totally reliable we might still
 accept these and assume they should be put into UTF-8.)
 
-A similar edge case is that the url ``http://foo/sweet%2Fsour" contains
+A similar edge case is that the url ``http://foo/sweet%2Fsour`` contains
 one directory component whose name is "sweet/sour".  The escaped slash is
 not a directory separator.  If we try to convert URLs to regular Unicode
 paths this information will be lost.
