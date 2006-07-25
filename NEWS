@@ -117,8 +117,9 @@ IN DEVELOPMENT
      connection keep-alive, which reduces dns requests and round trips.
      And for both urllib and pycurl we support multi-range requests, 
      which decreases the number of round-trips. Performance results for
-     ``bzr branch http://bazaar-vcs.org/bzr/bzr.dev/`` is not 2-3x faster.
-     And ``bzr pull`` in an existing branch is as much as 4x faster.
+     ``bzr branch http://bazaar-vcs.org/bzr/bzr.dev/`` indicate
+     http branching is now 2-3x faster, and ``bzr pull`` in an existing 
+     branch is as much as 4x faster.
      (Michael Ellerman, Johan Rydberg, John Arbash Meinel, #46768)
 
   BUG FIXES:
