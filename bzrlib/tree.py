@@ -19,6 +19,7 @@
 
 import os
 from cStringIO import StringIO
+from warnings import warn
 
 import bzrlib
 from bzrlib.errors import BzrError, BzrCheckError
@@ -28,6 +29,7 @@ from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
 from bzrlib.trace import mutter, note
 
+
 class Tree(object):
     """Abstract file tree.
 
@@ -36,8 +38,6 @@ class Tree(object):
     * `WorkingTree` exists as files on disk editable by the user.
 
     * `RevisionTree` is a tree as recorded at some point in the past.
-
-    * `EmptyTree`
 
     Trees contain an `Inventory` object, and also know how to retrieve
     file texts mentioned in the inventory, either from a working
@@ -242,12 +242,11 @@ class EmptyTree(Tree):
 
     def __init__(self):
         self._inventory = Inventory()
+        warn('EmptyTree is deprecated as of bzr 0.9 please use '
+            'repository.revision_tree instead.',
+            DeprecationWarning, stacklevel=2)
 
     def get_parent_ids(self):
-        """See Tree.get_parent_ids.
-
-        An EmptyTree always has NULL_REVISION as the only parent.
-        """
         return []
 
     def get_symlink_target(self, file_id):
