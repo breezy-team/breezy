@@ -170,7 +170,10 @@ class RevisionSpec(object):
         return '<%s %s%s>' % (self.__class__.__name__,
                               self.prefix or '',
                               self.spec)
-
+    
+    def needs_tree(self):
+        """Whether this revision spec needs to be run in a tree"""
+        return True
 
 # private API
 
@@ -208,6 +211,9 @@ class RevisionSpec_revno(RevisionSpec):
                 return RevisionInfo(other_branch, None)
             revid = other_branch.get_rev_id(revno)
             return RevisionInfo(other_branch, revno)
+        
+    def needs_tree(self):
+        return self.spec.find(':') == -1
 
 SPEC_TYPES.append(RevisionSpec_revno)
 

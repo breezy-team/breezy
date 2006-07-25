@@ -166,7 +166,7 @@ class TestDiff(ExternalBase):
                                          retcode=0)
         self.assertEquals('', err)
         self.assertEquals('', out)
-        out, ett = self.run_bzr_captured(['diff', '-r', 'revno:2:branch2..revno:1:branch1'],
+        out, err = self.run_bzr_captured(['diff', '-r', 'revno:2:branch2..revno:1:branch1'],
                                          retcode=1)
         self.assertEquals('', err)
         self.assertEqualDiff("=== modified file 'file'\n"

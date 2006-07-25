@@ -1173,7 +1173,17 @@ class cmd_diff(Command):
         except NotBranchError:
             # Don't raise an error when bzr diff is called from
             # outside a working tree.
-            tree1, tree2 = None, None
+            if revision is None:
+                raise
+            elif len(revision) == 1:
+                raise
+            elif len(revision) == 2:
+                if revision[0].needs_tree() or revision[1].needs_tree():
+                    raise
+                else:
+                    tree1, tree2 = None, None
+            else:
+                raise
         if revision is not None:
             if tree2 is not None:
                 raise BzrCommandError("Can't specify -r with two branches")
