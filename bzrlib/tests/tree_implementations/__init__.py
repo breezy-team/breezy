@@ -25,7 +25,10 @@ Specific tests for individual variations are in other places such as:
  - tests/workingtree_implementations/*.py.
 """
 
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    transform,
+    )
 from bzrlib.transport import get_transport
 from bzrlib.tests import (
                           adapt_modules,
@@ -73,6 +76,85 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         # make a working tree with the right shape
         tree = self.make_branch_and_tree('.')
         # convert that to the final shape
+        return self.workingtree_to_test_tree(tree)
+
+    def _make_abc_tree(self, tree):
+        """setup an abc content tree."""
+        files = ['a', 'b/', 'b/c']
+        self.build_tree(files, transport=tree.bzrdir.root_transport)
+        tree.add(files, ['a-id', 'b-id', 'c-id'])
+
+    def get_tree_no_parents_abc_content(self):
+        """return a test tree with a, b/, b/c contents."""
+        tree = self.make_branch_and_tree('.')
+        self._make_abc_tree(tree)
+        return self.workingtree_to_test_tree(tree)
+
+    def get_tree_no_parents_abc_content_2(self):
+        """return a test tree with a, b/, b/c contents.
+        
+        This variation changes the content of 'a' to foobar\n.
+        """
+        tree = self.make_branch_and_tree('.')
+        self._make_abc_tree(tree)
+        f = open(tree.basedir + '/a', 'wb')
+        try:
+            f.write('foobar\n')
+        finally:
+            f.close()
+        return self.workingtree_to_test_tree(tree)
+
+    def get_tree_no_parents_abc_content_3(self):
+        """return a test tree with a, b/, b/c contents.
+        
+        This variation changes the executable flag of b/c to True.
+        """
+        tree = self.make_branch_and_tree('.')
+        self._make_abc_tree(tree)
+        tt = transform.TreeTransform(tree)
+        trans_id = tt.trans_id_tree_path('b/c')
+        tt.set_executability(True, trans_id)
+        tt.apply()
+        return self.workingtree_to_test_tree(tree)
+
+    def get_tree_no_parents_abc_content_4(self):
+        """return a test tree with d, b/, b/c contents.
+        
+        This variation renames a to d.
+        """
+        tree = self.make_branch_and_tree('.')
+        self._make_abc_tree(tree)
+        tree.rename_one('a', 'd')
+        return self.workingtree_to_test_tree(tree)
+
+    def get_tree_no_parents_abc_content_5(self):
+        """return a test tree with d, b/, b/c contents.
+        
+        This variation renames a to d and alters its content to 'bar\n'.
+        """
+        tree = self.make_branch_and_tree('.')
+        self._make_abc_tree(tree)
+        tree.rename_one('a', 'd')
+        f = open(tree.basedir + '/d', 'wb')
+        try:
+            f.write('bar\n')
+        finally:
+            f.close()
+        return self.workingtree_to_test_tree(tree)
+
+    def get_tree_no_parents_abc_content_6(self):
+        """return a test tree with a, b/, e contents.
+        
+        This variation renames b/c to e, and makes it executable.
+        """
+        tree = self.make_branch_and_tree('.')
+        self._make_abc_tree(tree)
+        tt = transform.TreeTransform(tree)
+        trans_id = tt.trans_id_tree_path('b/c')
+        parent_trans_id = tt.trans_id_tree_path('')
+        tt.adjust_path('e', parent_trans_id, trans_id)
+        tt.set_executability(True, trans_id)
+        tt.apply()
         return self.workingtree_to_test_tree(tree)
 
 

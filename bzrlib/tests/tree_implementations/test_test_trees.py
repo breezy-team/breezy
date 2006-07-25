@@ -28,3 +28,96 @@ class TestTreeShapes(TestCaseWithTree):
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
         self.assertEqual([inventory.ROOT_ID], list(iter(tree)))
+        self.assertEqual(
+            [('', inventory.ROOT_ID)],
+            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+
+    def test_abc_tree_no_parents(self):
+        tree = self.get_tree_no_parents_abc_content()
+        self.assertEqual([], tree.get_parent_ids())
+        self.assertEqual([], tree.conflicts())
+        self.assertEqual([], list(tree.unknowns()))
+        # __iter__ has no strongly defined order
+        self.assertEqual(
+            set([inventory.ROOT_ID, 'a-id', 'b-id', 'c-id']),
+            set(iter(tree)))
+        self.assertEqual(
+            [('', inventory.ROOT_ID), ('a', 'a-id'), ('b', 'b-id'), ('b/c', 'c-id')],
+            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
+        self.assertFalse(tree.is_executable('c-id'))
+
+    def test_abc_tree_content_2_no_parents(self):
+        tree = self.get_tree_no_parents_abc_content_2()
+        self.assertEqual([], tree.get_parent_ids())
+        self.assertEqual([], tree.conflicts())
+        self.assertEqual([], list(tree.unknowns()))
+        # __iter__ has no strongly defined order
+        self.assertEqual(
+            set([inventory.ROOT_ID, 'a-id', 'b-id', 'c-id']),
+            set(iter(tree)))
+        self.assertEqual(
+            [('', inventory.ROOT_ID), ('a', 'a-id'), ('b', 'b-id'), ('b/c', 'c-id')],
+            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        self.assertEqualDiff('foobar\n', tree.get_file_text('a-id'))
+        self.assertFalse(tree.is_executable('c-id'))
+        
+    def test_abc_tree_content_3_no_parents(self):
+        tree = self.get_tree_no_parents_abc_content_3()
+        self.assertEqual([], tree.get_parent_ids())
+        self.assertEqual([], tree.conflicts())
+        self.assertEqual([], list(tree.unknowns()))
+        # __iter__ has no strongly defined order
+        self.assertEqual(
+            set([inventory.ROOT_ID, 'a-id', 'b-id', 'c-id']),
+            set(iter(tree)))
+        self.assertEqual(
+            [('', inventory.ROOT_ID), ('a', 'a-id'), ('b', 'b-id'), ('b/c', 'c-id')],
+            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
+        self.assertTrue(tree.is_executable('c-id'))
+        
+    def test_abc_tree_content_4_no_parents(self):
+        tree = self.get_tree_no_parents_abc_content_4()
+        self.assertEqual([], tree.get_parent_ids())
+        self.assertEqual([], tree.conflicts())
+        self.assertEqual([], list(tree.unknowns()))
+        # __iter__ has no strongly defined order
+        self.assertEqual(
+            set([inventory.ROOT_ID, 'a-id', 'b-id', 'c-id']),
+            set(iter(tree)))
+        self.assertEqual(
+            [('', inventory.ROOT_ID), ('b', 'b-id'), ('d', 'a-id'), ('b/c', 'c-id')],
+            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
+        self.assertFalse(tree.is_executable('c-id'))
+        
+    def test_abc_tree_content_5_no_parents(self):
+        tree = self.get_tree_no_parents_abc_content_5()
+        self.assertEqual([], tree.get_parent_ids())
+        self.assertEqual([], tree.conflicts())
+        self.assertEqual([], list(tree.unknowns()))
+        # __iter__ has no strongly defined order
+        self.assertEqual(
+            set([inventory.ROOT_ID, 'a-id', 'b-id', 'c-id']),
+            set(iter(tree)))
+        self.assertEqual(
+            [('', inventory.ROOT_ID), ('b', 'b-id'), ('d', 'a-id'), ('b/c', 'c-id')],
+            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        self.assertEqualDiff('bar\n', tree.get_file_text('a-id'))
+        self.assertFalse(tree.is_executable('c-id'))
+        
+    def test_abc_tree_content_6_no_parents(self):
+        tree = self.get_tree_no_parents_abc_content_6()
+        self.assertEqual([], tree.get_parent_ids())
+        self.assertEqual([], tree.conflicts())
+        self.assertEqual([], list(tree.unknowns()))
+        # __iter__ has no strongly defined order
+        self.assertEqual(
+            set([inventory.ROOT_ID, 'a-id', 'b-id', 'c-id']),
+            set(iter(tree)))
+        self.assertEqual(
+            [('', inventory.ROOT_ID), ('a', 'a-id'), ('b', 'b-id'), ('e', 'c-id')],
+            [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
+        self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
+        self.assertTrue(tree.is_executable('c-id'))
