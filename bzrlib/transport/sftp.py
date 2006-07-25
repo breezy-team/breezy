@@ -19,6 +19,7 @@
 
 import errno
 import getpass
+import itertools
 import os
 import random
 import re
@@ -444,9 +445,20 @@ class SFTPTransport (Transport):
         try:
             path = self._remote_path(relpath)
             fp = self._sftp.file(path, mode='rb')
+            if 'sftp_prefetch' in os.environ and os.environ['sftp_prefetch'] == '1':
+                return self._sftp_readv(fp, offsets)
             return self._seek_and_read(fp, offsets)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
+
+    def _sftp_readv(self, fp, offsets):
+        """Use the readv member of fp to do async readv."""
+        # We are going to iterate multiple times, we need a list
+        offsets = list(offsets)
+
+        for offset, data in itertools.izip(offsets, fp.readv(offsets)):
+            yield offset[0], data
+
 
     def put(self, relpath, f, mode=None):
         """
