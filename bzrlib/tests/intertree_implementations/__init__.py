@@ -54,6 +54,25 @@ class TestCaseWithTwoTrees(TestCaseWithTree):
     def get_to_tree_no_parents_no_content(self, empty_tree):
         return super(TestCaseWithTwoTrees, self).get_tree_no_parents_no_content(empty_tree, converter=self.workingtree_to_test_tree_to)
 
+    def get_to_tree_no_parents_abc_content(self, empty_tree):
+        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_abc_content(empty_tree, converter=self.workingtree_to_test_tree_to)
+
+    def get_to_tree_no_parents_abc_content_2(self, empty_tree):
+        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_abc_content_2(empty_tree, converter=self.workingtree_to_test_tree_to)
+
+    def get_to_tree_no_parents_abc_content_3(self, empty_tree):
+        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_abc_content_3(empty_tree, converter=self.workingtree_to_test_tree_to)
+
+    def get_to_tree_no_parents_abc_content_4(self, empty_tree):
+        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_abc_content_4(empty_tree, converter=self.workingtree_to_test_tree_to)
+
+    def get_to_tree_no_parents_abc_content_5(self, empty_tree):
+        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_abc_content_5(empty_tree, converter=self.workingtree_to_test_tree_to)
+
+    def get_to_tree_no_parents_abc_content_6(self, empty_tree):
+        return super(TestCaseWithTwoTrees, self).get_tree_no_parents_abc_content_6(empty_tree, converter=self.workingtree_to_test_tree_to)
+
+
 class InterTreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
     """Generate test suites for each InterTree implementation in bzrlib."""
 

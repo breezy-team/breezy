@@ -34,7 +34,8 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
 
     def test_abc_tree_no_parents(self):
-        tree = self.get_tree_no_parents_abc_content()
+        tree = self.make_branch_and_tree('.')
+        tree = self.get_tree_no_parents_abc_content(tree)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -49,7 +50,8 @@ class TestTreeShapes(TestCaseWithTree):
         self.assertFalse(tree.is_executable('c-id'))
 
     def test_abc_tree_content_2_no_parents(self):
-        tree = self.get_tree_no_parents_abc_content_2()
+        tree = self.make_branch_and_tree('.')
+        tree = self.get_tree_no_parents_abc_content_2(tree)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -64,7 +66,8 @@ class TestTreeShapes(TestCaseWithTree):
         self.assertFalse(tree.is_executable('c-id'))
         
     def test_abc_tree_content_3_no_parents(self):
-        tree = self.get_tree_no_parents_abc_content_3()
+        tree = self.make_branch_and_tree('.')
+        tree = self.get_tree_no_parents_abc_content_3(tree)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -79,7 +82,8 @@ class TestTreeShapes(TestCaseWithTree):
         self.assertTrue(tree.is_executable('c-id'))
         
     def test_abc_tree_content_4_no_parents(self):
-        tree = self.get_tree_no_parents_abc_content_4()
+        tree = self.make_branch_and_tree('.')
+        tree = self.get_tree_no_parents_abc_content_4(tree)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -94,7 +98,8 @@ class TestTreeShapes(TestCaseWithTree):
         self.assertFalse(tree.is_executable('c-id'))
         
     def test_abc_tree_content_5_no_parents(self):
-        tree = self.get_tree_no_parents_abc_content_5()
+        tree = self.make_branch_and_tree('.')
+        tree = self.get_tree_no_parents_abc_content_5(tree)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
@@ -109,7 +114,8 @@ class TestTreeShapes(TestCaseWithTree):
         self.assertFalse(tree.is_executable('c-id'))
         
     def test_abc_tree_content_6_no_parents(self):
-        tree = self.get_tree_no_parents_abc_content_6()
+        tree = self.make_branch_and_tree('.')
+        tree = self.get_tree_no_parents_abc_content_6(tree)
         self.assertEqual([], tree.get_parent_ids())
         self.assertEqual([], tree.conflicts())
         self.assertEqual([], list(tree.unknowns()))
