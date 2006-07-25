@@ -53,7 +53,6 @@ class VersionedFile(object):
     def __init__(self, access_mode):
         self.finished = False
         self._access_mode = access_mode
-        self._cache_data = False
 
     def copy_to(self, name, transport):
         """Copy this versioned file to name on transport."""
