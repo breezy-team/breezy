@@ -33,6 +33,7 @@ OutputDir="..\"
 SourceDir="..\..\win32_bzr.exe"
 
 SetupIconFile="..\bzr.ico"
+LicenseFile="..\gpl.txt"
 
 VersionInfoCompany="Canonical Ltd."
 VersionInfoCopyright="Canonical Ltd., 2005-2006"
