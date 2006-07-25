@@ -177,7 +177,6 @@ elif 'py2exe' in sys.argv:
     setup(options=options_list,
           console=[target,
                    'tools/win32/bzr_postinstall.py',
-                   'tools/bzr_test_dependencies.py',
                   ],
           zipfile='lib/library.zip')
 
