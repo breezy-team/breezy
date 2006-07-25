@@ -185,6 +185,18 @@ E-Mail address of the user. Overrides default user config.
 .TP
 .I "EMAIL"
 E-Mail address of the user. Overriddes default user config.
+.TP
+.I "BZR_EDITOR"
+Editor for editing commit messages
+.TP
+.I "EDITOR"
+Editor for editing commit messages
+.TP
+.I "BZR_PLUGIN_PATH"
+Paths where bzr should look for plugins
+.TP
+.I "BZR_HOME"
+Home directory for bzr
 .SH "FILES"
 .TP
 .I "~/.bazaar/bazaar.conf"
