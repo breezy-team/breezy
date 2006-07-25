@@ -188,6 +188,12 @@ IN DEVELOPMENT
     * Restore terminal mode on C-c while reading sftp password.  (#48923, 
       Nicholas Allen, Martin Pool)
 
+    * Branch.base has changed to a URL, but ~/.bazaar/locations.conf should
+      use local paths, since it is user visible (John Arbash Meinel, #53653)
+
+    * ``bzr status foo`` when foo was unversioned used to cause a full delta
+      to be generated (John Arbash Meinel, #53638)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
