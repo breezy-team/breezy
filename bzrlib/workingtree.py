@@ -459,6 +459,9 @@ class WorkingTree(bzrlib.tree.Tree):
     def get_file(self, file_id):
         return self.get_file_byname(self.id2path(file_id))
 
+    def get_file_text(self, file_id):
+        return self.get_file(file_id).read()
+
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
