@@ -1,5 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
-# Authors:  Robert Collins <robert.collins@canonical.com>
+# Copyright (C) 2006 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,20 +14,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for the EmptyTree class."""
+"""Tests for the InterTree.compare() function."""
 
-import bzrlib
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tree import EmptyTree
+from bzrlib import inventory 
+from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 
 
-class TestTreeWithCommits(TestCaseWithTransport):
+class TestCompare(TestCaseWithTwoTrees):
 
-    def test_empty_no_unknowns(self):
-        self.assertEqual([], list(EmptyTree().unknowns()))
-
-    def test_no_conflicts(self):
-        self.assertEqual([], list(EmptyTree().conflicts()))
-
-    def test_parents(self):
-        self.assertEqual([], EmptyTree().get_parent_ids())
+    def test_compare_empty_trees(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_no_content(tree2)
+        d = self.intertree_class(tree1, tree2).compare()
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        self.assertEqual([], d.modified)
