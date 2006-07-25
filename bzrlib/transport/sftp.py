@@ -456,9 +456,89 @@ class SFTPTransport (Transport):
         # We are going to iterate multiple times, we need a list
         offsets = list(offsets)
 
-        for offset, data in itertools.izip(offsets, fp.readv(offsets)):
-            yield offset[0], data
+        #return self._combine_and_readv(fp, offsets)
+        # paramiko.readv() doesn't support reads > 65536 bytes yet
+        # Check if any requests are > 64K, if so, we need to switch to
+        # the old seek + read method
+        big_requests = False
+        for start, length in offsets:
+            if length >= 65536:
+                big_requests = True
+                break
+        if big_requests:
+            return self._seek_and_read(fp, offsets)
 
+        return self._yield_simple_chunks(fp, offsets)
+
+    def _yield_simple_chunks(self, fp, offsets):
+        mutter('using plain paramiko.readv() for %d offsets' % (len(offsets),))
+        for (start, length), data in itertools.izip(offsets, fp.readv(offsets)):
+            assert length == len(data), \
+                'Incorrect length of data chunk: %s != %s' % (length, len(data))
+            yield start, data
+
+    def _combine_and_readv(self, fp, offsets):
+        """This tries to combine requests into larger requests.
+
+        And then read them using paramiko.readv(). paramiko.readv()
+        does not support ranges > 64K, so it caps the request size, and
+        just reads until it gets all the stuff it wants
+        """
+        sorted_offsets = sorted(offsets)
+
+        # turn the list of offsets into a stack
+        offset_stack = iter(offsets)
+        cur_offset_and_size = offset_stack.next()
+        coalesced = list(self._coalesce_offsets(sorted_offsets,
+                               limit=self._max_readv_combine,
+                               fudge_factor=self._bytes_to_read_before_seek,
+                               ))
+
+        requests = []
+        for c_offset in coalesced:
+            start = c_offset.start
+            length = c_offset.length
+            offset = 0
+
+            # We need to break this up into multiple requests
+            while offset < length:
+                next_size = min(length-offset, 60000)
+                requests.append((start+offset, next_size))
+                offset += next_size
+
+        # Cache the results, but only until they have been fulfilled
+        data_map = {}
+        cur_data = []
+        cur_data_len = 0
+        cur_coalesced_stack = iter(coalesced)
+        cur_coalesced = cur_coalesced_stack.next()
+
+        for data in fp.readv(requests):
+            cur_data += data
+            cur_data_len += len(data)
+
+            if cur_data_len < cur_coalesced.length:
+                continue
+            assert cur_data_len == cur_coalesced.length, \
+                "Somehow we read too much: %s != %s" % (cur_data_len,
+                                                        cur_coalesced.length)
+            data = ''.join(cur_data)
+            cur_data = []
+            cur_data_len = 0
+
+            for suboffset, subsize in cur_coalesced.ranges:
+                key = (cur_coalesced.start+suboffset, subsize)
+                data_map[key] = data[suboffset:suboffset+subsize]
+
+            # Now that we've read some data, see if we can yield anything back
+            while cur_offset_and_size in data_map:
+                this_data = data_map.pop(cur_offset_and_size)
+                yield cur_offset_and_size[0], this_data
+                cur_offset_and_size = offset_stack.next()
+
+            # Now that we've read all of the data for this coalesced section
+            # on to the next
+            cur_coalesced = cur_coalesced_stack.next()
 
     def put(self, relpath, f, mode=None):
         """
