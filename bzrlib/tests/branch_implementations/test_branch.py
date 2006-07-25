@@ -19,7 +19,15 @@
 import os
 import sys
 
-from bzrlib import branch, bzrdir, errors, gpg, transactions, repository
+from bzrlib import (
+    branch,
+    bzrdir,
+    errors,
+    gpg,
+    urlutils,
+    transactions,
+    repository,
+    )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.delta import TreeDelta
 from bzrlib.errors import (FileExists,
@@ -523,9 +531,11 @@ class TestBranchPushLocations(TestCaseWithBranch):
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
         fn = locations_config_filename()
-        self.get_branch().set_push_location('foo')
+        branch = self.get_branch()
+        branch.set_push_location('foo')
+        local_path = urlutils.local_path_from_url(branch.base[:-1])
         self.assertFileEqual("[%s]\n"
-                             "push_location = foo" % self.get_branch().base[:-1],
+                             "push_location = foo" % local_path,
                              fn)
 
     # TODO RBC 20051029 test getting a push location from a branch in a 
