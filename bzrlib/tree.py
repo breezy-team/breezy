@@ -73,18 +73,28 @@ class Tree(object):
     def has_id(self, file_id):
         return self.inventory.has_id(file_id)
 
+    __contains__ = has_id
+
     def has_or_had_id(self, file_id):
         if file_id == self.inventory.root.file_id:
             return True
         return self.inventory.has_id(file_id)
-
-    __contains__ = has_id
 
     def __iter__(self):
         return iter(self.inventory)
 
     def id2path(self, file_id):
         return self.inventory.id2path(file_id)
+
+    def iter_entries_by_dir(self):
+        """Walk the tree in 'by_dir' order.
+
+        This will yield each entry in the tree as a (path, entry) tuple. The
+        order that they are yielded is: the contents of a directory are 
+        preceeded by the parent of a directory, and all the contents of a 
+        directory are grouped together.
+        """
+        return self.inventory.iter_entries_by_dir()
 
     def kind(self, file_id):
         raise NotImplementedError("subclasses must implement kind")
