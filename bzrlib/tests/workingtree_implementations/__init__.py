@@ -54,6 +54,7 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_basis_inventory',
         'bzrlib.tests.workingtree_implementations.test_break_lock',
         'bzrlib.tests.workingtree_implementations.test_commit',
+        'bzrlib.tests.workingtree_implementations.test_compare',
         'bzrlib.tests.workingtree_implementations.test_executable',
         'bzrlib.tests.workingtree_implementations.test_get_parent_ids',
         'bzrlib.tests.workingtree_implementations.test_is_control_filename',

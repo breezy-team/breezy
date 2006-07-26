@@ -51,14 +51,19 @@ class Tree(object):
     trees or versioned trees.
     """
     
-    def compare(self, other):
-        """Compare this tree with other.
+    def compare(self, other, specific_files=None):
+        """Return the changes from other to this tree.
 
-        :param other: A tre to compare with.
+        :param other: A tree to compare with.
+        :param specific_files: An optional list of file paths to restrict the
+            comparison to. When mapping filenames to ids, all matches in all
+            trees (including optional extra_trees) are used, and all children of
+            matched directories are included.
+
         The comparison will be performed by an InterTree object looked up on 
         self and other.
         """
-        return InterTree.get(self, other).compare()
+        return InterTree.get(self, other).compare(specific_files=specific_files)
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -355,11 +360,15 @@ class InterTree(InterObject):
 
     _optimisers = set()
 
-    def compare(self):
-        """Compare source and target.
+    def compare(self, specific_files=None):
+        """Return the changes from source to target.
 
         :return: A TreeDelta.
         """
         # imported later to avoid circular imports
         from bzrlib.delta import compare_trees
-        return compare_trees(self.source, self.target)
+        return compare_trees(
+            self.source,
+            self.target,
+            specific_files=specific_files,
+            )

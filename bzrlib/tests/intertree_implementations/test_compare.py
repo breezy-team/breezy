@@ -115,3 +115,42 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([('b/c', 'e', 'c-id', 'file', False, True)], d.renamed)
+
+    def test_empty_to_abc_content_a_only(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+        d = self.intertree_class(tree1, tree2).compare(specific_files=['a'])
+        self.assertEqual([('a', 'a-id', 'file')], d.added)
+        self.assertEqual([], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+
+    def test_empty_to_abc_content_a_and_c_only(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+        d = self.intertree_class(tree1, tree2).compare(
+            specific_files=['a', 'b/c'])
+        self.assertEqual(
+            [('a', 'a-id', 'file'), ('b/c', 'c-id', 'file')],
+            d.added)
+        self.assertEqual([], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+
+    def test_empty_to_abc_content_b_only(self):
+        """Restricting to a dir matches the children of the dir."""
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+        d = self.intertree_class(tree1, tree2).compare(specific_files=['b'])
+        self.assertEqual(
+            [('b', 'b-id', 'directory'),('b/c', 'c-id', 'file')],
+            d.added)
+        self.assertEqual([], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
