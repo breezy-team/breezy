@@ -292,7 +292,7 @@ class RevisionSpec_date(RevisionSpec):
           at a specified time).
 
           So the proper way of saying 'give me all entries for today' is:
-              -r date:today..date:tomorrow
+              -r date:yesterday..date:today
         """
         today = datetime.datetime.fromordinal(datetime.date.today().toordinal())
         if self.spec.lower() == 'yesterday':

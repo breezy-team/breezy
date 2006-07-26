@@ -32,6 +32,12 @@ class TestUpdate(ExternalBase):
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)
 
+    def test_update_standalone_trivial_with_alias_up(self):
+        self.runbzr("init")
+        out, err = self.runbzr('up')
+        self.assertEqual('Tree is up to date at revision 0.\n', err)
+        self.assertEqual('', out)
+
     def test_update_up_to_date_light_checkout(self):
         self.make_branch_and_tree('branch')
         self.runbzr('checkout --lightweight branch checkout')

@@ -750,6 +750,38 @@ class ConnectionReset(TransportError):
     """Connection closed: %(msg)s %(orig_error)s"""
 
 
+class InvalidRange(TransportError):
+    """Invalid range access."""
+    
+    def __init__(self, path, offset):
+        TransportError.__init__(self, ("Invalid range access in %s at %d"
+                                       % (path, offset)))
+
+
+class InvalidHttpResponse(TransportError):
+    """Invalid http response for %(path)s: %(msg)s"""
+
+    def __init__(self, path, msg, orig_error=None):
+        self.path = path
+        TransportError.__init__(self, msg, orig_error=orig_error)
+
+
+class InvalidHttpRange(InvalidHttpResponse):
+    """Invalid http range "%(range)s" for %(path)s: %(msg)s"""
+    
+    def __init__(self, path, range, msg):
+        self.range = range
+        InvalidHttpResponse.__init__(self, path, msg)
+
+
+class InvalidHttpContentType(InvalidHttpResponse):
+    """Invalid http Content-type "%(ctype)s" for %(path)s: %(msg)s"""
+    
+    def __init__(self, path, ctype, msg):
+        self.ctype = ctype
+        InvalidHttpResponse.__init__(self, path, msg)
+
+
 class ConflictsInTree(BzrError):
     def __init__(self):
         BzrError.__init__(self, "Working tree has conflicts.")

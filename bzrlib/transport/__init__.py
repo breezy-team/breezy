@@ -352,7 +352,7 @@ class Transport(object):
         
         Note that some transports MAY allow querying on directories, but this
         is not part of the protocol.  In other words, the results of 
-        t.has("a_directory_name") are undefined."
+        t.has("a_directory_name") are undefined.
 
         :rtype: bool
         """
@@ -431,7 +431,7 @@ class Transport(object):
             if not combined_offsets:
                 combined_offsets = [[offset, size]]
             else:
-                if (len (combined_offsets) < 50 and
+                if (len(combined_offsets) < 50 and
                     combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
                     # combatible offset:
                     combined_offsets.append([offset, size])

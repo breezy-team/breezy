@@ -24,38 +24,14 @@ from bzrlib.bundle.serializer import write_bundle
 import bzrlib.bzrdir
 import bzrlib.errors as errors
 from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests.test_transport import TestTransportImplementation
 import bzrlib.transport
 from bzrlib.transport.memory import MemoryTransport
 import bzrlib.urlutils
 
 
-# jam 20060615 Originally I thought I should use TestCaseWithTransport
-#       but it turns out that doesn't play well with the transport adapter
-class TestReadBundleFromURL(TestCaseInTempDir):
+class TestReadBundleFromURL(TestTransportImplementation):
     """Test that read_bundle works properly across multiple transports"""
-
-    def setUp(self):
-        super(TestReadBundleFromURL, self).setUp()
-        self._server = self.transport_server()
-        self._server.setUp()
-        self._transport = None
-
-    def tearDown(self):
-        self._transport = None
-        self._server.tearDown()
-        super(TestReadBundleFromURL, self).tearDown()
-        
-    def get_transport(self):
-        """Return a connected transport to the local directory."""
-        base_url = self._server.get_url()
-        t = bzrlib.transport.get_transport(base_url)
-        if not isinstance(t, self.transport_class):
-            # we want to make sure to construct one particular class, even if
-            # there are several available implementations of this transport;
-            # therefore construct it by hand rather than through the regular
-            # get_transport method
-            t = self.transport_class(base_url)
-        return t
 
     def get_url(self, relpath=''):
         return bzrlib.urlutils.join(self._server.get_url(), relpath)

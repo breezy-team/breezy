@@ -21,6 +21,7 @@ The methods here allow for api symbol versioning.
 """
 
 __all__ = ['deprecated_function',
+           'deprecated_list',
            'deprecated_method',
            'DEPRECATED_PARAMETER',
            'deprecated_passed',
@@ -145,3 +146,54 @@ def _populate_decorated(callable, deprecation_version, label,
     decorated_callable.__module__ = callable.__module__
     decorated_callable.__name__ = callable.__name__
     decorated_callable.is_deprecated = True
+
+
+def deprecated_list(deprecation_version, variable_name,
+                    initial_value, extra=None):
+    """Create a list that warns when modified
+
+    :param deprecation_version: something like zero_nine
+    :param initial_value: The contents of the list
+    :param variable_name: This allows better warnings to be printed
+    :param extra: Extra info to print when printing a warning
+    """
+
+    subst_text = 'Modifying %s' % (variable_name,)
+    msg = deprecation_version % (subst_text,)
+    if extra:
+        msg += ' ' + extra
+
+    class _DeprecatedList(list):
+        __doc__ = list.__doc__ + msg
+
+        is_deprecated = True
+
+        def _warn_deprecated(self, func, *args, **kwargs):
+            warn(msg, DeprecationWarning, stacklevel=3)
+            return func(self, *args, **kwargs)
+            
+        def append(self, obj):
+            """appending to %s is deprecated""" % (variable_name,)
+            return self._warn_deprecated(list.append, obj)
+
+        def insert(self, index, obj):
+            """inserting to %s is deprecated""" % (variable_name,)
+            return self._warn_deprecated(list.insert, index, obj)
+
+        def extend(self, iterable):
+            """extending %s is deprecated""" % (variable_name,)
+            return self._warn_deprecated(list.extend, iterable)
+
+        def remove(self, value):
+            """removing from %s is deprecated""" % (variable_name,)
+            return self._warn_deprecated(list.remove, value)
+
+        def pop(self, index=None):
+            """pop'ing from from %s is deprecated""" % (variable_name,)
+            if index:
+                return self._warn_deprecated(list.pop, index)
+            else:
+                # Can't pass None
+                return self._warn_deprecated(list.pop)
+
+    return _DeprecatedList(initial_value)

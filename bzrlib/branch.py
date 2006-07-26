@@ -363,10 +363,7 @@ class Branch(object):
         raise NotImplementedError('pull is abstract')
 
     def basis_tree(self):
-        """Return `Tree` object for last revision.
-
-        If there are no revisions yet, return an `EmptyTree`.
-        """
+        """Return `Tree` object for last revision."""
         return self.repository.revision_tree(self.last_revision())
 
     def rename_one(self, from_rel, to_rel):
