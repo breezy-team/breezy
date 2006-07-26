@@ -62,7 +62,7 @@ class RecordingOptimiser(InterTree):
     calls = []
 
     def compare(self):
-        self.calls.append(('compare',))
+        self.calls.append(('compare', self.source, self.target))
     
     @classmethod
     def is_compatible(klass, source, target):
@@ -79,7 +79,7 @@ class TestTree(TestCaseWithTransport):
             InterTree.register_optimiser(RecordingOptimiser)
             tree = self.make_branch_and_tree('1')
             tree2 = self.make_branch_and_tree('2')
-            tree.compare(tree2)
+            tree.changes_from(tree2)
         finally:
             InterTree._optimisers = old_optimisers
-        self.assertEqual([('compare',)], RecordingOptimiser.calls)
+        self.assertEqual([('compare', tree2, tree)], RecordingOptimiser.calls)

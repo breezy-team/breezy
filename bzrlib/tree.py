@@ -51,14 +51,17 @@ class Tree(object):
     trees or versioned trees.
     """
     
-    def compare(self, other):
-        """Compare this tree with other.
+    def changes_from(self, other):
+        """Return a TreeDelta of the changes from other to this tree.
 
-        :param other: A tre to compare with.
+        :param other: A tree to compare with.
         The comparison will be performed by an InterTree object looked up on 
         self and other.
         """
-        return InterTree.get(self, other).compare()
+        # Martin observes that Tree.changes_from returns a TreeDelta and this
+        # may confuse people, because the class name of the returned object is
+        # a synonym of the object referenced in the method name.
+        return InterTree.get(other, self).compare()
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
