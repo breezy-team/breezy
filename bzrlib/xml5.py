@@ -32,14 +32,16 @@ class Serializer_v5(Serializer):
     
     def _pack_inventory(self, inv):
         """Convert to XML Element"""
+        entries = inv.iter_entries()
         e = Element('inventory',
                     format='5')
         e.text = '\n'
-        if inv.root.file_id not in (None, ROOT_ID):
-            e.set('file_id', inv.root.file_id)
+        path, root = entries.next()
+        if root.file_id not in (None, ROOT_ID):
+            e.set('file_id', root.file_id)
         if inv.revision_id is not None:
             e.set('revision_id', inv.revision_id)
-        for path, ie in inv.iter_entries():
+        for path, ie in entries:
             e.append(self._pack_entry(ie))
         return e
 

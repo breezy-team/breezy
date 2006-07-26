@@ -51,7 +51,8 @@ import stat
 from time import time
 import warnings
 
-from bzrlib import bzrdir, errors, osutils, urlutils
+import bzrlib
+from bzrlib import bzrdir, errors, ignores, osutils, urlutils
 from bzrlib.atomicfile import AtomicFile
 import bzrlib.branch
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
@@ -106,11 +107,9 @@ import bzrlib.ui
 import bzrlib.xml5
 
 
-# the regex here does the following:
-# 1) remove any weird characters; we don't escape them but rather
-# just pull them out
- # 2) match leading '.'s to make it not hidden
-_gen_file_id_re = re.compile(r'[^\w.]|(^\.*)')
+# the regex removes any weird characters; we don't escape them 
+# but rather just pull them out
+_gen_file_id_re = re.compile(r'[^\w.]')
 _gen_id_suffix = None
 _gen_id_serial = 0
 
@@ -138,11 +137,20 @@ def gen_file_id(name):
 
     The uniqueness is supplied from _next_id_suffix.
     """
-    # XXX TODO: squash the filename to lowercase.
-    # XXX TODO: truncate the filename to something like 20 or 30 chars.
-    # XXX TODO: consider what to do with ids that look like illegal filepaths
-    # on platforms we support.
-    return _gen_file_id_re.sub('', name) + _next_id_suffix()
+    # The real randomness is in the _next_id_suffix, the
+    # rest of the identifier is just to be nice.
+    # So we:
+    # 1) Remove non-ascii word characters to keep the ids portable
+    # 2) squash to lowercase, so the file id doesn't have to
+    #    be escaped (case insensitive filesystems would bork for ids
+    #    that only differred in case without escaping).
+    # 3) truncate the filename to 20 chars. Long filenames also bork on some
+    #    filesystems
+    # 4) Removing starting '.' characters to prevent the file ids from
+    #    being considered hidden.
+    ascii_word_only = _gen_file_id_re.sub('', name.lower())
+    short_no_dots = ascii_word_only.lstrip('.')[:20]
+    return short_no_dots + _next_id_suffix()
 
 
 def gen_root_id():
@@ -374,7 +382,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         inv = self._inventory
         for path, ie in inv.iter_entries():
-            if bzrlib.osutils.lexists(self.abspath(path)):
+            if osutils.lexists(self.abspath(path)):
                 yield ie.file_id
 
     def __repr__(self):
@@ -446,10 +454,13 @@ class WorkingTree(bzrlib.tree.Tree):
         return relpath(self.basedir, path)
 
     def has_filename(self, filename):
-        return bzrlib.osutils.lexists(self.abspath(filename))
+        return osutils.lexists(self.abspath(filename))
 
     def get_file(self, file_id):
         return self.get_file_byname(self.id2path(file_id))
+
+    def get_file_text(self, file_id):
+        return self.get_file(file_id).read()
 
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
@@ -536,7 +547,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if not inv.has_id(file_id):
             return False
         path = inv.id2path(file_id)
-        return bzrlib.osutils.lexists(self.abspath(path))
+        return osutils.lexists(self.abspath(path))
 
     def has_or_had_id(self, file_id):
         if file_id == self.inventory.root.file_id:
@@ -720,8 +731,8 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         inv = self._inventory
         # Convert these into local objects to save lookup times
-        pathjoin = bzrlib.osutils.pathjoin
-        file_kind = bzrlib.osutils.file_kind
+        pathjoin = osutils.pathjoin
+        file_kind = osutils.file_kind
 
         # transport.base ends in a slash, we want the piece
         # between the last two slashes
@@ -1097,17 +1108,25 @@ class WorkingTree(bzrlib.tree.Tree):
 
         Cached in the Tree object after the first call.
         """
-        if hasattr(self, '_ignorelist'):
-            return self._ignorelist
+        ignoreset = getattr(self, '_ignoreset', None)
+        if ignoreset is not None:
+            return ignoreset
 
-        l = []
+        ignore_globs = set(bzrlib.DEFAULT_IGNORE)
+        ignore_globs.update(ignores.get_runtime_ignores())
+
+        ignore_globs.update(ignores.get_user_ignores())
+
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
-            l.extend([line.rstrip("\n\r").decode('utf-8') 
-                      for line in f.readlines()])
-        self._ignorelist = l
-        self._ignore_regex = self._combine_ignore_rules(l)
-        return l
+            try:
+                ignore_globs.update(ignores.parse_ignore_file(f))
+            finally:
+                f.close()
+
+        self._ignoreset = ignore_globs
+        self._ignore_regex = self._combine_ignore_rules(ignore_globs)
+        return ignore_globs
 
     def _get_ignore_rules_as_regex(self):
         """Return a regex of the ignore rules and a mapping dict.
@@ -1115,7 +1134,7 @@ class WorkingTree(bzrlib.tree.Tree):
         :return: (ignore rules compiled regex, dictionary mapping rule group 
         indices to original rule.)
         """
-        if getattr(self, '_ignorelist', None) is None:
+        if getattr(self, '_ignoreset', None) is None:
             self.get_ignore_list()
         return self._ignore_regex
 
@@ -2034,18 +2053,26 @@ class WorkingTreeTestProviderAdapter(object):
         self._transport_readonly_server = transport_readonly_server
         self._formats = formats
     
+    def _clone_test(self, test, bzrdir_format, workingtree_format, variation):
+        """Clone test for adaption."""
+        new_test = deepcopy(test)
+        new_test.transport_server = self._transport_server
+        new_test.transport_readonly_server = self._transport_readonly_server
+        new_test.bzrdir_format = bzrdir_format
+        new_test.workingtree_format = workingtree_format
+        def make_new_test_id():
+            new_id = "%s(%s)" % (test.id(), variation)
+            return lambda: new_id
+        new_test.id = make_new_test_id()
+        return new_test
+    
     def adapt(self, test):
         from bzrlib.tests import TestSuite
         result = TestSuite()
         for workingtree_format, bzrdir_format in self._formats:
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.bzrdir_format = bzrdir_format
-            new_test.workingtree_format = workingtree_format
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), workingtree_format.__class__.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
+            new_test = self._clone_test(
+                test,
+                bzrdir_format,
+                workingtree_format, workingtree_format.__class__.__name__)
             result.addTest(new_test)
         return result

@@ -24,9 +24,21 @@ import os.path
 import sys
 
 import bzrlib
+from bzrlib import (
+    branch,
+    bundle,
+    bzrdir,
+    config,
+    errors,
+    ignores,
+    log,
+    osutils,
+    repository,
+    transport,
+    ui,
+    urlutils,
+    )
 from bzrlib.branch import Branch, BranchReferenceFormat
-from bzrlib import (bundle, branch, bzrdir, errors, osutils, ui, config,
-    repository, log)
 from bzrlib.bundle import read_bundle_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.conflicts import ConflictList
@@ -42,7 +54,6 @@ from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 from bzrlib.transport.local import LocalTransport
-import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
 
 
@@ -516,7 +527,6 @@ class cmd_push(Command):
             create_prefix=False, verbose=False):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
-        from bzrlib.transport import get_transport
         
         br_from = Branch.open_containing('.')[0]
         stored_loc = br_from.get_push_location()
@@ -529,8 +539,8 @@ class cmd_push(Command):
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
-        transport = get_transport(location)
-        location_url = transport.base
+        to_transport = transport.get_transport(location)
+        location_url = to_transport.base
 
         old_rh = []
         try:
@@ -538,28 +548,28 @@ class cmd_push(Command):
             br_to = dir_to.open_branch()
         except NotBranchError:
             # create a branch.
-            transport = transport.clone('..')
+            to_transport = to_transport.clone('..')
             if not create_prefix:
                 try:
-                    relurl = transport.relpath(location_url)
+                    relurl = to_transport.relpath(location_url)
                     mutter('creating directory %s => %s', location_url, relurl)
-                    transport.mkdir(relurl)
+                    to_transport.mkdir(relurl)
                 except NoSuchFile:
                     raise BzrCommandError("Parent directory of %s "
                                           "does not exist." % location)
             else:
-                current = transport.base
-                needed = [(transport, transport.relpath(location_url))]
+                current = to_transport.base
+                needed = [(to_transport, to_transport.relpath(location_url))]
                 while needed:
                     try:
-                        transport, relpath = needed[-1]
-                        transport.mkdir(relpath)
+                        to_transport, relpath = needed[-1]
+                        to_transport.mkdir(relpath)
                         needed.pop()
                     except NoSuchFile:
-                        new_transport = transport.clone('..')
+                        new_transport = to_transport.clone('..')
                         needed.append((new_transport,
-                                       new_transport.relpath(transport.base)))
-                        if new_transport.base == transport.base:
+                                       new_transport.relpath(to_transport.base)))
+                        if new_transport.base == to_transport.base:
                             raise BzrCommandError("Could not create "
                                                   "path prefix.")
             dir_to = br_from.bzrdir.clone(location_url,
@@ -618,7 +628,6 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
-        from bzrlib.transport import get_transport
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -651,7 +660,7 @@ class cmd_branch(Command):
             else:
                 name = os.path.basename(to_location) + '\n'
 
-            to_transport = get_transport(to_location)
+            to_transport = transport.get_transport(to_location)
             try:
                 to_transport.mkdir('.')
             except errors.FileExists:
@@ -800,6 +809,7 @@ class cmd_update(Command):
     'bzr revert' instead of 'bzr commit' after the update.
     """
     takes_args = ['dir?']
+    aliases = ['up']
 
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
@@ -866,10 +876,9 @@ class cmd_remove(Command):
                 raise BzrCommandError('Specify one or more files to remove, or'
                                       ' use --new.')
         else:
-            from bzrlib.delta import compare_trees
-            added = [compare_trees(tree.basis_tree(), tree,
-                                   specific_files=file_list).added]
-            file_list = sorted([f[0] for f in added[0]], reverse=True)
+            added = tree.changes_from(tree.basis_tree(),
+                specific_files=file_list).added
+            file_list = sorted([f[0] for f in added], reverse=True)
             if len(file_list) == 0:
                 raise BzrCommandError('No matching files.')
         tree.remove(file_list, verbose=verbose, to_file=self.outf)
@@ -1016,14 +1025,20 @@ class cmd_init(Command):
             format = get_format_type('default')
         if location is None:
             location = u'.'
-        else:
-            # The path has to exist to initialize a
-            # branch inside of it.
-            # Just using os.mkdir, since I don't
-            # believe that we want to create a bunch of
-            # locations if the user supplies an extended path
-            if not os.path.exists(location):
-                os.mkdir(location)
+
+        to_transport = transport.get_transport(location)
+
+        # The path has to exist to initialize a
+        # branch inside of it.
+        # Just using os.mkdir, since I don't
+        # believe that we want to create a bunch of
+        # locations if the user supplies an extended path
+        # TODO: create-prefix
+        try:
+            to_transport.mkdir('.')
+        except errors.FileExists:
+            pass
+                    
         try:
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except NotBranchError:
@@ -1031,10 +1046,10 @@ class cmd_init(Command):
             bzrdir.BzrDir.create_branch_convenience(location, format=format)
         else:
             if existing_bzrdir.has_branch():
-                if existing_bzrdir.has_workingtree():
-                    raise errors.AlreadyBranchError(location)
-                else:
-                    raise errors.BranchExistsWithoutWorkingTree(location)
+                if (isinstance(to_transport, LocalTransport)
+                    and not existing_bzrdir.has_workingtree()):
+                        raise errors.BranchExistsWithoutWorkingTree(location)
+                raise errors.AlreadyBranchError(location)
             else:
                 existing_bzrdir.create_branch()
                 existing_bzrdir.create_workingtree()
@@ -1066,13 +1081,19 @@ class cmd_init_repository(Command):
                              ' a working tree')]
     aliases = ["init-repo"]
     def run(self, location, format=None, trees=False):
-        from bzrlib.transport import get_transport
         if format is None:
             format = get_format_type('default')
-        transport = get_transport(location)
-        if not transport.has('.'):
-            transport.mkdir('')
-        newdir = format.initialize_on_transport(transport)
+
+        if location is None:
+            location = '.'
+
+        to_transport = transport.get_transport(location)
+        try:
+            to_transport.mkdir('.')
+        except errors.FileExists:
+            pass
+
+        newdir = format.initialize_on_transport(to_transport)
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(trees)
 
@@ -1205,11 +1226,8 @@ class cmd_modified(Command):
     hidden = True
     @display_command
     def run(self):
-        from bzrlib.delta import compare_trees
-
         tree = WorkingTree.open_containing(u'.')[0]
-        td = compare_trees(tree.basis_tree(), tree)
-
+        td = tree.changes_from(tree.basis_tree())
         for path, id, kind, text_modified, meta_modified in td.modified:
             self.outf.write(path + '\n')
 
@@ -1480,7 +1498,7 @@ class cmd_ignore(Command):
         from bzrlib.atomicfile import AtomicFile
         if old_default_rules is not None:
             # dump the rules and exit
-            for pattern in bzrlib.DEFAULT_IGNORE:
+            for pattern in ignores.OLD_DEFAULTS:
                 print pattern
             return
         if name_pattern is None:
@@ -2008,21 +2026,24 @@ def show_version():
 
 class cmd_version(Command):
     """Show version of bzr."""
+
     @display_command
     def run(self):
         show_version()
 
+
 class cmd_rocks(Command):
     """Statement of optimism."""
+
     hidden = True
+
     @display_command
     def run(self):
         print "it sure does!"
 
 
 class cmd_find_merge_base(Command):
-    """Find and print a base revision for merging two branches.
-    """
+    """Find and print a base revision for merging two branches."""
     # TODO: Options to specify revisions on either side, as if
     #       merging only part of the history.
     takes_args = ['branch', 'other']
@@ -2395,7 +2416,7 @@ class cmd_missing(Command):
         if other_branch is None:
             other_branch = parent
             if other_branch is None:
-                raise BzrCommandError("No missing location known or specified.")
+                raise BzrCommandError("No peer location known or specified.")
             print "Using last location: " + local_branch.get_parent()
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
