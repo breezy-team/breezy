@@ -5,8 +5,7 @@ import bzrlib.ui as ui
 
 def iter_log_data(revisions, revision_source, verbose):
     from bzrlib.diff import compare_trees
-    from bzrlib.tree import EmptyTree
-    last_tree = EmptyTree
+    last_tree = revision_source.revision_tree(None)
     last_rev_id = None
     for revno, rev_id in revisions:
         rev = revision_source.get_revision(rev_id)

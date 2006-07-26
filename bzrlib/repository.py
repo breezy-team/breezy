@@ -38,11 +38,10 @@ from bzrlib.store.text import TextStore
 from bzrlib.symbol_versioning import (deprecated_method,
         zero_nine, 
         )
-from bzrlib.trace import mutter, note
-from bzrlib.tree import RevisionTree, EmptyTree
-from bzrlib.tsort import topo_sort
 from bzrlib.testament import Testament
-from bzrlib.tree import EmptyTree
+from bzrlib.trace import mutter, note
+from bzrlib.tree import RevisionTree
+from bzrlib.tsort import topo_sort
 from bzrlib.weave import WeaveFile
 
 
@@ -347,7 +346,7 @@ class Repository(object):
                      t in self.revision_trees(required_trees))
         for revision in revisions:
             if not revision.parent_ids:
-                old_tree = EmptyTree()
+                old_tree = self.revision_tree(None)
             else:
                 old_tree = trees[revision.parent_ids[0]]
             yield delta.compare_trees(old_tree, trees[revision.revision_id])
@@ -565,12 +564,12 @@ class Repository(object):
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
-        `revision_id` may be None for the null revision, in which case
-        an `EmptyTree` is returned."""
+        `revision_id` may be None for the empty tree revision.
+        """
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id is None or revision_id == NULL_REVISION:
-            return EmptyTree()
+            return RevisionTree(self, Inventory(), NULL_REVISION)
         else:
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
@@ -746,7 +745,7 @@ def install_revision(repository, rev, revision_tree):
             present_parents.append(p_id)
             parent_trees[p_id] = repository.revision_tree(p_id)
         else:
-            parent_trees[p_id] = EmptyTree()
+            parent_trees[p_id] = repository.revision_tree(None)
 
     inv = revision_tree.inventory
     
@@ -2014,9 +2013,9 @@ class CommitBuilder(object):
             self._revprops.update(revprops)
 
         if timestamp is None:
-            self._timestamp = time.time()
-        else:
-            self._timestamp = long(timestamp)
+            timestamp = time.time()
+        # Restrict resolution to 1ms
+        self._timestamp = round(timestamp, 3)
 
         if timezone is None:
             self._timezone = local_time_offset()
