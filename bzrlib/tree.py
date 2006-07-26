@@ -51,9 +51,9 @@ class Tree(object):
     trees or versioned trees.
     """
     
-    def compare(self, other, want_unchanged=False, specific_files=None,
+    def changes_from(self, other, want_unchanged=False, specific_files=None,
         extra_trees=None, require_versioned=False):
-        """Return the changes from this tree to other.
+        """Return a TreeDelta of the changes from other to this tree.
 
         :param other: A tree to compare with.
         :param specific_files: An optional list of file paths to restrict the
@@ -71,7 +71,10 @@ class Tree(object):
         The comparison will be performed by an InterTree object looked up on 
         self and other.
         """
-        return InterTree.get(self, other).compare(
+        # Martin observes that Tree.changes_from returns a TreeDelta and this
+        # may confuse people, because the class name of the returned object is
+        # a synonym of the object referenced in the method name.
+        return InterTree.get(other, self).compare(
             want_unchanged=want_unchanged,
             specific_files=specific_files,
             extra_trees=extra_trees,
