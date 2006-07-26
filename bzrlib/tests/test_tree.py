@@ -61,8 +61,10 @@ class RecordingOptimiser(InterTree):
 
     calls = []
 
-    def compare(self, specific_files=None):
-        self.calls.append(('compare', specific_files))
+    def compare(self, want_unchanged=False, specific_files=None,
+        extra_trees=None):
+        self.calls.append(
+            ('compare', want_unchanged, specific_files, extra_trees))
     
     @classmethod
     def is_compatible(klass, source, target):
@@ -72,6 +74,7 @@ class RecordingOptimiser(InterTree):
 class TestTree(TestCaseWithTransport):
 
     def test_compare_calls_InterTree_compare(self):
+        """This test tests the way Tree.compare() uses InterTree."""
         old_optimisers = InterTree._optimisers
         try:
             InterTree._optimisers = set()
@@ -83,14 +86,18 @@ class TestTree(TestCaseWithTransport):
             # trivial usage
             tree.compare(tree2)
             # pass in all optional arguments by position
-            tree.compare(tree2, 'specific')
+            tree.compare(tree2, 'unchanged', 'specific', 'extra')
             # pass in all optional arguments by keyword
-            tree.compare(tree2, specific_files='specific')
+            tree.compare(tree2,
+                specific_files='specific',
+                want_unchanged='unchanged',
+                extra_trees='extra',
+                )
         finally:
             InterTree._optimisers = old_optimisers
         self.assertEqual(
             [
-             ('compare', None),
-             ('compare', 'specific'),
-             ('compare', 'specific'),
+             ('compare', False, None, None),
+             ('compare', 'unchanged', 'specific', 'extra'),
+             ('compare', 'unchanged', 'specific', 'extra'),
             ], RecordingOptimiser.calls)

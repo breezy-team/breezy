@@ -14,9 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""test the functions in bzrlib/delta.py"""
+"""Test Tree.compare() for WorkingTree specific scenarios."""
 
-from bzrlib import delta, revision, transform
+from bzrlib import revision
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 

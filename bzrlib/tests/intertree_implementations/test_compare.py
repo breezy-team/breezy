@@ -32,6 +32,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
 
     def test_empty_to_abc_content(self):
         tree1 = self.make_branch_and_tree('1')
@@ -46,6 +47,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
 
     def test_abc_content_to_empty(self):
         tree1 = self.make_branch_and_tree('1')
@@ -60,6 +62,7 @@ class TestCompare(TestCaseWithTwoTrees):
                           ('b/c', 'c-id', 'file'),
                          ], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
 
     def test_content_modification(self):
         tree1 = self.make_branch_and_tree('1')
@@ -71,6 +74,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([('a', 'a-id', 'file', True, False)], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
         
     def test_meta_modification(self):
         tree1 = self.make_branch_and_tree('1')
@@ -82,6 +86,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([('b/c', 'c-id', 'file', False, True)], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
 
     def test_file_rename(self):
         tree1 = self.make_branch_and_tree('1')
@@ -93,6 +98,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([('a', 'd', 'a-id', 'file', False, False)], d.renamed)
+        self.assertEqual([], d.unchanged)
 
     def test_file_rename_and_modification(self):
         tree1 = self.make_branch_and_tree('1')
@@ -104,6 +110,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([('a', 'd', 'a-id', 'file', True, False)], d.renamed)
+        self.assertEqual([], d.unchanged)
 
     def test_file_rename_and_meta_modification(self):
         tree1 = self.make_branch_and_tree('1')
@@ -115,6 +122,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([('b/c', 'e', 'c-id', 'file', False, True)], d.renamed)
+        self.assertEqual([], d.unchanged)
 
     def test_empty_to_abc_content_a_only(self):
         tree1 = self.make_branch_and_tree('1')
@@ -126,6 +134,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
 
     def test_empty_to_abc_content_a_and_c_only(self):
         tree1 = self.make_branch_and_tree('1')
@@ -140,6 +149,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
 
     def test_empty_to_abc_content_b_only(self):
         """Restricting to a dir matches the children of the dir."""
@@ -154,3 +164,45 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
+
+    def test_unchanged_with_renames_and_modifications(self):
+        """want_unchanged should generate a list of unchanged entries."""
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_5(tree2)
+        d = self.intertree_class(tree1, tree2).compare(want_unchanged=True)
+        self.assertEqual([], d.added)
+        self.assertEqual([], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([('a', 'd', 'a-id', 'file', True, False)], d.renamed)
+        self.assertEqual(
+            [(u'b', 'b-id', 'directory'), (u'b/c', 'c-id', 'file')],
+            d.unchanged)
+
+    def test_extra_trees_finds_ids(self):
+        """Ask for a delta between two trees with a path present in a third."""
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content_3(tree2)
+        # the type of tree-3 does not matter - it is used as a lookup, not
+        # a dispatch
+        tree3 = self.make_branch_and_tree('3')
+        tree3 = self.get_tree_no_parents_abc_content_6(tree3)
+        # tree 3 has 'e' which is 'c-id'. Tree 1 has c-id at b/c, and Tree 2
+        # has c-id at b/c with its exec flag toggled.
+        # without extra_trees, we should get no modifications from this
+        # so do one, to be sure the test is valid.
+        d = self.intertree_class(tree1, tree2).compare(
+            specific_files=['e'])
+        self.assertEqual([], d.modified)
+        # now give it an additional lookup:
+        d = self.intertree_class(tree1, tree2).compare(
+            specific_files=['e'], extra_trees=[tree3])
+        self.assertEqual([], d.added)
+        self.assertEqual([('b/c', 'c-id', 'file', False, True)], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)

@@ -51,7 +51,8 @@ class Tree(object):
     trees or versioned trees.
     """
     
-    def compare(self, other, specific_files=None):
+    def compare(self, other, want_unchanged=False, specific_files=None,
+        extra_trees=None):
         """Return the changes from other to this tree.
 
         :param other: A tree to compare with.
@@ -59,11 +60,18 @@ class Tree(object):
             comparison to. When mapping filenames to ids, all matches in all
             trees (including optional extra_trees) are used, and all children of
             matched directories are included.
+        :param want_unchanged: An optional boolean requesting the inclusion of
+            unchanged entries in the result.
+        :param extra_trees: An optional list of additional trees to use when
+            mapping the contents of specific_files (paths) to file_ids.
 
         The comparison will be performed by an InterTree object looked up on 
         self and other.
         """
-        return InterTree.get(self, other).compare(specific_files=specific_files)
+        return InterTree.get(self, other).compare(
+            want_unchanged=want_unchanged,
+            specific_files=specific_files,
+            extra_trees=extra_trees)
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -360,15 +368,26 @@ class InterTree(InterObject):
 
     _optimisers = set()
 
-    def compare(self, specific_files=None):
+    def compare(self, want_unchanged=False, specific_files=None,
+        extra_trees=None):
         """Return the changes from source to target.
 
         :return: A TreeDelta.
+        :param specific_files: An optional list of file paths to restrict the
+            comparison to. When mapping filenames to ids, all matches in all
+            trees (including optional extra_trees) are used, and all children of
+            matched directories are included.
+        :param want_unchanged: An optional boolean requesting the inclusion of
+            unchanged entries in the result.
+        :param extra_trees: An optional list of additional trees to use when
+            mapping the contents of specific_files (paths) to file_ids.
         """
         # imported later to avoid circular imports
         from bzrlib.delta import compare_trees
         return compare_trees(
             self.source,
             self.target,
+            want_unchanged=want_unchanged,
             specific_files=specific_files,
+            extra_trees=extra_trees,
             )
