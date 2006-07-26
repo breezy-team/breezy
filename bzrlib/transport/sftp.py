@@ -439,61 +439,57 @@ class SFTPTransport (Transport):
         """See Transport.readv()"""
         # We overload the default readv() because we want to use a file
         # that does not have prefetch enabled.
+        # Also, if we have a new paramiko, it implements an async readv()
         if not offsets:
             return
 
         try:
             path = self._remote_path(relpath)
             fp = self._sftp.file(path, mode='rb')
-            if 'sftp_prefetch' in os.environ and os.environ['sftp_prefetch'] == '1':
+            readv = getattr(fp, 'readv', None)
+            if readv:
                 return self._sftp_readv(fp, offsets)
             return self._seek_and_read(fp, offsets)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
 
     def _sftp_readv(self, fp, offsets):
-        """Use the readv member of fp to do async readv."""
-        # We are going to iterate multiple times, we need a list
-        offsets = list(offsets)
-
-        return self._combine_and_readv(fp, offsets)
-        # paramiko.readv() doesn't support reads > 65536 bytes yet
-        # Check if any requests are > 64K, if so, we need to switch to
-        # the old seek + read method
-        big_requests = False
-        for start, length in offsets:
-            if length >= 65536:
-                big_requests = True
-                break
-        if big_requests:
-            return self._seek_and_read(fp, offsets)
-
-        return self._yield_simple_chunks(fp, offsets)
-
-    def _yield_simple_chunks(self, fp, offsets):
-        mutter('using plain paramiko.readv() for %d offsets' % (len(offsets),))
-        for (start, length), data in itertools.izip(offsets, fp.readv(offsets)):
-            assert length == len(data), \
-                'Incorrect length of data chunk: %s != %s' % (length, len(data))
-            yield start, data
-
-    def _combine_and_readv(self, fp, offsets):
-        """This tries to combine requests into larger requests.
+        """Use the readv() member of fp to do async readv.
 
         And then read them using paramiko.readv(). paramiko.readv()
         does not support ranges > 64K, so it caps the request size, and
         just reads until it gets all the stuff it wants
         """
+        offsets = list(offsets)
         sorted_offsets = sorted(offsets)
 
-        # turn the list of offsets into a stack
-        offset_stack = iter(offsets)
-        cur_offset_and_size = offset_stack.next()
+        # The algorithm works as follows:
+        # 1) Coalesce nearby reads into a single chunk
+        #    This generates a list of combined regions, the total size
+        #    and the size of the sub regions. This coalescing step is limited
+        #    in the number of nearby chunks to combine, and is allowed to
+        #    skip small breaks in the requests. Limiting it makes sure that
+        #    we can start yielding some data earlier, and skipping means we
+        #    make fewer requests. (Beneficial even when using async)
+        # 2) Break up this combined regions into chunks that are smaller
+        #    than 64KiB. Technically the limit is 65536, but we are a
+        #    little bit conservative. This is because sftp has a maximum
+        #    return chunk size of 64KiB (max size of an unsigned short)
+        # 3) Issue a readv() to paramiko to create an async request for
+        #    all of this data
+        # 4) Read in the data as it comes back, until we've read one
+        #    continuous section as determined in step 1
+        # 5) Break up the full sections into hunks for the original requested
+        #    offsets. And put them in a cache
+        # 6) Check if the next request is in the cache, and if it is, remove
+        #    it from the cache, and yield its data. Continue until no more
+        #    entries are in the cache.
+        # 7) loop back to step 4 until all data has been read
+
         coalesced = list(self._coalesce_offsets(sorted_offsets,
                                limit=self._max_readv_combine,
                                fudge_factor=self._bytes_to_read_before_seek,
                                ))
-
         requests = []
         for c_offset in coalesced:
             start = c_offset.start
@@ -502,16 +498,21 @@ class SFTPTransport (Transport):
 
             # We need to break this up into multiple requests
             while offset < length:
-                next_size = min(length-offset, 60000)
+                next_size = min(length-offset, 65000)
                 requests.append((start+offset, next_size))
                 offset += next_size
 
-        # Cache the results, but only until they have been fulfilled
-        data_map = {}
+        # Queue the current read until we have read the full coalesced section
         cur_data = []
         cur_data_len = 0
         cur_coalesced_stack = iter(coalesced)
         cur_coalesced = cur_coalesced_stack.next()
+
+        # Cache the results, but only until they have been fulfilled
+        data_map = {}
+        # turn the list of offsets into a stack
+        offset_stack = iter(offsets)
+        cur_offset_and_size = offset_stack.next()
 
         for data in fp.readv(requests):
             cur_data += data
