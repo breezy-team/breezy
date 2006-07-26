@@ -27,7 +27,7 @@ from cStringIO import StringIO
 import md5
 import os
 
-from svn.core import SubversionException
+from svn.core import SubversionException, Pool
 import svn.core
 
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
@@ -116,7 +116,6 @@ class RevisionBuildEditor(svn.delta.Editor):
 
         if copyfrom_path is not None:
             base_file_id, base_revid = self.get_file_id(copyfrom_path, copyfrom_revnum)
-            (bp, rev) = self.source.parse_revision_id(base_revid)
             if base_file_id == file_id: 
                 self.dir_baserev[file_id] = [base_revid]
                 ie = self.inventory[file_id]
@@ -273,49 +272,73 @@ class InterSvnRepository(InterRepository):
             (path, until_revnum) = self.source.parse_revision_id(revision_id)
         
         needed = []
+        parents = {}
+        prev_revid = None
         for (branch, changes, revnum) in \
             self.source._log.follow_history(path, until_revnum):
             revid = self.source.generate_revision_id(revnum, branch)
 
+            if prev_revid is not None:
+                parents[prev_revid] = revid
+
+            prev_revid = revid
+
             if not self.target.has_revision(revid):
                 needed.append((branch, revnum, revid, changes))
 
+        parents[prev_revid] = None
+
         num = 0
         needed.reverse()
-        prev_revnum = 0
-        prev_inv = Inventory()
         prev_revid = None
         for (branch, revnum, revid, changes) in needed:
             if pb is not None:
                 pb.update('copying revision', num+1, len(needed)+1)
             num += 1
 
-            if prev_revid is None or self.target.has_revision(prev_revid):
+            parent_revid = parents[revid]
+
+            if parent_revid is None:
                 id_map = self.source.get_fileid_map(revnum, branch)
+                parent_inv = Inventory()
+            elif prev_revid != parent_revid:
+                id_map = self.source.get_fileid_map(revnum, branch)
+                parent_inv = self.target.get_inventory(parent_revid)
             else:
                 self.source.transform_fileid_map(self.source.uuid, 
                                         revnum, branch, 
                                         changes, id_map)
+                parent_inv = prev_inv
+
+            if parent_revid is not None:
+                (parent_branch, parent_revnum) = self.source.parse_revision_id(parent_revid)
+            else:
+                parent_revnum = 0
+                parent_branch = None
 
             editor = RevisionBuildEditor(self.source, self.target, branch, 
-                                         revnum, prev_inv, revid, 
+                                         revnum, parent_inv, revid, 
                                      self.source._log.get_revision_info(revnum),
                                      id_map)
 
             edit, edit_baton = svn.delta.make_editor(editor)
 
-            mutter('svn update -r%r %r' % (revnum, branch))
-            reporter, reporter_baton = svn.ra.do_update(self.source.ra, revnum, 
-                                           branch, True, edit, edit_baton)
+            pool = Pool()
+            mutter('svn update -r%r:%r %r' % (parent_revnum, revnum, branch))
+            reporter, reporter_baton = svn.ra.do_update(self.source.ra, 
+                           revnum, "/"+branch, True, edit, edit_baton, pool)
 
             # Report status of existing paths
             svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
-                        "", prev_revnum, False, None)
+                        "", 0, True, None)
+
+            if parent_branch is not None:
+                svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
+                        "/%s" % parent_branch, parent_revnum, False, None)
 
             svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton)
 
             prev_inv = editor.inventory
-            prev_revnum = revnum
             prev_revid = revid
 
         if pb is not None:
