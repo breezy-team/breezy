@@ -143,8 +143,8 @@ class TreeDelta(object):
             show_list(self.unchanged)
 
 
-def compare_trees(old_tree, new_tree, want_unchanged=False, 
-                  specific_files=None, extra_trees=None, 
+def compare_trees(old_tree, new_tree, want_unchanged=False,
+                  specific_files=None, extra_trees=None,
                   require_versioned=False):
     """Describe changes from one tree to another.
 
