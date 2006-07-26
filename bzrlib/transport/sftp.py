@@ -319,11 +319,11 @@ class SFTPTransport (Transport):
     #       by auto-tuning at run-time, or by a configuration (per host??)
     #       but the performance curve is pretty flat, so just going with
     #       reasonable defaults.
-    _max_readv_combine = int(os.environ.get('sftp_max_combine', 200))
+    _max_readv_combine = 200
     # Having to round trip to the server means waiting for a response,
     # so it is better to download extra bytes.
     # 8KiB had good performance for both local and remote network operations
-    _bytes_to_read_before_seek = int(os.environ.get('sftp_bytes', 8192))
+    _bytes_to_read_before_seek = 8192
 
     _max_chunk_size = 32768 # All that is guaranteed by the sftp spec
 
@@ -449,7 +449,7 @@ class SFTPTransport (Transport):
             path = self._remote_path(relpath)
             fp = self._sftp.file(path, mode='rb')
             readv = getattr(fp, 'readv', None)
-            if readv and int(os.environ.get('sftp_readv', 1)):
+            if readv:
                 return self._sftp_readv(fp, offsets)
             mutter('seek and read %s offsets', len(offsets))
             return self._seek_and_read(fp, offsets)
