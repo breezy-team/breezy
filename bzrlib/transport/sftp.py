@@ -447,8 +447,9 @@ class SFTPTransport (Transport):
             path = self._remote_path(relpath)
             fp = self._sftp.file(path, mode='rb')
             readv = getattr(fp, 'readv', None)
-            if readv:
+            if readv and int(os.environ.get('sftp_readv', 1)):
                 return self._sftp_readv(fp, offsets)
+            mutter('seek and read %s offsets', len(offsets))
             return self._seek_and_read(fp, offsets)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
@@ -485,6 +486,10 @@ class SFTPTransport (Transport):
         #    it from the cache, and yield its data. Continue until no more
         #    entries are in the cache.
         # 7) loop back to step 4 until all data has been read
+        #
+        # TODO: jam 20060725 This could be optimized one step further, by
+        #       attempting to yield whatever data we have read, even before
+        #       the first section has been fully processed.
 
         coalesced = list(self._coalesce_offsets(sorted_offsets,
                                limit=self._max_readv_combine,
@@ -501,6 +506,9 @@ class SFTPTransport (Transport):
                 next_size = min(length-offset, 65000)
                 requests.append((start+offset, next_size))
                 offset += next_size
+
+        mutter('SFTP.readv() %s offsets => %s coalesced => %s requests',
+                len(offsets), len(coalesced), len(requests))
 
         # Queue the current read until we have read the full coalesced section
         cur_data = []
