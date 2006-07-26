@@ -52,7 +52,7 @@ class Tree(object):
     """
     
     def compare(self, other, want_unchanged=False, specific_files=None,
-        extra_trees=None):
+        extra_trees=None, require_versioned=False):
         """Return the changes from other to this tree.
 
         :param other: A tree to compare with.
@@ -64,6 +64,9 @@ class Tree(object):
             unchanged entries in the result.
         :param extra_trees: An optional list of additional trees to use when
             mapping the contents of specific_files (paths) to file_ids.
+        :param require_versioned: An optional boolean (defaults to False). When
+            supplied and True all the 'specific_files' must be versioned, or
+            a PathsNotVersionedError will be thrown.
 
         The comparison will be performed by an InterTree object looked up on 
         self and other.
@@ -71,7 +74,9 @@ class Tree(object):
         return InterTree.get(self, other).compare(
             want_unchanged=want_unchanged,
             specific_files=specific_files,
-            extra_trees=extra_trees)
+            extra_trees=extra_trees,
+            require_versioned=require_versioned,
+            )
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -369,7 +374,7 @@ class InterTree(InterObject):
     _optimisers = set()
 
     def compare(self, want_unchanged=False, specific_files=None,
-        extra_trees=None):
+        extra_trees=None, require_versioned=False):
         """Return the changes from source to target.
 
         :return: A TreeDelta.
@@ -381,6 +386,9 @@ class InterTree(InterObject):
             unchanged entries in the result.
         :param extra_trees: An optional list of additional trees to use when
             mapping the contents of specific_files (paths) to file_ids.
+        :param require_versioned: An optional boolean (defaults to False). When
+            supplied and True all the 'specific_files' must be versioned, or
+            a PathsNotVersionedError will be thrown.
         """
         # imported later to avoid circular imports
         from bzrlib.delta import compare_trees
@@ -390,4 +398,5 @@ class InterTree(InterObject):
             want_unchanged=want_unchanged,
             specific_files=specific_files,
             extra_trees=extra_trees,
+            require_versioned=require_versioned,
             )

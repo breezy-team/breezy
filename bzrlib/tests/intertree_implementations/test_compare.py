@@ -16,7 +16,7 @@
 
 """Tests for the InterTree.compare() function."""
 
-from bzrlib import inventory 
+from bzrlib import errors
 from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 
 
@@ -206,3 +206,17 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
         self.assertEqual([], d.unchanged)
+
+    def test_require_versioned(self):
+        # this does not quite robustly test, as it is passing in missing paths
+        # rather than present-but-not-versioned paths. At the moment there is
+        # no mechanism for managing the test trees (which are readonly) to 
+        # get present-but-not-versioned files for trees that can do that.
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+        self.assertRaises(errors.PathsNotVersionedError, 
+            self.intertree_class(tree1, tree2).compare,
+            specific_files=['d'],
+            require_versioned=True)
