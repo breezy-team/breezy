@@ -325,7 +325,12 @@ class SFTPTransport (Transport):
     # 8KiB had good performance for both local and remote network operations
     _bytes_to_read_before_seek = 8192
 
-    _max_chunk_size = 32768 # All that is guaranteed by the sftp spec
+    # The sftp spec says that implementations SHOULD allow reads
+    # to be at least 32K. paramiko.readv() does an async request
+    # for the chunks. So we need to keep it within a single request
+    # size for paramiko <= 1.6.1. paramiko 1.6.2 will probably chop
+    # up the request itself, rather than us having to worry about it
+    _max_request_size = 32768
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
@@ -491,7 +496,7 @@ class SFTPTransport (Transport):
         #
         # TODO: jam 20060725 This could be optimized one step further, by
         #       attempting to yield whatever data we have read, even before
-        #       the first section has been fully processed.
+        #       the first coallesced section has been fully processed.
 
         # When coalescing for use with readv(), we don't really need to
         # use any fudge factor, because the requests are made asynchronously
@@ -506,7 +511,7 @@ class SFTPTransport (Transport):
 
             # We need to break this up into multiple requests
             while size > 0:
-                next_size = min(size, self._max_chunk_size)
+                next_size = min(size, self._max_request_size)
                 requests.append((start, next_size))
                 size -= next_size
                 start += next_size
@@ -535,13 +540,13 @@ class SFTPTransport (Transport):
             assert cur_data_len == cur_coalesced.length, \
                 "Somehow we read too much: %s != %s" % (cur_data_len,
                                                         cur_coalesced.length)
-            data = ''.join(cur_data)
+            all_data = ''.join(cur_data)
             cur_data = []
             cur_data_len = 0
 
             for suboffset, subsize in cur_coalesced.ranges:
                 key = (cur_coalesced.start+suboffset, subsize)
-                data_map[key] = data[suboffset:suboffset+subsize]
+                data_map[key] = all_data[suboffset:suboffset+subsize]
 
             # Now that we've read some data, see if we can yield anything back
             while cur_offset_and_size in data_map:
