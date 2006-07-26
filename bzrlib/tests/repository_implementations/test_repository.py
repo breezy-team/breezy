@@ -313,6 +313,7 @@ class TestRepository(TestCaseWithRepository):
             self.assertEqual(revision.revision_id, revision_id)
             self.assertEqual(revision, repo.get_revision(revision_id))
 
+
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def setUp(self):

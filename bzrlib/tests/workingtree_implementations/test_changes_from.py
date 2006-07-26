@@ -14,16 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Test Tree.compare() for WorkingTree specific scenarios."""
+"""Test Tree.changes_from() for WorkingTree specific scenarios."""
 
 from bzrlib import revision
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
-class TestCompareTrees(TestCaseWithWorkingTree):
+class TestChangesFrom(TestCaseWithWorkingTree):
     
     def setUp(self):
-        super(TestCompareTrees, self).setUp()
+        super(TestChangesFrom, self).setUp()
         self.tree = self.make_branch_and_tree('tree')
         files = ['a', 'b/', 'b/c']
         self.build_tree(files, transport=self.tree.bzrdir.root_transport)
@@ -32,8 +32,8 @@ class TestCompareTrees(TestCaseWithWorkingTree):
 
     def test_unknown(self):
         self.build_tree(['tree/unknown'])
-        # Unknowns are not reported by compare_trees
-        d = self.tree.compare(self.tree.basis_tree())
+        # Unknowns are not reported by changes_from
+        d = self.tree.changes_from(self.tree.basis_tree())
         self.assertEqual([], d.added)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
@@ -47,7 +47,7 @@ class TestCompareTrees(TestCaseWithWorkingTree):
         # If a specific_files list is present, even if none of the
         # files are versioned, only paths that are present in the list
         # should be compared
-        d = self.tree.compare(empty_tree, specific_files=['unknown'])
+        d = self.tree.changes_from(empty_tree, specific_files=['unknown'])
         self.assertEqual([], d.added)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
