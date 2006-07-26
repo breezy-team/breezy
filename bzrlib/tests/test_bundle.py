@@ -19,6 +19,7 @@ import os
 import sys
 import tempfile
 
+from bzrlib import inventory
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
@@ -26,7 +27,6 @@ from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
-from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError, TestamentMismatch, NotABundle, BadBundle
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
@@ -290,12 +290,14 @@ class BTreeTester(TestCase):
     def test_iteration(self):
         """Ensure that iteration through ids works properly"""
         btree = self.make_tree_1()[0]
-        self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'c', 'd'])
+        self.assertEqual(self.sorted_ids(btree),
+            [inventory.ROOT_ID, 'a', 'b', 'c', 'd'])
         btree.note_deletion("grandparent/parent/file")
         btree.note_id("e", "grandparent/alt_parent/fool", kind="directory")
         btree.note_last_changed("grandparent/alt_parent/fool", 
                                 "revisionidiguess")
-        self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'd', 'e'])
+        self.assertEqual(self.sorted_ids(btree),
+            [inventory.ROOT_ID, 'a', 'b', 'd', 'e'])
 
 
 class BundleTester(TestCaseWithTransport):
@@ -400,7 +402,7 @@ class BundleTester(TestCaseWithTransport):
             new = tree.branch.repository.revision_tree(ancestor)
 
             # Check that there aren't any inventory level changes
-            delta = compare_trees(old, new)
+            delta = new.changes_from(old)
             self.assertFalse(delta.has_changed(),
                              'Revision %s not copied correctly.'
                              % (ancestor,))
@@ -419,8 +421,7 @@ class BundleTester(TestCaseWithTransport):
             rh = self.b1.revision_history()
             tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
             tree.update()
-            delta = compare_trees(self.b1.repository.revision_tree(rev_id),
-                                  tree)
+            delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
             self.assertFalse(delta.has_changed(),
                              'Working tree has modifications')
         return tree

@@ -33,6 +33,8 @@ class _Serializer_v4(Serializer):
     
     def _pack_inventory(self, inv):
         """Convert to XML Element"""
+        # v4 serialization is not used any more.
+        raise NotImplementedError(self._pack_inventory)
         e = Element('inventory')
         e.text = '\n'
         if inv.root.file_id not in (None, ROOT_ID):

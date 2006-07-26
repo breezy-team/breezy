@@ -29,6 +29,11 @@ class InterObject(object):
     operations with another of similar type - they will always forward to
     a subclass of InterObject - i.e. 
     InterVersionedFile.get(other).method_name(parameters).
+
+    If the source and target objects implement the locking protocol - 
+    lock_read, lock_write, unlock, then the InterObject's lock_read,
+    lock_write and unlock methods may be used (optionally in conjunction with
+    the needs_read_lock and needs_write_lock decorators.)
     """
 
     # _optimisers = set()
@@ -47,6 +52,17 @@ class InterObject(object):
         self.source = source
         self.target = target
 
+    def _double_lock(self, lock_source, lock_target):
+        """Take out too locks, rolling back the first if the second throws."""
+        lock_source()
+        try:
+            lock_target()
+        except Exception:
+            # we want to ensure that we don't leave source locked by mistake.
+            # and any error on target should not confuse source.
+            self.source.unlock()
+            raise
+
     @classmethod
     def get(klass, source, target):
         """Retrieve a Inter worker object for these objects.
@@ -63,10 +79,33 @@ class InterObject(object):
                 return provider(source, target)
         return klass(source, target)
 
+    def lock_read(self):
+        """Take out a logical read lock.
+
+        This will lock the source branch and the target branch. The source gets
+        a read lock and the target a read lock.
+        """
+        self._double_lock(self.source.lock_read, self.target.lock_read)
+
+    def lock_write(self):
+        """Take out a logical write lock.
+
+        This will lock the source branch and the target branch. The source gets
+        a read lock and the target a write lock.
+        """
+        self._double_lock(self.source.lock_read, self.target.lock_write)
+
     @classmethod
     def register_optimiser(klass, optimiser):
         """Register an InterObject optimiser."""
         klass._optimisers.add(optimiser)
+
+    def unlock(self):
+        """Release the locks on source and target."""
+        try:
+            self.target.unlock()
+        finally:
+            self.source.unlock()
 
     @classmethod
     def unregister_optimiser(klass, optimiser):

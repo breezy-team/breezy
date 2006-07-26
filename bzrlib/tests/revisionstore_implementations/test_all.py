@@ -22,7 +22,6 @@ from bzrlib.revision import Revision
 from bzrlib.store.revision import RevisionStore
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transactions import PassThroughTransaction
-from bzrlib.tree import EmptyTree
 
 
 class TestFactory(TestCaseWithTransport):

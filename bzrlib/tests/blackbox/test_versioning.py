@@ -40,10 +40,9 @@ class TestVersioning(TestCaseInTempDir):
 
         self.run_bzr('mkdir', 'foo', retcode=3)
 
-        from bzrlib.diff import compare_trees
         wt = WorkingTree.open('.')
         
-        delta = compare_trees(wt.basis_tree(), wt)
+        delta = wt.changes_from(wt.basis_tree())
 
         self.log('delta.added = %r' % delta.added)
 
@@ -64,10 +63,9 @@ class TestVersioning(TestCaseInTempDir):
         self.assert_(os.path.isdir('subdir'))
         os.chdir('..')
 
-        from bzrlib.diff import compare_trees
         wt = WorkingTree.open('.')
         
-        delta = compare_trees(wt.basis_tree(), wt)
+        delta = wt.changes_from(wt.basis_tree())
 
         self.log('delta.added = %r' % delta.added)
 
@@ -93,22 +91,21 @@ class TestVersioning(TestCaseInTempDir):
         self.failUnless(os.path.isdir('a/dir'))
         self.failUnless(os.path.isdir('a/b/dir'))
 
-        from bzrlib.diff import compare_trees
         wt = WorkingTree.open('.')
         wt_a = WorkingTree.open('a')
         wt_b = WorkingTree.open('a/b')
         
-        delta = compare_trees(wt.basis_tree(), wt)
+        delta = wt.changes_from(wt.basis_tree())
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)
 
-        delta = compare_trees(wt_a.basis_tree(), wt_a)
+        delta = wt_a.changes_from(wt_a.basis_tree())
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)
 
-        delta = compare_trees(wt_b.basis_tree(), wt_b)
+        delta = wt_b.changes_from(wt_b.basis_tree())
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)

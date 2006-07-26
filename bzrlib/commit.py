@@ -499,13 +499,14 @@ class Commit(object):
         """
         # ESEPARATIONOFCONCERNS: this function is diffing and using the diff
         # results to create a new inventory at the same time, which results
-        # in bugs like #46635.  Any reason not to use/enhance compare_trees?
+        # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
         # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
-        # iter_entries does not visit the ROOT_ID node so we need to call
-        # self._emit_progress_update once by hand.
+        # at this point we dont copy the root entry:
+        entries = self.work_inv.iter_entries()
+        entries.next()
         self._emit_progress_update()
-        for path, new_ie in self.work_inv.iter_entries():
+        for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id
             mutter('check %s {%s}', path, file_id)

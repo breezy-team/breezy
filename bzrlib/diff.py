@@ -21,6 +21,8 @@ import sys
 import tempfile
 import time
 
+# compatability - plugins import compare_trees from diff!!!
+# deprecated as of 0.10
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 import bzrlib.errors as errors
@@ -332,9 +334,9 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     else:
         diff_file = internal_diff
     
-    delta = compare_trees(old_tree, new_tree, want_unchanged=False,
-                          specific_files=specific_files, 
-                          extra_trees=extra_trees, require_versioned=True)
+    delta = new_tree.changes_from(old_tree,
+        specific_files=specific_files,
+        extra_trees=extra_trees, require_versioned=True)
 
     has_changes = 0
     for path, file_id, kind in delta.removed:
