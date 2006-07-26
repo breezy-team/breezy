@@ -325,6 +325,8 @@ class SFTPTransport (Transport):
     # 8KiB had good performance for both local and remote network operations
     _bytes_to_read_before_seek = int(os.environ.get('sftp_bytes', 8192))
 
+    _max_chunk_size = 32768 # All that is guaranteed by the sftp spec
+
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
         self._parse_url(base)
@@ -491,21 +493,23 @@ class SFTPTransport (Transport):
         #       attempting to yield whatever data we have read, even before
         #       the first section has been fully processed.
 
+        # When coalescing for use with readv(), we don't really need to
+        # use any fudge factor, because the requests are made asynchronously
         coalesced = list(self._coalesce_offsets(sorted_offsets,
                                limit=self._max_readv_combine,
-                               fudge_factor=self._bytes_to_read_before_seek,
+                               fudge_factor=0,
                                ))
         requests = []
         for c_offset in coalesced:
             start = c_offset.start
-            length = c_offset.length
-            offset = 0
+            size = c_offset.length
 
             # We need to break this up into multiple requests
-            while offset < length:
-                next_size = min(length-offset, 65000)
-                requests.append((start+offset, next_size))
-                offset += next_size
+            while size > 0:
+                next_size = min(size, self._max_chunk_size)
+                requests.append((start, next_size))
+                size -= next_size
+                start += next_size
 
         mutter('SFTP.readv() %s offsets => %s coalesced => %s requests',
                 len(offsets), len(coalesced), len(requests))
