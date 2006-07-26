@@ -53,7 +53,7 @@ class Tree(object):
     
     def compare(self, other, want_unchanged=False, specific_files=None,
         extra_trees=None, require_versioned=False):
-        """Return the changes from other to this tree.
+        """Return the changes from this tree to other.
 
         :param other: A tree to compare with.
         :param specific_files: An optional list of file paths to restrict the
