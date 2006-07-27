@@ -64,6 +64,7 @@ else:
     from paramiko.sftp_file import SFTPFile
     from paramiko.sftp_client import SFTPClient
 
+
 register_urlparse_netloc_protocol('sftp')
 
 
@@ -721,7 +722,7 @@ class SFTPTransport (Transport):
                 sock = SFTPSubprocess(self._host, vendor, self._port,
                                       self._username)
                 self._sftp = SFTPClient(sock)
-            except (EOFerror, paramiko.SSHException), e:
+            except (EOFError, paramiko.SSHException), e:
                 raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
                                       % (self._host, self._port, e))
         else:
