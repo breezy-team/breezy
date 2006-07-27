@@ -1174,8 +1174,8 @@ class cmd_diff(Command):
             # Don't raise an error when bzr diff is called from
             # outside a working tree.
             if (revision is not None and len(revision) == 2
-                and not revision[0].needs_tree()
-                and not revision[1].needs_tree()):
+                and not revision[0].needs_branch()
+                and not revision[1].needs_branch()):
                 tree1, tree2 = None, None
             else:
                 raise
