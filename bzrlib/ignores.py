@@ -189,7 +189,7 @@ def add_runtime_ignores(ignores):
     This is used by some plugins that want bzr to ignore files,
     but don't want to change a users ignore list.
     (Such as a conversion script, that needs to ignore some files,
-    but must preserve as much of the exact content boing converted.)
+    but must preserve as much of the exact content being converted.)
 
     :param ignores: A list or generator of ignore patterns.
     :return: None
