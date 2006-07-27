@@ -170,7 +170,13 @@ class RevisionSpec(object):
         return '<%s %s%s>' % (self.__class__.__name__,
                               self.prefix or '',
                               self.spec)
+    
+    def needs_branch(self):
+        """Whether this revision spec needs a branch.
 
+        Set this to False the branch argument of _match_on is not
+        used."""
+        return True
 
 # private API
 
@@ -208,6 +214,9 @@ class RevisionSpec_revno(RevisionSpec):
                 return RevisionInfo(other_branch, None)
             revid = other_branch.get_rev_id(revno)
             return RevisionInfo(other_branch, revno)
+        
+    def needs_branch(self):
+        return self.spec.find(':') == -1
 
 SPEC_TYPES.append(RevisionSpec_revno)
 

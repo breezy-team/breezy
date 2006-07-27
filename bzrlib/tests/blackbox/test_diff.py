@@ -146,7 +146,7 @@ class TestDiff(ExternalBase):
                           "-new content\n"
                           "+contents of branch1/file\n"
                           "\n", subst_dates(out))
-        out, ett = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
+        out, err = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
                                          retcode=1)
         self.assertEquals('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
@@ -160,13 +160,16 @@ class TestDiff(ExternalBase):
     def test_diff_revno_branches(self):
         self.example_branches()
         print >> open('branch2/file', 'wb'), 'even newer content'
-        self.run_bzr_captured(['commit', '-m', 'update file once more', 'branch2'])
+        self.run_bzr_captured(['commit', '-m', 
+                               'update file once more', 'branch2'])
 
-        out, err = self.run_bzr_captured(['diff', '-r', 'revno:1:branch2..revno:1:branch1'],
+        out, err = self.run_bzr_captured(['diff', '-r',
+                                          'revno:1:branch2..revno:1:branch1'],
                                          retcode=0)
         self.assertEquals('', err)
         self.assertEquals('', out)
-        out, ett = self.run_bzr_captured(['diff', '-r', 'revno:2:branch2..revno:1:branch1'],
+        out, err = self.run_bzr_captured(['diff', '-r', 
+                                          'revno:2:branch2..revno:1:branch1'],
                                          retcode=1)
         self.assertEquals('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
@@ -191,7 +194,8 @@ class TestDiff(ExternalBase):
         self.example_branch2()
         
         print >> open('branch1/file1', 'wb'), 'new line'
-        output = self.run_bzr_captured(['diff', '-r', '1..', 'branch1'], retcode=1)
+        output = self.run_bzr_captured(['diff', '-r', '1..', 'branch1'],
+                                       retcode=1)
         self.assertTrue('\n-original line\n+new line\n' in output[0])
 
     def test_diff_across_rename(self):
