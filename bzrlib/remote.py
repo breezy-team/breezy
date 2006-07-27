@@ -14,6 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: At some point, handle upgrades by just passing the whole request
+# across to run on the server.
+
 
 from bzrlib import bzrdir, branch, errors, repository
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
@@ -40,13 +43,16 @@ class RemoteBzrDir(BzrDir):
     """Control directory on a remote server, accessed by HPSS."""
 
     def __init__(self, transport):
-        BzrDir.__init__(self, transport, RemoteBzrDirFormat)
+        BzrDir.__init__(self, transport, RemoteBzrDirFormat())
         self.client = transport.get_smart_client()
         # this object holds a delegated bzrdir that uses file-level operations
         # to talk to the other side
         self._real_bzrdir = BzrDirFormat.get_default_format().open(transport, _found=True)
         self._repository = None
         self._branch = None
+
+    def create_repository(self, shared=False):
+        return self._real_bzrdir.create_repository(shared=shared)
 
     def open_repository(self):
         # OK just very fake response for now
@@ -60,6 +66,14 @@ class RemoteBzrDir(BzrDir):
 
     def get_branch_transport(self, branch_format):
         return self._real_bzrdir.get_branch_transport(branch_format)
+
+    def can_convert_format(self):
+        """Upgrading of remote bzrdirs is not supported yet."""
+        return False
+
+    def needs_format_conversion(self, format=None):
+        """Upgrading of remote bzrdirs is not supported yet."""
+        return False
 
 
 class RemoteRepositoryFormat(repository.RepositoryFormatKnit1):

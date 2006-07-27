@@ -298,7 +298,7 @@ class BzrDir(object):
         This will use the current default BzrDirFormat, and use whatever 
         repository format that that uses for bzrdirformat.create_repository.
 
-        ;param shared: Create a shared repository rather than a standalone
+        :param shared: Create a shared repository rather than a standalone
                        repository.
         The Repository object is returned.
 
