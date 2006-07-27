@@ -41,6 +41,7 @@ class TestOutsideWT(ChrootedTestCase):
                                 url, retcode=3)
         self.assertEqual(u'bzr: ERROR: Not a branch:'
                          u' %s\n' % url, err)
+
     def test_diff_ouside_tree(self):
         os.chdir(tempfile.mkdtemp())
         self.run_bzr_captured(['init', 'branch1'])
