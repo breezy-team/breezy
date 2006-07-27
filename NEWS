@@ -198,6 +198,9 @@ IN DEVELOPMENT
     * ``bzr status foo`` when foo was unversioned used to cause a full delta
       to be generated (John Arbash Meinel, #53638)
 
+    * When reading revision properties, and empty value should be considered
+      the empty string, not None (John Arbash Meinel, #47782)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
