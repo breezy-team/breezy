@@ -36,3 +36,10 @@ class StatusBenchmark(Benchmark):
         self.run_bzr('add')
         self.run_bzr('commit', '-m', 'initial import')
         self.time(self.run_bzr, 'status')
+
+    def test_status_one_added_file_kernel_like_tree(self):
+        """Status of a single added file in our stock large tree."""
+        self.make_kernel_like_tree()
+        self.run_bzr('add')
+        self.run_bzr('commit', '-m', 'initial import')
+        self.time(self.run_bzr, 'status', '3/3/3/10')
