@@ -1173,15 +1173,10 @@ class cmd_diff(Command):
         except NotBranchError:
             # Don't raise an error when bzr diff is called from
             # outside a working tree.
-            if revision is None:
-                raise
-            elif len(revision) == 1:
-                raise
-            elif len(revision) == 2:
-                if revision[0].needs_tree() or revision[1].needs_tree():
-                    raise
-                else:
-                    tree1, tree2 = None, None
+            if (revision is not None and len(revision) == 2
+                and not revision[0].needs_tree()
+                and not revision[1].needs_tree()):
+                tree1, tree2 = None, None
             else:
                 raise
         if revision is not None:
