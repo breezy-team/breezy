@@ -174,8 +174,8 @@ class RevisionSpec(object):
     def needs_branch(self):
         """Whether this revision spec needs a branch.
 
-        Set this to False the branch argument of _match_on is not
-        used."""
+        Set this to False the branch argument of _match_on is not used.
+        """
         return True
 
 # private API
