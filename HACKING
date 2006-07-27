@@ -5,7 +5,7 @@ Guidelines for modifying bzr
 .. contents::
 
 (The current version of this document is available in the file ``HACKING``
-in the source tree, or at http://bazaar-vcs.org/hacking.html)
+in the source tree, or at http://doc.bazaar-vcs.org/current/hacking.html)
 
 Overall
 =======
@@ -391,14 +391,15 @@ accessible by ``self.outf``.  This is a file-like object, which is bound to
 ``sys.stdout``, and should be used to write information to the screen,
 rather than directly writing to ``sys.stdout`` or calling ``print``.
 This file has the ability to translate Unicode objects into the correct
-representation, based on the console encoding.  Also, the parameter
-``self.encoding_type`` will effect how unprintable characters will be
+representation, based on the console encoding.  Also, the class attribute
+``encoding_type`` will effect how unprintable characters will be
 handled.  This parameter can take one of 3 values:
 
   replace
-    Unprintable characters will be represented with a simple '?', and no
-    exception will be raised. This is for any command which generates text
-    for the user to review, rather than for automated processing.
+    Unprintable characters will be represented with a suitable replacement
+    marker (typically '?'), and no exception will be raised. This is for
+    any command which generates text for the user to review, rather than
+    for automated processing.
     For example: ``bzr log`` should not fail if one of the entries has text
     that cannot be displayed.
   
