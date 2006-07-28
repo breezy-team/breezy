@@ -511,7 +511,7 @@ class TestCase(unittest.TestCase):
     def assertContainsRe(self, haystack, needle_re):
         """Assert that a contains something matching a regular expression."""
         if not re.search(needle_re, haystack):
-            raise AssertionError('pattern "%s" not found in "%s"'
+            raise AssertionError('pattern "%r" not found in "%r"'
                     % (needle_re, haystack))
 
     def assertNotContainsRe(self, haystack, needle_re):
@@ -1264,6 +1264,7 @@ def test_suite():
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_diff',
+                   'bzrlib.tests.test_dirstate',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
