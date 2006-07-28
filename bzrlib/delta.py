@@ -184,6 +184,10 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
                 trees = trees + tuple(extra_trees)
             specific_file_ids = tree.find_ids_across_trees(specific_files, 
                 trees, require_versioned=require_versioned)
+            if specific_files and not specific_file_ids:
+                # All files are unversioned, so just return an empty delta
+                # _compare_trees would think we want a complete delta
+                return TreeDelta()
             return _compare_trees(old_tree, new_tree, want_unchanged,
                                   specific_file_ids)
         finally:
@@ -230,8 +234,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
             return
 
         if specific_file_ids:
-            if (old_file_id not in specific_file_ids and 
-                new_file_id not in specific_file_ids):
+            if (old_entry.file_id not in specific_file_ids and 
+                new_entry.file_id not in specific_file_ids):
                 return
 
         # temporary hack until all entries are populated before clients 

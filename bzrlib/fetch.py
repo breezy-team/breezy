@@ -160,6 +160,11 @@ class RepoFetcher(object):
     def _fetch_weave_texts(self, revs):
         texts_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            # fileids_altered_by_revision_ids requires reading the inventory
+            # weave, we will need to read the inventory weave again when
+            # all this is done, so enable caching for that specific weave
+            inv_w = self.from_repository.get_inventory_weave()
+            inv_w.enable_cache()
             file_ids = self.from_repository.fileids_altered_by_revision_ids(revs)
             count = 0
             num_file_ids = len(file_ids)
@@ -172,7 +177,7 @@ class RepoFetcher(object):
                     self.from_repository.get_transaction())
                 # we fetch all the texts, because texts do
                 # not reference anything, and its cheap enough
-                to_weave.join(from_weave, version_ids=required_versions) 
+                to_weave.join(from_weave, version_ids=required_versions)
                 # we don't need *all* of this data anymore, but we dont know
                 # what we do. This cache clearing will result in a new read 
                 # of the knit data when we do the checkout, but probably we
@@ -205,6 +210,7 @@ class RepoFetcher(object):
                 # corrupt.
                 to_weave.join(from_weave, pb=child_pb, msg='merge inventory',
                               version_ids=revs)
+                from_weave.clear_cache()
             finally:
                 child_pb.finished()
         finally:

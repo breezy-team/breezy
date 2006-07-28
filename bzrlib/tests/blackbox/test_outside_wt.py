@@ -41,3 +41,38 @@ class TestOutsideWT(ChrootedTestCase):
                                 url, retcode=3)
         self.assertEqual(u'bzr: ERROR: Not a branch:'
                          u' %s\n' % url, err)
+
+    def test_diff_ouside_tree(self):
+        os.chdir(tempfile.mkdtemp())
+        self.run_bzr_captured(['init', 'branch1'])
+        self.run_bzr_captured(['commit', '-m', 'nothing', 
+                               '--unchanged', 'branch1'])
+        self.run_bzr_captured(['commit', '-m', 'nothing', 
+                               '--unchanged', 'branch1'])
+        # -r X..Y
+        out, err = self.run_bzr_captured(['diff', 
+                                          '-r', 'revno:2:branch2..revno:1'],
+                                         retcode=3)
+        self.assertEquals('', out)
+        self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (getcwd(),),
+                         err)
+        # -r X
+        out, err = self.run_bzr_captured(['diff', '-r', 'revno:2:branch2'],
+                                         retcode=3)
+        self.assertEquals('', out)
+        self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (getcwd(),),
+                         err)
+        # -r X..
+        out, err = self.run_bzr_captured(['diff', '-r', 'revno:2:branch2..'],
+                                         retcode=3)
+        self.assertEquals('', out)
+        self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (getcwd(),),
+                         err)
+        # no -r at all.
+        out, err = self.run_bzr_captured(['diff'],
+                                         retcode=3)
+        self.assertEquals('', out)
+        self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (getcwd(),),
+                         err)
+        
+
