@@ -85,5 +85,5 @@ class TestParent(TestCaseWithTransport):
         b.control_files.put('parent', cStringIO.StringIO(path))
 
         # With an invalid branch parent, just return None
-        self.assertEqual(None, b.get_parent())
+        self.assertRaises(bzrlib.errors.InaccessibleParent, b.get_parent)
 

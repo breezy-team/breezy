@@ -537,9 +537,13 @@ class Branch(object):
                 rev = self.repository.get_revision(revision_id)
                 new_history = rev.get_history(self.repository)[1:]
         destination.set_revision_history(new_history)
-        parent = self.get_parent()
-        if parent:
-            destination.set_parent(parent)
+        try:
+            parent = self.get_parent()
+        except errors.InaccessibleParent, e:
+            mutter('parent was not accessible to copy: %s', e)
+        else:
+            if parent:
+                destination.set_parent(parent)
 
     @needs_read_lock
     def check(self):
@@ -1176,8 +1180,7 @@ class BzrBranch(Branch):
             try:
                 return urlutils.join(self.base[:-1], parent)
             except errors.InvalidURLJoin, e:
-                # TODO jam 20060714 Should this be a warning?
-                mutter('cannot reach parent, returning None: %s', e)
+                raise errors.InaccessibleParent(parent, self.base)
         return None
 
     def get_push_location(self):
