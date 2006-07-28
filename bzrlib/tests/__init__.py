@@ -63,6 +63,7 @@ import bzrlib.osutils as osutils
 import bzrlib.plugin
 import bzrlib.progress as progress
 from bzrlib.revision import common_ancestor
+from bzrlib.revisionspec import RevisionSpec
 import bzrlib.store
 import bzrlib.trace
 from bzrlib.transport import get_transport
@@ -137,7 +138,10 @@ class _MyResult(unittest._TextTestResult):
         unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
         self.pb = pb
         if bench_history is not None:
-            bench_history.write("--date %s\n" % time.time())
+            #XXX is there a simpler way to get the revison id?
+            branch = bzrlib.branch.Branch.open_containing('.')[0]
+            revision_id = RevisionSpec(branch.revno()).in_history(branch).rev_id
+            bench_history.write("--date %s %s\n" % (time.time(), revision_id))
         self._bench_history = bench_history
     
     def extractBenchmarkTime(self, testCase):

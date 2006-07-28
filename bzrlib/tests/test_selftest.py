@@ -477,7 +477,9 @@ class TestTestResult(TestCase):
                                         bench_history=output
                                         )
         output_string = output.getvalue()
-        self.assertContainsRe(output_string, "--date [0-9.]+\n")
+        # if you are wondering about the regexp please read the comment in
+        # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
+        self.assertContainsRe(output_string, "--date [0-9.]+ \S")
 
     def test_benchhistory_records_test_times(self):
         result_stream = StringIO()
@@ -594,12 +596,19 @@ class TestRunner(TestCase):
         self.assertTrue(result.wasSuccessful())
 
     def test_bench_history(self):
+        import bzrlib.branch
+        import bzrlib.revisionspec
         test = TestRunner('dummy_test')
         output = StringIO()
         runner = TextTestRunner(stream=self._log_file, bench_history=output)
         result = self.run_test_runner(runner, test)
         output_string = output.getvalue()
-        self.assertContainsRe(output_string, "--date [0-9.]+\n")
+        # does anyone know a good regexp for revision ids?
+        # here we are using \S instead and checking the revision id afterwards
+        self.assertContainsRe(output_string, "--date [0-9.]+ \S")
+        branch = bzrlib.branch.Branch.open_containing('.')[0]
+        revision_id = bzrlib.revisionspec.RevisionSpec(branch.revno()).in_history(branch).rev_id
+        self.assert_(output_string.rstrip().endswith(revision_id))
 
 
 class TestTestCase(TestCase):
