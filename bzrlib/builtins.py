@@ -814,6 +814,7 @@ class cmd_update(Command):
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_write()
+        existing_pending_merges = tree.pending_merges()
         try:
             last_rev = tree.last_revision() 
             if last_rev == tree.branch.last_revision():
@@ -826,9 +827,9 @@ class cmd_update(Command):
             conflicts = tree.update()
             revno = tree.branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
-            if tree.pending_merges():
+            if tree.pending_merges() != existing_pending_merges:
                 note('Your local commits will show now as pending merges with '
-                     '`bzr status`, and can be commited with `bzr commit`.')
+                     "'bzr status', and can be committed with 'bzr commit'.")
             if conflicts != 0:
                 return 1
             else:
@@ -1758,10 +1759,9 @@ class cmd_commit(Command):
                                   "files in the working tree.")
         except errors.BoundBranchOutOfDate, e:
             raise BzrCommandError(str(e) + "\n"
-                'To commit to master branch, do update and then commit, or '  \
-                'push if the branches have not diverged.\nYou can also pass ' \
-                '--local to commit to continue working offline.')
-
+                'To commit to master branch, run update and then commit.\n'
+                'You can also pass --local to commit to continue working '
+                'disconnected.')
 
 class cmd_check(Command):
     """Validate consistency of branch history.
