@@ -122,6 +122,10 @@ IN DEVELOPMENT
      branch is as much as 4x faster.
      (Michael Ellerman, Johan Rydberg, John Arbash Meinel, #46768)
 
+   * Performance improvements for sftp. Branching and pulling are now up to
+     2x faster. Utilize paramiko.readv() support for async requests if it
+     is available (paramiko > 1.6) (John Arbash Meinel)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
