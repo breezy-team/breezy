@@ -31,14 +31,25 @@ To check on what Bazaar-NG thinks your current email is, use the '''whoami'''
 
     % bzr whoami
     Joe Cool <joe@example.com>
+    
+Setting email via the 'whoami' command
+======================================
+You can use the whoami command to set your email globally::
+
+    % bzr whoami 'Joe Cool <joe@example.com>'
+
+or only for the current branch::
+
+    % bzr whoami --branch 'Joe Cool <joe@example.com>'
+
+These modify your global bazaar.conf or branch branch.conf file, respectively.
 
 Setting email via default ini file
 ==================================
-The first method is using the default ini file.  To use the default ini
-method, create the file `$HOME/.bazaar/bazaar.conf` (on Windows this is
-`%APPDATA%\bazaar\2.0\bazaar.conf`) and set an email address as shown
-below.  Please note that the word DEFAULT is case sensitive, and must be in
-upper-case.::
+To use the default ini file, create the file `$HOME/.bazaar/bazaar.conf` (on
+Windows this is `%APPDATA%\bazaar\2.0\bazaar.conf`) and set an email address
+as shown below.  Please note that the word DEFAULT is case sensitive, and
+must be in upper-case.::
 
     [DEFAULT]
     email=Your Name <name@isp.com>

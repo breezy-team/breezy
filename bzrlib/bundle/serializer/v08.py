@@ -19,8 +19,9 @@
 
 import os
 
-from bzrlib.bundle.serializer import (BundleSerializer, 
-                                      BUNDLE_HEADER, 
+from bzrlib import errors
+from bzrlib.bundle.serializer import (BundleSerializer,
+                                      BUNDLE_HEADER,
                                       format_highres_date,
                                       unpack_highres_date,
                                      )
@@ -28,7 +29,6 @@ from bzrlib.bundle.serializer import binary_diff
 from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
 from bzrlib.delta import compare_trees
 from bzrlib.diff import internal_diff
-import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
@@ -86,7 +86,7 @@ class Action(object):
         to_file.write(text_line+'\n')
 
 
-class BundleSerializerV07(BundleSerializer):
+class BundleSerializerV08(BundleSerializer):
     def read(self, f):
         """Read the rest of the bundles from the supplied file.
 
@@ -123,7 +123,7 @@ class BundleSerializerV07(BundleSerializer):
         """Write the header for the changes"""
         f = self.to_file
         f.write(BUNDLE_HEADER)
-        f.write('0.7\n')
+        f.write('0.8\n')
         f.write('#\n')
 
     def _write(self, key, value, indent=1):
@@ -329,7 +329,8 @@ class BundleReader(object):
     def _read(self):
         self._next().next()
         while self._next_line is not None:
-            self._read_revision_header()
+            if not self._read_revision_header():
+                break
             if self._next_line is None:
                 break
             self._read_patches()
@@ -359,19 +360,27 @@ class BundleReader(object):
         yield last
 
     def _read_revision_header(self):
+        found_something = False
         self.info.revisions.append(RevisionInfo(None))
         for line in self._next():
             # The bzr header is terminated with a blank line
             # which does not start with '#'
             if line is None or line == '\n':
                 break
+            if not line.startswith('#'):
+                continue
+            found_something = True
             self._handle_next(line)
+        if not found_something:
+            # Nothing was there, so remove the added revision
+            self.info.revisions.pop()
+        return found_something
 
     def _read_next_entry(self, line, indent=1):
         """Read in a key-value pair
         """
         if not line.startswith('#'):
-            raise MalformedHeader('Bzr header did not start with #')
+            raise errors.MalformedHeader('Bzr header did not start with #')
         line = line[1:-1].decode('utf-8') # Remove the '#' and '\n'
         if line[:indent] == ' '*indent:
             line = line[indent:]
@@ -388,7 +397,7 @@ class BundleReader(object):
             key = line[:-1]
             value = self._read_many(indent=indent+2)
         else:
-            raise MalformedHeader('While looking for key: value pairs,'
+            raise errors.MalformedHeader('While looking for key: value pairs,'
                     ' did not find the colon %r' % (line))
 
         key = key.replace(' ', '_')
@@ -408,10 +417,10 @@ class BundleReader(object):
             if getattr(revision_info, key) is None:
                 setattr(revision_info, key, value)
             else:
-                raise MalformedHeader('Duplicated Key: %s' % key)
+                raise errors.MalformedHeader('Duplicated Key: %s' % key)
         else:
             # What do we do with a key we don't recognize
-            raise MalformedHeader('Unknown Key: "%s"' % key)
+            raise errors.MalformedHeader('Unknown Key: "%s"' % key)
     
     def _read_many(self, indent):
         """If a line ends with no entry, that means that it should be
@@ -448,7 +457,7 @@ class BundleReader(object):
         for line in self._next():
             if first:
                 if not line.startswith('==='):
-                    raise MalformedPatches('The first line of all patches'
+                    raise errors.MalformedPatches('The first line of all patches'
                         ' should be a bzr meta line "==="'
                         ': %r' % line)
                 action = line[4:-1].decode('utf-8')
@@ -486,8 +495,9 @@ class BundleReader(object):
         """
         for line in self._next():
             self._handle_next(line)
-            if not self._next_line.startswith('#'):
-                self._next().next()
-                break
             if self._next_line is None:
+                break
+            if not self._next_line.startswith('#'):
+                # Consume the trailing \n and stop processing
+                self._next().next()
                 break

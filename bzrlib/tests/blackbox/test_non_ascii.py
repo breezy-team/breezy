@@ -20,14 +20,13 @@
 import sys
 import os
 
+from bzrlib import ignores, osutils, urlutils
 import bzrlib
-import bzrlib.osutils as osutils
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter, note
-import bzrlib.urlutils as urlutils
 
 
-class TestNonAscii(TestCaseInTempDir):
+class TestNonAscii(TestCaseWithTransport):
     """Test that bzr handles files/committers/etc which are non-ascii."""
 
     def setUp(self):
@@ -72,18 +71,19 @@ class TestNonAscii(TestCaseInTempDir):
                                    ' filesystem encoding "%s")')
                                    % (thing, terminal_enc, fs_enc))
 
-        bzr('init')
+        wt = self.make_branch_and_tree('.')
         open('a', 'wb').write('foo\n')
-        bzr('add', 'a')
-        bzr('commit', '-m', 'adding a')
+        wt.add('a')
+        wt.commit('adding a')
 
         open('b', 'wb').write('non-ascii \xFF\xFF\xFC\xFB\x00 in b\n')
-        bzr('add', 'b')
-        bzr('commit', '-m', self.info['message'])
+        wt.add('b')
+        wt.commit(self.info['message'])
 
         open(fname, 'wb').write('unicode filename\n')
-        bzr('add', fname)
-        bzr('commit', '-m', u'And a unicode file\n')
+        wt.add(fname)
+        wt.commit(u'And a unicode file\n')
+        self.wt = wt
 
     def test_status(self):
         bzr = self.run_bzr_decode
@@ -184,9 +184,12 @@ class TestNonAscii(TestCaseInTempDir):
         self.failIfExists('a')
         self.failUnlessExists(fname2)
 
-        bzr('commit', '-m', 'renamed to non-ascii')
+        # After 'mv' we need to re-open the working tree
+        self.wt = self.wt.bzrdir.open_workingtree()
+        self.wt.commit('renamed to non-ascii')
 
-        bzr('mkdir', dirname)
+        os.mkdir(dirname)
+        self.wt.add(dirname)
         txt = bzr('mv', fname1, fname2, dirname)
         self.assertEqual([u'%s => %s/%s' % (fname1, dirname, fname1),
                           u'%s => %s/%s' % (fname2, dirname, fname2)]
@@ -211,12 +214,14 @@ class TestNonAscii(TestCaseInTempDir):
 
         dirname1 = self.info['directory']
         dirname2 = self.info['directory'] + '2'
-        bzr('branch', '.', dirname1)
-        bzr('branch', dirname1, dirname2)
+        url1 = urlutils.local_path_to_url(dirname1)
+        url2 = urlutils.local_path_to_url(dirname2)
+        out_bzrdir = self.wt.bzrdir.sprout(url1)
+        out_bzrdir.sprout(url2)
 
         os.chdir(dirname1)
         open('a', 'ab').write('more text\n')
-        bzr('commit', '-m', 'mod a')
+        self.wt.commit('mod a')
 
         pwd = osutils.getcwd()
 
@@ -227,7 +232,7 @@ class TestNonAscii(TestCaseInTempDir):
 
         os.chdir('../' + dirname1)
         open('a', 'ab').write('and yet more\n')
-        bzr('commit', '-m', 'modifying a by ' + self.info['committer'])
+        self.wt.commit(u'modifying a by ' + self.info['committer'])
 
         os.chdir('../' + dirname2)
         # We should be able to pull, even if our encoding is bad
@@ -246,18 +251,20 @@ class TestNonAscii(TestCaseInTempDir):
         bzr('push', dirname)
 
         open('a', 'ab').write('adding more text\n')
-        bzr('commit', '-m', 'added some stuff')
+        self.wt.commit('added some stuff')
 
         # TODO: check the output text is properly encoded
         bzr('push')
 
         f = open('a', 'ab')
-        f.write('and a bit more: ')
-        f.write(dirname.encode('utf-8'))
-        f.write('\n')
-        f.close()
+        try:
+            f.write('and a bit more: ')
+            f.write(dirname.encode('utf-8'))
+            f.write('\n')
+        finally:
+            f.close()
 
-        bzr('commit', '-m', u'Added some ' + dirname)
+        self.wt.commit('Added some ' + dirname)
         bzr('push', '--verbose', encoding='ascii')
 
         bzr('push', '--verbose', dirname + '2')
@@ -306,11 +313,13 @@ class TestNonAscii(TestCaseInTempDir):
         # Create a directory structure
         fname = self.info['filename']
         dirname = self.info['directory']
-        bzr('mkdir', 'base')
-        bzr('mkdir', 'base/' + dirname)
+        os.mkdir('base')
+        os.mkdir('base/' + dirname)
+        self.wt.add('base')
+        self.wt.add('base/'+dirname)
         path = '/'.join(['base', dirname, fname])
-        bzr('mv', fname, path)
-        bzr('commit', '-m', 'moving things around')
+        self.wt.rename_one(fname, path)
+        self.wt.commit('moving things around')
 
         txt = bzr('file-path', path)
 
@@ -345,7 +354,7 @@ class TestNonAscii(TestCaseInTempDir):
 
         fname = self.info['filename']
         os.remove(fname)
-        bzr('rm', fname)
+        self.wt.remove(fname)
 
         txt = bzr('deleted')
         self.assertEqual(fname+'\n', txt)
@@ -374,7 +383,7 @@ class TestNonAscii(TestCaseInTempDir):
 
         fname = self.info['filename'] + '2'
         open(fname, 'wb').write('added\n')
-        bzr('add', fname)
+        self.wt.add(fname)
 
         txt = bzr('added')
         self.assertEqual(fname+'\n', txt)
@@ -385,9 +394,10 @@ class TestNonAscii(TestCaseInTempDir):
         bzr = self.run_bzr_decode
 
         dirname = self.info['directory']
+        url = urlutils.local_path_to_url(dirname)
         bzr('root')
 
-        bzr('branch', u'.', dirname)
+        self.wt.bzrdir.sprout(url)
 
         os.chdir(dirname)
 
@@ -421,8 +431,8 @@ class TestNonAscii(TestCaseInTempDir):
         self.assertEqual(u'     3 added %s\n' % (fname,), txt)
 
         fname2 = self.info['filename'] + '2'
-        bzr('mv', fname, fname2)
-        bzr('commit', '-m', u'Renamed %s => %s' % (fname, fname2))
+        self.wt.rename_one(fname, fname2)
+        self.wt.commit(u'Renamed %s => %s' % (fname, fname2))
 
         txt = bzr('touching-revisions', fname2)
         expected_txt = (u'     3 added %s\n' 
@@ -436,11 +446,11 @@ class TestNonAscii(TestCaseInTempDir):
         bzr = self.run_bzr_decode
 
         txt = bzr('ls')
-        self.assertEqual(['a', 'b', self.info['filename']],
-                         txt.splitlines())
+        self.assertEqual(sorted(['a', 'b', self.info['filename']]),
+                         sorted(txt.splitlines()))
         txt = bzr('ls', '--null')
-        self.assertEqual(['a', 'b', self.info['filename'], ''],
-                         txt.split('\0'))
+        self.assertEqual(sorted(['', 'a', 'b', self.info['filename']]),
+                         sorted(txt.split('\0')))
 
         txt = bzr('ls', encoding='ascii', retcode=3)
         txt = bzr('ls', '--null', encoding='ascii', retcode=3)
@@ -461,37 +471,56 @@ class TestNonAscii(TestCaseInTempDir):
     def test_ignore(self):
         bzr = self.run_bzr_decode
 
+        ignores._set_user_ignores(['./.bazaar'])
         fname2 = self.info['filename'] + '2.txt'
         open(fname2, 'wb').write('ignored\n')
 
-        txt = bzr('unknowns')
-        self.assertEqual(u'"%s"\n' % (fname2,), txt)
+        def check_unknowns(expected):
+            self.assertEqual(expected, list(self.wt.unknowns()))
+
+        check_unknowns([fname2])
 
         bzr('ignore', './' + fname2)
-        txt = bzr('unknowns')
-        self.assertEqual(u'', txt)
+        # After 'ignore' you must re-open the working tree
+        self.wt = self.wt.bzrdir.open_workingtree()
+        check_unknowns([])
 
         fname3 = self.info['filename'] + '3.txt'
         open(fname3, 'wb').write('unknown 3\n')
-        txt = bzr('unknowns')
-        self.assertEqual(u'"%s"\n' % (fname3,), txt)
+        check_unknowns([fname3])
 
         # Ignore should not care what the encoding is
         # (right now it doesn't print anything)
         bzr('ignore', fname3, encoding='ascii')
-        txt = bzr('unknowns')
-        self.assertEqual('', txt)
+        self.wt = self.wt.bzrdir.open_workingtree()
+        check_unknowns([])
 
         # Now try a wildcard match
         fname4 = self.info['filename'] + '4.txt'
         open(fname4, 'wb').write('unknown 4\n')
         bzr('ignore', '*.txt')
-        txt = bzr('unknowns')
-        self.assertEqual('', txt)
+        self.wt = self.wt.bzrdir.open_workingtree()
+        check_unknowns([])
 
+        # and a different wildcard that matches everything
         os.remove('.bzrignore')
         bzr('ignore', self.info['filename'] + '*')
-        txt = bzr('unknowns')
-        self.assertEqual('', txt)
+        self.wt = self.wt.bzrdir.open_workingtree()
+        check_unknowns([])
 
+    def test_missing(self):
+        bzr = self.run_bzr_decode
 
+        # create empty tree as reference for missing
+        self.run_bzr('init', 'empty-tree')
+
+        msg = self.info['message']
+
+        txt = bzr('missing', 'empty-tree', retcode=1)
+        self.assertNotEqual(-1, txt.find(self.info['committer']))
+        self.assertNotEqual(-1, txt.find(msg))
+
+        # Make sure missing doesn't fail even if we can't write out
+        txt = bzr('missing', 'empty-tree', encoding='ascii', retcode=1)
+        self.assertEqual(-1, txt.find(msg))
+        self.assertNotEqual(-1, txt.find(msg.encode('ascii', 'replace')))

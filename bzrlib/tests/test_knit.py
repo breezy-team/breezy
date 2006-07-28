@@ -272,53 +272,17 @@ class BasicKnitTests(KnitTests):
         self.assertEquals(origins[0], ('text-c', 'z\n'))
         self.assertEquals(origins[1], ('text-b', 'c\n'))
 
-    def test_extraction_reads_components_once(self):
-        t = MemoryTransport()
-        instrumented_t = TransportLogger(t)
-        k1 = KnitVersionedFile('id', instrumented_t, create=True, delta=True)
-        # should read the index
-        self.assertEqual([('id.kndx',)], instrumented_t._calls)
-        instrumented_t._calls = []
-        # add a text       
-        k1.add_lines('base', [], ['text\n'])
-        # should not have read at all
-        self.assertEqual([], instrumented_t._calls)
-
-        # add a text
-        k1.add_lines('sub', ['base'], ['text\n', 'text2\n'])
-        # should not have read at all
-        self.assertEqual([], instrumented_t._calls)
-        
-        # read a text
-        k1.get_lines('sub')
-        # should not have read at all
-        self.assertEqual([], instrumented_t._calls)
-
-        # clear the cache
-        k1.clear_cache()
-
-        # read a text
-        k1.get_lines('base')
-        # should have read a component
-        # should not have read the first component only
-        self.assertEqual([('id.knit', [(0, 87)])], instrumented_t._calls)
-        instrumented_t._calls = []
-        # read again
-        k1.get_lines('base')
-        # should not have read at all
-        self.assertEqual([], instrumented_t._calls)
-        # and now read the other component
-        k1.get_lines('sub')
-        # should have read the second component
-        self.assertEqual([('id.knit', [(87, 93)])], instrumented_t._calls)
-        instrumented_t._calls = []
-
-        # clear the cache
-        k1.clear_cache()
-        # add a text cold 
-        k1.add_lines('sub2', ['base'], ['text\n', 'text3\n'])
-        # should read the first component only
-        self.assertEqual([('id.knit', [(0, 87)])], instrumented_t._calls)
+    def test_get_line_delta_texts(self):
+        """Make sure we can call get_texts on text with reused line deltas"""
+        k1 = KnitVersionedFile('test1', get_transport('.'), 
+                               factory=KnitPlainFactory(), create=True)
+        for t in range(3):
+            if t == 0:
+                parents = []
+            else:
+                parents = ['%d' % (t-1)]
+            k1.add_lines('%d' % t, parents, ['hello\n'] * t)
+        k1.get_texts(('%d' % t) for t in range(3))
         
     def test_iter_lines_reads_in_order(self):
         t = MemoryTransport()
@@ -486,3 +450,95 @@ class TestWeaveToKnit(KnitTests):
         self.failIf(WeaveToKnit.is_compatible(k, w))
         self.failIf(WeaveToKnit.is_compatible(w, w))
         self.failIf(WeaveToKnit.is_compatible(k, k))
+
+
+class TestKnitCaching(KnitTests):
+    
+    def create_knit(self, cache_add=False):
+        k = self.make_test_knit(True)
+        if cache_add:
+            k.enable_cache()
+
+        k.add_lines('text-1', [], split_lines(TEXT_1))
+        k.add_lines('text-2', [], split_lines(TEXT_2))
+        return k
+
+    def test_no_caching(self):
+        k = self.create_knit()
+        # Nothing should be cached without setting 'enable_cache'
+        self.assertEqual({}, k._data._cache)
+
+    def test_cache_add_and_clear(self):
+        k = self.create_knit(True)
+
+        self.assertEqual(['text-1', 'text-2'], sorted(k._data._cache.keys()))
+
+        k.clear_cache()
+        self.assertEqual({}, k._data._cache)
+
+    def test_cache_data_read_raw(self):
+        k = self.create_knit()
+
+        # Now cache and read
+        k.enable_cache()
+
+        def read_one_raw(version):
+            pos_map = k._get_components_positions([version])
+            method, pos, size, next = pos_map[version]
+            lst = list(k._data.read_records_iter_raw([(version, pos, size)]))
+            self.assertEqual(1, len(lst))
+            return lst[0]
+
+        val = read_one_raw('text-1')
+        self.assertEqual({'text-1':val[1]}, k._data._cache)
+
+        k.clear_cache()
+        # After clear, new reads are not cached
+        self.assertEqual({}, k._data._cache)
+
+        val2 = read_one_raw('text-1')
+        self.assertEqual(val, val2)
+        self.assertEqual({}, k._data._cache)
+
+    def test_cache_data_read(self):
+        k = self.create_knit()
+
+        def read_one(version):
+            pos_map = k._get_components_positions([version])
+            method, pos, size, next = pos_map[version]
+            lst = list(k._data.read_records_iter([(version, pos, size)]))
+            self.assertEqual(1, len(lst))
+            return lst[0]
+
+        # Now cache and read
+        k.enable_cache()
+
+        val = read_one('text-2')
+        self.assertEqual(['text-2'], k._data._cache.keys())
+        self.assertEqual('text-2', val[0])
+        content, digest = k._data._parse_record('text-2',
+                                                k._data._cache['text-2'])
+        self.assertEqual(content, val[1])
+        self.assertEqual(digest, val[2])
+
+        k.clear_cache()
+        self.assertEqual({}, k._data._cache)
+
+        val2 = read_one('text-2')
+        self.assertEqual(val, val2)
+        self.assertEqual({}, k._data._cache)
+
+    def test_cache_read(self):
+        k = self.create_knit()
+        k.enable_cache()
+
+        text = k.get_text('text-1')
+        self.assertEqual(TEXT_1, text)
+        self.assertEqual(['text-1'], k._data._cache.keys())
+
+        k.clear_cache()
+        self.assertEqual({}, k._data._cache)
+
+        text = k.get_text('text-1')
+        self.assertEqual(TEXT_1, text)
+        self.assertEqual({}, k._data._cache)

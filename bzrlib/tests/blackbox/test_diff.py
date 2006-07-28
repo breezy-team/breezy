@@ -23,6 +23,7 @@ import re
 
 import bzrlib
 from bzrlib.branch import Branch
+from bzrlib import workingtree
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -37,10 +38,10 @@ class TestDiff(ExternalBase):
     def make_example_branch(test):
         # FIXME: copied from test_too_much -- share elsewhere?
         test.runbzr('init')
-        file('hello', 'wt').write('foo\n')
+        file('hello', 'wb').write('foo\n')
         test.runbzr('add hello')
         test.runbzr('commit -m setup hello')
-        file('goodbye', 'wt').write('baz\n')
+        file('goodbye', 'wb').write('baz\n')
         test.runbzr('add goodbye')
         test.runbzr('commit -m setup goodbye')
 
@@ -60,7 +61,7 @@ class TestDiff(ExternalBase):
     def test_diff_prefix(self):
         """diff --prefix appends to filenames in output"""
         self.make_example_branch()
-        file('hello', 'wt').write('hello world!\n')
+        file('hello', 'wb').write('hello world!\n')
         out, err = self.runbzr('diff --prefix old/:new/', retcode=1)
         self.assertEquals(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
@@ -76,7 +77,7 @@ class TestDiff(ExternalBase):
     def test_diff_p1(self):
         """diff -p1 produces lkml-style diffs"""
         self.make_example_branch()
-        file('hello', 'wt').write('hello world!\n')
+        file('hello', 'wb').write('hello world!\n')
         out, err = self.runbzr('diff -p1', retcode=1)
         self.assertEquals(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
@@ -92,7 +93,7 @@ class TestDiff(ExternalBase):
     def test_diff_p0(self):
         """diff -p0 produces diffs with no prefix"""
         self.make_example_branch()
-        file('hello', 'wt').write('hello world!\n')
+        file('hello', 'wb').write('hello world!\n')
         out, err = self.runbzr('diff -p0', retcode=1)
         self.assertEquals(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
@@ -145,7 +146,30 @@ class TestDiff(ExternalBase):
                           "-new content\n"
                           "+contents of branch1/file\n"
                           "\n", subst_dates(out))
-        out, ett = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
+        out, err = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
+                                         retcode=1)
+        self.assertEquals('', err)
+        self.assertEqualDiff("=== modified file 'file'\n"
+                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "@@ -1,1 +1,1 @@\n"
+                              "-new content\n"
+                              "+contents of branch1/file\n"
+                              "\n", subst_dates(out))
+
+    def test_diff_revno_branches(self):
+        self.example_branches()
+        print >> open('branch2/file', 'wb'), 'even newer content'
+        self.run_bzr_captured(['commit', '-m', 
+                               'update file once more', 'branch2'])
+
+        out, err = self.run_bzr_captured(['diff', '-r',
+                                          'revno:1:branch2..revno:1:branch1'],
+                                         retcode=0)
+        self.assertEquals('', err)
+        self.assertEquals('', out)
+        out, err = self.run_bzr_captured(['diff', '-r', 
+                                          'revno:2:branch2..revno:1:branch1'],
                                          retcode=1)
         self.assertEquals('', err)
         self.assertEqualDiff("=== modified file 'file'\n"
@@ -170,8 +194,18 @@ class TestDiff(ExternalBase):
         self.example_branch2()
         
         print >> open('branch1/file1', 'wb'), 'new line'
-        output = self.run_bzr_captured(['diff', '-r', '1..', 'branch1'], retcode=1)
+        output = self.run_bzr_captured(['diff', '-r', '1..', 'branch1'],
+                                       retcode=1)
         self.assertTrue('\n-original line\n+new line\n' in output[0])
+
+    def test_diff_across_rename(self):
+        """The working tree path should always be considered for diffing"""
+        self.make_example_branch()
+        self.run_bzr('diff', '-r', '0..1', 'hello', retcode=1)
+        wt = workingtree.WorkingTree.open_containing('.')[0]
+        wt.rename_one('hello', 'hello1')
+        self.run_bzr('diff', 'hello1', retcode=1)
+        self.run_bzr('diff', '-r', '0..1', 'hello1', retcode=1)
 
 
 class TestCheckoutDiff(TestDiff):

@@ -19,7 +19,15 @@
 import os
 import sys
 
-from bzrlib import branch, bzrdir, errors, gpg, transactions, repository
+from bzrlib import (
+    branch,
+    bzrdir,
+    errors,
+    gpg,
+    urlutils,
+    transactions,
+    repository,
+    )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.delta import TreeDelta
 from bzrlib.errors import (FileExists,
@@ -29,6 +37,7 @@ from bzrlib.errors import (FileExists,
                            NotBranchError,
                            )
 from bzrlib.osutils import getcwd
+import bzrlib.revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.trace import mutter
@@ -188,6 +197,15 @@ class TestBranch(TestCaseWithBranch):
         source = self.make_branch('source')
         target = source.bzrdir.sprout(self.get_url('target')).open_branch()
         self.assertEqual(source.bzrdir.root_transport.base, target.get_parent())
+
+    def test_submit_branch(self):
+        """Submit location can be queried and set"""
+        branch = self.make_branch('branch')
+        self.assertEqual(branch.get_submit_branch(), None)
+        branch.set_submit_branch('sftp://example.com')
+        self.assertEqual(branch.get_submit_branch(), 'sftp://example.com')
+        branch.set_submit_branch('sftp://example.net')
+        self.assertEqual(branch.get_submit_branch(), 'sftp://example.net')
         
     def test_record_initial_ghost_merge(self):
         """A pending merge with no revision present is still a merge."""
@@ -349,6 +367,12 @@ class TestBranch(TestCaseWithBranch):
         tree.branch.generate_revision_history(rev1)
         self.assertEqual(orig_history, tree.branch.revision_history())
 
+    def test_generate_revision_history_NULL_REVISION(self):
+        tree = self.make_branch_and_tree('.')
+        rev1 = tree.commit('foo')
+        tree.branch.generate_revision_history(bzrlib.revision.NULL_REVISION)
+        self.assertEqual([], tree.branch.revision_history())
+
 
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.
@@ -507,9 +531,11 @@ class TestBranchPushLocations(TestCaseWithBranch):
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
         fn = locations_config_filename()
-        self.get_branch().set_push_location('foo')
+        branch = self.get_branch()
+        branch.set_push_location('foo')
+        local_path = urlutils.local_path_from_url(branch.base[:-1])
         self.assertFileEqual("[%s]\n"
-                             "push_location = foo" % self.get_branch().base[:-1],
+                             "push_location = foo" % local_path,
                              fn)
 
     # TODO RBC 20051029 test getting a push location from a branch in a 
@@ -552,3 +578,5 @@ class TestFormat(TestCaseWithBranch):
             return
         self.assertEqual(self.branch_format,
                          branch.BranchFormat.find_format(opened_control))
+
+

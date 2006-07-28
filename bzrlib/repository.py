@@ -38,11 +38,10 @@ from bzrlib.store.text import TextStore
 from bzrlib.symbol_versioning import (deprecated_method,
         zero_nine, 
         )
-from bzrlib.trace import mutter, note
-from bzrlib.tree import RevisionTree, EmptyTree
-from bzrlib.tsort import topo_sort
 from bzrlib.testament import Testament
-from bzrlib.tree import EmptyTree
+from bzrlib.trace import mutter, note
+from bzrlib.tree import RevisionTree
+from bzrlib.tsort import topo_sort
 from bzrlib.weave import WeaveFile
 
 
@@ -331,19 +330,36 @@ class Repository(object):
         self._check_revision_parents(r, inv)
         return r
 
+    @needs_read_lock
+    def get_deltas_for_revisions(self, revisions):
+        """Produce a generator of revision deltas.
+        
+        Note that the input is a sequence of REVISIONS, not revision_ids.
+        Trees will be held in memory until the generator exits.
+        Each delta is relative to the revision's lefthand predecessor.
+        """
+        required_trees = set()
+        for revision in revisions:
+            required_trees.add(revision.revision_id)
+            required_trees.update(revision.parent_ids[:1])
+        trees = dict((t.get_revision_id(), t) for 
+                     t in self.revision_trees(required_trees))
+        for revision in revisions:
+            if not revision.parent_ids:
+                old_tree = self.revision_tree(None)
+            else:
+                old_tree = trees[revision.parent_ids[0]]
+            yield delta.compare_trees(old_tree, trees[revision.revision_id])
+
+    @needs_read_lock
     def get_revision_delta(self, revision_id):
         """Return the delta for one revision.
 
         The delta is relative to the left-hand predecessor of the
         revision.
         """
-        revision = self.get_revision(revision_id)
-        new_tree = self.revision_tree(revision_id)
-        if not revision.parent_ids:
-            old_tree = EmptyTree()
-        else:
-            old_tree = self.revision_tree(revision.parent_ids[0])
-        return delta.compare_trees(old_tree, new_tree)
+        r = self.get_revision(revision_id)
+        return list(self.get_deltas_for_revisions([r]))[0]
 
     def _check_revision_parents(self, revision, inventory):
         """Private to Repository and Fetch.
@@ -449,8 +465,14 @@ class Repository(object):
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
         
+        :param revision_id: The revision_id to get a graph from. If None, then
+        the entire revision graph is returned. This is a deprecated mode of
+        operation and will be removed in the future.
         :return: a dictionary of revision_id->revision_parents_list.
         """
+        # special case NULL_REVISION
+        if revision_id == NULL_REVISION:
+            return {}
         weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(weave.versions())
         entire_graph = dict([(node, weave.get_parents(node)) for 
@@ -484,7 +506,10 @@ class Repository(object):
             required = set([])
         else:
             pending = set(revision_ids)
-            required = set(revision_ids)
+            # special case NULL_REVISION
+            if NULL_REVISION in pending:
+                pending.remove(NULL_REVISION)
+            required = set(pending)
         done = set([])
         while len(pending):
             revision_id = pending.pop()
@@ -539,15 +564,27 @@ class Repository(object):
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
-        `revision_id` may be None for the null revision, in which case
-        an `EmptyTree` is returned."""
+        `revision_id` may be None for the empty tree revision.
+        """
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id is None or revision_id == NULL_REVISION:
-            return EmptyTree()
+            return RevisionTree(self, Inventory(), NULL_REVISION)
         else:
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
+
+    @needs_read_lock
+    def revision_trees(self, revision_ids):
+        """Return Tree for a revision on this branch.
+
+        `revision_id` may not be None or 'null:'"""
+        assert None not in revision_ids
+        assert NULL_REVISION not in revision_ids
+        texts = self.get_inventory_weave().get_texts(revision_ids)
+        for text, revision_id in zip(texts, revision_ids):
+            inv = self.deserialise_inventory(revision_id, text)
+            yield RevisionTree(self, inv, revision_id)
 
     @needs_read_lock
     def get_ancestry(self, revision_id):
@@ -708,7 +745,7 @@ def install_revision(repository, rev, revision_tree):
             present_parents.append(p_id)
             parent_trees[p_id] = repository.revision_tree(p_id)
         else:
-            parent_trees[p_id] = EmptyTree()
+            parent_trees[p_id] = repository.revision_tree(None)
 
     inv = revision_tree.inventory
     
@@ -844,9 +881,15 @@ class KnitRepository(MetaDirRepository):
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
-        
+
+        :param revision_id: The revision_id to get a graph from. If None, then
+        the entire revision graph is returned. This is a deprecated mode of
+        operation and will be removed in the future.
         :return: a dictionary of revision_id->revision_parents_list.
         """
+        # special case NULL_REVISION
+        if revision_id == NULL_REVISION:
+            return {}
         weave = self._get_revision_vf()
         entire_graph = weave.get_graph()
         if revision_id is None:
@@ -880,7 +923,10 @@ class KnitRepository(MetaDirRepository):
             required = set([])
         else:
             pending = set(revision_ids)
-            required = set(revision_ids)
+            # special case NULL_REVISION
+            if NULL_REVISION in pending:
+                pending.remove(NULL_REVISION)
+            required = set(pending)
         done = set([])
         while len(pending):
             revision_id = pending.pop()
@@ -1967,9 +2013,9 @@ class CommitBuilder(object):
             self._revprops.update(revprops)
 
         if timestamp is None:
-            self._timestamp = time.time()
-        else:
-            self._timestamp = long(timestamp)
+            timestamp = time.time()
+        # Restrict resolution to 1ms
+        self._timestamp = round(timestamp, 3)
 
         if timezone is None:
             self._timezone = local_time_offset()
@@ -2105,11 +2151,25 @@ class CommitBuilder(object):
         versionedfile.clear_cache()
 
 
-# Copied from xml.sax.saxutils
+_unescape_map = {
+    'apos':"'",
+    'quot':'"',
+    'amp':'&',
+    'lt':'<',
+    'gt':'>'
+}
+
+
+def _unescaper(match, _map=_unescape_map):
+    return _map[match.group(1)]
+
+
+_unescape_re = None
+
+
 def _unescape_xml(data):
-    """Unescape &amp;, &lt;, and &gt; in a string of data.
-    """
-    data = data.replace("&lt;", "<")
-    data = data.replace("&gt;", ">")
-    # must do ampersand last
-    return data.replace("&amp;", "&")
+    """Unescape predefined XML entities in a string of data."""
+    global _unescape_re
+    if _unescape_re is None:
+	_unescape_re = re.compile('\&([^;]*);')
+    return _unescape_re.sub(_unescaper, data)

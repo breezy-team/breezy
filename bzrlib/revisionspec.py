@@ -149,7 +149,10 @@ class RevisionSpec(object):
             raise NoSuchRevision(branch, str(self.spec))
 
     def in_history(self, branch):
-        revs = branch.revision_history()
+        if branch:
+            revs = branch.revision_history()
+        else:
+            revs = None
         return self._match_on_and_check(branch, revs)
 
         # FIXME: in_history is somewhat broken,
@@ -167,7 +170,13 @@ class RevisionSpec(object):
         return '<%s %s%s>' % (self.__class__.__name__,
                               self.prefix or '',
                               self.spec)
+    
+    def needs_branch(self):
+        """Whether this revision spec needs a branch.
 
+        Set this to False the branch argument of _match_on is not used.
+        """
+        return True
 
 # private API
 
@@ -190,10 +199,24 @@ class RevisionSpec_revno(RevisionSpec):
 
     def _match_on(self, branch, revs):
         """Lookup a revision by revision number"""
-        try:
-            return RevisionInfo(branch, int(self.spec))
-        except ValueError:
-            return RevisionInfo(branch, None)
+        if self.spec.find(':') == -1:
+            try:
+                return RevisionInfo(branch, int(self.spec))
+            except ValueError:
+                return RevisionInfo(branch, None)
+        else:
+            from branch import Branch
+            revname = self.spec[self.spec.find(':')+1:]
+            other_branch = Branch.open_containing(revname)[0]
+            try:
+                revno = int(self.spec[:self.spec.find(':')])
+            except ValueError:
+                return RevisionInfo(other_branch, None)
+            revid = other_branch.get_rev_id(revno)
+            return RevisionInfo(other_branch, revno)
+        
+    def needs_branch(self):
+        return self.spec.find(':') == -1
 
 SPEC_TYPES.append(RevisionSpec_revno)
 
@@ -278,7 +301,7 @@ class RevisionSpec_date(RevisionSpec):
           at a specified time).
 
           So the proper way of saying 'give me all entries for today' is:
-              -r date:today..date:tomorrow
+              -r date:yesterday..date:today
         """
         today = datetime.datetime.fromordinal(datetime.date.today().toordinal())
         if self.spec.lower() == 'yesterday':

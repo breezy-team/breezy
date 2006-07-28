@@ -271,7 +271,7 @@ class Commit(object):
                     raise StrictCommitFailed()
                    
             if self.config is None:
-                self.config = bzrlib.config.BranchConfig(self.branch)
+                self.config = self.branch.get_config()
       
             if isinstance(message, str):
                 message = message.decode(bzrlib.user_encoding)
@@ -497,6 +497,10 @@ class Commit(object):
         None; inventory entries that are carried over untouched have their
         revision set to their prior value.
         """
+        # ESEPARATIONOFCONCERNS: this function is diffing and using the diff
+        # results to create a new inventory at the same time, which results
+        # in bugs like #46635.  Any reason not to use/enhance compare_trees?
+        # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
         # iter_entries does not visit the ROOT_ID node so we need to call
         # self._emit_progress_update once by hand.
@@ -533,6 +537,20 @@ class Commit(object):
                 self.reporter.renamed(change, old_path, path)
             else:
                 self.reporter.snapshot_change(change, path)
+
+        if not self.specific_files:
+            return
+
+        # ignore removals that don't match filespec
+        for path, new_ie in self.basis_inv.iter_entries():
+            if new_ie.file_id in self.work_inv:
+                continue
+            if is_inside_any(self.specific_files, path):
+                continue
+            ie = new_ie.copy()
+            ie.revision = None
+            self.builder.record_entry_contents(ie, self.parent_invs, path,
+                                               self.basis_tree)
 
     def _emit_progress_update(self):
         """Emit an update to the progress bar."""

@@ -219,6 +219,9 @@ class _MyResult(unittest._TextTestResult):
             self.stream.write('E')
         elif self.dots:
             self.pb.update(self._ellipsise_unimportant_words('ERROR', 13), self.testsRun, None)
+            self.pb.note(self._ellipsise_unimportant_words(
+                            test.id() + ': ERROR',
+                            osutils.terminal_width()))
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -232,6 +235,9 @@ class _MyResult(unittest._TextTestResult):
             self.stream.write('F')
         elif self.dots:
             self.pb.update(self._ellipsise_unimportant_words('FAIL', 13), self.testsRun, None)
+            self.pb.note(self._ellipsise_unimportant_words(
+                            test.id() + ': FAIL',
+                            osutils.terminal_width()))
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -262,7 +268,14 @@ class _MyResult(unittest._TextTestResult):
         self.stream.flush()
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
-        unittest.TestResult.addSuccess(self, test)
+        try:
+            test.tearDown()
+        except KeyboardInterrupt:
+            raise
+        except:
+            self.addError(test, test.__exc_info())
+        else:
+            unittest.TestResult.addSuccess(self, test)
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
@@ -552,6 +565,8 @@ class TestCase(unittest.TestCase):
 
         Read contents into memory, close, and delete.
         """
+        if self._log_file is None:
+            return
         bzrlib.trace.disable_test_log(self._log_nonce)
         self._log_file.seek(0)
         self._log_contents = self._log_file.read()
@@ -738,6 +753,35 @@ class TestCase(unittest.TestCase):
         else:
             encoding = bzrlib.user_encoding
         return self.run_bzr(*args, **kwargs)[0].decode(encoding)
+
+    def run_bzr_error(self, error_regexes, *args, **kwargs):
+        """Run bzr, and check that stderr contains the supplied regexes
+        
+        :param error_regexes: Sequence of regular expressions which 
+            must each be found in the error output. The relative ordering
+            is not enforced.
+        :param args: command-line arguments for bzr
+        :param kwargs: Keyword arguments which are interpreted by run_bzr
+            This function changes the default value of retcode to be 3,
+            since in most cases this is run when you expect bzr to fail.
+        :return: (out, err) The actual output of running the command (in case you
+                 want to do more inspection)
+
+        Examples of use:
+            # Make sure that commit is failing because there is nothing to do
+            self.run_bzr_error(['no changes to commit'],
+                               'commit', '-m', 'my commit comment')
+            # Make sure --strict is handling an unknown file, rather than
+            # giving us the 'nothing to do' error
+            self.build_tree(['unknown'])
+            self.run_bzr_error(['Commit refused because there are unknown files'],
+                               'commit', '--strict', '-m', 'my commit comment')
+        """
+        kwargs.setdefault('retcode', 3)
+        out, err = self.run_bzr(*args, **kwargs)
+        for regex in error_regexes:
+            self.assertContainsRe(err, regex)
+        return out, err
 
     def run_bzr_subprocess(self, *args, **kwargs):
         """Run bzr in a subprocess for testing.
@@ -1214,10 +1258,10 @@ def test_suite():
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
+                   'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
-                   'bzrlib.tests.test_emptytree',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
@@ -1225,7 +1269,9 @@ def test_suite():
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_http',
+                   'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_identitymap',
+                   'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lockdir',
@@ -1284,10 +1330,10 @@ def test_suite():
         ]
     suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     from bzrlib.transport import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
-    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:

@@ -23,13 +23,14 @@ import sys
 import bzrlib
 from bzrlib import bzrdir, errors, repository
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.delta import TreeDelta
+from bzrlib.delta import TreeDelta, compare_trees
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
                            UninitializableFormat,
                            NotBranchError,
                            )
+from bzrlib.inventory import Inventory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
@@ -147,9 +148,9 @@ class TestRepository(TestCaseWithRepository):
         tree = wt.branch.repository.revision_tree('revision-1')
         self.assertEqual(list(tree.list_files()), [])
         tree = wt.branch.repository.revision_tree(None)
-        self.assertEqual(len(tree.list_files()), 0)
+        self.assertEqual([], list(tree.list_files()))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
-        self.assertEqual(len(tree.list_files()), 0)
+        self.assertEqual([], list(tree.list_files()))
 
     def test_fetch(self):
         # smoke test fetch to ensure that the convenience function works.
@@ -336,6 +337,25 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         tree_a.add_pending_merge('ghost2')
         tree_a.commit('rev4', rev_id='rev4', allow_pointless=True)
 
+    def test_revision_trees(self):
+        revision_ids = ['rev1', 'rev2', 'rev3', 'rev4']
+        repository = self.bzrdir.open_repository()
+        trees1 = list(repository.revision_trees(revision_ids))
+        trees2 = [repository.revision_tree(t) for t in revision_ids]
+        assert len(trees1) == len(trees2)
+        for tree1, tree2 in zip(trees1, trees2):
+            delta = compare_trees(tree1, tree2)
+            assert not delta.has_changed()
+
+    def test_get_deltas_for_revisions(self):
+        repository = self.bzrdir.open_repository()
+        revisions = [repository.get_revision(r) for r in 
+                     ['rev1', 'rev2', 'rev3', 'rev4']]
+        deltas1 = list(repository.get_deltas_for_revisions(revisions))
+        deltas2 = [repository.get_revision_delta(r.revision_id) for r in
+                   revisions]
+        assert deltas1 == deltas2
+
     def test_all_revision_ids(self):
         # all_revision_ids -> all revisions
         self.assertEqual(['rev1', 'rev2', 'rev3', 'rev4'],
@@ -369,6 +389,9 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
                           'rev3':['rev2'],
                           },
                          self.bzrdir.open_repository().get_revision_graph('rev3'))
+        # and we can ask for the NULLREVISION graph
+        self.assertEqual({},
+            self.bzrdir.open_repository().get_revision_graph(NULL_REVISION))
 
     def test_get_revision_graph_with_ghosts(self):
         # we can get a graph object with roots, ghosts, ancestors and
@@ -391,6 +414,10 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
                           'rev4':{},
                           },
                           graph.get_descendants())
+        # and we can ask for the NULLREVISION graph
+        graph = repo.get_revision_graph_with_ghosts([NULL_REVISION])
+        self.assertEqual({}, graph.get_ancestors())
+        self.assertEqual({}, graph.get_descendants())
 
 
 class TestCaseWithCorruptRepository(TestCaseWithRepository):
@@ -400,7 +427,7 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         # a inventory with no parents and the revision has parents..
         # i.e. a ghost.
         repo = self.make_repository('inventory_with_unnecessary_ghost')
-        inv = bzrlib.tree.EmptyTree().inventory
+        inv = Inventory()
         sha1 = repo.add_inventory('ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,

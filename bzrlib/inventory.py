@@ -36,6 +36,7 @@ import tarfile
 import types
 
 import bzrlib
+from bzrlib import errors, osutils
 from bzrlib.osutils import (pumpfile, quotefn, splitpath, joinpath,
                             pathjoin, sha_strings)
 from bzrlib.errors import (NotVersionedError, InvalidEntryName,
@@ -692,7 +693,6 @@ class InventoryFile(InventoryEntry):
 
     def _forget_tree_state(self):
         self.text_sha1 = None
-        self.executable = None
 
     def _snapshot_text(self, file_parents, work_tree, commit_builder):
         """See InventoryEntry._snapshot_text."""
@@ -1062,7 +1062,7 @@ class Inventory(object):
 
         Returns the new entry object."""
         
-        parts = bzrlib.osutils.splitpath(relpath)
+        parts = osutils.splitpath(relpath)
 
         if len(parts) == 0:
             if file_id is None:
@@ -1238,6 +1238,16 @@ def make_entry(kind, name, parent_id, file_id=None):
     """
     if file_id is None:
         file_id = bzrlib.workingtree.gen_file_id(name)
+
+    norm_name, can_access = osutils.normalized_filename(name)
+    if norm_name != name:
+        if can_access:
+            name = norm_name
+        else:
+            # TODO: jam 20060701 This would probably be more useful
+            #       if the error was raised with the full path
+            raise errors.InvalidNormalization(name)
+
     if kind == 'directory':
         return InventoryDirectory(file_id, name, parent_id)
     elif kind == 'file':
@@ -1246,7 +1256,6 @@ def make_entry(kind, name, parent_id, file_id=None):
         return InventoryLink(file_id, name, parent_id)
     else:
         raise BzrError("unknown kind %r" % kind)
-
 
 
 _NAME_RE = None

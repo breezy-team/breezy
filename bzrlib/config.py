@@ -70,7 +70,7 @@ import sys
 from StringIO import StringIO
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import errors, urlutils
 from bzrlib.osutils import pathjoin
 from bzrlib.trace import mutter, warning
 import bzrlib.util.configobj.configobj as configobj
@@ -227,6 +227,12 @@ class Config(object):
     def _get_alias(self, value):
         pass
 
+    def get_nickname(self):
+        return self._get_nickname()
+
+    def _get_nickname(self):
+        return None
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -318,6 +324,9 @@ class IniBasedConfig(Config):
         except KeyError:
             pass
 
+    def _get_nickname(self):
+        return self.get_user_option('nickname')
+
 
 class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
@@ -328,6 +337,19 @@ class GlobalConfig(IniBasedConfig):
     def __init__(self):
         super(GlobalConfig, self).__init__(config_filename)
 
+    def set_user_option(self, option, value):
+        """Save option and its value in the configuration."""
+        # FIXME: RBC 20051029 This should refresh the parser and also take a
+        # file lock on bazaar.conf.
+        conf_dir = os.path.dirname(self._get_filename())
+        ensure_config_dir_exists(conf_dir)
+        if 'DEFAULT' not in self._get_parser():
+            self._get_parser()['DEFAULT'] = {}
+        self._get_parser()['DEFAULT'][option] = value
+        f = open(self._get_filename(), 'wb')
+        self._get_parser().write(f)
+        f.close()
+
 
 class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""
@@ -336,16 +358,21 @@ class LocationConfig(IniBasedConfig):
         name_generator = locations_config_filename
         if (not os.path.exists(name_generator()) and 
                 os.path.exists(branches_config_filename())):
-            warning('Please rename branches.conf to locations.conf')
+            if sys.platform == 'win32':
+                warning('Please rename %s to %s' 
+                         % (branches_config_filename(),
+                            locations_config_filename()))
+            else:
+                warning('Please rename ~/.bazaar/branches.conf'
+                        ' to ~/.bazaar/locations.conf')
             name_generator = branches_config_filename
         super(LocationConfig, self).__init__(name_generator)
-        self._global_config = None
+        # local file locations are looked up by local path, rather than
+        # by file url. This is because the config file is a user
+        # file, and we would rather not expose the user to file urls.
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
         self.location = location
-
-    def _get_global_config(self):
-        if self._global_config is None:
-            self._global_config = GlobalConfig()
-        return self._global_config
 
     def _get_section(self):
         """Get the section we should look in for config items.
@@ -360,7 +387,15 @@ class LocationConfig(IniBasedConfig):
             del location_names[-1]
         matches=[]
         for section in sections:
-            section_names = section.split('/')
+            # location is a local path if possible, so we need
+            # to convert 'file://' urls to local paths if necessary.
+            # This also avoids having file:///path be a more exact
+            # match than '/path'.
+            if section.startswith('file://'):
+                section_path = urlutils.local_path_from_url(section)
+            else:
+                section_path = section
+            section_names = section_path.split('/')
             if section.endswith('/'):
                 del section_names[-1]
             names = zip(location_names, section_names)
@@ -388,55 +423,6 @@ class LocationConfig(IniBasedConfig):
         matches.sort(reverse=True)
         return matches[0][1]
 
-    def _gpg_signing_command(self):
-        """See Config.gpg_signing_command."""
-        command = super(LocationConfig, self)._gpg_signing_command()
-        if command is not None:
-            return command
-        return self._get_global_config()._gpg_signing_command()
-
-    def _log_format(self):
-        """See Config.log_format."""
-        command = super(LocationConfig, self)._log_format()
-        if command is not None:
-            return command
-        return self._get_global_config()._log_format()
-
-    def _get_user_id(self):
-        user_id = super(LocationConfig, self)._get_user_id()
-        if user_id is not None:
-            return user_id
-        return self._get_global_config()._get_user_id()
-
-    def _get_user_option(self, option_name):
-        """See Config._get_user_option."""
-        option_value = super(LocationConfig, 
-                             self)._get_user_option(option_name)
-        if option_value is not None:
-            return option_value
-        return self._get_global_config()._get_user_option(option_name)
-
-    def _get_signature_checking(self):
-        """See Config._get_signature_checking."""
-        check = super(LocationConfig, self)._get_signature_checking()
-        if check is not None:
-            return check
-        return self._get_global_config()._get_signature_checking()
-
-    def _get_signing_policy(self):
-        """See Config._get_signing_policy."""
-        sign = super(LocationConfig, self)._get_signing_policy()
-        if sign is not None:
-            return sign
-        return self._get_global_config()._get_signing_policy()
-
-    def _post_commit(self):
-        """See Config.post_commit."""
-        hook = self._get_user_option('post_commit')
-        if hook is not None:
-            return hook
-        return self._get_global_config()._post_commit()
-
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
         # FIXME: RBC 20051029 This should refresh the parser and also take a
@@ -458,10 +444,47 @@ class LocationConfig(IniBasedConfig):
 class BranchConfig(Config):
     """A configuration object giving the policy for a branch."""
 
+    def _get_branch_data_config(self):
+        if self._branch_data_config is None:
+            self._branch_data_config = TreeConfig(self.branch)
+        return self._branch_data_config
+
     def _get_location_config(self):
         if self._location_config is None:
             self._location_config = LocationConfig(self.branch.base)
         return self._location_config
+
+    def _get_global_config(self):
+        if self._global_config is None:
+            self._global_config = GlobalConfig()
+        return self._global_config
+
+    def _get_best_value(self, option_name):
+        """This returns a user option from local, tree or global config.
+
+        They are tried in that order.  Use get_safe_value if trusted values
+        are necessary.
+        """
+        for source in self.option_sources:
+            value = getattr(source(), option_name)()
+            if value is not None:
+                return value
+        return None
+
+    def _get_safe_value(self, option_name):
+        """This variant of get_best_value never returns untrusted values.
+        
+        It does not return values from the branch data, because the branch may
+        not be controlled by the user.
+
+        We may wish to allow locations.conf to control whether branches are
+        trusted in the future.
+        """
+        for source in (self._get_location_config, self._get_global_config):
+            value = getattr(source(), option_name)()
+            if value is not None:
+                return value
+        return None
 
     def _get_user_id(self):
         """Return the full user id for the branch.
@@ -477,36 +500,65 @@ class BranchConfig(Config):
         except errors.NoSuchFile, e:
             pass
         
-        return self._get_location_config()._get_user_id()
+        return self._get_best_value('_get_user_id')
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
-        return self._get_location_config()._get_signature_checking()
+        return self._get_best_value('_get_signature_checking')
 
     def _get_signing_policy(self):
         """See Config._get_signing_policy."""
-        return self._get_location_config()._get_signing_policy()
+        return self._get_best_value('_get_signing_policy')
 
     def _get_user_option(self, option_name):
         """See Config._get_user_option."""
-        return self._get_location_config()._get_user_option(option_name)
+        for source in self.option_sources:
+            value = source()._get_user_option(option_name)
+            if value is not None:
+                return value
+        return None
+
+    def set_user_option(self, name, value, local=False):
+        if local is True:
+            self._get_location_config().set_user_option(name, value)
+        else:
+            self._get_branch_data_config().set_option(value, name)
+
 
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
-        return self._get_location_config()._gpg_signing_command()
+        return self._get_safe_value('_gpg_signing_command')
         
     def __init__(self, branch):
         super(BranchConfig, self).__init__()
         self._location_config = None
+        self._branch_data_config = None
+        self._global_config = None
         self.branch = branch
+        self.option_sources = (self._get_location_config, 
+                               self._get_branch_data_config,
+                               self._get_global_config)
 
     def _post_commit(self):
         """See Config.post_commit."""
-        return self._get_location_config()._post_commit()
+        return self._get_safe_value('_post_commit')
+
+    def _get_nickname(self):
+        value = self._get_explicit_nickname()
+        if value is not None:
+            return value
+        return self.branch.base.split('/')[-2]
+
+    def has_explicit_nickname(self):
+        """Return true if a nickname has been explicitly assigned."""
+        return self._get_explicit_nickname() is not None
+
+    def _get_explicit_nickname(self):
+        return self._get_best_value('_get_nickname')
 
     def _log_format(self):
         """See Config.log_format."""
-        return self._get_location_config()._log_format()
+        return self._get_best_value('_log_format')
 
 
 def ensure_config_dir_exists(path=None):
@@ -559,9 +611,15 @@ def branches_config_filename():
     """Return per-user configuration ini file filename."""
     return pathjoin(config_dir(), 'branches.conf')
 
+
 def locations_config_filename():
     """Return per-user configuration ini file filename."""
     return pathjoin(config_dir(), 'locations.conf')
+
+
+def user_ignore_config_filename():
+    """Return the user default ignore filename"""
+    return pathjoin(config_dir(), 'ignore')
 
 
 def _auto_user_id():
@@ -584,13 +642,25 @@ def _auto_user_id():
         uid = os.getuid()
         w = pwd.getpwuid(uid)
 
+        # we try utf-8 first, because on many variants (like Linux),
+        # /etc/passwd "should" be in utf-8, and because it's unlikely to give
+        # false positives.  (many users will have their user encoding set to
+        # latin-1, which cannot raise UnicodeError.)
         try:
-            gecos = w.pw_gecos.decode(bzrlib.user_encoding)
-            username = w.pw_name.decode(bzrlib.user_encoding)
-        except UnicodeDecodeError:
-            # We're using pwd, therefore we're on Unix, so /etc/passwd is ok.
-            raise errors.BzrError("Can't decode username in " \
-                    "/etc/passwd as %s." % bzrlib.user_encoding)
+            gecos = w.pw_gecos.decode('utf-8')
+            encoding = 'utf-8'
+        except UnicodeError:
+            try:
+                gecos = w.pw_gecos.decode(bzrlib.user_encoding)
+                encoding = bzrlib.user_encoding
+            except UnicodeError:
+                raise errors.BzrCommandError('Unable to determine your name.  '
+                   'Use "bzr whoami" to set it.')
+        try:
+            username = w.pw_name.decode(encoding)
+        except UnicodeError:
+            raise errors.BzrCommandError('Unable to determine your name.  '
+                'Use "bzr whoami" to set it.')
 
         comma = gecos.find(',')
         if comma == -1:
@@ -628,10 +698,15 @@ def extract_email_address(e):
     return m.group(0)
 
 
-class TreeConfig(object):
+class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
     def __init__(self, branch):
         self.branch = branch
+
+    def _get_parser(self, file=None):
+        if file is not None:
+            return IniBasedConfig._get_parser(file)
+        return self._get_config()
 
     def _get_config(self):
         try:

@@ -31,6 +31,7 @@ from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
                            InvalidURL)
 from bzrlib.osutils import getcwd
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
+from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import memory
 import bzrlib.transport
 import bzrlib.urlutils as urlutils
@@ -45,52 +46,11 @@ def _append(fn, txt):
         f.close()
 
 
-class TestTransportImplementation(TestCaseInTempDir):
-    """Implementation verification for transports.
-    
-    To verify a transport we need a server factory, which is a callable
-    that accepts no parameters and returns an implementation of
-    bzrlib.transport.Server.
-    
-    That Server is then used to construct transport instances and test
-    the transport via loopback activity.
+class TransportTests(TestTransportImplementation):
 
-    Currently this assumes that the Transport object is connected to the 
-    current working directory.  So that whatever is done 
-    through the transport, should show up in the working 
-    directory, and vice-versa. This is a bug, because its possible to have
-    URL schemes which provide access to something that may not be 
-    result in storage on the local disk, i.e. due to file system limits, or 
-    due to it being a database or some other non-filesystem tool.
-
-    This also tests to make sure that the functions work with both
-    generators and lists (assuming iter(list) is effectively a generator)
-    """
-    
-    def setUp(self):
-        super(TestTransportImplementation, self).setUp()
-        self._server = self.transport_server()
-        self._server.setUp()
-
-    def tearDown(self):
-        super(TestTransportImplementation, self).tearDown()
-        self._server.tearDown()
-        
     def check_transport_contents(self, content, transport, relpath):
         """Check that transport.get(relpath).read() == content."""
         self.assertEqualDiff(content, transport.get(relpath).read())
-
-    def get_transport(self):
-        """Return a connected transport to the local directory."""
-        base_url = self._server.get_url()
-        t = bzrlib.transport.get_transport(base_url)
-        if not isinstance(t, self.transport_class):
-            # we want to make sure to construct one particular class, even if
-            # there are several available implementations of this transport;
-            # therefore construct it by hand rather than through the regular
-            # get_transport method
-            t = self.transport_class(base_url)
-        return t
 
     def assertListRaises(self, excClass, func, *args, **kwargs):
         """Fail unless excClass is raised when the iterator from func is used.
@@ -185,6 +145,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         t = self.get_transport()
 
         if t.is_readonly():
+            return
+        if not t._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
             return
         t.put('mode644', StringIO('test text\n'), mode=0644)
         self.assertTransportMode(t, 'mode644', 0644)
@@ -706,8 +669,8 @@ class TestTransportImplementation(TestCaseInTempDir):
         except (ConnectionError, NoSuchFile), e:
             pass
         except (Exception), e:
-            self.fail('Wrong exception thrown (%s): %s' 
-                        % (e.__class__.__name__, e))
+            self.fail('Wrong exception thrown (%s.%s): %s' 
+                        % (e.__class__.__module__, e.__class__.__name__, e))
         else:
             self.fail('Did not get the expected ConnectionError or NoSuchFile.')
 
@@ -913,8 +876,12 @@ class TestTransportImplementation(TestCaseInTempDir):
         """Test that we can read/write files with Unicode names."""
         t = self.get_transport()
 
-        files = [u'\xe5', # a w/ circle iso-8859-1
-                 u'\xe4', # a w/ dots iso-8859-1
+        # With FAT32 and certain encodings on win32
+        # '\xe5' and '\xe4' actually map to the same file
+        # adding a suffix kicks in the 'preserving but insensitive'
+        # route, and maintains the right files
+        files = [u'\xe5.1', # a w/ circle iso-8859-1
+                 u'\xe4.2', # a w/ dots iso-8859-1
                  u'\u017d', # Z with umlat iso-8859-2
                  u'\u062c', # Arabic j
                  u'\u0410', # Russian A
@@ -981,10 +948,11 @@ class TestTransportImplementation(TestCaseInTempDir):
         if transport.is_readonly():
             file('a', 'w').write('0123456789')
         else:
-            transport.put('a', StringIO('01234567890'))
+            transport.put('a', StringIO('0123456789'))
 
         d = list(transport.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
         self.assertEqual(d[0], (0, '0'))
         self.assertEqual(d[1], (1, '1'))
         self.assertEqual(d[2], (3, '34'))
         self.assertEqual(d[3], (9, '9'))
+
