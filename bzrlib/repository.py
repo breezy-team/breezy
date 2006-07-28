@@ -2114,8 +2114,8 @@ class CommitBuilder(object):
         :param text_sha1: Optional SHA1 of the file contents.
         :param text_size: Optional size of the file contents.
         """
-        mutter('storing text of file {%s} in revision {%s} into %r',
-               file_id, self._new_revision_id, self.repository.weave_store)
+        # mutter('storing text of file {%s} in revision {%s} into %r',
+        #        file_id, self._new_revision_id, self.repository.weave_store)
         # special case to avoid diffing on renames or 
         # reparenting
         if (len(file_parents) == 1
