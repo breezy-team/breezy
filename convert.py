@@ -33,10 +33,11 @@ import bzrlib.osutils as osutils
 from bzrlib.repository import Repository
 from bzrlib.trace import info
 
-from format import SvnRemoteAccess
+from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
+from transport import SvnRaTransport
 
-def convert_repository(url, output_dir, create_shared_repo=True):
+def convert_repository(url, output_dir, scheme, create_shared_repo=True, working_trees=False):
     tmp_repos = None
 
     if os.path.isfile(url):
@@ -50,17 +51,16 @@ def convert_repository(url, output_dir, create_shared_repo=True):
         url = "svn+file://%s" % tmp_repos
 
     if create_shared_repo:
-        def c():
-            BzrDir.create_repository(output_dir, shared=True)
-        c()
+        target_repos = BzrDir.create_repository(output_dir, shared=True)
+        target_repos.set_make_working_trees(working_trees)
 
     try:
-        source_repos = Repository.open(url)
-        if not hasattr(source_repos, '_log'):
-            raise BzrError("Not a Subversion repository: %s" % url)
+        source_repos = SvnRemoteAccess(SvnRaTransport(url), SvnFormat(), 
+                                       scheme).open_repository()
 
         branches = source_repos._log.find_branches(source_repos._latest_revnum)
-        existing_branches = filter(lambda (bp,revnum,exists): exists, branches)
+        existing_branches = filter(lambda (bp, revnum, exists): exists, 
+                                   branches)
         info('Importing branches: \n%s' % "".join(map(lambda (bp,revnum,exists): "%s\n" % bp, existing_branches)))
 
         for (branch, revnum, exists) in existing_branches:

@@ -36,7 +36,7 @@ class SvnRemoteAccess(BzrDir):
     This is used for all non-checkout connections 
     to Subversion repositories.
     """
-    def __init__(self, _transport, _format):
+    def __init__(self, _transport, _format, scheme=None):
         """See BzrDir.__init__()."""
         super(SvnRemoteAccess, self).__init__(_transport, _format)
 
@@ -49,9 +49,13 @@ class SvnRemoteAccess(BzrDir):
         assert svn_url.startswith(root_svn_url)
         self.branch_path = svn_url[len(root_svn_url):]
 
-        self.scheme = BranchingScheme.guess_scheme(self.branch_path)
+        if scheme is None:
+            self.scheme = BranchingScheme.guess_scheme(self.branch_path)
+        else:
+            self.scheme = scheme
 
-        if not self.scheme.is_branch(self.branch_path):
+        if (not self.scheme.is_branch(self.branch_path) and 
+                self.branch_path != ""):
             raise NotBranchError(path=self.root_transport.base)
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
@@ -119,6 +123,10 @@ class SvnRemoteAccess(BzrDir):
 
     def open_branch(self, unsupported=True):
         """See BzrDir.open_branch()."""
+
+        if not self.scheme.is_branch(self.branch_path):
+            raise NotBranchError(path=self.root_transport.base)
+
         repos = self.open_repository()
 
         branch = SvnBranch(self.root_transport.base, repos, self.branch_path)

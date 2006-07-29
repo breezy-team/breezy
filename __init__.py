@@ -63,19 +63,23 @@ BzrDirFormat.register_control_format(dumpfile.SvnDumpFileFormat)
 
 InterRepository.register_optimiser(InterSvnRepository)
 
-from bzrlib.commands import Command, register_command, display_command
+from bzrlib.commands import Command, register_command, display_command, Option
 
 class cmd_import_svn(Command):
     """Convert a Subversion repository to a Bazaar repository.
     
     """
     takes_args = ['url', 'output_dir']
-    takes_options = []
+    takes_options = [Option('trees', help='Create working trees'),
+                     Option('shared', help='Create shared repository')]
 
     @display_command
-    def run(self, url, output_dir):
+    def run(self, url, output_dir, trees=False, shared=False):
         from convert import convert_repository
-        convert_repository(url, output_dir)
+        from scheme import TrunkBranchingScheme
+        # TODO: support non-trunk branching schemes
+        convert_repository(url, output_dir, TrunkBranchingScheme(), shared, 
+                           trees)
 
 
 register_command(cmd_import_svn)
