@@ -27,7 +27,6 @@ from bzrlib.bundle.serializer import (BundleSerializer,
                                      )
 from bzrlib.bundle.serializer import binary_diff
 from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
-from bzrlib.delta import compare_trees
 from bzrlib.diff import internal_diff
 from bzrlib.osutils import pathjoin
 from bzrlib.progress import DummyProgress
@@ -269,7 +268,7 @@ class BundleSerializerV08(BundleSerializer):
             else:
                 action.write(self.to_file)
 
-        delta = compare_trees(old_tree, new_tree, want_unchanged=True)
+        delta = new_tree.changes_from(old_tree, want_unchanged=True)
         for path, file_id, kind in delta.removed:
             action = Action('removed', [kind, path]).write(self.to_file)
 

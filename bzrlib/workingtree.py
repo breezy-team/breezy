@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -458,6 +458,9 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def get_file(self, file_id):
         return self.get_file_byname(self.id2path(file_id))
+
+    def get_file_text(self, file_id):
+        return self.get_file(file_id).read()
 
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
@@ -1858,18 +1861,26 @@ class WorkingTreeTestProviderAdapter(object):
         self._transport_readonly_server = transport_readonly_server
         self._formats = formats
     
+    def _clone_test(self, test, bzrdir_format, workingtree_format, variation):
+        """Clone test for adaption."""
+        new_test = deepcopy(test)
+        new_test.transport_server = self._transport_server
+        new_test.transport_readonly_server = self._transport_readonly_server
+        new_test.bzrdir_format = bzrdir_format
+        new_test.workingtree_format = workingtree_format
+        def make_new_test_id():
+            new_id = "%s(%s)" % (test.id(), variation)
+            return lambda: new_id
+        new_test.id = make_new_test_id()
+        return new_test
+    
     def adapt(self, test):
         from bzrlib.tests import TestSuite
         result = TestSuite()
         for workingtree_format, bzrdir_format in self._formats:
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.bzrdir_format = bzrdir_format
-            new_test.workingtree_format = workingtree_format
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), workingtree_format.__class__.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
+            new_test = self._clone_test(
+                test,
+                bzrdir_format,
+                workingtree_format, workingtree_format.__class__.__name__)
             result.addTest(new_test)
         return result

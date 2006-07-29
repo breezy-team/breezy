@@ -24,7 +24,6 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import ConflictList
-from bzrlib.delta import compare_trees
 from bzrlib.osutils import abspath
 from bzrlib.tests.blackbox import ExternalBase
 import bzrlib.urlutils as urlutils
@@ -207,6 +206,5 @@ class TestMerge(ExternalBase):
         # it is legal to attempt to merge an already-merged bundle
         output = self.runbzr('merge ../bundle')[1]
         # but it does nothing
-        self.assertFalse(compare_trees(tree_a.basis_tree(), 
-                                       tree_a).has_changed())
+        self.assertFalse(tree_a.changes_from(tree_a.basis_tree()).has_changed())
         self.assertEqual('Nothing to do.\n', output)

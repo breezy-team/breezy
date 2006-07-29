@@ -1,15 +1,15 @@
 # Copyright (C) 2005 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -40,10 +40,9 @@ class TestVersioning(TestCaseInTempDir):
 
         self.run_bzr('mkdir', 'foo', retcode=3)
 
-        from bzrlib.diff import compare_trees
         wt = WorkingTree.open('.')
         
-        delta = compare_trees(wt.basis_tree(), wt)
+        delta = wt.changes_from(wt.basis_tree())
 
         self.log('delta.added = %r' % delta.added)
 
@@ -64,10 +63,9 @@ class TestVersioning(TestCaseInTempDir):
         self.assert_(os.path.isdir('subdir'))
         os.chdir('..')
 
-        from bzrlib.diff import compare_trees
         wt = WorkingTree.open('.')
         
-        delta = compare_trees(wt.basis_tree(), wt)
+        delta = wt.changes_from(wt.basis_tree())
 
         self.log('delta.added = %r' % delta.added)
 
@@ -93,22 +91,21 @@ class TestVersioning(TestCaseInTempDir):
         self.failUnless(os.path.isdir('a/dir'))
         self.failUnless(os.path.isdir('a/b/dir'))
 
-        from bzrlib.diff import compare_trees
         wt = WorkingTree.open('.')
         wt_a = WorkingTree.open('a')
         wt_b = WorkingTree.open('a/b')
         
-        delta = compare_trees(wt.basis_tree(), wt)
+        delta = wt.changes_from(wt.basis_tree())
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)
 
-        delta = compare_trees(wt_a.basis_tree(), wt_a)
+        delta = wt_a.changes_from(wt_a.basis_tree())
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)
 
-        delta = compare_trees(wt_b.basis_tree(), wt_b)
+        delta = wt_b.changes_from(wt_b.basis_tree())
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)

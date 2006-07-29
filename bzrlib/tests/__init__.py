@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -109,8 +109,10 @@ def packages_to_test():
     import bzrlib.tests.bzrdir_implementations
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
+    import bzrlib.tests.intertree_implementations
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.revisionstore_implementations
+    import bzrlib.tests.tree_implementations
     import bzrlib.tests.workingtree_implementations
     return [
             bzrlib.doc,
@@ -119,8 +121,10 @@ def packages_to_test():
             bzrlib.tests.bzrdir_implementations,
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
+            bzrlib.tests.intertree_implementations,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.revisionstore_implementations,
+            bzrlib.tests.tree_implementations,
             bzrlib.tests.workingtree_implementations,
             ]
 
@@ -1258,7 +1262,6 @@ def test_suite():
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
@@ -1313,6 +1316,7 @@ def test_suite():
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
+                   'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
