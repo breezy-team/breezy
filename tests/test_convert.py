@@ -21,6 +21,7 @@ from bzrlib.repository import Repository
 
 import os
 from convert import convert_repository
+from scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
 class TestConversion(TestCaseWithSubversionRepository):
@@ -31,18 +32,22 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.client_add("dc/trunk")
         self.client_add("dc/branches")
         self.client_commit("dc", "create repos")
+        self.build_tree({'dc/trunk/file': 'otherdata'})
+        self.client_commit("dc", "change")
 
     def test_shared_import(self):
-        convert_repository("svn+"+self.repos_url+"/trunk", "e", True)
+        convert_repository("svn+"+self.repos_url, "e", 
+                TrunkBranchingScheme(), True)
 
         self.assertTrue(Repository.open("e").is_shared())
     
     def test_simple(self):
-        convert_repository("svn+"+self.repos_url+"/trunk", "e")
-        #self.assertTrue(os.path.isdir(os.path.join(self.test_dir, "e", "trunk")))
-        #self.assertTrue(os.path.isdir(os.path.join(self.test_dir, "e", "branches", "abranch")))
+        convert_repository("svn+"+self.repos_url, os.path.join(self.test_dir, "e"), TrunkBranchingScheme())
+        self.assertTrue(os.path.isdir(os.path.join(self.test_dir, "e", "trunk")))
+        self.assertTrue(os.path.isdir(os.path.join(self.test_dir, "e", "branches", "abranch")))
 
     def test_notshared_import(self):
-        convert_repository("svn+"+self.repos_url+"/trunk", "e", False)
+        convert_repository("svn+"+self.repos_url, "e", TrunkBranchingScheme(), 
+                           False)
 
         self.assertRaises(NotBranchError, Repository.open, "e")
