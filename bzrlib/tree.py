@@ -157,6 +157,35 @@ class Tree(object):
         pred = self.inventory.has_filename
         return set((p for p in paths if not pred(p)))
 
+    def walkdirs(self, prefix=""):
+        """Walk the contents of this tree from path down.
+
+        This yields all the data about the contents of a directory at a time.
+        After each directory has been yielded, if the caller has mutated the
+        list to exclude some directories, they are then not descended into.
+        
+        The data yielded is of the form:
+        [(relpath, basename, kind, lstat, path_from_tree_root, file_id, 
+          versioned_kind), ...]
+         - relpath is the relative path within the subtree being walked.
+         - basename is the basename
+         - kind is the kind of the file now. If unknonwn then the file is not
+           present within the tree - but it may be recorded as versioned. See
+           versioned_kind.
+         - lstat is the stat data *if* the file was statted.
+         - path_from_tree_root is the path from the root of the tree.
+         - file_id is the file_id is the entry is versioned.
+         - versioned_kind is the kind of the file as last recorded in the 
+           versioning system. If 'unknown' the file is not versioned.
+        One of 'kind' and 'versioned_kind' must not be 'unknown'.
+
+        :param prefix: Start walking from prefix within the tree rather than
+        at the root. This allows one to walk a subtree but get paths that are
+        relative to a tree rooted higher up.
+        :return: an iterator over the directory data.
+        """
+        raise NotImplementedError(self.walkdirs)
+
 
 # for compatibility
 from bzrlib.revisiontree import RevisionTree

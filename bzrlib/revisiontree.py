@@ -113,4 +113,29 @@ class RevisionTree(Tree):
     def unlock(self):
         self._repository.unlock()
 
-
+    def walkdirs(self, prefix=""):
+        _directory = 'directory'
+        pending = [('', '', _directory, None, '', None, None)]
+        inv = self.inventory
+        while pending:
+            dirblock = []
+            currentdir = pending.pop()
+            # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
+            top = currentdir[4]
+            if currentdir[0]:
+                relroot = currentdir[0] + '/'
+            else:
+                relroot = ""
+            # FIXME: stash the node in pending
+            entry = inv[inv.path2id(top)]
+            for name, child in entry.sorted_children():
+                toppath = relroot + name
+                dirblock.append((toppath, name, child.kind, None, toppath,
+                    child.file_id, child.kind
+                    ))
+            yield (currentdir[0], top, entry.file_id), dirblock
+            # push the user specified dirs from dirblock
+            for dir in reversed(dirblock):
+                if dir[2] == _directory:
+                    pending.append(dir)
+ 
