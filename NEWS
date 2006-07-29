@@ -245,6 +245,8 @@ IN DEVELOPMENT
     * 'EmptyTree' is now deprecated, please use repository.revision_tree(None)
       instead. (Robert Collins)
 
+    * "RevisionTree" is now in bzrlib/revisiontree.py. (Robert Collins)
+
 bzr 0.8.2  2006-05-17
   
   BUG FIXES:
