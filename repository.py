@@ -182,7 +182,7 @@ class SvnRepository(Repository):
         mutter('svn latest-revnum')
         self._latest_revnum = svn.ra.get_latest_revnum(self.ra)
 
-        self._log = logwalker.LogWalker(self.scheme, self.ra, 
+        self._log = logwalker.LogWalker(self.scheme, url=transport.svn_url,
                                         self.create_cache_dir(), 
                                         self._latest_revnum)
 
