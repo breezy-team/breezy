@@ -349,7 +349,7 @@ class Repository(object):
                 old_tree = self.revision_tree(None)
             else:
                 old_tree = trees[revision.parent_ids[0]]
-            yield delta.compare_trees(old_tree, trees[revision.revision_id])
+            yield trees[revision.revision_id].changes_from(old_tree)
 
     @needs_read_lock
     def get_revision_delta(self, revision_id):

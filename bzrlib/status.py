@@ -16,7 +16,6 @@
 
 import sys
 
-from bzrlib.delta import compare_trees
 from bzrlib.diff import _raise_if_nonexistent
 import bzrlib.errors as errors
 from bzrlib.log import line_log
@@ -131,7 +130,7 @@ def show_tree_status(wt, show_unchanged=None,
             else:
                 new = wt
         _raise_if_nonexistent(specific_files, old, new)
-        delta = compare_trees(old, new, want_unchanged=show_unchanged,
+        delta = new.changes_from(old, want_unchanged=show_unchanged,
                               specific_files=specific_files)
         delta.show(to_file,
                    show_ids=show_ids,
