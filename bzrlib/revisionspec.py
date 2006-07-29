@@ -1,15 +1,15 @@
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -170,7 +170,13 @@ class RevisionSpec(object):
         return '<%s %s%s>' % (self.__class__.__name__,
                               self.prefix or '',
                               self.spec)
+    
+    def needs_branch(self):
+        """Whether this revision spec needs a branch.
 
+        Set this to False the branch argument of _match_on is not used.
+        """
+        return True
 
 # private API
 
@@ -208,6 +214,9 @@ class RevisionSpec_revno(RevisionSpec):
                 return RevisionInfo(other_branch, None)
             revid = other_branch.get_rev_id(revno)
             return RevisionInfo(other_branch, revno)
+        
+    def needs_branch(self):
+        return self.spec.find(':') == -1
 
 SPEC_TYPES.append(RevisionSpec_revno)
 
