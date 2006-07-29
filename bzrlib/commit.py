@@ -509,14 +509,14 @@ class Commit(object):
         for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id
-            mutter('check %s {%s}', path, file_id)
+            # mutter('check %s {%s}', path, file_id)
             if (not self.specific_files or 
                 is_inside_or_parent_of_any(self.specific_files, path)):
-                    mutter('%s selected for commit', path)
+                    # mutter('%s selected for commit', path)
                     ie = new_ie.copy()
                     ie.revision = None
             else:
-                mutter('%s not selected for commit', path)
+                # mutter('%s not selected for commit', path)
                 if self.basis_inv.has_id(file_id):
                     ie = self.basis_inv[file_id].copy()
                 else:
