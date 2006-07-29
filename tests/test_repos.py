@@ -424,6 +424,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertFalse(inv1[inv1.path2id("bla")].executable)
         inv2 = newrepos.get_inventory("svn-v1:2@%s-" % oldrepos.uuid)
         self.assertTrue(inv2[inv2.path2id("bla")].executable)
+        self.assertEqual("svn-v1:2@%s-" % oldrepos.uuid, 
+                         inv2[inv2.path2id("bla")].revision)
 
     def test_fetch_ghosts(self):
         repos_url = self.make_client('d', 'dc')

@@ -56,13 +56,16 @@ class SvnRevisionTree(RevisionTree):
         self._revision_id = revision_id
         (self.branch_path, self.revnum) = repository.parse_revision_id(revision_id)
         self._inventory = Inventory()
+        self._inventory.revision_id = revision_id
+        self.id_map = repository.get_fileid_map(self.revnum, self.branch_path)
         self.editor = TreeBuildEditor(self)
         self.file_data = {}
 
         editor, baton = svn.delta.make_editor(self.editor)
 
+        root_repos = svn.ra.get_repos_root(repository.ra)
         mutter('svn checkout -r %r %r' % (self.revnum, self.branch_path))
-        reporter, reporter_baton = svn.ra.do_update(repository.ra, self.revnum, self.branch_path, True, editor, baton)
+        reporter, reporter_baton = svn.ra.do_switch(repository.ra, self.revnum, "", True, os.path.join(root_repos, self.branch_path), editor, baton)
 
         svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", 0, True, None)
 
@@ -92,18 +95,9 @@ class TreeBuildEditor(svn.delta.Editor):
             return rp
         return None
 
-    def get_file_id(self, path, revnum):
-        return self.tree._repository.path_to_file_id(revnum, path)
-
     def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
-        relpath = self.relpath(path)
-        if relpath is None:
-            return ROOT_ID
-        file_id, revision_id = self.get_file_id(path, self.revnum)
-        ie = self.tree._inventory.add_path(relpath, 'directory', file_id)
-        if ie is None:
-            self.tree._inventory.revision_id = revision_id
-            return ROOT_ID
+        file_id, revision_id = self.tree.id_map[path]
+        ie = self.tree._inventory.add_path(path, 'directory', file_id)
 
         ie.revision = revision_id
         return file_id
@@ -155,16 +149,12 @@ class TreeBuildEditor(svn.delta.Editor):
             self.tree._inventory[id].ignores = self.dir_ignores[id]
 
     def close_file(self, path, checksum):
-        relpath = self.relpath(path)
-        if relpath is None:
-            return 
-
-        file_id, revision_id = self.get_file_id(path, self.revnum)
+        file_id, revision_id = self.tree.id_map[path]
 
         if self.is_symlink:
-            ie = self.tree._inventory.add_path(relpath, 'symlink', file_id)
+            ie = self.tree._inventory.add_path(path, 'symlink', file_id)
         else:
-            ie = self.tree._inventory.add_path(relpath, 'file', file_id)
+            ie = self.tree._inventory.add_path(path, 'file', file_id)
         ie.revision = revision_id
 
         if self.file_stream:
