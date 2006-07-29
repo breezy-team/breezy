@@ -23,7 +23,7 @@ import sys
 import bzrlib
 from bzrlib import bzrdir, errors, repository
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.delta import TreeDelta, compare_trees
+from bzrlib.delta import TreeDelta
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
@@ -313,6 +313,7 @@ class TestRepository(TestCaseWithRepository):
             self.assertEqual(revision.revision_id, revision_id)
             self.assertEqual(revision, repo.get_revision(revision_id))
 
+
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def setUp(self):
@@ -344,8 +345,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         trees2 = [repository.revision_tree(t) for t in revision_ids]
         assert len(trees1) == len(trees2)
         for tree1, tree2 in zip(trees1, trees2):
-            delta = compare_trees(tree1, tree2)
-            assert not delta.has_changed()
+            assert not tree2.changes_from(tree1).has_changed()
 
     def test_get_deltas_for_revisions(self):
         repository = self.bzrdir.open_repository()

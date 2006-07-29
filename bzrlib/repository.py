@@ -349,7 +349,7 @@ class Repository(object):
                 old_tree = self.revision_tree(None)
             else:
                 old_tree = trees[revision.parent_ids[0]]
-            yield delta.compare_trees(old_tree, trees[revision.revision_id])
+            yield trees[revision.revision_id].changes_from(old_tree)
 
     @needs_read_lock
     def get_revision_delta(self, revision_id):
@@ -1581,17 +1581,6 @@ class InterRepository(InterObject):
             return
         self.target.fetch(self.source, revision_id=revision_id)
 
-    def _double_lock(self, lock_source, lock_target):
-        """Take out too locks, rolling back the first if the second throws."""
-        lock_source()
-        try:
-            lock_target()
-        except Exception:
-            # we want to ensure that we don't leave source locked by mistake.
-            # and any error on target should not confuse source.
-            self.source.unlock()
-            raise
-
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id.
@@ -1615,22 +1604,6 @@ class InterRepository(InterObject):
                                pb=pb)
         return f.count_copied, f.failed_revisions
 
-    def lock_read(self):
-        """Take out a logical read lock.
-
-        This will lock the source branch and the target branch. The source gets
-        a read lock and the target a read lock.
-        """
-        self._double_lock(self.source.lock_read, self.target.lock_read)
-
-    def lock_write(self):
-        """Take out a logical write lock.
-
-        This will lock the source branch and the target branch. The source gets
-        a read lock and the target a write lock.
-        """
-        self._double_lock(self.source.lock_read, self.target.lock_write)
-
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None):
         """Return the revision ids that source has that target does not.
@@ -1653,13 +1626,6 @@ class InterRepository(InterObject):
         # other_ids had while only returning the members from other_ids
         # that we've decided we need.
         return [rev_id for rev_id in source_ids if rev_id in result_set]
-
-    def unlock(self):
-        """Release the locks on source and target."""
-        try:
-            self.target.unlock()
-        finally:
-            self.source.unlock()
 
 
 class InterWeaveRepo(InterRepository):
@@ -2117,8 +2083,8 @@ class CommitBuilder(object):
         :param text_sha1: Optional SHA1 of the file contents.
         :param text_size: Optional size of the file contents.
         """
-        mutter('storing text of file {%s} in revision {%s} into %r',
-               file_id, self._new_revision_id, self.repository.weave_store)
+        # mutter('storing text of file {%s} in revision {%s} into %r',
+        #        file_id, self._new_revision_id, self.repository.weave_store)
         # special case to avoid diffing on renames or 
         # reparenting
         if (len(file_parents) == 1

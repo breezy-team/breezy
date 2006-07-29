@@ -22,9 +22,12 @@ from cStringIO import StringIO
 from warnings import warn
 
 import bzrlib
+from bzrlib import delta
+from bzrlib.decorators import needs_read_lock
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib import errors
 from bzrlib.inventory import Inventory
+from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
 from bzrlib.trace import mutter, note
@@ -49,6 +52,36 @@ class Tree(object):
     Trees can be compared, etc, regardless of whether they are working
     trees or versioned trees.
     """
+    
+    def changes_from(self, other, want_unchanged=False, specific_files=None,
+        extra_trees=None, require_versioned=False):
+        """Return a TreeDelta of the changes from other to this tree.
+
+        :param other: A tree to compare with.
+        :param specific_files: An optional list of file paths to restrict the
+            comparison to. When mapping filenames to ids, all matches in all
+            trees (including optional extra_trees) are used, and all children of
+            matched directories are included.
+        :param want_unchanged: An optional boolean requesting the inclusion of
+            unchanged entries in the result.
+        :param extra_trees: An optional list of additional trees to use when
+            mapping the contents of specific_files (paths) to file_ids.
+        :param require_versioned: An optional boolean (defaults to False). When
+            supplied and True all the 'specific_files' must be versioned, or
+            a PathsNotVersionedError will be thrown.
+
+        The comparison will be performed by an InterTree object looked up on 
+        self and other.
+        """
+        # Martin observes that Tree.changes_from returns a TreeDelta and this
+        # may confuse people, because the class name of the returned object is
+        # a synonym of the object referenced in the method name.
+        return InterTree.get(other, self).compare(
+            want_unchanged=want_unchanged,
+            specific_files=specific_files,
+            extra_trees=extra_trees,
+            require_versioned=require_versioned,
+            )
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -359,3 +392,49 @@ def _find_children_across_trees(specified_ids, trees):
         interesting_ids.update(new_pending)
         pending = new_pending
     return interesting_ids
+
+
+class InterTree(InterObject):
+    """This class represents operations taking place between two Trees.
+
+    Its instances have methods like 'compare' and contain references to the
+    source and target trees these operations are to be carried out on.
+
+    clients of bzrlib should not need to use InterTree directly, rather they
+    should use the convenience methods on Tree such as 'Tree.compare()' which
+    will pass through to InterTree as appropriate.
+    """
+
+    _optimisers = set()
+
+    @needs_read_lock
+    def compare(self, want_unchanged=False, specific_files=None,
+        extra_trees=None, require_versioned=False):
+        """Return the changes from source to target.
+
+        :return: A TreeDelta.
+        :param specific_files: An optional list of file paths to restrict the
+            comparison to. When mapping filenames to ids, all matches in all
+            trees (including optional extra_trees) are used, and all children of
+            matched directories are included.
+        :param want_unchanged: An optional boolean requesting the inclusion of
+            unchanged entries in the result.
+        :param extra_trees: An optional list of additional trees to use when
+            mapping the contents of specific_files (paths) to file_ids.
+        :param require_versioned: An optional boolean (defaults to False). When
+            supplied and True all the 'specific_files' must be versioned, or
+            a PathsNotVersionedError will be thrown.
+        """
+        # NB: show_status depends on being able to pass in non-versioned files and
+        # report them as unknown
+        trees = (self.source, self.target)
+        if extra_trees is not None:
+            trees = trees + tuple(extra_trees)
+        specific_file_ids = find_ids_across_trees(specific_files,
+            trees, require_versioned=require_versioned)
+        if specific_files and not specific_file_ids:
+            # All files are unversioned, so just return an empty delta
+            # _compare_trees would think we want a complete delta
+            return delta.TreeDelta()
+        return delta._compare_trees(self.source, self.target, want_unchanged,
+            specific_file_ids)

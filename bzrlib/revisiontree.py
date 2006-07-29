@@ -138,4 +138,3 @@ class RevisionTree(Tree):
             for dir in reversed(dirblock):
                 if dir[2] == _directory:
                     pending.append(dir)
- 
