@@ -19,6 +19,7 @@ import os
 import sys
 import tempfile
 
+from bzrlib import inventory
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
@@ -290,12 +291,14 @@ class BTreeTester(TestCase):
     def test_iteration(self):
         """Ensure that iteration through ids works properly"""
         btree = self.make_tree_1()[0]
-        self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'c', 'd'])
+        self.assertEqual(self.sorted_ids(btree),
+            [inventory.ROOT_ID, 'a', 'b', 'c', 'd'])
         btree.note_deletion("grandparent/parent/file")
         btree.note_id("e", "grandparent/alt_parent/fool", kind="directory")
         btree.note_last_changed("grandparent/alt_parent/fool", 
                                 "revisionidiguess")
-        self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'd', 'e'])
+        self.assertEqual(self.sorted_ids(btree),
+            [inventory.ROOT_ID, 'a', 'b', 'd', 'e'])
 
 
 class BundleTester(TestCaseWithTransport):
