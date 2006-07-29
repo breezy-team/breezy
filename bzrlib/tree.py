@@ -51,17 +51,35 @@ class Tree(object):
     trees or versioned trees.
     """
     
-    def changes_from(self, other):
+    def changes_from(self, other, want_unchanged=False, specific_files=None,
+        extra_trees=None, require_versioned=False):
         """Return a TreeDelta of the changes from other to this tree.
 
         :param other: A tree to compare with.
+        :param specific_files: An optional list of file paths to restrict the
+            comparison to. When mapping filenames to ids, all matches in all
+            trees (including optional extra_trees) are used, and all children of
+            matched directories are included.
+        :param want_unchanged: An optional boolean requesting the inclusion of
+            unchanged entries in the result.
+        :param extra_trees: An optional list of additional trees to use when
+            mapping the contents of specific_files (paths) to file_ids.
+        :param require_versioned: An optional boolean (defaults to False). When
+            supplied and True all the 'specific_files' must be versioned, or
+            a PathsNotVersionedError will be thrown.
+
         The comparison will be performed by an InterTree object looked up on 
         self and other.
         """
         # Martin observes that Tree.changes_from returns a TreeDelta and this
         # may confuse people, because the class name of the returned object is
         # a synonym of the object referenced in the method name.
-        return InterTree.get(other, self).compare()
+        return InterTree.get(other, self).compare(
+            want_unchanged=want_unchanged,
+            specific_files=specific_files,
+            extra_trees=extra_trees,
+            require_versioned=require_versioned,
+            )
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -358,11 +376,30 @@ class InterTree(InterObject):
 
     _optimisers = set()
 
-    def compare(self):
-        """Compare source and target.
+    def compare(self, want_unchanged=False, specific_files=None,
+        extra_trees=None, require_versioned=False):
+        """Return the changes from source to target.
 
         :return: A TreeDelta.
+        :param specific_files: An optional list of file paths to restrict the
+            comparison to. When mapping filenames to ids, all matches in all
+            trees (including optional extra_trees) are used, and all children of
+            matched directories are included.
+        :param want_unchanged: An optional boolean requesting the inclusion of
+            unchanged entries in the result.
+        :param extra_trees: An optional list of additional trees to use when
+            mapping the contents of specific_files (paths) to file_ids.
+        :param require_versioned: An optional boolean (defaults to False). When
+            supplied and True all the 'specific_files' must be versioned, or
+            a PathsNotVersionedError will be thrown.
         """
         # imported later to avoid circular imports
         from bzrlib.delta import compare_trees
-        return compare_trees(self.source, self.target)
+        return compare_trees(
+            self.source,
+            self.target,
+            want_unchanged=want_unchanged,
+            specific_files=specific_files,
+            extra_trees=extra_trees,
+            require_versioned=require_versioned,
+            )

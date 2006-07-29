@@ -61,8 +61,12 @@ class RecordingOptimiser(InterTree):
 
     calls = []
 
-    def compare(self):
-        self.calls.append(('compare', self.source, self.target))
+    def compare(self, want_unchanged=False, specific_files=None,
+        extra_trees=None, require_versioned=False):
+        self.calls.append(
+            ('compare', self.source, self.target, want_unchanged,
+             specific_files, extra_trees, require_versioned)
+            )
     
     @classmethod
     def is_compatible(klass, source, target):
@@ -72,6 +76,7 @@ class RecordingOptimiser(InterTree):
 class TestTree(TestCaseWithTransport):
 
     def test_compare_calls_InterTree_compare(self):
+        """This test tests the way Tree.compare() uses InterTree."""
         old_optimisers = InterTree._optimisers
         try:
             InterTree._optimisers = set()
@@ -79,7 +84,23 @@ class TestTree(TestCaseWithTransport):
             InterTree.register_optimiser(RecordingOptimiser)
             tree = self.make_branch_and_tree('1')
             tree2 = self.make_branch_and_tree('2')
+            # do a series of calls:
+            # trivial usage
             tree.changes_from(tree2)
+            # pass in all optional arguments by position
+            tree.changes_from(tree2, 'unchanged', 'specific', 'extra', 'require')
+            # pass in all optional arguments by keyword
+            tree.changes_from(tree2,
+                specific_files='specific',
+                want_unchanged='unchanged',
+                extra_trees='extra',
+                require_versioned='require',
+                )
         finally:
             InterTree._optimisers = old_optimisers
-        self.assertEqual([('compare', tree2, tree)], RecordingOptimiser.calls)
+        self.assertEqual(
+            [
+             ('compare', tree2, tree, False, None, None, False),
+             ('compare', tree2, tree, 'unchanged', 'specific', 'extra', 'require'),
+             ('compare', tree2, tree, 'unchanged', 'specific', 'extra', 'require'),
+            ], RecordingOptimiser.calls)
