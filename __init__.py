@@ -21,8 +21,8 @@ class cmd_buildpackage(Command):
 	def run(self, package, version=None, verbose=False):
 		retcode = 0
     tree = WorkingTree.open_containing(package)[0]
-    b = tree.branch
-    rev_id = b.last_revision()
+#    b = tree.branch
+#    rev_id = b.last_revision()
 #   t = b.repository.revision_tree(rev_id)
 #   export(t,"build-area/build",format,root)
 
