@@ -7,6 +7,7 @@ from bzrlib.commands import Command, register_command
 from bzrlib.option import Option
 from bzrlib.errors import (NoSuchFile, NotBranchError)
 from bzrlib.branch import Branch
+import bzrlib.workingtree
 
 class cmd_buildpackage(Command):
 	"""Build the package
