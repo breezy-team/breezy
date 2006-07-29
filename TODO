@@ -1,0 +1,3 @@
+- lock ra context
+- replace shelve with cPickle and a bunch of files?
+- get rid of use of `svn ls' in logwalker
