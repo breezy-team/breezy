@@ -1,9 +1,4 @@
 Convert dumpfile to test:
-	branchtagcopy.dump
-	changeaftercp.dump
-	combinedbranch.dump
-	executable.dump
-	ignore.dump
 	inheritance.dump
 	movebranch.dump
 	movefileorder.dump
@@ -14,3 +9,5 @@ creating working trees (checkouts)
 commits
 push as merged
 better test for WorkingTree.add()
+test other ra backends
+test exception wrapper
