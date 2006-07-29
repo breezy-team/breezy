@@ -109,6 +109,7 @@ def packages_to_test():
     import bzrlib.tests.bzrdir_implementations
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
+    import bzrlib.tests.intertree_implementations
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.revisionstore_implementations
     import bzrlib.tests.tree_implementations
@@ -120,6 +121,7 @@ def packages_to_test():
             bzrlib.tests.bzrdir_implementations,
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
+            bzrlib.tests.intertree_implementations,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.revisionstore_implementations,
             bzrlib.tests.tree_implementations,
@@ -1315,6 +1317,7 @@ def test_suite():
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
+                   'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',

@@ -25,6 +25,7 @@ import bzrlib
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib import errors
 from bzrlib.inventory import Inventory
+from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
 from bzrlib.trace import mutter, note
@@ -49,6 +50,18 @@ class Tree(object):
     Trees can be compared, etc, regardless of whether they are working
     trees or versioned trees.
     """
+    
+    def changes_from(self, other):
+        """Return a TreeDelta of the changes from other to this tree.
+
+        :param other: A tree to compare with.
+        The comparison will be performed by an InterTree object looked up on 
+        self and other.
+        """
+        # Martin observes that Tree.changes_from returns a TreeDelta and this
+        # may confuse people, because the class name of the returned object is
+        # a synonym of the object referenced in the method name.
+        return InterTree.get(other, self).compare()
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -330,3 +343,26 @@ def _find_children_across_trees(specified_ids, trees):
         interesting_ids.update(new_pending)
         pending = new_pending
     return interesting_ids
+
+
+class InterTree(InterObject):
+    """This class represents operations taking place between two Trees.
+
+    Its instances have methods like 'compare' and contain references to the
+    source and target trees these operations are to be carried out on.
+
+    clients of bzrlib should not need to use InterTree directly, rather they
+    should use the convenience methods on Tree such as 'Tree.compare()' which
+    will pass through to InterTree as appropriate.
+    """
+
+    _optimisers = set()
+
+    def compare(self):
+        """Compare source and target.
+
+        :return: A TreeDelta.
+        """
+        # imported later to avoid circular imports
+        from bzrlib.delta import compare_trees
+        return compare_trees(self.source, self.target)
