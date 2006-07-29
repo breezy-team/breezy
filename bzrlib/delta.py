@@ -16,7 +16,7 @@
 
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter
-from bzrlib import tree
+from bzrlib.symbol_versioning import deprecated_function, zero_ten
 
 
 class TreeDelta(object):
@@ -143,57 +143,16 @@ class TreeDelta(object):
             show_list(self.unchanged)
 
 
+@deprecated_function(zero_ten)
 def compare_trees(old_tree, new_tree, want_unchanged=False,
                   specific_files=None, extra_trees=None,
                   require_versioned=False):
-    """Describe changes from one tree to another.
-
-    Returns a TreeDelta with details of added, modified, renamed, and
-    deleted entries.
-
-    The root entry is specifically exempt.
-
-    This only considers versioned files.
-
-    want_unchanged
-        If true, also list files unchanged from one version to
-        the next.
-
-    specific_files
-        If supplied, only check for changes to specified names or
-        files within them.  When mapping filenames to ids, all matches in all
-        trees (including optional extra_trees) are used, and all children of
-        matched directories are included.
-
-    extra_trees
-        If non-None, a list of more trees to use for looking up file_ids from
-        paths
-
-    require_versioned
-        If true, an all files are required to be versioned, and
-        PathsNotVersionedError will be thrown if they are not.
-    """
-    # NB: show_status depends on being able to pass in non-versioned files and
-    # report them as unknown
-    old_tree.lock_read()
-    try:
-        new_tree.lock_read()
-        try:
-            trees = (new_tree, old_tree)
-            if extra_trees is not None:
-                trees = trees + tuple(extra_trees)
-            specific_file_ids = tree.find_ids_across_trees(specific_files, 
-                trees, require_versioned=require_versioned)
-            if specific_files and not specific_file_ids:
-                # All files are unversioned, so just return an empty delta
-                # _compare_trees would think we want a complete delta
-                return TreeDelta()
-            return _compare_trees(old_tree, new_tree, want_unchanged,
-                                  specific_file_ids)
-        finally:
-            new_tree.unlock()
-    finally:
-        old_tree.unlock()
+    """compare_trees was deprecated in 0.10. Please see Tree.changes_from."""
+    return new_tree.changes_from(old_tree,
+        want_unchanged=want_unchanged,
+        specific_files=specific_files,
+        extra_trees=extra_trees,
+        require_versioned=require_versioned)
 
 
 def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):

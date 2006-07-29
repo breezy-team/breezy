@@ -22,6 +22,8 @@ from cStringIO import StringIO
 from warnings import warn
 
 import bzrlib
+from bzrlib import delta
+from bzrlib.decorators import needs_read_lock
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib import errors
 from bzrlib.inventory import Inventory
@@ -376,6 +378,7 @@ class InterTree(InterObject):
 
     _optimisers = set()
 
+    @needs_read_lock
     def compare(self, want_unchanged=False, specific_files=None,
         extra_trees=None, require_versioned=False):
         """Return the changes from source to target.
@@ -393,13 +396,16 @@ class InterTree(InterObject):
             supplied and True all the 'specific_files' must be versioned, or
             a PathsNotVersionedError will be thrown.
         """
-        # imported later to avoid circular imports
-        from bzrlib.delta import compare_trees
-        return compare_trees(
-            self.source,
-            self.target,
-            want_unchanged=want_unchanged,
-            specific_files=specific_files,
-            extra_trees=extra_trees,
-            require_versioned=require_versioned,
-            )
+        # NB: show_status depends on being able to pass in non-versioned files and
+        # report them as unknown
+        trees = (self.source, self.target)
+        if extra_trees is not None:
+            trees = trees + tuple(extra_trees)
+        specific_file_ids = find_ids_across_trees(specific_files,
+            trees, require_versioned=require_versioned)
+        if specific_files and not specific_file_ids:
+            # All files are unversioned, so just return an empty delta
+            # _compare_trees would think we want a complete delta
+            return delta.TreeDelta()
+        return delta._compare_trees(self.source, self.target, want_unchanged,
+            specific_file_ids)
