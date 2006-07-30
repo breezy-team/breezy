@@ -182,9 +182,10 @@ class SvnRepository(Repository):
         mutter('svn latest-revnum')
         self._latest_revnum = svn.ra.get_latest_revnum(self.ra)
 
-        self._log = logwalker.LogWalker(self.scheme, self.ra, 
-                                        self.create_cache_dir(), 
-                                        self._latest_revnum)
+        self._log = logwalker.LogWalker(self.scheme, 
+                                        repos_url=transport.svn_url,
+                                        cache_dir=self.create_cache_dir(), 
+                                        last_revnum=self._latest_revnum)
 
         self.branchprop_cache = shelve.open(os.path.join(
                                             self.create_cache_dir(),

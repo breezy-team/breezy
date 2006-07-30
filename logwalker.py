@@ -23,6 +23,7 @@ from bsddb import dbshelve as shelve
 
 from svn.core import SubversionException
 import svn.ra
+from transport import SvnRaTransport
 
 class NotSvnBranchPath(BzrError):
     def __init__(self, branch_path):
@@ -35,11 +36,7 @@ class NotSvnBranchPath(BzrError):
 class LogWalker(object):
     def __init__(self, scheme, ra=None, cache_dir=None, last_revnum=None, repos_url=None, pb=None):
         if ra is None:
-            callbacks = svn.ra.callbacks2_t()
-            ra = svn.ra.open2(repos_url.encode('utf8'), callbacks, None, None)
-            root = svn.ra.get_repos_root(ra)
-            if root != repos_url:
-                svn.ra.reparent(ra, root.encode('utf8'))
+            ra = SvnRaTransport(repos_url).ra
 
         if last_revnum is None:
             last_revnum = svn.ra.get_latest_revnum(ra)

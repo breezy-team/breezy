@@ -464,11 +464,11 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/branches")
         self.client_commit("dc", "Initial commit")
 
-        # prevrev
+        # copyrev
         self.client_copy("dc/trunk/adir", "dc/branches/abranch/bdir")
         self.client_commit("dc", "Cross copy commit")
 
-        # copyrev
+        # prevrev
         self.build_tree({"dc/branches/abranch/bdir/afile": "otherdata"})
         self.client_commit("dc", "Change data")
 
@@ -492,7 +492,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                          inventory[inventory.path2id("bdir/afile")].revision)
 
         inventory = newrepos.get_inventory(prevrev)
-        self.assertEqual(prevrev, 
+        self.assertEqual(copyrev, 
                          inventory[inventory.path2id("bdir/stationary")].revision)
 
 class TestSvnRevisionTree(TestCaseWithSubversionRepository):
