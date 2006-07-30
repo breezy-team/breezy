@@ -87,6 +87,7 @@ class TrunkScheme(TestCase):
         self.assertTrue(scheme.is_branch("/branches/foo/"))
         self.assertFalse(scheme.is_branch("/trunkfoo"))
         self.assertFalse(scheme.is_branch("/trunk/foo"))
+        self.assertFalse(scheme.is_branch("/branches"))
 
     def test_is_branch_level(self):
         scheme = TrunkBranchingScheme(2)
@@ -99,6 +100,7 @@ class TrunkScheme(TestCase):
     def test_unprefix(self):
         scheme = TrunkBranchingScheme()
         self.assertRaises(NotBranchError, scheme.unprefix, "")
+        self.assertRaises(NotBranchError, scheme.unprefix, "branches")
         self.assertRaises(NotBranchError, scheme.unprefix, "/")
         self.assertRaises(NotBranchError, scheme.unprefix, "blie/bloe/bla")
         self.assertRaises(NotBranchError, scheme.unprefix, "aa")

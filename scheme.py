@@ -78,7 +78,8 @@ class TrunkBranchingScheme:
         if parts[self.level] == "trunk" or parts[self.level] == "hooks":
             return ("/".join(parts[0:self.level+1]).strip("/"), 
                     "/".join(parts[self.level+1:]).strip("/"))
-        elif parts[self.level] == "tags" or parts[self.level] == "branches":
+        elif ((parts[self.level] == "tags" or parts[self.level] == "branches") and 
+              len(parts) >= self.level+2):
             return ("/".join(parts[0:self.level+2]).strip("/"), 
                     "/".join(parts[self.level+2:]).strip("/"))
         else:
