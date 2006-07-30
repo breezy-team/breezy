@@ -204,7 +204,7 @@ You'll usually refer to branches on your computer's filesystem just by
 giving the name of the directory containing the branch.  bzr also supports
 accessing branches over http, for example::
 
-    % bzr log http://bazaar-ng.org/bzr/bzr.dev/
+    % bzr log http://bazaar-vcs.org/bzr/bzr.dev/
 
 By installing bzr plugins you can also access branches over the sftp or
 rsync protocols.
@@ -461,7 +461,7 @@ by copying its directory, expanding a tarball, or by a remote copy using
 something like rsync.  You can also use bzr to fetch a copy.  Because this
 new copy is potentially a new branch, the command is called *branch*::
 
-    % bzr branch http://bazaar-ng.org/bzr/bzr.dev 
+    % bzr branch http://bazaar-vcs.org/bzr/bzr.dev 
     % cd bzr.dev
 
 This copies down the complete history of this branch, so we can do all

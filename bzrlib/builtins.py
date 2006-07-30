@@ -1999,7 +1999,7 @@ def _get_bzr_branch():
 
 def show_version():
     import bzrlib
-    print "bzr (bazaar-ng) %s" % bzrlib.__version__
+    print "Bazaar (bzr) %s" % bzrlib.__version__
     # is bzrlib itself in a branch?
     branch = _get_bzr_branch()
     if branch:

@@ -83,7 +83,7 @@ value for. The ? and * wildcards are supported::
     create_signatures = always
     check_signatures  = always
 
-    [http://bazaar-ng.org/bzr/*]
+    [http://bazaar-vcs.org/bzr/*]
     check_signatures  = require
 
 Common Variable options
