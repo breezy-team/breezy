@@ -103,8 +103,7 @@ def format_command (params, cmd):
     """Provides long help for each public command"""
     subsection_header = '.SS "%s"\n' % (bzrlib.help.command_usage(cmd))
     doc = "%s\n" % (cmd.__doc__)
-    docsplit = cmd.__doc__.split('\n')
-    doc = '\n'.join([docsplit[0]] + [line[4:] for line in docsplit[1:]])
+    doc = cmd.help()
 
     option_str = ""
     options = cmd.options()
@@ -167,9 +166,10 @@ Bazaar (%(bzrcmd)s) - next-generation distributed version control
 .B "help"
 .I "command"
 .SH "DESCRIPTION"
-Bazaar (or
-.B "%(bzrcmd)s"
-) is a project of Canonical to develop an open source distributed version control system that is powerful, friendly, and scalable. Version control means a system that keeps track of previous revisions of software source code or similar information and helps people work on it in teams.
+Bazaar (or %(bzrcmd)s) is a project of Canonical to develop an open source
+distributed version control system that is powerful, friendly, and scalable.
+Version control means a system that keeps track of previous revisions
+of software source code or similar information and helps people work on it in teams.
 """
 
 man_foot = """\

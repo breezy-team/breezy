@@ -104,8 +104,8 @@ def format_command (params, cmd, name):
 ::
 """ % (usage, '-'*len(usage))
 
-    docsplit = cmd.__doc__.split('\n')
-    doc = '\n'.join([' '*4 + docsplit[0]] + docsplit[1:])
+    docsplit = cmd.help().split('\n')
+    doc = '\n'.join([' '*4+line for line in docsplit])
         
     option_str = ""
     options = cmd.options()
