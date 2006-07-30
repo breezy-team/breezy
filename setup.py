@@ -103,8 +103,11 @@ class my_install_scripts(install_scripts):
         if sys.platform == "win32":
             try:
                 scripts_dir = self.install_dir
-                script_path = os.path.join(scripts_dir, "bzr")
-                batch_str = "@%s %s %%*\n" % (sys.executable, script_path)
+                script_path = self._quoted_path(os.path.join(scripts_dir,
+                                                             "bzr"))
+                python_exe = self._quoted_path(sys.executable)
+                args = self._win_batch_args()
+                batch_str = "@%s %s %s" % (python_exe, script_path, args)
                 batch_path = script_path + ".bat"
                 f = file(batch_path, "w")
                 f.write(batch_str)
@@ -112,6 +115,19 @@ class my_install_scripts(install_scripts):
                 print "Created:", batch_path
             except Exception, e:
                 print "ERROR: Unable to create %s: %s" % (batch_path, e)
+
+    def _quoted_path(self, path):
+        if ' ' in path:
+            return '"' + path + '"'
+        else:
+            return path
+
+    def _win_batch_args(self):
+        if os.name == 'nt':
+            return '%*'
+        else:
+            return '%1 %2 %3 %4 %5 %6 %7 %8 %9'
+#/class my_install_scripts
 
 
 class bzr_build(build):
