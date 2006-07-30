@@ -33,6 +33,7 @@ import svn.core
 
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
                 SVN_PROP_BZR_REVPROP_PREFIX)
+from transport import SvnRaTransport
 from tree import apply_txdelta_handler
 
 
@@ -325,24 +326,31 @@ class InterSvnRepository(InterRepository):
 
             edit, edit_baton = svn.delta.make_editor(editor)
 
+            if hasattr(svn.ra, 'reparent'):
+                if parent_branch is None:
+                    svn.ra.reparent(self.source.ra, repos_root)
+                else:
+                    svn.ra.reparent(self.source.ra, "%s/%s" % (repos_root, parent_branch))
 
-            if parent_branch is None:
-                svn.ra.reparent(self.source.ra, repos_root)
+                ra = self.source.ra
             else:
-                svn.ra.reparent(self.source.ra, "%s/%s" % (repos_root, parent_branch))
+                if parent_branch is None:
+                    ra = self.source.ra
+                else:
+                    ra = SvnRaTransport("%s/%s" % (repos_root, parent_branch)).ra
 
             pool = Pool()
             if parent_branch != branch:
                 mutter('svn switch %r:%r -> %r:%r' % 
                                (parent_branch, parent_revnum, branch, revnum))
-                reporter, reporter_baton = svn.ra.do_switch(self.source.ra, 
+                reporter, reporter_baton = svn.ra.do_switch(ra, 
                            revnum, "", True, 
                            "%s/%s" % (repos_root, branch),
                            edit, edit_baton, pool)
             else:
                 mutter('svn update -r %r:%r %r' % 
                                (parent_revnum, revnum, branch))
-                reporter, reporter_baton = svn.ra.do_update(self.source.ra, 
+                reporter, reporter_baton = svn.ra.do_update(ra, 
                            revnum, "", True, 
                            edit, edit_baton, pool)
 
@@ -352,7 +360,8 @@ class InterSvnRepository(InterRepository):
 
             svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton)
 
-            svn.ra.reparent(self.source.ra, repos_root)
+            if hasattr(svn.ra, 'reparent'):
+                svn.ra.reparent(self.source.ra, repos_root)
 
             prev_inv = editor.inventory
             prev_revid = revid
