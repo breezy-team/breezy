@@ -131,14 +131,18 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         """
         svn.client.delete2([relpaths], True, self.client_ctx)
 
-    def client_copy(self, oldpath, newpath):
+    def client_copy(self, oldpath, newpath, revnum=None):
         """Copy file in working copy.
 
         :param oldpath: Relative path to original file.
         :param newpath: Relative path to new file.
         """
         rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_head
+        if revnum is None:
+            rev.kind = svn.core.svn_opt_revision_head
+        else:
+            rev.kind = svn.core.svn_opt_revision_number
+            rev.value.number = revnum
         svn.client.copy2(oldpath, rev, newpath, self.client_ctx)
 
     def build_tree(self, files):
