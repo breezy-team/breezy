@@ -185,7 +185,6 @@ class SimpleFileIdMap(FileIdMap):
             parts = p.split("/")
             for i in range(1, len(parts)):
                 parent = "/".join(parts[0:len(parts)-i])
-                mutter('parent %r for %r' % (parent, p))
                 assert map.has_key(parent)
                 if map[parent][1] == revid:
                     break

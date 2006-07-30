@@ -120,6 +120,8 @@ class TreeBuildEditor(svn.delta.Editor):
                       svn.core.SVN_PROP_ENTRY_UUID,
                       svn.core.SVN_PROP_EXECUTABLE):
             pass
+        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
+            pass
         else:
             mutter('unsupported dir property %r' % name)
 
@@ -135,6 +137,8 @@ class TreeBuildEditor(svn.delta.Editor):
                       svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
                       svn.core.SVN_PROP_ENTRY_UUID,
                       svn.core.SVN_PROP_MIME_TYPE):
+            pass
+        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
             pass
         else:
             mutter('unsupported file property %r' % name)

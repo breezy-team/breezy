@@ -44,7 +44,7 @@ def md5_strings(strings):
 class RevisionBuildEditor(svn.delta.Editor):
     def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, svn_revprops, id_map, parent_branch, parent_id_map):
         self.branch_path = branch_path
-        self.inventory = prev_inventory.copy()
+        self.inventory = copy(prev_inventory)
         self.revid = revid
         self.revnum = revnum
         self.id_map = id_map
@@ -148,6 +148,8 @@ class RevisionBuildEditor(svn.delta.Editor):
                       svn.core.SVN_PROP_ENTRY_UUID,
                       svn.core.SVN_PROP_EXECUTABLE):
             pass
+        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
+            pass
         else:
             mutter('unsupported file property %r' % name)
 
@@ -164,6 +166,8 @@ class RevisionBuildEditor(svn.delta.Editor):
                       svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
                       svn.core.SVN_PROP_ENTRY_UUID,
                       svn.core.SVN_PROP_MIME_TYPE):
+            pass
+        elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
             pass
         else:
             mutter('unsupported file property %r' % name)
