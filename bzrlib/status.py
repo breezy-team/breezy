@@ -16,7 +16,6 @@
 
 import sys
 
-from bzrlib.delta import compare_trees
 from bzrlib.diff import _raise_if_nonexistent
 import bzrlib.errors as errors
 from bzrlib.log import line_log
@@ -131,20 +130,20 @@ def show_tree_status(wt, show_unchanged=None,
             else:
                 new = wt
         _raise_if_nonexistent(specific_files, old, new)
-        delta = compare_trees(old, new, want_unchanged=show_unchanged,
+        delta = new.changes_from(old, want_unchanged=show_unchanged,
                               specific_files=specific_files)
         delta.show(to_file,
                    show_ids=show_ids,
                    show_unchanged=show_unchanged)
 
-        if new_is_working_tree:
-            list_paths('unknown', new.unknowns(), specific_files, to_file)
-            conflict_title = False
-            for conflict in wt.conflicts():
-                if conflict_title is False:
-                    print >> to_file, "conflicts:"
-                    conflict_title = True
-                print >> to_file, "  %s" % conflict
+        list_paths('unknown', new.unknowns(), specific_files, to_file)
+        conflict_title = False
+        # show the new conflicts only for now. XXX: get them from the delta.
+        for conflict in new.conflicts():
+            if conflict_title is False:
+                print >> to_file, "conflicts:"
+                conflict_title = True
+            print >> to_file, "  %s" % conflict
         if new_is_working_tree and show_pending:
             show_pending_merges(new, to_file)
     finally:
@@ -165,8 +164,10 @@ def show_pending_merges(new, to_file):
     for merge in new.pending_merges():
         ignore.add(merge)
         try:
+            from bzrlib.osutils import terminal_width
+            width = terminal_width()
             m_revision = branch.repository.get_revision(merge)
-            print >> to_file, ' ', line_log(m_revision, 77)
+            print >> to_file, ' ', line_log(m_revision, width - 3)
             inner_merges = branch.repository.get_ancestry(merge)
             assert inner_merges[0] == None
             inner_merges.pop(0)
@@ -175,7 +176,7 @@ def show_pending_merges(new, to_file):
                 if mmerge in ignore:
                     continue
                 mm_revision = branch.repository.get_revision(mmerge)
-                print >> to_file, '   ', line_log(mm_revision, 75)
+                print >> to_file, '   ', line_log(mm_revision, width - 5)
                 ignore.add(mmerge)
         except errors.NoSuchRevision:
             print >> to_file, ' ', merge

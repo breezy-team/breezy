@@ -4,9 +4,7 @@ import bzrlib.ui as ui
 
 
 def iter_log_data(revisions, revision_source, verbose):
-    from bzrlib.diff import compare_trees
-    from bzrlib.tree import EmptyTree
-    last_tree = EmptyTree
+    last_tree = revision_source.revision_tree(None)
     last_rev_id = None
     for revno, rev_id in revisions:
         rev = revision_source.get_revision(rev_id)
@@ -20,7 +18,7 @@ def iter_log_data(revisions, revision_source, verbose):
             revision_tree = revision_source.revision_tree(rev_id)
             last_rev_id = rev_id
             last_tree = revision_tree
-            delta = compare_trees(revision_tree, parent_tree)
+            delta = parent_tree.changes_from(revision_tree)
         else:
             delta = None
         yield revno, rev, delta

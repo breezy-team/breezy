@@ -14,39 +14,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Test locks across all branch implemenations"""
+"""Tests for the (un)lock interfaces on all working tree implemenations."""
 
-from bzrlib.tests.lock_helpers import TestPreventLocking, LockWrapper
+import bzrlib.branch as branch
+import bzrlib.errors as errors
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
 class TestWorkingTreeLocking(TestCaseWithWorkingTree):
 
-    def get_instrumented_tree(self):
-        """Get a WorkingTree object which has been instrumented"""
-        # TODO: jam 20060630 It may be that not all formats have a 
-        # '_control_files' member. So we should fail gracefully if
-        # not there. But assuming it has them lets us test the exact 
-        # lock/unlock order.
-        self.locks = []
+    def test_trivial_lock_read_unlock(self):
+        """Locking and unlocking should work trivially."""
         wt = self.make_branch_and_tree('.')
-        wt = LockWrapper(self.locks, wt, 't')
-        wt._branch = LockWrapper(self.locks, wt._branch, 'b')
-
-        tcf = wt._control_files
-        bcf = wt.branch.control_files
-
-        # Look out for AllInOne
-        self.combined_control = tcf is bcf
-
-        wt._control_files = LockWrapper(self.locks, wt._control_files, 'tc')
-        wt.branch.control_files = \
-            LockWrapper(self.locks, wt.branch.control_files, 'bc')
-        return wt
-
-    def test_01_lock_read(self):
-        # Test that locking occurs in the correct order
-        wt = self.get_instrumented_tree()
 
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
@@ -59,19 +38,9 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
 
-        self.assertEqual([('t', 'lr', True),
-                          ('b', 'lr', True),
-                          ('bc', 'lr', True),
-                          ('tc', 'lr', True),
-                          ('t', 'ul', True),
-                          ('tc', 'ul', True),
-                          ('b', 'ul', True),
-                          ('bc', 'ul', True),
-                         ], self.locks)
-
-    def test_02_lock_write(self):
-        # Test that locking occurs in the correct order
-        wt = self.get_instrumented_tree()
+    def test_trivial_lock_write_unlock(self):
+        """Locking for write and unlocking should work trivially."""
+        wt = self.make_branch_and_tree('.')
 
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
@@ -83,137 +52,94 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
             wt.unlock()
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
-
-        self.assertEqual([('t', 'lw', True),
-                          ('b', 'lw', True),
-                          ('bc', 'lw', True),
-                          ('tc', 'lw', True),
-                          ('t', 'ul', True),
-                          ('tc', 'ul', True),
-                          ('b', 'ul', True),
-                          ('bc', 'ul', True),
-                         ], self.locks)
-
-    def test_03_lock_fail_unlock_branch(self):
-        # Make sure tree.unlock() is called, even if there is a
-        # failure while unlocking the branch.
-        wt = self.get_instrumented_tree()
-        wt.branch.disable_unlock()
+        
+    def test_unlock_branch_failures(self):
+        """If the branch unlock fails the tree must still unlock."""
+        # The public interface for WorkingTree requires a branch, but
+        # does not require that the working tree use the branch - its
+        # implementation specific how the WorkingTree, Branch, and Repository
+        # hang together.
+        # in order to test that implementations which *do* unlock via the branch
+        # do so correctly, we unlock the branch after locking the working tree.
+        # The next unlock on working tree should trigger a LockNotHeld exception
+        # from the branch object, which must be exposed to the caller. To meet 
+        # our object model - where locking a tree locks its branch, and
+        # unlocking a branch does not unlock a working tree, *even* for 
+        # all-in-one implementations like bzr 0.6, git, and hg, implementations
+        # must have some separate counter for each object, so our explicit 
+        # unlock should trigger some error on all implementations, and 
+        # requiring that to be LockNotHeld seems reasonable.
+        #
+        # we use this approach rather than decorating the Branch, because the
+        # public interface of WorkingTree does not permit altering the branch
+        # object - and we cannot tell which attribute might allow us to 
+        # backdoor-in and change it reliably. For implementation specific tests
+        # we can do such skullduggery, but not for interface specific tests.
+        # And, its simpler :)
+        wt = self.make_branch_and_tree('.')
 
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
         wt.lock_write()
+        self.assertTrue(wt.is_locked())
+        self.assertTrue(wt.branch.is_locked())
+
+        # manually unlock the branch, preparing a LockNotHeld error.
+        wt.branch.unlock()
+        # the branch *may* still be locked here, if its an all-in-one
+        # implementation because there is a single lock object with three
+        # references on it, and unlocking the branch only drops this by two
+        self.assertRaises(errors.LockNotHeld, wt.unlock)
+        # but now, the tree must be unlocked
+        self.assertFalse(wt.is_locked())
+        # and the branch too.
+        self.assertFalse(wt.branch.is_locked())
+
+    def test_failing_to_lock_branch_does_not_lock(self):
+        """If the branch cannot be locked, dont lock the tree."""
+        # Many implementations treat read-locks as non-blocking, but some
+        # treat them as blocking with writes.. Accordingly we test this by
+        # opening the branch twice, and locking the branch for write in the
+        # second instance.  Our lock contract requires separate instances to
+        # mutually exclude if a lock is exclusive at all: If we get no error
+        # locking, the test still passes.
+        wt = self.make_branch_and_tree('.')
+        branch_copy = branch.Branch.open('.')
+        branch_copy.lock_write()
         try:
-            self.assertTrue(wt.is_locked())
-            self.assertTrue(wt.branch.is_locked())
-            self.assertRaises(TestPreventLocking, wt.unlock)
-            if self.combined_control:
-                self.assertTrue(wt.is_locked())
-            else:
+            try:
+                wt.lock_read()
+            except errors.LockError:
+                # any error here means the locks are exclusive in some 
+                # manner
                 self.assertFalse(wt.is_locked())
-            self.assertTrue(wt.branch.is_locked())
-
-            self.assertEqual([('t', 'lw', True),
-                              ('b', 'lw', True),
-                              ('bc', 'lw', True),
-                              ('tc', 'lw', True),
-                              ('t', 'ul', True),
-                              ('tc', 'ul', True),
-                              ('b', 'ul', False), 
-                             ], self.locks)
-
-        finally:
-            # For cleanup purposes, make sure we are unlocked
-            wt.branch._other.unlock()
-
-    def test_04_lock_fail_unlock_control(self):
-        # Make sure that branch is unlocked, even if we fail to unlock self
-        wt = self.get_instrumented_tree()
-        wt._control_files.disable_unlock()
-
-        self.assertFalse(wt.is_locked())
-        self.assertFalse(wt.branch.is_locked())
-        wt.lock_write()
-        try:
-            self.assertTrue(wt.is_locked())
-            self.assertTrue(wt.branch.is_locked())
-            self.assertRaises(TestPreventLocking, wt.unlock)
-            self.assertTrue(wt.is_locked())
-            if self.combined_control:
-                self.assertTrue(wt.branch.is_locked())
-            else:
                 self.assertFalse(wt.branch.is_locked())
-
-            self.assertEqual([('t', 'lw', True),
-                              ('b', 'lw', True),
-                              ('bc', 'lw', True),
-                              ('tc', 'lw', True),
-                              ('t', 'ul', True),
-                              ('tc', 'ul', False),
-                              ('b', 'ul', True), 
-                              ('bc', 'ul', True), 
-                             ], self.locks)
-
+                return
+            else:
+                # no error - the branch allows read locks while writes
+                # are taken, just pass.
+                wt.unlock()
         finally:
-            # For cleanup purposes, make sure we are unlocked
-            wt._control_files._other.unlock()
+            branch_copy.unlock()
 
-    def test_05_lock_read_fail_branch(self):
-        # Test that the tree is not locked if it cannot lock the branch
-        wt = self.get_instrumented_tree()
-        wt.branch.disable_lock_read()
-
-        self.assertRaises(TestPreventLocking, wt.lock_read)
-        self.assertFalse(wt.is_locked())
-        self.assertFalse(wt.branch.is_locked())
-
-        self.assertEqual([('t', 'lr', True),
-                          ('b', 'lr', False), 
-                         ], self.locks)
-
-    def test_06_lock_write_fail_branch(self):
-        # Test that the tree is not locked if it cannot lock the branch
-        wt = self.get_instrumented_tree()
-        wt.branch.disable_lock_write()
-
-        self.assertRaises(TestPreventLocking, wt.lock_write)
-        self.assertFalse(wt.is_locked())
-        self.assertFalse(wt.branch.is_locked())
-
-        self.assertEqual([('t', 'lw', True),
-                          ('b', 'lw', False), 
-                         ], self.locks)
-
-    def test_07_lock_read_fail_control(self):
-        # We should unlock the branch if we can't lock the tree
-        wt = self.get_instrumented_tree()
-        wt._control_files.disable_lock_read()
-
-        self.assertRaises(TestPreventLocking, wt.lock_read)
-        self.assertFalse(wt.is_locked())
-        self.assertFalse(wt.branch.is_locked())
-
-        self.assertEqual([('t', 'lr', True),
-                          ('b', 'lr', True),
-                          ('bc', 'lr', True),
-                          ('tc', 'lr', False),
-                          ('b', 'ul', True),
-                          ('bc', 'ul', True)
-                         ], self.locks)
-
-    def test_08_lock_write_fail_control(self):
-        # We shouldn't try to lock the repo if we can't lock the branch
-        wt = self.get_instrumented_tree()
-        wt._control_files.disable_lock_write()
-
-        self.assertRaises(TestPreventLocking, wt.lock_write)
-        self.assertFalse(wt.is_locked())
-        self.assertFalse(wt.branch.is_locked())
-
-        self.assertEqual([('t', 'lw', True),
-                          ('b', 'lw', True),
-                          ('bc', 'lw', True),
-                          ('tc', 'lw', False),
-                          ('b', 'ul', True),
-                          ('bc', 'ul', True)
-                         ], self.locks)
+    def test_failing_to_lock_write_branch_does_not_lock(self):
+        """If the branch cannot be write locked, dont lock the tree."""
+        # all implementations of branch are required to treat write 
+        # locks as blocking (compare to repositories which are not required
+        # to do so).
+        # Accordingly we test this by opening the branch twice, and locking the
+        # branch for write in the second instance.  Our lock contract requires
+        # separate instances to mutually exclude.
+        wt = self.make_branch_and_tree('.')
+        branch_copy = branch.Branch.open('.')
+        branch_copy.lock_write()
+        try:
+            try:
+                self.assertRaises(errors.LockError, wt.lock_write)
+                self.assertFalse(wt.is_locked())
+                self.assertFalse(wt.branch.is_locked())
+            finally:
+                if wt.is_locked():
+                    wt.unlock()
+        finally:
+            branch_copy.unlock()

@@ -132,7 +132,9 @@ class Testament(object):
         for l in self.message.splitlines():
             a('  %s\n' % l)
         a('inventory:\n')
-        for path, ie in self.inventory.iter_entries():
+        entries = self.inventory.iter_entries()
+        entries.next()
+        for path, ie in entries:
             a(self._entry_to_line(path, ie))
         r.extend(self._revprops_to_lines())
         if __debug__:

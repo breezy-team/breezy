@@ -1,16 +1,16 @@
 # Copyright (C) 2006 by Canonical Ltd
 # -*- coding: utf-8 -*-
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -29,6 +29,12 @@ class TestUpdate(ExternalBase):
     def test_update_standalone_trivial(self):
         self.runbzr("init")
         out, err = self.runbzr('update')
+        self.assertEqual('Tree is up to date at revision 0.\n', err)
+        self.assertEqual('', out)
+
+    def test_update_standalone_trivial_with_alias_up(self):
+        self.runbzr("init")
+        out, err = self.runbzr('up')
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)
 

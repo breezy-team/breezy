@@ -1,15 +1,15 @@
 # Copyright (C) 2004-2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -19,6 +19,7 @@ import os
 import sys
 import tempfile
 
+from bzrlib import inventory
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
@@ -26,7 +27,6 @@ from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
-from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError, TestamentMismatch, NotABundle, BadBundle
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
@@ -290,12 +290,14 @@ class BTreeTester(TestCase):
     def test_iteration(self):
         """Ensure that iteration through ids works properly"""
         btree = self.make_tree_1()[0]
-        self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'c', 'd'])
+        self.assertEqual(self.sorted_ids(btree),
+            [inventory.ROOT_ID, 'a', 'b', 'c', 'd'])
         btree.note_deletion("grandparent/parent/file")
         btree.note_id("e", "grandparent/alt_parent/fool", kind="directory")
         btree.note_last_changed("grandparent/alt_parent/fool", 
                                 "revisionidiguess")
-        self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'd', 'e'])
+        self.assertEqual(self.sorted_ids(btree),
+            [inventory.ROOT_ID, 'a', 'b', 'd', 'e'])
 
 
 class BundleTester(TestCaseWithTransport):
@@ -372,7 +374,7 @@ class BundleTester(TestCaseWithTransport):
 
     def test_crlf_bundle(self):
         try:
-            read_bundle(StringIO('# Bazaar revision bundle v0.7\r\n'))
+            read_bundle(StringIO('# Bazaar revision bundle v0.8\r\n'))
         except BadBundle:
             # It is currently permitted for bundles with crlf line endings to
             # make read_bundle raise a BadBundle, but this should be fixed.
@@ -400,7 +402,7 @@ class BundleTester(TestCaseWithTransport):
             new = tree.branch.repository.revision_tree(ancestor)
 
             # Check that there aren't any inventory level changes
-            delta = compare_trees(old, new)
+            delta = new.changes_from(old)
             self.assertFalse(delta.has_changed(),
                              'Revision %s not copied correctly.'
                              % (ancestor,))
@@ -419,8 +421,7 @@ class BundleTester(TestCaseWithTransport):
             rh = self.b1.revision_history()
             tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
             tree.update()
-            delta = compare_trees(self.b1.repository.revision_tree(rev_id),
-                                  tree)
+            delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
             self.assertFalse(delta.has_changed(),
                              'Working tree has modifications')
         return tree
@@ -809,7 +810,8 @@ class MungedBundleTester(TestCaseWithTransport):
         wt.commit('add one', rev_id='a@cset-0-1')
         self.build_tree(['b1/two'])
         wt.add('two')
-        wt.commit('add two', rev_id='a@cset-0-2')
+        wt.commit('add two', rev_id='a@cset-0-2',
+                  revprops={'branch-nick':'test'})
 
         bundle_txt = StringIO()
         rev_ids = write_bundle(wt.branch.repository, 'a@cset-0-2',
@@ -820,7 +822,7 @@ class MungedBundleTester(TestCaseWithTransport):
 
     def check_valid(self, bundle):
         """Check that after whatever munging, the final object is valid."""
-        self.assertEqual(['a@cset-0-2'], 
+        self.assertEqual(['a@cset-0-2'],
             [r.revision_id for r in bundle.real_revisions])
 
     def test_extra_whitespace(self):
@@ -859,7 +861,26 @@ class MungedBundleTester(TestCaseWithTransport):
         # creates a blank line at the end, and fails if that
         # line is stripped
         self.assertEqual('\n\n', raw[-2:])
-        bundle_text = StringIO(raw[:-1])
+        bundle_txt = StringIO(raw[:-1])
 
         bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)
+
+    def test_opening_text(self):
+        bundle_txt = self.build_test_bundle()
+
+        bundle_txt = StringIO("Some random\nemail comments\n"
+                              + bundle_txt.getvalue())
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+
+    def test_trailing_text(self):
+        bundle_txt = self.build_test_bundle()
+
+        bundle_txt = StringIO(bundle_txt.getvalue() +
+                              "Some trailing\nrandom\ntext\n")
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+

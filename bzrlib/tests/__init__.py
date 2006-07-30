@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -109,8 +109,10 @@ def packages_to_test():
     import bzrlib.tests.bzrdir_implementations
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
+    import bzrlib.tests.intertree_implementations
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.revisionstore_implementations
+    import bzrlib.tests.tree_implementations
     import bzrlib.tests.workingtree_implementations
     return [
             bzrlib.doc,
@@ -119,8 +121,10 @@ def packages_to_test():
             bzrlib.tests.bzrdir_implementations,
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
+            bzrlib.tests.intertree_implementations,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.revisionstore_implementations,
+            bzrlib.tests.tree_implementations,
             bzrlib.tests.workingtree_implementations,
             ]
 
@@ -219,6 +223,9 @@ class _MyResult(unittest._TextTestResult):
             self.stream.write('E')
         elif self.dots:
             self.pb.update(self._ellipsise_unimportant_words('ERROR', 13), self.testsRun, None)
+            self.pb.note(self._ellipsise_unimportant_words(
+                            test.id() + ': ERROR',
+                            osutils.terminal_width()))
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -232,6 +239,9 @@ class _MyResult(unittest._TextTestResult):
             self.stream.write('F')
         elif self.dots:
             self.pb.update(self._ellipsise_unimportant_words('FAIL', 13), self.testsRun, None)
+            self.pb.note(self._ellipsise_unimportant_words(
+                            test.id() + ': FAIL',
+                            osutils.terminal_width()))
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -1255,7 +1265,6 @@ def test_suite():
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
-                   'bzrlib.tests.test_emptytree',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
@@ -1263,7 +1272,9 @@ def test_suite():
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_http',
+                   'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_identitymap',
+                   'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lockdir',
@@ -1305,6 +1316,7 @@ def test_suite():
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
+                   'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
@@ -1322,10 +1334,10 @@ def test_suite():
         ]
     suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     from bzrlib.transport import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
-    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:

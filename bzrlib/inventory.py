@@ -81,10 +81,11 @@ class InventoryEntry(object):
     InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None)
     >>> i.add(InventoryFile('2323', 'hello.c', parent_id='123'))
     InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None)
-    >>> shouldbe = {0: 'src', 1: pathjoin('src','hello.c')}
+    >>> shouldbe = {0: '', 1: 'src', 2: pathjoin('src','hello.c')}
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
     ... 
+    (True, RootEntry('TREE_ROOT', u'', parent_id=None, revision=None))
     (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None))
     (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None))
     >>> i.add(InventoryFile('2323', 'bye.c', '123'))
@@ -107,6 +108,7 @@ class InventoryEntry(object):
     ...     print path
     ...     assert i.path2id(path)
     ... 
+    <BLANKLINE>
     src
     src/bye.c
     src/hello.c
@@ -310,8 +312,8 @@ class InventoryEntry(object):
         """
         fullpath = pathjoin(dest, dp)
         self._put_on_disk(fullpath, tree)
-        mutter("  export {%s} kind %s to %s", self.file_id,
-                self.kind, fullpath)
+        # mutter("  export {%s} kind %s to %s", self.file_id,
+        #         self.kind, fullpath)
 
     def _put_on_disk(self, fullpath, tree):
         """Put this entry onto disk at fullpath, from tree tree."""
@@ -408,7 +410,7 @@ class InventoryEntry(object):
         This means that all its fields are populated, that it has its
         text stored in the text store or weave.
         """
-        mutter('new parents of %s are %r', path, previous_entries)
+        # mutter('new parents of %s are %r', path, previous_entries)
         self._read_tree_state(path, work_tree)
         # TODO: Where should we determine whether to reuse a
         # previous revision id or create a new revision? 20060606
@@ -416,7 +418,7 @@ class InventoryEntry(object):
             # cannot be unchanged unless there is only one parent file rev.
             parent_ie = previous_entries.values()[0]
             if self._unchanged(parent_ie):
-                mutter("found unchanged entry")
+                # mutter("found unchanged entry")
                 self.revision = parent_ie.revision
                 return "unchanged"
         return self._snapshot_into_revision(revision, previous_entries, 
@@ -433,7 +435,7 @@ class InventoryEntry(object):
 
         :returns: String description of the commit (e.g. "merged", "modified"), etc.
         """
-        mutter('new revision {%s} for {%s}', revision, self.file_id)
+        # mutter('new revision {%s} for {%s}', revision, self.file_id)
         self.revision = revision
         self._snapshot_text(previous_entries, work_tree, commit_builder)
 
@@ -840,7 +842,7 @@ class Inventory(object):
     May also look up by name:
 
     >>> [x[0] for x in inv.iter_entries()]
-    [u'hello.c']
+    ['', u'hello.c']
     >>> inv = Inventory('TREE_ROOT-12345678-12345678')
     >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
     InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678', sha1=None, len=None)
@@ -867,12 +869,11 @@ class Inventory(object):
 
     def copy(self):
         # TODO: jam 20051218 Should copy also copy the revision_id?
-        other = Inventory(self.root.file_id)
+        entries = self.iter_entries()
+        other = Inventory(entries.next()[1].file_id)
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
-        for path, entry in self.iter_entries():
-            if entry == self.root:
-                continue
+        for path, entry in entries():
             other.add(entry.copy())
         return other
 
@@ -888,6 +889,7 @@ class Inventory(object):
         if from_dir is None:
             assert self.root
             from_dir = self.root
+            yield '', self.root
         elif isinstance(from_dir, basestring):
             from_dir = self._byid[from_dir]
             
@@ -940,6 +942,7 @@ class Inventory(object):
         if from_dir is None:
             assert self.root
             from_dir = self.root
+            yield '', self.root
         elif isinstance(from_dir, basestring):
             from_dir = self._byid[from_dir]
             
