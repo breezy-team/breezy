@@ -1,6 +1,6 @@
-================================
-Specifying revision in Bazaar-NG
-================================
+=============================
+Specifying revision in Bazaar
+=============================
 
 Description of the subarguments for ``-r`` as used by commands such as
 **bzr log** and **bzr merge**.

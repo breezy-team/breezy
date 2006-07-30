@@ -1,8 +1,8 @@
-====================================
-Using aliases for Bazaar-NG commands
-====================================
+=================================
+Using aliases for Bazaar commands
+=================================
 
-Command aliases are an easy way to customize the behaviour of Bazaar-NG. Aliases
+Command aliases are an easy way to customize the behaviour of Bazaar. Aliases
 are an easy way to create shortcuts for commonly-typed commands, or to set
 defaults for commands.
 

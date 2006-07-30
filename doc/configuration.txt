@@ -1,8 +1,8 @@
-=======================
-Bazaar-NG configuration
-=======================
+====================
+Bazaar configuration
+====================
 
-Information on how to configure Bazaar-NG.
+Information on how to configure Bazaar.
 
 Location of configuration file
 ==============================
@@ -20,7 +20,7 @@ comment
 -------
 A comment is any line that starts with a "#" (sometimes called a "hash
 mark", "pound sign" or "number sign"). Comment lines are ignored by
-Bazaar-NG when parsing ini files.
+Bazaar when parsing ini files.
 
 section header
 --------------
@@ -114,7 +114,7 @@ ignore
 
 check-available
     (default) If gnupg signatures for revisions are present, check them.
-    Bazaar-NG will fail if it finds a bad signature, but will not fail if
+    Bazaar will fail if it finds a bad signature, but will not fail if
     no signature is present
 
 create_signatures

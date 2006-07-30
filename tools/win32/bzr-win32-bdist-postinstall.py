@@ -32,7 +32,7 @@ if len(sys.argv) == 2 and sys.argv[1] == "-install":
 
     ##
     # XXX change message for something more appropriate
-    print """Bazaar-NG %s
+    print """Bazaar %s
 
 Congratulation! Bzr successfully installed.
 
@@ -70,7 +70,7 @@ Congratulation! Bzr successfully installed.
               dst.encode(locale.getpreferredencoding(), 'replace')
         # create dummy bazaar.conf
         f = file(os.path.join(dst,'bazaar.conf'), 'w')
-        f.write("# main configuration file of Bazaar-NG\n"
+        f.write("# main configuration file of Bazaar\n"
                 "[DEFAULT]\n"
                 "#email=Your Name <you@domain.com>\n")
         f.close()
@@ -89,18 +89,18 @@ Congratulation! Bzr successfully installed.
         # non-admin install - always goes in this user's start menu.
         fldr = get_special_folder_path("CSIDL_PROGRAMS")
 
-    # make Bazaar-NG entry
-    fldr = os.path.join(fldr, 'Bazaar-NG')
+    # make Bazaar entry
+    fldr = os.path.join(fldr, 'Bazaar')
     if not os.path.isdir(fldr):
         os.mkdir(fldr)
         directory_created(fldr)
 
     # link to documentation
-    docs = os.path.join(sys.exec_prefix, 'Doc', 'Bazaar-NG', 'index.htm')
+    docs = os.path.join(sys.exec_prefix, 'Doc', 'Bazaar', 'index.htm')
     dst = os.path.join(fldr, 'Documentation.lnk')
-    create_shortcut(docs, 'Bazaar-NG Documentation', dst)
+    create_shortcut(docs, 'Bazaar Documentation', dst)
     file_created(dst)
-    print 'Documentation for Bazaar-NG: Start => Programs => Bazaar-NG'
+    print 'Documentation for Bazaar: Start => Programs => Bazaar'
 
     # bzr in cmd shell
     cmd = os.environ.get('COMSPEC', 'cmd.exe')

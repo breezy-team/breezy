@@ -1,15 +1,15 @@
-=================
-Bazaar-NG plugins
-=================
+==============
+Bazaar plugins
+==============
 
-Information on how to use plugins in Bazaar-NG.
+Information on how to use plugins in Bazaar.
 
 What is a Plugin
 ================
-A plugin is an external component for Bazaar-NG that is typically made by
-third parties. A plugin is capable of augmenting Bazaar-NG by adding or
-replacing new or current functionality in Bazaar-NG. Plugins often work as
-a way for developers to test new features for Bazaar-NG prior to inclusion
+A plugin is an external component for Bazaar that is typically made by
+third parties. A plugin is capable of augmenting Bazaar by adding or
+replacing new or current functionality in Bazaar. Plugins often work as
+a way for developers to test new features for Bazaar prior to inclusion
 in the official codebase. Plugins can do a variety of things, including
 overriding commands, adding new commands, providing additional network
 transports, customizing log output. The sky is the limit for the
@@ -62,7 +62,7 @@ variable BZR_PLUGIN_PATH to a directory that contains plugins. The
 installation of a plugin can be checked by running **bzr plugins** at
 any time. New commands can be seen by running **bzr help commands**.
 
-Plugins work particularly well with Bazaar-NG branches. For example, to
+Plugins work particularly well with Bazaar branches. For example, to
 install the bzrtools plugins for your main user account, one can perform
 the following:: 
 

@@ -7,9 +7,9 @@
 .. but has been moved into the source tree so it can be kept in sync with
 .. the source and possibly automatically checked.
 
-==================
-Bazaar-NG Tutorial
-==================
+===============
+Bazaar Tutorial
+===============
 
 Current for bzr-0.8, 2006-04
 
@@ -18,7 +18,7 @@ Introduction
 ============
 
 If you are already familiar with decentralized revision control, then
-please feel free to skip ahead to "Introducing Yourself to Bazaar-NG". If,
+please feel free to skip ahead to "Introducing Yourself to Bazaar". If,
 on the other hand, you are familiar with revision control but not
 decentralized revision control, then please start at "How DRCS is
 different." Otherwise, get some coffee or tea, get comfortable and get
@@ -34,10 +34,10 @@ you have made some sort of mistake that you deeply regretted. Perhaps you
 deleted the configuration file for your mailserver or perhaps mauled the
 source code for a pet project. Whatever happened, you have just deleted
 important information that you would desperately like to get back. If this
-has ever happened to you, then you are probably ready for Bazaar-NG.
+has ever happened to you, then you are probably ready for Bazaar.
 
 Revision control systems (which I'll henceforth call RCS) such as
-Bazaar-NG give you the ability to track changes for a directory by turning
+Bazaar give you the ability to track changes for a directory by turning
 it into something slightly more complicated than a directory that we call
 a **branch**. The branch not only stores how the directory looks right
 now, but also how it looked at various points in the past. Then, when you
@@ -75,7 +75,7 @@ internet but the server is missing!
 
 Decentralized Revision Control Systems (which I'll call DRCS after this
 point) deal with this problem by keeping branches on the same machine as
-the client. In Bazaar-NG's case, the branch is kept in the same place as
+the client. In Bazaar's case, the branch is kept in the same place as
 the code that is being version controlled. This allows the user to save
 his changes (**commit**) whenever he wants -- even if he is offline. The
 user only needs internet access when he wants to access the changes in
@@ -86,27 +86,27 @@ A common requirement that many people have is the need to keep track of
 the changes for a directory such as file and subdirectory changes.
 Performing this tracking by hand is a awkward process that over time
 becomes unwieldy. That is, until one considers version control tools such
-as Bazaar-NG. These tools automate the process of storing data by creating
+as Bazaar. These tools automate the process of storing data by creating
 a **revision** of the directory tree whenever the user asks. 
 
-Revision control software such as Bazaar-NG can do much more than just
-storage and performing undo.  For example, with Bazaar-NG developer can
+Revision control software such as Bazaar can do much more than just
+storage and performing undo.  For example, with Bazaar developer can
 take the modifications in one branch of software and apply them to
 another, related, branch -- even if those changes exist in a branch owned
 by somebody else. This allows developers to cooperate without giving write
 access to repository.
 
-Bazaar-NG remembers the ''ancestry'' of a revision: the previous revisions
+Bazaar remembers the ''ancestry'' of a revision: the previous revisions
 that it is based upon.  A single revision may have more than one direct
 descendant, each with different changes, representing a divergence in the
-evolution of the tree. By branching, Bazaar-NG allows multiple people to
+evolution of the tree. By branching, Bazaar allows multiple people to
 cooperate on the evolution of a project, without all needing to work in
 strict lock-step.  Branching can be useful even for a single developer.
 
-Introducing yourself to Bazaar-NG
-=================================
+Introducing yourself to Bazaar
+==============================
 
-Bazaar-NG installs a single new command, **bzr**.  Everything else is a
+Bazaar installs a single new command, **bzr**.  Everything else is a
 subcommand of this.  You can get some help with `bzr help`.  There will be
 more in the future.
 
@@ -115,7 +115,7 @@ what.  In a decentralized system, that requires an identifier for each
 author that is globally unique.  Most people already have one of these: an
 email address. Bzr is smart enough to automatically generate an email
 address by looking up your username and hostname. If you don't like the
-guess that Bazaar-NG makes, then three options exist:
+guess that Bazaar makes, then three options exist:
 
  1. Set an email address via ``bzr whoami``.  This is the simplest way.
  To set a global identity, use::

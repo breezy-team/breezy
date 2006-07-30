@@ -4,28 +4,28 @@
 ; Cog is http://www.nedbatchelder.com/code/cog/
 
 [Setup]
-AppName=Bazaar-NG (Bzr)
+AppName=Bazaar
 
 ; [[[cog
 ; import bzrlib
 ; try: 
 ;     VERSION = bzrlib.__version__
-;     AppVerName = 'Bazaar-NG (Bzr) %s' % VERSION
+;     AppVerName = 'Bazaar %s' % VERSION
 ;     OutputBaseFilename = 'bzr-setup-%s' % VERSION
 ; except:
 ;     VERSION = ''
-;     AppVerName = 'Bazaar-NG (Bzr)'
+;     AppVerName = 'Bazaar'
 ;     OutputBaseFilename = 'bzr-setup'
 ;
 ; cog.outl('AppVerName=%s' % AppVerName)
 ; cog.outl('OutputBaseFilename=%s' % OutputBaseFilename)
 ; ]]]
-AppVerName=Bazaar-NG (Bzr)
+AppVerName=Bazaar
 OutputBaseFilename=bzr-setup
 ; [[[end]]]
 
-DefaultDirName={pf}\Bazaar-NG
-DefaultGroupName=Bazaar-NG
+DefaultDirName={pf}\Bazaar
+DefaultGroupName=Bazaar
 
 SolidCompression=yes
 
@@ -61,7 +61,7 @@ VersionInfoDescription="Installer for stand-alone bzr.exe"
 ; ]]]
 ; [[[end]]]
 
-AppComments="Bzr: Friendly distributed version control system"
+AppComments="Bazaar: Friendly distributed version control system"
 AppPublisher="Canonical Ltd."
 AppPublisherURL="http://www.bazaar-vcs.org"
 AppSupportURL="http://www.bazaar-vcs.org/BzrSupport"
@@ -81,7 +81,7 @@ Name: "{userappdata}\bazaar\2.0"
 
 [Icons]
 Name: "{group}\Documentation index"; Filename: "{app}\doc\index.htm"; WorkingDir: "{app}\doc";
-Name: "{group}\Bazaar-NG Home Page"; Filename: "{app}\bazaar.url"; Comment: "http://www.bazaar-vcs.org";
+Name: "{group}\Bazaar Home Page"; Filename: "{app}\bazaar.url"; Comment: "http://www.bazaar-vcs.org";
 Name: "{group}\Start Bzr in cmd shell"; Filename: "{sys}\cmd.exe"; Parameters: "/K start_bzr.bat"; WorkingDir: "{app}"; IconFilename: "{app}\bzr.exe"; Comment: "Open new Bzr session";
 Name: "{group}\Uninstall Bzr"; Filename: "{uninstallexe}"; IconFileName: "{sys}\shell32.dll"; IconIndex: 101; Comment: "Remove Bzr completely";
 

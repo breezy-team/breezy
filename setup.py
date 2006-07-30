@@ -138,7 +138,7 @@ if 'bdist_wininst' in sys.argv:
             # install the txt files from bzrlib.doc.api.
             'package_data': {'bzrlib': ['doc/api/*.txt']},
             # help pages
-            'data_files': [('Doc/Bazaar-NG', docs)],
+            'data_files': [('Doc/Bazaar', docs)],
            }
 
     ARGS.update(META_INFO)

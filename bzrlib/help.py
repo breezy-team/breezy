@@ -23,7 +23,7 @@
 import textwrap
 
 global_help = \
-"""Bazaar-NG -- a free distributed version-control tool
+"""Bazaar -- a free distributed version-control tool
 http://bazaar-vcs.org/
 
 Basic commands:

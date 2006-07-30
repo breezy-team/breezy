@@ -1,4 +1,4 @@
-# Bazaar-NG -- distributed version control
+# Bazaar -- distributed version control
 #
 # Copyright (C) 2005 by Canonical Ltd
 #
