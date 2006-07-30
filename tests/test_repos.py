@@ -27,6 +27,8 @@ import os
 import svn.fs
 
 import format
+from scheme import TrunkBranchingScheme
+from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 from repository import (parse_svn_revision_id, generate_svn_revision_id, 
                         svk_feature_to_revision_id, revision_id_to_svk_feature)
@@ -356,6 +358,67 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         inv1 = newrepos.get_inventory("svn-v1:1@%s-" % oldrepos.uuid)
         inv2 = newrepos.get_inventory("svn-v1:2@%s-" % oldrepos.uuid)
         self.assertNotEqual(inv1.path2id("bla"), inv2.path2id("bla"))
+
+    # FIXME
+    def notest_fetch_all(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/trunk': None, 
+                         'dc/trunk/hosts': 'hej1'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "created trunk and added hosts") #1
+
+        self.build_tree({'dc/trunk/hosts': 'hej2'})
+        self.client_commit("dc", "rev 2") #2
+
+        self.build_tree({'dc/trunk/hosts': 'hej3'})
+        self.client_commit("dc", "rev 3") #3
+
+        self.build_tree({'dc/branches/foobranch/file': 'foohosts'})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "foohosts") #4
+
+        oldrepos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat(), 
+                                   TrunkBranchingScheme()).open_repository()
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+        self.assertTrue(newrepos.has_revision("svn-v1:1@%s-trunk" % oldrepos.uuid))
+        self.assertTrue(newrepos.has_revision("svn-v1:2@%s-trunk" % oldrepos.uuid))
+        self.assertTrue(newrepos.has_revision("svn-v1:3@%s-trunk" % oldrepos.uuid))
+        self.assertTrue(newrepos.has_revision("svn-v1:4@%s-branches%%2ffoobranch" % oldrepos.uuid))
+        self.assertFalse(newrepos.has_revision("svn-v1:4@%s-trunk" % oldrepos.uuid))
+        self.assertFalse(newrepos.has_revision("svn-v1:2@%s-" % oldrepos.uuid))
+
+    def test_fetch_odd(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/trunk': None, 
+                         'dc/trunk/hosts': 'hej1'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "created trunk and added hosts") #1
+
+        self.build_tree({'dc/trunk/hosts': 'hej2'})
+        self.client_commit("dc", "rev 2") #2
+
+        self.build_tree({'dc/trunk/hosts': 'hej3'})
+        self.client_commit("dc", "rev 3") #3
+
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "added branches") #4
+
+        self.client_copy("dc/trunk", "dc/branches/foobranch")
+        self.client_commit("dc", "added branch foobranch") #5
+
+        self.build_tree({'dc/branches/foobranch/hosts': 'foohosts'})
+        self.client_commit("dc", "foohosts") #6
+
+        repos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat(), 
+                                   TrunkBranchingScheme()).open_repository()
+
+        tree = repos.revision_tree("svn-v1:6@%s-branches%%2ffoobranch" % repos.uuid)
 
     def test_fetch_consistent(self):
         repos_url = self.make_client('d', 'dc')

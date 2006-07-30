@@ -193,6 +193,9 @@ class SvnRepository(Repository):
 
         self.fileid_map = SimpleFileIdMap(self._log, self.create_cache_dir())
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, 
+                           self.base)
 
     def create_cache_dir(self):
         if not os.path.exists(cache_dir):

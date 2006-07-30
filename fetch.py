@@ -261,7 +261,7 @@ class InterSvnRepository(InterRepository):
         # (or youngest_revnum) and call self.target.add_revision() 
         # or self.target.add_inventory() each time
         if revision_id is None:
-            path = ""
+            path = None
             until_revnum = self.source._latest_revnum
         else:
             (path, until_revnum) = self.source.parse_revision_id(revision_id)
@@ -273,6 +273,7 @@ class InterSvnRepository(InterRepository):
         prev_revid = None
         for (branch, changes, revnum) in \
             self.source._log.follow_history(path, until_revnum):
+            mutter('branch %r' % branch)
             revid = self.source.generate_revision_id(revnum, branch)
 
             if prev_revid is not None:
@@ -368,6 +369,8 @@ class InterSvnRepository(InterRepository):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with SvnRepository."""
+        # FIXME: Also check target uses VersionedFile
+        mutter('test %r' % source)
         return isinstance(source, SvnRepository)
 
 

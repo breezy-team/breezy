@@ -17,6 +17,7 @@
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirTestProviderAdapter, BzrDirFormat
 from bzrlib.repository import Repository
+from bzrlib.trace import mutter
 
 import os
 
@@ -86,6 +87,51 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
 
         self.assertIs(None, branch.nick)
+
+    def test_fetch_odd(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/trunk': None, 
+                         'dc/trunk/hosts': 'hej1'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "created trunk and added hosts") #1
+
+        self.build_tree({'dc/trunk/hosts': 'hej2'})
+        self.client_commit("dc", "rev 2") #2
+
+        self.build_tree({'dc/trunk/hosts': 'hej3'})
+        self.client_commit("dc", "rev 3") #3
+
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "added branches") #4
+
+        self.client_copy("dc/trunk", "dc/branches/foobranch")
+        self.client_commit("dc", "added branch foobranch") #5
+
+        self.build_tree({'dc/branches/foobranch/hosts': 'foohosts'})
+        self.client_commit("dc", "foohosts") #6
+
+        os.mkdir("new")
+
+        url = "svn+"+repos_url+"/branches/foobranch"
+        mutter('open %r' % url)
+        olddir = BzrDir.open(url)
+
+        newdir = olddir.sprout("new")
+
+        newbranch = newdir.open_branch()
+
+        uuid = olddir.open_repository().uuid
+        tree = newbranch.repository.revision_tree(
+                "svn-v1:6@%s-branches%%2ffoobranch" % uuid)
+
+        weave = tree.get_weave(tree.inventory.path2id("hosts"))
+        self.assertEqual(['svn-v1:1@%s-trunk' % uuid, 
+                          'svn-v1:2@%s-trunk' % uuid, 
+                          'svn-v1:3@%s-trunk' % uuid, 
+                          'svn-v1:6@%s-branches%%2ffoobranch' % uuid],
+                          weave.versions())
  
     def test_fetch_branch(self):
         repos_url = self.make_client('d', 'sc')
