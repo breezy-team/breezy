@@ -131,7 +131,6 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
                 "svn-v1:7@%s-branches%%2ffoobranch" % uuid)
 
         weave = tree.get_weave(tree.inventory.path2id("hosts"))
-        print weave.versions()
         self.assertEqual(['svn-v1:6@%s-branches%%2ffoobranch' % uuid, 
                           'svn-v1:7@%s-branches%%2ffoobranch' % uuid],
                           weave.versions())

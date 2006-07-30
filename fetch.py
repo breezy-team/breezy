@@ -182,13 +182,19 @@ class RevisionBuildEditor(svn.delta.Editor):
         return path
 
     def open_file(self, path, parent_id, base_revnum, pool):
+        base_file_id, base_revid = self.source.path_to_file_id(base_revnum, os.path.join(self.parent_branch, path))
+        file_id, revid = self.id_map[path]
         self.is_executable = None
-        file_id, revision_id = self.parent_id_map[path]
-        self.is_symlink = (self.inventory[file_id].kind == 'symlink')
-        file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
-        self.file_data = file_weave.get_text(revision_id)
-        self.file_parents = [revision_id]
+        self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
+        file_weave = self.weave_store.get_weave_or_empty(base_file_id, self.transact)
+        self.file_data = file_weave.get_text(base_revid)
         self.file_stream = None
+        if file_id == base_file_id:
+            self.file_parents = [base_revid]
+        else:
+            # Replace
+            del self.inventory[base_file_id]
+            self.file_parents = []
         return path
 
     def close_file(self, path, checksum):
@@ -274,7 +280,6 @@ class InterSvnRepository(InterRepository):
         prev_revid = None
         for (branch, changes, revnum) in \
             self.source._log.follow_history(path, until_revnum):
-            mutter('branch %r' % branch)
             revid = self.source.generate_revision_id(revnum, branch)
 
             if prev_revid is not None:
