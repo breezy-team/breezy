@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import NoSuchRevision, BzrError, NotBranchError
+from bzrlib.errors import NoSuchRevision, BzrNewError, NotBranchError
 from bzrlib.progress import ProgressBar, DummyProgress
 from bzrlib.trace import mutter
 
@@ -25,11 +25,11 @@ from svn.core import SubversionException
 import svn.ra
 from transport import SvnRaTransport
 
-class NotSvnBranchPath(BzrError):
+class NotSvnBranchPath(BzrNewError):
+    """{%(branch_path)s} is not a valid Svn branch path"""
+
     def __init__(self, branch_path):
-        BzrError.__init__(self, 
-                "%r is not a valid Svn branch path", 
-                branch_path)
+        BzrNewError.__init__(self)
         self.branch_path = branch_path
 
 
