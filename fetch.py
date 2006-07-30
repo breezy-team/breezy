@@ -327,11 +327,18 @@ class InterSvnRepository(InterRepository):
                 svn.ra.reparent(self.source.ra, "%s/%s" % (repos_root, parent_branch))
 
             pool = Pool()
-            mutter('svn switch %r:%r -> %r:%r' % 
+            if parent_branch != branch:
+                mutter('svn switch %r:%r -> %r:%r' % 
                                (parent_branch, parent_revnum, branch, revnum))
-            reporter, reporter_baton = svn.ra.do_switch(self.source.ra, 
+                reporter, reporter_baton = svn.ra.do_switch(self.source.ra, 
                            revnum, "", True, 
                            "%s/%s" % (repos_root, branch),
+                           edit, edit_baton, pool)
+            else:
+                mutter('svn update -r %r:%r %r' % 
+                               (parent_revnum, revnum, branch))
+                reporter, reporter_baton = svn.ra.do_update(self.source.ra, 
+                           revnum, "", True, 
                            edit, edit_baton, pool)
 
             # Report status of existing paths
