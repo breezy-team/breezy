@@ -180,6 +180,10 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                 
             raise BzrError('external diff failed with %s; command: %r' 
                            % (rc, diffcmd))
+
+        # internal_diff() adds a trailing newline, add one here for consistency
+        to_file.write('\n')
+
     finally:
         oldtmpf.close()                 # and delete
         newtmpf.close()

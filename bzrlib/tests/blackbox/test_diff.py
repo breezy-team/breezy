@@ -288,4 +288,4 @@ class TestExternalDiff(TestDiff):
                                    "--- goodbye\t1970-01-01 00:00:00 +0000\n"
                                    "+++ goodbye\t")
         self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
-                                 "+baz\n")
+                                 "+baz\n\n")

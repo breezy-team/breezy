@@ -99,6 +99,7 @@ class TestDiff(TestCase):
     def test_external_diff(self):
         lines = external_udiff_lines(['boo\n'], ['goo\n'])
         self.check_patch(lines)
+        self.assertEqual('\n', lines[-1])
 
     def test_external_diff_no_fileno(self):
         # Make sure that we can handle not having a fileno, even
@@ -110,7 +111,7 @@ class TestDiff(TestCase):
 
     def test_external_diff_binary(self):
         lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
-        self.assertEqual(['Binary files old and new differ\n'], lines)
+        self.assertEqual(['Binary files old and new differ\n', '\n'], lines)
 
     def test_no_external_diff(self):
         """Check that NoDiff is raised when diff is not available"""
