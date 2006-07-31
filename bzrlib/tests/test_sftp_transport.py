@@ -312,6 +312,28 @@ class SSHVendorBadConnection(TestCaseWithTransport):
     def test_bad_connection_ssh(self):
         """None => auto-detect vendor"""
         self.set_vendor(None)
-        self.assertRaises(errors.ConnectionError,
-                          bzrlib.transport.get_transport, self.bogus_url)
+        # This is how I would normally test the connection code
+        # it makes it very clear what we are testing.
+        # However, 'ssh' will create stipple on the output, so instead
+        # I'm using run_bzr_subprocess, and parsing the output
+        # try:
+        #     t = bzrlib.transport.get_transport(self.bogus_url)
+        # except errors.ConnectionError:
+        #     # Correct error
+        #     pass
+        # except errors.NameError, e:
+        #     if 'SSHException' in str(e):
+        #         raise TestSkipped('Known NameError bug in paramiko 1.6.1')
+        #     raise
+        # else:
+        #     self.fail('Excepted ConnectionError to be raised')
+
+        out, err = self.run_bzr_subprocess('log', self.bogus_url, retcode=3)
+        self.assertEqual('', out)
+        if "NameError: global name 'SSHException'" in err:
+            # We aren't fixing this bug, because it is a bug in
+            # paramiko, but we know about it, so we don't have to
+            # fail the test
+            raise TestSkipped('Known NameError bug with paramiko-1.6.1')
+        self.assertContainsRe(err, 'Connection error')
 
