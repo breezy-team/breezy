@@ -11,8 +11,10 @@ class TestRevProps(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         b.nick = 'Nicholas'
-        props = dict(flavor='choc-mint', 
-                     condiment='orange\n  mint\n\tcandy')
+        props = dict(flavor='choc-mint',
+                     condiment='orange\n  mint\n\tcandy',
+                     empty='',
+                     non_ascii=u'\xb5')
         wt.commit(message='initial null commit', 
                  revprops=props,
                  allow_pointless=True,
@@ -20,10 +22,12 @@ class TestRevProps(TestCaseWithTransport):
         rev = b.repository.get_revision('test@user-1')
         self.assertTrue('flavor' in rev.properties)
         self.assertEquals(rev.properties['flavor'], 'choc-mint')
-        self.assertEquals(sorted(rev.properties.items()),
-                          [('branch-nick', 'Nicholas'), 
+        self.assertEquals([('branch-nick', 'Nicholas'), 
                            ('condiment', 'orange\n  mint\n\tcandy'),
-                           ('flavor', 'choc-mint')])
+                           ('empty', ''),
+                           ('flavor', 'choc-mint'),
+                           ('non_ascii', u'\xb5'),
+                          ], sorted(rev.properties.items()))
 
     def test_invalid_revprops(self):
         """Invalid revision properties"""
