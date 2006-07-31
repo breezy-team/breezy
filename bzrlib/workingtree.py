@@ -1517,13 +1517,13 @@ class WorkingTree(bzrlib.tree.Tree):
                         del current_disk[1][bzrdir_loc]
             if inv_finished:
                 # everything is unknown
-                direction = -1
+                direction = 1
             elif disk_finished:
                 # everything is missing
-                direction = 1
+                direction = -1
             else:
                 direction = cmp(current_inv[0][0], current_disk[0][0])
-            if direction < 0:
+            if direction > 0:
                 # disk is before inventory - unknown
                 dirblock = [(relpath, basename, kind, stat, None, None) for
                     relpath, basename, kind, stat, top_path in current_disk[1]]
@@ -1532,7 +1532,7 @@ class WorkingTree(bzrlib.tree.Tree):
                     current_disk = disk_iterator.next()
                 except StopIteration:
                     disk_finished = True
-            elif direction > 0:
+            elif direction < 0:
                 # inventory is before disk - missing.
                 dirblock = [(relpath, basename, 'unknown', None, fileid, kind)
                     for relpath, basename, dkind, stat, fileid, kind in 
@@ -1547,14 +1547,15 @@ class WorkingTree(bzrlib.tree.Tree):
                 # merge the inventory and disk data together
                 dirblock = []
                 for relpath, subiterator in itertools.groupby(sorted(
-                    current_inv[1] + current_disk[1]), operator.itemgetter(1)):
+                    current_inv[1] + current_disk[1], key=operator.itemgetter(0)), operator.itemgetter(1)):
                     path_elements = list(subiterator)
                     if len(path_elements) == 2:
+                        inv_row, disk_row = path_elements
                         # versioned, present file
-                        dirblock.append((path_elements[0][0],
-                            path_elements[0][1], path_elements[1][2],
-                            path_elements[1][3], path_elements[0][4],
-                            path_elements[0][5]))
+                        dirblock.append((inv_row[0],
+                            inv_row[1], disk_row[2],
+                            disk_row[3], inv_row[4],
+                            inv_row[5]))
                     elif len(path_elements[0]) == 5:
                         # unknown disk file
                         dirblock.append((path_elements[0][0],
