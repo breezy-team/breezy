@@ -475,4 +475,10 @@ into their integration branch, which I'll merge regularly.  (If you do
 so, please reply and say so.)
 
 
+Making installers for OS Windows
+================================
+To build a win32 installer, see the instructions at wiki page:
+http://bazaar-vcs.org/BzrWin32Installer
+
+
 :: vim: ft=rst tw=74 ai
