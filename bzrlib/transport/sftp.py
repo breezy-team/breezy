@@ -852,7 +852,7 @@ class SFTPTransport (Transport):
             t = paramiko.Transport((self._host, self._port or 22))
             t.set_log_channel('bzr.paramiko')
             t.start_client()
-        except paramiko.SSHException, e:
+        except (paramiko.SSHException, socket.error), e:
             raise ConnectionError('Unable to reach SSH host %s:%s: %s' 
                                   % (self._host, self._port, e))
             

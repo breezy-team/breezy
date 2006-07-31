@@ -188,21 +188,6 @@ class SFTPNonServerTest(TestCase):
             self.assertEquals(str(e), 
                     'Transport error: ~janneke: invalid port number ')
 
-    def test_bad_connection(self):
-        """Test that a real connection attempt raises the right error"""
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
-        bogus_url = 'sftp://127.0.0.1:1/'
-        # We should get a connection error
-        out, err = self.run_bzr_subprocess('log', bogus_url, retcode=3)
-        self.assertEqual('', out)
-        if "NameError: global name 'SSHException'" in err:
-            # We aren't fixing this bug, because it is a bug in
-            # paramiko, but we know about it, so we don't have to
-            # fail the test
-            raise TestSkipped('Known NameError bug with paramiko-1.6.1')
-        self.assertContainsRe(err, 'Connection error')
-
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
     """Test some stuff when accessing a bzr Branch over sftp"""
@@ -240,10 +225,93 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         self.assertEquals(b2.revision_history(), ['a1', 'a2'])
 
 
-class SFTPFullHandshakingTest(TestCaseWithSFTPServer):
-    """Verify that a full-handshake (SSH over loopback TCP) sftp connection works."""
+class SSHVendorConnection(TestCaseWithSFTPServer):
+    """Test that the ssh vendors can all connect.
+
+    Verify that a full-handshake (SSH over loopback TCP) sftp connection works.
+
+    We have 3 sftp implementations in the test suite:
+      'loopback': Doesn't use ssh, just uses a local socket. Most tests are
+                  done this way to save the handshaking time, so it is not
+                  tested again here
+      'none':     This uses paramiko's built-in ssh client and server, and layers
+                  sftp on top of it.
+      None:       If 'ssh' exists on the machine, then it will be spawned as a
+                  child process.
+    """
     
-    def test_connection(self):
+    def setUp(self):
+        super(SSHVendorConnection, self).setUp()
         from bzrlib.transport.sftp import SFTPFullAbsoluteServer
-        self.transport_server = SFTPFullAbsoluteServer
-        self.get_transport()
+
+        def create_server():
+            """Just a wrapper so that when created, it will set _vendor"""
+            # SFTPFullAbsoluteServer can handle any vendor,
+            # it just needs to be set between the time it is instantiated
+            # and the time .setUp() is called
+            server = SFTPFullAbsoluteServer()
+            server._vendor = self._test_vendor
+            return server
+        self._test_vendor = 'loopback'
+        self.transport_server = create_server
+        f = open('a_file', 'wb')
+        try:
+            f.write('foobar\n')
+        finally:
+            f.close()
+
+    def set_vendor(self, vendor):
+        self._test_vendor = vendor
+
+    def test_connection_paramiko(self):
+        self.set_vendor('none')
+        t = self.get_transport()
+        self.assertEqual('foobar\n', t.get('a_file').read())
+
+    def test_connection_vendor(self):
+        raise TestSkipped("We don't test spawning real ssh,"
+                          " because it prompts for a password."
+                          " Enable this test if we figure out"
+                          " how to prevent this.")
+        self.set_vendor(None)
+        t = self.get_transport()
+        self.assertEqual('foobar\n', t.get('a_file').read())
+
+
+class SSHVendorBadConnection(TestCaseWithTransport):
+    """Test that the ssh vendors handle bad connection properly
+
+    We don't subclass TestCaseWithSFTPServer, because we don't actually
+    need an SFTP connection.
+    """
+
+    def setUp(self):
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
+        super(SSHVendorBadConnection, self).setUp()
+        import bzrlib.transport.sftp
+
+        self._transport_sftp = bzrlib.transport.sftp
+
+        self.bogus_url = 'sftp://127.0.0.1:1/'
+
+        orig_vendor = bzrlib.transport.sftp._ssh_vendor
+        def reset_vendor():
+            bzrlib.transport.sftp._ssh_vendor = orig_vendor
+        self.addCleanup(reset_vendor)
+
+    def set_vendor(self, vendor):
+        self._transport_sftp._ssh_vendor = vendor
+
+    def test_bad_connection_paramiko(self):
+        """Test that a real connection attempt raises the right error"""
+        self.set_vendor('none')
+        self.assertRaises(errors.ConnectionError,
+                          bzrlib.transport.get_transport, self.bogus_url)
+
+    def test_bad_connection_ssh(self):
+        """None => auto-detect vendor"""
+        self.set_vendor(None)
+        self.assertRaises(errors.ConnectionError,
+                          bzrlib.transport.get_transport, self.bogus_url)
+
