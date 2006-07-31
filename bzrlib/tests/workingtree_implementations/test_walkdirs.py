@@ -30,8 +30,7 @@ from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 class TestWalkdirs(TestCaseWithWorkingTree):
 
-    def test_walkdir_unknowns(self):
-        """unknown files and directories should be reported by walkdirs."""
+    def get_tree_with_unknowns(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree([
             'unknown file',
@@ -45,21 +44,26 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         u_d_s_stat = os.lstat('unknown dir to skip')
         u_d_f_stat = os.lstat('unknown dir/a file')
         expected_dirblocks = [
-            (('', '', tree.inventory.root.file_id),
+            (('', tree.inventory.root.file_id),
              [
-              ('unknown dir', 'unknown dir', 'directory', u_d_stat, 'unknown dir', None, None),
-              ('unknown dir to skip', 'unknown dir to skip', 'directory', u_d_s_stat, 'unknown dir to skip', None, None),
-              ('unknown file', 'unknown file', 'file', u_f_stat, 'unknown file', None, None),
+              ('unknown dir', 'unknown dir', 'directory', u_d_stat, None, None),
+              ('unknown dir to skip', 'unknown dir to skip', 'directory', u_d_s_stat, None, None),
+              ('unknown file', 'unknown file', 'file', u_f_stat, None, None),
              ]
             ),
-            (('unknown dir', 'unknown dir', None),
-             [('unknown dir/a file', 'a file', 'file', u_d_f_stat, 'unknown dir/a file', None, None),
+            (('unknown dir', None),
+             [('unknown dir/a file', 'a file', 'file', u_d_f_stat, None, None),
              ]
             ),
-        ]
+            ]
+        return tree, expected_dirblocks
+    
+    def test_walkdir_unknowns(self):
+        """unknown files and directories should be reported by walkdirs."""
         # test that its iterable by iterating, and that skipping an unknown dir
         # works:
         result = []
+        tree, expected_dirblocks = self.get_tree_with_unknowns()
         found_unknown_to_skip = False
         for dirinfo, dirblock in tree.walkdirs():
             result.append((dirinfo, list(dirblock)))
@@ -71,3 +75,13 @@ class TestWalkdirs(TestCaseWithWorkingTree):
         for pos, item in enumerate(expected_dirblocks):
             self.assertEqual(item, result[pos])
         self.assertTrue(found_unknown_to_skip)
+
+    def test_walkdir_from_unknown_dir(self):
+        """Doing a walkdir when the requested prefix is unknown but on disk."""
+        result = []
+        tree, expected_dirblocks = self.get_tree_with_unknowns()
+        for dirinfo, dirblock in tree.walkdirs('unknown dir'):
+            result.append((dirinfo, list(dirblock)))
+        # check each return value for debugging ease.
+        for pos, item in enumerate(expected_dirblocks[1:]):
+            self.assertEqual(item, result[pos])

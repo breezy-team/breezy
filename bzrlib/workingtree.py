@@ -1490,9 +1490,13 @@ class WorkingTree(bzrlib.tree.Tree):
             disk_top = disk_top[:-1]
         top_strip_len = len(disk_top) + 1
         disk_iterator = osutils.walkdirs(disk_top, prefix)
-        current_inv = inventory_iterator.next()
+        try:
+            current_inv = inventory_iterator.next()
+            inv_finished = False
+        except StopIteration:
+            current_inv = None
+            inv_finished = True
         current_disk = disk_iterator.next()
-        inv_finished = False
         disk_finished = False
         while not inv_finished or not disk_finished:
             if not disk_finished:
@@ -1505,17 +1509,21 @@ class WorkingTree(bzrlib.tree.Tree):
                     if current_disk[1][bzrdir_loc][0] == '.bzr':
                         # we dont yield the contents of, or, .bzr itself.
                         del current_disk[1][bzrdir_loc]
-            direction = cmp(current_inv[0][0], current_disk[0][0])
+            if inv_finished:
+                # everything is unknown
+                direction = -1
+            else:
+                direction = cmp(current_inv[0][0], current_disk[0][0])
             if direction < 0:
-                # inventory is before disk - unknown.
-                dirblock = [(relpath, basename, kind, stat, top_path[top_strip_len:], None, None) for relpath, basename, kind, stat, top_path in current_disk[1]]
-                yield (current_disk[0][0], current_disk[0][1][top_strip_len:], None), dirblock
+                # disk is before inventory - unknown
+                dirblock = [(relpath, basename, kind, stat, None, None) for relpath, basename, kind, stat, top_path in current_disk[1]]
+                yield (current_disk[0][0], None), dirblock
                 try:
                     current_disk = disk_iterator.next()
                 except StopIteration:
                     disk_finished = True
             elif direction > 0:
-                # disk is before inventory - missing
+                # inventory is before disk - missing.
                 try:
                     current_inv = inventory_iterator.next()
                 except StopIteration:
@@ -1523,17 +1531,17 @@ class WorkingTree(bzrlib.tree.Tree):
             else:
                 # versioned present directory
                 # merge the inventory and disk data together
-#                dirblock = [(relpath, basename, kind, stat, top_path, None, None, None) for relpath, basename, kind, stat, top_path in current_disk[1]]
+#                dirblock = [(relpath, basename, kind, stat, None, None) for relpath, basename, kind, stat, top_path in current_disk[1]]
 #                yield current_inv
                 dirblock = []
                 for relpath, subiterator in itertools.groupby(sorted(current_inv[1] + current_disk[1]), operator.itemgetter(1)):
                     path_elements = list(subiterator)
                     if len(path_elements) == 2:
                         # versioned, present file
-                        dirblock.append((path_elements[0][0], path_elements[0][1], path_elements[1][2], path_elements[1][3], path_elements[0][4], path_elements[0][5], path_elements[0][6]))
+                        dirblock.append((path_elements[0][0], path_elements[0][1], path_elements[1][2], path_elements[1][3], path_elements[0][4], path_elements[0][5]))
                     elif len(path_elements[0]) == 5:
                         # unknown disk file
-                        dirblock.append((path_elements[0][0], path_elements[0][1], path_elements[0][2], path_elements[0][3], path_elements[0][4][top_strip_len:], None, None))
+                        dirblock.append((path_elements[0][0], path_elements[0][1], path_elements[0][2], path_elements[0][3], None, None))
                 yield current_inv[0], dirblock
                 try:
                     current_inv = inventory_iterator.next()
@@ -1544,30 +1552,31 @@ class WorkingTree(bzrlib.tree.Tree):
                 except StopIteration:
                     disk_finished = True
 
-        #for dirinfo, dirblock in self._walkdirs(prefix):
-        #    yield dirinfo, dirblock
-
     def _walkdirs(self, prefix=""):
         _directory = 'directory'
-        pending = [('', '', _directory, None, '', None, None)]
+        # get the root in the inventory
         inv = self.inventory
+        top_id = inv.path2id(prefix)
+        if top_id is None:
+            pending = []
+        else:
+            pending = [(prefix, '', _directory, None, top_id, None)]
         while pending:
             dirblock = []
             currentdir = pending.pop()
-            # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
-            top = currentdir[4]
+            # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-id, 5-kind
+            top_id = currentdir[4]
             if currentdir[0]:
                 relroot = currentdir[0] + '/'
             else:
                 relroot = ""
             # FIXME: stash the node in pending
-            entry = inv[inv.path2id(top)]
+            entry = inv[top_id]
             for name, child in entry.sorted_children():
-                toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None, toppath,
+                dirblock.append((relroot + name, name, child.kind, None,
                     child.file_id, child.kind
                     ))
-            yield (currentdir[0], top, entry.file_id), dirblock
+            yield (currentdir[0], entry.file_id), dirblock
             # push the user specified dirs from dirblock
             for dir in reversed(dirblock):
                 if dir[2] == _directory:

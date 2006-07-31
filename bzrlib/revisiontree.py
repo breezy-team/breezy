@@ -115,25 +115,28 @@ class RevisionTree(Tree):
 
     def walkdirs(self, prefix=""):
         _directory = 'directory'
-        pending = [('', '', _directory, None, '', None, None)]
         inv = self.inventory
+        top_id = inv.path2id(prefix)
+        if top_id is None:
+            pending = []
+        else:
+            pending = [(prefix, '', _directory, None, top_id, None)]
         while pending:
             dirblock = []
             currentdir = pending.pop()
-            # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
-            top = currentdir[4]
+            # 0 - relpath, 1- basename, 2- kind, 3- stat, id, v-kind
             if currentdir[0]:
                 relroot = currentdir[0] + '/'
             else:
                 relroot = ""
             # FIXME: stash the node in pending
-            entry = inv[inv.path2id(top)]
+            entry = inv[currentdir[4]]
             for name, child in entry.sorted_children():
                 toppath = relroot + name
-                dirblock.append((toppath, name, child.kind, None, toppath,
+                dirblock.append((toppath, name, child.kind, None,
                     child.file_id, child.kind
                     ))
-            yield (currentdir[0], top, entry.file_id), dirblock
+            yield (currentdir[0], entry.file_id), dirblock
             # push the user specified dirs from dirblock
             for dir in reversed(dirblock):
                 if dir[2] == _directory:
