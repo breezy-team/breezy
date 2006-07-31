@@ -90,10 +90,11 @@ class cmd_statistics(bzrlib.commands.Command):
 
     aliases = ['stats']
     takes_args = ['location?']
+    takes_options = ['revision']
 
     encoding_type = 'replace'
 
-    def run(self, location='.'):
+    def run(self, location='.', revision=None):
         try:
             wt = WorkingTree.open_containing(location)[0]
         except errors.NoWorkingTree:
@@ -102,6 +103,8 @@ class cmd_statistics(bzrlib.commands.Command):
         else:
             b = wt.branch
             last_rev = wt.last_revision()
+        if revision is not None:
+            last_rev = revision[0].in_history(b).rev_id
 
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         committers = {}
