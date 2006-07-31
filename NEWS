@@ -202,6 +202,9 @@ IN DEVELOPMENT
     * ``bzr status foo`` when foo was unversioned used to cause a full delta
       to be generated (John Arbash Meinel, #53638)
 
+    * ``bzr diff --diff-options`` works around a bug in subprocess.py.
+      (John Arbash Meinel, #54651)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
