@@ -1484,20 +1484,26 @@ class WorkingTree(bzrlib.tree.Tree):
         return conflicts
 
     def walkdirs(self, prefix=""):
-        inventory_iterator = self._walkdirs(prefix)
         disk_top = self.abspath(prefix)
         if disk_top.endswith('/'):
             disk_top = disk_top[:-1]
         top_strip_len = len(disk_top) + 1
+        inventory_iterator = self._walkdirs(prefix)
         disk_iterator = osutils.walkdirs(disk_top, prefix)
+        try:
+            current_disk = disk_iterator.next()
+            disk_finished = False
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
+            current_disk = None
+            disk_finished = True
         try:
             current_inv = inventory_iterator.next()
             inv_finished = False
         except StopIteration:
             current_inv = None
             inv_finished = True
-        current_disk = disk_iterator.next()
-        disk_finished = False
         while not inv_finished or not disk_finished:
             if not disk_finished:
                 # strip out .bzr dirs
@@ -1512,11 +1518,15 @@ class WorkingTree(bzrlib.tree.Tree):
             if inv_finished:
                 # everything is unknown
                 direction = -1
+            elif disk_finished:
+                # everything is missing
+                direction = 1
             else:
                 direction = cmp(current_inv[0][0], current_disk[0][0])
             if direction < 0:
                 # disk is before inventory - unknown
-                dirblock = [(relpath, basename, kind, stat, None, None) for relpath, basename, kind, stat, top_path in current_disk[1]]
+                dirblock = [(relpath, basename, kind, stat, None, None) for
+                    relpath, basename, kind, stat, top_path in current_disk[1]]
                 yield (current_disk[0][0], None), dirblock
                 try:
                     current_disk = disk_iterator.next()
@@ -1524,6 +1534,10 @@ class WorkingTree(bzrlib.tree.Tree):
                     disk_finished = True
             elif direction > 0:
                 # inventory is before disk - missing.
+                dirblock = [(relpath, basename, 'unknown', None, fileid, kind)
+                    for relpath, basename, dkind, stat, fileid, kind in 
+                    current_inv[1]]
+                yield (current_inv[0][0], current_inv[0][1]), dirblock
                 try:
                     current_inv = inventory_iterator.next()
                 except StopIteration:
@@ -1531,17 +1545,28 @@ class WorkingTree(bzrlib.tree.Tree):
             else:
                 # versioned present directory
                 # merge the inventory and disk data together
-#                dirblock = [(relpath, basename, kind, stat, None, None) for relpath, basename, kind, stat, top_path in current_disk[1]]
-#                yield current_inv
                 dirblock = []
-                for relpath, subiterator in itertools.groupby(sorted(current_inv[1] + current_disk[1]), operator.itemgetter(1)):
+                for relpath, subiterator in itertools.groupby(sorted(
+                    current_inv[1] + current_disk[1]), operator.itemgetter(1)):
                     path_elements = list(subiterator)
                     if len(path_elements) == 2:
                         # versioned, present file
-                        dirblock.append((path_elements[0][0], path_elements[0][1], path_elements[1][2], path_elements[1][3], path_elements[0][4], path_elements[0][5]))
+                        dirblock.append((path_elements[0][0],
+                            path_elements[0][1], path_elements[1][2],
+                            path_elements[1][3], path_elements[0][4],
+                            path_elements[0][5]))
                     elif len(path_elements[0]) == 5:
                         # unknown disk file
-                        dirblock.append((path_elements[0][0], path_elements[0][1], path_elements[0][2], path_elements[0][3], None, None))
+                        dirblock.append((path_elements[0][0],
+                            path_elements[0][1], path_elements[0][2],
+                            path_elements[0][3], None, None))
+                    elif len(path_elements[0]) == 6:
+                        # versioned, absent file.
+                        dirblock.append((path_elements[0][0],
+                            path_elements[0][1], 'unknown', None,
+                            path_elements[0][4], path_elements[0][5]))
+                    else:
+                        raise NotImplementedError('unreachable code')
                 yield current_inv[0], dirblock
                 try:
                     current_inv = inventory_iterator.next()
