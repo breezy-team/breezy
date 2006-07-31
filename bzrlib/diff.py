@@ -16,6 +16,7 @@
 
 import errno
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -90,21 +91,6 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
-    fileno_func = getattr(to_file, 'fileno', None)
-    if fileno_func is not None:
-        fileno = fileno_func()
-        # WORKAROUND: jam 20060731 python2.4 subprocess.py will 
-        #       close too many file descriptors if you pass stdout=sys.stdout
-        #       so if we are about to pass stdout, just pass None
-        if fileno == 1:
-            out_file = None
-        else:
-            out_file = to_file
-        have_fileno = True
-    else:
-        out_file = subprocess.PIPE
-        have_fileno = False
-    
     # make sure our own output is properly ordered before the diff
     to_file.flush()
 
@@ -164,29 +150,28 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         try:
             pipe = subprocess.Popen(diffcmd,
                                     stdin=subprocess.PIPE,
-                                    stdout=out_file)
+                                    stdout=subprocess.PIPE)
         except OSError, e:
             if e.errno == errno.ENOENT:
                 raise errors.NoDiff(str(e))
             raise
         pipe.stdin.close()
 
-        if not have_fileno:
-            bzrlib.osutils.pumpfile(pipe.stdout, to_file)
+        first_line = pipe.stdout.readline()
+        to_file.write(first_line)
+        bzrlib.osutils.pumpfile(pipe.stdout, to_file)
         rc = pipe.wait()
         
-        # TODO: jam 20060731 'diff' returns exit code '2' if binary 
-        #       files differ. But it also returns '2' if a file you
-        #       are comparing doesn't exist, etc.
-        #       'info diff' says:
-        #         "An exit status of 0 means no differences were found, 
-        #         1 means some differences were found, and 2 means trouble."
-        #       If we assume we do things correctly, we can assume '2' means
-        #       'Binary files .* differ'
-        #       Alternatively, we could read the output of diff, and look
-        #       for the "Binary files .* differ" line, but that would mean
-        #       we always need to buffer the diff output.
-        if rc not in (0, 1, 2):
+        if rc == 2:
+            # 'diff' gives retcode == 2 for all sorts of errors
+            # one of those is 'Binary files differ'.
+            # Bad options could also be the problem.
+            # 'Binary files' is not a real error, so we suppress that error
+            m = re.match('^binary files.*differ$', first_line, re.I)
+            if not m:
+                raise BzrError('external diff failed with exit code 2;'
+                               ' command: %r' % (diffcmd,))
+        elif rc not in (0, 1):
             # returns 1 if files differ; that's OK
             if rc < 0:
                 msg = 'signal %d' % (-rc)
