@@ -831,9 +831,13 @@ class SFTPTransport (Transport):
                                       % (self._host, self._port, e))
             self._sftp = SFTPClient(LoopbackSFTP(sock))
         elif vendor != 'none':
-            sock = SFTPSubprocess(self._host, vendor, self._port,
-                                  self._username)
-            self._sftp = SFTPClient(sock)
+            try:
+                sock = SFTPSubprocess(self._host, vendor, self._port,
+                                      self._username)
+                self._sftp = SFTPClient(sock)
+            except (EOFError, paramiko.SSHException), e:
+                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                      % (self._host, self._port, e))
         else:
             self._paramiko_connect()
 
