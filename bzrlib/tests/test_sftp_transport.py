@@ -188,6 +188,21 @@ class SFTPNonServerTest(TestCase):
             self.assertEquals(str(e), 
                     'Transport error: ~janneke: invalid port number ')
 
+    def test_bad_connection(self):
+        """Test that a real connection attempt raises the right error"""
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
+        bogus_url = 'sftp://127.0.0.1:1/'
+        # We should get a connection error
+        out, err = self.run_bzr_subprocess('log', bogus_url, retcode=3)
+        self.assertEqual('', out)
+        if "NameError: global name 'SSHException'" in err:
+            # We aren't fixing this bug, because it is a bug in
+            # paramiko, but we know about it, so we don't have to
+            # fail the test
+            raise TestSkipped('Known NameError bug with paramiko-1.6.1')
+        self.assertContainsRe(err, 'Connection error')
+
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
     """Test some stuff when accessing a bzr Branch over sftp"""
