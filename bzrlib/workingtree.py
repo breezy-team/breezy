@@ -40,11 +40,14 @@ CONFLICT_HEADER_1 = "BZR conflict list format 1"
 # memory.  (Now done? -- mbp 20060309)
 
 from binascii import hexlify
+from bisect import bisect_left
 import collections
 from copy import deepcopy
 from cStringIO import StringIO
 import errno
 import fnmatch
+import itertools
+import operator
 import os
 import re
 import stat
@@ -1481,6 +1484,70 @@ class WorkingTree(bzrlib.tree.Tree):
         return conflicts
 
     def walkdirs(self, prefix=""):
+        inventory_iterator = self._walkdirs(prefix)
+        disk_top = self.abspath(prefix)
+        if disk_top.endswith('/'):
+            disk_top = disk_top[:-1]
+        top_strip_len = len(disk_top) + 1
+        disk_iterator = osutils.walkdirs(disk_top, prefix)
+        current_inv = inventory_iterator.next()
+        current_disk = disk_iterator.next()
+        inv_finished = False
+        disk_finished = False
+        while not inv_finished or not disk_finished:
+            if not disk_finished:
+                # strip out .bzr dirs
+                if current_disk[0][1][top_strip_len:] == '':
+                    # osutils.walkdirs can be made nicer - 
+                    # yield the path-from-prefix rather than the pathjoined
+                    # value.
+                    bzrdir_loc = bisect_left(current_disk[1], ('.bzr', '.bzr'))
+                    if current_disk[1][bzrdir_loc][0] == '.bzr':
+                        # we dont yield the contents of, or, .bzr itself.
+                        del current_disk[1][bzrdir_loc]
+            direction = cmp(current_inv[0][0], current_disk[0][0])
+            if direction < 0:
+                # inventory is before disk - unknown.
+                dirblock = [(relpath, basename, kind, stat, top_path[top_strip_len:], None, None) for relpath, basename, kind, stat, top_path in current_disk[1]]
+                yield (current_disk[0][0], current_disk[0][1][top_strip_len:], None), dirblock
+                try:
+                    current_disk = disk_iterator.next()
+                except StopIteration:
+                    disk_finished = True
+            elif direction > 0:
+                # disk is before inventory - missing
+                try:
+                    current_inv = inventory_iterator.next()
+                except StopIteration:
+                    inv_finished = True
+            else:
+                # versioned present directory
+                # merge the inventory and disk data together
+#                dirblock = [(relpath, basename, kind, stat, top_path, None, None, None) for relpath, basename, kind, stat, top_path in current_disk[1]]
+#                yield current_inv
+                dirblock = []
+                for relpath, subiterator in itertools.groupby(sorted(current_inv[1] + current_disk[1]), operator.itemgetter(1)):
+                    path_elements = list(subiterator)
+                    if len(path_elements) == 2:
+                        # versioned, present file
+                        dirblock.append((path_elements[0][0], path_elements[0][1], path_elements[1][2], path_elements[1][3], path_elements[0][4], path_elements[0][5], path_elements[0][6]))
+                    elif len(path_elements[0]) == 5:
+                        # unknown disk file
+                        dirblock.append((path_elements[0][0], path_elements[0][1], path_elements[0][2], path_elements[0][3], path_elements[0][4][top_strip_len:], None, None))
+                yield current_inv[0], dirblock
+                try:
+                    current_inv = inventory_iterator.next()
+                except StopIteration:
+                    inv_finished = True
+                try:
+                    current_disk = disk_iterator.next()
+                except StopIteration:
+                    disk_finished = True
+
+        #for dirinfo, dirblock in self._walkdirs(prefix):
+        #    yield dirinfo, dirblock
+
+    def _walkdirs(self, prefix=""):
         _directory = 'directory'
         pending = [('', '', _directory, None, '', None, None)]
         inv = self.inventory

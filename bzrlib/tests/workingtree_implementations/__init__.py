@@ -61,6 +61,7 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_is_ignored',
         'bzrlib.tests.workingtree_implementations.test_locking',
         'bzrlib.tests.workingtree_implementations.test_pull',
+        'bzrlib.tests.workingtree_implementations.test_walkdirs',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]
     adapter = WorkingTreeTestProviderAdapter(

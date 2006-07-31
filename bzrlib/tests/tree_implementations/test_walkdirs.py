@@ -41,6 +41,14 @@ class TestWalkdirs(TestCaseWithTree):
         ]
         # test that its iterable by iterating
         result = []
-        for block in tree.walkdirs():
-            result.append(block)
-        self.assertEqual(expected_dirblocks, result)
+        for dirinfo, block in tree.walkdirs():
+            newblock = []
+            for row in block:
+                if row[4] is not None:
+                    newblock.append(row[0:3] + (None,) + row[4:])
+                else:
+                    newblock.append(row)
+            result.append((dirinfo, newblock))
+        # check each return value for debugging ease.
+        for pos, item in enumerate(expected_dirblocks):
+            self.assertEqual(item, result[pos])
