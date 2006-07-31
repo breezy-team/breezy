@@ -112,10 +112,13 @@ class DirState(object):
         test_sha = sha.new('').hexdigest()
 
         tstart = time.time()
-        for block in walkdirs(base_path):
+        for dirinfo, block in tree.walkdirs():
 
             to_remove = []
-            for relpath, name, kind, st, abspath in block:
+            for relpath, name, kind, st, fileid, versionedkind in block:
+                if fileid is None:
+                    # unversioned file, skip
+                    continue
                 s = None
                 symlink_target = None
                 dirname, basename = os.path.split(relpath.encode('utf8'))
@@ -157,7 +160,7 @@ class DirState(object):
                 lines.append('\0'.join([
                     dirname, basename
                     , to_minikind[kind]
-                    , gen_file_id(name).encode('utf8')
+                    , fileid.encode('utf8')
                     , str(st.st_size)
                     , pack_stat(st)
                     , s
