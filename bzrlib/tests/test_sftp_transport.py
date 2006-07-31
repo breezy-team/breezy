@@ -293,12 +293,17 @@ class SSHVendorBadConnection(TestCaseWithTransport):
 
         self._transport_sftp = bzrlib.transport.sftp
 
-        self.bogus_url = 'sftp://127.0.0.1:1/'
+        # open a random port, so we know nobody else is using it
+        # but don't actually listen on the port.
+        s = socket.socket()
+        s.bind(('localhost', 0))
+        self.bogus_url = 'sftp://%s:%s/' % s.getsockname()
 
         orig_vendor = bzrlib.transport.sftp._ssh_vendor
-        def reset_vendor():
+        def reset():
             bzrlib.transport.sftp._ssh_vendor = orig_vendor
-        self.addCleanup(reset_vendor)
+            s.close()
+        self.addCleanup(reset)
 
     def set_vendor(self, vendor):
         self._transport_sftp._ssh_vendor = vendor

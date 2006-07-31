@@ -1129,10 +1129,12 @@ class SFTPServer(Server):
 
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
-        # this is chosen to try to prevent trouble with proxies, wierd dns,
-        # etc
-        return 'sftp://127.0.0.1:1/'
-
+        # this is chosen to try to prevent trouble with proxies, wierd dns, etc
+        # we bind a random socket, so that we get a guaranteed unused port
+        # we just never listen on that port
+        s = socket.socket()
+        s.bind(('localhost', 0))
+        return 'sftp://%s:%s/' % s.getsockname()
 
 
 class SFTPFullAbsoluteServer(SFTPServer):
