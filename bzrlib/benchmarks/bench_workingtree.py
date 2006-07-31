@@ -55,3 +55,20 @@ class WorkingTreeBenchmark(Benchmark):
             for x in xrange(10824):
                 t.is_ignored(str(x))
         self.time(call_is_ignored_10824_not_ignored)
+
+    def test_walkdirs_kernel_like_tree(self):
+        """Walking a kernel sized tree is fast!(150ms)."""
+        self.make_kernel_like_tree()
+        self.run_bzr('add')
+        tree = WorkingTree.open('.')
+        # on roberts machine: this originally took:  157ms/4177ms
+        # plain os.walk takes 213ms on this tree
+        self.time(list, tree.walkdirs())
+
+    def test_walkdirs_kernel_like_tree_unknown(self):
+        """Walking a kernel sized tree is fast!(150ms)."""
+        self.make_kernel_like_tree()
+        tree = WorkingTree.open('.')
+        # on roberts machine: this originally took:  157ms/4177ms
+        # plain os.walk takes 213ms on this tree
+        self.time(list, tree.walkdirs())
