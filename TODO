@@ -184,6 +184,10 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * BZRDIR should be in branch.py not __init__.py.
 
+* bzrlib.delta.compare_trees() shouldn't need to sort all of the result
+  lists, since they are being added in alphabetical order. Write tests
+  to guarantee this, and remove the sort() calls.
+
 Medium things
 -------------
 
@@ -362,20 +366,10 @@ Medium things
   and a new commit will automatically be made against the
   predecessor.  This can be repeated.
 
-  It only makes sense to delete from the tail of history, not from the
-  end.
+  It only makes sense to delete from the tail of history.
 
-  The revision, its inventory and texts remain floating in the store.
-  We should perhaps add the revision to a list of removed-commits, so
-  that it can be restored or at least accounted for when checking
-  consistency.  This file would not be versioned, and probably should
-  not propagate when branched.
-
-  If we track merged revisions then we need to update this list too.
-  If the list is stored in a weave it's easy (implicit): the version
-  of the list can remain but it won't be referenced anymore.  It's
-  probably best to just store this list in a weave in the first place
-  and be done.
+  This has been implemented, but it does not remove the texts from
+  the store.
 
 
 Large things
@@ -444,3 +438,25 @@ Large things
   with removing the tags on the way back in.
 
 * ``bzr find``
+
+Selftest
+--------
+
+* Write some benchmark tests
+
+* we could display the ids of some tests selected by time to rune, or cputime,
+  rusage. 
+
+* We could run tests multiple times and report deviation/slowest/fastest.
+
+* Gather lsprofile output for each test individually - log that somewhere.
+
+* Should plugins be able to offer benchmark tests ?
+
+CHANGESETS
+----------
+Ensure changeset command behaves properly w/revisions (e.g. 0)
+Figure out whether testament-related bug is my problem
+Get rid of the 'old' directory
+Bundle signatures
+What to do about ghost ancestors in remote branch that are present locally?

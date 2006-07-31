@@ -87,11 +87,14 @@ class Testament(object):
       - compared to a revision
     """
 
+    long_header = 'bazaar-ng testament version 1\n'
+    short_header = 'bazaar-ng testament short form 1\n'
+
     @classmethod
-    def from_revision(cls, branch, revision_id):
+    def from_revision(cls, repository, revision_id):
         """Produce a new testament from a historical revision"""
-        rev = branch.get_revision(revision_id)
-        inventory = branch.get_inventory(revision_id)
+        rev = repository.get_revision(revision_id)
+        inventory = repository.get_inventory(revision_id)
         return cls(rev, inventory)
 
     def __init__(self, rev, inventory):
@@ -114,9 +117,8 @@ class Testament(object):
         hashed in that encoding.
         """
         r = []
-        def a(s):
-            r.append(s)
-        a('bazaar-ng testament version 1\n')
+        a = r.append
+        a(self.long_header)
         a('revision-id: %s\n' % self.revision_id)
         a('committer: %s\n' % self.committer)
         a('timestamp: %d\n' % self.timestamp)
@@ -130,14 +132,16 @@ class Testament(object):
         for l in self.message.splitlines():
             a('  %s\n' % l)
         a('inventory:\n')
-        for path, ie in self.inventory.iter_entries():
+        entries = self.inventory.iter_entries()
+        entries.next()
+        for path, ie in entries:
             a(self._entry_to_line(path, ie))
         r.extend(self._revprops_to_lines())
         if __debug__:
             for l in r:
                 assert isinstance(l, basestring), \
                     '%r of type %s is not a plain string' % (l, type(l))
-        return r
+        return [line.encode('utf-8') for line in r]
 
     def _escape_path(self, path):
         assert not contains_linebreaks(path)
@@ -157,19 +161,17 @@ class Testament(object):
             assert ie.symlink_target
             l += ' ' + self._escape_path(ie.symlink_target)
         l += '\n'
-        return l
+        return l.decode('utf-8')
 
     def as_text(self):
         return ''.join(self.as_text_lines())
 
     def as_short_text(self):
         """Return short digest-based testament."""
-        s = sha()
-        map(s.update, self.as_text_lines())
-        return ('bazaar-ng testament short form 1\n'
+        return (self.short_header + 
                 'revision-id: %s\n'
                 'sha1: %s\n'
-                % (self.revision_id, s.hexdigest()))
+                % (self.revision_id, self.as_sha1()))
 
     def _revprops_to_lines(self):
         """Pack up revision properties."""
@@ -185,3 +187,20 @@ class Testament(object):
                     line = line.encode('utf-8')
                 r.append('    %s\n' % line)
         return r
+
+    def as_sha1(self):
+        s = sha()
+        map(s.update, self.as_text_lines())
+        return s.hexdigest()
+
+
+class StrictTestament(Testament):
+    """This testament format is for use as a checksum in changesets"""
+
+    long_header = 'bazaar-ng testament version 2.1\n'
+    short_header = 'bazaar-ng testament short form 2.1\n'
+    def _entry_to_line(self, path, ie):
+        l = Testament._entry_to_line(self, path, ie)[:-1]
+        l += ' ' + ie.revision.decode('utf-8')
+        l += {True: ' yes\n', False: ' no\n'}[ie.executable]
+        return l

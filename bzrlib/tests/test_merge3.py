@@ -1,15 +1,15 @@
 # Copyright (C) 2004, 2005 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -17,7 +17,7 @@
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.merge3 import Merge3
-from bzrlib.errors import CantReprocessAndShowBase
+from bzrlib.errors import CantReprocessAndShowBase, BinaryFile
 
 def split_lines(t):
     from cStringIO import StringIO
@@ -302,7 +302,7 @@ bbb
         self.log(''.join(ml))
         self.assertEquals(ml, MERGED_RESULT)
 
-    def test_minimal_conflicts(self):
+    def test_minimal_conflicts_common(self):
         """Reprocessing"""
         base_text = ("a\n" * 20).splitlines(True)
         this_text = ("a\n"*10+"b\n" * 10).splitlines(True)
@@ -310,10 +310,46 @@ bbb
         m3 = Merge3(base_text, other_text, this_text)
         m_lines = m3.merge_lines('OTHER', 'THIS', reprocess=True)
         merged_text = "".join(list(m_lines))
-        optimal_text = "a\n" * 10 + "<<<<<<< OTHER\nc\n=======\n>>>>>>> THIS"\
-            + "\n" + 8* "b\n" + "<<<<<<< OTHER\nc\n=======\nb\nb\n>>>>>>>"\
-            + " THIS\n"
-        self.assertEqualDiff(merged_text, optimal_text)
+        optimal_text = ("a\n" * 10 + "<<<<<<< OTHER\nc\n"
+            + 8* "b\n" + "c\n=======\n"
+            + 10*"b\n" + ">>>>>>> THIS\n")
+        self.assertEqualDiff(optimal_text, merged_text)
+
+    def test_minimal_conflicts_unique(self):
+        def add_newline(s):
+            """Add a newline to each entry in the string"""
+            return [(x+'\n') for x in s]
+
+        base_text = add_newline("abcdefghijklm")
+        this_text = add_newline("abcdefghijklmNOPQRSTUVWXYZ")
+        other_text = add_newline("abcdefghijklm1OPQRSTUVWXY2")
+        m3 = Merge3(base_text, other_text, this_text)
+        m_lines = m3.merge_lines('OTHER', 'THIS', reprocess=True)
+        merged_text = "".join(list(m_lines))
+        optimal_text = ''.join(add_newline("abcdefghijklm")
+            + ["<<<<<<< OTHER\n1\n=======\nN\n>>>>>>> THIS\n"]
+            + add_newline('OPQRSTUVWXY')
+            + ["<<<<<<< OTHER\n2\n=======\nZ\n>>>>>>> THIS\n"]
+            )
+        self.assertEqualDiff(optimal_text, merged_text)
+
+    def test_minimal_conflicts_nonunique(self):
+        def add_newline(s):
+            """Add a newline to each entry in the string"""
+            return [(x+'\n') for x in s]
+
+        base_text = add_newline("abacddefgghij")
+        this_text = add_newline("abacddefgghijkalmontfprz")
+        other_text = add_newline("abacddefgghijknlmontfprd")
+        m3 = Merge3(base_text, other_text, this_text)
+        m_lines = m3.merge_lines('OTHER', 'THIS', reprocess=True)
+        merged_text = "".join(list(m_lines))
+        optimal_text = ''.join(add_newline("abacddefgghijk")
+            + ["<<<<<<< OTHER\nn\n=======\na\n>>>>>>> THIS\n"]
+            + add_newline('lmontfpr')
+            + ["<<<<<<< OTHER\nd\n=======\nz\n>>>>>>> THIS\n"]
+            )
+        self.assertEqualDiff(optimal_text, merged_text)
 
     def test_reprocess_and_base(self):
         """Reprocessing and showing base breaks correctly"""
@@ -324,3 +360,6 @@ bbb
         m_lines = m3.merge_lines('OTHER', 'THIS', reprocess=True, 
                                  base_marker='|||||||')
         self.assertRaises(CantReprocessAndShowBase, list, m_lines)
+
+    def test_binary(self):
+        self.assertRaises(BinaryFile, Merge3, ['\x00'], ['a'], ['b'])

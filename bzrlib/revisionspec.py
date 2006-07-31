@@ -1,15 +1,15 @@
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -17,6 +17,7 @@
 
 import datetime
 import re
+import bisect
 from bzrlib.errors import BzrError, NoSuchRevision, NoCommits
 
 _marker = []
@@ -57,7 +58,7 @@ class RevisionInfo(object):
         # TODO: otherwise, it should depend on how I was built -
         # if it's in_history(branch), then check revision_history(),
         # if it's in_store(branch), do the check below
-        return self.branch.revision_store.has_id(self.rev_id)
+        return self.branch.repository.has_revision(self.rev_id)
 
     def __len__(self):
         return 2
@@ -68,7 +69,7 @@ class RevisionInfo(object):
         raise IndexError(index)
 
     def get(self):
-        return self.branch.get_revision(self.rev_id)
+        return self.branch.repository.get_revision(self.rev_id)
 
     def __eq__(self, other):
         if type(other) not in (tuple, list, type(self)):
@@ -148,7 +149,10 @@ class RevisionSpec(object):
             raise NoSuchRevision(branch, str(self.spec))
 
     def in_history(self, branch):
-        revs = branch.revision_history()
+        if branch:
+            revs = branch.revision_history()
+        else:
+            revs = None
         return self._match_on_and_check(branch, revs)
 
         # FIXME: in_history is somewhat broken,
@@ -166,7 +170,13 @@ class RevisionSpec(object):
         return '<%s %s%s>' % (self.__class__.__name__,
                               self.prefix or '',
                               self.spec)
+    
+    def needs_branch(self):
+        """Whether this revision spec needs a branch.
 
+        Set this to False the branch argument of _match_on is not used.
+        """
+        return True
 
 # private API
 
@@ -189,10 +199,24 @@ class RevisionSpec_revno(RevisionSpec):
 
     def _match_on(self, branch, revs):
         """Lookup a revision by revision number"""
-        try:
-            return RevisionInfo(branch, int(self.spec))
-        except ValueError:
-            return RevisionInfo(branch, None)
+        if self.spec.find(':') == -1:
+            try:
+                return RevisionInfo(branch, int(self.spec))
+            except ValueError:
+                return RevisionInfo(branch, None)
+        else:
+            from branch import Branch
+            revname = self.spec[self.spec.find(':')+1:]
+            other_branch = Branch.open_containing(revname)[0]
+            try:
+                revno = int(self.spec[:self.spec.find(':')])
+            except ValueError:
+                return RevisionInfo(other_branch, None)
+            revid = other_branch.get_rev_id(revno)
+            return RevisionInfo(other_branch, revno)
+        
+    def needs_branch(self):
+        return self.spec.find(':') == -1
 
 SPEC_TYPES.append(RevisionSpec_revno)
 
@@ -204,7 +228,7 @@ class RevisionSpec_revid(RevisionSpec):
         try:
             return RevisionInfo(branch, revs.index(self.spec) + 1, self.spec)
         except ValueError:
-            return RevisionInfo(branch, None)
+            return RevisionInfo(branch, None, self.spec)
 
 SPEC_TYPES.append(RevisionSpec_revid)
 
@@ -248,6 +272,18 @@ class RevisionSpec_tag(RevisionSpec):
 SPEC_TYPES.append(RevisionSpec_tag)
 
 
+class RevisionSpec_revs:
+    def __init__(self, revs, branch):
+        self.revs = revs
+        self.branch = branch
+    def __getitem__(self, index):
+        r = self.branch.repository.get_revision(self.revs[index])
+        # TODO: Handle timezone.
+        return datetime.datetime.fromtimestamp(r.timestamp)
+    def __len__(self):
+        return len(self.revs)
+
+
 class RevisionSpec_date(RevisionSpec):
     prefix = 'date:'
     _date_re = re.compile(
@@ -265,7 +301,7 @@ class RevisionSpec_date(RevisionSpec):
           at a specified time).
 
           So the proper way of saying 'give me all entries for today' is:
-              -r date:today..date:tomorrow
+              -r date:yesterday..date:today
         """
         today = datetime.datetime.fromordinal(datetime.date.today().toordinal())
         if self.spec.lower() == 'yesterday':
@@ -295,14 +331,15 @@ class RevisionSpec_date(RevisionSpec):
 
             dt = datetime.datetime(year=year, month=month, day=day,
                     hour=hour, minute=minute, second=second)
-        first = dt
-        for i in range(len(revs)):
-            r = branch.get_revision(revs[i])
-            # TODO: Handle timezone.
-            dt = datetime.datetime.fromtimestamp(r.timestamp)
-            if first <= dt:
-                return RevisionInfo(branch, i+1)
-        return RevisionInfo(branch, None)
+        branch.lock_read()
+        try:
+            rev = bisect.bisect(RevisionSpec_revs(revs, branch), dt)
+        finally:
+            branch.unlock()
+        if rev == len(revs):
+            return RevisionInfo(branch, None)
+        else:
+            return RevisionInfo(branch, rev + 1)
 
 SPEC_TYPES.append(RevisionSpec_date)
 
@@ -319,7 +356,8 @@ class RevisionSpec_ancestor(RevisionSpec):
         for r, b in ((revision_a, branch), (revision_b, other_branch)):
             if r is None:
                 raise NoCommits(b)
-        revision_source = MultipleRevisionSources(branch, other_branch)
+        revision_source = MultipleRevisionSources(branch.repository,
+                                                  other_branch.repository)
         rev_id = common_ancestor(revision_a, revision_b, revision_source)
         try:
             revno = branch.revision_id_to_revno(rev_id)
@@ -338,13 +376,12 @@ class RevisionSpec_branch(RevisionSpec):
 
     def _match_on(self, branch, revs):
         from branch import Branch
-        from fetch import greedy_fetch
         other_branch = Branch.open_containing(self.spec)[0]
         revision_b = other_branch.last_revision()
         if revision_b is None:
             raise NoCommits(other_branch)
         # pull in the remote revisions so we can diff
-        greedy_fetch(branch, other_branch, revision=revision_b)
+        branch.fetch(other_branch, revision_b)
         try:
             revno = branch.revision_id_to_revno(revision_b)
         except NoSuchRevision:

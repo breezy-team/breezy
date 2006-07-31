@@ -2,18 +2,18 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.xml import ElementTree, SubElement, Element, Serializer
+from bzrlib.xml_serializer import ElementTree, SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 import bzrlib.inventory as inventory
 from bzrlib.revision import Revision        
@@ -27,12 +27,14 @@ from bzrlib.errors import BzrError
 class _Serializer_v4(Serializer):
     """Version 0.0.4 serializer
 
-    You should use the serialzer_v4 singleton."""
+    You should use the serializer_v4 singleton."""
     
     __slots__ = []
     
     def _pack_inventory(self, inv):
         """Convert to XML Element"""
+        # v4 serialization is not used any more.
+        raise NotImplementedError(self._pack_inventory)
         e = Element('inventory')
         e.text = '\n'
         if inv.root.file_id not in (None, ROOT_ID):

@@ -1,15 +1,15 @@
 # Copyright (C) 2004, 2005 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -19,8 +19,10 @@
 # s: "i hate that."
 
 
-from difflib import SequenceMatcher
 from bzrlib.errors import CantReprocessAndShowBase
+import bzrlib.patiencediff
+from bzrlib.textfile import check_text_lines
+
 
 def intersect(ra, rb):
     """Given two ranges return the range where they intersect or None.
@@ -66,6 +68,9 @@ class Merge3(object):
     incorporating the changes from both BASE->OTHER and BASE->THIS.
     All three will typically be sequences of lines."""
     def __init__(self, base, a, b):
+        check_text_lines(base)
+        check_text_lines(a)
+        check_text_lines(b)
         self.base = base
         self.a = a
         self.b = b
@@ -289,8 +294,8 @@ class Merge3(object):
             type, iz, zmatch, ia, amatch, ib, bmatch = region
             a_region = self.a[ia:amatch]
             b_region = self.b[ib:bmatch]
-            matches = SequenceMatcher(None, a_region, 
-                                      b_region).get_matching_blocks()
+            matches = bzrlib.patiencediff.PatienceSequenceMatcher(
+                    None, a_region, b_region).get_matching_blocks()
             next_a = ia
             next_b = ib
             for region_ia, region_ib, region_len in matches[:-1]:
@@ -322,8 +327,10 @@ class Merge3(object):
         """
 
         ia = ib = 0
-        amatches = SequenceMatcher(None, self.base, self.a).get_matching_blocks()
-        bmatches = SequenceMatcher(None, self.base, self.b).get_matching_blocks()
+        amatches = bzrlib.patiencediff.PatienceSequenceMatcher(
+                None, self.base, self.a).get_matching_blocks()
+        bmatches = bzrlib.patiencediff.PatienceSequenceMatcher(
+                None, self.base, self.b).get_matching_blocks()
         len_a = len(amatches)
         len_b = len(bmatches)
 
@@ -379,14 +386,10 @@ class Merge3(object):
 
     def find_unconflicted(self):
         """Return a list of ranges in base that are not conflicted."""
-
-        import re
-
-        # don't sync-up on lines containing only blanks or pounds
-        junk_re = re.compile(r'^[ \t#]*$')
-        
-        am = SequenceMatcher(junk_re.match, self.base, self.a).get_matching_blocks()
-        bm = SequenceMatcher(junk_re.match, self.base, self.b).get_matching_blocks()
+        am = bzrlib.patiencediff.PatienceSequenceMatcher(
+                None, self.base, self.a).get_matching_blocks()
+        bm = bzrlib.patiencediff.PatienceSequenceMatcher(
+                None, self.base, self.b).get_matching_blocks()
 
         unc = []
 

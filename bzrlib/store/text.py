@@ -1,21 +1,20 @@
 # Copyright (C) 2005 by Canonical Development Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""
-A store that keeps the full text of every version.
+"""A store that keeps the full text of every version.
 
 This store keeps uncompressed versions of the full text. It does not
 do any sort of delta compression.
@@ -23,7 +22,6 @@ do any sort of delta compression.
 
 import os
 import bzrlib.store
-from bzrlib.store import hash_prefix
 from bzrlib.trace import mutter
 from bzrlib.errors import BzrError, NoSuchFile, FileExists
 
@@ -65,15 +63,15 @@ class TextStore(bzrlib.store.TransportStore):
 
     def _try_put(self, fn, f):
         try:
-            self._transport.put(fn, f)
+            self._transport.put(fn, f, mode=self._file_mode)
         except NoSuchFile:
             if not self._prefixed:
                 raise
             try:
-                self._transport.mkdir(os.path.dirname(fn))
+                self._transport.mkdir(os.path.dirname(fn), mode=self._dir_mode)
             except FileExists:
                 pass
-            self._transport.put(fn, f)
+            self._transport.put(fn, f, mode=self._file_mode)
 
     def _get(self, fn):
         if fn.endswith('.gz'):
@@ -95,15 +93,17 @@ class TextStore(bzrlib.store.TransportStore):
             raise KeyError(fileid + '-' + str(suffix))
 
         try:
-            result = other._transport.copy_to([path], self._transport, pb=pb)
+            result = other._transport.copy_to([path], self._transport,
+                                              mode=self._file_mode)
         except NoSuchFile:
             if not self._prefixed:
                 raise
             try:
-                self._transport.mkdir(hash_prefix(fileid)[:-1])
+                self._transport.mkdir(self.hash_prefix(fileid)[:-1], mode=self._dir_mode)
             except FileExists:
                 pass
-            result = other._transport.copy_to([path], self._transport, pb=pb)
+            result = other._transport.copy_to([path], self._transport,
+                                              mode=self._file_mode)
 
         if result != 1:
             raise BzrError('Unable to copy file: %r' % (path,))
@@ -120,7 +120,3 @@ class TextStore(bzrlib.store.TransportStore):
             from cStringIO import StringIO
             sio = StringIO(f.read())
             return gzip.GzipFile(mode='rb', fileobj=sio)
-
-
-def ScratchTextStore():
-    return TextStore(ScratchTransport())

@@ -1,15 +1,15 @@
 # Copyright (C) 2005 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -19,7 +19,7 @@ from cStringIO import StringIO
 from bzrlib.tests import TestCase
 from bzrlib.inventory import Inventory, InventoryEntry
 from bzrlib.xml4 import serializer_v4
-from bzrlib.xml5 import serializer_v5
+import bzrlib.xml5
 
 _working_inventory_v4 = """<inventory file_id="TREE_ROOT">
 <entry file_id="bar-20050901064931-73b4b1138abc9cd2" kind="file" name="bar" parent_id="TREE_ROOT" />
@@ -71,6 +71,20 @@ _committed_inv_v5 = """<inventory>
 </inventory>
 """
 
+_basis_inv_v5 = """<inventory revision_id="mbp@sourcefrog.net-20050905063503-43948f59fa127d92">
+<file file_id="bar-20050901064931-73b4b1138abc9cd2" 
+      name="bar" parent_id="TREE_ROOT" 
+      revision="mbp@foo-123123"/>
+<directory name="subdir"
+           file_id="foo-20050801201819-4139aa4a272f4250"
+           parent_id="TREE_ROOT" 
+           revision="mbp@foo-00"/>
+<file file_id="bar-20050824000535-6bc48cfad47ed134" 
+      name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" 
+      revision="mbp@foo-00"/>
+</inventory>
+"""
+
 class TestSerializer(TestCase):
     """Test XML serialization"""
     def test_canned_inventory(self):
@@ -96,7 +110,7 @@ class TestSerializer(TestCase):
     def test_unpack_revision_5(self):
         """Test unpacking a canned revision v5"""
         inp = StringIO(_revision_v5)
-        rev = serializer_v5.read_revision(inp)
+        rev = bzrlib.xml5.serializer_v5.read_revision(inp)
         eq = self.assertEqual
         eq(rev.committer,
            "Martin Pool <mbp@sourcefrog.net>")
@@ -108,7 +122,7 @@ class TestSerializer(TestCase):
     def test_unpack_inventory_5(self):
         """Unpack canned new-style inventory"""
         inp = StringIO(_committed_inv_v5)
-        inv = serializer_v5.read_inventory(inp)
+        inv = bzrlib.xml5.serializer_v5.read_inventory(inp)
         eq = self.assertEqual
         eq(len(inv), 4)
         ie = inv['bar-20050824000535-6bc48cfad47ed134']
@@ -117,30 +131,43 @@ class TestSerializer(TestCase):
         eq(ie.name, 'bar')
         eq(inv[ie.parent_id].kind, 'directory')
 
+    def test_unpack_basis_inventory_5(self):
+        """Unpack canned new-style inventory"""
+        inp = StringIO(_basis_inv_v5)
+        inv = bzrlib.xml5.serializer_v5.read_inventory(inp)
+        eq = self.assertEqual
+        eq(len(inv), 4)
+        eq(inv.revision_id, 'mbp@sourcefrog.net-20050905063503-43948f59fa127d92')
+        ie = inv['bar-20050824000535-6bc48cfad47ed134']
+        eq(ie.kind, 'file')
+        eq(ie.revision, 'mbp@foo-00')
+        eq(ie.name, 'bar')
+        eq(inv[ie.parent_id].kind, 'directory')
+
     def test_repack_inventory_5(self):
         inp = StringIO(_committed_inv_v5)
-        inv = serializer_v5.read_inventory(inp)
+        inv = bzrlib.xml5.serializer_v5.read_inventory(inp)
         outp = StringIO()
-        serializer_v5.write_inventory(inv, outp)
-        inv2 = serializer_v5.read_inventory(StringIO(outp.getvalue()))
+        bzrlib.xml5.serializer_v5.write_inventory(inv, outp)
+        inv2 = bzrlib.xml5.serializer_v5.read_inventory(StringIO(outp.getvalue()))
         self.assertEqual(inv, inv2)
 
     def test_repack_revision_5(self):
         """Round-trip revision to XML v5"""
         inp = StringIO(_revision_v5)
-        rev = serializer_v5.read_revision(inp)
+        rev = bzrlib.xml5.serializer_v5.read_revision(inp)
         outp = StringIO()
-        serializer_v5.write_revision(rev, outp)
+        bzrlib.xml5.serializer_v5.write_revision(rev, outp)
         outfile_contents = outp.getvalue()
-        rev2 = serializer_v5.read_revision(StringIO(outfile_contents))
+        rev2 = bzrlib.xml5.serializer_v5.read_revision(StringIO(outfile_contents))
         self.assertEqual(rev, rev2)
 
     def test_pack_revision_5(self):
         """Pack revision to XML v5"""
         # fixed 20051025, revisions should have final newline
-        rev = serializer_v5.read_revision_from_string(_revision_v5)
+        rev = bzrlib.xml5.serializer_v5.read_revision_from_string(_revision_v5)
         outp = StringIO()
-        serializer_v5.write_revision(rev, outp)
+        bzrlib.xml5.serializer_v5.write_revision(rev, outp)
         outfile_contents = outp.getvalue()
         self.assertEqual(outfile_contents[-1], '\n')
-        self.assertEqualDiff(outfile_contents, serializer_v5.write_revision_to_string(rev))
+        self.assertEqualDiff(outfile_contents, bzrlib.xml5.serializer_v5.write_revision_to_string(rev))

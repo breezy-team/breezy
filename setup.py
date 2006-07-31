@@ -73,31 +73,53 @@ class bzr_build(build):
     def run(self):
         build.run(self)
 
-        import bzr_man
-        bzr_man.main()
+        import generate_docs
+        generate_docs.main(argv=["bzr", "man"])
 
 ########################
 ## Setup
 ########################
 
 setup(name='bzr',
-      version='0.7pre',
-      author='Martin Pool',
-      author_email='mbp@sourcefrog.net',
-      url='http://www.bazaar-ng.org/',
+      version='0.9pre',
+      author='Canonical Ltd',
+      author_email='bazaar-ng@lists.ubuntu.com',
+      url='http://bazaar-vcs.org/',
       description='Friendly distributed version control system',
       license='GNU GPL v2',
       packages=['bzrlib',
+                'bzrlib.benchmarks',
+                'bzrlib.doc',
+                'bzrlib.doc.api',
+                'bzrlib.export',
                 'bzrlib.plugins',
-                'bzrlib.tests',
-                'bzrlib.util',
-                'bzrlib.transport',
+                'bzrlib.plugins.launchpad',
                 'bzrlib.store',
+                'bzrlib.store.revision',
+                'bzrlib.store.versioned',
+                'bzrlib.tests',
+                'bzrlib.tests.blackbox',
+                'bzrlib.tests.branch_implementations',
+                'bzrlib.tests.bzrdir_implementations',
+                'bzrlib.tests.interrepository_implementations',
+                'bzrlib.tests.intertree_implementations',
+                'bzrlib.tests.interversionedfile_implementations',
+                'bzrlib.tests.repository_implementations',
+                'bzrlib.tests.revisionstore_implementations',
+                'bzrlib.tests.tree_implementations',
+                'bzrlib.tests.workingtree_implementations',
+                'bzrlib.transport',
+                'bzrlib.transport.http',
+                'bzrlib.ui',
+                'bzrlib.util',
                 'bzrlib.util.elementtree',
                 'bzrlib.util.effbot.org',
                 'bzrlib.util.configobj',
+                'bzrlib.bundle',
+                'bzrlib.bundle.serializer'
                 ],
       scripts=['bzr'],
       cmdclass={'install_scripts': my_install_scripts, 'build': bzr_build},
       data_files=[('man/man1', ['bzr.1'])],
+    #   todo: install the txt files from bzrlib.doc.api.
      )

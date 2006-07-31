@@ -26,10 +26,8 @@
 # e.g. "3:12 Tue", "13 Oct", "Oct 2005", etc.  
 
 import sys
-import os
 import time
 
-import bzrlib.weave
 from bzrlib.config import extract_email_address
 from bzrlib.errors import BzrError
 
@@ -55,7 +53,8 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
 def _annotate_file(branch, rev_id, file_id ):
 
     rh = branch.revision_history()
-    w = branch.weave_store.get_weave(file_id, branch.get_transaction())
+    w = branch.repository.weave_store.get_weave(file_id, 
+        branch.repository.get_transaction())
     last_origin = None
     for origin, text in w.annotate_iter(rev_id):
         text = text.rstrip('\r\n')
@@ -63,15 +62,14 @@ def _annotate_file(branch, rev_id, file_id ):
             (revno_str, author, date_str) = ('','','')
         else:
             last_origin = origin
-            line_rev_id = w.idx_to_name(origin)
-            if not branch.has_revision(line_rev_id):
+            if not branch.repository.has_revision(origin):
                 (revno_str, author, date_str) = ('?','?','?')
             else:
-                if line_rev_id in rh:
-                    revno_str = str(rh.index(line_rev_id) + 1)
+                if origin in rh:
+                    revno_str = str(rh.index(origin) + 1)
                 else:
                     revno_str = 'merge'
-            rev = branch.get_revision(line_rev_id)
+            rev = branch.repository.get_revision(origin)
             tz = rev.timezone or 0
             date_str = time.strftime('%Y%m%d', 
                                      time.gmtime(rev.timestamp + tz))
@@ -82,4 +80,4 @@ def _annotate_file(branch, rev_id, file_id ):
                 author = extract_email_address(author)
             except BzrError:
                 pass        # use the whole name
-        yield (revno_str, author, date_str, line_rev_id, text)
+        yield (revno_str, author, date_str, origin, text)

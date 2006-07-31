@@ -1,15 +1,15 @@
-# (C) 2005 Canonical Ltd
-
+# Copyright (C) 2005, 2006 by Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -32,27 +32,16 @@ CACHE_HEADER = "### bzr hashcache v5\n"
 import os, stat, time
 import sha
 
-from bzrlib.osutils import sha_file
+from bzrlib.osutils import sha_file, pathjoin, safe_unicode
 from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
+from bzrlib.errors import BzrError
 
 
+FP_MTIME_COLUMN = 1
+FP_CTIME_COLUMN = 2
 FP_MODE_COLUMN = 5
 
-def _fingerprint(abspath):
-    try:
-        fs = os.lstat(abspath)
-    except OSError:
-        # might be missing, etc
-        return None
-
-    if stat.S_ISDIR(fs.st_mode):
-        return None
-
-    # we discard any high precision because it's not reliable; perhaps we
-    # could do better on some systems?
-    return (fs.st_size, long(fs.st_mtime),
-            long(fs.st_ctime), fs.st_ino, fs.st_dev, fs.st_mode)
 
 
 class HashCache(object):
@@ -91,8 +80,9 @@ class HashCache(object):
     """
     needs_write = False
 
-    def __init__(self, basedir):
-        self.basedir = basedir
+    def __init__(self, root, cache_file_name, mode=None):
+        """Create a hash cache in base dir, and set the file mode to mode."""
+        self.root = safe_unicode(root)
         self.hit_count = 0
         self.miss_count = 0
         self.stat_count = 0
@@ -100,11 +90,11 @@ class HashCache(object):
         self.removed_count = 0
         self.update_count = 0
         self._cache = {}
+        self._mode = mode
+        self._cache_file_name = safe_unicode(cache_file_name)
 
     def cache_file_name(self):
-        # FIXME: duplicate path logic here, this should be 
-        # something like 'branch.controlfile'.
-        return os.sep.join([self.basedir, '.bzr', 'stat-cache'])
+        return self._cache_file_name
 
     def clear(self):
         """Discard all cached information.
@@ -114,19 +104,20 @@ class HashCache(object):
             self.needs_write = True
             self._cache = {}
 
-
     def scan(self):
         """Scan all files and remove entries where the cache entry is obsolete.
         
         Obsolete entries are those where the file has been modified or deleted
         since the entry was inserted.        
         """
+        # FIXME optimisation opportunity, on linux [and check other oses]:
+        # rather than iteritems order, stat in inode order.
         prep = [(ce[1][3], path, ce) for (path, ce) in self._cache.iteritems()]
         prep.sort()
         
         for inum, path, cache_entry in prep:
-            abspath = os.sep.join([self.basedir, path])
-            fp = _fingerprint(abspath)
+            abspath = pathjoin(self.root, path)
+            fp = self._fingerprint(abspath)
             self.stat_count += 1
             
             cache_fp = cache_entry[1]
@@ -137,13 +128,12 @@ class HashCache(object):
                 self.needs_write = True
                 del self._cache[path]
 
-
     def get_sha1(self, path):
         """Return the sha1 of a file.
         """
-        abspath = os.sep.join([self.basedir, path])
+        abspath = pathjoin(self.root, path)
         self.stat_count += 1
-        file_fp = _fingerprint(abspath)
+        file_fp = self._fingerprint(abspath)
         
         if not file_fp:
             # not a regular file or not existing
@@ -159,40 +149,59 @@ class HashCache(object):
             cache_sha1, cache_fp = None, None
 
         if cache_fp == file_fp:
+            ## mutter("hashcache hit for %s %r -> %s", path, file_fp, cache_sha1)
+            ## mutter("now = %s", time.time())
             self.hit_count += 1
             return cache_sha1
         
         self.miss_count += 1
 
-
         mode = file_fp[FP_MODE_COLUMN]
         if stat.S_ISREG(mode):
-            digest = sha_file(file(abspath, 'rb', buffering=65000))
+            digest = self._really_sha1_file(abspath)
         elif stat.S_ISLNK(mode):
-            link_target = os.readlink(abspath)
             digest = sha.new(os.readlink(abspath)).hexdigest()
         else:
             raise BzrError("file %r: unknown file stat mode: %o"%(abspath,mode))
 
-        now = int(time.time())
-        if file_fp[1] >= now or file_fp[2] >= now:
+        # window of 3 seconds to allow for 2s resolution on windows,
+        # unsynchronized file servers, etc.
+        cutoff = self._cutoff_time()
+        if file_fp[FP_MTIME_COLUMN] >= cutoff \
+                or file_fp[FP_CTIME_COLUMN] >= cutoff:
             # changed too recently; can't be cached.  we can
             # return the result and it could possibly be cached
             # next time.
-            self.danger_count += 1 
+            #
+            # the point is that we only want to cache when we are sure that any
+            # subsequent modifications of the file can be detected.  If a
+            # modification neither changes the inode, the device, the size, nor
+            # the mode, then we can only distinguish it by time; therefore we
+            # need to let sufficient time elapse before we may cache this entry
+            # again.  If we didn't do this, then, for example, a very quick 1
+            # byte replacement in the file might go undetected.
+            ## mutter('%r modified too recently; not caching', path)
+            self.danger_count += 1
             if cache_fp:
                 self.removed_count += 1
                 self.needs_write = True
                 del self._cache[path]
         else:
+            ## mutter('%r added to cache: now=%f, mtime=%d, ctime=%d',
+            ##        path, time.time(), file_fp[FP_MTIME_COLUMN],
+            ##        file_fp[FP_CTIME_COLUMN])
             self.update_count += 1
             self.needs_write = True
             self._cache[path] = (digest, file_fp)
         return digest
+
+    def _really_sha1_file(self, abspath):
+        """Calculate the SHA1 of a file by reading the full text"""
+        return sha_file(file(abspath, 'rb', buffering=65000))
         
     def write(self):
         """Write contents of cache to file."""
-        outf = AtomicFile(self.cache_file_name(), 'wb')
+        outf = AtomicFile(self.cache_file_name(), 'wb', new_mode=self._mode)
         try:
             print >>outf, CACHE_HEADER,
 
@@ -204,9 +213,12 @@ class HashCache(object):
                 for fld in c[1]:
                     print >>outf, "%d" % fld,
                 print >>outf
-
             outf.commit()
             self.needs_write = False
+            ## mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
+            ##        self.cache_file_name(), self.hit_count, self.miss_count,
+            ##        self.stat_count,
+            ##        self.danger_count, self.update_count)
         finally:
             if not outf.closed:
                 outf.abort()
@@ -228,7 +240,6 @@ class HashCache(object):
             # better write it now so it is valid
             self.needs_write = True
             return
-
 
         hdr = inf.readline()
         if hdr != CACHE_HEADER:
@@ -260,7 +271,24 @@ class HashCache(object):
             self._cache[path] = (sha1, fp)
 
         self.needs_write = False
+
+    def _cutoff_time(self):
+        """Return cutoff time.
+
+        Files modified more recently than this time are at risk of being
+        undetectably modified and so can't be cached.
+        """
+        return int(time.time()) - 3
            
-
-
-        
+    def _fingerprint(self, abspath):
+        try:
+            fs = os.lstat(abspath)
+        except OSError:
+            # might be missing, etc
+            return None
+        if stat.S_ISDIR(fs.st_mode):
+            return None
+        # we discard any high precision because it's not reliable; perhaps we
+        # could do better on some systems?
+        return (fs.st_size, long(fs.st_mtime),
+                long(fs.st_ctime), fs.st_ino, fs.st_dev, fs.st_mode)

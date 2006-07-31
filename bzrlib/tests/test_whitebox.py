@@ -1,73 +1,29 @@
+# Copyright (C) 2005, 2006 by Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 import os
 import unittest
 
-from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.branch import ScratchBranch, Branch
-from bzrlib.errors import NotBranchError
+from bzrlib.tests import TestCaseWithTransport, TestCase
+from bzrlib.branch import Branch
+from bzrlib.errors import PathNotChild
+from bzrlib.osutils import relpath, pathjoin, abspath, realpath
 
 
-class TestBranch(TestCaseInTempDir):
-
-    def test_no_changes(self):
-        from bzrlib.errors import PointlessCommit
-        
-        b = Branch.initialize(u'.')
-
-        self.build_tree(['hello.txt'])
-
-        self.assertRaises(PointlessCommit,
-                          b.working_tree().commit,
-                          'commit without adding',
-                          allow_pointless=False)
-
-        b.working_tree().commit('commit pointless tree',
-                 allow_pointless=True)
-
-        b.working_tree().add('hello.txt')
-        
-        b.working_tree().commit('commit first added file',
-                 allow_pointless=False)
-        
-        self.assertRaises(PointlessCommit,
-                          b.working_tree().commit,
-                          'commit after adding file',
-                          allow_pointless=False)
-        
-        b.working_tree().commit('commit pointless revision with one file',
-                 allow_pointless=True)
-
-
-class MoreTests(TestCaseInTempDir):
-
-    def test_rename_dirs(self):
-        """Test renaming directories and the files within them."""
-        b = Branch.initialize(u'.')
-        self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
-        b.working_tree().add(['dir', 'dir/sub', 'dir/sub/file'])
-
-        b.working_tree().commit('create initial state')
-
-        # TODO: lift out to a test helper that checks the shape of
-        # an inventory
-        
-        revid = b.revision_history()[0]
-        self.log('first revision_id is {%s}' % revid)
-        
-        inv = b.get_revision_inventory(revid)
-        self.log('contents of inventory: %r' % inv.entries())
-
-        self.check_inventory_shape(inv,
-                                   ['dir', 'dir/sub', 'dir/sub/file'])
-
-        b.working_tree().rename_one('dir', 'newdir')
-
-        self.check_inventory_shape(b.working_tree().read_working_inventory(),
-                                   ['newdir', 'newdir/sub', 'newdir/sub/file'])
-
-        b.working_tree().rename_one('newdir/sub', 'newdir/newsub')
-        self.check_inventory_shape(b.working_tree().read_working_inventory(),
-                                   ['newdir', 'newdir/newsub',
-                                    'newdir/newsub/file'])
+class MoreTests(TestCaseWithTransport):
 
     def test_relpath(self):
         """test for branch path lookups
@@ -76,35 +32,35 @@ class MoreTests(TestCaseInTempDir):
         job: given a path (either relative to cwd or absolute), work out
         if it is inside a branch and return the path relative to the base.
         """
-        from bzrlib.osutils import relpath
-        import tempfile, shutil
+        import tempfile
+        from bzrlib.osutils import rmtree
         
         savedir = os.getcwdu()
         dtmp = tempfile.mkdtemp()
         # On Mac OSX, /tmp actually expands to /private/tmp
-        dtmp = os.path.realpath(dtmp)
+        dtmp = realpath(dtmp)
 
         def rp(p):
             return relpath(dtmp, p)
         
         try:
             # check paths inside dtmp while standing outside it
-            self.assertEqual(rp(os.path.join(dtmp, 'foo')), 'foo')
+            self.assertEqual(rp(pathjoin(dtmp, 'foo')), 'foo')
 
             # root = nothing
             self.assertEqual(rp(dtmp), '')
 
-            self.assertRaises(NotBranchError,
+            self.assertRaises(PathNotChild,
                               rp,
                               '/etc')
 
             # now some near-miss operations -- note that
             # os.path.commonprefix gets these wrong!
-            self.assertRaises(NotBranchError,
+            self.assertRaises(PathNotChild,
                               rp,
                               dtmp.rstrip('\\/') + '2')
 
-            self.assertRaises(NotBranchError,
+            self.assertRaises(PathNotChild,
                               rp,
                               dtmp.rstrip('\\/') + '2/foo')
 
@@ -112,18 +68,17 @@ class MoreTests(TestCaseInTempDir):
             # directory, or nearby
             os.chdir(dtmp)
 
-            FOO_BAR_QUUX = os.path.join('foo', 'bar', 'quux')
-            self.assertEqual(rp('foo/bar/quux'), FOO_BAR_QUUX)
+            self.assertEqual(rp('foo/bar/quux'), 'foo/bar/quux')
 
             self.assertEqual(rp('foo'), 'foo')
 
             self.assertEqual(rp('./foo'), 'foo')
 
-            self.assertEqual(rp(os.path.abspath('foo')), 'foo')
+            self.assertEqual(rp(abspath('foo')), 'foo')
 
-            self.assertRaises(NotBranchError,
+            self.assertRaises(PathNotChild,
                               rp, '../foo')
 
         finally:
             os.chdir(savedir)
-            shutil.rmtree(dtmp)
+            rmtree(dtmp)

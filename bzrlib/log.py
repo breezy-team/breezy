@@ -1,15 +1,15 @@
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -49,14 +49,14 @@ listing other things that were changed in the same revision, but not
 all the changes since the previous revision that touched hello.c.
 """
 
-
 # TODO: option to show delta summaries for merged-in revisions
 
-import bzrlib.errors as errors
-from bzrlib.tree import EmptyTree
-from bzrlib.delta import compare_trees
-from bzrlib.trace import mutter
+from itertools import izip
 import re
+
+import bzrlib.errors as errors
+from bzrlib.trace import mutter
+from bzrlib.tsort import merge_sort
 
 
 def find_touching_revisions(branch, file_id):
@@ -74,7 +74,7 @@ def find_touching_revisions(branch, file_id):
     last_path = None
     revno = 1
     for revision_id in branch.revision_history():
-        this_inv = branch.get_revision_inventory(revision_id)
+        this_inv = branch.repository.get_revision_inventory(revision_id)
         if file_id in this_inv:
             this_ie = this_inv[file_id]
             this_path = this_inv.id2path(file_id)
@@ -111,17 +111,6 @@ def _enumerate_history(branch):
         rh.append((revno, rev_id))
         revno += 1
     return rh
-
-
-def _get_revision_delta(branch, revno):
-    """Return the delta for a mainline revision.
-    
-    This is used to show summaries in verbose logs, and also for finding 
-    revisions which touch a given file."""
-    # XXX: What are we supposed to do when showing a summary for something 
-    # other than a mainline revision.  The delta to it's first parent, or
-    # (more useful) the delta to a nominated other revision.
-    return branch.get_revision_delta(revno)
 
 
 def show_log(branch,
@@ -172,7 +161,6 @@ def _show_log(branch,
     """Worker function for show_log - see show_log."""
     from bzrlib.osutils import format_date
     from bzrlib.errors import BzrCheckError
-    from bzrlib.textui import show_status
     
     from warnings import warn
 
@@ -202,144 +190,133 @@ def _show_log(branch,
 
     # list indexes are 0-based; revisions are 1-based
     cut_revs = which_revs[(start_revision-1):(end_revision)]
+    if not cut_revs:
+        return
 
-    if direction == 'reverse':
-        cut_revs.reverse()
-    elif direction == 'forward':
-        pass
+    # convert the revision history to a dictionary:
+    rev_nos = dict((k, v) for v, k in cut_revs)
+
+    # override the mainline to look like the revision history.
+    mainline_revs = [revision_id for index, revision_id in cut_revs]
+    if cut_revs[0][0] == 1:
+        mainline_revs.insert(0, None)
     else:
-        raise ValueError('invalid direction %r' % direction)
+        mainline_revs.insert(0, which_revs[start_revision-2][1])
+    if getattr(lf, 'show_merge', None) is not None:
+        include_merges = True 
+    else:
+        include_merges = False 
+    view_revisions = list(get_view_revisions(mainline_revs, rev_nos, branch,
+                          direction, include_merges=include_merges))
 
-    revision_history = branch.revision_history()
-    for revno, rev_id in cut_revs:
-        if verbose or specific_fileid:
-            delta = _get_revision_delta(branch, revno)
+    def iter_revisions():
+        # r = revision, n = revno, d = merge depth
+        revision_ids = [r for r, n, d in view_revisions]
+        zeros = set(r for r, n, d in view_revisions if d == 0)
+        num = 9
+        repository = branch.repository
+        while revision_ids:
+            cur_deltas = {}
+            revisions = repository.get_revisions(revision_ids[:num])
+            if verbose or specific_fileid:
+                delta_revisions = [r for r in revisions if
+                                   r.revision_id in zeros]
+                deltas = repository.get_deltas_for_revisions(delta_revisions)
+                cur_deltas = dict(izip((r.revision_id for r in 
+                                        delta_revisions), deltas))
+            for revision in revisions:
+                # The delta value will be None unless
+                # 1. verbose or specific_fileid is specified, and
+                # 2. the revision is a mainline revision
+                yield revision, cur_deltas.get(revision.revision_id)
+            revision_ids  = revision_ids[num:]
+            num = int(num * 1.5)
             
-        if specific_fileid:
-            if not delta.touches_file_id(specific_fileid):
-                continue
-
-        if not verbose:
-            # although we calculated it, throw it away without display
-            delta = None
-
-        rev = branch.get_revision(rev_id)
+    # now we just print all the revisions
+    for ((rev_id, revno, merge_depth), (rev, delta)) in \
+         izip(view_revisions, iter_revisions()):
 
         if searchRE:
             if not searchRE.search(rev.message):
                 continue
 
-        lf.show(revno, rev, delta)
-        if hasattr(lf, 'show_merge'):
-            if revno == 1:
-                excludes = set()
-            else:
-                # revno is 1 based, so -2 to get back 1 less.
-                excludes = set(branch.get_ancestry(revision_history[revno - 2]))
-            pending = list(rev.parent_ids)
-            while pending:
-                rev_id = pending.pop()
-                if rev_id in excludes:
+        if merge_depth == 0:
+            # a mainline revision.
+                
+            if specific_fileid:
+                if not delta.touches_file_id(specific_fileid):
                     continue
-                # prevent showing merged revs twice if they multi-path.
-                excludes.add(rev_id)
-                try:
-                    rev = branch.get_revision(rev_id)
-                except errors.NoSuchRevision:
-                    continue
-                pending.extend(rev.parent_ids)
-                lf.show_merge(rev)
-
-
-def deltas_for_log_dummy(branch, which_revs):
-    """Return all the revisions without intermediate deltas.
-
-    Useful for log commands that won't need the delta information.
-    """
     
-    for revno, revision_id in which_revs:
-        yield revno, branch.get_revision(revision_id), None
+            if not verbose:
+                # although we calculated it, throw it away without display
+                delta = None
 
-
-def deltas_for_log_reverse(branch, which_revs):
-    """Compute deltas for display in latest-to-earliest order.
-
-    branch
-        Branch to traverse
-
-    which_revs
-        Sequence of (revno, revision_id) for the subset of history to examine
-
-    returns 
-        Sequence of (revno, rev, delta)
-
-    The delta is from the given revision to the next one in the
-    sequence, which makes sense if the log is being displayed from
-    newest to oldest.
-    """
-    last_revno = last_revision_id = last_tree = None
-    for revno, revision_id in which_revs:
-        this_tree = branch.revision_tree(revision_id)
-        this_revision = branch.get_revision(revision_id)
-        
-        if last_revno:
-            yield last_revno, last_revision, compare_trees(this_tree, last_tree, False)
-
-        this_tree = EmptyTree(branch.get_root_id())
-
-        last_revno = revno
-        last_revision = this_revision
-        last_tree = this_tree
-
-    if last_revno:
-        if last_revno == 1:
-            this_tree = EmptyTree(branch.get_root_id())
+            lf.show(revno, rev, delta)
         else:
-            this_revno = last_revno - 1
-            this_revision_id = branch.revision_history()[this_revno]
-            this_tree = branch.revision_tree(this_revision_id)
-        yield last_revno, last_revision, compare_trees(this_tree, last_tree, False)
+            lf.show_merge(rev, merge_depth)
 
 
-def deltas_for_log_forward(branch, which_revs):
-    """Compute deltas for display in forward log.
-
-    Given a sequence of (revno, revision_id) pairs, return
-    (revno, rev, delta).
-
-    The delta is from the given revision to the next one in the
-    sequence, which makes sense if the log is being displayed from
-    newest to oldest.
+def get_view_revisions(mainline_revs, rev_nos, branch, direction,
+                       include_merges=True):
+    """Produce an iterator of revisions to show
+    :return: an iterator of (revision_id, revno, merge_depth)
+    (if there is no revno for a revision, None is supplied)
     """
-    last_revno = last_revision_id = last_tree = None
-    prev_tree = EmptyTree(branch.get_root_id())
+    if include_merges is False:
+        revision_ids = mainline_revs[1:]
+        if direction == 'reverse':
+            revision_ids.reverse()
+        for revision_id in revision_ids:
+            yield revision_id, rev_nos[revision_id], 0
+        return
+    merge_sorted_revisions = merge_sort(
+        branch.repository.get_revision_graph(mainline_revs[-1]),
+        mainline_revs[-1],
+        mainline_revs)
 
-    for revno, revision_id in which_revs:
-        this_tree = branch.revision_tree(revision_id)
-        this_revision = branch.get_revision(revision_id)
+    if direction == 'forward':
+        # forward means oldest first.
+        merge_sorted_revisions = reverse_by_depth(merge_sorted_revisions)
+    elif direction != 'reverse':
+        raise ValueError('invalid direction %r' % direction)
 
-        if not last_revno:
-            if revno == 1:
-                last_tree = EmptyTree(branch.get_root_id())
-            else:
-                last_revno = revno - 1
-                last_revision_id = branch.revision_history()[last_revno]
-                last_tree = branch.revision_tree(last_revision_id)
+    revision_history = branch.revision_history()
 
-        yield revno, this_revision, compare_trees(last_tree, this_tree, False)
+    for sequence, rev_id, merge_depth, end_of_merge in merge_sorted_revisions:
+        yield rev_id, rev_nos.get(rev_id), merge_depth
 
-        last_revno = revno
-        last_revision = this_revision
-        last_tree = this_tree
+
+def reverse_by_depth(merge_sorted_revisions, _depth=0):
+    """Reverse revisions by depth.
+
+    Revisions with a different depth are sorted as a group with the previous
+    revision of that depth.  There may be no topological justification for this,
+    but it looks much nicer.
+    """
+    zd_revisions = []
+    for val in merge_sorted_revisions:
+        if val[2] == _depth:
+            zd_revisions.append([val])
+        else:
+            assert val[2] > _depth
+            zd_revisions[-1].append(val)
+    for revisions in zd_revisions:
+        if len(revisions) > 1:
+            revisions[1:] = reverse_by_depth(revisions[1:], _depth + 1)
+    zd_revisions.reverse()
+    result = []
+    for chunk in zd_revisions:
+        result.extend(chunk)
+    return result
 
 
 class LogFormatter(object):
     """Abstract class to display log messages."""
+
     def __init__(self, to_file, show_ids=False, show_timezone='original'):
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
-
 
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
@@ -352,11 +329,11 @@ class LongLogFormatter(LogFormatter):
     def show(self, revno, rev, delta):
         return self._show_helper(revno=revno, rev=rev, delta=delta)
 
-    def show_merge(self, rev):
-        return self._show_helper(rev=rev, indent='    ', merged=True, delta=None)
+    def show_merge(self, rev, merge_depth):
+        return self._show_helper(rev=rev, indent='    '*merge_depth, merged=True, delta=None)
 
     def _show_helper(self, rev=None, revno=None, indent='', merged=False, delta=None):
-	"""Show a revision, either merged or not."""
+        """Show a revision, either merged or not."""
         from bzrlib.osutils import format_date
         to_file = self.to_file
         print >>to_file,  indent+'-' * 60
@@ -417,6 +394,7 @@ class ShortLogFormatter(LogFormatter):
             delta.show(to_file, self.show_ids)
         print >>to_file, ''
 
+
 class LineLogFormatter(LogFormatter):
     def truncate(self, str, max_len):
         if len(str) <= max_len:
@@ -436,23 +414,39 @@ class LineLogFormatter(LogFormatter):
             return rev.message
 
     def show(self, revno, rev, delta):
-        print >> self.to_file, self.log_string(rev, 79) 
+        from bzrlib.osutils import terminal_width
+        print >> self.to_file, self.log_string(revno, rev, terminal_width()-1)
 
-    def log_string(self, rev, max_chars):
-        out = [self.truncate(self.short_committer(rev), 20)]
+    def log_string(self, revno, rev, max_chars):
+        """Format log info into one string. Truncate tail of string
+        :param  revno:      revision number (int) or None.
+                            Revision numbers counts from 1.
+        :param  rev:        revision info object
+        :param  max_chars:  maximum length of resulting string
+        :return:            formatted truncated string
+        """
+        out = []
+        if revno:
+            # show revno only when is not None
+            out.append("%d:" % revno)
+        out.append(self.truncate(self.short_committer(rev), 20))
         out.append(self.date_string(rev))
-        out.append(self.message(rev).replace('\n', ' '))
+        out.append(rev.get_summary())
         return self.truncate(" ".join(out).rstrip('\n'), max_chars)
+
 
 def line_log(rev, max_chars):
     lf = LineLogFormatter(None)
-    return lf.log_string(rev, max_chars)
+    return lf.log_string(None, rev, max_chars)
 
-FORMATTERS = {'long': LongLogFormatter,
+FORMATTERS = {
+              'long': LongLogFormatter,
               'short': ShortLogFormatter,
               'line': LineLogFormatter,
               }
 
+def register_formatter(name, formatter):
+    FORMATTERS[name] = formatter
 
 def log_formatter(name, *args, **kwargs):
     """Construct a formatter from arguments.
@@ -463,11 +457,11 @@ def log_formatter(name, *args, **kwargs):
     from bzrlib.errors import BzrCommandError
     try:
         return FORMATTERS[name](*args, **kwargs)
-    except IndexError:
+    except KeyError:
         raise BzrCommandError("unknown log formatter: %r" % name)
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
-    # deprecated; for compatability
+    # deprecated; for compatibility
     lf = LongLogFormatter(to_file=to_file, show_timezone=show_timezone)
     lf.show(revno, rev, delta)
 
@@ -510,7 +504,7 @@ def show_changed_revisions(branch, old_rh, new_rh, to_file=None, log_format='lon
         to_file.write('*'*60)
         to_file.write('\nRemoved Revisions:\n')
         for i in range(base_idx, len(old_rh)):
-            rev = branch.get_revision(old_rh[i])
+            rev = branch.repository.get_revision(old_rh[i])
             lf.show(i+1, rev, None)
         to_file.write('*'*60)
         to_file.write('\n\n')

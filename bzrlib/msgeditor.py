@@ -1,17 +1,15 @@
-# Bazaar-NG -- distributed version control
-
-# Copyright (C) 2005 by Canonical Ltd
-
+# Copyright (C) 2005, 2006 by Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -19,11 +17,17 @@
 
 """Commit message editor support."""
 
+import codecs
+import errno
 import os
 from subprocess import call
+import sys
 
+import bzrlib
 import bzrlib.config as config
 from bzrlib.errors import BzrError
+from bzrlib.trace import warning, mutter
+
 
 def _get_editor():
     """Return a sequence of possible editor binaries for the current platform"""
@@ -36,33 +40,46 @@ def _get_editor():
     if e is not None:
         yield e
         
-    try:
-        yield os.environ["EDITOR"]
-    except KeyError:
-        pass
+    for varname in 'VISUAL', 'EDITOR':
+        if os.environ.has_key(varname):
+            yield os.environ[varname]
 
-    if os.name == "nt":
-        yield "notepad.exe"
-    elif os.name == "posix":
-        yield "/usr/bin/vi"
+    if sys.platform == 'win32':
+        for editor in 'wordpad.exe', 'notepad.exe':
+            yield editor
+    else:
+        for editor in ['/usr/bin/editor', 'vi', 'pico', 'nano', 'joe']:
+            yield editor
 
 
 def _run_editor(filename):
     """Try to execute an editor to edit the commit message."""
     for e in _get_editor():
         edargs = e.split(' ')
-        x = call(edargs + [filename])
+        try:
+            ## mutter("trying editor: %r", (edargs +[filename]))
+            x = call(edargs + [filename])
+        except OSError, e:
+           # We're searching for an editor, so catch safe errors and continue
+           if e.errno in (errno.ENOENT, ):
+               continue
+           raise
         if x == 0:
             return True
         elif x == 127:
             continue
         else:
             break
-    raise BzrError("Could not start any editor. "
-                   "Please specify $EDITOR or use ~/.bzr.conf/editor")
-                          
+    raise BzrError("Could not start any editor.\nPlease specify one with:\n"
+                   " - $BZR_EDITOR\n - editor=/some/path in %s\n - $EDITOR" % \
+                    config.config_filename())
 
-def edit_commit_message(infotext, ignoreline=None):
+
+DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \
+    { 'bar' : '-' * 14, 'msg' : 'This line and the following will be ignored' }
+
+
+def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
     """Let the user edit a commit message in a temp file.
 
     This is run if they don't give a message or
@@ -74,17 +91,16 @@ def edit_commit_message(infotext, ignoreline=None):
         'bzr status'.
     """
     import tempfile
-    
-    if ignoreline is None:
-        ignoreline = "-- This line and the following will be ignored --"
-        
+
+    msgfilename = None
     try:
         tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
         msgfile = os.close(tmp_fileno)
         if infotext is not None and infotext != "":
             hasinfo = True
             msgfile = file(msgfilename, "w")
-            msgfile.write("\n\n%s\n\n%s" % (ignoreline, infotext))
+            msgfile.write("\n\n%s\n\n%s" % (ignoreline,
+                infotext.encode(bzrlib.user_encoding, 'replace')))
             msgfile.close()
         else:
             hasinfo = False
@@ -95,7 +111,7 @@ def edit_commit_message(infotext, ignoreline=None):
         started = False
         msg = []
         lastline, nlines = 0, 0
-        for line in file(msgfilename, "r"):
+        for line in codecs.open(msgfilename, 'r', bzrlib.user_encoding):
             stripped_line = line.strip()
             # strip empty line before the log message starts
             if not started:
@@ -124,6 +140,28 @@ def edit_commit_message(infotext, ignoreline=None):
             return "".join(msg)
     finally:
         # delete the msg file in any case
-        try: os.unlink(msgfilename)
-        except IOError: pass
+        if msgfilename is not None:
+            try:
+                os.unlink(msgfilename)
+            except IOError, e:
+                warning("failed to unlink %s: %s; ignored", msgfilename, e)
 
+
+def make_commit_message_template(working_tree, specific_files):
+    """Prepare a template file for a commit into a branch.
+
+    Returns a unicode string containing the template.
+    """
+    # TODO: Should probably be given the WorkingTree not the branch
+    #
+    # TODO: make provision for this to be overridden or modified by a hook
+    #
+    # TODO: Rather than running the status command, should prepare a draft of
+    # the revision to be committed, then pause and ask the user to
+    # confirm/write a message.
+    from StringIO import StringIO       # must be unicode-safe
+    from bzrlib.status import show_tree_status
+    status_tmp = StringIO()
+    show_tree_status(working_tree, specific_files=specific_files, 
+                     to_file=status_tmp)
+    return status_tmp.getvalue()

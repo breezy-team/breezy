@@ -1,15 +1,15 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
-
+# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -24,10 +24,7 @@ import textwrap
 
 global_help = \
 """Bazaar-NG -- a free distributed version-control tool
-http://bazaar-ng.org/
-
-WARNING: This is an unstable development version.
-         Please keep backups.
+http://bazaar-vcs.org/
 
 Basic commands:
 
@@ -88,6 +85,18 @@ def command_usage(cmd_object):
     return s
 
 
+def print_command_plugin(cmd_object, outfile, format):
+    """Print the plugin that provides a command object, if any.
+
+    If the cmd_object is provided by a plugin, prints the plugin name to
+    outfile using the provided format string.
+    """
+    plugin_name = cmd_object.plugin_name()
+    if plugin_name is not None:
+        out_str = '(From plugin "%s")' % plugin_name
+        outfile.write(format % out_str)
+
+
 def help_on_command(cmdname, outfile=None):
     from bzrlib.commands import get_cmd_object
 
@@ -109,6 +118,8 @@ def help_on_command(cmdname, outfile=None):
         print >>outfile, ', '.join(cmd_object.aliases)
 
     print >>outfile
+
+    print_command_plugin(cmd_object, outfile, '%s\n\n')
 
     outfile.write(doc)
     if doc[-1] != '\n':
@@ -159,8 +170,12 @@ def help_commands(outfile=None):
         if cmd_object.hidden:
             continue
         print >>outfile, command_usage(cmd_object)
+
+        plugin_name = cmd_object.plugin_name()
+        print_command_plugin(cmd_object, outfile, '        %s\n')
+
         cmd_help = cmd_object.help()
         if cmd_help:
             firstline = cmd_help.split('\n', 1)[0]
-            print >>outfile, '    ' + firstline
+            print >>outfile, '        ' + firstline
         

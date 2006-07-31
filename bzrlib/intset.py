@@ -1,15 +1,15 @@
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -208,3 +208,22 @@ class IntSet(Exception):
         if not self._val & m:
             raise KeyError(to_remove)
         self._val ^= m
+
+    def set_remove(self, to_remove):
+        """Remove all values that exist in to_remove.
+
+        >>> a = IntSet(range(10))
+        >>> b = IntSet([2,3,4,7,12])
+        >>> a.set_remove(b)
+        >>> list(a)
+        [0, 1, 5, 6, 8, 9]
+        >>> a.set_remove([1,2,5])
+        >>> list(a)
+        [0, 6, 8, 9]
+        """
+        if not isinstance(to_remove, IntSet):
+            self.set_remove(IntSet(to_remove))
+            return
+        intersect = self._val & to_remove._val
+        self._val ^= intersect
+

@@ -1,15 +1,15 @@
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -19,12 +19,19 @@
 
 import os
 from cStringIO import StringIO
+from warnings import warn
 
 import bzrlib
-from bzrlib.trace import mutter, note
+from bzrlib import delta
+from bzrlib.decorators import needs_read_lock
 from bzrlib.errors import BzrError, BzrCheckError
+from bzrlib import errors
 from bzrlib.inventory import Inventory
-from bzrlib.osutils import appendpath, fingerprint_file
+from bzrlib.inter import InterObject
+from bzrlib.osutils import fingerprint_file
+import bzrlib.revision
+from bzrlib.trace import mutter, note
+
 
 class Tree(object):
     """Abstract file tree.
@@ -34,8 +41,6 @@ class Tree(object):
     * `WorkingTree` exists as files on disk editable by the user.
 
     * `RevisionTree` is a tree as recorded at some point in the past.
-
-    * `EmptyTree`
 
     Trees contain an `Inventory` object, and also know how to retrieve
     file texts mentioned in the inventory, either from a working
@@ -48,6 +53,52 @@ class Tree(object):
     trees or versioned trees.
     """
     
+    def changes_from(self, other, want_unchanged=False, specific_files=None,
+        extra_trees=None, require_versioned=False):
+        """Return a TreeDelta of the changes from other to this tree.
+
+        :param other: A tree to compare with.
+        :param specific_files: An optional list of file paths to restrict the
+            comparison to. When mapping filenames to ids, all matches in all
+            trees (including optional extra_trees) are used, and all children of
+            matched directories are included.
+        :param want_unchanged: An optional boolean requesting the inclusion of
+            unchanged entries in the result.
+        :param extra_trees: An optional list of additional trees to use when
+            mapping the contents of specific_files (paths) to file_ids.
+        :param require_versioned: An optional boolean (defaults to False). When
+            supplied and True all the 'specific_files' must be versioned, or
+            a PathsNotVersionedError will be thrown.
+
+        The comparison will be performed by an InterTree object looked up on 
+        self and other.
+        """
+        # Martin observes that Tree.changes_from returns a TreeDelta and this
+        # may confuse people, because the class name of the returned object is
+        # a synonym of the object referenced in the method name.
+        return InterTree.get(other, self).compare(
+            want_unchanged=want_unchanged,
+            specific_files=specific_files,
+            extra_trees=extra_trees,
+            require_versioned=require_versioned,
+            )
+    
+    def conflicts(self):
+        """Get a list of the conflicts in the tree.
+
+        Each conflict is an instance of bzrlib.conflicts.Conflict.
+        """
+        return []
+
+    def get_parent_ids(self):
+        """Get the parent ids for this tree. 
+
+        :return: a list of parent ids. [] is returned to indicate
+        a tree with no parents.
+        :raises: BzrError if the parents are not known.
+        """
+        raise NotImplementedError(self.get_parent_ids)
+    
     def has_filename(self, filename):
         """True if the tree has given filename."""
         raise NotImplementedError()
@@ -55,18 +106,28 @@ class Tree(object):
     def has_id(self, file_id):
         return self.inventory.has_id(file_id)
 
+    __contains__ = has_id
+
     def has_or_had_id(self, file_id):
         if file_id == self.inventory.root.file_id:
             return True
         return self.inventory.has_id(file_id)
-
-    __contains__ = has_id
 
     def __iter__(self):
         return iter(self.inventory)
 
     def id2path(self, file_id):
         return self.inventory.id2path(file_id)
+
+    def iter_entries_by_dir(self):
+        """Walk the tree in 'by_dir' order.
+
+        This will yield each entry in the tree as a (path, entry) tuple. The
+        order that they are yielded is: the contents of a directory are 
+        preceeded by the parent of a directory, and all the contents of a 
+        directory are grouped together.
+        """
+        return self.inventory.iter_entries_by_dir()
 
     def kind(self, file_id):
         raise NotImplementedError("subclasses must implement kind")
@@ -104,77 +165,46 @@ class Tree(object):
         """Print file with id `file_id` to stdout."""
         import sys
         sys.stdout.write(self.get_file_text(file_id))
+
+    def lock_read(self):
+        pass
+
+    def unknowns(self):
+        """What files are present in this tree and unknown.
         
-        
-class RevisionTree(Tree):
-    """Tree viewing a previous revision.
+        :return: an iterator over the unknown files.
+        """
+        return iter([])
 
-    File text can be retrieved from the text store.
+    def unlock(self):
+        pass
 
-    TODO: Some kind of `__repr__` method, but a good one
-           probably means knowing the branch and revision number,
-           or at least passing a description to the constructor.
-    """
-    
-    def __init__(self, weave_store, inv, revision_id):
-        self._weave_store = weave_store
-        self._inventory = inv
-        self._revision_id = revision_id
+    def filter_unversioned_files(self, paths):
+        """Filter out paths that are not versioned.
 
-    def get_weave(self, file_id):
-        # FIXME: RevisionTree should be given a branch
-        # not a store, or the store should know the branch.
-        import bzrlib.transactions as transactions
-        return self._weave_store.get_weave(file_id,
-            transactions.PassThroughTransaction())
+        :return: set of paths.
+        """
+        # NB: we specifically *don't* call self.has_filename, because for
+        # WorkingTrees that can indicate files that exist on disk but that 
+        # are not versioned.
+        pred = self.inventory.has_filename
+        return set((p for p in paths if not pred(p)))
 
 
-    def get_file_lines(self, file_id):
-        ie = self._inventory[file_id]
-        weave = self.get_weave(file_id)
-        return weave.get(ie.revision)
-        
-
-    def get_file_text(self, file_id):
-        return ''.join(self.get_file_lines(file_id))
-
-
-    def get_file(self, file_id):
-        return StringIO(self.get_file_text(file_id))
-
-    def get_file_size(self, file_id):
-        return self._inventory[file_id].text_size
-
-    def get_file_sha1(self, file_id):
-        ie = self._inventory[file_id]
-        if ie.kind == "file":
-            return ie.text_sha1
-
-    def is_executable(self, file_id):
-        ie = self._inventory[file_id]
-        if ie.kind != "file":
-            return None 
-        return self._inventory[file_id].executable
-
-    def has_filename(self, filename):
-        return bool(self.inventory.path2id(filename))
-
-    def list_files(self):
-        # The only files returned by this are those from the version
-        for path, entry in self.inventory.iter_entries():
-            yield path, 'V', entry.kind, entry.file_id, entry
-
-    def get_symlink_target(self, file_id):
-        ie = self._inventory[file_id]
-        return ie.symlink_target;
-
-    def kind(self, file_id):
-        return self._inventory[file_id].kind
-
+# for compatibility
+from bzrlib.revisiontree import RevisionTree
+ 
 
 class EmptyTree(Tree):
+
     def __init__(self):
         self._inventory = Inventory()
+        warn('EmptyTree is deprecated as of bzr 0.9 please use '
+            'repository.revision_tree instead.',
+            DeprecationWarning, stacklevel=2)
+
+    def get_parent_ids(self):
+        return []
 
     def get_symlink_target(self, file_id):
         return None
@@ -192,7 +222,7 @@ class EmptyTree(Tree):
     def __contains__(self, file_id):
         return file_id in self._inventory
 
-    def get_file_sha1(self, file_id):
+    def get_file_sha1(self, file_id, path=None):
         assert self._inventory[file_id].kind == "root_directory"
         return None
 
@@ -262,4 +292,120 @@ def find_renames(old_inv, new_inv):
             yield (old_name, new_name)
             
 
+def find_ids_across_trees(filenames, trees, require_versioned=True):
+    """Find the ids corresponding to specified filenames.
+    
+    All matches in all trees will be used, and all children of matched
+    directories will be used.
 
+    :param filenames: The filenames to find file_ids for
+    :param trees: The trees to find file_ids within
+    :param require_versioned: if true, all specified filenames must occur in
+    at least one tree.
+    :return: a set of file ids for the specified filenames and their children.
+    """
+    if not filenames:
+        return None
+    specified_ids = _find_filename_ids_across_trees(filenames, trees, 
+                                                    require_versioned)
+    return _find_children_across_trees(specified_ids, trees)
+
+
+def _find_filename_ids_across_trees(filenames, trees, require_versioned):
+    """Find the ids corresponding to specified filenames.
+    
+    All matches in all trees will be used.
+
+    :param filenames: The filenames to find file_ids for
+    :param trees: The trees to find file_ids within
+    :param require_versioned: if true, all specified filenames must occur in
+    at least one tree.
+    :return: a set of file ids for the specified filenames
+    """
+    not_versioned = []
+    interesting_ids = set()
+    for tree_path in filenames:
+        not_found = True
+        for tree in trees:
+            file_id = tree.inventory.path2id(tree_path)
+            if file_id is not None:
+                interesting_ids.add(file_id)
+                not_found = False
+        if not_found:
+            not_versioned.append(tree_path)
+    if len(not_versioned) > 0 and require_versioned:
+        raise errors.PathsNotVersionedError(not_versioned)
+    return interesting_ids
+
+
+def _find_children_across_trees(specified_ids, trees):
+    """Return a set including specified ids and their children
+    
+    All matches in all trees will be used.
+
+    :param trees: The trees to find file_ids within
+    :return: a set containing all specified ids and their children 
+    """
+    interesting_ids = set(specified_ids)
+    pending = interesting_ids
+    # now handle children of interesting ids
+    # we loop so that we handle all children of each id in both trees
+    while len(pending) > 0:
+        new_pending = set()
+        for file_id in pending:
+            for tree in trees:
+                if file_id not in tree:
+                    continue
+                entry = tree.inventory[file_id]
+                for child in getattr(entry, 'children', {}).itervalues():
+                    if child.file_id not in interesting_ids:
+                        new_pending.add(child.file_id)
+        interesting_ids.update(new_pending)
+        pending = new_pending
+    return interesting_ids
+
+
+class InterTree(InterObject):
+    """This class represents operations taking place between two Trees.
+
+    Its instances have methods like 'compare' and contain references to the
+    source and target trees these operations are to be carried out on.
+
+    clients of bzrlib should not need to use InterTree directly, rather they
+    should use the convenience methods on Tree such as 'Tree.compare()' which
+    will pass through to InterTree as appropriate.
+    """
+
+    _optimisers = set()
+
+    @needs_read_lock
+    def compare(self, want_unchanged=False, specific_files=None,
+        extra_trees=None, require_versioned=False):
+        """Return the changes from source to target.
+
+        :return: A TreeDelta.
+        :param specific_files: An optional list of file paths to restrict the
+            comparison to. When mapping filenames to ids, all matches in all
+            trees (including optional extra_trees) are used, and all children of
+            matched directories are included.
+        :param want_unchanged: An optional boolean requesting the inclusion of
+            unchanged entries in the result.
+        :param extra_trees: An optional list of additional trees to use when
+            mapping the contents of specific_files (paths) to file_ids.
+        :param require_versioned: An optional boolean (defaults to False). When
+            supplied and True all the 'specific_files' must be versioned, or
+            a PathsNotVersionedError will be thrown.
+        """
+        # NB: show_status depends on being able to pass in non-versioned files and
+        # report them as unknown
+        trees = (self.source, self.target)
+        if extra_trees is not None:
+            trees = trees + tuple(extra_trees)
+        specific_file_ids = find_ids_across_trees(specific_files,
+            trees, require_versioned=require_versioned)
+        if specific_files and not specific_file_ids:
+            # All files are unversioned, so just return an empty delta
+            # _compare_trees would think we want a complete delta
+            return delta.TreeDelta()
+        return delta._compare_trees(self.source, self.target, want_unchanged,
+            specific_file_ids)

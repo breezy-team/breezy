@@ -1,18 +1,48 @@
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
+import errno
 import os
 from subprocess import Popen, PIPE
-"""
-Diff and patch functionality
-"""
+
+from bzrlib.errors import NoDiff3
+from bzrlib.textfile import check_text_path
+
+"""Diff and patch functionality"""
+
 __docformat__ = "restructuredtext"
 
-def write_to_cmd(args, input=""):
-    if os.name != 'nt':
-        process = Popen(args, bufsize=len(input), stdin=PIPE, stdout=PIPE,
-                        stderr=PIPE, close_fds=True)
-    else:
-        process = Popen(args, bufsize=len(input), stdin=PIPE, stdout=PIPE,
-                        stderr=PIPE)
 
+_do_close_fds = True
+if os.name == 'nt':
+    _do_close_fds = False
+
+
+def write_to_cmd(args, input=""):
+    """Spawn a process, and wait for the result
+
+    If the process is killed, an exception is raised
+
+    :param args: The command line, the first entry should be the program name
+    :param input: [optional] The text to send the process on stdin
+    :return: (stdout, stderr, status)
+    """
+    process = Popen(args, bufsize=len(input), stdin=PIPE, stdout=PIPE,
+                    stderr=PIPE, close_fds=_do_close_fds)
     stdout, stderr = process.communicate(input)
     status = process.wait()
     if status < 0:
@@ -48,13 +78,26 @@ def patch(patch_contents, filename, output_filename=None, reverse=False):
 def diff3(out_file, mine_path, older_path, yours_path):
     def add_label(args, label):
         args.extend(("-L", label))
+    check_text_path(mine_path)
+    check_text_path(older_path)
+    check_text_path(yours_path)
     args = ['diff3', "-E", "--merge"]
     add_label(args, "TREE")
     add_label(args, "ANCESTOR")
     add_label(args, "MERGE-SOURCE")
     args.extend((mine_path, older_path, yours_path))
-    output, stderr, status = write_to_cmd(args)
+    try:
+        output, stderr, status = write_to_cmd(args)
+    except OSError, e:
+        if e.errno == errno.ENOENT:
+            raise NoDiff3
+        else:
+            raise
     if status not in (0, 1):
         raise Exception(stderr)
-    file(out_file, "wb").write(output)
+    f = open(out_file, 'wb')
+    try:
+        f.write(output)
+    finally:
+        f.close()
     return status

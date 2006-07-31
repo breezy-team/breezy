@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Development Ltd
+# Copyright (C) 2005, 2006 Canonical Development Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,65 +16,6 @@
 
 """bzr library"""
 
-BZRDIR = ".bzr"
-
-# please keep these sorted (in C locale order) to aid merging
-DEFAULT_IGNORE = [
-                  '#*#',
-                  '*$',
-                  '*,v',
-                  '*.BAK',
-                  '*.a',
-                  '*.bak',
-                  '*.elc',
-                  '*.exe',
-                  '*.la',
-                  '*.lo',
-                  '*.o',
-                  '*.o',
-                  '*.obj',
-                  '*.orig',
-                  '*.py[oc]',
-                  '*.so',
-                  '*.tmp',
-                  '*~',
-                  '.#*',
-                  '.*.sw[nop]',
-                  '.*.tmp',
-                  '.DS_Store',
-                  '.arch-ids',
-                  '.arch-inventory',
-                  '.bzr.log',
-                  '.del-*',
-                  '.git',
-                  '.jamdeps'
-                  '.libs',
-                  '.make.state',
-                  '.sconsign*',
-                  '.svn',
-                  '.tmp*',
-                  'BitKeeper',
-                  'CVS',
-                  'CVS.adm',
-                  'Makefile.in',
-                  'RCS',
-                  'SCCS',
-                  'TAGS',
-                  '_darcs',
-                  'aclocal.m4',
-                  'autom4te*',
-                  'config.guess',
-                  'config.h',
-                  'config.h.in',
-                  'config.log',
-                  'config.status',
-                  'config.sub',
-                  'configure.in',
-                  'stamp-h',
-                  'stamp-h.in',
-                  'stamp-h1',
-                  '{arch}',
-                  ]
 
 IGNORE_FILENAME = ".bzrignore"
 
@@ -87,17 +28,43 @@ if sys.platform == 'darwin':
     sys.platform = 'darwin'
 else:
     import locale
+# XXX: This probably belongs in osutils instead
 user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
-__copyright__ = "Copyright 2005 Canonical Development Ltd."
-__version__ = version_string = '0.7pre'
-# same format as sys.version_info
-version_info = (0, 7, 0, 'pre', 0)
+__copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
+__version__ = version_string = '0.9'
+
+# same format as sys.version_info: "A tuple containing the five components of
+# the version number: major, minor, micro, releaselevel, and serial. All
+# values except releaselevel are integers; the release level is 'alpha',
+# 'beta', 'candidate', or 'final'. The version_info value corresponding to the
+# Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
+# releaselevel of 'dev' for unreleased under-development code.
+
+version_info = (0, 9, 0, 'dev', 0)
+
+if version_info[3] == 'final':
+    version_string = '%d.%d.%d' % version_info[:3]
+else:
+    version_string = '%d.%d.%d%s%d' % version_info
+__version__ = version_string
+
+from bzrlib.symbol_versioning import (deprecated_function,
+                                      zero_seven,
+                                      zero_nine,
+                                      deprecated_list,
+                                     )
+
+# Kept for compatibility with 0.8, it is considered deprecated to modify it
+DEFAULT_IGNORE = deprecated_list(zero_nine, 'DEFAULT_IGNORE', [],
+                    'Consider using bzrlib.ignores.add_unique_user_ignores'
+                    ' or bzrlib.ignores.add_runtime_ignores')
 
 
+@deprecated_function(zero_seven)
 def get_bzr_revision():
-    """If bzr is run from a branch, return (revno,revid) or None"""
+    """If bzr is run from a branch, return (revno,revid) or None."""
     import bzrlib.errors
     from bzrlib.branch import Branch
     

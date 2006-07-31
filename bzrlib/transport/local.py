@@ -1,37 +1,36 @@
-# Copyright (C) 2005 Canonical Ltd
-
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """Transport for the local filesystem.
 
-This is a fairly thin wrapper on regular file IO."""
+This is a fairly thin wrapper on regular file IO.
+"""
 
 import os
-import errno
 import shutil
+import sys
 from stat import ST_MODE, S_ISDIR, ST_SIZE
 import tempfile
-import urllib
 
+from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename, 
+                            check_legal_path, rmtree)
+from bzrlib.symbol_versioning import warn
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport, register_transport, \
-    TransportError, NoSuchFile, FileExists
-from bzrlib.osutils import abspath
-
-class LocalTransportError(TransportError):
-    pass
+from bzrlib.transport import Transport, Server
+import bzrlib.urlutils as urlutils
 
 
 class LocalTransport(Transport):
@@ -39,12 +38,20 @@ class LocalTransport(Transport):
 
     def __init__(self, base):
         """Set the base path where files will be stored."""
-        if base.startswith('file://'):
-            base = base[7:]
-        # realpath is incompatible with symlinks. When we traverse
-        # up we might be able to normpath stuff. RBC 20051003
-        super(LocalTransport, self).__init__(
-            os.path.normpath(abspath(base)))
+        if not base.startswith('file://'):
+            warn("Instantiating LocalTransport with a filesystem path"
+                " is deprecated as of bzr 0.8."
+                " Please use bzrlib.transport.get_transport()"
+                " or pass in a file:// url.",
+                 DeprecationWarning,
+                 stacklevel=2
+                 )
+            base = urlutils.local_path_to_url(base)
+        if base[-1] != '/':
+            base = base + '/'
+        super(LocalTransport, self).__init__(base)
+        self._local_base = urlutils.local_path_from_url(base)
+        ## mutter("_local_base: %r => %r", base, self._local_base)
 
     def should_cache(self):
         return False
@@ -59,23 +66,53 @@ class LocalTransport(Transport):
         else:
             return LocalTransport(self.abspath(offset))
 
-    def abspath(self, relpath):
-        """Return the full url to the given relative URL.
-        This can be supplied with a string or a list
+    def _abspath(self, relative_reference):
+        """Return a path for use in os calls.
+
+        Several assumptions are made:
+         - relative_reference does not contain '..'
+         - relative_reference is url escaped.
         """
+        if relative_reference in ('.', ''):
+            return self._local_base
+        return self._local_base + urlutils.unescape(relative_reference)
+
+    def abspath(self, relpath):
+        """Return the full url to the given relative URL."""
+        # TODO: url escape the result. RBC 20060523.
         assert isinstance(relpath, basestring), (type(relpath), relpath)
-        return os.path.join(self.base, urllib.unquote(relpath))
+        # jam 20060426 Using normpath on the real path, because that ensures
+        #       proper handling of stuff like
+        path = normpath(pathjoin(self._local_base, urlutils.unescape(relpath)))
+        return urlutils.local_path_to_url(path)
+
+    def local_abspath(self, relpath):
+        """Transform the given relative path URL into the actual path on disk
+
+        This function only exists for the LocalTransport, since it is
+        the only one that has direct local access.
+        This is mostly for stuff like WorkingTree which needs to know
+        the local working directory.
+        
+        This function is quite expensive: it calls realpath which resolves
+        symlinks.
+        """
+        absurl = self.abspath(relpath)
+        # mutter(u'relpath %s => base: %s, absurl %s', relpath, self.base, absurl)
+        return urlutils.local_path_from_url(absurl)
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
         """
-        from bzrlib.osutils import relpath
         if abspath is None:
             abspath = u'.'
-        return relpath(self.base, abspath)
+
+        return urlutils.file_relpath(
+            urlutils.strip_trailing_slash(self.base), 
+            urlutils.strip_trailing_slash(abspath))
 
     def has(self, relpath):
-        return os.access(self.abspath(relpath), os.F_OK)
+        return os.access(self._abspath(relpath), os.F_OK)
 
     def get(self, relpath):
         """Get the file at the given relative path.
@@ -83,14 +120,12 @@ class LocalTransport(Transport):
         :param relpath: The relative path to the file
         """
         try:
-            path = self.abspath(relpath)
+            path = self._abspath(relpath)
             return open(path, 'rb')
-        except IOError,e:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                raise NoSuchFile('File or directory %r does not exist' % path, orig_error=e)
-            raise LocalTransportError(orig_error=e)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
 
-    def put(self, relpath, f):
+    def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
@@ -98,13 +133,13 @@ class LocalTransport(Transport):
         """
         from bzrlib.atomicfile import AtomicFile
 
+        path = relpath
         try:
-            path = self.abspath(relpath)
-            fp = AtomicFile(path, 'wb')
-        except IOError, e:
-            if e.errno == errno.ENOENT:
-                raise NoSuchFile('File %r does not exist' % path, orig_error=e)
-            raise LocalTransportError(orig_error=e)
+            path = self._abspath(relpath)
+            check_legal_path(path)
+            fp = AtomicFile(path, 'wb', new_mode=mode)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
         try:
             self._pump(f, fp)
             fp.commit()
@@ -115,7 +150,7 @@ class LocalTransport(Transport):
         """Iter the relative paths of files in the transports sub-tree."""
         queue = list(self.list_dir(u'.'))
         while queue:
-            relpath = urllib.quote(queue.pop(0))
+            relpath = queue.pop(0)
             st = self.stat(relpath)
             if S_ISDIR(st[ST_MODE]):
                 for i, basename in enumerate(self.list_dir(relpath)):
@@ -123,52 +158,80 @@ class LocalTransport(Transport):
             else:
                 yield relpath
 
-    def mkdir(self, relpath):
+    def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
+        path = relpath
         try:
-            os.mkdir(self.abspath(relpath))
-        except OSError,e:
-            if e.errno == errno.EEXIST:
-                raise FileExists(orig_error=e)
-            elif e.errno == errno.ENOENT:
-                raise NoSuchFile(orig_error=e)
-            raise LocalTransportError(orig_error=e)
+            path = self._abspath(relpath)
+            os.mkdir(path)
+            if mode is not None:
+                os.chmod(path, mode)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
 
-    def append(self, relpath, f):
-        """Append the text in the file-like object into the final
-        location.
-        """
-        fp = open(self.abspath(relpath), 'ab')
-        self._pump(f, fp)
+    def append(self, relpath, f, mode=None):
+        """Append the text in the file-like object into the final location."""
+        abspath = self._abspath(relpath)
+        fp = None
+        try:
+            try:
+                fp = open(abspath, 'ab')
+                # FIXME should we really be chmodding every time ? RBC 20060523
+                if mode is not None:
+                    os.chmod(abspath, mode)
+            except (IOError, OSError),e:
+                self._translate_error(e, relpath)
+            # win32 workaround (tell on an unwritten file returns 0)
+            fp.seek(0, 2)
+            result = fp.tell()
+            self._pump(f, fp)
+        finally:
+            if fp is not None:
+                fp.close()
+        return result
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
-        import shutil
-        path_from = self.abspath(rel_from)
-        path_to = self.abspath(rel_to)
+        path_from = self._abspath(rel_from)
+        path_to = self._abspath(rel_to)
         try:
             shutil.copy(path_from, path_to)
-        except OSError,e:
-            raise LocalTransportError(orig_error=e)
+        except (IOError, OSError),e:
+            # TODO: What about path_to?
+            self._translate_error(e, path_from)
+
+    def rename(self, rel_from, rel_to):
+        path_from = self._abspath(rel_from)
+        try:
+            # *don't* call bzrlib.osutils.rename, because we want to 
+            # detect errors on rename
+            os.rename(path_from, self._abspath(rel_to))
+        except (IOError, OSError),e:
+            # TODO: What about path_to?
+            self._translate_error(e, path_from)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
-        path_from = self.abspath(rel_from)
-        path_to = self.abspath(rel_to)
+        path_from = self._abspath(rel_from)
+        path_to = self._abspath(rel_to)
 
         try:
-            os.rename(path_from, path_to)
-        except OSError,e:
-            raise LocalTransportError(orig_error=e)
+            # this version will delete the destination if necessary
+            rename(path_from, path_to)
+        except (IOError, OSError),e:
+            # TODO: What about path_to?
+            self._translate_error(e, path_from)
 
     def delete(self, relpath):
         """Delete the item at relpath"""
+        path = relpath
         try:
-            os.remove(self.abspath(relpath))
-        except OSError,e:
-            raise LocalTransportError(orig_error=e)
+            path = self._abspath(relpath)
+            os.remove(path)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
 
-    def copy_to(self, relpaths, other, pb=None):
+    def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
 
         :param relpaths: A list/generator of entries to be copied.
@@ -177,22 +240,22 @@ class LocalTransport(Transport):
             # Both from & to are on the local filesystem
             # Unfortunately, I can't think of anything faster than just
             # copying them across, one by one :(
-            import shutil
-
             total = self._get_total(relpaths)
             count = 0
             for path in relpaths:
                 self._update_pb(pb, 'copy-to', count, total)
                 try:
-                    shutil.copy(self.abspath(path), other.abspath(path))
-                except IOError, e:
-                    if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                        raise NoSuchFile('File or directory %r does not exist' % path, orig_error=e)
-                    raise LocalTransportError(orig_error=e)
+                    mypath = self._abspath(path)
+                    otherpath = other._abspath(path)
+                    shutil.copy(mypath, otherpath)
+                    if mode is not None:
+                        os.chmod(otherpath, mode)
+                except (IOError, OSError),e:
+                    self._translate_error(e, path)
                 count += 1
             return count
         else:
-            return super(LocalTransport, self).copy_to(relpaths, other, pb=pb)
+            return super(LocalTransport, self).copy_to(relpaths, other, mode=mode, pb=pb)
 
     def listable(self):
         """See Transport.listable."""
@@ -203,25 +266,33 @@ class LocalTransport(Transport):
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
+        path = self._abspath(relpath)
         try:
-            return os.listdir(self.abspath(relpath))
-        except OSError,e:
-            raise LocalTransportError(orig_error=e)
+            return [urlutils.escape(entry) for entry in os.listdir(path)]
+        except (IOError, OSError), e:
+            self._translate_error(e, path)
 
     def stat(self, relpath):
         """Return the stat information for a file.
         """
+        path = relpath
         try:
-            return os.stat(self.abspath(relpath))
-        except OSError,e:
-            raise LocalTransportError(orig_error=e)
+            path = self._abspath(relpath)
+            return os.stat(path)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
         :return: A lock object, which should be passed to Transport.unlock()
         """
         from bzrlib.lock import ReadLock
-        return ReadLock(self.abspath(relpath))
+        path = relpath
+        try:
+            path = self._abspath(relpath)
+            return ReadLock(path)
+        except (IOError, OSError), e:
+            self._translate_error(e, path)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
@@ -230,21 +301,52 @@ class LocalTransport(Transport):
         :return: A lock object, which should be passed to Transport.unlock()
         """
         from bzrlib.lock import WriteLock
-        return WriteLock(self.abspath(relpath))
+        return WriteLock(self._abspath(relpath))
+
+    def rmdir(self, relpath):
+        """See Transport.rmdir."""
+        path = relpath
+        try:
+            path = self._abspath(relpath)
+            os.rmdir(path)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
+
+    def _can_roundtrip_unix_modebits(self):
+        if sys.platform == 'win32':
+            # anyone else?
+            return False
+        else:
+            return True
 
 
-class ScratchTransport(LocalTransport):
-    """A transport that works in a temporary dir and cleans up after itself.
-    
-    The dir only exists for the lifetime of the Python object.
-    Obviously you should not put anything precious in it.
-    """
+class LocalRelpathServer(Server):
+    """A pretend server for local transports, using relpaths."""
 
-    def __init__(self, base=None):
-        if base is None:
-            base = tempfile.mkdtemp()
-        super(ScratchTransport, self).__init__(base)
+    def get_url(self):
+        """See Transport.Server.get_url."""
+        return "."
 
-    def __del__(self):
-        shutil.rmtree(self.base, ignore_errors=True)
-        mutter("%r destroyed" % self)
+
+class LocalAbspathServer(Server):
+    """A pretend server for local transports, using absolute paths."""
+
+    def get_url(self):
+        """See Transport.Server.get_url."""
+        return os.path.abspath("")
+
+
+class LocalURLServer(Server):
+    """A pretend server for local transports, using file:// urls."""
+
+    def get_url(self):
+        """See Transport.Server.get_url."""
+        return urlutils.local_path_to_url('')
+
+
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    return [(LocalTransport, LocalRelpathServer),
+            (LocalTransport, LocalAbspathServer),
+            (LocalTransport, LocalURLServer),
+            ]

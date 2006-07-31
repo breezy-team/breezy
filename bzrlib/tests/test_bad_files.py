@@ -1,15 +1,15 @@
 # Copyright (C) 2005 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -18,54 +18,61 @@
 """Tests being able to ignore mad filetypes.
 """
 
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib import ignores
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.errors import BadFileKindError
 import os
 
-def verify_status(tester, branch, value):
-    from bzrlib.status import show_status
+def verify_status(tester, tree, value):
+    from bzrlib.status import show_tree_status
     from cStringIO import StringIO
 
     tof = StringIO()
-    show_status(branch, to_file=tof)
+    show_tree_status(tree, to_file=tof)
     tof.seek(0)
     tester.assertEquals(tof.readlines(), value)
 
 
-class TestBadFiles(TestCaseInTempDir):
+class TestBadFiles(TestCaseWithTransport):
     
-    def test_bad_files(self): 
+    def test_bad_files(self):
         """Test that bzr will ignore files it doesn't like"""
-        from bzrlib.commit import commit
-        from bzrlib.add import smart_add
+        from bzrlib.add import smart_add_tree
         from bzrlib.branch import Branch
 
-        b = Branch.initialize(u'.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
 
-        self.build_tree(['one', 'two', 'three'])
-        smart_add(u'.')
-        commit(b, "Commit one", rev_id="a@u-0-0")
+        files = ['one', 'two', 'three']
+        self.build_tree(files)
+        wt.add(files)
+        wt.commit("Commit one", rev_id="a@u-0-0")
         self.build_tree(['four'])
-        smart_add(u'.')
-        commit(b, "Commit two", rev_id="a@u-0-1")
+        wt.add(['four'])
+        wt.commit("Commit two", rev_id="a@u-0-1")
         self.build_tree(['five'])
-        smart_add(u'.')
-        commit(b, "Commit three", rev_id="a@u-0-2")
+        wt.add(['five'])
+        wt.commit("Commit three", rev_id="a@u-0-2")
 
         # We should now have a few files, lets try to
         # put some bogus stuff in the tree
 
         # We can only continue if we have mkfifo
         if not hasattr(os, 'mkfifo'):
+            # TODO: Ultimately this should be TestSkipped
+            # or PlatformDeficiency
             return
 
+        # Ignore the .bazaar/ home directory that is created
+        ignores._set_user_ignores(['./.bazaar'])
+
         # status with nothing
-        verify_status(self, b, [])
+        verify_status(self, wt, [])
 
         os.mkfifo('a-fifo')
         self.build_tree(['six'])
 
-        verify_status(self, b,
+        verify_status(self, wt,
                           ['unknown:\n',
                            '  a-fifo\n',
                            '  six\n'
@@ -73,16 +80,16 @@ class TestBadFiles(TestCaseInTempDir):
         
         # Make sure smart_add can handle having a bogus
         # file in the way
-        smart_add(u'.')
-        verify_status(self, b,
+        smart_add_tree(wt, '.')
+        verify_status(self, wt,
                           ['added:\n',
                            '  six\n',
                            'unknown:\n',
                            '  a-fifo\n',
                            ])
-        commit(b, "Commit four", rev_id="a@u-0-3")
+        wt.commit("Commit four", rev_id="a@u-0-3")
 
-        verify_status(self, b,
+        verify_status(self, wt,
                           ['unknown:\n',
                            '  a-fifo\n',
                            ])
