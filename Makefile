@@ -33,10 +33,10 @@ TAGS: $(tag_files)
 
 # make bzr.exe for win32 with py2exe
 exe:
-	@echo Make bzr.exe
+	@echo *** Make bzr.exe
 	python setup.py py2exe > py2exe.log
-	copy /Y tools\win32\start_bzr.bat win32_bzr.exe\start_bzr.bat
-	copy /Y tools\win32\bazaar.url win32_bzr.exe\bazaar.url
+	python tools/win32/ostools.py copytodir tools/win32/start_bzr.bat win32_bzr.exe
+	python tools/win32/ostools.py copytodir tools/win32/bazaar.url win32_bzr.exe
 
 # translate txt docs to html
 doc_dir := doc 
@@ -52,15 +52,13 @@ doc/bzr_man.txt:
 docs: $(htm_files)
 
 copy_docs: docs
-	copy /Y NEWS win32_bzr.exe\NEWS
-	copy /Y README win32_bzr.exe\README
-	python tools/win32/copy_docs.py
+	python tools/win32/ostools.py copytodir $(htm_files) doc/default.css NEWS README  win32_bzr.exe/doc
 
 # win32 installer for bzr.exe
 installer: exe copy_docs
-	@echo Make windows installer
-	cog.py -d -o tools\win32\bzr.iss tools\win32\bzr.iss.cog
-	iscc /Q tools\win32\bzr.iss
+	@echo *** Make windows installer
+	cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
+	iscc /Q tools/win32/bzr.iss
 
 # win32 python's distutils-based installer
 # require to have python interpreter installed on win32
@@ -70,11 +68,11 @@ python-installer: docs
 
 # clean on win32 all installer-related files and directories
 clean_win32:
-	if exist build rmdir /S /Q build
-	if exist win32_bzr.exe rmdir /S /Q win32_bzr.exe
-	if exist py2exe.log del /Q py2exe.log
-	if exist doc\*.htm del /Q doc\*.htm
-	if exist doc\bzr_man.txt del /Q doc\bzr_man.txt
-	if exist tools\win32\bzr.iss del /Q tools\win32\bzr.iss
-	if exist bzr-setup*.exe del /Q bzr-setup*.exe
-	if exist dist rmdir /S /Q dist
+	python tools/win32/ostools.py remove build
+	python tools/win32/ostools.py remove win32_bzr.exe
+	python tools/win32/ostools.py remove py2exe.log
+	python tools/win32/ostools.py remove doc/*.htm
+	python tools/win32/ostools.py remove doc/bzr_man.txt
+	python tools/win32/ostools.py remove tools/win32/bzr.iss
+	python tools/win32/ostools.py remove bzr-setup*.exe
+	python tools/win32/ostools.py remove dist
