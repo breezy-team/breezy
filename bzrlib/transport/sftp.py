@@ -838,6 +838,14 @@ class SFTPTransport (Transport):
             except (EOFError, paramiko.SSHException), e:
                 raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
                                       % (self._host, self._port, e))
+            except (OSError, IOError), e:
+                # If the machine is fast enough, ssh can actually exit
+                # before we try and send it the sftp request, which
+                # raises a Broken Pipe
+                if e.errno not in (errno.EPIPE,):
+                    raise
+                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                      % (self._host, self._port, e))
         else:
             self._paramiko_connect()
 
