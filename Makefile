@@ -34,7 +34,7 @@ TAGS: $(tag_files)
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo Make bzr.exe
-	setup.py py2exe > py2exe.log
+	python setup.py py2exe > py2exe.log
 	copy /Y tools\win32\start_bzr.bat win32_bzr.exe\start_bzr.bat
 	copy /Y tools\win32\bazaar.url win32_bzr.exe\bazaar.url
 
@@ -60,7 +60,7 @@ copy_docs: docs
 installer: exe copy_docs
 	@echo Make windows installer
 	cog.py -d -o tools\win32\bzr.iss tools\win32\bzr.iss.cog
-	"C:\Program Files\Inno Setup 5\iscc" /Q tools\win32\bzr.iss
+	iscc /Q tools\win32\bzr.iss
 
 # win32 python's distutils-based installer
 # require to have python interpreter installed on win32
