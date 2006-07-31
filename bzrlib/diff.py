@@ -90,8 +90,16 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
-    if hasattr(to_file, 'fileno'):
-        out_file = to_file
+    fileno_func = getattr(to_file, 'fileno', None)
+    if fileno_func is not None:
+        fileno = fileno_func()
+        # WORKAROUND: jam 20060731 python2.4 subprocess.py will 
+        #       close too many file descriptors if you pass stdout=sys.stdout
+        #       so if we are about to pass stdout, just pass None
+        if fileno == 1:
+            out_file = None
+        else:
+            out_file = to_file
         have_fileno = True
     else:
         out_file = subprocess.PIPE
