@@ -216,11 +216,19 @@ Files
 
 **On Windows**: ``C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf``
 
-Contains the default user config. At least one section, ``[DEFAULT]`` is required.
-A typical default config file may be similiar to::
+Contains the users default configuration. The section ``[DEFAULT]`` is
+used to define general configuration that will be applied everywhere.
+The section ``[ALIASES]`` can be used to create command aliases for
+commonly used options.
 
-    [DEFAULT]
-    email=John Doe <jdoe@isp.com>
+A typical config file might look something like::
+
+  [DEFAULT]
+  email=John Doe <jdoe@isp.com>
+
+  [ALIASES]
+  commit = commit --strict
+  log10 = log --short -r -10..-1
 
 
 See also
