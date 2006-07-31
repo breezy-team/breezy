@@ -1,15 +1,15 @@
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -189,6 +189,39 @@ class Tree(object):
         # are not versioned.
         pred = self.inventory.has_filename
         return set((p for p in paths if not pred(p)))
+
+    def walkdirs(self, prefix=""):
+        """Walk the contents of this tree from path down.
+
+        This yields all the data about the contents of a directory at a time.
+        After each directory has been yielded, if the caller has mutated the
+        list to exclude some directories, they are then not descended into.
+        
+        The data yielded is of the form:
+        ((directory-relpath, directory-path-from-root, directory-fileid),
+        [(relpath, basename, kind, lstat, path_from_tree_root, file_id, 
+          versioned_kind), ...]),
+         - directory-relpath is the containing dirs relpath from prefix
+         - directory-path-from-root is the containing dirs path from /
+         - directory-fileid is the id of the directory if it is versioned.
+         - relpath is the relative path within the subtree being walked.
+         - basename is the basename
+         - kind is the kind of the file now. If unknonwn then the file is not
+           present within the tree - but it may be recorded as versioned. See
+           versioned_kind.
+         - lstat is the stat data *if* the file was statted.
+         - path_from_tree_root is the path from the root of the tree.
+         - file_id is the file_id is the entry is versioned.
+         - versioned_kind is the kind of the file as last recorded in the 
+           versioning system. If 'unknown' the file is not versioned.
+        One of 'kind' and 'versioned_kind' must not be 'unknown'.
+
+        :param prefix: Start walking from prefix within the tree rather than
+        at the root. This allows one to walk a subtree but get paths that are
+        relative to a tree rooted higher up.
+        :return: an iterator over the directory data.
+        """
+        raise NotImplementedError(self.walkdirs)
 
 
 # for compatibility

@@ -128,3 +128,34 @@ class TestTreeShapes(TestCaseWithTree):
             [(path, node.file_id) for path, node in tree.iter_entries_by_dir()])
         self.assertEqualDiff('contents of a\n', tree.get_file_text('a-id'))
         self.assertTrue(tree.is_executable('c-id'))
+
+    def test_tree_with_subdirs_and_all_content_types(self):
+        # currently this test tree requires unicode. It might be good
+        # to have it simply stop having the single unicode file in it
+        # when dealing with a non-unicode filesystem.
+        tree = self.get_tree_with_subdirs_and_all_content_types()
+        self.assertEqual([], tree.get_parent_ids())
+        self.assertEqual([], tree.conflicts())
+        self.assertEqual([], list(tree.unknowns()))
+        # __iter__ has no strongly defined order
+        self.assertEqual(
+            set([inventory.ROOT_ID,
+                '2file',
+                '1top-dir',
+                '1file-in-1topdir',
+                '0dir-in-1topdir',
+                 u'0utf\u1234file',
+                'symlink',
+                 ]),
+            set(iter(tree)))
+        # note that the order of the paths and fileids is deliberately 
+        # mismatched to ensure that the result order is path based.
+        self.assertEqual(
+            [('', inventory.ROOT_ID, 'root_directory'),
+             ('0file', '2file', 'file'),
+             ('1top-dir', '1top-dir', 'directory'),
+             (u'2utf\u1234file', u'0utf\u1234file', 'file'),
+             ('symlink', 'symlink', 'symlink'),
+             ('1top-dir/0file-in-1topdir', '1file-in-1topdir', 'file'),
+             ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir', 'directory')],
+            [(path, node.file_id, node.kind) for path, node in tree.iter_entries_by_dir()])

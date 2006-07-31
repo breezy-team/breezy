@@ -312,8 +312,8 @@ class InventoryEntry(object):
         """
         fullpath = pathjoin(dest, dp)
         self._put_on_disk(fullpath, tree)
-        mutter("  export {%s} kind %s to %s", self.file_id,
-                self.kind, fullpath)
+        # mutter("  export {%s} kind %s to %s", self.file_id,
+        #         self.kind, fullpath)
 
     def _put_on_disk(self, fullpath, tree):
         """Put this entry onto disk at fullpath, from tree tree."""
@@ -410,7 +410,7 @@ class InventoryEntry(object):
         This means that all its fields are populated, that it has its
         text stored in the text store or weave.
         """
-        mutter('new parents of %s are %r', path, previous_entries)
+        # mutter('new parents of %s are %r', path, previous_entries)
         self._read_tree_state(path, work_tree)
         # TODO: Where should we determine whether to reuse a
         # previous revision id or create a new revision? 20060606
@@ -418,7 +418,7 @@ class InventoryEntry(object):
             # cannot be unchanged unless there is only one parent file rev.
             parent_ie = previous_entries.values()[0]
             if self._unchanged(parent_ie):
-                mutter("found unchanged entry")
+                # mutter("found unchanged entry")
                 self.revision = parent_ie.revision
                 return "unchanged"
         return self._snapshot_into_revision(revision, previous_entries, 
@@ -435,7 +435,7 @@ class InventoryEntry(object):
 
         :returns: String description of the commit (e.g. "merged", "modified"), etc.
         """
-        mutter('new revision {%s} for {%s}', revision, self.file_id)
+        # mutter('new revision {%s} for {%s}', revision, self.file_id)
         self.revision = revision
         self._snapshot_text(previous_entries, work_tree, commit_builder)
 

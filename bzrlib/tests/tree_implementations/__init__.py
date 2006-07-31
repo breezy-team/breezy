@@ -161,6 +161,45 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         tt.apply()
         return self._convert_tree(tree, converter)
 
+    def get_tree_with_subdirs_and_all_content_types(self):
+        """Return a test tree with subdirs and all content types.
+
+        The returned tree has the following inventory:
+            [('', inventory.ROOT_ID),
+             ('0file', '2file'),
+             ('1top-dir', '1top-dir'),
+             (u'2utf\u1234file', u'0utf\u1234file'),
+             ('symlink', 'symlink'),
+             ('1top-dir/0file-in-1topdir', '1file-in-1topdir'),
+             ('1top-dir/1dir-in-1topdir', '0dir-in-1topdir')]
+        where each component has the type of its name - i.e. '1file..' is afile.
+
+        note that the order of the paths and fileids is deliberately 
+        mismatched to ensure that the result order is path based.
+        """
+        tree = self.make_branch_and_tree('.')
+        paths = ['0file',
+            '1top-dir/',
+            u'2utf\u1234file',
+            '1top-dir/0file-in-1topdir',
+            '1top-dir/1dir-in-1topdir/'
+            ]
+        ids = [
+            '2file',
+            '1top-dir',
+            u'0utf\u1234file',
+            '1file-in-1topdir',
+            '0dir-in-1topdir'
+            ]
+        self.build_tree(paths)
+        tree.add(paths, ids)
+        tt = transform.TreeTransform(tree)
+        root_transaction_id = tt.trans_id_tree_path('')
+        tt.new_symlink('symlink',
+            root_transaction_id, 'link-target', 'symlink')
+        tt.apply()
+        return self.workingtree_to_test_tree(tree)
+
 
 class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
     """Generate test suites for each Tree implementation in bzrlib.
@@ -189,6 +228,7 @@ def test_suite():
     result = TestSuite()
     test_tree_implementations = [
         'bzrlib.tests.tree_implementations.test_test_trees',
+        'bzrlib.tests.tree_implementations.test_walkdirs',
         ]
     adapter = TreeTestProviderAdapter(
         default_transport,

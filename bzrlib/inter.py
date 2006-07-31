@@ -53,7 +53,7 @@ class InterObject(object):
         self.target = target
 
     def _double_lock(self, lock_source, lock_target):
-        """Take out too locks, rolling back the first if the second throws."""
+        """Take out two locks, rolling back the first if the second throws."""
         lock_source()
         try:
             lock_target()
