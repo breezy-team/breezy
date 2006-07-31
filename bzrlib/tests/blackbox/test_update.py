@@ -136,7 +136,11 @@ class TestUpdate(ExternalBase):
 
         # now, update checkout ->
         # get all three files and a pending merge.
-        self.run_bzr('update', 'checkout')
+        out, err = self.run_bzr('update', 'checkout')
+        self.assertEqual('', out)
+        self.assertContainsRe(err, 'Updated to revision 1.\n'
+                                   'Your local commits will now show as'
+                                   ' pending merges')
         wt = WorkingTree.open('checkout')
         self.assertNotEqual([], wt.pending_merges())
         self.failUnlessExists('checkout/file')

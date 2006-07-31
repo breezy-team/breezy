@@ -828,7 +828,7 @@ class cmd_update(Command):
             revno = tree.branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
             if tree.pending_merges() != existing_pending_merges:
-                note('Your local commits will show now as pending merges with '
+                note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
             if conflicts != 0:
                 return 1
