@@ -875,13 +875,15 @@ def walkdirs(top, prefix=""):
     to exclude some directories, they are then not descended into.
     
     The data yielded is of the form:
-    ((directory-relpath, directory-path-from-root),
+    ((directory-relpath, directory-path-from-top),
     [(relpath, basename, kind, lstat), ...]),
-     - directory-relpath is the containing dirs relpath from prefix
-     - directory-path-from-root is the containing dirs path from /
+     - directory-relpath is the relative path of the directory being returned
+       with respect to top. prefix is prepended to this.
+     - directory-path-from-root is the path including top for this directory. 
+       It is suitable for use with os functions.
      - relpath is the relative path within the subtree being walked.
      - basename is the basename of the path
-     - kind is the kind of the file now. If unknonwn then the file is not
+     - kind is the kind of the file now. If unknown then the file is not
        present within the tree - but it may be recorded as versioned. See
        versioned_kind.
      - lstat is the stat data *if* the file was statted.
@@ -897,7 +899,7 @@ def walkdirs(top, prefix=""):
     # summary in this, and the path from the root, may not agree 
     # depending on top and prefix - i.e. ./foo and foo as a pair leads to
     # potentially confusing output. We should make this more robust - but
-    # not at a speed cot. RBC 20060731
+    # not at a speed cost. RBC 20060731
     lstat = os.lstat
     pending = []
     _directory = _directory_kind
@@ -915,7 +917,9 @@ def walkdirs(top, prefix=""):
         for name in sorted(_listdir(top)):
             abspath = top + '/' + name
             statvalue = lstat(abspath)
-            dirblock.append ((relroot + name, name, file_kind_from_stat_mode(statvalue.st_mode), statvalue, abspath))
+            dirblock.append((relroot + name, name,
+                file_kind_from_stat_mode(statvalue.st_mode),
+                statvalue, abspath))
         yield (currentdir[0], top), dirblock
         # push the user specified dirs from dirblock
         for dir in reversed(dirblock):
