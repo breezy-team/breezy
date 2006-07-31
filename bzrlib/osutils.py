@@ -875,13 +875,31 @@ def walkdirs(top, prefix=""):
     to exclude some directories, they are then not descended into.
     
     The data yielded is of the form:
-    [(relpath, basename, kind, lstat, path_from_top), ...]
+    ((directory-relpath, directory-path-from-top),
+    [(relpath, basename, kind, lstat), ...]),
+     - directory-relpath is the relative path of the directory being returned
+       with respect to top. prefix is prepended to this.
+     - directory-path-from-root is the path including top for this directory. 
+       It is suitable for use with os functions.
+     - relpath is the relative path within the subtree being walked.
+     - basename is the basename of the path
+     - kind is the kind of the file now. If unknown then the file is not
+       present within the tree - but it may be recorded as versioned. See
+       versioned_kind.
+     - lstat is the stat data *if* the file was statted.
+     - planned, not implemented: 
+       path_from_tree_root is the path from the root of the tree.
 
     :param prefix: Prefix the relpaths that are yielded with 'prefix'. This 
         allows one to walk a subtree but get paths that are relative to a tree
         rooted higher up.
     :return: an iterator over the dirs.
     """
+    #TODO there is a bit of a smell where the results of the directory-
+    # summary in this, and the path from the root, may not agree 
+    # depending on top and prefix - i.e. ./foo and foo as a pair leads to
+    # potentially confusing output. We should make this more robust - but
+    # not at a speed cost. RBC 20060731
     lstat = os.lstat
     pending = []
     _directory = _directory_kind
@@ -899,8 +917,10 @@ def walkdirs(top, prefix=""):
         for name in sorted(_listdir(top)):
             abspath = top + '/' + name
             statvalue = lstat(abspath)
-            dirblock.append ((relroot + name, name, file_kind_from_stat_mode(statvalue.st_mode), statvalue, abspath))
-        yield dirblock
+            dirblock.append((relroot + name, name,
+                file_kind_from_stat_mode(statvalue.st_mode),
+                statvalue, abspath))
+        yield (currentdir[0], top), dirblock
         # push the user specified dirs from dirblock
         for dir in reversed(dirblock):
             if dir[2] == _directory:
