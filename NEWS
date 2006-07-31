@@ -202,8 +202,9 @@ IN DEVELOPMENT
     * ``bzr status foo`` when foo was unversioned used to cause a full delta
       to be generated (John Arbash Meinel, #53638)
 
-    * ``bzr diff --diff-options`` works around a bug in subprocess.py.
-      (John Arbash Meinel, #54651)
+    * ``bzr diff --diff-options`` can now handle binary files being changed.
+      Also, the output is consistent when --diff-options is not supplied.
+      (John Arbash Meinel, #54651, #52930)
 
   INTERNALS:
 
