@@ -49,8 +49,8 @@ check_signatures - this option controls whether bzr will require good gpg
 create_signatures - this option controls whether bzr will always create 
                     gpg signatures, never create them, or create them if the
                     branch is configured to require them.
-log_format - This options set the default log format.  Options are long, 
-             short, line, or a plugin can register new formats
+log_format - this option sets the default log format.  Possible values are
+             long, short, line, or a plugin can register new formats.
 
 In bazaar.conf you can also define aliases in the ALIASES sections, example
 
