@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -40,11 +40,14 @@ CONFLICT_HEADER_1 = "BZR conflict list format 1"
 # memory.  (Now done? -- mbp 20060309)
 
 from binascii import hexlify
+from bisect import bisect_left
 import collections
 from copy import deepcopy
 from cStringIO import StringIO
 import errno
 import fnmatch
+import itertools
+import operator
 import os
 import re
 import stat
@@ -1018,7 +1021,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         ## TODO: Work from given directory downwards
         for path, dir_entry in self.inventory.directories():
-            mutter("search for unknowns in %r", path)
+            # mutter("search for unknowns in %r", path)
             dirabs = self.abspath(path)
             if not isdir(dirabs):
                 # e.g. directory deleted
@@ -1479,6 +1482,131 @@ class WorkingTree(bzrlib.tree.Tree):
             conflicts.append(Conflict.factory(ctype, path=conflicted,
                              file_id=self.path2id(conflicted)))
         return conflicts
+
+    def walkdirs(self, prefix=""):
+        disk_top = self.abspath(prefix)
+        if disk_top.endswith('/'):
+            disk_top = disk_top[:-1]
+        top_strip_len = len(disk_top) + 1
+        inventory_iterator = self._walkdirs(prefix)
+        disk_iterator = osutils.walkdirs(disk_top, prefix)
+        try:
+            current_disk = disk_iterator.next()
+            disk_finished = False
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
+            current_disk = None
+            disk_finished = True
+        try:
+            current_inv = inventory_iterator.next()
+            inv_finished = False
+        except StopIteration:
+            current_inv = None
+            inv_finished = True
+        while not inv_finished or not disk_finished:
+            if not disk_finished:
+                # strip out .bzr dirs
+                if current_disk[0][1][top_strip_len:] == '':
+                    # osutils.walkdirs can be made nicer - 
+                    # yield the path-from-prefix rather than the pathjoined
+                    # value.
+                    bzrdir_loc = bisect_left(current_disk[1], ('.bzr', '.bzr'))
+                    if current_disk[1][bzrdir_loc][0] == '.bzr':
+                        # we dont yield the contents of, or, .bzr itself.
+                        del current_disk[1][bzrdir_loc]
+            if inv_finished:
+                # everything is unknown
+                direction = 1
+            elif disk_finished:
+                # everything is missing
+                direction = -1
+            else:
+                direction = cmp(current_inv[0][0], current_disk[0][0])
+            if direction > 0:
+                # disk is before inventory - unknown
+                dirblock = [(relpath, basename, kind, stat, None, None) for
+                    relpath, basename, kind, stat, top_path in current_disk[1]]
+                yield (current_disk[0][0], None), dirblock
+                try:
+                    current_disk = disk_iterator.next()
+                except StopIteration:
+                    disk_finished = True
+            elif direction < 0:
+                # inventory is before disk - missing.
+                dirblock = [(relpath, basename, 'unknown', None, fileid, kind)
+                    for relpath, basename, dkind, stat, fileid, kind in 
+                    current_inv[1]]
+                yield (current_inv[0][0], current_inv[0][1]), dirblock
+                try:
+                    current_inv = inventory_iterator.next()
+                except StopIteration:
+                    inv_finished = True
+            else:
+                # versioned present directory
+                # merge the inventory and disk data together
+                dirblock = []
+                for relpath, subiterator in itertools.groupby(sorted(
+                    current_inv[1] + current_disk[1], key=operator.itemgetter(0)), operator.itemgetter(1)):
+                    path_elements = list(subiterator)
+                    if len(path_elements) == 2:
+                        inv_row, disk_row = path_elements
+                        # versioned, present file
+                        dirblock.append((inv_row[0],
+                            inv_row[1], disk_row[2],
+                            disk_row[3], inv_row[4],
+                            inv_row[5]))
+                    elif len(path_elements[0]) == 5:
+                        # unknown disk file
+                        dirblock.append((path_elements[0][0],
+                            path_elements[0][1], path_elements[0][2],
+                            path_elements[0][3], None, None))
+                    elif len(path_elements[0]) == 6:
+                        # versioned, absent file.
+                        dirblock.append((path_elements[0][0],
+                            path_elements[0][1], 'unknown', None,
+                            path_elements[0][4], path_elements[0][5]))
+                    else:
+                        raise NotImplementedError('unreachable code')
+                yield current_inv[0], dirblock
+                try:
+                    current_inv = inventory_iterator.next()
+                except StopIteration:
+                    inv_finished = True
+                try:
+                    current_disk = disk_iterator.next()
+                except StopIteration:
+                    disk_finished = True
+
+    def _walkdirs(self, prefix=""):
+        _directory = 'directory'
+        # get the root in the inventory
+        inv = self.inventory
+        top_id = inv.path2id(prefix)
+        if top_id is None:
+            pending = []
+        else:
+            pending = [(prefix, '', _directory, None, top_id, None)]
+        while pending:
+            dirblock = []
+            currentdir = pending.pop()
+            # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-id, 5-kind
+            top_id = currentdir[4]
+            if currentdir[0]:
+                relroot = currentdir[0] + '/'
+            else:
+                relroot = ""
+            # FIXME: stash the node in pending
+            entry = inv[top_id]
+            for name, child in entry.sorted_children():
+                dirblock.append((relroot + name, name, child.kind, None,
+                    child.file_id, child.kind
+                    ))
+            yield (currentdir[0], entry.file_id), dirblock
+            # push the user specified dirs from dirblock
+            for dir in reversed(dirblock):
+                if dir[2] == _directory:
+                    pending.append(dir)
 
 
 class WorkingTree2(WorkingTree):

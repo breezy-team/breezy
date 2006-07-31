@@ -17,7 +17,7 @@
 """http/https transport using pycurl"""
 
 # TODO: test reporting of http errors
-
+#
 # TODO: Transport option to control caching of particular requests; broadly we
 # would want to offer "caching allowed" or "must revalidate", depending on
 # whether we expect a particular file will be modified after it's committed.

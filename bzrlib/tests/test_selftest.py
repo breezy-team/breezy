@@ -417,6 +417,7 @@ class TestInterTreeProviderAdapter(TestCase):
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
+
 class TestTestCaseWithTransport(TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
