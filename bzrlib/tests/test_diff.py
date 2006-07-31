@@ -108,6 +108,10 @@ class TestDiff(TestCase):
                                      use_stringio=True)
         self.check_patch(lines)
 
+    def test_external_diff_binary(self):
+        lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
+        self.assertEqual(['Binary files old and new differ\n'], lines)
+
     def test_no_external_diff(self):
         """Check that NoDiff is raised when diff is not available"""
         # Use os.environ['PATH'] to make sure no 'diff' command is available

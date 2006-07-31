@@ -175,14 +175,26 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             bzrlib.osutils.pumpfile(pipe.stdout, to_file)
         rc = pipe.wait()
         
-        if rc != 0 and rc != 1:
+        # TODO: jam 20060731 'diff' returns exit code '2' if binary 
+        #       files differ. But it also returns '2' if a file you
+        #       are comparing doesn't exist, etc.
+        #       'info diff' says:
+        #         "An exit status of 0 means no differences were found, 
+        #         1 means some differences were found, and 2 means trouble."
+        #       If we assume we do things correctly, we can assume '2' means
+        #       'Binary files .* differ'
+        #       Alternatively, we could read the output of diff, and look
+        #       for the "Binary files .* differ" line, but that would mean
+        #       we always need to buffer the diff output.
+        if rc not in (0, 1, 2):
             # returns 1 if files differ; that's OK
             if rc < 0:
                 msg = 'signal %d' % (-rc)
             else:
                 msg = 'exit code %d' % rc
                 
-            raise BzrError('external diff failed with %s; command: %r' % (rc, diffcmd))
+            raise BzrError('external diff failed with %s; command: %r' 
+                           % (rc, diffcmd))
     finally:
         oldtmpf.close()                 # and delete
         newtmpf.close()
