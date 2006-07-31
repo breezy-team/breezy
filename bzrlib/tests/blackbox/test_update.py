@@ -55,7 +55,6 @@ class TestUpdate(ExternalBase):
     def test_update_out_of_date_standalone_tree(self):
         # FIXME the default format has to change for this to pass
         # because it currently uses the branch last-revision marker.
-        raise TestSkipped('default format too old')
         self.make_branch_and_tree('branch')
         # make a checkout
         self.runbzr('checkout --lightweight branch checkout')
@@ -64,8 +63,9 @@ class TestUpdate(ExternalBase):
         self.runbzr('commit -m add-file checkout')
         # now branch should be out of date
         out,err = self.runbzr('update branch')
-        self.assertEqual('Updated to revision 1.\n', out)
-        self.assertEqual('', err)
+        self.assertEqual('', out)
+        self.assertEqual('All changes applied successfully.\n'
+                         'Updated to revision 1.\n', err)
         self.failUnlessExists('branch/file')
 
     def test_update_out_of_date_light_checkout(self):
