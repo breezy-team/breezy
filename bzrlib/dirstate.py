@@ -69,6 +69,7 @@ class DirState(object):
         lines.append('\0'.join([str(num_parents)] + parent_ids))
 
         to_minikind = DirState._kind_to_minikind
+        to_yesno = {True:'y', False: 'n'}
 
         st = os.lstat(tree.basedir)
         null_parent_info = '\0'.join((
@@ -125,14 +126,16 @@ class DirState(object):
 
                 parent_info = []
                 if num_parents >= 1:
+                    parent_entry = parent_trees[0].inventory[fileid]
                     parent_info.append(
                         '\0'.join((
-                            parent_ids[0]
-                            , to_minikind[kind]
-                            , dirname, basename
-                            , str(st.st_size)
-                            , 'n' # Not executable
-                            , s
+                            parent_entry.revision,
+                            to_minikind[parent_entry.kind],
+                            # FIXME: set these from the parent
+                            dirname, basename,
+                            str(parent_entry.text_size),
+                            to_yesno[parent_entry.executable],
+                            parent_entry.text_sha1,
                             )))
                 if num_parents >= 2:
                     parent_info.append(
