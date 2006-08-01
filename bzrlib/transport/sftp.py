@@ -943,29 +943,44 @@ class SocketListener(threading.Thread):
 class SocketDelay(object):
     """A socket decorator to make TCP appear slower.
 
-    This changes recv, send, and sendall to add a fixed latency to each 
-    python call. It will therefore behave differently to the real underlying
-    TCP stack which may only pay the latency price on each actual roundtrip
-    rather than each packet initiated. We can come closer to the real
-    behaviour by only charging latency for each roundtrip we detect - that is
-    when recv is called, toggle a flag, and insert latency again only when
-    send has been called in the middle. For now though, showing more latency
-    than we have is probably acceptable.
+    This changes recv, send, and sendall to add a fixed latency to each python
+    call if a new roundtrip is detected. That is, when a recv is called and the
+    flag new_roundtrip is set, latency is charged. Every send and send_all
+    sets this flag.
 
-    Not all methods are implemented, this is deliberate as this class is not
-    a replacement for the builtin sockets layer. fileno is not implemented to
-    prevent the proxy being bypassed.
+    In addition every send, sendall and recv sleeps a bit per character send to
+    simulate bandwidth.
+
+    The function used to sleep moves a counter forwards to not make the tests
+    slower. It could be made more clever, by adding the time that was passing
+    between sleep calls to the simulated time too.
+
+    Not all methods are implemented, this is deliberate as this class is not a
+    replacement for the builtin sockets layer. fileno is not implemented to
+    prevent the proxy being bypassed. 
     """
 
-    def __init__(self, sock, latency):
+    simulated_time = 0
+
+    def __init__(self, sock, latency, time_per_char=0.0001,
+                 really_sleep=False):
         self.sock = sock
         self.latency = latency
+        self.really_sleep = really_sleep
+        self.time_per_char = time_per_char
+        self.new_roundtrip = False
+
+    def sleep(self, s):
+        if self.really_sleep:
+            time.sleep(s)
+        SocketDelay.simulated_time += s
 
     def close(self):
         return self.sock.close()
 
     def dup(self):
-        return SocketDelay(self.sock.dup(), self.latency)
+        return SocketDelay(self.sock.dup(), self.latency, self.time_per_char,
+                           self._sleep)
 
     def getpeername(self, *args):
         return self.sock.getpeername(*args)
@@ -981,17 +996,26 @@ class SocketDelay(object):
 
     def recv(self, *args):
         data = self.sock.recv(*args)
-        if data:
-            time.sleep(self.latency)
+        if data and self.new_roundtrip:
+            self.new_roundtrip = False
+            self.sleep(self.latency)
+            self.sleep(len(data) * self.time_per_char)
         return data
 
-    def sendall(self, *args):
-        time.sleep(self.latency)
-        return self.sock.sendall(*args)
+    def sendall(self, data, flags=0):
+        if not self.new_roundtrip:
+            self.new_roundtrip = True
+            self.sleep(self.latency)
+        self.sleep(len(data) * self.time_per_char)
+        return self.sock.sendall(data, flags)
 
-    def send(self, *args):
-        time.sleep(self.latency)
-        return self.sock.send(*args)
+    def send(self, data, flags=0):
+        if not self.new_roundtrip:
+            self.new_roundtrip = True
+            self.sleep(self.latency)
+        bytes_sent = self.sock.send(data, flags)
+        self.sleep(bytes_sent * self.time_per_char)
+        return bytes_sent
 
     def setblocking(self, *args):
         return self.sock.setblocking(*args)

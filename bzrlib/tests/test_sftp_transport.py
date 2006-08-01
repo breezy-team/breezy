@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-from operator import lt, gt
+from operator import lt, gt, ge
 import socket
 import threading
 import time
@@ -243,13 +243,82 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         # change the latency knob to 100ms. We take about 40ms for a 
         # loopback connection ordinarily.
         self.get_server().add_latency = 0.1
-        self.assertConnectionTime(gt)
+        self.assertConnectionTime(ge)
 
     def assertConnectionTime(self, operator):
-        start_time = time.time()
+        from bzrlib.transport.sftp import SocketDelay
+        start_time = SocketDelay.simulated_time
         transport = self.get_transport()
-        stop_time = time.time()
+        stop_time = SocketDelay.simulated_time
         self.failUnless(operator(stop_time - start_time, 0.1))
 
     def test_default_fast(self):
         self.assertConnectionTime(lt)
+
+class FakeSocket(object):
+    """ Fake socket object used to test the SocketDelay wrapper without
+    using a real socket."""
+
+    def __init__(self):
+        self._data = ""
+
+    def send(self, data, flags=0):
+        self._data += data
+        return len(data)
+
+    def sendall(self, data, flags=0):
+        self._data += data
+        return len(data)
+
+    def recv(self, size, flags=0):
+        if size < len(self._data):
+            result = self._data[:size]
+            self._data = self._data[size:]
+            return result
+        else:
+            result = self._data
+            self._data = ""
+            return result
+
+class TestSocketDelay(TestCase):
+    def setUp(self):
+        TestCase.setUp(self)
+
+    def test_delay(self):
+        from bzrlib.transport.sftp import SocketDelay
+        sending = FakeSocket()
+        receiving = SocketDelay(sending, 0.1, 0)
+        # check that simulated time is charged only per round-trip:
+        t1 = SocketDelay.simulated_time
+        receiving.send("connect1")
+        self.assertEqual(sending.recv(1024), "connect1")
+        t2 = SocketDelay.simulated_time
+        self.assertAlmostEqual(t2 - t1, 0.1)
+        receiving.send("connect2")
+        self.assertEqual(sending.recv(1024), "connect2")
+        sending.send("hello")
+        self.assertEqual(receiving.recv(1024), "hello")
+        t3 = SocketDelay.simulated_time
+        self.assertAlmostEqual(t3 - t2, 0.1)
+        sending.send("hello")
+        self.assertEqual(receiving.recv(1024), "hello")
+        sending.send("hello")
+        self.assertEqual(receiving.recv(1024), "hello")
+        sending.send("hello")
+        self.assertEqual(receiving.recv(1024), "hello")
+        t4 = SocketDelay.simulated_time
+        self.assertAlmostEqual(t4, t3)
+
+    def test_bandwidth(self):
+        from bzrlib.transport.sftp import SocketDelay
+        sending = FakeSocket()
+        receiving = SocketDelay(sending, 0, 1)
+        # check that simulated time is charged only per round-trip:
+        t1 = SocketDelay.simulated_time
+        receiving.send("connect")
+        self.assertEqual(sending.recv(1024), "connect")
+        sending.send("a" * 100)
+        self.assertEqual(receiving.recv(1024), "a" * 100)
+        t2 = SocketDelay.simulated_time
+        self.assertAlmostEqual(t2 - t1, 100 + 7)
+
