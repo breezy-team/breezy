@@ -209,6 +209,8 @@ IN DEVELOPMENT
       Also, the output is consistent when --diff-options is not supplied.
       (John Arbash Meinel, #54651, #52930)
 
+    * Use the right suffixes for loading plugins (John Arbash Meinel, #51810)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
