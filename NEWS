@@ -205,6 +205,10 @@ IN DEVELOPMENT
     * When reading revision properties, and empty value should be considered
       the empty string, not None (John Arbash Meinel, #47782)
 
+    * ``bzr diff --diff-options`` can now handle binary files being changed.
+      Also, the output is consistent when --diff-options is not supplied.
+      (John Arbash Meinel, #54651, #52930)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over

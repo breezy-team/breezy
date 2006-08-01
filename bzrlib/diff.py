@@ -16,6 +16,7 @@
 
 import errno
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -90,13 +91,6 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
-    if hasattr(to_file, 'fileno'):
-        out_file = to_file
-        have_fileno = True
-    else:
-        out_file = subprocess.PIPE
-        have_fileno = False
-    
     # make sure our own output is properly ordered before the diff
     to_file.flush()
 
@@ -156,25 +150,40 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         try:
             pipe = subprocess.Popen(diffcmd,
                                     stdin=subprocess.PIPE,
-                                    stdout=out_file)
+                                    stdout=subprocess.PIPE)
         except OSError, e:
             if e.errno == errno.ENOENT:
                 raise errors.NoDiff(str(e))
             raise
         pipe.stdin.close()
 
-        if not have_fileno:
-            bzrlib.osutils.pumpfile(pipe.stdout, to_file)
+        first_line = pipe.stdout.readline()
+        to_file.write(first_line)
+        bzrlib.osutils.pumpfile(pipe.stdout, to_file)
         rc = pipe.wait()
         
-        if rc != 0 and rc != 1:
+        if rc == 2:
+            # 'diff' gives retcode == 2 for all sorts of errors
+            # one of those is 'Binary files differ'.
+            # Bad options could also be the problem.
+            # 'Binary files' is not a real error, so we suppress that error
+            m = re.match('^binary files.*differ$', first_line, re.I)
+            if not m:
+                raise BzrError('external diff failed with exit code 2;'
+                               ' command: %r' % (diffcmd,))
+        elif rc not in (0, 1):
             # returns 1 if files differ; that's OK
             if rc < 0:
                 msg = 'signal %d' % (-rc)
             else:
                 msg = 'exit code %d' % rc
                 
-            raise BzrError('external diff failed with %s; command: %r' % (rc, diffcmd))
+            raise BzrError('external diff failed with %s; command: %r' 
+                           % (rc, diffcmd))
+
+        # internal_diff() adds a trailing newline, add one here for consistency
+        to_file.write('\n')
+
     finally:
         oldtmpf.close()                 # and delete
         newtmpf.close()
