@@ -105,8 +105,10 @@ class TestTreeToDirstate(TestCaseWithTransport):
         
     def test_non_empty_no_parents_to_dirstate(self):
         """We should be able to create a dirstate for an empty tree."""
-        # There are no files on disk and no parents
+        # There are files on disk and no parents
         tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a file'])
+        tree.add('a file', 'a file id')
         state = dirstate.DirState.from_tree(tree)
         # we want to be able to get the lines of the dirstate that we will
         # write to disk.
@@ -114,10 +116,11 @@ class TestTreeToDirstate(TestCaseWithTransport):
         expected_lines_re = (
             '#bzr dirstate flat format 1\n'
             'adler32: [0-9-][0-9]*\n'
-            'num_entries: 1\n'
+            'num_entries: 2\n'
             '0\x00\n'
             '\x00\x00\x00d\x00TREE_ROOT\x00[0-9]+\x00[0-9a-zA-Z+/]{32}\x00\x00\n'
-            '\x00')
+            '\x00\x00a file\x00f\x00a file id\x0024\x00[0-9a-zA-Z+/]{32}\x00c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8\x00'
+            '\n\x00')
         self.assertContainsRe(''.join(lines), expected_lines_re)
 
     def test_1_parents_not_empty_to_dirstate(self):

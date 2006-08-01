@@ -110,7 +110,7 @@ class DirState(object):
                 s = None
                 dirname, basename = os.path.split(relpath.encode('utf8'))
                 if kind == 'file':
-                    s = sha_file(open(abspath, 'rb'))
+                    s = tree.get_file_sha1(fileid, relpath)
                 elif kind == 'directory':
                     if name in ('.bzr', '.hg', 'CVS', '.svn', '_svn'):
                         raise Exception('skipping dirs not supported yet')
