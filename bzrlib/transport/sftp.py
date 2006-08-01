@@ -831,9 +831,21 @@ class SFTPTransport (Transport):
                                       % (self._host, self._port, e))
             self._sftp = SFTPClient(LoopbackSFTP(sock))
         elif vendor != 'none':
-            sock = SFTPSubprocess(self._host, vendor, self._port,
-                                  self._username)
-            self._sftp = SFTPClient(sock)
+            try:
+                sock = SFTPSubprocess(self._host, vendor, self._port,
+                                      self._username)
+                self._sftp = SFTPClient(sock)
+            except (EOFError, paramiko.SSHException), e:
+                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                      % (self._host, self._port, e))
+            except (OSError, IOError), e:
+                # If the machine is fast enough, ssh can actually exit
+                # before we try and send it the sftp request, which
+                # raises a Broken Pipe
+                if e.errno not in (errno.EPIPE,):
+                    raise
+                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                      % (self._host, self._port, e))
         else:
             self._paramiko_connect()
 
@@ -848,7 +860,7 @@ class SFTPTransport (Transport):
             t = paramiko.Transport((self._host, self._port or 22))
             t.set_log_channel('bzr.paramiko')
             t.start_client()
-        except paramiko.SSHException, e:
+        except (paramiko.SSHException, socket.error), e:
             raise ConnectionError('Unable to reach SSH host %s:%s: %s' 
                                   % (self._host, self._port, e))
             
@@ -1117,10 +1129,12 @@ class SFTPServer(Server):
 
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
-        # this is chosen to try to prevent trouble with proxies, wierd dns,
-        # etc
-        return 'sftp://127.0.0.1:1/'
-
+        # this is chosen to try to prevent trouble with proxies, wierd dns, etc
+        # we bind a random socket, so that we get a guaranteed unused port
+        # we just never listen on that port
+        s = socket.socket()
+        s.bind(('localhost', 0))
+        return 'sftp://%s:%s/' % s.getsockname()
 
 
 class SFTPFullAbsoluteServer(SFTPServer):
