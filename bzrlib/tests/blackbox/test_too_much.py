@@ -130,7 +130,7 @@ class TestCommands(ExternalBase):
         output = self.runbzr('version', backtick=1)
         self.log('bzr version output:')
         self.log(output)
-        self.assert_(output.startswith('bzr (bazaar-ng) '))
+        self.assert_(output.startswith('Bazaar (bzr) '))
         self.assertNotEqual(output.index('Canonical'), -1)
         # make sure --version is consistent
         tmp_output = self.runbzr('--version', backtick=1)

@@ -39,7 +39,13 @@ from optparse import OptionParser
 import tools.doc_generate
 
 def main(argv):
-    parser = OptionParser(usage="%prog [options] OUTPUT_FORMAT")
+    parser = OptionParser(usage="""%prog [options] OUTPUT_FORMAT
+
+Available OUTPUT_FORMAT:
+
+    man              man page
+    rstx             man page in ReStructuredText format
+    bash_completion  bash completion script""")
 
     parser.add_option("-s", "--show-filename",
                       action="store_true", dest="show_filename", default=False,
