@@ -22,8 +22,9 @@ import os
 import re
 
 import bzrlib
-from bzrlib.branch import Branch
 from bzrlib import workingtree
+from bzrlib.branch import Branch
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -35,15 +36,15 @@ def subst_dates(string):
 
 class TestDiff(ExternalBase):
 
-    def make_example_branch(test):
+    def make_example_branch(self):
         # FIXME: copied from test_too_much -- share elsewhere?
-        test.runbzr('init')
-        file('hello', 'wb').write('foo\n')
-        test.runbzr('add hello')
-        test.runbzr('commit -m setup hello')
-        file('goodbye', 'wb').write('baz\n')
-        test.runbzr('add goodbye')
-        test.runbzr('commit -m setup goodbye')
+        tree = self.make_branch_and_tree('.')
+        open('hello', 'wb').write('foo\n')
+        tree.add(['hello'])
+        tree.commit('setup')
+        open('goodbye', 'wb').write('baz\n')
+        tree.add(['goodbye'])
+        tree.commit('setup')
 
     def test_diff(self):
         self.make_example_branch()
@@ -255,3 +256,36 @@ class TestDiffLabels(TestDiff):
         self.runbzr('rename hello gruezi')
         diff = self.run_bzr_captured(['diff'], retcode=1)
         self.assertTrue("=== renamed file 'hello' => 'gruezi'" in diff[0])
+
+
+class TestExternalDiff(TestDiff):
+
+    def test_external_diff(self):
+        """Test that we can spawn an external diff process"""
+        # We have to use run_bzr_subprocess, because we need to
+        # test writing directly to stdout, (there was a bug in
+        # subprocess.py that we had to workaround).
+        # However, if 'diff' may not be available
+        self.make_example_branch()
+        orig_progress = os.environ.get('BZR_PROGRESS_BAR')
+        try:
+            os.environ['BZR_PROGRESS_BAR'] = 'none'
+            out, err = self.run_bzr_subprocess('diff', '-r', '1',
+                                               '--diff-options', '-ub',
+                                               retcode=None)
+        finally:
+            if orig_progress is None:
+                del os.environ['BZR_PROGRESS_BAR']
+            else:
+                os.environ['BZR_PROGRESS_BAR'] = orig_progress
+            
+        if 'Diff is not installed on this machine' in err:
+            raise TestSkipped("No external 'diff' is available")
+        self.assertEqual('', err)
+        # We have to skip the stuff in the middle, because it depends
+        # on time.time()
+        self.assertStartsWith(out, "=== added file 'goodbye'\n"
+                                   "--- goodbye\t1970-01-01 00:00:00 +0000\n"
+                                   "+++ goodbye\t")
+        self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
+                                 "+baz\n\n")
