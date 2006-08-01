@@ -204,6 +204,11 @@ class Serializer_v5(Serializer):
                 "bad tag under properties list: %r" % prop_elt.tag
             name = prop_elt.get('name')
             value = prop_elt.text
+            # If a property had an empty value ('') cElementTree reads
+            # that back as None, convert it back to '', so that all
+            # properties have string values
+            if value is None:
+                value = ''
             assert name not in rev.properties, \
                 "repeated property %r" % name
             rev.properties[name] = value

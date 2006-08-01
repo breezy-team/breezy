@@ -307,36 +307,40 @@ class TestWalkDirs(TestCaseInTempDir):
             ]
         self.build_tree(tree)
         expected_dirblocks = [
-                [
-                    ('0file', '0file', 'file'),
-                    ('1dir', '1dir', 'directory'),
-                    ('2file', '2file', 'file'),
-                ],
-                [
-                    ('1dir/0file', '0file', 'file'),
-                    ('1dir/1dir', '1dir', 'directory'),
-                ],
-                [
-                ],
+                (('', '.'),
+                 [('0file', '0file', 'file'),
+                  ('1dir', '1dir', 'directory'),
+                  ('2file', '2file', 'file'),
+                 ]
+                ),
+                (('1dir', './1dir'),
+                 [('1dir/0file', '0file', 'file'),
+                  ('1dir/1dir', '1dir', 'directory'),
+                 ]
+                ),
+                (('1dir/1dir', './1dir/1dir'),
+                 [
+                 ]
+                ),
             ]
         result = []
         found_bzrdir = False
-        for dirblock in osutils.walkdirs('.'):
+        for dirdetail, dirblock in osutils.walkdirs('.'):
             if len(dirblock) and dirblock[0][1] == '.bzr':
                 # this tests the filtering of selected paths
                 found_bzrdir = True
                 del dirblock[0]
-            result.append(dirblock)
+            result.append((dirdetail, dirblock))
 
         self.assertTrue(found_bzrdir)
         self.assertEqual(expected_dirblocks,
-            [[line[0:3] for line in block] for block in result])
+            [(dirinfo, [line[0:3] for line in block]) for dirinfo, block in result])
         # you can search a subdir only, with a supplied prefix.
         result = []
-        for dirblock in osutils.walkdirs('1dir', '1dir'):
+        for dirblock in osutils.walkdirs('./1dir', '1dir'):
             result.append(dirblock)
         self.assertEqual(expected_dirblocks[1:],
-            [[line[0:3] for line in block] for block in result])
+            [(dirinfo, [line[0:3] for line in block]) for dirinfo, block in result])
 
     def assertPathCompare(self, path_less, path_greater):
         """check that path_less and path_greater compare correctly."""
