@@ -6,11 +6,13 @@ Run it with
  './setup.py --help' for more options
 """
 
+import bzrlib
+
 ##
 # META INFORMATION FOR SETUP
 
 META_INFO = {'name':         'bzr',
-             'version':      '<unknown>',
+             'version':      bzrlib.__version__,
              'author':       'Canonical Ltd',
              'author_email': 'bazaar-ng@lists.ubuntu.com',
              'url':          'http://www.bazaar-vcs.org/',
@@ -145,11 +147,6 @@ class bzr_build(build):
 ## Setup
 ########################
 
-def get_bzr_version():
-    import bzrlib
-    return bzrlib.__version__
-
-
 if 'bdist_wininst' in sys.argv:
     import glob
     # doc files
@@ -163,7 +160,6 @@ if 'bdist_wininst' in sys.argv:
            }
 
     ARGS.update(META_INFO)
-    ARGS.update({'version': get_bzr_version()})
     ARGS.update(BZRLIB)
     
     setup(**ARGS)
@@ -219,7 +215,6 @@ else:
            }
     
     ARGS.update(META_INFO)
-    ARGS.update({'version': get_bzr_version()})
     ARGS.update(BZRLIB)
 
     setup(**ARGS)
