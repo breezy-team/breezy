@@ -43,7 +43,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
             'num_entries: 1\n'
             '0\x00\n'
             '\x00\x00\x00d\x00TREE_ROOT\x00[0-9]+\x00[0-9a-zA-Z+/]{32}\x00\x00\n'
-            '\x00')
+            '\x00$')
         self.assertContainsRe(''.join(lines), expected_lines_re)
 
     def test_1_parents_empty_to_dirstate(self):
@@ -62,7 +62,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
             'num_entries: 1\n'
             '1\x00.*\x00\n'
             '\x00\x00\x00d\x00TREE_ROOT\x00[0-9]+\x00[0-9a-zA-Z+/]{32}\x00\x00null:\x00\x00\x00\x00\x00\x00\x00\n'
-            '\x00') # % rev_id.encode('utf8')
+            '\x00$') # % rev_id.encode('utf8')
         self.assertContainsRe(''.join(lines), expected_lines_re)
 
     def test_2_parents_empty_to_dirstate(self):
@@ -84,7 +84,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
             'num_entries: 1\n'
             '2\x00.*\x00.*\x00\n'
             '\x00\x00\x00d\x00TREE_ROOT\x00[0-9]+\x00[0-9a-zA-Z+/]{32}\x00\x00null:\x00\x00\x00\x00\x00\x00\x00null:\x00\x00\x00\x00\x00\x00\x00\n'
-            '\x00') # % rev_id.encode('utf8')
+            '\x00$') # % rev_id.encode('utf8')
         self.assertContainsRe(''.join(lines), expected_lines_re)
         
     def test_empty_unknowns_are_ignored_to_dirstate(self):
@@ -102,7 +102,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
             'num_entries: 1\n'
             '0\x00\n'
             '\x00\x00\x00d\x00TREE_ROOT\x00[0-9]+\x00[0-9a-zA-Z+/]{32}\x00\x00\n'
-            '\x00')
+            '\x00$')
         self.assertContainsRe(''.join(lines), expected_lines_re)
         
     def get_tree_with_a_file(self):
@@ -126,7 +126,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
             '0\x00\n'
             '\x00\x00\x00d\x00TREE_ROOT\x00[0-9]+\x00[0-9a-zA-Z+/]{32}\x00\x00\n'
             '\x00\x00a file\x00f\x00a file id\x0024\x00[0-9a-zA-Z+/]{32}\x00c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8\x00'
-            '\n\x00')
+            '\n\x00$')
         self.assertContainsRe(''.join(lines), expected_lines_re)
 
     def test_1_parents_not_empty_to_dirstate(self):
@@ -149,17 +149,22 @@ class TestTreeToDirstate(TestCaseWithTransport):
             '1\x00.*\x00\n'
             '\x00\x00\x00d\x00TREE_ROOT\x00[0-9]+\x00[0-9a-zA-Z+/]{32}\x00\x00null:\x00\x00\x00\x00\x00\x00\x00\n'
             '\x00\x00a file\x00f\x00a file id\x0012\x00[0-9a-zA-Z+/]{32}\x008b787bd9293c8b962c7a637a9fdbf627fe68610e\x00%s\x00f\x00\x00a file\x0024\x00n\x00c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8\x00\n'
-            '\x00')  % rev_id.encode('utf8')
-
+            '\x00$')  % rev_id.encode('utf8')
         self.assertContainsRe(''.join(lines), expected_lines_re)
 
     def test_2_parents_not_empty_to_dirstate(self):
         # create a parent by doing a commit
-        tree = self.make_branch_and_tree('tree')
+        tree = self.get_tree_with_a_file()
         rev_id = tree.commit('first post')
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
-        tree2.commit('second post', allow_pointless=True)
+        # change the current content to be different this will alter stat, sha
+        # and length:
+        self.build_tree_contents([('tree2/a file', 'merge content\n')])
+        rev_id2 = tree2.commit('second post')
         self.merge(tree2.branch, tree)
+        # change the current content to be different this will alter stat, sha
+        # and length again, giving us three distinct values:
+        self.build_tree_contents([('tree/a file', 'new content\n')])
         state = dirstate.DirState.from_tree(tree)
         # we want to be able to get the lines of the dirstate that we will
         # write to disk.
@@ -169,8 +174,9 @@ class TestTreeToDirstate(TestCaseWithTransport):
         expected_lines_re = (
             '#bzr dirstate flat format 1\n'
             'adler32: [0-9-][0-9]*\n'
-            'num_entries: 1\n'
+            'num_entries: 2\n'
             '2\x00.*\x00.*\x00\n'
             '\x00\x00\x00d\x00TREE_ROOT\x00[0-9]+\x00[0-9a-zA-Z+/]{32}\x00\x00null:\x00\x00\x00\x00\x00\x00\x00null:\x00\x00\x00\x00\x00\x00\x00\n'
-            '\x00') # % rev_id.encode('utf8')
+            '\x00\x00a file\x00f\x00a file id\x0012\x00[0-9a-zA-Z+/]{32}\x008b787bd9293c8b962c7a637a9fdbf627fe68610e\x00%s\x00f\x00\x00a file\x0024\x00n\x00c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8\x00%s\x00f\x00\x00a file\x0014\x00n\x00314d796174c9412647c3ce07dfb5d36a94e72958\x00\n'
+            '\x00$') % (rev_id.encode('utf8'), rev_id2.encode('utf8'))
         self.assertContainsRe(''.join(lines), expected_lines_re)

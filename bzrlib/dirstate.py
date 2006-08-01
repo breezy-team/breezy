@@ -125,8 +125,8 @@ class DirState(object):
                     s = os.readlink(abspath)
 
                 parent_info = []
-                if num_parents >= 1:
-                    parent_entry = parent_trees[0].inventory[fileid]
+                for count in xrange(num_parents):
+                    parent_entry = parent_trees[count].inventory[fileid]
                     parent_info.append(
                         '\0'.join((
                             parent_entry.revision,
@@ -137,18 +137,6 @@ class DirState(object):
                             to_yesno[parent_entry.executable],
                             parent_entry.text_sha1,
                             )))
-                if num_parents >= 2:
-                    parent_info.append(
-                        '\0'.join((
-                            parent_ids[0]
-                            , to_minikind[kind]
-                            , dirname, basename
-                            , str(st.st_size)
-                            , 'n' # Not executable
-                            , s
-                            )))
-                for count in xrange(2,num_parents):
-                    parent_info.append(null_parent_info)
                 lines.append('\0'.join([
                     dirname, basename
                     , to_minikind[kind]
