@@ -202,7 +202,7 @@ IN DEVELOPMENT
     * ``bzr status foo`` when foo was unversioned used to cause a full delta
       to be generated (John Arbash Meinel, #53638)
 
-    * When reading revision properties, and empty value should be considered
+    * When reading revision properties, an empty value should be considered
       the empty string, not None (John Arbash Meinel, #47782)
 
     * Use the right suffixes for loading plugins (John Arbash Meinel, #51810)
