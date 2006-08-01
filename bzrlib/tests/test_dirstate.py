@@ -31,8 +31,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         """We should be able to create a dirstate for an empty tree."""
         # There are no files on disk and no parents
         tree = self.make_branch_and_tree('tree')
-        self.build_tree(['emptytree/'])
-        state = dirstate.DirState.from_tree(tree, 'emptytree')
+        state = dirstate.DirState.from_tree(tree)
         # we want to be able to get the lines of the dirstate that we will
         # write to disk.
         lines = state.get_lines()
@@ -49,8 +48,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         # create a parent by doing a commit
         tree = self.make_branch_and_tree('tree')
         rev_id = tree.commit('first post')
-        self.build_tree(['emptytree/'])
-        state = dirstate.DirState.from_tree(tree, 'emptytree')
+        state = dirstate.DirState.from_tree(tree)
         # we want to be able to get the lines of the dirstate that we will
         # write to disk.
         lines = state.get_lines()
@@ -72,8 +70,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         tree2.commit('second post', allow_pointless=True)
         self.merge(tree2.branch, tree)
-        self.build_tree(['emptytree/'])
-        state = dirstate.DirState.from_tree(tree, 'emptytree')
+        state = dirstate.DirState.from_tree(tree)
         # we want to be able to get the lines of the dirstate that we will
         # write to disk.
         lines = state.get_lines()
@@ -92,8 +89,8 @@ class TestTreeToDirstate(TestCaseWithTransport):
         """We should be able to create a dirstate for an empty tree."""
         # There are no files on disk and no parents
         tree = self.make_branch_and_tree('tree')
-        self.build_tree(['emptytree/', 'emptytree/unknown', 'tree/unknown'])
-        state = dirstate.DirState.from_tree(tree, 'emptytree')
+        self.build_tree(['tree/unknown'])
+        state = dirstate.DirState.from_tree(tree)
         # we want to be able to get the lines of the dirstate that we will
         # write to disk.
         lines = state.get_lines()
@@ -110,8 +107,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         """We should be able to create a dirstate for an empty tree."""
         # There are no files on disk and no parents
         tree = self.make_branch_and_tree('tree')
-        self.build_tree(['emptytree/'])
-        state = dirstate.DirState.from_tree(tree, 'emptytree')
+        state = dirstate.DirState.from_tree(tree)
         # we want to be able to get the lines of the dirstate that we will
         # write to disk.
         lines = state.get_lines()
@@ -127,9 +123,10 @@ class TestTreeToDirstate(TestCaseWithTransport):
     def test_1_parents_not_empty_to_dirstate(self):
         # create a parent by doing a commit
         tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a file'])
+        #tree.add('a file', 'a file id')
         rev_id = tree.commit('first post')
-        self.build_tree(['emptytree/'])
-        state = dirstate.DirState.from_tree(tree, 'emptytree')
+        state = dirstate.DirState.from_tree(tree)
         # we want to be able to get the lines of the dirstate that we will
         # write to disk.
         lines = state.get_lines()
@@ -151,8 +148,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         tree2.commit('second post', allow_pointless=True)
         self.merge(tree2.branch, tree)
-        self.build_tree(['emptytree/'])
-        state = dirstate.DirState.from_tree(tree, 'emptytree')
+        state = dirstate.DirState.from_tree(tree)
         # we want to be able to get the lines of the dirstate that we will
         # write to disk.
         lines = state.get_lines()

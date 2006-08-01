@@ -23,7 +23,6 @@ import cStringIO
 import os
 import sha
 import struct
-import time
 import zlib
 
 import bzrlib.inventory
@@ -45,19 +44,11 @@ class DirState(object):
 
 
     @staticmethod
-    def from_tree(tree, base_path):
-        """Create a dirstate from a bzr Tree and a local disk path.
+    def from_tree(tree):
+        """Create a dirstate from a bzr Tree.
 
         :param tree: The tree which should provide parent information and
             inventory ids.
-        :param base_path: The local path to access the local fs data for this tree.
-            This is not accessed via the tree object because we want to be able
-            to seed DirStates from RevisionTrees during checkout. Possibly
-            a better model is to start with an empty dirstate and populate it
-            during the checkout operation, but that will require looking at the
-            behaviour of set_inventory etc. which is not in scope yet - and is
-            potentially very expensive as it requires an entire scan, or an
-            inventory diff.
         """
         result = DirState()
 
@@ -79,7 +70,7 @@ class DirState(object):
 
         to_minikind = DirState._kind_to_minikind
 
-        st = os.lstat(base_path)
+        st = os.lstat(tree.basedir)
         null_parent_info = '\0'.join((
                     'null:'
                     , '', ''
@@ -109,9 +100,6 @@ class DirState(object):
             
         lines.append('\0'.join(root_info))
 
-        test_sha = sha.new('').hexdigest()
-
-        tstart = time.time()
         for dirinfo, block in tree.walkdirs():
 
             to_remove = []
@@ -120,18 +108,19 @@ class DirState(object):
                     # unversioned file, skip
                     continue
                 s = None
-                symlink_target = None
                 dirname, basename = os.path.split(relpath.encode('utf8'))
                 if kind == 'file':
-                    #s = sha_file(open(abspath, 'rb'))
-                    s = test_sha
+                    s = sha_file(open(abspath, 'rb'))
                 elif kind == 'directory':
                     if name in ('.bzr', '.hg', 'CVS', '.svn', '_svn'):
+                        raise Exception('skipping dirs not supported yet')
                         # Skip this, and all children
                         to_remove.append((relpath, name, kind, st, abspath))
                         continue
+                    # no sha value
                     s = ''
                 elif kind == 'symlink':
+                    # sha value of the link target ?!
                     s = os.readlink(abspath)
 
                 parent_info = []
