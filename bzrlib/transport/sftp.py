@@ -940,6 +940,72 @@ class SocketListener(threading.Thread):
                         x)
 
 
+class SocketDelay(object):
+    """A socket decorator to make TCP appear slower.
+
+    This changes recv, send, and sendall to add a fixed latency to each 
+    python call. It will therefore behave differently to the real underlying
+    TCP stack which may only pay the latency price on each actual roundtrip
+    rather than each packet initiated. We can come closer to the real
+    behaviour by only charging latency for each roundtrip we detect - that is
+    when recv is called, toggle a flag, and insert latency again only when
+    send has been called in the middle. For now though, showing more latency
+    than we have is probably acceptable.
+
+    Not all methods are implemented, this is deliberate as this class is not
+    a replacement for the builtin sockets layer. fileno is not implemented to
+    prevent the proxy being bypassed.
+    """
+
+    def __init__(self, sock, latency):
+        self.sock = sock
+        self.latency = latency
+
+    def close(self):
+        return self.sock.close()
+
+    def dup(self):
+        return SocketDelay(self.sock.dup(), self.latency)
+
+    def getpeername(self, *args):
+        return self.sock.getpeername(*args)
+
+    def getsockname(self, *args):
+        return self.sock.getsockname(*args)
+    
+    def getsockopt(self, *args):
+        return self.sock.getsockopt(*args)
+
+    def gettimeout(self, *args):
+        return self.sock.gettimeout(*args)
+
+    def recv(self, *args):
+        data = self.sock.recv(*args)
+        if data:
+            time.sleep(self.latency)
+        return data
+
+    def sendall(self, *args):
+        time.sleep(self.latency)
+        return self.sock.sendall(*args)
+
+    def send(self, *args):
+        time.sleep(self.latency)
+        return self.sock.send(*args)
+
+    def setblocking(self, *args):
+        return self.sock.setblocking(*args)
+
+    def setsockopt(self, *args):
+        return self.sock.setsockopt(*args)
+
+    def settimeout(self, *args):
+        return self.sock.settimeout(*args)
+
+    def shutdown(self, *args):
+        return self.sock.shutdown(*args)
+        
+
 class SFTPServer(Server):
     """Common code for SFTP server facilities."""
 
@@ -952,6 +1018,7 @@ class SFTPServer(Server):
         self._vendor = 'none'
         # sftp server logs
         self.logs = []
+        self.add_latency = 0
 
     def _get_sftp_url(self, path):
         """Calculate an sftp url to this server for path."""
@@ -960,6 +1027,16 @@ class SFTPServer(Server):
     def log(self, message):
         """StubServer uses this to log when a new server is created."""
         self.logs.append(message)
+
+    def _run_server_entry(self, sock):
+        """Entry point for all implementations of _run_server.
+        
+        If self.add_latency is > 0.000001 then sock is given a latency adding
+        decorator.
+        """
+        if self.add_latency > 0.000001:
+            sock = SocketDelay(sock, self.add_latency)
+        return self._run_server(sock)
 
     def _run_server(self, s):
         ssh_server = paramiko.Transport(s)
@@ -992,7 +1069,7 @@ class SFTPServer(Server):
         self._root = '/'
         if sys.platform == 'win32':
             self._root = ''
-        self._listener = SocketListener(self._run_server)
+        self._listener = SocketListener(self._run_server_entry)
         self._listener.setDaemon(True)
         self._listener.start()
 
@@ -1007,7 +1084,6 @@ class SFTPServer(Server):
         # this is chosen to try to prevent trouble with proxies, wierd dns,
         # etc
         return 'sftp://127.0.0.1:1/'
-
 
 
 class SFTPFullAbsoluteServer(SFTPServer):
