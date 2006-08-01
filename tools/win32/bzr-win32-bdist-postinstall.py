@@ -53,7 +53,7 @@ Congratulation! Bzr successfully installed.
 """ % ver
 
     batch_path = "bzr.bat"
-    prefix = sys.prefix
+    prefix = sys.exec_prefix
     try:
         ##
         # try to create
