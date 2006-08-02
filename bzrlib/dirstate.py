@@ -65,8 +65,8 @@ class DirState(object):
         for parent_id in parent_ids:
             parent_trees.append(tree.branch.repository.revision_tree(parent_id))
 
+        lines.append(result._get_parents_line(parent_ids))
         # FIXME: is this utf8 safe?
-        lines.append('\0'.join([str(num_parents)] + parent_ids))
 
         to_minikind = DirState._kind_to_minikind
         to_yesno = {True:'y', False: 'n'}
@@ -152,8 +152,43 @@ class DirState(object):
             for entry in to_remove:
                 block.remove(entry)
 
-        output_lines = ['#bzr dirstate flat format 1\n']
+        result.lines = result._get_output_lines(lines)
+        return result
 
+    def get_lines(self):
+        """Serialise the entire dirstate to a sequence of lines."""
+        return self.lines
+
+    def _get_parents_line(self, parent_ids):
+        """Create a line for the state file for parents information."""
+        return '\0'.join([str(len(parent_ids))] + parent_ids)
+        
+    def get_parent_ids(self):
+        """Return a list of the parent tree ids for the directory state."""
+        self._read_header()
+        return self._parents
+
+    @staticmethod
+    def initialize(path):
+        """Create a new dirstate on path."""
+        result = DirState()
+        lines = []
+        lines.append(result._get_parents_line([]))
+        result.lines = result._get_output_lines(lines)
+        state_file = open(path, 'wb+')
+        try:
+            state_file.write(''.join(result.lines))
+        finally:
+            state_file.close()
+        return result
+
+    def _get_output_lines(self, lines):
+        """format lines for final output.
+        
+        :param lines: A sequece of lines containing the parents list and the
+            path lines.
+        """
+        output_lines = ['#bzr dirstate flat format 1\n']
         lines.append('') # a final newline
         inventory_text = '\0\n\0'.join(lines)
         output_lines.append('adler32: %s\n' % (zlib.adler32(inventory_text),))
@@ -161,21 +196,54 @@ class DirState(object):
         num_entries = len(lines)-2
         output_lines.append('num_entries: %s\n' % (num_entries,))
         output_lines.append(inventory_text)
+        return output_lines
 
-        result.lines = output_lines
+    @staticmethod
+    def on_file(path):
+        """Construct a DirState on the file at path path."""
+        result = DirState()
+        result.state_file = open(path, 'rb')
         return result
 
-    def get_lines(self):
-        """Serialise the entire dirstate to a sequence of lines."""
-        return self.lines
-        return [
-            '#bzr dirstate flat format 1\n',
-            'adler32: -2\n',
-            'num_entries: 1\n',
-            '0\x00\n',
-            '\x00\x00\x00d\x00TREE_ROOT\x004096\x00AAAQAETIF65EyBeuAAADAQAQQxsAAEHt\x00\x00\n',
-            '\x00',
-            ]
+    def _read_all(self):
+        """Read the entire state."""
+        self._read_header()
+        
+    def _read_header(self):
+        """This reads in the metadata header, and the parent ids.
+
+        After reading in, the file should be positioned at the null
+        just before the start of the first record in the file.
+
+        :return: (expected adler checksum, number of entries, parent list)
+        """
+        self._read_prelude()
+        parent_line = self.state_file.readline()
+        info = parent_line.split('\0')
+        num_parents = int(info[0])
+        assert num_parents == len(info)-2, 'incorrect parent info line'
+
+        self._parents = [p.decode('utf8') for p in info[1:-1]]
+
+    def _read_prelude(self):
+        """Read in the prelude header of the dirstate file
+
+        This only reads in the stuff that is not connected to the adler
+        checksum. The position will be correct to read in the rest of
+        the file and check the checksum after this point.
+        The next entry in the file should be the number of parents,
+        and their ids. Followed by a newline.
+        """
+        header = self.state_file.readline()
+        assert header == '#bzr dirstate flat format 1\n', \
+            'invalid header line: %r' % (header,)
+        adler_line = self.state_file.readline()
+        assert adler_line.startswith('adler32: '), 'missing adler32 checksum'
+        self.adler_expected = int(adler_line[len('adler32: '):-1])
+        num_entries_line = self.state_file.readline()
+        assert num_entries_line.startswith('num_entries: '), 'missing num_entries line'
+        self.num_entries = int(num_entries_line[len('num_entries: '):-1])
+    
 
 def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     """Convert stat values into a packed representation."""

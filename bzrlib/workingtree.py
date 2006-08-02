@@ -55,7 +55,7 @@ from time import time
 import warnings
 
 import bzrlib
-from bzrlib import bzrdir, errors, ignores, osutils, urlutils
+from bzrlib import bzrdir, dirstate, errors, ignores, osutils, urlutils
 from bzrlib.atomicfile import AtomicFile
 import bzrlib.branch
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
@@ -2123,7 +2123,9 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
-        inv = Inventory() 
+        inv = Inventory()
+        local_path = transport.local_abspath('dirstate')
+        dirstate.DirState.initialize(local_path)
         wt = WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,

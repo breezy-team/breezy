@@ -26,6 +26,7 @@ from bzrlib.tests import TestCaseWithTransport
 # test all change permutations in one and two parents.
 # i.e. file in parent 1, dir in parent 2, symlink in tree.
 # test that renames in the tree result in correct parent paths 
+# Test get state from a file, then asking for lines.
 
 class TestTreeToDirstate(TestCaseWithTransport):
 
@@ -180,3 +181,32 @@ class TestTreeToDirstate(TestCaseWithTransport):
             '\x00\x00a file\x00f\x00a file id\x0012\x00[0-9a-zA-Z+/]{32}\x008b787bd9293c8b962c7a637a9fdbf627fe68610e\x00%s\x00f\x00\x00a file\x0024\x00n\x00c3ed76e4bfd45ff1763ca206055bca8e9fc28aa8\x00%s\x00f\x00\x00a file\x0014\x00n\x00314d796174c9412647c3ce07dfb5d36a94e72958\x00\n'
             '\x00$') % (rev_id.encode('utf8'), rev_id2.encode('utf8'))
         self.assertContainsRe(''.join(lines), expected_lines_re)
+
+
+class TestDirStateOnFile(TestCaseWithTransport):
+
+    def test_construct_with_path(self):
+        tree = self.make_branch_and_tree('tree')
+        state = dirstate.DirState.from_tree(tree)
+        # we want to be able to get the lines of the dirstate that we will
+        # write to disk.
+        lines = state.get_lines()
+        self.build_tree_contents([('dirstate', ''.join(lines))])
+        # get a state object
+        state = dirstate.DirState.on_file('dirstate')
+        # ask it for a parents list
+        self.assertEqual([], state.get_parent_ids())
+
+
+class TestDirStateInitialize(TestCaseWithTransport):
+
+    def test_initialize(self):
+        state = dirstate.DirState.initialize('dirstate')
+        self.assertIsInstance(state, dirstate.DirState)
+        self.assertFileEqual(
+            '#bzr dirstate flat format 1\n'
+            'adler32: 14155835\n'
+            'num_entries: 0\n'
+            '0\x00\n'
+            '\x00',
+            'dirstate')

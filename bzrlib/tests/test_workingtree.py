@@ -18,7 +18,7 @@
 from cStringIO import StringIO
 import os
 
-from bzrlib import ignores
+from bzrlib import dirstate, ignores
 import bzrlib
 from bzrlib.branch import Branch
 from bzrlib import bzrdir, conflicts, errors, workingtree
@@ -239,6 +239,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertFalse(t.has('last-revision'))
         # TODO RBC 20060210 do a commit, check the inventory.basis is created 
         # correctly and last-revision file becomes present.
+        # manually make a dirstate toc check the format is as desired.
+        state = dirstate.DirState.on_file(t.local_abspath('dirstate'))
+        self.assertEqual([], state.get_parent_ids())
 
     def test_uses_lockdir(self):
         """WorkingTreeFormat4 uses its own LockDir:
