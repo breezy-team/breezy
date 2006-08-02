@@ -822,21 +822,23 @@ class cmd_update(Command):
         try:
             old_tip = b.update()
             if revision is not None:
-                last_rev = revision[0].in_history(b).rev_id
+                rev = revision[0].in_history(b).rev_id
+                if rev not in b.revision_history():
+                    raise BzrCommandError("bzr update --revision works only for a revision in the branch history")
             else:
-                last_rev = b.last_revision()
-            if tree.last_revision() == last_rev:
+                rev = b.last_revision()
+            if tree.last_revision() == rev:
                 # may be up to date, check master too.
                 master = b.get_master_branch()
-                if master is None or last_rev == master.last_revision():
-                    revno = b.revision_id_to_revno(last_rev)
+                if master is None or rev == master.last_revision():
+                    revno = b.revision_id_to_revno(rev)
                     note("Tree is up to date at revision %d." % (revno,))
                     return 0
-            conflicts = tree.update(last_rev,old_tip or "not_computed")
+            conflicts = tree.update(rev,old_tip or "not_computed")
             try:
                 revno = str(b.revision_id_to_revno(tree.last_revision()))
             except errors.NoSuchRevision:
-                revno = last_rev
+                revno = rev
             note('Updated to revision %s.' % (revno,))
             if tree.pending_merges() != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
