@@ -76,6 +76,7 @@ class cmd_buildpackage(Command):
   Option.SHORT_OPTIONS['e'] = export_only_opt
   dont_purge_opt = Option('dont-purge', help="Don't purge the build directory after building")
   takes_args = ['branch?', 'version?']
+  aliases = ['bp']
   takes_options = ['verbose',
            dry_run_opt, working_tree_opt, export_only_opt, dont_purge_opt]
 
