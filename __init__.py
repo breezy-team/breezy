@@ -12,6 +12,52 @@ from bzrlib.branch import Branch
 from bzrlib.workingtree import WorkingTree
 from bzrlib.export import export
 
+class DebianChangelog(object):
+  """Represents a debian/changelog file. You can ask it several things about
+     the file.
+  """
+
+  def __init__(self, file=None):
+    if file is None:
+      f = open("debian/changelog", 'r')
+      contents = f.read()
+      close(f)
+      self._file = contents
+    else:
+      self._file = file
+    p = re.compile('([a-z0-9][-a-z0-9.+]+) \(([-0-9a-z.:]+)\) [-a-zA-Z]+; urgency=[a-z]+')
+    m = p.search(self._file)
+    if m is not None:
+      self._package = m.group(1)
+      self._full_version = m.group(2)
+ 
+    if self._full_version is None:
+      raise DebianError("Could not parse debian/changelog")
+
+    p = re.compile('(.+)-([^-]+)')
+    m = p.match(self._full_version)
+    if m is not None:
+      self._upstream_version = m.group(1)
+      self._debian_version = m.group(2)
+    else:
+      self._upstream_version = self._full_version
+      self._debian_version = None
+
+
+  def full_version(self):
+    return self._full_version
+
+  def debian_version(self):
+    return self._debian_version
+
+  def upstream_version(self):
+    return self._upstream_version
+
+  def package(self):
+    return self._package
+
+
+
 class DebianError(BzrNewError):
   """A Debian packaging error occured: %(message)s"""
 
@@ -47,26 +93,14 @@ class cmd_buildpackage(Command):
       t = b.repository.revision_tree(rev_id)
     else:
       t = tree
-    if not version:
-      if not t.has_filename('debian/changelog'):
-        raise DebianError("Could not open debian/changelog")
-      changelog_id = t.inventory.path2id('debian/changelog')
-      changelog = t.get_file_text(changelog_id)
-      p = re.compile('([a-z0-9][-a-z0-9.+]+) \(([-0-9a-z.:]+)\) [-a-zA-Z]+; urgency=[a-z]+')
-      m = p.search(changelog)
-      if m is not None:
-        package = m.group(1)
-        version = m.group(2)
-    
-    if version is None:
-      raise DebianError("Could not parse debian/changelog")
-
-    p = re.compile('(.+)-[^-]+')
-    m = p.match(version)
-    if m is not None:
-      upstream = m.group(1)
-    else:
-      upstream = version
+    if not t.has_filename('debian/changelog'):
+      raise DebianError("Could not open debian/changelog")
+    changelog_id = t.inventory.path2id('debian/changelog')
+    contents = t.get_file_text(changelog_id)
+    changelog = DebianChangelog(contents)
+    version = changelog.full_version()
+    upstream = changelog.upstream_version()
+    package = changelog.package()
 
     dir = package + "-" + upstream
 
