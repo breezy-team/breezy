@@ -450,3 +450,95 @@ class TestWeaveToKnit(KnitTests):
         self.failIf(WeaveToKnit.is_compatible(k, w))
         self.failIf(WeaveToKnit.is_compatible(w, w))
         self.failIf(WeaveToKnit.is_compatible(k, k))
+
+
+class TestKnitCaching(KnitTests):
+    
+    def create_knit(self, cache_add=False):
+        k = self.make_test_knit(True)
+        if cache_add:
+            k.enable_cache()
+
+        k.add_lines('text-1', [], split_lines(TEXT_1))
+        k.add_lines('text-2', [], split_lines(TEXT_2))
+        return k
+
+    def test_no_caching(self):
+        k = self.create_knit()
+        # Nothing should be cached without setting 'enable_cache'
+        self.assertEqual({}, k._data._cache)
+
+    def test_cache_add_and_clear(self):
+        k = self.create_knit(True)
+
+        self.assertEqual(['text-1', 'text-2'], sorted(k._data._cache.keys()))
+
+        k.clear_cache()
+        self.assertEqual({}, k._data._cache)
+
+    def test_cache_data_read_raw(self):
+        k = self.create_knit()
+
+        # Now cache and read
+        k.enable_cache()
+
+        def read_one_raw(version):
+            pos_map = k._get_components_positions([version])
+            method, pos, size, next = pos_map[version]
+            lst = list(k._data.read_records_iter_raw([(version, pos, size)]))
+            self.assertEqual(1, len(lst))
+            return lst[0]
+
+        val = read_one_raw('text-1')
+        self.assertEqual({'text-1':val[1]}, k._data._cache)
+
+        k.clear_cache()
+        # After clear, new reads are not cached
+        self.assertEqual({}, k._data._cache)
+
+        val2 = read_one_raw('text-1')
+        self.assertEqual(val, val2)
+        self.assertEqual({}, k._data._cache)
+
+    def test_cache_data_read(self):
+        k = self.create_knit()
+
+        def read_one(version):
+            pos_map = k._get_components_positions([version])
+            method, pos, size, next = pos_map[version]
+            lst = list(k._data.read_records_iter([(version, pos, size)]))
+            self.assertEqual(1, len(lst))
+            return lst[0]
+
+        # Now cache and read
+        k.enable_cache()
+
+        val = read_one('text-2')
+        self.assertEqual(['text-2'], k._data._cache.keys())
+        self.assertEqual('text-2', val[0])
+        content, digest = k._data._parse_record('text-2',
+                                                k._data._cache['text-2'])
+        self.assertEqual(content, val[1])
+        self.assertEqual(digest, val[2])
+
+        k.clear_cache()
+        self.assertEqual({}, k._data._cache)
+
+        val2 = read_one('text-2')
+        self.assertEqual(val, val2)
+        self.assertEqual({}, k._data._cache)
+
+    def test_cache_read(self):
+        k = self.create_knit()
+        k.enable_cache()
+
+        text = k.get_text('text-1')
+        self.assertEqual(TEXT_1, text)
+        self.assertEqual(['text-1'], k._data._cache.keys())
+
+        k.clear_cache()
+        self.assertEqual({}, k._data._cache)
+
+        text = k.get_text('text-1')
+        self.assertEqual(TEXT_1, text)
+        self.assertEqual({}, k._data._cache)

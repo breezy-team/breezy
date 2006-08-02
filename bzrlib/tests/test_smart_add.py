@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from bzrlib import errors, osutils
+from bzrlib import errors, ignores, osutils
 from bzrlib.add import smart_add, smart_add_tree
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.errors import NoSuchFile
@@ -99,6 +99,7 @@ class TestSmartAdd(TestCaseWithTransport):
     def test_add_dry_run(self):
         """Test a dry run add, make sure nothing is added."""
         from bzrlib.commands import run_bzr
+        ignores._set_user_ignores(['./.bazaar'])
         eq = self.assertEqual
         wt = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
@@ -116,17 +117,15 @@ class TestSmartAdd(TestCaseWithTransport):
         """Correctly returns added/ignored files"""
         from bzrlib.commands import run_bzr
         wt = self.make_branch_and_tree('.')
-        # no files should be ignored by default, so we need to create
-        # an ignore rule - we create one for the pyc files, which means
-        # CVS should not be ignored.
-        self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS', 
+        # The default ignore list includes '*.py[co]', but not CVS
+        ignores._set_user_ignores(['./.bazaar', '*.py[co]'])
+        self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS',
                         'inertiatic/foo.pyc'])
-        self.build_tree_contents([('.bzrignore', '*.py[oc]\n')])
         added, ignored = smart_add_tree(wt, u'.')
         self.assertSubset(('inertiatic', 'inertiatic/esp', 'inertiatic/CVS'),
                           added)
-        self.assertSubset(('*.py[oc]',), ignored)
-        self.assertSubset(('inertiatic/foo.pyc',), ignored['*.py[oc]'])
+        self.assertSubset(('*.py[co]',), ignored)
+        self.assertSubset(('inertiatic/foo.pyc',), ignored['*.py[co]'])
 
 
 class TestSmartAddTree(TestCaseWithTransport):
@@ -229,7 +228,7 @@ class TestAddNonNormalized(TestCaseWithTransport):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
             smart_add_tree(self.wt, [u'a\u030a'])
-            self.assertEqual([(u'\xe5', 'file')],
+            self.assertEqual([('', 'root_directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in 
                         self.wt.inventory.iter_entries()])
         finally:
@@ -241,7 +240,7 @@ class TestAddNonNormalized(TestCaseWithTransport):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
             smart_add_tree(self.wt, [])
-            self.assertEqual([(u'\xe5', 'file')],
+            self.assertEqual([('', 'root_directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in 
                         self.wt.inventory.iter_entries()])
         finally:
