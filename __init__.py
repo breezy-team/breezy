@@ -4,6 +4,7 @@ import os
 import sys
 import shutil
 import re
+import commands
 
 from bzrlib.commands import Command, register_command
 from bzrlib.option import Option
@@ -11,6 +12,33 @@ from bzrlib.errors import (NoSuchFile, NotBranchError, BzrNewError)
 from bzrlib.branch import Branch
 from bzrlib.workingtree import WorkingTree
 from bzrlib.export import export
+
+class DebianChanges(object):
+  """Abstraction of the .changes file. Use it to find out what files were built
+  """
+
+  def __init__(self, package, version):
+    status, arch = commands.getstatusoutput('dpkg-architecture -qDEB_BUILD_ARCH')
+    if status > 0:
+      raise DebianError("Could not find the build architecture")
+    changes = str(package)+"_"+str(version)+"_"+str(arch)+".changes"
+    if not os.path.exists(changes):
+      raise DebianException("Could not find "+package)
+    f = open(changes)
+    p = re.compile('^ [a-z0-9]+ [0-9]+ [a-z]+ [a-z]+ (.*)$')
+    files = []
+    for line in f:
+      m = p.match(line)
+      if m is not None:
+        files.append(m.group(1))
+    self._files = files
+    self._filename = changes
+
+  def files(self):
+    return self._files
+
+  def filename(self):
+    return self._filename
 
 class DebianChangelog(object):
   """Represents a debian/changelog file. You can ask it several things about
@@ -75,18 +103,22 @@ class cmd_buildpackage(Command):
   export_only_opt = Option('export-only', help="Export only, don't build")
   Option.SHORT_OPTIONS['e'] = export_only_opt
   dont_purge_opt = Option('dont-purge', help="Don't purge the build directory after building")
+  result_opt = Option('result', help="Directory in which to place the resulting package files", type=str)
   takes_args = ['branch?', 'version?']
   aliases = ['bp']
   takes_options = ['verbose',
-           dry_run_opt, working_tree_opt, export_only_opt, dont_purge_opt]
+           dry_run_opt, working_tree_opt, export_only_opt, dont_purge_opt, result_opt]
 
-  def run(self, branch=None, version=None, verbose=False, working_tree=False, export_only=False, dont_purge=False):
+  def run(self, branch=None, version=None, verbose=False, working_tree=False, export_only=False, dont_purge=False, result=None):
     retcode = 0
 
     if branch is None:
       tree = WorkingTree.open_containing('.')[0]
     else:
       tree = WorkingTree.open_containing(branch)[0]
+
+    if result is not None:
+      result = os.path.realpath(result)
 
     if not working_tree:
       b = tree.branch
@@ -120,6 +152,13 @@ class cmd_buildpackage(Command):
       os.chdir('..')
       if not dont_purge:
         shutil.rmtree(dir)
+      if result is not None:
+        changes = DebianChanges(package, version)
+        files = changes.files()
+        shutil.move(changes.filename(), result)
+        for file in files:
+          shutil.move(file, result)
+
 
     return retcode
 
