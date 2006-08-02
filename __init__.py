@@ -51,7 +51,7 @@ class cmd_buildpackage(Command):
         raise DebianError("Could not open debian/changelog")
       changelog_id = t.inventory.path2id('debian/changelog')
       changelog = t.get_file_text(changelog_id)
-      p = re.compile('([a-z0-9][-a-z0-9.+]+) \(([-0-9a-z.:]+)\) [-a-z]+; urgency=[a-z]+')
+      p = re.compile('([a-z0-9][-a-z0-9.+]+) \(([-0-9a-z.:]+)\) [-a-zA-Z]+; urgency=[a-z]+')
       m = p.search(changelog)
       if m is not None:
         package = m.group(1)
