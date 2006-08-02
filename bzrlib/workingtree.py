@@ -1383,7 +1383,7 @@ class WorkingTree(bzrlib.tree.Tree):
         raise NotImplementedError(self.unlock)
 
     @needs_write_lock
-    def update(self,revision=None):
+    def update(self,revision=None,old_tip="not_computed"):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have multiple trees involved:
@@ -1402,7 +1402,8 @@ class WorkingTree(bzrlib.tree.Tree):
         Merge current state -> basis tree of the master w.r.t. the old tree basis.
         Do a 'normal' merge of the old branch basis if it is relevant.
         """
-        old_tip = self.branch.update()
+        if old_tip == "not_computed":
+            old_tip = self.branch.update()
         if old_tip is not None:
             self.add_pending_merge(old_tip)
         self.branch.lock_read()

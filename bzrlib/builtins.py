@@ -820,6 +820,7 @@ class cmd_update(Command):
         tree.lock_write()
         existing_pending_merges = tree.pending_merges()
         try:
+            old_tip = b.update()
             if revision is not None:
                 last_rev = revision[0].in_history(b).rev_id
             else:
@@ -831,9 +832,9 @@ class cmd_update(Command):
                     revno = b.revision_id_to_revno(last_rev)
                     note("Tree is up to date at revision %d." % (revno,))
                     return 0
-            conflicts = tree.update(last_rev)
+            conflicts = tree.update(last_rev,old_tip or "not_computed")
             try:
-                revno = str(b.revision_id_to_revno(last_rev))
+                revno = str(b.revision_id_to_revno(tree.last_revision()))
             except errors.NoSuchRevision:
                 revno = last_rev
             note('Updated to revision %s.' % (revno,))
