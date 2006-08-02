@@ -81,7 +81,7 @@ class cmd_buildpackage(Command):
     export(t,dir,None,None)
     if not export_only:
       os.chdir(dir)
-      os.system('dpkg-buildpackage -S -uc -us -rfakeroot')
+      os.system('dpkg-buildpackage -uc -us -rfakeroot')
       os.chdir('..')
       if not dont_purge:
         shutil.rmtree(dir)
