@@ -809,24 +809,34 @@ class cmd_update(Command):
     'bzr revert' instead of 'bzr commit' after the update.
     """
     takes_args = ['dir?']
+    takes_options = ['revision']
     aliases = ['up']
 
-    def run(self, dir='.'):
+    def run(self, dir='.', revision=None):
+        if revision is not None and len(revision) != 1:
+            raise BzrCommandError("bzr update --revision takes exactly one revision")
         tree = WorkingTree.open_containing(dir)[0]
+        b = tree.branch
         tree.lock_write()
         existing_pending_merges = tree.pending_merges()
         try:
-            last_rev = tree.last_revision() 
-            if last_rev == tree.branch.last_revision():
+            if revision is not None:
+                last_rev = revision[0].in_history(b).rev_id
+            else:
+                last_rev = b.last_revision()
+            if tree.last_revision() == last_rev:
                 # may be up to date, check master too.
-                master = tree.branch.get_master_branch()
+                master = b.get_master_branch()
                 if master is None or last_rev == master.last_revision():
-                    revno = tree.branch.revision_id_to_revno(last_rev)
+                    revno = b.revision_id_to_revno(last_rev)
                     note("Tree is up to date at revision %d." % (revno,))
                     return 0
-            conflicts = tree.update()
-            revno = tree.branch.revision_id_to_revno(tree.last_revision())
-            note('Updated to revision %d.' % (revno,))
+            conflicts = tree.update(last_rev)
+            try:
+                revno = str(b.revision_id_to_revno(last_rev))
+            except errors.NoSuchRevision:
+                revno = last_rev
+            note('Updated to revision %s.' % (revno,))
             if tree.pending_merges() != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")

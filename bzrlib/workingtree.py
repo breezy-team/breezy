@@ -1383,7 +1383,7 @@ class WorkingTree(bzrlib.tree.Tree):
         raise NotImplementedError(self.unlock)
 
     @needs_write_lock
-    def update(self):
+    def update(self,revision=None):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have multiple trees involved:
@@ -1407,16 +1407,18 @@ class WorkingTree(bzrlib.tree.Tree):
             self.add_pending_merge(old_tip)
         self.branch.lock_read()
         try:
+            if revision is None:
+                revision = self.branch.last_revision()
             result = 0
-            if self.last_revision() != self.branch.last_revision():
+            if self.last_revision() != revision:
                 # merge tree state up to new branch tip.
                 basis = self.basis_tree()
-                to_tree = self.branch.basis_tree()
+                to_tree = self.branch.repository.revision_tree(revision)
                 result += merge_inner(self.branch,
                                       to_tree,
                                       basis,
                                       this_tree=self)
-                self.set_last_revision(self.branch.last_revision())
+                self.set_last_revision(revision)
             if old_tip and old_tip != self.last_revision():
                 # our last revision was not the prior branch last revision
                 # and we have converted that last revision to a pending merge.
@@ -1424,7 +1426,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 # and the now pending merge
                 from bzrlib.revision import common_ancestor
                 try:
-                    base_rev_id = common_ancestor(self.branch.last_revision(),
+                    base_rev_id = common_ancestor(revision,
                                                   old_tip,
                                                   self.branch.repository)
                 except errors.NoCommonAncestor:
