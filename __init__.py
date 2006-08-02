@@ -28,11 +28,12 @@ class cmd_buildpackage(Command):
   Option.SHORT_OPTIONS['w'] = working_tree_opt
   export_only_opt = Option('export-only', help="Export only, don't build")
   Option.SHORT_OPTIONS['e'] = export_only_opt
+  dont_purge_opt = Option('dont-purge', help="Don't purge the build directory after building")
   takes_args = ['branch?', 'version?']
   takes_options = ['verbose',
-           dry_run_opt, working_tree_opt, export_only_opt]
+           dry_run_opt, working_tree_opt, export_only_opt, dont_purge_opt]
 
-  def run(self, branch=None, version=None, verbose=False, working_tree=False, export_only=False):
+  def run(self, branch=None, version=None, verbose=False, working_tree=False, export_only=False, dont_purge=False):
     retcode = 0
 
     if branch is None:
@@ -82,7 +83,8 @@ class cmd_buildpackage(Command):
       os.chdir(dir)
       os.system('dpkg-buildpackage -S -uc -us -rfakeroot')
       os.chdir('..')
-      shutil.rmtree(dir)
+      if not dont_purge:
+        shutil.rmtree(dir)
 
     return retcode
 
