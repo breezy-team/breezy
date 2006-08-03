@@ -93,11 +93,9 @@ class DebianError(BzrNewError):
     BzrNewError.__init__(self)
     self.message = message
 
-class cmd_buildpackage(Command):
+class cmd_builddeb(Command):
   """Build the package
   """
-  dry_run_opt = Option('dry-run', help="don't do anything")
-  Option.SHORT_OPTIONS['n'] = dry_run_opt
   working_tree_opt = Option('working-tree', help="Use the wokring tree")
   Option.SHORT_OPTIONS['w'] = working_tree_opt
   export_only_opt = Option('export-only', help="Export only, don't build")
@@ -106,9 +104,9 @@ class cmd_buildpackage(Command):
   result_opt = Option('result', help="Directory in which to place the resulting package files", type=str)
   builder_opt = Option('builder', help="Command to build the package", type=str)
   takes_args = ['branch?', 'version?']
-  aliases = ['bp']
+  aliases = ['bd']
   takes_options = ['verbose',
-           dry_run_opt, working_tree_opt, export_only_opt, dont_purge_opt, result_opt, builder_opt]
+           working_tree_opt, export_only_opt, dont_purge_opt, result_opt, builder_opt]
 
   def run(self, branch=None, version=None, verbose=False, working_tree=False, export_only=False, dont_purge=False, result=None, builder=None):
     retcode = 0
@@ -166,7 +164,7 @@ class cmd_buildpackage(Command):
 
     return retcode
 
-class cmd_recordpackage(Command):
+class cmd_recorddeb(Command):
   """Record the package
   """
   dry_run_opt = Option('dry-run', help="don't do anything")
@@ -187,5 +185,5 @@ def test_suite():
   suite.addTest(TestLoader().loadTestsFromModule(test_buildpackage))
   return suite
 
-register_command(cmd_buildpackage)
-register_command(cmd_recordpackage)
+register_command(cmd_builddeb)
+register_command(cmd_recorddeb)
