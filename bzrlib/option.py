@@ -122,6 +122,7 @@ class EnumOption(object):
         self.default = None
 
     def python_name(self):
+        """Conver a name with spaces and caps to a python variable name"""
         return self.name.lower().replace(' ', '_')
 
     def add_option(self, parser, short_name):
@@ -141,6 +142,13 @@ class EnumOption(object):
 
     def _optparse_callback(self, option, opt, value, parser, evalue):
         setattr(parser.values, option.dest, self.factory(evalue))
+
+    def iter_switches(self):
+        """Iterate through the list of switches provided by the option
+        
+        :return: an iterator of (name, short_name, argname, help)
+        """
+        return ((n, None, None, h) for n, h in self.choices)
 
 
 class Option(object):
@@ -217,6 +225,15 @@ class Option(object):
     def _optparse_callback(self, option, opt, value, parser):
         setattr(parser.values, self.name, self.type(value))
 
+    def iter_switches(self):
+        """Iterate through the list of switches provided by the option
+        
+        :return: an iterator of (name, short_name, argname, help)
+        """
+        argname =  self.argname
+        if argname is not None:
+            argname = argname.upper()
+        yield self.name, self.short_name(), argname, self.help
 
 class OptionParser(optparse.OptionParser):
     """OptionParser that raises exceptions instead of exiting"""
