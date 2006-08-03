@@ -104,12 +104,13 @@ class cmd_buildpackage(Command):
   Option.SHORT_OPTIONS['e'] = export_only_opt
   dont_purge_opt = Option('dont-purge', help="Don't purge the build directory after building")
   result_opt = Option('result', help="Directory in which to place the resulting package files", type=str)
+  builder_opt = Option('builder', help="Command to build the package", type=str)
   takes_args = ['branch?', 'version?']
   aliases = ['bp']
   takes_options = ['verbose',
-           dry_run_opt, working_tree_opt, export_only_opt, dont_purge_opt, result_opt]
+           dry_run_opt, working_tree_opt, export_only_opt, dont_purge_opt, result_opt, builder_opt]
 
-  def run(self, branch=None, version=None, verbose=False, working_tree=False, export_only=False, dont_purge=False, result=None):
+  def run(self, branch=None, version=None, verbose=False, working_tree=False, export_only=False, dont_purge=False, result=None, builder=None):
     retcode = 0
 
     if branch is None:
@@ -119,6 +120,9 @@ class cmd_buildpackage(Command):
 
     if result is not None:
       result = os.path.realpath(result)
+
+    if builder is None:
+      builder = "dpkg-buildpackage -uc -us -rfakeroot"
 
     if not working_tree:
       b = tree.branch
@@ -148,7 +152,7 @@ class cmd_buildpackage(Command):
     export(t,dir,None,None)
     if not export_only:
       os.chdir(dir)
-      os.system('dpkg-buildpackage -uc -us -rfakeroot')
+      os.system(builder)
       os.chdir('..')
       if not dont_purge:
         shutil.rmtree(dir)
