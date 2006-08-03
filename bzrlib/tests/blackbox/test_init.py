@@ -31,15 +31,15 @@ class TestInit(ExternalBase):
     def test_init_with_format(self):
         # Verify bzr init --format constructs something plausible
         t = self.get_transport()
-        self.runbzr('init --format default')
+        self.runbzr('init --default')
         self.assertIsDirectory('.bzr', t)
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)
 
     def test_init_weave(self):
-        # --format=weave should be accepted to allow interoperation with
+        # --weave should be accepted to allow interoperation with
         # old releases when desired.
-        out, err = self.run_bzr('init', '--format=weave')
+        out, err = self.run_bzr('init', '--weave')
         self.assertEqual('', out)
         self.assertEqual('', err)
 

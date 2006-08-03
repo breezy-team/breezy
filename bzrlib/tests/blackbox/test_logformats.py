@@ -39,7 +39,7 @@ class TestLogFormats(TestCaseInTempDir):
         self.bzr('commit', '-m', '2')
 
         # only the lines formatter is this short
-        self.assertEquals(7, len(self.bzr('log', '--log-format', 'short').split('\n')))
+        self.assertEquals(7, len(self.bzr('log', '--short').split('\n')))
 
     def test_missing_default_format(self):
         self.setup_config()
@@ -91,7 +91,7 @@ class TestLogFormats(TestCaseInTempDir):
 
         os.chdir('../b')
         
-        self.assertEquals(9, len(self.bzr('missing', '--log-format', 'short', retcode=1).split('\n')))
+        self.assertEquals(9, len(self.bzr('missing', '--short', retcode=1).split('\n')))
         
         os.chdir('..')
 

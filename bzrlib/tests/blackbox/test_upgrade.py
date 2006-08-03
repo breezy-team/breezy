@@ -155,7 +155,7 @@ finished
                                    repository.RepositoryFormatKnit1))
 
     def test_upgrade_repo(self):
-        self.run_bzr('init-repository', '--format=metaweave', 'repo')
+        self.run_bzr('init-repository', '--metaweave', 'repo')
         self.run_bzr('upgrade', '--format=knit', 'repo')
 
 
@@ -173,7 +173,7 @@ class SFTPTests(TestCaseWithSFTPServer):
         ui.ui_factory = self.old_ui_factory
 
     def test_upgrade_url(self):
-        self.run_bzr('init', '--format=weave')
+        self.run_bzr('init', '--weave')
         t = get_transport(self.get_url())
         url = t.base
         out, err = self.run_bzr('upgrade', '--format=knit', url)

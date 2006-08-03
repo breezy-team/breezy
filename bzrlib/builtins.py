@@ -1090,14 +1090,13 @@ class cmd_init_repository(Command):
     def run(self, location, repository_format=None, trees=False):
         if repository_format is None:
             repository_format = get_format_type('default')
-        transport = get_transport(location)
         to_transport = transport.get_transport(location)
         try:
             to_transport.mkdir('.')
         except errors.FileExists:
             pass
 
-        newdir = format.initialize_on_transport(to_transport)
+        newdir = repository_format.initialize_on_transport(to_transport)
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(trees)
 
@@ -2480,7 +2479,8 @@ class cmd_plugins(Command):
 
 class cmd_testament(Command):
     """Show testament (signing-form) of a revision."""
-    takes_options = ['revision', 'long', 
+    takes_options = ['revision', 
+                     Option('long', help='Produce long-format testament'), 
                      Option('strict', help='Produce a strict-format'
                             ' testament')]
     takes_args = ['branch?']

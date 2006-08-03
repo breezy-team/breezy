@@ -209,7 +209,7 @@ class Option(object):
         else:
             parser.add_option(action='callback', 
                               callback=self._optparse_callback, 
-                              type='string', metavar=self.argname,
+                              type='string', metavar=self.argname.upper(),
                               help=self.help,
                               default=OptionParser.DEFAULT_VALUE, 
                               *option_strings)

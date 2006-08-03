@@ -35,7 +35,7 @@ class TestLegacyFormats(TestCaseWithTransport):
         super(TestLegacyFormats, self).setUp()
         self.build_tree(['master/', 'child/'])
         self.run_bzr('init', 'master')
-        self.run_bzr('init', '--format=weave', 'child')
+        self.run_bzr('init', '--weave', 'child')
         os.chdir('child')
     
     def test_bind_format_6_bzrdir(self):

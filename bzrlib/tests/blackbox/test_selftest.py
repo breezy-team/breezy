@@ -152,8 +152,7 @@ class TestRunBzrCaptured(ExternalBase):
         result = self.run_bzr_subprocess('--versionn', retcode=3)
         result = self.run_bzr_subprocess('--versionn', retcode=None)
         self.assertContainsRe(result[1], 'unknown command')
-        err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
-                                      retcode=3)[1]
+        err = self.run_bzr_subprocess('merge', '--magic merge', retcode=3)[1]
         self.assertContainsRe(err, 'No known merge type magic merge')
 
 
