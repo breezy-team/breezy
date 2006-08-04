@@ -551,10 +551,8 @@ Revision store:
         self.assertCheckoutStatusOutput('tree/lightcheckout', tree2, shared_repo=repo)
 
         # Create normal checkout
-        branch3 = bzrlib.bzrdir.BzrDir.create_branch_convenience('tree/checkout')
-        branch3.bind(branch1)
-        tree3 = branch3.bzrdir.open_workingtree()
-        tree3.update()
+        tree3 = bzrlib.bzrdir.BzrDir.create_checkout_convenience(
+            'tree/checkout', branch1)
         self.assertCheckoutStatusOutput('tree/checkout --verbose', tree3,
             verbose=True,
             light_checkout=False, repo_branch=branch1)
