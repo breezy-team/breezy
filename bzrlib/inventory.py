@@ -820,6 +820,9 @@ class Inventory(object):
     ['', u'hello.c']
     >>> inv = Inventory('TREE_ROOT-12345678-12345678')
     >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
+    Traceback (most recent call last):
+    BzrError: parent_id {TREE_ROOT} not in inventory
+    >>> inv.add(InventoryFile('123-123', 'hello.c', 'TREE_ROOT-12345678-12345678'))
     InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678', sha1=None, len=None)
     """
     def __init__(self, root_id=ROOT_ID, revision_id=None):
@@ -1016,7 +1019,7 @@ class Inventory(object):
         if entry.file_id in self._byid:
             raise BzrError("inventory already contains entry with id {%s}" % entry.file_id)
 
-        if entry.parent_id == ROOT_ID or entry.parent_id is None:
+        if entry.parent_id is None:
             entry.parent_id = self.root.file_id
 
         try:
