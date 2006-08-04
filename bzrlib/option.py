@@ -304,8 +304,6 @@ _global_option('email')
 _global_option('update')
 _global_option('root', type=str)
 _global_option('no-backup')
-#_global_option('merge-type', type=_parse_merge_type, 
-#               help='Select a particular merge algorithm')
 _global_option('pattern', type=str)
 _global_option('quiet')
 _global_option('remember', help='Remember the specified location as a'
@@ -326,6 +324,5 @@ Option.SHORT_OPTIONS['h'] = Option.OPTIONS['help']
 Option.SHORT_OPTIONS['m'] = Option.OPTIONS['message']
 Option.SHORT_OPTIONS['r'] = Option.OPTIONS['revision']
 Option.SHORT_OPTIONS['v'] = Option.OPTIONS['verbose']
-#Option.SHORT_OPTIONS['l'] = Option.OPTIONS['long']
 Option.SHORT_OPTIONS['q'] = Option.OPTIONS['quiet']
 Option.SHORT_OPTIONS['p'] = Option.OPTIONS['prefix']
