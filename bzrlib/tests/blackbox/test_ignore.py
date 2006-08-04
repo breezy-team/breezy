@@ -22,6 +22,7 @@ import os
 import re
 import sys
 
+from bzrlib import ignores
 import bzrlib
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
@@ -44,11 +45,13 @@ class TestCommands(ExternalBase):
         self.runbzr('init')
         self.assertEquals(self.capture('unknowns'), '')
 
+        # is_ignored() will now create the user global ignore file
+        # if it doesn't exist, so make sure we ignore it in our tests
+        ignores._set_user_ignores(['*.tmp', './.bazaar'])
+
         self.build_tree_contents(
-            [('foo.tmp', 'tmp files are ignored'),
-             ('.bzrignore', '*.tmp'),
+            [('foo.tmp', '.tmp files are ignored by default'),
              ])
-        self.run_bzr('add', '.bzrignore')
         self.assertEquals(self.capture('unknowns'), '')
 
         file('foo.c', 'wt').write('int main() {}')
@@ -62,14 +65,14 @@ class TestCommands(ExternalBase):
         self.assertEquals(self.capture('unknowns'), 'foo.blah\n')
         self.runbzr('ignore *.blah')
         self.assertEquals(self.capture('unknowns'), '')
-        self.assertEquals(file('.bzrignore', 'rU').read(), '*.tmp\n*.blah\n')
+        self.assertEquals('*.blah\n', open('.bzrignore', 'rU').read())
 
         # 'ignore' works when then .bzrignore file already exists
         file('garh', 'wt').write('garh')
         self.assertEquals(self.capture('unknowns'), 'garh\n')
         self.runbzr('ignore garh')
         self.assertEquals(self.capture('unknowns'), '')
-        self.assertEquals(file('.bzrignore', 'rU').read(), '*.tmp\n*.blah\ngarh\n')
+        self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\ngarh\n')
         
     def test_ignore_old_defaults(self):
         out, err = self.run_bzr('ignore', '--old-default-rules')

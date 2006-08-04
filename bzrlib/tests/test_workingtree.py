@@ -18,6 +18,7 @@
 from cStringIO import StringIO
 import os
 
+from bzrlib import ignores
 import bzrlib
 from bzrlib.branch import Branch
 from bzrlib import bzrdir, conflicts, errors, workingtree
@@ -247,10 +248,37 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
 
     
     def test_gen_file_id(self):
-        self.assertStartsWith(bzrlib.workingtree.gen_file_id('bar'), 'bar-')
-        self.assertStartsWith(bzrlib.workingtree.gen_file_id('Mwoo oof\t m'), 'Mwoooofm-')
-        self.assertStartsWith(bzrlib.workingtree.gen_file_id('..gam.py'), 'gam.py-')
-        self.assertStartsWith(bzrlib.workingtree.gen_file_id('..Mwoo oof\t m'), 'Mwoooofm-')
+        gen_file_id = bzrlib.workingtree.gen_file_id
+
+        # We try to use the filename if possible
+        self.assertStartsWith(gen_file_id('bar'), 'bar-')
+
+        # but we squash capitalization, and remove non word characters
+        self.assertStartsWith(gen_file_id('Mwoo oof\t m'), 'mwoooofm-')
+
+        # We also remove leading '.' characters to prevent hidden file-ids
+        self.assertStartsWith(gen_file_id('..gam.py'), 'gam.py-')
+        self.assertStartsWith(gen_file_id('..Mwoo oof\t m'), 'mwoooofm-')
+
+        # we remove unicode characters, and still don't end up with a 
+        # hidden file id
+        self.assertStartsWith(gen_file_id(u'\xe5\xb5.txt'), 'txt-')
+        
+        # Our current method of generating unique ids adds 33 characters
+        # plus an serial number (log10(N) characters)
+        # to the end of the filename. We now restrict the filename portion to
+        # be <= 20 characters, so the maximum length should now be approx < 60
+
+        # Test both case squashing and length restriction
+        fid = gen_file_id('A'*50 + '.txt')
+        self.assertStartsWith(fid, 'a'*20 + '-')
+        self.failUnless(len(fid) < 60)
+
+        # restricting length happens after the other actions, so
+        # we preserve as much as possible
+        fid = gen_file_id('\xe5\xb5..aBcd\tefGhijKLMnop\tqrstuvwxyz')
+        self.assertStartsWith(fid, 'abcdefghijklmnopqrst-')
+        self.failUnless(len(fid) < 60)
 
     def test_next_id_suffix(self):
         bzrlib.workingtree._gen_id_suffix = None
@@ -315,8 +343,25 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
 
     def test__get_ignore_rules_as_regex(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('.bzrignore', 'CVS\n.hg\n')])
-        reference_output = tree._combine_ignore_rules(['CVS', '.hg'])[0]
-        regex_rules = tree._get_ignore_rules_as_regex()[0]
-        self.assertEqual(len(reference_output[1]), regex_rules[0].groups)
-        self.assertEqual(reference_output[1], regex_rules[1])
+        # Setup the default ignore list to be empty
+        ignores._set_user_ignores([])
+
+        # some plugins (shelf) modifies the DEFAULT_IGNORE list in memory
+        # which causes this test to fail so force the DEFAULT_IGNORE
+        # list to be empty
+        orig_default = bzrlib.DEFAULT_IGNORE
+        # Also make sure the runtime ignore list is empty
+        orig_runtime = ignores._runtime_ignores
+        try:
+            bzrlib.DEFAULT_IGNORE = []
+            ignores._runtime_ignores = set()
+
+            self.build_tree_contents([('.bzrignore', 'CVS\n.hg\n')])
+            reference_output = tree._combine_ignore_rules(
+                                    set(['CVS', '.hg']))[0]
+            regex_rules = tree._get_ignore_rules_as_regex()[0]
+            self.assertEqual(len(reference_output[1]), regex_rules[0].groups)
+            self.assertEqual(reference_output[1], regex_rules[1])
+        finally:
+            bzrlib.DEFAULT_IGNORE = orig_default
+            ignores._runtime_ignores = orig_runtime

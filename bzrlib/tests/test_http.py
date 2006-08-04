@@ -23,11 +23,13 @@ import bzrlib
 from bzrlib.errors import DependencyNotPresent
 from bzrlib.tests import TestCase, TestSkipped
 from bzrlib.transport import Transport
-from bzrlib.transport.http import extract_auth
+from bzrlib.transport.http import extract_auth, HttpTransportBase
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 
+
 class FakeManager (object):
+
     def __init__(self):
         self.credentials = []
         
@@ -36,6 +38,7 @@ class FakeManager (object):
 
 
 class TestHttpUrls(TestCase):
+
     def test_url_parsing(self):
         f = FakeManager()
         url = extract_auth('http://example.com', f)
@@ -90,6 +93,7 @@ class TestHttpUrls(TestCase):
         except DependencyNotPresent:
             raise TestSkipped('pycurl not present')
 
+
 class TestHttpMixins(object):
 
     def _prep_tree(self):
@@ -124,6 +128,7 @@ class TestHttpMixins(object):
 
 
 class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
+
     _transport = HttpTransport_urllib
 
     def setUp(self):
@@ -159,3 +164,52 @@ class TestHttpTransportRegistration(TestCase):
         t = get_transport('http+urllib://bzr.google.com/')
         self.assertIsInstance(t, Transport)
         self.assertIsInstance(t, bzrlib.transport.http._urllib.HttpTransport_urllib)
+
+
+class TestOffsets(TestCase):
+    """Test offsets_to_ranges method"""
+
+    def test_offsets_to_ranges_simple(self):
+        to_range = HttpTransportBase.offsets_to_ranges
+        ranges = to_range([(10, 1)])
+        self.assertEqual([[10, 10]], ranges)
+
+        ranges = to_range([(0, 1), (1, 1)])
+        self.assertEqual([[0, 1]], ranges)
+
+        ranges = to_range([(1, 1), (0, 1)])
+        self.assertEqual([[0, 1]], ranges)
+
+    def test_offset_to_ranges_overlapped(self):
+        to_range = HttpTransportBase.offsets_to_ranges
+
+        ranges = to_range([(10, 1), (20, 2), (22, 5)])
+        self.assertEqual([[10, 10], [20, 26]], ranges)
+
+        ranges = to_range([(10, 1), (11, 2), (22, 5)])
+        self.assertEqual([[10, 12], [22, 26]], ranges)
+
+
+class TestRangeHeader(TestCase):
+    """Test range_header method"""
+
+    def check_header(self, value, ranges=[], tail=0):
+        range_header = HttpTransportBase.range_header
+        self.assertEqual(value, range_header(ranges, tail))
+
+    def test_range_header_single(self):
+        self.check_header('0-9', ranges=[[0,9]])
+        self.check_header('100-109', ranges=[[100,109]])
+
+    def test_range_header_tail(self):
+        self.check_header('-10', tail=10)
+        self.check_header('-50', tail=50)
+
+    def test_range_header_multi(self):
+        self.check_header('0-9,100-200,300-5000',
+                          ranges=[(0,9), (100, 200), (300,5000)])
+
+    def test_range_header_mixed(self):
+        self.check_header('0-9,300-5000,-50',
+                          ranges=[(0,9), (300,5000)],
+                          tail=50)

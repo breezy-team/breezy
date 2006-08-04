@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -23,7 +23,7 @@ import sys
 import bzrlib
 from bzrlib import bzrdir, errors, repository
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.delta import TreeDelta, compare_trees
+from bzrlib.delta import TreeDelta
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
@@ -31,7 +31,6 @@ from bzrlib.errors import (FileExists,
                            NotBranchError,
                            )
 from bzrlib.inventory import Inventory
-import bzrlib.repository as repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
@@ -149,9 +148,9 @@ class TestRepository(TestCaseWithRepository):
         tree = wt.branch.repository.revision_tree('revision-1')
         self.assertEqual(list(tree.list_files()), [])
         tree = wt.branch.repository.revision_tree(None)
-        self.assertEqual(len(tree.list_files()), 0)
+        self.assertEqual([], list(tree.list_files()))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
-        self.assertEqual(len(tree.list_files()), 0)
+        self.assertEqual([], list(tree.list_files()))
 
     def test_fetch(self):
         # smoke test fetch to ensure that the convenience function works.
@@ -314,6 +313,7 @@ class TestRepository(TestCaseWithRepository):
             self.assertEqual(revision.revision_id, revision_id)
             self.assertEqual(revision, repo.get_revision(revision_id))
 
+
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def setUp(self):
@@ -345,8 +345,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         trees2 = [repository.revision_tree(t) for t in revision_ids]
         assert len(trees1) == len(trees2)
         for tree1, tree2 in zip(trees1, trees2):
-            delta = compare_trees(tree1, tree2)
-            assert not delta.has_changed()
+            assert not tree2.changes_from(tree1).has_changed()
 
     def test_get_deltas_for_revisions(self):
         repository = self.bzrdir.open_repository()

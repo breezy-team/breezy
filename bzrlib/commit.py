@@ -1,5 +1,5 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -499,25 +499,30 @@ class Commit(object):
         None; inventory entries that are carried over untouched have their
         revision set to their prior value.
         """
+        # ESEPARATIONOFCONCERNS: this function is diffing and using the diff
+        # results to create a new inventory at the same time, which results
+        # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
+        # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
-        # iter_entries does not visit the root node so we need to call
-        # self._emit_progress_update once by hand.
-        new_ie = self.work_inv.root.copy()
+        entries = self.work_inv.iter_entries()
+        # root requires special handling
+        path, new_ie = entries.next()
+        new_ie = new_ie.copy()
         new_ie.revision = None
         self.builder.record_entry_contents(new_ie, self.parent_invs, '', 
                                            self.work_tree)
         self._emit_progress_update()
-        for path, new_ie in self.work_inv.iter_entries():
+        for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id
-            mutter('check %s {%s}', path, file_id)
+            # mutter('check %s {%s}', path, file_id)
             if (not self.specific_files or 
                 is_inside_or_parent_of_any(self.specific_files, path)):
-                    mutter('%s selected for commit', path)
+                    # mutter('%s selected for commit', path)
                     ie = new_ie.copy()
                     ie.revision = None
             else:
-                mutter('%s not selected for commit', path)
+                # mutter('%s not selected for commit', path)
                 if self.basis_inv.has_id(file_id):
                     ie = self.basis_inv[file_id].copy()
                 else:
@@ -543,6 +548,20 @@ class Commit(object):
                 self.reporter.renamed(change, old_path, path)
             else:
                 self.reporter.snapshot_change(change, path)
+
+        if not self.specific_files:
+            return
+
+        # ignore removals that don't match filespec
+        for path, new_ie in self.basis_inv.iter_entries():
+            if new_ie.file_id in self.work_inv:
+                continue
+            if is_inside_any(self.specific_files, path):
+                continue
+            ie = new_ie.copy()
+            ie.revision = None
+            self.builder.record_entry_contents(ie, self.parent_invs, path,
+                                               self.basis_tree)
 
     def _emit_progress_update(self):
         """Emit an update to the progress bar."""

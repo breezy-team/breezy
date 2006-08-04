@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -287,3 +287,16 @@ class TestCommit(ExternalBase):
         # version or the u2 version.
         self.build_tree_contents([('u1/hosts', 'merge resolution\n')])
         self.run_bzr('commit', '-m', 'checkin merge of the offline work from u1', 'u1')
+
+    def test_commit_respects_spec_for_removals(self):
+        """Commit with a file spec should only commit removals that match"""
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['file-a', 'dir-a/', 'dir-a/file-b'])
+        t.add(['file-a', 'dir-a', 'dir-a/file-b'])
+        t.commit('Create')
+        t.remove(['file-a', 'dir-a/file-b'])
+        os.chdir('dir-a')
+        result = self.run_bzr('commit', '.', '-m' 'removed file-b')[1]
+        self.assertNotContainsRe(result, 'file-a')
+        result = self.run_bzr('status')[0]
+        self.assertContainsRe(result, 'removed:\n  file-a')

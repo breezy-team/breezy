@@ -198,16 +198,16 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
     def test_getcwd(self):
         # Make sure getcwd can handle unicode filenames
         try:
-            os.mkdir(u'B\xe5gfors')
+            os.mkdir(u'mu-\xb5')
         except UnicodeError:
             raise TestSkipped("Unable to create Unicode filename")
 
-        os.chdir(u'B\xe5gfors')
+        os.chdir(u'mu-\xb5')
         # TODO: jam 20060427 This will probably fail on Mac OSX because
         #       it will change the normalization of B\xe5gfors
         #       Consider using a different unicode character, or make
         #       osutils.getcwd() renormalize the path.
-        self.assertTrue(osutils._win32_getcwd().endswith(u'/B\xe5gfors'))
+        self.assertEndsWith(osutils._win32_getcwd(), u'mu-\xb5')
 
     def test_mkdtemp(self):
         tmpdir = osutils._win32_mkdtemp(dir='.')
@@ -257,6 +257,30 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
             self.assertEqual(errno.ENOENT, e.errno)
 
 
+class TestMacFuncsDirs(TestCaseInTempDir):
+    """Test mac special functions that require directories."""
+
+    def test_getcwd(self):
+        # On Mac, this will actually create Ba\u030agfors
+        # but chdir will still work, because it accepts both paths
+        try:
+            os.mkdir(u'B\xe5gfors')
+        except UnicodeError:
+            raise TestSkipped("Unable to create Unicode filename")
+
+        os.chdir(u'B\xe5gfors')
+        self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
+
+    def test_getcwd_nonnorm(self):
+        # Test that _mac_getcwd() will normalize this path
+        try:
+            os.mkdir(u'Ba\u030agfors')
+        except UnicodeError:
+            raise TestSkipped("Unable to create Unicode filename")
+
+        os.chdir(u'Ba\u030agfors')
+        self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
+
 class TestSplitLines(TestCase):
 
     def test_split_unicode(self):
@@ -283,36 +307,40 @@ class TestWalkDirs(TestCaseInTempDir):
             ]
         self.build_tree(tree)
         expected_dirblocks = [
-                [
-                    ('0file', '0file', 'file'),
-                    ('1dir', '1dir', 'directory'),
-                    ('2file', '2file', 'file'),
-                ],
-                [
-                    ('1dir/0file', '0file', 'file'),
-                    ('1dir/1dir', '1dir', 'directory'),
-                ],
-                [
-                ],
+                (('', '.'),
+                 [('0file', '0file', 'file'),
+                  ('1dir', '1dir', 'directory'),
+                  ('2file', '2file', 'file'),
+                 ]
+                ),
+                (('1dir', './1dir'),
+                 [('1dir/0file', '0file', 'file'),
+                  ('1dir/1dir', '1dir', 'directory'),
+                 ]
+                ),
+                (('1dir/1dir', './1dir/1dir'),
+                 [
+                 ]
+                ),
             ]
         result = []
         found_bzrdir = False
-        for dirblock in osutils.walkdirs('.'):
+        for dirdetail, dirblock in osutils.walkdirs('.'):
             if len(dirblock) and dirblock[0][1] == '.bzr':
                 # this tests the filtering of selected paths
                 found_bzrdir = True
                 del dirblock[0]
-            result.append(dirblock)
+            result.append((dirdetail, dirblock))
 
         self.assertTrue(found_bzrdir)
         self.assertEqual(expected_dirblocks,
-            [[line[0:3] for line in block] for block in result])
+            [(dirinfo, [line[0:3] for line in block]) for dirinfo, block in result])
         # you can search a subdir only, with a supplied prefix.
         result = []
-        for dirblock in osutils.walkdirs('1dir', '1dir'):
+        for dirblock in osutils.walkdirs('./1dir', '1dir'):
             result.append(dirblock)
         self.assertEqual(expected_dirblocks[1:],
-            [[line[0:3] for line in block] for block in result])
+            [(dirinfo, [line[0:3] for line in block]) for dirinfo, block in result])
 
     def assertPathCompare(self, path_less, path_greater):
         """check that path_less and path_greater compare correctly."""

@@ -1,15 +1,15 @@
 # Copyright (C) 2005 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -18,12 +18,11 @@ from cStringIO import StringIO
 import os
 import time
 
+from bzrlib import errors, inventory, osutils
 from bzrlib.branch import Branch
-import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
 from bzrlib.inventory import (Inventory, ROOT_ID, InventoryFile,
     InventoryDirectory, InventoryEntry)
-import bzrlib.inventory as inventory
 from bzrlib.osutils import (has_symlinks, rename, pathjoin, is_inside_any, 
     is_inside_or_parent_of_any)
 from bzrlib.tests import TestCase, TestCaseWithTransport
@@ -87,6 +86,7 @@ class TestInventory(TestCase):
             inv.add_path(*args)
 
         self.assertEqual([
+            ('', ROOT_ID),
             ('Makefile', 'makefile-id'),
             ('doc', 'doc-id'),
             ('src', 'src-id'),
@@ -109,6 +109,7 @@ class TestInventory(TestCase):
             inv.add_path(*args)
 
         self.assertEqual([
+            ('', ROOT_ID),
             ('Makefile', 'makefile-id'),
             ('doc', 'doc-id'),
             ('src', 'src-id'),
@@ -199,6 +200,22 @@ class TestInventoryEntry(TestCase):
             inventory.InventoryLink)
         self.assertIsInstance(inventory.make_entry("directory", "name", ROOT_ID),
             inventory.InventoryDirectory)
+
+    def test_make_entry_non_normalized(self):
+        orig_normalized_filename = osutils.normalized_filename
+
+        try:
+            osutils.normalized_filename = osutils._accessible_normalized_filename
+            entry = inventory.make_entry("file", u'a\u030a', ROOT_ID)
+            self.assertEqual(u'\xe5', entry.name)
+            self.assertIsInstance(entry, inventory.InventoryFile)
+
+            osutils.normalized_filename = osutils._inaccessible_normalized_filename
+            self.assertRaises(errors.InvalidNormalization,
+                    inventory.make_entry, 'file', u'a\u030a', ROOT_ID)
+        finally:
+            osutils.normalized_filename = orig_normalized_filename
+
 
 class TestEntryDiffing(TestCaseWithTransport):
 

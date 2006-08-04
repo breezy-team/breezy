@@ -22,7 +22,6 @@ import warnings
 
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
-from bzrlib.delta import compare_trees
 from bzrlib.errors import (BzrCommandError,
                            BzrError,
                            NoCommonAncestor,
@@ -117,7 +116,7 @@ class Merger(object):
 
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
-            changes = compare_trees(self.other_tree, other_basis_tree)
+            changes = other_basis_tree.changes_from(self.other_tree)
             if changes.has_changed():
                 raise WorkingTreeNotRevision(self.this_tree)
             other_rev_id = self.other_basis
@@ -146,8 +145,7 @@ class Merger(object):
                 raise BzrCommandError("Working tree has uncommitted changes.")
 
     def compare_basis(self):
-        changes = compare_trees(self.this_tree, 
-                                self.this_tree.basis_tree(), False)
+        changes = self.this_tree.changes_from(self.this_tree.basis_tree())
         if not changes.has_changed():
             self.this_rev_id = self.this_basis
 

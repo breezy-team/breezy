@@ -1,15 +1,15 @@
 # Copyright (C) 2004, 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -26,6 +26,36 @@ from bzrlib.revisionspec import RevisionSpec
 
 
 class TestRevisionNamespaces(TestCaseWithTransport):
+
+    def test_revno_n_path(self):
+        """Test revision specifiers.
+
+        These identify revisions by date, etc."""
+        wta = self.make_branch_and_tree('a')
+        ba = wta.branch
+        
+        wta.commit('Commit one', rev_id='a@r-0-1')
+        wta.commit('Commit two', rev_id='a@r-0-2')
+        wta.commit('Commit three', rev_id='a@r-0-3')
+
+        wtb = self.make_branch_and_tree('b')
+        bb = wtb.branch
+
+        wtb.commit('Commit one', rev_id='b@r-0-1')
+        wtb.commit('Commit two', rev_id='b@r-0-2')
+        wtb.commit('Commit three', rev_id='b@r-0-3')
+
+        self.assertEquals(RevisionSpec('revno:1:a/').in_history(ba),
+                          (1, 'a@r-0-1'))
+        # The argument of in_history should be ignored since it is
+        # redundant with the path in the spec.
+        self.assertEquals(RevisionSpec('revno:1:a/').in_history(None),
+                          (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('revno:1:a/').in_history(bb),
+                          (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('revno:2:b/').in_history(None),
+                          (2, 'b@r-0-2'))
+
 
     def test_revision_namespaces(self):
         """Test revision specifiers.

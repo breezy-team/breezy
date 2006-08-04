@@ -171,7 +171,7 @@ def _show_missing_revisions_working(working):
     branch = working.branch
     basis = working.basis_tree()
     work_inv = working.inventory
-    delta = diff.compare_trees(basis, working, want_unchanged=True)
+    delta = working.changes_from(basis, want_unchanged=True)
     history = branch.revision_history()
     tree_last_id = working.last_revision()
 
@@ -187,7 +187,7 @@ def _show_working_stats(working):
     """Show statistics about a working tree."""
     basis = working.basis_tree()
     work_inv = working.inventory
-    delta = diff.compare_trees(basis, working, want_unchanged=True)
+    delta = working.changes_from(basis, want_unchanged=True)
 
     print
     print 'In the working tree:'

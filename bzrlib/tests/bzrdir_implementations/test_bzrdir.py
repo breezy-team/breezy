@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -902,6 +902,36 @@ class TestBzrDir(TestCaseWithBzrDir):
         made_repo = made_control.create_repository()
         self.failUnless(isinstance(made_repo, repository.Repository))
         self.assertEqual(made_control, made_repo.bzrdir)
+
+    def test_create_repository_shared(self):
+        # a bzrdir can create a shared repository or 
+        # fail appropriately
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = get_transport(self.get_url())
+        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_repo = made_control.create_repository(shared=True)
+        except errors.IncompatibleFormat:
+            # Old bzrdir formats don't support shared repositories
+            # and should raise IncompatibleFormat
+            return
+        self.assertTrue(made_repo.is_shared())
+
+    def test_create_repository_nonshared(self):
+        # a bzrdir can create a non-shared repository 
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = get_transport(self.get_url())
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository(shared=False)
+        self.assertFalse(made_repo.is_shared())
         
     def test_open_repository(self):
         if not self.bzrdir_format.is_supported():

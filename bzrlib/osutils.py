@@ -1,4 +1,4 @@
-# Bazaar-NG -- distributed version control
+# Bazaar -- distributed version control
 #
 # Copyright (C) 2005 by Canonical Ltd
 #
@@ -264,12 +264,17 @@ def _win32_rename(old, new):
     try:
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
     except OSError, e:
-        if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY):
-            # If we try to rename a non-existant file onto cwd, we get EPERM
-            # instead of ENOENT, this will raise ENOENT if the old path
-            # doesn't exist
+        if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
+            # If we try to rename a non-existant file onto cwd, we get 
+            # EPERM or EACCES instead of ENOENT, this will raise ENOENT 
+            # if the old path doesn't exist, sometimes we get EACCES
+            # On Linux, we seem to get EBUSY, on Mac we get EINVAL
             os.lstat(old)
         raise
+
+
+def _mac_getcwd():
+    return unicodedata.normalize('NFKC', os.getcwdu())
 
 
 # Default is to just use the python builtins, but these can be rebound on
@@ -315,6 +320,8 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
+elif sys.platform == 'darwin':
+    getcwd = _mac_getcwd
 
 
 def get_terminal_encoding():
@@ -788,39 +795,35 @@ def normalizes_filenames():
     return _platform_normalizes_filenames
 
 
+def _accessible_normalized_filename(path):
+    """Get the unicode normalized path, and if you can access the file.
+
+    On platforms where the system normalizes filenames (Mac OSX),
+    you can access a file by any path which will normalize correctly.
+    On platforms where the system does not normalize filenames 
+    (Windows, Linux), you have to access a file by its exact path.
+
+    Internally, bzr only supports NFC/NFKC normalization, since that is 
+    the standard for XML documents.
+
+    So return the normalized path, and a flag indicating if the file
+    can be accessed by that path.
+    """
+
+    return unicodedata.normalize('NFKC', unicode(path)), True
+
+
+def _inaccessible_normalized_filename(path):
+    __doc__ = _accessible_normalized_filename.__doc__
+
+    normalized = unicodedata.normalize('NFKC', unicode(path))
+    return normalized, normalized == path
+
+
 if _platform_normalizes_filenames:
-    def unicode_filename(path):
-        """Make sure 'path' is a properly normalized filename.
-
-        On platforms where the system normalizes filenames (Mac OSX),
-        you can access a file by any path which will normalize
-        correctly.
-        Internally, bzr only supports NFC/NFKC normalization, since
-        that is the standard for XML documents.
-        So we return an normalized path, and indicate this has been
-        properly normalized.
-
-        :return: (path, is_normalized) Return a path which can
-                access the file, and whether or not this path is
-                normalized.
-        """
-        return unicodedata.normalize('NFKC', path), True
+    normalized_filename = _accessible_normalized_filename
 else:
-    def unicode_filename(path):
-        """Make sure 'path' is a properly normalized filename.
-
-        On platforms where the system does not normalize filenames 
-        (Windows, Linux), you have to access a file by its exact path.
-        Internally, bzr only supports NFC/NFKC normalization, since
-        that is the standard for XML documents.
-        So we return the original path, and indicate if this is
-        properly normalized.
-
-        :return: (path, is_normalized) Return a path which can
-                access the file, and whether or not this path is
-                normalized.
-        """
-        return path, unicodedata.normalize('NFKC', path) == path
+    normalized_filename = _inaccessible_normalized_filename
 
 
 def terminal_width():
@@ -872,13 +875,31 @@ def walkdirs(top, prefix=""):
     to exclude some directories, they are then not descended into.
     
     The data yielded is of the form:
-    [(relpath, basename, kind, lstat, path_from_top), ...]
+    ((directory-relpath, directory-path-from-top),
+    [(relpath, basename, kind, lstat), ...]),
+     - directory-relpath is the relative path of the directory being returned
+       with respect to top. prefix is prepended to this.
+     - directory-path-from-root is the path including top for this directory. 
+       It is suitable for use with os functions.
+     - relpath is the relative path within the subtree being walked.
+     - basename is the basename of the path
+     - kind is the kind of the file now. If unknown then the file is not
+       present within the tree - but it may be recorded as versioned. See
+       versioned_kind.
+     - lstat is the stat data *if* the file was statted.
+     - planned, not implemented: 
+       path_from_tree_root is the path from the root of the tree.
 
     :param prefix: Prefix the relpaths that are yielded with 'prefix'. This 
         allows one to walk a subtree but get paths that are relative to a tree
         rooted higher up.
     :return: an iterator over the dirs.
     """
+    #TODO there is a bit of a smell where the results of the directory-
+    # summary in this, and the path from the root, may not agree 
+    # depending on top and prefix - i.e. ./foo and foo as a pair leads to
+    # potentially confusing output. We should make this more robust - but
+    # not at a speed cost. RBC 20060731
     lstat = os.lstat
     pending = []
     _directory = _directory_kind
@@ -896,8 +917,10 @@ def walkdirs(top, prefix=""):
         for name in sorted(_listdir(top)):
             abspath = top + '/' + name
             statvalue = lstat(abspath)
-            dirblock.append ((relroot + name, name, file_kind_from_stat_mode(statvalue.st_mode), statvalue, abspath))
-        yield dirblock
+            dirblock.append((relroot + name, name,
+                file_kind_from_stat_mode(statvalue.st_mode),
+                statvalue, abspath))
+        yield (currentdir[0], top), dirblock
         # push the user specified dirs from dirblock
         for dir in reversed(dirblock):
             if dir[2] == _directory:
