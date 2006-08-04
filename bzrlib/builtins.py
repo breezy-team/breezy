@@ -823,17 +823,24 @@ class cmd_update(Command):
             # potentially get new revisions from the master branch.
             # needed for the case where -r N is given, with N not yet
             # in the local branch for a heavyweight checkout.
-            old_tip = b.update()
             if revision is not None:
-                rev = revision[0].in_history(b).rev_id
+                try:
+                    rev = revision[0].in_history(b).rev_id
+                    # no need to run branch.update()
+                    old_tip=None
+                except errors.NoSuchRevision:
+                    # revision was not there, but is maybe in the master.
+                    old_tip = b.update()
+                    rev = revision[0].in_history(b).rev_id
             else:
+                old_tip = b.update()
                 rev = b.last_revision()
             if tree.last_revision() == rev:
                 revno = b.revision_id_to_revno(rev)
                 note("Tree is up to date at revision %d." % (revno,))
                 return 0
             try:
-                conflicts = tree.update(rev,old_tip or 0)
+                conflicts = tree.update(rev,old_tip)
             except errors.NoSuchRevision, e:
                 raise BzrCommandError("branch has no revision %s\n"
                                       "bzr update --revision works only for a revision in the branch history"
