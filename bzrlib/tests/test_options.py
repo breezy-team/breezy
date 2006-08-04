@@ -60,25 +60,42 @@ class OptionTests(TestCase):
         options = [option.EnumOption('Lawn mower', str, 
                    [('fast', 'mow quickly'), ('careful', 'mow carefully')])]
         opts, args = parse(options, ['--fast', '--careful'])
-        self.assertEqual(opts.lawn_mower, 'careful')
+        self.assertEqual('careful', opts.lawn_mower)
         options = [option.EnumOption('Number', int, [('11', 'one'), 
                                                      ('22', 'two')])]
         opts, args = parse(options, ['--22'])
-        self.assertEqual(opts.number, 22)
+        self.assertEqual(22, opts.number)
 
         options = [option.Option('hello')]
         opts, args = parse(options, ['--no-hello', '--hello'])
-        self.assertEqual(opts.hello, True)
+        self.assertEqual(True, opts.hello)
         opts, args = parse(options, [])
-        self.assertEqual(opts.hello, option.OptionParser.DEFAULT_VALUE)
+        self.assertEqual(option.OptionParser.DEFAULT_VALUE, opts.hello)
         opts, args = parse(options, ['--hello', '--no-hello'])
-        self.assertEqual(opts.hello, option.OptionParser.DEFAULT_VALUE)
+        self.assertEqual(option.OptionParser.DEFAULT_VALUE, opts.hello)
         options = [option.Option('number', type=int)]
         opts, args = parse(options, ['--number', '6'])
-        self.assertEqual(opts.number, 6)
+        self.assertEqual(6, opts.number)
         self.assertRaises(errors.BzrCommandError, parse, options, ['--number'])
         self.assertRaises(errors.BzrCommandError, parse, options, 
                           ['--no-number'])
+
+    def test_iter_switches(self):
+        opt = option.EnumOption('Lawn mower', str, 
+                                [('fast', 'mow quickly'), 
+                                 ('careful', 'mow carefully')])
+        self.assertEqual(list(opt.iter_switches()), 
+                         [('fast', None, None, 'mow quickly'), 
+                          ('careful', None, None, 'mow carefully')])
+        opt = option.Option('hello', help='fg')
+        self.assertEqual(list(opt.iter_switches()),
+                         [('hello', None, None, 'fg')])
+        opt = option.Option('hello', help='fg', type=int)
+        self.assertEqual(list(opt.iter_switches()),
+                         [('hello', None, 'ARG', 'fg')])
+        opt = option.Option('hello', help='fg', type=int, argname='gar')
+        self.assertEqual(list(opt.iter_switches()),
+                         [('hello', None, 'GAR', 'fg')])
 
 #     >>> parse_args('log -r 500'.split())
 #     (['log'], {'revision': [<RevisionSpec_int 500>]})
