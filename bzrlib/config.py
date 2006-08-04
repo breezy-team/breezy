@@ -49,8 +49,8 @@ check_signatures - this option controls whether bzr will require good gpg
 create_signatures - this option controls whether bzr will always create 
                     gpg signatures, never create them, or create them if the
                     branch is configured to require them.
-log_format - This options set the default log format.  Options are long, 
-             short, line, or a plugin can register new formats
+log_format - this option sets the default log format.  Possible values are
+             long, short, line, or a plugin can register new formats.
 
 In bazaar.conf you can also define aliases in the ALIASES sections, example
 
@@ -70,7 +70,7 @@ import sys
 from StringIO import StringIO
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import errors, urlutils
 from bzrlib.osutils import pathjoin
 from bzrlib.trace import mutter, warning
 import bzrlib.util.configobj.configobj as configobj
@@ -367,6 +367,11 @@ class LocationConfig(IniBasedConfig):
                         ' to ~/.bazaar/locations.conf')
             name_generator = branches_config_filename
         super(LocationConfig, self).__init__(name_generator)
+        # local file locations are looked up by local path, rather than
+        # by file url. This is because the config file is a user
+        # file, and we would rather not expose the user to file urls.
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
         self.location = location
 
     def _get_section(self):
@@ -382,7 +387,15 @@ class LocationConfig(IniBasedConfig):
             del location_names[-1]
         matches=[]
         for section in sections:
-            section_names = section.split('/')
+            # location is a local path if possible, so we need
+            # to convert 'file://' urls to local paths if necessary.
+            # This also avoids having file:///path be a more exact
+            # match than '/path'.
+            if section.startswith('file://'):
+                section_path = urlutils.local_path_from_url(section)
+            else:
+                section_path = section
+            section_names = section_path.split('/')
             if section.endswith('/'):
                 del section_names[-1]
             names = zip(location_names, section_names)
@@ -602,6 +615,11 @@ def branches_config_filename():
 def locations_config_filename():
     """Return per-user configuration ini file filename."""
     return pathjoin(config_dir(), 'locations.conf')
+
+
+def user_ignore_config_filename():
+    """Return the user default ignore filename"""
+    return pathjoin(config_dir(), 'ignore')
 
 
 def _auto_user_id():

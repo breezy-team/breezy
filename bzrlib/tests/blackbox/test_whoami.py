@@ -40,7 +40,8 @@ class TestWhoami(ExternalBase):
         """branch specific user identity works."""
         wt = self.make_branch_and_tree('.')
         b = bzrlib.branch.Branch.open('.')
-        b.get_config().set_user_option('email', 'Branch Identity <branch@identi.ty>')
+        b.get_config().set_user_option('email',
+                                       'Branch Identity <branch@identi.ty>')
         bzr_email = os.environ.get('BZREMAIL')
         if bzr_email is not None:
             del os.environ['BZREMAIL']
@@ -64,32 +65,48 @@ class TestWhoami(ExternalBase):
     def test_whoami_utf8(self):
         """verify that an identity can be in utf-8."""
         wt = self.make_branch_and_tree('.')
-        self.run_bzr('whoami', u'Branch Identity \u20ac <branch@identi.ty>', encoding='utf-8')
+        self.run_bzr('whoami', u'Branch Identity \u20ac <branch@identi.ty>',
+                     encoding='utf-8')
         bzr_email = os.environ.get('BZREMAIL')
         if bzr_email is not None:
             del os.environ['BZREMAIL']
         try:
             whoami = self.run_bzr("whoami", encoding='utf-8')[0]
-            self.assertEquals('Branch Identity \xe2\x82\xac <branch@identi.ty>\n', whoami)
-            whoami_email = self.run_bzr("whoami", "--email", encoding='utf-8')[0]
+            self.assertEquals('Branch Identity \xe2\x82\xac ' +
+                              '<branch@identi.ty>\n', whoami)
+            whoami_email = self.run_bzr("whoami", "--email",
+                                        encoding='utf-8')[0]
             self.assertEquals('branch@identi.ty\n', whoami_email)
         finally:
             if bzr_email is not None:
                 os.environ['BZREMAIL'] = bzr_email
 
     def test_whoami_ascii(self):
-        """verify that whoami doesn't totally break when in utf-8, using an ascii encoding."""
+        """
+        verify that whoami doesn't totally break when in utf-8, using an ascii
+        encoding.
+        """
         wt = self.make_branch_and_tree('.')
         b = bzrlib.branch.Branch.open('.')
-        b.get_config().set_user_option('email', u'Branch Identity \u20ac <branch@identi.ty>')
+        b.get_config().set_user_option('email', u'Branch Identity \u20ac ' +
+                                       '<branch@identi.ty>')
         bzr_email = os.environ.get('BZREMAIL')
         if bzr_email is not None:
             del os.environ['BZREMAIL']
         try:
             whoami = self.run_bzr("whoami", encoding='ascii')[0]
             self.assertEquals('Branch Identity ? <branch@identi.ty>\n', whoami)
-            whoami_email = self.run_bzr("whoami", "--email", encoding='ascii')[0]
+            whoami_email = self.run_bzr("whoami", "--email",
+                                        encoding='ascii')[0]
             self.assertEquals('branch@identi.ty\n', whoami_email)
         finally:
             if bzr_email is not None:
                 os.environ['BZREMAIL'] = bzr_email
+
+    def test_warning(self):
+        """verify that a warning is displayed if no email is given."""
+        self.make_branch_and_tree('.')
+        display = self.run_bzr('whoami', 'Branch Identity')[1]
+        self.assertEquals('"Branch Identity" does not seem to contain an '
+                          'email address.  This is allowed, but not '
+                          'recommended.\n', display)

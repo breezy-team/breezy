@@ -44,7 +44,7 @@ from bzrlib.option import Option
 import bzrlib.osutils
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
-from bzrlib import trace
+import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, be_quiet
 
 plugin_cmds = {}
@@ -366,6 +366,9 @@ def parse_args(command, argv, alias_argv=None):
         while proc_argv:
             a = proc_argv.pop(0)
             if argsover:
+                args.append(a)
+                continue
+            elif a == '-':
                 args.append(a)
                 continue
             elif a == '--':

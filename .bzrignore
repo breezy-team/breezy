@@ -23,3 +23,9 @@ build
 ./.shelf
 # Mac droppings
 .DS_Store
+# win32 installer generated files
+./doc/*.htm
+./doc/bzr_man.txt
+./py2exe.log
+./tools/win32/bzr.iss
+./dist
