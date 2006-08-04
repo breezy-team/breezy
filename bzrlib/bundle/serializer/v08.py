@@ -275,7 +275,8 @@ class BundleSerializerV08(BundleSerializer):
             else:
                 action.write(self.to_file)
 
-        delta = new_tree.changes_from(old_tree, want_unchanged=True)
+        delta = new_tree.changes_from(old_tree, want_unchanged=True, 
+                                      include_root=True)
         for path, file_id, kind in delta.removed:
             action = Action('removed', [kind, path]).write(self.to_file)
 
