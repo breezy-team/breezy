@@ -820,26 +820,26 @@ class cmd_update(Command):
         tree.lock_write()
         existing_pending_merges = tree.pending_merges()
         try:
+            # potentially get new revisions from the master branch.
+            # needed for the case where -r N is given, with N not yet
+            # in the local branch for a heavyweight checkout.
             old_tip = b.update()
             if revision is not None:
                 rev = revision[0].in_history(b).rev_id
-                if rev not in b.revision_history():
-                    raise BzrCommandError("bzr update --revision works only for a revision in the branch history")
             else:
                 rev = b.last_revision()
             if tree.last_revision() == rev:
-                # may be up to date, check master too.
-                master = b.get_master_branch()
-                if master is None or rev == master.last_revision():
-                    revno = b.revision_id_to_revno(rev)
-                    note("Tree is up to date at revision %d." % (revno,))
-                    return 0
-            conflicts = tree.update(rev,old_tip or "not_computed")
+                revno = b.revision_id_to_revno(rev)
+                note("Tree is up to date at revision %d." % (revno,))
+                return 0
             try:
-                revno = str(b.revision_id_to_revno(tree.last_revision()))
-            except errors.NoSuchRevision:
-                revno = rev
-            note('Updated to revision %s.' % (revno,))
+                conflicts = tree.update(rev,old_tip or 0)
+            except errors.NoSuchRevision, e:
+                raise BzrCommandError("branch has no revision %s\n"
+                                      "bzr update --revision works only for a revision in the branch history"
+                                      % (e.revision))
+            revno = b.revision_id_to_revno(tree.last_revision())
+            note('Updated to revision %d.' % (revno,))
             if tree.pending_merges() != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
