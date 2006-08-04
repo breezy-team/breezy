@@ -30,7 +30,7 @@ from bzrlib.errors import (FileExists,
                            UninitializableFormat,
                            NotBranchError,
                            )
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
@@ -144,9 +144,11 @@ class TestRepository(TestCaseWithRepository):
 
     def test_revision_tree(self):
         wt = self.make_branch_and_tree('.')
+        wt.set_root_id('fixed-root')
         wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = wt.branch.repository.revision_tree('revision-1')
-        self.assertEqual(list(tree.list_files()), [])
+        self.assertEqual(list(tree.list_files()), [('', 'V', 'directory', 
+            'fixed-root', InventoryDirectory('fixed-root', '', None))])
         tree = wt.branch.repository.revision_tree(None)
         self.assertEqual([], list(tree.list_files()))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)

@@ -62,10 +62,10 @@ class RecordingOptimiser(InterTree):
     calls = []
 
     def compare(self, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False):
+        extra_trees=None, require_versioned=False, include_root=False):
         self.calls.append(
             ('compare', self.source, self.target, want_unchanged,
-             specific_files, extra_trees, require_versioned)
+             specific_files, extra_trees, require_versioned, include_root)
             )
     
     @classmethod
@@ -88,19 +88,23 @@ class TestTree(TestCaseWithTransport):
             # trivial usage
             tree.changes_from(tree2)
             # pass in all optional arguments by position
-            tree.changes_from(tree2, 'unchanged', 'specific', 'extra', 'require')
+            tree.changes_from(tree2, 'unchanged', 'specific', 'extra', 
+                              'require', 'include_root')
             # pass in all optional arguments by keyword
             tree.changes_from(tree2,
                 specific_files='specific',
                 want_unchanged='unchanged',
                 extra_trees='extra',
                 require_versioned='require',
+                include_root='include_root',
                 )
         finally:
             InterTree._optimisers = old_optimisers
         self.assertEqual(
             [
-             ('compare', tree2, tree, False, None, None, False),
-             ('compare', tree2, tree, 'unchanged', 'specific', 'extra', 'require'),
-             ('compare', tree2, tree, 'unchanged', 'specific', 'extra', 'require'),
+             ('compare', tree2, tree, False, None, None, False, False),
+             ('compare', tree2, tree, 'unchanged', 'specific', 'extra', 
+              'require', 'include_root'),
+             ('compare', tree2, tree, 'unchanged', 'specific', 'extra', 
+              'require', 'include_root'),
             ], RecordingOptimiser.calls)
