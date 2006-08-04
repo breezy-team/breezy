@@ -235,6 +235,7 @@ class Option(object):
             argname = argname.upper()
         yield self.name, self.short_name(), argname, self.help
 
+
 class OptionParser(optparse.OptionParser):
     """OptionParser that raises exceptions instead of exiting"""
 

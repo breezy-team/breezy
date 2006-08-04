@@ -1,8 +1,10 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
 
-from bzrlib.tests import TestCase
-from bzrlib.commands import Command, parse_args
 from bzrlib.builtins import cmd_commit, cmd_log, cmd_status
+from bzrlib.commands import Command, parse_args
+from bzrlib import errors
+from bzrlib import option
+from bzrlib.tests import TestCase
 
 # TODO: might be nice to just parse them into a structured form and test
 # against that, rather than running the whole command.
@@ -51,6 +53,32 @@ class OptionTests(TestCase):
         """Test that we can pass a plain '-' as an argument."""
         self.assertEqual((['-'], {}), parse_args(cmd_commit(), ['-']))
 
+    def test_conversion(self):
+        def parse(options, args):
+            parser = option.get_optparser(dict((o.name, o) for o in options))
+            return parser.parse_args(args)
+        options = [option.EnumOption('Lawn mower', str, 
+                   [('fast', 'mow quickly'), ('careful', 'mow carefully')])]
+        opts, args = parse(options, ['--fast', '--careful'])
+        self.assertEqual(opts.lawn_mower, 'careful')
+        options = [option.EnumOption('Number', int, [('11', 'one'), 
+                                                     ('22', 'two')])]
+        opts, args = parse(options, ['--22'])
+        self.assertEqual(opts.number, 22)
+
+        options = [option.Option('hello')]
+        opts, args = parse(options, ['--no-hello', '--hello'])
+        self.assertEqual(opts.hello, True)
+        opts, args = parse(options, [])
+        self.assertEqual(opts.hello, option.OptionParser.DEFAULT_VALUE)
+        opts, args = parse(options, ['--hello', '--no-hello'])
+        self.assertEqual(opts.hello, option.OptionParser.DEFAULT_VALUE)
+        options = [option.Option('number', type=int)]
+        opts, args = parse(options, ['--number', '6'])
+        self.assertEqual(opts.number, 6)
+        self.assertRaises(errors.BzrCommandError, parse, options, ['--number'])
+        self.assertRaises(errors.BzrCommandError, parse, options, 
+                          ['--no-number'])
 
 #     >>> parse_args('log -r 500'.split())
 #     (['log'], {'revision': [<RevisionSpec_int 500>]})
