@@ -1791,21 +1791,13 @@ class cmd_upgrade(Command):
     during other operations to upgrade.
     """
     takes_args = ['url?']
-    takes_options = [
-                     Option('format', 
-                            help='Upgrade to a specific format. Current formats'
-                                 ' are: default, knit, metaweave and weave.'
-                                 ' Default is knit; metaweave and weave are'
-                                 ' deprecated',
-                            type=get_format_type),
-                    ]
+    takes_options = [ branch_format_option ]
 
-
-    def run(self, url='.', format=None):
+    def run(self, url='.', branch_format=None):
         from bzrlib.upgrade import upgrade
-        if format is None:
-            format = get_format_type('default')
-        upgrade(url, format)
+        if branch_format is None:
+            branch_format = get_format_type('default')
+        upgrade(url, branch_format)
 
 
 class cmd_whoami(Command):

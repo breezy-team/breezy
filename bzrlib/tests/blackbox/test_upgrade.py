@@ -110,10 +110,10 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
     def test_upgrade_explicit_metaformat(self):
         # users can force an upgrade to metadir format.
         url = get_transport(self.get_url('format_5_branch')).base
-        # check --format takes effect
+        # check --metaweave takes effect
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
         (out, err) = self.run_bzr_captured(
-            ['upgrade', '--format=metaweave', url])
+            ['upgrade', '--metaweave', url])
         self.assertEqualDiff("""starting upgrade of %s
 making backup of tree history
 %s.bzr has been backed up to %s.bzr.backup
@@ -134,10 +134,10 @@ finished
         # users can force an upgrade to knit format from a metadir weave 
         # branch
         url = get_transport(self.get_url('metadir_weave_branch')).base
-        # check --format takes effect
+        # check --knit takes effect
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
         (out, err) = self.run_bzr_captured(
-            ['upgrade', '--format=knit', url])
+            ['upgrade', '--knit', url])
         self.assertEqualDiff("""starting upgrade of %s
 making backup of tree history
 %s.bzr has been backed up to %s.bzr.backup
@@ -156,7 +156,7 @@ finished
 
     def test_upgrade_repo(self):
         self.run_bzr('init-repository', '--metaweave', 'repo')
-        self.run_bzr('upgrade', '--format=knit', 'repo')
+        self.run_bzr('upgrade', '--knit', 'repo')
 
 
 class SFTPTests(TestCaseWithSFTPServer):
@@ -176,7 +176,7 @@ class SFTPTests(TestCaseWithSFTPServer):
         self.run_bzr('init', '--weave')
         t = get_transport(self.get_url())
         url = t.base
-        out, err = self.run_bzr('upgrade', '--format=knit', url)
+        out, err = self.run_bzr('upgrade', '--knit', url)
         self.assertEqualDiff("""starting upgrade of %s
 making backup of tree history
 %s.bzr has been backed up to %s.bzr.backup
