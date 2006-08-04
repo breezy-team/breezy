@@ -1263,7 +1263,6 @@ def test_suite():
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_decorators',
-                   'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
