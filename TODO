@@ -19,3 +19,9 @@
 - new upstream
 
 - migrate from arch-buildpackage?  use baz-import?
+
+- make --merge work with different layouts of upstream tarballs.
+
+- remove the need to specify the merge flag
+
+- import of NMU diffs
