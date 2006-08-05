@@ -53,7 +53,7 @@ def write_text_inventory(inv, outf):
     """Write out inv in a simple trad-unix text format."""
     outf.write(START_MARK)
     for path, ie in inv.iter_entries():
-        if ie.kind == 'root_directory':
+        if inv.is_root(ie.file_id):
             continue
         
         outf.write(ie.file_id + ' ')

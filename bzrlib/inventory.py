@@ -85,7 +85,7 @@ class InventoryEntry(object):
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
     ... 
-    (True, RootEntry('TREE_ROOT', u'', parent_id=None, revision=None))
+    (True, InventoryDirectory('TREE_ROOT', '', parent_id=None, revision=None))
     (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None))
     (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None))
     >>> i.add(InventoryFile('2323', 'bye.c', '123'))
@@ -295,7 +295,7 @@ class InventoryEntry(object):
         """Return a short kind indicator useful for appending to names."""
         raise BzrError('unknown kind %r' % self.kind)
 
-    known_kinds = ('file', 'directory', 'symlink', 'root_directory')
+    known_kinds = ('file', 'directory', 'symlink')
 
     def _put_in_tar(self, item, tree):
         """populate item for stashing in a tar, and return the content stream.
@@ -495,31 +495,6 @@ class InventoryEntry(object):
 
     def _forget_tree_state(self):
         pass
-
-
-class RootEntry(InventoryEntry):
-
-    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', 'executable', 
-                 'revision', 'symlink_target']
-
-    def _check(self, checker, rev_id, tree):
-        """See InventoryEntry._check"""
-
-    def __init__(self, file_id):
-        self.file_id = file_id
-        self.children = {}
-        self.kind = 'root_directory'
-        self.parent_id = None
-        self.name = u''
-        self.revision = None
-
-    def __eq__(self, other):
-        if not isinstance(other, RootEntry):
-            return NotImplemented
-        
-        return (self.file_id == other.file_id) \
-               and (self.children == other.children)
 
 
 class InventoryDirectory(InventoryEntry):
@@ -857,15 +832,13 @@ class Inventory(object):
         The inventory is created with a default root directory, with
         an id of None.
         """
-        # We are letting Branch.create() create a unique inventory
-        # root id. Rather than generating a random one here.
-        #if root_id is None:
-        #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
-        self.root = RootEntry(root_id)
-        # FIXME: this isn't ever used, changing it to self.revision may break
-        # things. TODO make everything use self.revision_id
+        if root_id is not None:
+            self.root = InventoryDirectory(root_id, '', None)
+            self._byid = {self.root.file_id: self.root}
+        else:
+            self.root = None
+            self._byid = {}
         self.revision_id = revision_id
-        self._byid = {self.root.file_id: self.root}
 
     def copy(self):
         # TODO: jam 20051218 Should copy also copy the revision_id?
@@ -1070,7 +1043,7 @@ class Inventory(object):
         if len(parts) == 0:
             if file_id is None:
                 file_id = bzrlib.workingtree.gen_root_id()
-            self.root = RootEntry(file_id)
+            self.root = InventoryDirectory(file_id, '', None)
             self._byid = {self.root.file_id: self.root}
             return
         else:
@@ -1229,6 +1202,9 @@ class Inventory(object):
         
         file_ie.name = new_name
         file_ie.parent_id = new_parent_id
+
+    def is_root(self, file_id):
+        return self.root is not None and file_id == self.root.file_id
 
 
 def make_entry(kind, name, parent_id, file_id=None):

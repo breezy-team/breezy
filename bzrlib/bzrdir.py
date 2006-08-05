@@ -1558,9 +1558,9 @@ class ConvertBzrDir4To5(Converter):
         # the XML is now updated with text versions
         if __debug__:
             for file_id in inv:
-                ie = inv[file_id]
-                if ie.kind == 'root_directory':
+                if inv.is_root(file_id):
                     continue
+                ie = inv[file_id]
                 assert hasattr(ie, 'revision'), \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
@@ -1580,6 +1580,8 @@ class ConvertBzrDir4To5(Converter):
                rev_id)
         parent_invs = map(self._load_updated_inventory, present_parents)
         for file_id in inv:
+            if inv.is_root(file_id):
+                continue
             ie = inv[file_id]
             self._convert_file_version(rev, ie, parent_invs)
 
@@ -1589,8 +1591,6 @@ class ConvertBzrDir4To5(Converter):
         The file needs to be added into the weave if it is a merge
         of >=2 parents or if it's changed from its parent.
         """
-        if ie.kind == 'root_directory':
-            return
         file_id = ie.file_id
         rev_id = rev.revision_id
         w = self.text_weaves.get(file_id)
