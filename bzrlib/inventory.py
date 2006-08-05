@@ -832,13 +832,15 @@ class Inventory(object):
         The inventory is created with a default root directory, with
         an id of None.
         """
-        if root_id is not None:
-            self.root = InventoryDirectory(root_id, '', None)
-            self._byid = {self.root.file_id: self.root}
-        else:
-            self.root = None
-            self._byid = {}
+        # We are letting Branch.create() create a unique inventory
+        # root id. Rather than generating a random one here.
+        #if root_id is None:
+        #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
+        self.root = InventoryDirectory(root_id, '', None)
+        # FIXME: this isn't ever used, changing it to self.revision may break
+        # things. TODO make everything use self.revision_id
         self.revision_id = revision_id
+        self._byid = {self.root.file_id: self.root}
 
     def copy(self):
         # TODO: jam 20051218 Should copy also copy the revision_id?
