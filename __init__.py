@@ -271,20 +271,20 @@ class cmd_builddeb(Command):
 
     return retcode
 
-class cmd_recorddeb(Command):
-  """Record the package
-  """
-  dry_run_opt = Option('dry-run', help="don't do anything")
-  Option.SHORT_OPTIONS['n'] = dry_run_opt
-  takes_args = ['package', 'version?']
-  takes_options = ['verbose',
-           dry_run_opt]
-
-  def run(self, package, version=None, verbose=False):
-    retcode = 0
-
-    return retcode
-
+#class cmd_recorddeb(Command):
+#  """Record the package
+#  """
+#  dry_run_opt = Option('dry-run', help="don't do anything")
+#  Option.SHORT_OPTIONS['n'] = dry_run_opt
+#  takes_args = ['package', 'version?']
+#  takes_options = ['verbose',
+#           dry_run_opt]
+#
+#  def run(self, package, version=None, verbose=False):
+#    retcode = 0
+#
+#    return retcode
+#
 def test_suite():
   from unittest import TestSuite, TestLoader
   import test_buildpackage
@@ -293,4 +293,4 @@ def test_suite():
   return suite
 
 register_command(cmd_builddeb)
-register_command(cmd_recorddeb)
+#register_command(cmd_recorddeb)
