@@ -93,10 +93,11 @@ class DebianChangelog(object):
 
 class BuildProperties(object):
 
-  def __init__(self, changelog, build_dir, tarball_dir):
+  def __init__(self, changelog, build_dir, tarball_dir, larstiq):
     self._changelog = changelog
     self._build_dir = build_dir
     self._tarball_dir = tarball_dir
+    self._larstiq = larstiq
   
   def package(self):
     return self._changelog.package()
@@ -118,6 +119,9 @@ class BuildProperties(object):
 
   def tarball_dir(self):
     return self._tarball_dir
+
+  def larstiq(self):
+    return self._larstiq
 
 class DebBuild(object):
 
@@ -175,7 +179,14 @@ class DebMergeBuild(DebBuild):
     os.system('tar xzf '+tarball+' -C '+tempdir)
 
     source_dir = self._properties.source_dir()
-    export(self._tree,source_dir,None,None)
+
+    if self._properties.larstiq():
+      export_dir = source_dir+'/debian/'
+      os.makedirs(source_dir)
+    else:
+      export_dir = source_dir
+
+    export(self._tree,export_dir,None,None)
 
     files = glob.glob(tempdir+'/*/*')
 
@@ -240,10 +251,19 @@ class cmd_builddeb(Command):
       t = b.repository.revision_tree(rev_id)
     else:
       t = tree
-    if not t.has_filename('debian/changelog'):
-      raise DebianError("Could not open debian/changelog")
+    changelog_file = 'debian/changelog'
+    larstiq = False
+    if not t.has_filename(changelog_file):
+      if merge:
+        #Assume LartstiQ's layout (.bzr in debian/)
+        changelog_file = 'changelog'
+        larstiq = True
+        if not t.has_filename(changelog_file):
+          raise DebianError("Could not open changelog")
+      else:
+        raise DebianError("Could not open debian/changelog")
 
-    changelog_id = t.inventory.path2id('debian/changelog')
+    changelog_id = t.inventory.path2id(changelog_file)
     contents = t.get_file_text(changelog_id)
     changelog = DebianChangelog(contents)
     if branch is None:
@@ -252,7 +272,7 @@ class cmd_builddeb(Command):
     else:
       build_dir = 'build-area'
       tarball_dir = 'tarballs'
-    properties = BuildProperties(changelog,build_dir,tarball_dir)
+    properties = BuildProperties(changelog,build_dir,tarball_dir,larstiq)
     if merge:
       build = DebMergeBuild(properties, t)
     else:
@@ -271,20 +291,20 @@ class cmd_builddeb(Command):
 
     return retcode
 
-class cmd_recorddeb(Command):
-  """Record the package
-  """
-  dry_run_opt = Option('dry-run', help="don't do anything")
-  Option.SHORT_OPTIONS['n'] = dry_run_opt
-  takes_args = ['package', 'version?']
-  takes_options = ['verbose',
-           dry_run_opt]
-
-  def run(self, package, version=None, verbose=False):
-    retcode = 0
-
-    return retcode
-
+#class cmd_recorddeb(Command):
+#  """Record the package
+#  """
+#  dry_run_opt = Option('dry-run', help="don't do anything")
+#  Option.SHORT_OPTIONS['n'] = dry_run_opt
+#  takes_args = ['package', 'version?']
+#  takes_options = ['verbose',
+#           dry_run_opt]
+#
+#  def run(self, package, version=None, verbose=False):
+#    retcode = 0
+#
+#    return retcode
+#
 def test_suite():
   from unittest import TestSuite, TestLoader
   import test_buildpackage
@@ -293,4 +313,4 @@ def test_suite():
   return suite
 
 register_command(cmd_builddeb)
-register_command(cmd_recorddeb)
+#register_command(cmd_recorddeb)
