@@ -1338,7 +1338,11 @@ class cmd_log(Command):
         else:
             # local dir only
             # FIXME ? log the current subdir only RBC 20060203 
-            dir, relpath = bzrdir.BzrDir.open_containing('.')
+            if revision is not None and len(revision) > 0 and revision[0].get_branch():
+                location = revision[0].get_branch()
+            else:
+                location = '.'
+            dir, relpath = bzrdir.BzrDir.open_containing(location)
             b = dir.open_branch()
 
         if revision is None:
@@ -1347,6 +1351,9 @@ class cmd_log(Command):
         elif len(revision) == 1:
             rev1 = rev2 = revision[0].in_history(b).revno
         elif len(revision) == 2:
+            if revision[1].get_branch() != revision[0].get_branch():
+                raise BzrCommandError(
+                    "Log doesn't accept two revisions in different branches.")
             if revision[0].spec is None:
                 # missing begin-range means first revision
                 rev1 = 1
