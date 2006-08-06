@@ -2150,13 +2150,15 @@ class cmd_merge(Command):
                 else:
                     return 1
 
-        branch = self._get_remembered_parent(tree, branch, 'Merging from')
+        if revision is None or len(revision) < 1 or revision[0].needs_branch():
+            branch = self._get_remembered_parent(tree, branch, 'Merging from')
 
         if revision is None or len(revision) < 1:
             base = [None, None]
             other = [branch, -1]
             other_branch, path = Branch.open_containing(branch)
         else:
+            branch = revision[0].get_branch() or branch
             if len(revision) == 1:
                 base = [None, None]
                 other_branch, path = Branch.open_containing(branch)
@@ -2167,6 +2169,9 @@ class cmd_merge(Command):
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
+                if revision[1].get_branch() != revision[0].get_branch():
+                    raise BzrCommandError(
+                        "Merge doesn't accept two revisions in different branches.")
                 other_branch, path = Branch.open_containing(branch)
 
                 base = [branch, revision[0].in_history(other_branch).revno]

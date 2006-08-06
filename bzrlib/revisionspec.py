@@ -178,6 +178,13 @@ class RevisionSpec(object):
         """
         return True
 
+    def get_branch(self):
+        """When the revision specifier contains a branch location, return it.
+        
+        Otherwise, return None.
+        """
+        return None
+
 # private API
 
 class RevisionSpec_int(RevisionSpec):
@@ -217,6 +224,12 @@ class RevisionSpec_revno(RevisionSpec):
         
     def needs_branch(self):
         return self.spec.find(':') == -1
+
+    def get_branch(self):
+        if self.spec.find(':') == -1:
+            return None
+        else:
+            return self.spec[self.spec.find(':')+1:]
 
 SPEC_TYPES.append(RevisionSpec_revno)
 

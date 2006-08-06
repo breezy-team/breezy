@@ -80,6 +80,13 @@ class TestMerge(ExternalBase):
         self.log('pending merges: %s', a.pending_merges())
         self.assertEquals(a.pending_merges(),
                           [b.last_revision()])
+        self.runbzr('revert --no-backup')
+        self.runbzr('merge -r revno:1:../b..revno:1:../c',
+                    retcode=3)
+        self.runbzr('revert --no-backup')
+        self.runbzr('merge -r revno:%d:../b'%b.revno())
+        self.assertEquals(a.pending_merges(),
+                          [b.last_revision()])
         self.runbzr('commit -m merged')
         self.runbzr('merge ../b -r last:1')
         self.assertEqual(a.pending_merges(), [])
