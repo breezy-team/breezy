@@ -34,6 +34,7 @@ import re
 import sys
 import tarfile
 import types
+from warnings import warn
 
 import bzrlib
 from bzrlib import errors, osutils
@@ -495,6 +496,34 @@ class InventoryEntry(object):
 
     def _forget_tree_state(self):
         pass
+
+
+class RootEntry(InventoryEntry):
+
+    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
+                 'text_id', 'parent_id', 'children', 'executable', 
+                 'revision', 'symlink_target']
+
+    def _check(self, checker, rev_id, tree):
+        """See InventoryEntry._check"""
+
+    def __init__(self, file_id):
+        self.file_id = file_id
+        self.children = {}
+        self.kind = 'directory'
+        self.parent_id = None
+        self.name = u''
+        self.revision = None
+        warn('EmptyTree is deprecated as of bzr 0.9 please use '
+            'repository.revision_tree instead.',
+            DeprecationWarning, stacklevel=2)
+
+    def __eq__(self, other):
+        if not isinstance(other, RootEntry):
+            return NotImplemented
+        
+        return (self.file_id == other.file_id) \
+               and (self.children == other.children)
 
 
 class InventoryDirectory(InventoryEntry):
