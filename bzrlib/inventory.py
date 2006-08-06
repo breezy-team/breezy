@@ -514,8 +514,8 @@ class RootEntry(InventoryEntry):
         self.parent_id = None
         self.name = u''
         self.revision = None
-        warn('EmptyTree is deprecated as of bzr 0.9 please use '
-            'repository.revision_tree instead.',
+        warn('RootEntry is deprecated as of bzr 0.10.  Please use '
+             'InventoryDirectory instead.',
             DeprecationWarning, stacklevel=2)
 
     def __eq__(self, other):
