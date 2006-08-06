@@ -27,8 +27,10 @@ from bzrlib.revision import NULL_REVISION
 
 # New bundles should try to use this header format
 BUNDLE_HEADER = '# Bazaar revision bundle v'
-BUNDLE_HEADER_RE = re.compile(r'^# Bazaar revision bundle v(?P<version>\d+[\w.]*)\n$')
-CHANGESET_OLD_HEADER_RE = re.compile(r'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)\n$')
+BUNDLE_HEADER_RE = re.compile(
+    r'^# Bazaar revision bundle v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
+CHANGESET_OLD_HEADER_RE = re.compile(
+    r'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
 
 
 _serializers = {}
@@ -50,6 +52,8 @@ def read_bundle(f):
     for line in f:
         m = BUNDLE_HEADER_RE.match(line)
         if m:
+            if m.group('lineending') != '':
+                raise errors.UnsupportedEOLMarker()
             version = m.group('version')
             break
         elif line.startswith(BUNDLE_HEADER):
