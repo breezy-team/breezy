@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -26,6 +26,7 @@ import sys
 import bzrlib
 import bzrlib.config as config
 from bzrlib.errors import BzrError
+from bzrlib.trace import warning, mutter
 
 
 def _get_editor():
@@ -56,6 +57,7 @@ def _run_editor(filename):
     for e in _get_editor():
         edargs = e.split(' ')
         try:
+            ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
         except OSError, e:
            # We're searching for an editor, so catch safe errors and continue
@@ -142,7 +144,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
             try:
                 os.unlink(msgfilename)
             except IOError, e:
-                mutter("failed to unlink %s: %s; ignored", msgfilename, e)
+                warning("failed to unlink %s: %s; ignored", msgfilename, e)
 
 
 def make_commit_message_template(working_tree, specific_files):

@@ -1,15 +1,15 @@
 # Copyright (C) 2005 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -18,6 +18,7 @@
 """Tests being able to ignore mad filetypes.
 """
 
+from bzrlib import ignores
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.errors import BadFileKindError
 import os
@@ -34,7 +35,7 @@ def verify_status(tester, tree, value):
 
 class TestBadFiles(TestCaseWithTransport):
     
-    def test_bad_files(self): 
+    def test_bad_files(self):
         """Test that bzr will ignore files it doesn't like"""
         from bzrlib.add import smart_add_tree
         from bzrlib.branch import Branch
@@ -58,7 +59,12 @@ class TestBadFiles(TestCaseWithTransport):
 
         # We can only continue if we have mkfifo
         if not hasattr(os, 'mkfifo'):
+            # TODO: Ultimately this should be TestSkipped
+            # or PlatformDeficiency
             return
+
+        # Ignore the .bazaar/ home directory that is created
+        ignores._set_user_ignores(['./.bazaar'])
 
         # status with nothing
         verify_status(self, wt, [])

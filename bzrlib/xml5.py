@@ -1,22 +1,24 @@
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.xml_serializer import ElementTree, SubElement, Element, Serializer
+from bzrlib.xml_serializer import SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 import bzrlib.inventory as inventory
-from bzrlib.revision import Revision        
+from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 
 
@@ -30,14 +32,16 @@ class Serializer_v5(Serializer):
     
     def _pack_inventory(self, inv):
         """Convert to XML Element"""
+        entries = inv.iter_entries()
         e = Element('inventory',
                     format='5')
         e.text = '\n'
-        if inv.root.file_id not in (None, ROOT_ID):
-            e.set('file_id', inv.root.file_id)
+        path, root = entries.next()
+        if root.file_id not in (None, ROOT_ID):
+            e.set('file_id', root.file_id)
         if inv.revision_id is not None:
             e.set('revision_id', inv.revision_id)
-        for path, ie in inv.iter_entries():
+        for path, ie in entries:
             e.append(self._pack_entry(ie))
         return e
 
@@ -197,11 +201,16 @@ class Serializer_v5(Serializer):
             return
         for prop_elt in props_elt:
             assert prop_elt.tag == 'property', \
-                "bad tag under properties list: %r" % p.tag
+                "bad tag under properties list: %r" % prop_elt.tag
             name = prop_elt.get('name')
             value = prop_elt.text
+            # If a property had an empty value ('') cElementTree reads
+            # that back as None, convert it back to '', so that all
+            # properties have string values
+            if value is None:
+                value = ''
             assert name not in rev.properties, \
-                "repeated property %r" % p.name
+                "repeated property %r" % name
             rev.properties[name] = value
 
 

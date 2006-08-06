@@ -1,15 +1,15 @@
-# (C) 2005 Canonical
-
+# Copyright (C) 2005, 2006 Canonical
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -18,12 +18,13 @@
 # perhaps show them in log -v and allow them as options to the commit command.
 
 
-import bzrlib.errors
 import bzrlib.errors as errors
 from bzrlib.graph import node_distances, select_farthest, all_descendants, Graph
 from bzrlib.osutils import contains_whitespace
 from bzrlib.progress import DummyProgress
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function,
+        zero_eight,
+        )
 
 NULL_REVISION="null:"
 
@@ -51,6 +52,7 @@ class Revision(object):
         self._check_properties()
         self.parent_ids = []
         self.parent_sha1s = []
+        """Not used anymore - legacy from for 4."""
         self.__dict__.update(args)
 
     def __repr__(self):
@@ -73,8 +75,7 @@ class Revision(object):
         return not self.__eq__(other)
 
     def _check_properties(self):
-        """Verify that all revision properties are OK.
-        """
+        """Verify that all revision properties are OK."""
         for name, value in self.properties.iteritems():
             if not isinstance(name, basestring) or contains_whitespace(name):
                 raise ValueError("invalid property name %r" % name)
@@ -129,7 +130,7 @@ def iter_ancestors(revision_id, revision_source, only_present=False):
                 yield ancestor, distance
             try:
                 revision = revision_source.get_revision(ancestor)
-            except bzrlib.errors.NoSuchRevision, e:
+            except errors.NoSuchRevision, e:
                 if e.revision == revision_id:
                     raise 
                 else:
@@ -219,7 +220,7 @@ def combined_graph(revision_a, revision_b, revision_source):
     root_b, ancestors_b, descendants_b = revision_graph(
         revision_b, revision_source)
     if root != root_b:
-        raise bzrlib.errors.NoCommonRoot(revision_a, revision_b)
+        raise errors.NoCommonRoot(revision_a, revision_b)
     common = set()
     for node, node_anc in ancestors_b.iteritems():
         if node in ancestors:
@@ -238,6 +239,8 @@ def common_ancestor(revision_a, revision_b, revision_source,
                     pb=DummyProgress()):
     if None in (revision_a, revision_b):
         return None
+    if NULL_REVISION in (revision_a, revision_b):
+        return NULL_REVISION
     # trivial optimisation
     if revision_a == revision_b:
         return revision_a
@@ -272,15 +275,15 @@ def common_ancestor(revision_a, revision_b, revision_source,
                 
             root = NULL_REVISION
             common.add(NULL_REVISION)
-        except bzrlib.errors.NoCommonRoot:
-            raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+        except errors.NoCommonRoot:
+            raise errors.NoCommonAncestor(revision_a, revision_b)
             
         pb.update('Picking ancestor', 2, 3)
         distances = node_distances (descendants, ancestors, root)
         pb.update('Picking ancestor', 3, 2)
         farthest = select_farthest(distances, common)
         if farthest is None or farthest == NULL_REVISION:
-            raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+            raise errors.NoCommonAncestor(revision_a, revision_b)
     finally:
         pb.clear()
     return farthest
@@ -305,7 +308,7 @@ class MultipleRevisionSources(object):
         for source in self._revision_sources:
             try:
                 return source.get_revision(revision_id)
-            except bzrlib.errors.NoSuchRevision, e:
+            except errors.NoSuchRevision, e:
                 pass
         raise e
 
@@ -418,14 +421,14 @@ def get_intervening_revisions(ancestor_id, rev_id, rev_source,
     """
     root, ancestors, descendants = revision_graph(rev_id, rev_source)
     if len(descendants) == 0:
-        raise NoSuchRevision(rev_source, rev_id)
+        raise errors.NoSuchRevision(rev_source, rev_id)
     if ancestor_id not in descendants:
         rev_source.get_revision(ancestor_id)
-        raise bzrlib.errors.NotAncestor(rev_id, ancestor_id)
+        raise errors.NotAncestor(rev_id, ancestor_id)
     root_descendants = all_descendants(descendants, ancestor_id)
     root_descendants.add(ancestor_id)
     if rev_id not in root_descendants:
-        raise bzrlib.errors.NotAncestor(rev_id, ancestor_id)
+        raise errors.NotAncestor(rev_id, ancestor_id)
     distances = node_distances(descendants, ancestors, ancestor_id,
                                root_descendants=root_descendants)
 

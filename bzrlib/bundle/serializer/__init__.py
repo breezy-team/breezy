@@ -1,15 +1,15 @@
 # (C) 2005 Canonical Development Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -31,7 +31,7 @@ BUNDLE_HEADER_RE = re.compile(r'^# Bazaar revision bundle v(?P<version>\d+[\w.]*
 CHANGESET_OLD_HEADER_RE = re.compile(r'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)\n$')
 
 
-_serializers = {} 
+_serializers = {}
 
 
 def _get_filename(f):
@@ -40,7 +40,7 @@ def _get_filename(f):
     return '<unknown>'
 
 
-def read(f):
+def read_bundle(f):
     """Read in a bundle from a filelike object.
 
     :param f: A file-like object
@@ -52,13 +52,15 @@ def read(f):
         if m:
             version = m.group('version')
             break
+        elif line.startswith(BUNDLE_HEADER):
+            raise errors.MalformedHeader()
         m = CHANGESET_OLD_HEADER_RE.match(line)
         if m:
             version = m.group('version')
             raise errors.BundleNotSupported(version, 'old format bundles not supported')
 
     if version is None:
-        raise errors.NoBundleFound(_get_filename(f))
+        raise errors.NotABundle('Did not find an opening header')
 
     # Now we have a version, to figure out how to read the bundle 
     if not _serializers.has_key(version):
@@ -122,6 +124,8 @@ def format_highres_date(t, offset=0):
     'Thu 2005-06-30 12:38:52.350850105 -0500'
     >>> format_highres_date(1120153132.350850105, 7200)
     'Thu 2005-06-30 19:38:52.350850105 +0200'
+    >>> format_highres_date(1152428738.867522, 19800)
+    'Sun 2006-07-09 12:35:38.867522001 +0530'
     """
     import time
     assert isinstance(t, float)
@@ -153,6 +157,8 @@ def unpack_highres_date(date):
     (1120153132.3508501, 0)
     >>> unpack_highres_date('Thu 2005-06-30 19:38:52.350850105 +0200')
     (1120153132.3508501, 7200)
+    >>> unpack_highres_date('Sun 2006-07-09 12:35:38.867522001 +0530')
+    (1152428738.867522, 19800)
     >>> from bzrlib.osutils import local_time_offset
     >>> t = time.time()
     >>> o = local_time_offset()
@@ -183,15 +189,19 @@ def unpack_highres_date(date):
     base_time = time.strptime(date[:dot_loc], "%a %Y-%m-%d %H:%M:%S")
     fract_seconds, offset = date[dot_loc:].split()
     fract_seconds = float(fract_seconds)
+
     offset = int(offset)
-    offset = int(offset / 100) * 3600 + offset % 100
+
+    hours = int(offset / 100)
+    minutes = (offset % 100)
+    seconds_offset = (hours * 3600) + (minutes * 60)
     
     # time.mktime returns localtime, but calendar.timegm returns UTC time
     timestamp = calendar.timegm(base_time)
-    timestamp -= offset
+    timestamp -= seconds_offset
     # Add back in the fractional seconds
     timestamp += fract_seconds
-    return (timestamp, offset)
+    return (timestamp, seconds_offset)
 
 
 class BundleSerializer(object):
@@ -259,6 +269,6 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
     base64.encode(temp, to_file)
     to_file.write('\n')
 
-register_lazy('0.7', 'bzrlib.bundle.serializer.v07', 'BundleSerializerV07')
-register_lazy(None, 'bzrlib.bundle.serializer.v07', 'BundleSerializerV07')
+register_lazy('0.8', 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
+register_lazy(None, 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
 

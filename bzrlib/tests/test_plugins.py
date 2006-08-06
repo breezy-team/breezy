@@ -1,10 +1,10 @@
 # Copyright (C) 2005 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -22,9 +22,12 @@
 # comments.
 
 import os
+from StringIO import StringIO
 
 import bzrlib.plugin
 import bzrlib.plugins
+import bzrlib.commands
+import bzrlib.help
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.osutils import pathjoin, abspath
 
@@ -137,3 +140,57 @@ class TestAllPlugins(TestCaseInTempDir):
             if getattr(bzrlib.plugins, 'plugin', None):
                 del bzrlib.plugins.plugin
         self.failIf(getattr(bzrlib.plugins, 'plugin', None))
+
+
+class TestPluginHelp(TestCaseInTempDir):
+
+    def split_help_commands(self):
+        help = {}
+        current = None
+        for line in self.capture('help commands').splitlines():
+            if line.startswith('bzr '):
+                current = line.split()[1]
+            help[current] = help.get(current, '') + line
+
+        return help
+
+    def test_plugin_help_builtins_unaffected(self):
+        # Check we don't get false positives
+        help_commands = self.split_help_commands()
+        for cmd_name in bzrlib.commands.builtin_command_names():
+            if cmd_name in bzrlib.commands.plugin_command_names():
+                continue
+            help = StringIO()
+            try:
+                bzrlib.help.help_on_command(cmd_name, help)
+            except NotImplementedError:
+                # some commands have no help
+                pass
+            else:
+                help.seek(0)
+                self.assertNotContainsRe(help.read(), 'From plugin "[^"]*"')
+
+            if help in help_commands.keys():
+                # some commands are hidden
+                help = help_commands[cmd_name]
+                self.assertNotContainsRe(help, 'From plugin "[^"]*"')
+
+    def test_plugin_help_shows_plugin(self):
+        # Create a test plugin
+        os.mkdir('plugin_test')
+        f = open(pathjoin('plugin_test', 'myplug.py'), 'w')
+        f.write(PLUGIN_TEXT)
+        f.close()
+
+        try:
+            # Check its help
+            bzrlib.plugin.load_from_dirs(['plugin_test'])
+            bzrlib.commands.register_command( bzrlib.plugins.myplug.cmd_myplug)
+            help = self.capture('help myplug')
+            self.assertContainsRe(help, 'From plugin "myplug"')
+            help = self.split_help_commands()['myplug']
+            self.assertContainsRe(help, 'From plugin "myplug"')
+        finally:
+            # remove the plugin 'plugin'
+            if getattr(bzrlib.plugins, 'plugin', None):
+                del bzrlib.plugins.plugin

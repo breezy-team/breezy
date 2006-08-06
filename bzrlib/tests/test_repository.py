@@ -22,7 +22,7 @@ For concrete class tests see this file, and for storage formats tests
 also see this file.
 """
 
-from stat import *
+from stat import S_ISDIR
 from StringIO import StringIO
 
 import bzrlib
@@ -428,3 +428,10 @@ class TestRepositoryConverter(TestCaseWithTransport):
             pb.finished()
         repo = repo_dir.open_repository()
         self.assertTrue(isinstance(target_format, repo._format.__class__))
+
+
+class TestMisc(TestCase):
+    
+    def test_unescape_xml(self):
+        """We get some kind of error when malformed entities are passed"""
+        self.assertRaises(KeyError, repository._unescape_xml, 'foo&bar;') 

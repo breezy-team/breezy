@@ -1,31 +1,37 @@
 # Copyright (C) 2004-2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from StringIO import StringIO
+from cStringIO import StringIO
+import os
+import sys
+import tempfile
 
+from bzrlib import inventory
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
-from bzrlib.bundle.read_bundle import BundleTree, BundleReader
-from bzrlib.bundle.serializer import write_bundle
+from bzrlib.bundle.bundle_data import BundleTree
+from bzrlib.bundle.serializer import write_bundle, read_bundle
+from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
-from bzrlib.errors import BzrError, TestamentMismatch, NotABundle
+from bzrlib.errors import BzrError, TestamentMismatch, NotABundle, BadBundle
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
-from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
+from bzrlib.tests import (TestCaseInTempDir, TestCaseWithTransport,
+                          TestCase, TestSkipped)
 from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
@@ -51,8 +57,7 @@ class MockTree(object):
             return self.make_entry(file_id, self.paths[file_id])
 
     def parent_id(self, file_id):
-        from os.path import dirname
-        parent_dir = dirname(self.paths[file_id])
+        parent_dir = os.path.dirname(self.paths[file_id])
         if parent_dir == "":
             return None
         return self.ids[parent_dir]
@@ -69,10 +74,9 @@ class MockTree(object):
         return kind
 
     def make_entry(self, file_id, path):
-        from os.path import basename
         from bzrlib.inventory import (InventoryEntry, InventoryFile
                                     , InventoryDirectory, InventoryLink)
-        name = basename(path)
+        name = os.path.basename(path)
         kind = self.get_file_kind(file_id)
         parent_id = self.parent_id(file_id)
         text_sha_1, text_size = self.contents_stats(file_id)
@@ -286,32 +290,25 @@ class BTreeTester(TestCase):
     def test_iteration(self):
         """Ensure that iteration through ids works properly"""
         btree = self.make_tree_1()[0]
-        self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'c', 'd'])
+        self.assertEqual(self.sorted_ids(btree),
+            [inventory.ROOT_ID, 'a', 'b', 'c', 'd'])
         btree.note_deletion("grandparent/parent/file")
         btree.note_id("e", "grandparent/alt_parent/fool", kind="directory")
         btree.note_last_changed("grandparent/alt_parent/fool", 
                                 "revisionidiguess")
-        self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'd', 'e'])
+        self.assertEqual(self.sorted_ids(btree),
+            [inventory.ROOT_ID, 'a', 'b', 'd', 'e'])
 
 
-class CSetTester(TestCaseInTempDir):
+class BundleTester(TestCaseWithTransport):
 
-    def get_valid_bundle(self, base_rev_id, rev_id, checkout_dir=None,
-                         message=None):
-        """Create a bundle from base_rev_id -> rev_id in built-in branch.
-        Make sure that the text generated is valid, and that it
-        can be applied against the base, and generate the same information.
-        
-        :return: The in-memory bundle 
-        """
-        from cStringIO import StringIO
-
+    def create_bundle_text(self, base_rev_id, rev_id):
         bundle_txt = StringIO()
         rev_ids = write_bundle(self.b1.repository, rev_id, base_rev_id, 
                                bundle_txt)
         bundle_txt.seek(0)
         self.assertEqual(bundle_txt.readline(), 
-                         '# Bazaar revision bundle v0.7\n')
+                         '# Bazaar revision bundle v0.8\n')
         self.assertEqual(bundle_txt.readline(), '#\n')
 
         rev = self.b1.repository.get_revision(rev_id)
@@ -320,10 +317,21 @@ class CSetTester(TestCaseInTempDir):
 
         open(',,bundle', 'wb').write(bundle_txt.getvalue())
         bundle_txt.seek(0)
+        return bundle_txt, rev_ids
+
+    def get_valid_bundle(self, base_rev_id, rev_id, checkout_dir=None):
+        """Create a bundle from base_rev_id -> rev_id in built-in branch.
+        Make sure that the text generated is valid, and that it
+        can be applied against the base, and generate the same information.
+        
+        :return: The in-memory bundle 
+        """
+        bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
+
         # This should also validate the generated bundle 
-        bundle = BundleReader(bundle_txt)
+        bundle = read_bundle(bundle_txt)
         repository = self.b1.repository
-        for bundle_rev in bundle.info.real_revisions:
+        for bundle_rev in bundle.real_revisions:
             # These really should have already been checked when we read the
             # bundle, since it computes the sha1 hash for the revision, which
             # only will match if everything is okay, but lets be explicit about
@@ -337,7 +345,7 @@ class CSetTester(TestCaseInTempDir):
             self.assertEqual(len(branch_rev.parent_ids), 
                              len(bundle_rev.parent_ids))
         self.assertEqual(rev_ids, 
-                         [r.revision_id for r in bundle.info.real_revisions])
+                         [r.revision_id for r in bundle.real_revisions])
         self.valid_apply_bundle(base_rev_id, bundle,
                                    checkout_dir=checkout_dir)
 
@@ -349,34 +357,37 @@ class CSetTester(TestCaseInTempDir):
         
         :return: The in-memory bundle
         """
-        from cStringIO import StringIO
-
-        bundle_txt = StringIO()
-        rev_ids = write_bundle(self.b1.repository, rev_id, base_rev_id, 
-                               bundle_txt)
-        bundle_txt.seek(0)
-        open(',,bundle', 'wb').write(bundle_txt.getvalue())
-        bundle_txt.seek(0)
+        bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = bundle_txt.getvalue().replace('executable:no', 
                                                'executable:yes')
         bundle_txt = StringIO(new_text)
-        bundle = BundleReader(bundle_txt)
+        bundle = read_bundle(bundle_txt)
         self.valid_apply_bundle(base_rev_id, bundle)
         return bundle 
 
     def test_non_bundle(self):
-        self.assertRaises(NotABundle, BundleReader, StringIO('#!/bin/sh\n'))
+        self.assertRaises(NotABundle, read_bundle, StringIO('#!/bin/sh\n'))
+
+    def test_malformed(self):
+        self.assertRaises(BadBundle, read_bundle, 
+                          StringIO('# Bazaar revision bundle v'))
+
+    def test_crlf_bundle(self):
+        try:
+            read_bundle(StringIO('# Bazaar revision bundle v0.8\r\n'))
+        except BadBundle:
+            # It is currently permitted for bundles with crlf line endings to
+            # make read_bundle raise a BadBundle, but this should be fixed.
+            # Anything else, especially NotABundle, is an error.
+            pass
 
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.
         """
-        from bzrlib.branch import Branch
-        import tempfile
 
         if checkout_dir is None:
             checkout_dir = tempfile.mkdtemp(prefix='test-branch-', dir='.')
         else:
-            import os
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)
         tree = BzrDir.create_standalone_workingtree(checkout_dir)
@@ -385,10 +396,18 @@ class CSetTester(TestCaseInTempDir):
         s.seek(0)
         assert isinstance(s.getvalue(), str), (
             "Bundle isn't a bytestring:\n %s..." % repr(s.getvalue())[:40])
-        install_bundle(tree.branch.repository, BundleReader(s))
+        install_bundle(tree.branch.repository, read_bundle(s))
         for ancestor in ancestors:
             old = self.b1.repository.revision_tree(ancestor)
             new = tree.branch.repository.revision_tree(ancestor)
+
+            # Check that there aren't any inventory level changes
+            delta = new.changes_from(old)
+            self.assertFalse(delta.has_changed(),
+                             'Revision %s not copied correctly.'
+                             % (ancestor,))
+
+            # Now check that the file contents are all correct
             for inventory_id in old:
                 try:
                     old_file = old.get_file(inventory_id)
@@ -402,21 +421,23 @@ class CSetTester(TestCaseInTempDir):
             rh = self.b1.revision_history()
             tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
             tree.update()
+            delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
+            self.assertFalse(delta.has_changed(),
+                             'Working tree has modifications')
         return tree
 
-    def valid_apply_bundle(self, base_rev_id, reader, checkout_dir=None):
+    def valid_apply_bundle(self, base_rev_id, info, checkout_dir=None):
         """Get the base revision, apply the changes, and make
         sure everything matches the builtin branch.
         """
         to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
         repository = to_tree.branch.repository
         self.assertIs(repository.has_revision(base_rev_id), True)
-        info = reader.info
         for rev in info.real_revisions:
             self.assert_(not repository.has_revision(rev.revision_id),
                 'Revision {%s} present before applying bundle' 
                 % rev.revision_id)
-        merge_bundle(reader, to_tree, True, Merge3Merger, False, False)
+        merge_bundle(info, to_tree, True, Merge3Merger, False, False)
 
         for rev in info.real_revisions:
             self.assert_(repository.has_revision(rev.revision_id),
@@ -454,20 +475,20 @@ class CSetTester(TestCaseInTempDir):
             #         to_tree.get_file(fileid).read())
 
     def test_bundle(self):
-
-        import os, sys
-        pjoin = os.path.join
-
-        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
-        open(pjoin('b1/one'), 'wb').write('one\n')
+        open('b1/one', 'wb').write('one\n')
         self.tree1.add('one')
         self.tree1.commit('add one', rev_id='a@cset-0-1')
 
         bundle = self.get_valid_bundle(None, 'a@cset-0-1')
-        bundle = self.get_valid_bundle(None, 'a@cset-0-1',
-                message='With a specialized message')
+        # FIXME: The current write_bundle api no longer supports
+        #        setting a custom summary message
+        #        We should re-introduce the ability, and update
+        #        the tests to make sure it works.
+        # bundle = self.get_valid_bundle(None, 'a@cset-0-1',
+        #         message='With a specialized message')
 
         # Make sure we can handle files with spaces, tabs, other
         # bogus characters
@@ -476,12 +497,10 @@ class CSetTester(TestCaseInTempDir):
                 , 'b1/dir/'
                 , 'b1/dir/filein subdir.c'
                 , 'b1/dir/WithCaps.txt'
-                , 'b1/dir/trailing space '
+                , 'b1/dir/ pre space'
                 , 'b1/sub/'
                 , 'b1/sub/sub/'
                 , 'b1/sub/sub/nonempty.txt'
-                # Tabs are not valid in filenames on windows
-                #'b1/with\ttab.txt'
                 ])
         open('b1/sub/sub/emptyfile.txt', 'wb').close()
         open('b1/dir/nolastnewline.txt', 'wb').write('bloop')
@@ -493,7 +512,7 @@ class CSetTester(TestCaseInTempDir):
                 , 'dir'
                 , 'dir/filein subdir.c'
                 , 'dir/WithCaps.txt'
-                , 'dir/trailing space '
+                , 'dir/ pre space'
                 , 'dir/nolastnewline.txt'
                 , 'sub'
                 , 'sub/sub'
@@ -525,7 +544,6 @@ class CSetTester(TestCaseInTempDir):
         # Check a rollup bundle 
         bundle = self.get_valid_bundle(None, 'a@cset-0-3')
 
-
         # Now move the directory
         self.tree1.rename_one('dir', 'sub/dir')
         self.tree1.commit('rename dir', rev_id='a@cset-0-4')
@@ -536,41 +554,26 @@ class CSetTester(TestCaseInTempDir):
 
         # Modified files
         open('b1/sub/dir/WithCaps.txt', 'ab').write('\nAdding some text\n')
-        open('b1/sub/dir/trailing space ', 'ab').write('\nAdding some\nDOS format lines\n')
+        open('b1/sub/dir/ pre space', 'ab').write('\r\nAdding some\r\nDOS format lines\r\n')
         open('b1/sub/dir/nolastnewline.txt', 'ab').write('\n')
-        self.tree1.rename_one('sub/dir/trailing space ', 
-                              'sub/ start and end space ')
+        self.tree1.rename_one('sub/dir/ pre space', 
+                              'sub/ start space')
         self.tree1.commit('Modified files', rev_id='a@cset-0-5')
         bundle = self.get_valid_bundle('a@cset-0-4', 'a@cset-0-5')
 
-        # Handle international characters
-        try:
-            f = open(u'b1/with Dod\xe9', 'wb')
-        except UnicodeEncodeError:
-            raise TestSkipped("Filesystem doesn't support unicode")
-        f.write((u'A file\n'
-            u'With international man of mystery\n'
-            u'William Dod\xe9\n').encode('utf-8'))
-        self.tree1.add([u'with Dod\xe9'])
-        # BUG: (sort of) You must set verbose=False, so that python doesn't try
-        #       and print the name of William Dode as part of the commit
-        self.tree1.commit(u'i18n commit from William Dod\xe9', 
-                          rev_id='a@cset-0-6', committer=u'William Dod\xe9',
-                          verbose=False)
-        bundle = self.get_valid_bundle('a@cset-0-5', 'a@cset-0-6')
         self.tree1.rename_one('sub/dir/WithCaps.txt', 'temp')
         self.tree1.rename_one('with space.txt', 'WithCaps.txt')
         self.tree1.rename_one('temp', 'with space.txt')
-        self.tree1.commit(u'swap filenames', rev_id='a@cset-0-7',
+        self.tree1.commit(u'swap filenames', rev_id='a@cset-0-6',
+                          verbose=False)
+        bundle = self.get_valid_bundle('a@cset-0-5', 'a@cset-0-6')
+        other = self.get_checkout('a@cset-0-5')
+        other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
+        other.commit('rename file', rev_id='a@cset-0-6b')
+        merge([other.basedir, -1], [None, None], this_dir=self.tree1.basedir)
+        self.tree1.commit(u'Merge', rev_id='a@cset-0-7',
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-6', 'a@cset-0-7')
-        other = self.get_checkout('a@cset-0-6')
-        other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
-        other.commit('rename file', rev_id='a@cset-0-7b')
-        merge([other.basedir, -1], [None, None], this_dir=self.tree1.basedir)
-        self.tree1.commit(u'Merge', rev_id='a@cset-0-8',
-                          verbose=False)
-        bundle = self.get_valid_bundle('a@cset-0-7', 'a@cset-0-8')
 
     def test_symlink_bundle(self):
         if not has_symlinks():
@@ -608,32 +611,43 @@ class CSetTester(TestCaseInTempDir):
         self.tree1 = BzrDir.create_standalone_workingtree('b1')
         self.b1 = self.tree1.branch
         tt = TreeTransform(self.tree1)
-        tt.new_file('file', tt.root, '\x00\xff', 'binary-1')
-        tt.new_file('file2', tt.root, '\x00\xff', 'binary-2')
+        
+        # Add
+        tt.new_file('file', tt.root, '\x00\n\x00\r\x01\n\x02\r\xff', 'binary-1')
+        tt.new_file('file2', tt.root, '\x01\n\x02\r\x03\n\x04\r\xff', 'binary-2')
         tt.apply()
         self.tree1.commit('add binary', rev_id='b@cset-0-1')
         self.get_valid_bundle(None, 'b@cset-0-1')
+
+        # Delete
         tt = TreeTransform(self.tree1)
         trans_id = tt.trans_id_tree_file_id('binary-1')
         tt.delete_contents(trans_id)
         tt.apply()
         self.tree1.commit('delete binary', rev_id='b@cset-0-2')
         self.get_valid_bundle('b@cset-0-1', 'b@cset-0-2')
+
+        # Rename & modify
         tt = TreeTransform(self.tree1)
         trans_id = tt.trans_id_tree_file_id('binary-2')
         tt.adjust_path('file3', tt.root, trans_id)
         tt.delete_contents(trans_id)
-        tt.create_file('filecontents\x00', trans_id)
+        tt.create_file('file\rcontents\x00\n\x00', trans_id)
         tt.apply()
         self.tree1.commit('rename and modify binary', rev_id='b@cset-0-3')
         self.get_valid_bundle('b@cset-0-2', 'b@cset-0-3')
+
+        # Modify
         tt = TreeTransform(self.tree1)
         trans_id = tt.trans_id_tree_file_id('binary-2')
         tt.delete_contents(trans_id)
-        tt.create_file('\x00filecontents', trans_id)
+        tt.create_file('\x00file\rcontents', trans_id)
         tt.apply()
         self.tree1.commit('just modify binary', rev_id='b@cset-0-4')
         self.get_valid_bundle('b@cset-0-3', 'b@cset-0-4')
+
+        # Rollup
+        self.get_valid_bundle(None, 'b@cset-0-4')
 
     def test_last_modified(self):
         self.tree1 = BzrDir.create_standalone_workingtree('b1')
@@ -662,3 +676,211 @@ class CSetTester(TestCaseInTempDir):
                           verbose=False)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-4')
         bundle = self.get_valid_bundle('a@lmod-0-2a', 'a@lmod-0-4')
+
+    def test_hide_history(self):
+        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.b1 = self.tree1.branch
+
+        open('b1/one', 'wb').write('one\n')
+        self.tree1.add('one')
+        self.tree1.commit('add file', rev_id='a@cset-0-1')
+        open('b1/one', 'wb').write('two\n')
+        self.tree1.commit('modify', rev_id='a@cset-0-2')
+        open('b1/one', 'wb').write('three\n')
+        self.tree1.commit('modify', rev_id='a@cset-0-3')
+        bundle_file = StringIO()
+        rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
+                               'a@cset-0-1', bundle_file)
+        self.assertNotContainsRe(bundle_file.getvalue(), 'two')
+        self.assertContainsRe(bundle_file.getvalue(), 'one')
+        self.assertContainsRe(bundle_file.getvalue(), 'three')
+
+    def test_unicode_bundle(self):
+        # Handle international characters
+        os.mkdir('b1')
+        try:
+            f = open(u'b1/with Dod\xe9', 'wb')
+        except UnicodeEncodeError:
+            raise TestSkipped("Filesystem doesn't support unicode")
+
+        self.tree1 = self.make_branch_and_tree('b1')
+        self.b1 = self.tree1.branch
+
+        f.write((u'A file\n'
+            u'With international man of mystery\n'
+            u'William Dod\xe9\n').encode('utf-8'))
+        f.close()
+
+        self.tree1.add([u'with Dod\xe9'])
+        self.tree1.commit(u'i18n commit from William Dod\xe9', 
+                          rev_id='i18n-1', committer=u'William Dod\xe9')
+
+        # Add
+        bundle = self.get_valid_bundle(None, 'i18n-1')
+
+        # Modified
+        f = open(u'b1/with Dod\xe9', 'wb')
+        f.write(u'Modified \xb5\n'.encode('utf8'))
+        f.close()
+        self.tree1.commit(u'modified', rev_id='i18n-2')
+
+        bundle = self.get_valid_bundle('i18n-1', 'i18n-2')
+        
+        # Renamed
+        self.tree1.rename_one(u'with Dod\xe9', u'B\xe5gfors')
+        self.tree1.commit(u'renamed, the new i18n man', rev_id='i18n-3',
+                          committer=u'Erik B\xe5gfors')
+
+        bundle = self.get_valid_bundle('i18n-2', 'i18n-3')
+
+        # Removed
+        self.tree1.remove([u'B\xe5gfors'])
+        self.tree1.commit(u'removed', rev_id='i18n-4')
+
+        bundle = self.get_valid_bundle('i18n-3', 'i18n-4')
+
+        # Rollup
+        bundle = self.get_valid_bundle(None, 'i18n-4')
+
+
+    def test_whitespace_bundle(self):
+        if sys.platform in ('win32', 'cygwin'):
+            raise TestSkipped('Windows doesn\'t support filenames'
+                              ' with tabs or trailing spaces')
+        self.tree1 = self.make_branch_and_tree('b1')
+        self.b1 = self.tree1.branch
+
+        self.build_tree(['b1/trailing space '])
+        self.tree1.add(['trailing space '])
+        # TODO: jam 20060701 Check for handling files with '\t' characters
+        #       once we actually support them
+
+        # Added
+        self.tree1.commit('funky whitespace', rev_id='white-1')
+
+        bundle = self.get_valid_bundle(None, 'white-1')
+
+        # Modified
+        open('b1/trailing space ', 'ab').write('add some text\n')
+        self.tree1.commit('add text', rev_id='white-2')
+
+        bundle = self.get_valid_bundle('white-1', 'white-2')
+
+        # Renamed
+        self.tree1.rename_one('trailing space ', ' start and end space ')
+        self.tree1.commit('rename', rev_id='white-3')
+
+        bundle = self.get_valid_bundle('white-2', 'white-3')
+
+        # Removed
+        self.tree1.remove([' start and end space '])
+        self.tree1.commit('removed', rev_id='white-4')
+
+        bundle = self.get_valid_bundle('white-3', 'white-4')
+        
+        # Now test a complet roll-up
+        bundle = self.get_valid_bundle(None, 'white-4')
+
+    def test_alt_timezone_bundle(self):
+        self.tree1 = self.make_branch_and_tree('b1')
+        self.b1 = self.tree1.branch
+
+        self.build_tree(['b1/newfile'])
+        self.tree1.add(['newfile'])
+
+        # Asia/Colombo offset = 5 hours 30 minutes
+        self.tree1.commit('non-hour offset timezone', rev_id='tz-1',
+                          timezone=19800, timestamp=1152544886.0)
+
+        bundle = self.get_valid_bundle(None, 'tz-1')
+        
+        rev = bundle.revisions[0]
+        self.assertEqual('Mon 2006-07-10 20:51:26.000000000 +0530', rev.date)
+        self.assertEqual(19800, rev.timezone)
+        self.assertEqual(1152544886.0, rev.timestamp)
+
+
+class MungedBundleTester(TestCaseWithTransport):
+
+    def build_test_bundle(self):
+        wt = self.make_branch_and_tree('b1')
+
+        self.build_tree(['b1/one'])
+        wt.add('one')
+        wt.commit('add one', rev_id='a@cset-0-1')
+        self.build_tree(['b1/two'])
+        wt.add('two')
+        wt.commit('add two', rev_id='a@cset-0-2',
+                  revprops={'branch-nick':'test'})
+
+        bundle_txt = StringIO()
+        rev_ids = write_bundle(wt.branch.repository, 'a@cset-0-2',
+                               'a@cset-0-1', bundle_txt)
+        self.assertEqual(['a@cset-0-2'], rev_ids)
+        bundle_txt.seek(0, 0)
+        return bundle_txt
+
+    def check_valid(self, bundle):
+        """Check that after whatever munging, the final object is valid."""
+        self.assertEqual(['a@cset-0-2'],
+            [r.revision_id for r in bundle.real_revisions])
+
+    def test_extra_whitespace(self):
+        bundle_txt = self.build_test_bundle()
+
+        # Seek to the end of the file
+        # Adding one extra newline used to give us
+        # TypeError: float() argument must be a string or a number
+        bundle_txt.seek(0, 2)
+        bundle_txt.write('\n')
+        bundle_txt.seek(0)
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+
+    def test_extra_whitespace_2(self):
+        bundle_txt = self.build_test_bundle()
+
+        # Seek to the end of the file
+        # Adding two extra newlines used to give us
+        # MalformedPatches: The first line of all patches should be ...
+        bundle_txt.seek(0, 2)
+        bundle_txt.write('\n\n')
+        bundle_txt.seek(0)
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+
+    def test_missing_trailing_whitespace(self):
+        bundle_txt = self.build_test_bundle()
+
+        # Remove a trailing newline, it shouldn't kill the parser
+        raw = bundle_txt.getvalue()
+        # The contents of the bundle don't have to be this, but this
+        # test is concerned with the exact case where the serializer
+        # creates a blank line at the end, and fails if that
+        # line is stripped
+        self.assertEqual('\n\n', raw[-2:])
+        bundle_txt = StringIO(raw[:-1])
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+
+    def test_opening_text(self):
+        bundle_txt = self.build_test_bundle()
+
+        bundle_txt = StringIO("Some random\nemail comments\n"
+                              + bundle_txt.getvalue())
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+
+    def test_trailing_text(self):
+        bundle_txt = self.build_test_bundle()
+
+        bundle_txt = StringIO(bundle_txt.getvalue() +
+                              "Some trailing\nrandom\ntext\n")
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+

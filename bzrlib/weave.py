@@ -1,17 +1,17 @@
 #! /usr/bin/python
 
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -73,6 +73,7 @@ from cStringIO import StringIO
 import os
 import sha
 import time
+import warnings
 
 from bzrlib.trace import mutter
 from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
@@ -84,7 +85,10 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
 import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings
 import bzrlib.patiencediff
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_method,
+        deprecated_function,
+        zero_eight,
+        )
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 from bzrlib.weavefile import _read_weave_v5, write_weave_v5
@@ -635,7 +639,7 @@ class Weave(VersionedFile):
 
     def annotate(self, version_id):
         if isinstance(version_id, int):
-            warn('Weave.annotate(int) is deprecated. Please use version names'
+            warnings.warn('Weave.annotate(int) is deprecated. Please use version names'
                  ' in all circumstances as of 0.8',
                  DeprecationWarning,
                  stacklevel=2
@@ -1239,7 +1243,7 @@ def weave_stats(weave_file, pb):
     from bzrlib.weavefile import read_weave
 
     wf = file(weave_file, 'rb')
-    w = read_weave(wf, WeaveVersionedFile)
+    w = read_weave(wf)
     # FIXME: doesn't work on pipes
     weave_size = wf.tell()
 
@@ -1419,47 +1423,9 @@ def main(argv):
         raise ValueError('unknown command %r' % cmd)
     
 
-
-def profile_main(argv):
-    import tempfile, hotshot, hotshot.stats
-
-    prof_f = tempfile.NamedTemporaryFile()
-
-    prof = hotshot.Profile(prof_f.name)
-
-    ret = prof.runcall(main, argv)
-    prof.close()
-
-    stats = hotshot.stats.load(prof_f.name)
-    #stats.strip_dirs()
-    stats.sort_stats('cumulative')
-    ## XXX: Might like to write to stderr or the trace file instead but
-    ## print_stats seems hardcoded to stdout
-    stats.print_stats(20)
-            
-    return ret
-
-
-def lsprofile_main(argv): 
-    from bzrlib.lsprof import profile
-    ret,stats = profile(main, argv)
-    stats.sort()
-    stats.pprint()
-    return ret
-
-
 if __name__ == '__main__':
     import sys
-    if '--profile' in sys.argv:
-        args = sys.argv[:]
-        args.remove('--profile')
-        sys.exit(profile_main(args))
-    elif '--lsprof' in sys.argv:
-        args = sys.argv[:]
-        args.remove('--lsprof')
-        sys.exit(lsprofile_main(args))
-    else:
-        sys.exit(main(sys.argv))
+    sys.exit(main(sys.argv))
 
 
 class InterWeave(InterVersionedFile):

@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -24,8 +24,9 @@ from copy import copy
 import os
 import errno
 import re
-from stat import *
+from stat import S_IFREG, S_IFDIR
 from cStringIO import StringIO
+import warnings
 
 from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
 from bzrlib.trace import mutter
@@ -260,7 +261,7 @@ class _MemoryLock(object):
     def __del__(self):
         # Should this warn, or actually try to cleanup?
         if self.transport:
-            warn("MemoryLock %r not explicitly unlocked" % (self.path,))
+            warnings.warn("MemoryLock %r not explicitly unlocked" % (self.path,))
             self.unlock()
 
     def unlock(self):

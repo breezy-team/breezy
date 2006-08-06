@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -7,12 +7,12 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -26,11 +26,14 @@ from unittest import TestSuite
 
 import bzrlib.errors as errors
 from bzrlib.inter import InterObject
-from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.tsort import topo_sort
 from bzrlib import ui
+from bzrlib.symbol_versioning import (deprecated_function,
+        deprecated_method,
+        zero_eight,
+        )
 
 
 class VersionedFile(object):
@@ -54,7 +57,7 @@ class VersionedFile(object):
     def copy_to(self, name, transport):
         """Copy this versioned file to name on transport."""
         raise NotImplementedError(self.copy_to)
-    
+
     @deprecated_method(zero_eight)
     def names(self):
         """Return a list of all the versions in this versioned file.
@@ -170,8 +173,19 @@ class VersionedFile(object):
         if self._access_mode != 'w':
             raise errors.ReadOnlyObjectDirtiedError(self)
 
+    def enable_cache(self):
+        """Tell this versioned file that it should cache any data it reads.
+        
+        This is advisory, implementations do not have to support caching.
+        """
+        pass
+    
     def clear_cache(self):
-        """Remove any data cached in the versioned file object."""
+        """Remove any data cached in the versioned file object.
+
+        This only needs to be supported if caches are supported
+        """
+        pass
 
     def clone_text(self, new_version_id, old_version_id, parents):
         """Add an identical text to old_version_id as new_version_id.
@@ -251,6 +265,14 @@ class VersionedFile(object):
         """
         return ''.join(self.get_lines(version_id))
     get_string = get_text
+
+    def get_texts(self, version_ids):
+        """Return the texts of listed versions as a list of strings.
+
+        Raises RevisionNotPresent if version is not present in
+        file history.
+        """
+        return [''.join(self.get_lines(v)) for v in version_ids]
 
     def get_lines(self, version_id):
         """Return version contents as a sequence of lines.

@@ -1,16 +1,16 @@
 # Copyright (C) 2005 by Canonical Ltd
 # -*- coding: utf-8 -*-
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -247,7 +247,7 @@ class TestPull(ExternalBase):
         tree_b.commit('commit d')
         out = self.runbzr('pull ../branch_a', retcode=3)
         self.assertEquals(out,
-                ('','bzr: ERROR: These branches have diverged.  Try merge.\n'))
+                ('','bzr: ERROR: These branches have diverged.  Use the merge command to reconcile them.\n'))
         self.assertEquals(branch_b.get_parent(), parent)
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
@@ -258,3 +258,48 @@ class TestPull(ExternalBase):
         self.runbzr('pull ../branch_c --remember')
         self.assertEquals(branch_b.get_parent(),
                           branch_c.bzrdir.root_transport.base)
+
+    def test_pull_bundle(self):
+        from bzrlib.testament import Testament
+        # Build up 2 trees and prepare for a pull
+        tree_a = self.make_branch_and_tree('branch_a')
+        f = open('branch_a/a', 'wb')
+        f.write('hello')
+        f.close()
+        tree_a.add('a')
+        tree_a.commit('message')
+
+        tree_b = tree_a.bzrdir.sprout('branch_b').open_workingtree()
+
+        # Make a change to 'a' that 'b' can pull
+        f = open('branch_a/a', 'wb')
+        f.write('hey there')
+        f.close()
+        tree_a.commit('message')
+
+        # Create the bundle for 'b' to pull
+        os.chdir('branch_a')
+        bundle_file = open('../bundle', 'wb')
+        bundle_file.write(self.run_bzr('bundle', '../branch_b')[0])
+        bundle_file.close()
+
+        os.chdir('../branch_b')
+        output = self.run_bzr('pull', '../bundle')
+        self.assertEqual('', output[0])
+        self.assertEqual('All changes applied successfully.\n'
+                         '1 revision(s) pulled.\n', output[1])
+
+        self.assertEqualDiff(tree_a.branch.revision_history(),
+                             tree_b.branch.revision_history())
+
+        testament_a = Testament.from_revision(tree_a.branch.repository, 
+                                              tree_a.last_revision())
+        testament_b = Testament.from_revision(tree_b.branch.repository,
+                                              tree_b.last_revision())
+        self.assertEqualDiff(testament_a.as_text(),
+                             testament_b.as_text())
+
+        # it is legal to attempt to pull an already-merged bundle
+        output = self.run_bzr('pull', '../bundle')
+        self.assertEqual('', output[0])
+        self.assertEqual('0 revision(s) pulled.\n', output[1])

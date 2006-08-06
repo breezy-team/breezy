@@ -1,22 +1,31 @@
-## *.diff
+*.py[oc]
+# These are created as byproducts of our test suite
+./test*.tmp
+./.python-eggs
+./.bzr.log
+# Generated files
+CHANGELOG
+bzr.1
 ./doc/*.html
 ./tutorial.html
-*.py[oc]
-*~
-.arch-ids
-.bzr.profile
-.arch-inventory
-{arch}
-CHANGELOG
-bzr-test.log
-bzr.1
-,,*
-testbzr.log
-api
-test.log
-./tmp
-build
-./ID
-./tags
-.bzr-shelf
 BRANCH-INFO
+# setup.py working directory
+build
+# Editor temporary/working/backup files
+*$
+.*.sw[nop]
+.sw[nop]
+*~
+[#]*#
+.#*
+./tags
+# The shelf plugin uses this dir
+./.shelf
+# Mac droppings
+.DS_Store
+# win32 installer generated files
+./doc/*.htm
+./doc/bzr_man.txt
+./py2exe.log
+./tools/win32/bzr.iss
+./dist

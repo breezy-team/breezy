@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 by Canonical Development Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -18,7 +18,7 @@
 # compressed or not.
 
 """
-Stores are the main data-storage mechanism for Bazaar-NG.
+Stores are the main data-storage mechanism for Bazaar.
 
 A store is a simple write-once container indexed by a universally
 unique ID.
@@ -32,7 +32,7 @@ from zlib import adler32
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function, zero_eight)
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 from bzrlib.transport.local import LocalTransport

@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -33,13 +33,15 @@ the inventories.
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.errors import (InstallFailed, NoSuchRevision,
-                           MissingText)
+from bzrlib.errors import (InstallFailed,
+                           )
 from bzrlib.trace import mutter
-from bzrlib.progress import ProgressBar, ProgressPhase
-from bzrlib.reconcile import RepoReconciler
+from bzrlib.progress import ProgressPhase
 from bzrlib.revision import NULL_REVISION
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function,
+        deprecated_method,
+        zero_eight,
+        )
 
 
 # TODO: Avoid repeatedly opening weaves so many times.
@@ -124,8 +126,9 @@ class RepoFetcher(object):
         self.from_control = self.from_repository.control_weaves
         self.count_total = 0
         self.file_ids_names = {}
-        pp = ProgressPhase('fetch phase', 4, self.pb)
+        pp = ProgressPhase('Fetch phase', 4, self.pb)
         try:
+            pp.next_phase()
             revs = self._revids_to_fetch()
             # something to do ?
             if revs:
@@ -157,6 +160,11 @@ class RepoFetcher(object):
     def _fetch_weave_texts(self, revs):
         texts_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            # fileids_altered_by_revision_ids requires reading the inventory
+            # weave, we will need to read the inventory weave again when
+            # all this is done, so enable caching for that specific weave
+            inv_w = self.from_repository.get_inventory_weave()
+            inv_w.enable_cache()
             file_ids = self.from_repository.fileids_altered_by_revision_ids(revs)
             count = 0
             num_file_ids = len(file_ids)
@@ -169,7 +177,7 @@ class RepoFetcher(object):
                     self.from_repository.get_transaction())
                 # we fetch all the texts, because texts do
                 # not reference anything, and its cheap enough
-                to_weave.join(from_weave, version_ids=required_versions) 
+                to_weave.join(from_weave, version_ids=required_versions)
                 # we don't need *all* of this data anymore, but we dont know
                 # what we do. This cache clearing will result in a new read 
                 # of the knit data when we do the checkout, but probably we
@@ -202,6 +210,7 @@ class RepoFetcher(object):
                 # corrupt.
                 to_weave.join(from_weave, pb=child_pb, msg='merge inventory',
                               version_ids=revs)
+                from_weave.clear_cache()
             finally:
                 child_pb.finished()
         finally:

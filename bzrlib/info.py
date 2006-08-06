@@ -24,7 +24,8 @@ from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
 import bzrlib.osutils as osutils
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function, 
+        zero_eight)
 
 
 def plural(n, base='', pl=None):
@@ -61,15 +62,15 @@ def _show_location_info(repository, branch=None, working=None):
         branch_path = branch.bzrdir.root_transport.base
         if working_path != branch_path:
             # lightweight checkout
-            print '  light checkout root: %s' % working_path
+            print ' light checkout root: %s' % working_path
             if repository.is_shared():
                 # lightweight checkout of branch in shared repository
-                print '    shared repository: %s' % repository_path
-                print '    repository branch: %s' % (
+                print '   shared repository: %s' % repository_path
+                print '   repository branch: %s' % (
                     _repo_relpath(repository_path, branch_path))
             else:
                 # lightweight checkout of standalone branch
-                print '   checkout of branch: %s' % branch_path
+                print '  checkout of branch: %s' % branch_path
         elif repository.is_shared():
             # branch with tree inside shared repository
             print '    shared repository: %s' % repository_path
@@ -170,7 +171,7 @@ def _show_missing_revisions_working(working):
     branch = working.branch
     basis = working.basis_tree()
     work_inv = working.inventory
-    delta = diff.compare_trees(basis, working, want_unchanged=True)
+    delta = working.changes_from(basis, want_unchanged=True)
     history = branch.revision_history()
     tree_last_id = working.last_revision()
 
@@ -186,7 +187,7 @@ def _show_working_stats(working):
     """Show statistics about a working tree."""
     basis = working.basis_tree()
     work_inv = working.inventory
-    delta = diff.compare_trees(basis, working, want_unchanged=True)
+    delta = working.changes_from(basis, want_unchanged=True)
 
     print
     print 'In the working tree:'

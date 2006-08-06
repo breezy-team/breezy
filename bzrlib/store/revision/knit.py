@@ -77,17 +77,28 @@ class KnitRevisionStore(RevisionStore):
         rev_file = self.get_revision_file(transaction)
         return rev_file.get_ancestry(rev_file.versions())
 
-    def get_revision(self, revision_id, transaction):
-        """See RevisionStore.get_revision()."""
-        xml = self._get_revision_xml(revision_id, transaction)
+    def get_revisions(self, revision_ids, transaction):
+        """See RevisionStore.get_revisions()."""
+        texts = self._get_serialized_revisions(revision_ids, transaction)
+        revisions = []
         try:
-            r = self._serializer.read_revision_from_string(xml)
+            for text, revision_id in zip(texts, revision_ids):
+                r = self._serializer.read_revision_from_string(text)
+                assert r.revision_id == revision_id
+                revisions.append(r)
         except SyntaxError, e:
             raise errors.BzrError('failed to unpack revision_xml',
                                    [revision_id,
                                    str(e)])
-        assert r.revision_id == revision_id
-        return r
+        return revisions 
+
+    def _get_serialized_revisions(self, revision_ids, transaction):
+        texts = []
+        vf = self.get_revision_file(transaction)
+        try:
+            return vf.get_texts(revision_ids)
+        except (errors.RevisionNotPresent), e:
+            raise errors.NoSuchRevision(self, e.revision_id)
 
     def _get_revision_xml(self, revision_id, transaction):
         try:
@@ -121,5 +132,5 @@ class KnitRevisionStore(RevisionStore):
 
     def total_size(self, transaction):
         """ See RevisionStore.total_size()."""
-        return (len(self.all_revision_ids(transaction)), 
+        return (len(self.all_revision_ids(transaction)),
             self.versioned_file_store.total_size()[1])
