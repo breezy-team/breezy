@@ -167,7 +167,8 @@ class Config(object):
     
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
         
-        $BZREMAIL can be set to override this, then
+        $BZR_EMAIL can be set to override this (as well as the
+        deprecated $BZREMAIL), then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If none is found, a reasonable default is (hopefully)
@@ -175,8 +176,12 @@ class Config(object):
     
         TODO: Check it's reasonably well-formed.
         """
+        v = os.environ.get('BZR_EMAIL')
+        if v:
+            return v.decode(bzrlib.user_encoding)
         v = os.environ.get('BZREMAIL')
         if v:
+            warning('BZREMAIL is deprecated in favor of BZR_EMAIL. Please update your configuration.')
             return v.decode(bzrlib.user_encoding)
     
         v = self._get_user_id()
