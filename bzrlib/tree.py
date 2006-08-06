@@ -213,6 +213,10 @@ class EmptyTree(Tree):
     def has_filename(self, filename):
         return False
 
+    def kind(self, file_id):
+        assert self._inventory[file_id].kind == "directory"
+        return "directory"
+
     def list_files(self, include_root=True):
         return iter([])
     
