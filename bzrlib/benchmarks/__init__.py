@@ -33,9 +33,17 @@ from bzrlib.tests.blackbox import ExternalBase
 
 class Benchmark(ExternalBase):
 
-    _cached_kernel_like_tree = None
-    _cached_kernel_like_added_tree = None
-    _cached_kernel_like_committed_tree = None
+    CACHE_ROOT = None
+
+    def get_cache_dir(self, extra):
+        """Get the directory to use for caching the given object."""
+
+        if Benchmark.CACHE_ROOT is None:
+            Benchmark.CACHE_ROOT = osutils.pathjoin(self.TEST_ROOT, 'CACHE')
+        if not os.path.isdir(Benchmark.CACHE_ROOT):
+            os.mkdir(Benchmark.CACHE_ROOT)
+        cache_dir = osutils.pathjoin(self.CACHE_ROOT, extra)
+        return cache_dir, os.path.exists(cache_dir)
 
     def make_kernel_like_tree(self, url=None, root='.',
                               hardlink_working=False):
@@ -93,16 +101,14 @@ class Benchmark(ExternalBase):
             self._make_kernel_files(root=root)
             return
 
-        if Benchmark._cached_kernel_like_tree is None:
-            cache_dir = osutils.pathjoin(self.TEST_ROOT,
-                                         'cached_kernel_like_tree')
+        cache_dir, is_cached = self.get_cache_dir('kernel_like_tree')
+        if not is_cached:
             os.mkdir(cache_dir)
             self._make_kernel_files(root=cache_dir)
             self._protect_files(cache_dir)
-            Benchmark._cached_kernel_like_tree = cache_dir
 
         # Hardlinking the target directory is *much* faster (7s => <1s).
-        osutils.copy_tree(Benchmark._cached_kernel_like_tree, root,
+        osutils.copy_tree(cache_dir, root,
                           handlers={'file':os.link})
 
     def _clone_tree(self, source, dest, link_bzr=False, link_working=True):
@@ -162,9 +168,8 @@ class Benchmark(ExternalBase):
         # There isn't much underneath .bzr, so we don't support hardlinking
         # it. Testing showed there wasn't much gain, and there is potentially
         # a problem if someone modifies something underneath us.
-        if Benchmark._cached_kernel_like_added_tree is None:
-            cache_dir = osutils.pathjoin(self.TEST_ROOT,
-                                         'cached_kernel_like_added_tree')
+        cache_dir, is_cached = self.get_cache_dir('kernel_like_added_tree')
+        if not is_cached:
             # Get a basic tree with working files
             tree = self.make_kernel_like_tree(root=cache_dir,
                                               hardlink_working=True)
@@ -172,9 +177,8 @@ class Benchmark(ExternalBase):
             add.smart_add_tree(tree, [cache_dir], recurse=True, save=True)
 
             self._protect_files(cache_dir+'/.bzr')
-            Benchmark._cached_kernel_like_added_tree = cache_dir
 
-        self._clone_tree(Benchmark._cached_kernel_like_added_tree, root,
+        self._clone_tree(cache_dir, root,
                          link_working=hardlink_working)
         return workingtree.WorkingTree.open(root)
 
@@ -190,19 +194,17 @@ class Benchmark(ExternalBase):
         :param hardlink_bzr: Hardlink the .bzr directory. For readonly 
             operations this is safe, and shaves off a lot of setup time
         """
-        if Benchmark._cached_kernel_like_committed_tree is None:
-            cache_dir = osutils.pathjoin(self.TEST_ROOT,
-                                         'cached_kernel_like_committed_tree')
+        cache_dir, is_cached = self.get_cache_dir('kernel_like_committed_tree')
+        if not is_cached:
             # Get a basic tree with working files
             tree = self.make_kernel_like_added_tree(root=cache_dir,
                                                     hardlink_working=True)
             tree.commit('first post', rev_id='r1')
 
             self._protect_files(cache_dir+'/.bzr')
-            Benchmark._cached_kernel_like_committed_tree = cache_dir
 
         # Now we have a cached tree, just copy it
-        self._clone_tree(Benchmark._cached_kernel_like_committed_tree, root,
+        self._clone_tree(cache_dir, root,
                          link_bzr=hardlink_bzr,
                          link_working=hardlink_working)
         return workingtree.WorkingTree.open(root)

@@ -59,7 +59,8 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
         (this should be a clone)
         """
         # Call make_kernel_like_committed_tree to make sure it is cached
-        self.make_kernel_like_committed_tree(root='foo')
+        # we just throw it away, so hardlink the first bzr directory
+        self.make_kernel_like_committed_tree(root='foo', hardlink_bzr=True)
         self.time(self.make_kernel_like_committed_tree, root='bar')
 
     def test_07_make_kernel_like_committed_tree_hardlink(self):
