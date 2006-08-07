@@ -1234,9 +1234,6 @@ class Inventory(object):
         file_ie.name = new_name
         file_ie.parent_id = new_parent_id
 
-    def is_root(self, file_id):
-        return self.root is not None and file_id == self.root.file_id
-
 
 def make_entry(kind, name, parent_id, file_id=None):
     """Create an inventory entry.

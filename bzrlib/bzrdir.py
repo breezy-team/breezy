@@ -1557,10 +1557,9 @@ class ConvertBzrDir4To5(Converter):
     def _store_new_weave(self, rev, inv, present_parents):
         # the XML is now updated with text versions
         if __debug__:
-            for file_id in inv:
-                if inv.is_root(file_id):
-                    continue
-                ie = inv[file_id]
+            entries = inv.iter_entries()
+            entries.next()
+            for path, ie in entries:
                 assert hasattr(ie, 'revision'), \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
@@ -1579,10 +1578,9 @@ class ConvertBzrDir4To5(Converter):
         mutter('converting texts of revision {%s}',
                rev_id)
         parent_invs = map(self._load_updated_inventory, present_parents)
-        for file_id in inv:
-            if inv.is_root(file_id):
-                continue
-            ie = inv[file_id]
+        entries = inv.iter_entries()
+        entries.next()
+        for path, ie in entries:
             self._convert_file_version(rev, ie, parent_invs)
 
     def _convert_file_version(self, rev, ie, parent_invs):
