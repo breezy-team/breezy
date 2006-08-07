@@ -28,7 +28,7 @@ class TestHelp(ExternalBase):
         for cmd in ['--help', 'help', '-h', '-?']:
             output = self.runbzr(cmd)[0]
             line1 = output.split('\n')[0]
-            if not line1.startswith('Bazaar-NG'):
+            if not line1.startswith('Bazaar'):
                 self.fail("bad output from bzr %s:\n%r" % (cmd, output))
         # see https://launchpad.net/products/bzr/+bug/35940, -h doesn't work
 
