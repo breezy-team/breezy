@@ -26,7 +26,7 @@ class TransformBenchmark(Benchmark):
 
     def test_canonicalize_path(self):
         """Canonicalizing paths should be fast.""" 
-        wt = self.make_kernel_like_tree()
+        wt = self.make_kernel_like_tree(hardlink_working=True)
         paths = []
         for dirpath, dirnames, filenames in os.walk('.'):
             paths.extend(pathjoin(dirpath, d) for d in dirnames)

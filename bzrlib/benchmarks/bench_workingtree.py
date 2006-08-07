@@ -28,7 +28,7 @@ class WorkingTreeBenchmark(Benchmark):
         self.time(list, tree.list_files())
 
     def test_list_files_unknown_kernel_like_tree(self):
-        tree = self.make_kernel_like_tree()
+        tree = self.make_kernel_like_tree(hardlink_working=True)
         tree = WorkingTree.open('.')
         # Bzr only traverses directories if they are versioned
         # So add all the directories, but not the files, yielding
