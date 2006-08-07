@@ -85,6 +85,16 @@ class Benchmark(ExternalBase):
         self.build_tree(files)
         os.chdir(cwd)
 
+    def _cache_kernel_like_tree(self):
+        """Create the kernel_like_tree cache dir if it doesn't exist"""
+        cache_dir, is_cached = self.get_cache_dir('kernel_like_tree')
+        if is_cached:
+            return cache_dir
+        os.mkdir(cache_dir)
+        self._make_kernel_files(root=cache_dir)
+        self._protect_files(cache_dir)
+        return cache_dir
+
     def _link_or_copy_kernel_files(self, root, do_link=True):
         """Hardlink the kernel files from the cached location.
 
@@ -101,11 +111,7 @@ class Benchmark(ExternalBase):
             self._make_kernel_files(root=root)
             return
 
-        cache_dir, is_cached = self.get_cache_dir('kernel_like_tree')
-        if not is_cached:
-            os.mkdir(cache_dir)
-            self._make_kernel_files(root=cache_dir)
-            self._protect_files(cache_dir)
+        cache_dir = self._cache_kernel_like_tree()
 
         # Hardlinking the target directory is *much* faster (7s => <1s).
         osutils.copy_tree(cache_dir, root,
@@ -156,6 +162,20 @@ class Benchmark(ExternalBase):
                 if kind == 'file':
                     os.chmod(abspath, 0440)
 
+    def _cache_kernel_like_added_tree(self):
+        cache_dir, is_cached = self.get_cache_dir('kernel_like_added_tree')
+        if is_cached:
+            return cache_dir
+
+        # Get a basic tree with working files
+        tree = self.make_kernel_like_tree(root=cache_dir,
+                                          hardlink_working=True)
+        # Add everything to it
+        add.smart_add_tree(tree, [cache_dir], recurse=True, save=True)
+
+        self._protect_files(cache_dir+'/.bzr')
+        return cache_dir
+
     def make_kernel_like_added_tree(self, root='.',
                                     hardlink_working=True):
         """Make a kernel like tree, with all files added
@@ -168,19 +188,24 @@ class Benchmark(ExternalBase):
         # There isn't much underneath .bzr, so we don't support hardlinking
         # it. Testing showed there wasn't much gain, and there is potentially
         # a problem if someone modifies something underneath us.
-        cache_dir, is_cached = self.get_cache_dir('kernel_like_added_tree')
-        if not is_cached:
-            # Get a basic tree with working files
-            tree = self.make_kernel_like_tree(root=cache_dir,
-                                              hardlink_working=True)
-            # Add everything to it
-            add.smart_add_tree(tree, [cache_dir], recurse=True, save=True)
-
-            self._protect_files(cache_dir+'/.bzr')
+        cache_dir = self._cache_kernel_like_added_tree()
 
         self._clone_tree(cache_dir, root,
                          link_working=hardlink_working)
         return workingtree.WorkingTree.open(root)
+
+    def _cache_kernel_like_committed_tree(self):
+        cache_dir, is_cached = self.get_cache_dir('kernel_like_committed_tree')
+        if is_cached:
+            return cache_dir
+
+        # Get a basic tree with working files
+        tree = self.make_kernel_like_added_tree(root=cache_dir,
+                                                hardlink_working=True)
+        tree.commit('first post', rev_id='r1')
+
+        self._protect_files(cache_dir+'/.bzr')
+        return cache_dir
 
     def make_kernel_like_committed_tree(self, root='.',
                                     hardlink_working=True,
@@ -194,14 +219,7 @@ class Benchmark(ExternalBase):
         :param hardlink_bzr: Hardlink the .bzr directory. For readonly 
             operations this is safe, and shaves off a lot of setup time
         """
-        cache_dir, is_cached = self.get_cache_dir('kernel_like_committed_tree')
-        if not is_cached:
-            # Get a basic tree with working files
-            tree = self.make_kernel_like_added_tree(root=cache_dir,
-                                                    hardlink_working=True)
-            tree.commit('first post', rev_id='r1')
-
-            self._protect_files(cache_dir+'/.bzr')
+        cache_dir = self._cache_kernel_like_committed_tree()
 
         # Now we have a cached tree, just copy it
         self._clone_tree(cache_dir, root,

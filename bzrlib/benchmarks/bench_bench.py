@@ -15,7 +15,9 @@
 
 """Tests for bzr benchmark utilities performance."""
 
-
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.benchmarks import Benchmark
 
 
@@ -29,46 +31,55 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
 
     def test_02_make_kernel_like_tree(self):
         """Hardlinking a kernel-like working tree should be ~1s"""
-        # Make sure we have populated the cache first
-        self.make_kernel_like_tree(root='foo', hardlink_working=True)
+        # make sure kernel_like_tree is cached
+        self._cache_kernel_like_tree()
         self.time(self.make_kernel_like_tree, root='bar',
                   hardlink_working=True)
 
     def test_03_make_kernel_like_added_tree(self):
         """Time the first creation of a kernel like added tree"""
-        # This may not be an accurate test, in the case that the cached entry
-        # has already been created
-        self.time(self.make_kernel_like_added_tree, root='foo')
+        orig_cache = Benchmark.CACHE_ROOT
+        try:
+            # Change to a local cache directory so we know this
+            # really creates the files
+            Benchmark.CACHE_ROOT = osutils.abspath('cache')
+            self.time(self.make_kernel_like_added_tree, root='foo')
+        finally:
+            Benchmark.CACHE_ROOT = orig_cache
 
     def test_04_make_kernel_like_added_tree(self):
         """Time the second creation of a kernel like added tree 
         (this should be a clone)
         """
-        # Call make_kernel_like_added_tree to make sure it is cached
-        self.make_kernel_like_added_tree(root='foo')
+        # make sure kernel_like_added_tree is cached
+        self._cache_kernel_like_added_tree()
         self.time(self.make_kernel_like_added_tree, root='bar')
 
     def test_05_make_kernel_like_committed_tree(self):
         """Time the first creation of a committed kernel like tree"""
-        # This may not be an accurate test, in the case that the cached entry
-        # has already been created
-        self.time(self.make_kernel_like_committed_tree, root='foo')
+        orig_cache = Benchmark.CACHE_ROOT
+        try:
+            # Change to a local cache directory so we know this
+            # really creates the files
+            Benchmark.CACHE_ROOT = osutils.abspath('cache')
+            self.time(self.make_kernel_like_committed_tree, root='foo')
+        finally:
+            Benchmark.CACHE_ROOT = orig_cache
 
     def test_06_make_kernel_like_committed_tree(self):
         """Time the second creation of a committed kernel like tree 
         (this should be a clone)
         """
         # Call make_kernel_like_committed_tree to make sure it is cached
-        # we just throw it away, so hardlink the first bzr directory
-        self.make_kernel_like_committed_tree(root='foo', hardlink_bzr=True)
+        self._cache_kernel_like_committed_tree()
         self.time(self.make_kernel_like_committed_tree, root='bar')
 
     def test_07_make_kernel_like_committed_tree_hardlink(self):
         """Time the creation of a committed kernel like tree 
         (this should also hardlink the .bzr/ directory)
         """
-        # Call make_kernel_like_committed_tree to make sure it is cached
-        self.make_kernel_like_committed_tree(root='foo', hardlink_bzr=True)
+        # make sure kernel_like_committed_tree is cached
+        self._cache_kernel_like_committed_tree()
         self.time(self.make_kernel_like_committed_tree, root='bar',
                     hardlink_bzr=True)
 
