@@ -672,6 +672,22 @@ class WorkingTree(bzrlib.tree.Tree):
         return p
 
     @needs_write_lock
+    def set_parent_trees(self, parents_list):
+        """Set the parents of the working tree.
+
+        :param parents_list: A list of (revision_id, tree) tuples. 
+            If tree is None, then that element is treated as an unreachable
+            parent tree - i.e. a ghost.
+        """
+        parent = parents_list[:1]
+        if len(parent):
+            self.set_last_revision(parent[0][0])
+        else:
+            self.set_last_revision(None)
+        merges = parents_list[1:]
+        self.set_pending_merges([revid for revid, tree in merges])
+
+    @needs_write_lock
     def set_pending_merges(self, rev_list):
         self._control_files.put_utf8('pending-merges', '\n'.join(rev_list))
 
