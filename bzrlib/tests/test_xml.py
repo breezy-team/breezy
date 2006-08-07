@@ -85,6 +85,7 @@ _basis_inv_v5 = """<inventory revision_id="mbp@sourcefrog.net-20050905063503-439
 </inventory>
 """
 
+
 class TestSerializer(TestCase):
     """Test XML serialization"""
     def test_canned_inventory(self):
@@ -171,3 +172,14 @@ class TestSerializer(TestCase):
         outfile_contents = outp.getvalue()
         self.assertEqual(outfile_contents[-1], '\n')
         self.assertEqualDiff(outfile_contents, bzrlib.xml5.serializer_v5.write_revision_to_string(rev))
+
+    def test_empty_property_value(self):
+        """Create an empty property value check that it serializes correctly"""
+        s_v5 = bzrlib.xml5.serializer_v5
+        rev = s_v5.read_revision_from_string(_revision_v5)
+        outp = StringIO()
+        props = {'empty':'', 'one':'one'}
+        rev.properties = props
+        txt = s_v5.write_revision_to_string(rev)
+        new_rev = s_v5.read_revision_from_string(txt)
+        self.assertEqual(props, new_rev.properties)

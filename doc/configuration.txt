@@ -1,3 +1,9 @@
+====================
+Bazaar configuration
+====================
+
+Information on how to configure Bazaar.
+
 Location of configuration file
 ==============================
 Each user gets a pair of configurations files in $HOME/.bazaar. The first
@@ -14,7 +20,7 @@ comment
 -------
 A comment is any line that starts with a "#" (sometimes called a "hash
 mark", "pound sign" or "number sign"). Comment lines are ignored by
-Bazaar-NG when parsing ini files.
+Bazaar when parsing ini files.
 
 section header
 --------------
@@ -77,7 +83,7 @@ value for. The ? and * wildcards are supported::
     create_signatures = always
     check_signatures  = always
 
-    [http://bazaar-ng.org/bzr/*]
+    [http://bazaar-vcs.org/bzr/*]
     check_signatures  = require
 
 Common Variable options
@@ -94,7 +100,7 @@ editor
 ------
 The path of the editor that you wish to use if *bzr commit* is run without
 a commit log message. This setting is trumped by the environment variables
-$BZREDITOR or $EDITOR.
+$BZR_EDITOR or $EDITOR.
 
 check_signatures
 ----------------
@@ -108,7 +114,7 @@ ignore
 
 check-available
     (default) If gnupg signatures for revisions are present, check them.
-    Bazaar-NG will fail if it finds a bad signature, but will not fail if
+    Bazaar will fail if it finds a bad signature, but will not fail if
     no signature is present
 
 create_signatures

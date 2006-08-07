@@ -18,7 +18,7 @@
 # compressed or not.
 
 """
-Stores are the main data-storage mechanism for Bazaar-NG.
+Stores are the main data-storage mechanism for Bazaar.
 
 A store is a simple write-once container indexed by a universally
 unique ID.
