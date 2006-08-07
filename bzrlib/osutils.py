@@ -927,12 +927,18 @@ def walkdirs(top, prefix=""):
                 pending.append(dir)
 
 
-def copy_tree(from_path, to_path):
+def copy_tree(from_path, to_path, handlers={}):
     """Copy all of the entries in from_path into to_path.
 
     :param from_path: The base directory to copy. 
     :param to_path: The target directory. If it does not exist, it will
         be created.
+    :param handlers: A dictionary of functions, which takes a source and
+        destinations for files, directories, etc.
+        It is keyed on the file kind, such as 'directory', 'symlink', or 'file'
+        'file', 'directory', and 'symlink' should always exist.
+        If they are missing, they will be replaced with 'os.mkdir()',
+        'os.readlink() + os.symlink()', and 'shutil.copy2()', respectively.
     """
     # Now, just copy the existing cached tree to the new location
     # We use a cheap trick here.
@@ -941,19 +947,26 @@ def copy_tree(from_path, to_path):
     # So we can get both the source and target returned
     # without any extra work.
 
+    def copy_dir(source, dest):
+        os.mkdir(dest)
+
+    def copy_link(source, dest):
+        """Copy the contents of a symlink"""
+        link_to = os.readlink(source)
+        os.symlink(link_to, dest)
+
+    real_handlers = {'file':shutil.copy2,
+                     'symlink':copy_link,
+                     'directory':copy_dir,
+                    }
+    real_handlers.update(handlers)
+
     if not os.path.exists(to_path):
-        os.mkdir(to_path)
+        real_handlers['directory'](from_path, to_path)
 
     for dir_info, entries in walkdirs(from_path, prefix=to_path):
         for relpath, name, kind, st, abspath in entries:
-            if kind == 'directory':
-                os.mkdir(relpath)
-            elif kind == 'symlink':
-                link_to = os.readlink(abspath)
-                os.symlink(link_to, relpath)
-            else:
-                assert kind == 'file'
-                shutil.copy(abspath, relpath)
+            real_handlers[kind](abspath, relpath)
 
 
 def path_prefix_key(path):
