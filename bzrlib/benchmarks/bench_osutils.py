@@ -24,7 +24,7 @@ class WalkDirsBenchmark(Benchmark):
 
     def test_walkdirs_kernel_like_tree(self):
         """Walking a kernel sized tree is fast!(150ms)."""
-        self.make_kernel_like_tree()
+        self.make_kernel_like_tree(hardlink_working=True)
         # on roberts machine: this originally took:  157ms/4177ms
         # plain os.walk takes 213ms on this tree
         def dowalk():
