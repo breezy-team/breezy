@@ -162,7 +162,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
     old_inv = old_tree.inventory
     new_inv = new_tree.inventory
     delta = TreeDelta()
-    mutter('start compare_trees')
+    # mutter('start compare_trees')
 
     # TODO: Rather than iterating over the whole tree and then filtering, we
     # could diff just the specified files (if any) and their subtrees.  

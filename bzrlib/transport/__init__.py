@@ -783,7 +783,7 @@ def get_transport(base):
             raise errors.UnsupportedProtocol(base, last_err)
         # This doesn't look like a protocol, consider it a local path
         new_base = urlutils.local_path_to_url(base)
-        mutter('converting os path %r => url %s', base, new_base)
+        # mutter('converting os path %r => url %s', base, new_base)
         return new_base
 
     # Catch any URLs which are passing Unicode rather than ASCII
