@@ -43,6 +43,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       zero_eight, zero_nine,
                                       )
 from bzrlib.trace import mutter, note
+from bzrlib import transport
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -567,6 +568,35 @@ class Branch(object):
                                         % (mainline_parent_id, revision_id))
             mainline_parent_id = revision_id
         return BranchCheckResult(self)
+
+    def create_checkout_convenience(self, to_location, revision_id=None,
+                                    lightweight=False):
+        """Create a checkout of a branch.
+        
+        :param to_location: The url to produce the checkout at
+        :param revision_id: The revision to check out
+        :param lightweight: If True, produce a lightweight checkout, othewise
+        produce a bound branch (heavyweight checkout)
+        :return: The tree of the created checkout
+        """
+        if lightweight:
+            t = transport.get_transport(to_location)
+            try:
+                t.mkdir('.')
+            except errors.FileExists:
+                pass
+            checkout = bzrdir.BzrDirMetaFormat1().initialize_on_transport(t)
+            BranchReferenceFormat().initialize(checkout, self)
+        else:
+            checkout_branch = bzrdir.BzrDir.create_branch_convenience(
+                to_location, force_new_tree=False)
+            checkout = checkout_branch.bzrdir
+            checkout_branch.bind(self)
+            if revision_id is not None:
+                rh = checkout_branch.revision_history()
+                new_rh = rh[:rh.index(revision_id) + 1]
+                checkout_branch.set_revision_history(new_rh)
+        return checkout.create_workingtree(revision_id)
 
 
 class BranchFormat(object):

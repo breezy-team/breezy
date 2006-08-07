@@ -762,8 +762,8 @@ class cmd_checkout(Command):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
         try:
-            bzrdir.BzrDir.create_checkout_convenience(to_location, source,
-                                                      revision_id, lightweight)
+            source.create_checkout_convenience(to_location, revision_id, 
+                                               lightweight)
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
