@@ -135,7 +135,9 @@ class TestamentTests(TestCaseWithTransport):
     def test_testament_revprops(self):
         """Testament to revision with extra properties"""
         props = dict(flavor='sour cherry\ncream cheese',
-                     size='medium')
+                     size='medium',
+                     empty='',
+                    )
         self.wt.commit(message='revision with properties',
                       timestamp=1129025493,
                       timezone=36000,
@@ -281,6 +283,7 @@ inventory:
 properties:
   branch-nick:
     test branch
+  empty:
   flavor:
     sour cherry
     cream cheese

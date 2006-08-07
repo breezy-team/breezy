@@ -18,7 +18,9 @@
 
 """Tests for the update command of bzr."""
 
+import os
 
+from bzrlib import branch, bzrdir
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
@@ -55,7 +57,6 @@ class TestUpdate(ExternalBase):
     def test_update_out_of_date_standalone_tree(self):
         # FIXME the default format has to change for this to pass
         # because it currently uses the branch last-revision marker.
-        raise TestSkipped('default format too old')
         self.make_branch_and_tree('branch')
         # make a checkout
         self.runbzr('checkout --lightweight branch checkout')
@@ -64,8 +65,9 @@ class TestUpdate(ExternalBase):
         self.runbzr('commit -m add-file checkout')
         # now branch should be out of date
         out,err = self.runbzr('update branch')
-        self.assertEqual('Updated to revision 1.\n', out)
-        self.assertEqual('', err)
+        self.assertEqual('', out)
+        self.assertEqual('All changes applied successfully.\n'
+                         'Updated to revision 1.\n', err)
         self.failUnlessExists('branch/file')
 
     def test_update_out_of_date_light_checkout(self):
@@ -136,10 +138,59 @@ class TestUpdate(ExternalBase):
 
         # now, update checkout ->
         # get all three files and a pending merge.
-        self.run_bzr('update', 'checkout')
+        out, err = self.run_bzr('update', 'checkout')
+        self.assertEqual('', out)
+        self.assertContainsRe(err, 'Updated to revision 1.\n'
+                                   'Your local commits will now show as'
+                                   ' pending merges')
         wt = WorkingTree.open('checkout')
         self.assertNotEqual([], wt.pending_merges())
         self.failUnlessExists('checkout/file')
         self.failUnlessExists('checkout/file_b')
         self.failUnlessExists('checkout/file_c')
         self.assertTrue(wt.has_filename('file_c'))
+
+    def test_update_with_merges(self):
+        # Test that 'bzr update' works correctly when you have
+        # an update in the master tree, and a lightweight checkout
+        # which has merged another branch
+        master = self.make_branch_and_tree('master')
+        self.build_tree(['master/file'])
+        master.add(['file'])
+        master.commit('one', rev_id='m1')
+
+        self.build_tree(['checkout1/'])
+        checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
+        branch.BranchReferenceFormat().initialize(checkout_dir, master.branch)
+        checkout1 = checkout_dir.create_workingtree('m1')
+
+        # Create a second branch, with an extra commit
+        other = master.bzrdir.sprout('other').open_workingtree()
+        self.build_tree(['other/file2'])
+        other.add(['file2'])
+        other.commit('other2', rev_id='o2')
+
+        # Create a new commit in the master branch
+        self.build_tree(['master/file3'])
+        master.add(['file3'])
+        master.commit('f3', rev_id='m2')
+
+        # Merge the other branch into checkout
+        os.chdir('checkout1')
+        self.run_bzr('merge', '../other')
+
+        self.assertEqual(['o2'], checkout1.pending_merges())
+
+        # At this point, 'commit' should fail, because we are out of date
+        self.run_bzr_error(["please run 'bzr update'"],
+                           'commit', '-m', 'merged')
+
+        # This should not report about local commits being pending
+        # merges, because they were real merges
+        out, err = self.run_bzr('update')
+        self.assertEqual('', out)
+        self.assertEqual('All changes applied successfully.\n'
+                         'Updated to revision 2.\n', err)
+
+        # The pending merges should still be there
+        self.assertEqual(['o2'], checkout1.pending_merges())

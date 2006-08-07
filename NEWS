@@ -202,6 +202,15 @@ IN DEVELOPMENT
     * ``bzr status foo`` when foo was unversioned used to cause a full delta
       to be generated (John Arbash Meinel, #53638)
 
+    * When reading revision properties, an empty value should be considered
+      the empty string, not None (John Arbash Meinel, #47782)
+
+    * ``bzr diff --diff-options`` can now handle binary files being changed.
+      Also, the output is consistent when --diff-options is not supplied.
+      (John Arbash Meinel, #54651, #52930)
+
+    * Use the right suffixes for loading plugins (John Arbash Meinel, #51810)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
