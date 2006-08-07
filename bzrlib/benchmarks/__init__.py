@@ -227,12 +227,12 @@ class Benchmark(ExternalBase):
                          link_working=hardlink_working)
         return workingtree.WorkingTree.open(root)
 
-    def make_many_commit_tree(self, directory_name='.'):
-        """Create a tree with many commits.
-        
-        No files change are included.
-        """
-        tree = bzrdir.BzrDir.create_standalone_workingtree(directory_name)
+    def _cache_many_commit_tree(self):
+        cache_dir, is_cached = self.get_cache_dir('many_commit_tree')
+        if is_cached:
+            return cache_dir
+
+        tree = bzrdir.BzrDir.create_standalone_workingtree(cache_dir)
         tree.lock_write()
         tree.branch.lock_write()
         tree.branch.repository.lock_write()
@@ -247,20 +247,32 @@ class Benchmark(ExternalBase):
                     tree.branch.unlock()
             finally:
                 tree.unlock()
-        return tree
 
-    def make_heavily_merged_tree(self, directory_name='.'):
-        """Create a tree in which almost every commit is a merge.
-       
-        No files change are included.  This produces two trees, 
-        one of which is returned.  Except for the first commit, every
-        commit in its revision-history is a merge another commit in the other
-        tree.
+        return cache_dir
+
+    def make_many_commit_tree(self, directory_name='.',
+                              hardlink=False):
+        """Create a tree with many commits.
+        
+        No file changes are included. Not hardlinking the working tree, 
+        because there are no working tree files.
         """
-        tree = bzrdir.BzrDir.create_standalone_workingtree(directory_name)
+        cache_dir = self._cache_many_commit_tree()
+        self._clone_tree(cache_dir, directory_name,
+                         link_bzr=hardlink)
+        return workingtree.WorkingTree.open(directory_name)
+
+    def _cache_heavily_merged_tree(self):
+        cache_dir, is_cached = self.get_cache_dir('heavily_merged_tree')
+        if is_cached:
+            return cache_dir
+
+        os.mkdir(cache_dir)
+        tree = bzrdir.BzrDir.create_standalone_workingtree(
+                cache_dir + '/tree1')
         tree.lock_write()
         try:
-            tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+            tree2 = tree.bzrdir.sprout(cache_dir + '/tree2').open_workingtree()
             tree2.lock_write()
             try:
                 for i in xrange(250):
@@ -272,10 +284,26 @@ class Benchmark(ExternalBase):
                     tree.set_pending_merges([revision_id])
                 tree.set_pending_merges([])
             finally:
-                tree.unlock()
+                tree2.unlock()
         finally:
-            tree2.unlock()
-        return tree
+            tree.unlock()
+        return cache_dir
+
+    def make_heavily_merged_tree(self, directory_name='.',
+                                 hardlink=False):
+        """Create a tree in which almost every commit is a merge.
+       
+        No file changes are included.  This produces two trees, 
+        one of which is returned.  Except for the first commit, every
+        commit in its revision-history is a merge another commit in the other
+        tree.  Not hardlinking the working tree, because there are no working 
+        tree files.
+        """
+        cache_dir = self._cache_heavily_merged_tree()
+        tree_dir = cache_dir + '/tree1'
+        self._clone_tree(tree_dir, directory_name,
+                         link_bzr=hardlink)
+        return workingtree.WorkingTree.open(directory_name)
 
 
 def test_suite():
