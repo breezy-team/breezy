@@ -35,16 +35,40 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
                   hardlink_working=True)
 
     def test_03_make_kernel_like_added_tree(self):
-        """Test the first creation of a kernel like added tree"""
+        """Time the first creation of a kernel like added tree"""
         # This may not be an accurate test, in the case that the cached entry
         # has already been created
         self.time(self.make_kernel_like_added_tree, root='foo')
 
     def test_04_make_kernel_like_added_tree(self):
-        """Test the second creation of a kernel like added tree 
+        """Time the second creation of a kernel like added tree 
         (this should be a clone)
         """
         # Call make_kernel_like_added_tree to make sure it is cached
         self.make_kernel_like_added_tree(root='foo')
         self.time(self.make_kernel_like_added_tree, root='bar')
+
+    def test_05_make_kernel_like_committed_tree(self):
+        """Time the first creation of a committed kernel like tree"""
+        # This may not be an accurate test, in the case that the cached entry
+        # has already been created
+        self.time(self.make_kernel_like_committed_tree, root='foo')
+
+    def test_06_make_kernel_like_committed_tree(self):
+        """Time the second creation of a committed kernel like tree 
+        (this should be a clone)
+        """
+        # Call make_kernel_like_committed_tree to make sure it is cached
+        self.make_kernel_like_committed_tree(root='foo')
+        self.time(self.make_kernel_like_committed_tree, root='bar')
+
+    def test_07_make_kernel_like_committed_tree_hardlink(self):
+        """Time the creation of a committed kernel like tree 
+        (this should also hardlink the .bzr/ directory)
+        """
+        # Call make_kernel_like_committed_tree to make sure it is cached
+        self.make_kernel_like_committed_tree(root='foo', hardlink_bzr=True)
+        self.time(self.make_kernel_like_committed_tree, root='bar',
+                    hardlink_bzr=True)
+
 

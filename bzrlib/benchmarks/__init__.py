@@ -35,6 +35,7 @@ class Benchmark(ExternalBase):
 
     _cached_kernel_like_tree = None
     _cached_kernel_like_added_tree = None
+    _cached_kernel_like_committed_tree = None
 
     def make_kernel_like_tree(self, url=None, root='.',
                               hardlink_working=False):
@@ -97,11 +98,57 @@ class Benchmark(ExternalBase):
                                          'cached_kernel_like_tree')
             os.mkdir(cache_dir)
             self._make_kernel_files(root=cache_dir)
+            self._protect_files(cache_dir)
             Benchmark._cached_kernel_like_tree = cache_dir
 
         # Hardlinking the target directory is *much* faster (7s => <1s).
         osutils.copy_tree(Benchmark._cached_kernel_like_tree, root,
                           handlers={'file':os.link})
+
+    def _clone_tree(self, source, dest, link_bzr=False, link_working=True):
+        """Copy the contents from a given location to another location.
+        Optionally hardlink certain pieces of the tree.
+
+        :param source: The directory to copy
+        :param dest: The destination
+        :param link_bzr: Should the .bzr/ files be hardlinked?
+        :param link_working: Should the working tree be hardlinked?
+        """
+        # We use shutil.copyfile so that we don't copy permissions
+        # because most of our source trees are marked readonly to
+        # prevent modifying in the case of hardlinks
+        handlers = {'file':shutil.copyfile}
+        if osutils.hardlinks_good():
+            if link_working:
+                if link_bzr:
+                    handlers = {'file':os.link}
+                else:
+                    # Don't hardlink files inside bzr
+                    def file_handler(source, dest):
+                        if '.bzr/' in source:
+                            shutil.copyfile(source, dest)
+                        else:
+                            os.link(source, dest)
+                    handlers = {'file':file_handler}
+            elif link_bzr:
+                # Only link files inside .bzr/
+                def file_handler(source, dest):
+                    if '.bzr/' in source:
+                        os.link(source, dest)
+                    else:
+                        shutil.copyfile(source, dest)
+                handlers = {'file':file_handler}
+        osutils.copy_tree(source, dest, handlers=handlers)
+
+    def _protect_files(self, root):
+        """Chmod all files underneath 'root' to prevent writing
+
+        :param root: The base directory to modify
+        """
+        for dirinfo, entries in osutils.walkdirs(root):
+            for relpath, name, kind, st, abspath in entries:
+                if kind == 'file':
+                    os.chmod(abspath, 0440)
 
     def make_kernel_like_added_tree(self, root='.',
                                     hardlink_working=True):
@@ -112,6 +159,9 @@ class Benchmark(ExternalBase):
             files, just hardlink them to the cached files. Tests can unlink
             files that they will change.
         """
+        # There isn't much underneath .bzr, so we don't support hardlinking
+        # it. Testing showed there wasn't much gain, and there is potentially
+        # a problem if someone modifies something underneath us.
         if Benchmark._cached_kernel_like_added_tree is None:
             cache_dir = osutils.pathjoin(self.TEST_ROOT,
                                          'cached_kernel_like_added_tree')
@@ -120,21 +170,41 @@ class Benchmark(ExternalBase):
                                               hardlink_working=True)
             # Add everything to it
             add.smart_add_tree(tree, [cache_dir], recurse=True, save=True)
+
+            self._protect_files(cache_dir+'/.bzr')
             Benchmark._cached_kernel_like_added_tree = cache_dir
 
-        # Now we have a cached tree, just copy it
-        handlers = {} # Copy all files
-        if osutils.hardlinks_good() and hardlink_working:
-            # Hardlink only working files (not files underneath .bzr)
-            def file_handler(source, dest):
-                if '.bzr/' in source:
-                    shutil.copy2(source, dest)
-                else:
-                    os.link(source, dest)
-            handlers = {'file':file_handler}
+        self._clone_tree(Benchmark._cached_kernel_like_added_tree, root,
+                         link_working=hardlink_working)
+        return workingtree.WorkingTree.open(root)
 
-        osutils.copy_tree(Benchmark._cached_kernel_like_added_tree, root,
-                          handlers=handlers)
+    def make_kernel_like_committed_tree(self, root='.',
+                                    hardlink_working=True,
+                                    hardlink_bzr=False):
+        """Make a kernel like tree, with all files added and committed
+
+        :param root: Where to create the files
+        :param hardlink_working: Instead of copying all of the working tree
+            files, just hardlink them to the cached files. Tests can unlink
+            files that they will change.
+        :param hardlink_bzr: Hardlink the .bzr directory. For readonly 
+            operations this is safe, and shaves off a lot of setup time
+        """
+        if Benchmark._cached_kernel_like_committed_tree is None:
+            cache_dir = osutils.pathjoin(self.TEST_ROOT,
+                                         'cached_kernel_like_committed_tree')
+            # Get a basic tree with working files
+            tree = self.make_kernel_like_added_tree(root=cache_dir,
+                                                    hardlink_working=True)
+            tree.commit('first post', rev_id='r1')
+
+            self._protect_files(cache_dir+'/.bzr')
+            Benchmark._cached_kernel_like_committed_tree = cache_dir
+
+        # Now we have a cached tree, just copy it
+        self._clone_tree(Benchmark._cached_kernel_like_committed_tree, root,
+                         link_bzr=hardlink_bzr,
+                         link_working=hardlink_working)
         return workingtree.WorkingTree.open(root)
 
     def make_many_commit_tree(self, directory_name='.'):
