@@ -927,6 +927,35 @@ def walkdirs(top, prefix=""):
                 pending.append(dir)
 
 
+def copy_tree(from_path, to_path):
+    """Copy all of the entries in from_path into to_path.
+
+    :param from_path: The base directory to copy. 
+    :param to_path: The target directory. If it does not exist, it will
+        be created.
+    """
+    # Now, just copy the existing cached tree to the new location
+    # We use a cheap trick here.
+    # Absolute paths are prefixed with the first parameter
+    # relative paths are prefixed with the second.
+    # So we can get both the source and target returned
+    # without any extra work.
+
+    if not os.path.exists(to_path):
+        os.mkdir(to_path)
+
+    for dir_info, entries in walkdirs(from_path, prefix=to_path):
+        for relpath, name, kind, st, abspath in entries:
+            if kind == 'directory':
+                os.mkdir(relpath)
+            elif kind == 'symlink':
+                link_to = os.readlink(abspath)
+                os.symlink(link_to, relpath)
+            else:
+                assert kind == 'file'
+                shutil.copy(abspath, relpath)
+
+
 def path_prefix_key(path):
     """Generate a prefix-order path key for path.
 
