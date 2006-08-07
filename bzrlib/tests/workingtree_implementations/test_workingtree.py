@@ -278,8 +278,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_set_last_revision(self):
         wt = self.make_branch_and_tree('source')
         self.assertEqual(None, wt.last_revision())
-        # cannot set the last revision to one not in the branch history.
-        self.assertRaises(errors.NoSuchRevision, wt.set_last_revision, 'A')
+        # set last-revision to one not in the history
+        wt.set_last_revision('A')
+        # set it back to None for an empty tree.
+        wt.set_last_revision(None)
         wt.commit('A', allow_pointless=True, rev_id='A')
         self.assertEqual('A', wt.last_revision())
         # None is aways in the branch
