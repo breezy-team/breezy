@@ -505,7 +505,14 @@ class Commit(object):
         # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
         # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
-        for path, new_ie in self.work_inv.iter_entries():
+        entries = self.work_inv.iter_entries()
+        if not self.builder.record_root_entry:
+            warnings.warn('CommitBuilders should support recording the root'
+                ' entry as of bzr 0.10.', DeprecationWarning, stacklevel=2)
+            self.builder.new_inventory.add(self.basis_inv.root.copy())
+            entries.next()
+            self._emit_progress_update()
+        for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id
             # mutter('check %s {%s}', path, file_id)

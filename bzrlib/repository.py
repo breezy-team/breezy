@@ -256,8 +256,8 @@ class Repository(object):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
-        return CommitBuilder(self, parents, config, timestamp, timezone,
-                             committer, revprops, revision_id)
+        return NewCommitBuilder(self, parents, config, timestamp, timezone,
+                                committer, revprops, revision_id)
 
     def unlock(self):
         self.control_files.unlock()
@@ -1953,6 +1953,8 @@ class CommitBuilder(object):
     This allows describing a tree to be committed without needing to 
     know the internals of the format of the repository.
     """
+    
+    record_root_entry = False
     def __init__(self, repository, parents, config, timestamp=None, 
                  timezone=None, committer=None, revprops=None, 
                  revision_id=None):
@@ -2136,6 +2138,15 @@ class CommitBuilder(object):
             file_id, self.repository.get_transaction())
         versionedfile.add_lines(self._new_revision_id, parents, new_lines)
         versionedfile.clear_cache()
+
+
+class NewCommitBuilder(CommitBuilder):
+    """Temporary class so old CommitBuilders are detected properly
+    
+    Note: CommitBuilder works whether or not root entry is recorded.
+    """
+
+    record_root_entry = True
 
 
 _unescape_map = {
