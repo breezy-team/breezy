@@ -298,7 +298,9 @@ class NotBranchError(PathError):
 
     def __init__(self, path):
        import bzrlib.urlutils as urlutils
-       self.path = urlutils.unescape_for_display(path, 'ascii')
+       path = urlutils.unescape_for_display(path, 'ascii')
+       PathError.__init__(self, path=path, extra=None)
+       self._extra = None
 
 
 class AlreadyBranchError(PathError):
