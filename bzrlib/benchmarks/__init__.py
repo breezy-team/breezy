@@ -117,7 +117,8 @@ class Benchmark(ExternalBase):
         osutils.copy_tree(cache_dir, root,
                           handlers={'file':os.link})
 
-    def _clone_tree(self, source, dest, link_bzr=False, link_working=True):
+    def _clone_tree(self, source, dest, link_bzr=False, link_working=True,
+                    hot_cache=True):
         """Copy the contents from a given location to another location.
         Optionally hardlink certain pieces of the tree.
 
@@ -125,6 +126,7 @@ class Benchmark(ExternalBase):
         :param dest: The destination
         :param link_bzr: Should the .bzr/ files be hardlinked?
         :param link_working: Should the working tree be hardlinked?
+        :param hot_cache: Update the hash-cache when you are done
         """
         # We use shutil.copyfile so that we don't copy permissions
         # because most of our source trees are marked readonly to
@@ -151,6 +153,21 @@ class Benchmark(ExternalBase):
                         shutil.copyfile(source, dest)
                 handlers = {'file':file_handler}
         osutils.copy_tree(source, dest, handlers=handlers)
+        tree = workingtree.WorkingTree.open(dest)
+        if hot_cache:
+            tree.lock_write()
+            try:
+                # tree._hashcache.scan() just checks and removes
+                # entries that are out of date
+                # we need to actually store new ones
+                for path, ie in tree.inventory.iter_entries_by_dir():
+                    tree.get_file_sha1(ie.file_id, path)
+            finally:
+                tree.unlock()
+        # If we didn't iterate the tree, the hash cache is technically
+        # invalid, and it would be better to remove it, but there is
+        # no public api for that.
+        return tree
 
     def _protect_files(self, root):
         """Chmod all files underneath 'root' to prevent writing
@@ -171,28 +188,36 @@ class Benchmark(ExternalBase):
         tree = self.make_kernel_like_tree(root=cache_dir,
                                           hardlink_working=True)
         # Add everything to it
-        add.smart_add_tree(tree, [cache_dir], recurse=True, save=True)
+        tree.lock_write()
+        try:
+            add.smart_add_tree(tree, [cache_dir], recurse=True, save=True)
+            self._protect_files(cache_dir+'/.bzr')
+        finally:
+            tree.unlock()
 
-        self._protect_files(cache_dir+'/.bzr')
         return cache_dir
 
     def make_kernel_like_added_tree(self, root='.',
-                                    hardlink_working=True):
+                                    hardlink_working=True,
+                                    hot_cache=True):
         """Make a kernel like tree, with all files added
 
         :param root: Where to create the files
         :param hardlink_working: Instead of copying all of the working tree
             files, just hardlink them to the cached files. Tests can unlink
             files that they will change.
+        :param hot_cache: Run through the newly created tree and make sure
+            the stat-cache is correct. The old way of creating a freshly
+            added tree always had a hot cache.
         """
         # There isn't much underneath .bzr, so we don't support hardlinking
         # it. Testing showed there wasn't much gain, and there is potentially
         # a problem if someone modifies something underneath us.
         cache_dir = self._cache_kernel_like_added_tree()
 
-        self._clone_tree(cache_dir, root,
-                         link_working=hardlink_working)
-        return workingtree.WorkingTree.open(root)
+        return self._clone_tree(cache_dir, root,
+                                link_working=hardlink_working,
+                                hot_cache=hot_cache)
 
     def _cache_kernel_like_committed_tree(self):
         cache_dir, is_cached = self.get_cache_dir('kernel_like_committed_tree')
@@ -201,7 +226,8 @@ class Benchmark(ExternalBase):
 
         # Get a basic tree with working files
         tree = self.make_kernel_like_added_tree(root=cache_dir,
-                                                hardlink_working=True)
+                                                hardlink_working=True,
+                                                hot_cache=False)
         tree.commit('first post', rev_id='r1')
 
         self._protect_files(cache_dir+'/.bzr')
@@ -209,7 +235,8 @@ class Benchmark(ExternalBase):
 
     def make_kernel_like_committed_tree(self, root='.',
                                     hardlink_working=True,
-                                    hardlink_bzr=False):
+                                    hardlink_bzr=False,
+                                    hot_cache=True):
         """Make a kernel like tree, with all files added and committed
 
         :param root: Where to create the files
@@ -222,10 +249,10 @@ class Benchmark(ExternalBase):
         cache_dir = self._cache_kernel_like_committed_tree()
 
         # Now we have a cached tree, just copy it
-        self._clone_tree(cache_dir, root,
-                         link_bzr=hardlink_bzr,
-                         link_working=hardlink_working)
-        return workingtree.WorkingTree.open(root)
+        return self._clone_tree(cache_dir, root,
+                                link_bzr=hardlink_bzr,
+                                link_working=hardlink_working,
+                                hot_cache=hot_cache)
 
     def _cache_many_commit_tree(self):
         cache_dir, is_cached = self.get_cache_dir('many_commit_tree')
@@ -258,9 +285,9 @@ class Benchmark(ExternalBase):
         because there are no working tree files.
         """
         cache_dir = self._cache_many_commit_tree()
-        self._clone_tree(cache_dir, directory_name,
-                         link_bzr=hardlink)
-        return workingtree.WorkingTree.open(directory_name)
+        return self._clone_tree(cache_dir, directory_name,
+                                link_bzr=hardlink,
+                                hot_cache=True)
 
     def _cache_heavily_merged_tree(self):
         cache_dir, is_cached = self.get_cache_dir('heavily_merged_tree')
@@ -301,9 +328,9 @@ class Benchmark(ExternalBase):
         """
         cache_dir = self._cache_heavily_merged_tree()
         tree_dir = cache_dir + '/tree1'
-        self._clone_tree(tree_dir, directory_name,
-                         link_bzr=hardlink)
-        return workingtree.WorkingTree.open(directory_name)
+        return self._clone_tree(tree_dir, directory_name,
+                                link_bzr=hardlink,
+                                hot_cache=True)
 
 
 def test_suite():
