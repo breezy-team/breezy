@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -107,11 +107,9 @@ import bzrlib.ui
 import bzrlib.xml5
 
 
-# the regex here does the following:
-# 1) remove any weird characters; we don't escape them but rather
-# just pull them out
- # 2) match leading '.'s to make it not hidden
-_gen_file_id_re = re.compile(r'[^\w.]|(^\.*)')
+# the regex removes any weird characters; we don't escape them 
+# but rather just pull them out
+_gen_file_id_re = re.compile(r'[^\w.]')
 _gen_id_suffix = None
 _gen_id_serial = 0
 
@@ -139,11 +137,20 @@ def gen_file_id(name):
 
     The uniqueness is supplied from _next_id_suffix.
     """
-    # XXX TODO: squash the filename to lowercase.
-    # XXX TODO: truncate the filename to something like 20 or 30 chars.
-    # XXX TODO: consider what to do with ids that look like illegal filepaths
-    # on platforms we support.
-    return _gen_file_id_re.sub('', name) + _next_id_suffix()
+    # The real randomness is in the _next_id_suffix, the
+    # rest of the identifier is just to be nice.
+    # So we:
+    # 1) Remove non-ascii word characters to keep the ids portable
+    # 2) squash to lowercase, so the file id doesn't have to
+    #    be escaped (case insensitive filesystems would bork for ids
+    #    that only differred in case without escaping).
+    # 3) truncate the filename to 20 chars. Long filenames also bork on some
+    #    filesystems
+    # 4) Removing starting '.' characters to prevent the file ids from
+    #    being considered hidden.
+    ascii_word_only = _gen_file_id_re.sub('', name.lower())
+    short_no_dots = ascii_word_only.lstrip('.')[:20]
+    return short_no_dots + _next_id_suffix()
 
 
 def gen_root_id():
@@ -451,6 +458,9 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def get_file(self, file_id):
         return self.get_file_byname(self.id2path(file_id))
+
+    def get_file_text(self, file_id):
+        return self.get_file(file_id).read()
 
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
@@ -1008,7 +1018,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         ## TODO: Work from given directory downwards
         for path, dir_entry in self.inventory.directories():
-            mutter("search for unknowns in %r", path)
+            # mutter("search for unknowns in %r", path)
             dirabs = self.abspath(path)
             if not isdir(dirabs):
                 # e.g. directory deleted
@@ -1098,22 +1108,23 @@ class WorkingTree(bzrlib.tree.Tree):
 
         Cached in the Tree object after the first call.
         """
-        ignorelist = getattr(self, '_ignorelist', None)
-        if ignorelist is not None:
-            return ignorelist
+        ignoreset = getattr(self, '_ignoreset', None)
+        if ignoreset is not None:
+            return ignoreset
 
-        ignore_globs = bzrlib.DEFAULT_IGNORE[:]
+        ignore_globs = set(bzrlib.DEFAULT_IGNORE)
+        ignore_globs.update(ignores.get_runtime_ignores())
 
-        ignore_globs.extend(ignores.get_user_ignores())
+        ignore_globs.update(ignores.get_user_ignores())
 
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
             try:
-                ignore_globs.extend(ignores.parse_ignore_file(f))
+                ignore_globs.update(ignores.parse_ignore_file(f))
             finally:
                 f.close()
 
-        self._ignorelist = ignore_globs
+        self._ignoreset = ignore_globs
         self._ignore_regex = self._combine_ignore_rules(ignore_globs)
         return ignore_globs
 
@@ -1123,7 +1134,7 @@ class WorkingTree(bzrlib.tree.Tree):
         :return: (ignore rules compiled regex, dictionary mapping rule group 
         indices to original rule.)
         """
-        if getattr(self, '_ignorelist', None) is None:
+        if getattr(self, '_ignoreset', None) is None:
             self.get_ignore_list()
         return self._ignore_regex
 
@@ -1369,27 +1380,7 @@ class WorkingTree(bzrlib.tree.Tree):
         between multiple working trees, i.e. via shared storage, then we 
         would probably want to lock both the local tree, and the branch.
         """
-        # FIXME: We want to write out the hashcache only when the last lock on
-        # this working copy is released.  Peeking at the lock count is a bit
-        # of a nasty hack; probably it's better to have a transaction object,
-        # which can do some finalization when it's either successfully or
-        # unsuccessfully completed.  (Denys's original patch did that.)
-        # RBC 20060206 hooking into transaction will couple lock and transaction
-        # wrongly. Hooking into unlock on the control files object is fine though.
-        
-        # TODO: split this per format so there is no ugly if block
-        if self._hashcache.needs_write and (
-            # dedicated lock files
-            self._control_files._lock_count==1 or 
-            # shared lock files
-            (self._control_files is self.branch.control_files and 
-             self._control_files._lock_count==3)):
-            self._hashcache.write()
-        # reverse order of locking.
-        try:
-            return self._control_files.unlock()
-        finally:
-            self.branch.unlock()
+        raise NotImplementedError(self.unlock)
 
     @needs_write_lock
     def update(self):
@@ -1490,6 +1481,25 @@ class WorkingTree(bzrlib.tree.Tree):
         return conflicts
 
 
+class WorkingTree2(WorkingTree):
+    """This is the Format 2 working tree.
+
+    This was the first weave based working tree. 
+     - uses os locks for locking.
+     - uses the branch last-revision.
+    """
+
+    def unlock(self):
+        # we share control files:
+        if self._hashcache.needs_write and self._control_files._lock_count==3:
+            self._hashcache.write()
+        # reverse order of locking.
+        try:
+            return self._control_files.unlock()
+        finally:
+            self.branch.unlock()
+
+
 class WorkingTree3(WorkingTree):
     """This is the Format 3 working tree.
 
@@ -1548,6 +1558,15 @@ class WorkingTree3(WorkingTree):
         except StopIteration:
             raise ConflictFormatError()
         return ConflictList.from_stanzas(RioReader(confile))
+
+    def unlock(self):
+        if self._hashcache.needs_write and self._control_files._lock_count==1:
+            self._hashcache.write()
+        # reverse order of locking.
+        try:
+            return self._control_files.unlock()
+        finally:
+            self.branch.unlock()
 
 
 def get_conflicted_stem(path):
@@ -1688,7 +1707,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                 branch.unlock()
         revision = branch.last_revision()
         inv = Inventory() 
-        wt = WorkingTree(a_bzrdir.root_transport.local_abspath('.'),
+        wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
@@ -1716,7 +1735,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        return WorkingTree(a_bzrdir.root_transport.local_abspath('.'),
+        return WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
                            _bzrdir=a_bzrdir)
@@ -1842,18 +1861,26 @@ class WorkingTreeTestProviderAdapter(object):
         self._transport_readonly_server = transport_readonly_server
         self._formats = formats
     
+    def _clone_test(self, test, bzrdir_format, workingtree_format, variation):
+        """Clone test for adaption."""
+        new_test = deepcopy(test)
+        new_test.transport_server = self._transport_server
+        new_test.transport_readonly_server = self._transport_readonly_server
+        new_test.bzrdir_format = bzrdir_format
+        new_test.workingtree_format = workingtree_format
+        def make_new_test_id():
+            new_id = "%s(%s)" % (test.id(), variation)
+            return lambda: new_id
+        new_test.id = make_new_test_id()
+        return new_test
+    
     def adapt(self, test):
         from bzrlib.tests import TestSuite
         result = TestSuite()
         for workingtree_format, bzrdir_format in self._formats:
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.bzrdir_format = bzrdir_format
-            new_test.workingtree_format = workingtree_format
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), workingtree_format.__class__.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
+            new_test = self._clone_test(
+                test,
+                bzrdir_format,
+                workingtree_format, workingtree_format.__class__.__name__)
             result.addTest(new_test)
         return result

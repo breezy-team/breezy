@@ -99,7 +99,7 @@ class TestSmartAdd(TestCaseWithTransport):
     def test_add_dry_run(self):
         """Test a dry run add, make sure nothing is added."""
         from bzrlib.commands import run_bzr
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
         eq = self.assertEqual
         wt = self.make_branch_and_tree('.')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
@@ -118,7 +118,7 @@ class TestSmartAdd(TestCaseWithTransport):
         from bzrlib.commands import run_bzr
         wt = self.make_branch_and_tree('.')
         # The default ignore list includes '*.py[co]', but not CVS
-        ignores.set_user_ignores(['./.bazaar', '*.py[co]'])
+        ignores._set_user_ignores(['./.bazaar', '*.py[co]'])
         self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS',
                         'inertiatic/foo.pyc'])
         added, ignored = smart_add_tree(wt, u'.')
@@ -228,7 +228,7 @@ class TestAddNonNormalized(TestCaseWithTransport):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
             smart_add_tree(self.wt, [u'a\u030a'])
-            self.assertEqual([(u'\xe5', 'file')],
+            self.assertEqual([('', 'root_directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in 
                         self.wt.inventory.iter_entries()])
         finally:
@@ -240,7 +240,7 @@ class TestAddNonNormalized(TestCaseWithTransport):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
             smart_add_tree(self.wt, [])
-            self.assertEqual([(u'\xe5', 'file')],
+            self.assertEqual([('', 'root_directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in 
                         self.wt.inventory.iter_entries()])
         finally:

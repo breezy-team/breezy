@@ -28,7 +28,7 @@ class TestAdd(ExternalBase):
         
     def test_add_reports(self):
         """add command prints the names of added files."""
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
 
         self.runbzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
@@ -66,7 +66,7 @@ class TestAdd(ExternalBase):
 
         "bzr add" should add the parent(s) as necessary.
         """
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
 
         self.runbzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
@@ -91,7 +91,7 @@ class TestAdd(ExternalBase):
 
         "bzr add" should do this happily.
         """
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
 
         self.runbzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
@@ -105,7 +105,7 @@ class TestAdd(ExternalBase):
         """Add in subdirectory should add only things from there down"""
         from bzrlib.workingtree import WorkingTree
 
-        ignores.set_user_ignores(['./.bazaar'])
+        ignores._set_user_ignores(['./.bazaar'])
         eq = self.assertEqual
         ass = self.assertTrue
         chdir = os.chdir

@@ -1,15 +1,15 @@
 # (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -307,7 +307,12 @@ class TestRevisionAttributes(TestCaseWithTransport):
         tree1 = self.make_branch_and_tree("br1")
 
         # create a revision
-        tree1.commit(message="quux", allow_pointless=True, committer="jaq")
+        tree1.commit(message="quux", allow_pointless=True, committer="jaq",
+                     revprops={'empty':'',
+                               'value':'one',
+                               'unicode':'\xb5',
+                               'multiline':'foo\nbar\n\n'
+                              })
         assert len(tree1.branch.revision_history()) > 0
         rev_a = tree1.branch.repository.get_revision(tree1.branch.last_revision())
 
@@ -317,6 +322,7 @@ class TestRevisionAttributes(TestCaseWithTransport):
                      timezone=rev_a.timezone,
                      committer=rev_a.committer,
                      rev_id=rev_a.revision_id,
+                     revprops=rev_a.properties,
                      allow_pointless=True, # there's nothing in this commit
                      strict=True,
                      verbose=True)
@@ -327,3 +333,4 @@ class TestRevisionAttributes(TestCaseWithTransport):
         self.assertEqual(rev_a.timezone, rev_b.timezone)
         self.assertEqual(rev_a.committer, rev_b.committer)
         self.assertEqual(rev_a.revision_id, rev_b.revision_id)
+        self.assertEqual(rev_a.properties, rev_b.properties)

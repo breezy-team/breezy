@@ -23,10 +23,14 @@ import os
 import sys
 
 #import bzrlib specific imports here
-import bzrlib.config as config
+from bzrlib import (
+    config,
+    errors,
+    osutils,
+    urlutils,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-import bzrlib.errors as errors
 from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 
 
@@ -353,6 +357,39 @@ class TestBranchConfig(TestCaseWithTransport):
         self.assertFalse(b.get_config().has_explicit_nickname())
         b.nick = 'foo'
         self.assertTrue(b.get_config().has_explicit_nickname())
+
+    def test_config_url(self):
+        """The Branch.get_config will use section that uses a local url"""
+        branch = self.make_branch('branch')
+        self.assertEqual('branch', branch.nick)
+
+        locations = config.locations_config_filename()
+        config.ensure_config_dir_exists()
+        local_url = urlutils.local_path_to_url('branch')
+        open(locations, 'wb').write('[%s]\nnickname = foobar' 
+                                    % (local_url,))
+        self.assertEqual('foobar', branch.nick)
+
+    def test_config_local_path(self):
+        """The Branch.get_config will use a local system path"""
+        branch = self.make_branch('branch')
+        self.assertEqual('branch', branch.nick)
+
+        locations = config.locations_config_filename()
+        config.ensure_config_dir_exists()
+        open(locations, 'wb').write('[%s/branch]\nnickname = barry' 
+                                    % (osutils.getcwd().encode('utf8'),))
+        self.assertEqual('barry', branch.nick)
+
+    def test_config_creates_local(self):
+        """Creating a new entry in config uses a local path."""
+        branch = self.make_branch('branch')
+        branch.set_push_location('http://foobar')
+        locations = config.locations_config_filename()
+        local_path = osutils.getcwd().encode('utf8')
+        # Surprisingly ConfigObj doesn't create a trailing newline
+        self.check_file_contents(locations,
+            '[%s/branch]\npush_location = http://foobar' % (local_path,))
 
 
 class TestGlobalConfigItems(TestCase):
@@ -713,8 +750,8 @@ class TestBranchConfigItems(TestCaseInTempDir):
         my_config.branch.control_files.email = "John"
         self.assertEqual("John", my_config._get_user_id())
 
-    def test_BZREMAIL_OVERRIDES(self):
-        os.environ['BZREMAIL'] = "Robert Collins <robertc@example.org>"
+    def test_BZR_EMAIL_OVERRIDES(self):
+        os.environ['BZR_EMAIL'] = "Robert Collins <robertc@example.org>"
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.org>",
