@@ -768,7 +768,9 @@ class TransportTests(TestTransportImplementation):
         else:
             self.build_tree(['a/', 'a/%'])
         
-        self.assertEqual(['%25'], list(t.list_dir('a')))
+        names = list(t.list_dir('a'))
+        self.assertEqual(['%25'], names)
+        self.assertIsInstance(names[0], str)
 
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem
