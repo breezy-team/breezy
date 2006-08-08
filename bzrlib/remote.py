@@ -67,6 +67,12 @@ class RemoteBzrDir(BzrDir):
     def get_branch_transport(self, branch_format):
         return self._real_bzrdir.get_branch_transport(branch_format)
 
+    def get_repository_transport(self, repository_format):
+        return self._real_bzrdir.get_repository_transport(repository_format)
+
+    def get_workingtree_transport(self, workingtree_format):
+        return self._real_bzrdir.get_workingtree_transport(workingtree_format)
+
     def can_convert_format(self):
         """Upgrading of remote bzrdirs is not supported yet."""
         return False
