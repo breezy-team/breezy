@@ -1328,12 +1328,12 @@ class _KnitData(_KnitComponentFile):
         # GzipFile.writelines() just iterates and calls self.write() for
         # each line in the list. So do the faster thing and write it all out
         # at once.
-        data_file.write(''.join(chain(
+        data_file.writelines(chain(
             ["version %s %d %s\n" % (version_id_utf8,
                                      len(lines),
                                      digest)],
             lines,
-            ["end %s\n" % version_id_utf8])))
+            ["end %s\n" % version_id_utf8]))
         data_file.close()
         length= sio.tell()
 

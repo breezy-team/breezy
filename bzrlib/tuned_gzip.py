@@ -17,6 +17,8 @@
 
 """Bzrlib specific gzip tunings. We plan to feed these to the upstream gzip."""
 
+import cStringIO
+
 # make GzipFile faster:
 import gzip
 from gzip import U32, LOWU32, FEXTRA, FCOMMENT, FNAME, FHCRC
@@ -279,10 +281,8 @@ class GzipFile(gzip.GzipFile):
         # to :
         # 4168 calls in 417.
         # Negative numbers result in reading all the lines
-        if sizehint <= 0:
-            sizehint = -1
-        content = self.read(sizehint)
-        return bzrlib.osutils.split_lines(content)
+        content = cStringIO.StringIO(self.read(-1))
+        return content.readlines()
 
     def _unread(self, buf, len_buf=None):
         """tuned to remove unneeded len calls.
