@@ -19,12 +19,17 @@
 This is a fairly thin wrapper on regular file IO.
 """
 
+import errno
 import os
 import shutil
 import sys
-from stat import ST_MODE, S_ISDIR, ST_SIZE
+from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
 import tempfile
 
+from bzrlib import (
+    errors,
+    osutils,
+    )
 from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename, 
                             check_legal_path, rmtree)
 from bzrlib.symbol_versioning import warn
@@ -51,7 +56,6 @@ class LocalTransport(Transport):
             base = base + '/'
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
-        ## mutter("_local_base: %r => %r", base, self._local_base)
 
     def should_cache(self):
         return False
@@ -119,10 +123,13 @@ class LocalTransport(Transport):
 
         :param relpath: The relative path to the file
         """
+        path = self._abspath(relpath)
         try:
-            path = self._abspath(relpath)
             return open(path, 'rb')
         except (IOError, OSError),e:
+            # Fast path this *one* case, because it happens *a lot*
+            if e.errno == errno.ENOENT:
+                raise errors.NoSuchFile(path, e)
             self._translate_error(e, path)
 
     def put(self, relpath, f, mode=None):
@@ -176,15 +183,13 @@ class LocalTransport(Transport):
         try:
             try:
                 fp = open(abspath, 'ab')
-                # FIXME should we really be chmodding every time ? RBC 20060523
-                if mode is not None:
+                st = os.fstat(fp.fileno())
+                if mode is not None and mode != S_IMODE(st.st_mode):
                     os.chmod(abspath, mode)
             except (IOError, OSError),e:
                 self._translate_error(e, relpath)
-            # win32 workaround (tell on an unwritten file returns 0)
-            fp.seek(0, 2)
-            result = fp.tell()
-            self._pump(f, fp)
+            result = st.st_size
+            osutils.pumpfile(f, fp)
         finally:
             if fp is not None:
                 fp.close()
