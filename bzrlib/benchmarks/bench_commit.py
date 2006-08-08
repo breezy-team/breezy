@@ -47,7 +47,7 @@ class CommitBenchmark(Benchmark):
 
     def test_commit_one_in_kernel_like_tree_cold_hash_cache(self):
         """Time committing a single change, when not directly specified"""
-        tree = self.make_kernel_like_committed_tree()
+        tree = self.make_kernel_like_committed_tree(hot_cache=False)
 
         # working-tree is hardlinked, so replace a file and commit the change
         os.remove('4/4/4/4')
@@ -58,9 +58,6 @@ class CommitBenchmark(Benchmark):
         """Time committing a single change, when not directly specified"""
         tree = self.make_kernel_like_committed_tree()
 
-        # Freshen the hash cache
-        self.run_bzr('status')
-
         # working-tree is hardlinked, so replace a file and commit the change
         os.remove('4/4/4/4')
         open('4/4/4/4', 'wb').write('new contents\n')
@@ -69,7 +66,7 @@ class CommitBenchmark(Benchmark):
     def test_partial_commit_one_in_kernel_like_tree_cold_hash_cache(self):
         """Time committing a single change when it is directly specified"""
 
-        tree = self.make_kernel_like_committed_tree()
+        tree = self.make_kernel_like_committed_tree(hot_cache=False)
 
         # working-tree is hardlinked, so replace a file and commit the change
         os.remove('4/4/4/4')
@@ -80,7 +77,6 @@ class CommitBenchmark(Benchmark):
         """Time committing a single change when it is directly specified"""
 
         tree = self.make_kernel_like_committed_tree()
-        self.run_bzr('status')
 
         # working-tree is hardlinked, so replace a file and commit the change
         os.remove('4/4/4/4')
