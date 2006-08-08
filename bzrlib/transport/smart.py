@@ -338,6 +338,17 @@ class SmartServer(object):
     def do_delete(self, relpath):
         self._backing_transport.delete(relpath)
 
+    def do_iter_files_recursive(self, abspath):
+        # XXX: the path handling needs some thought.
+        #relpath = self._backing_transport.relpath(abspath)
+        transport = self._backing_transport.clone(abspath)
+        filenames = transport.iter_files_recursive()
+        return SmartServerResponse(('names',) + tuple(filenames))
+
+    def do_list_dir(self, relpath):
+        filenames = self._backing_transport.list_dir(relpath)
+        return SmartServerResponse(('names',) + tuple(filenames))
+
     def do_mkdir(self, relpath, mode):
         self._backing_transport.mkdir(relpath, self._optional_mode(mode))
 
@@ -652,9 +663,6 @@ class SmartTransport(sftp.SFTPUrlHandling):
     def stat(self, relpath):
         raise errors.TransportNotPossible('smart client does not support stat()')
 
-    def listable(self):
-        return False
-
     ## def lock_read(self, relpath):
     ##     """Lock the given file for shared (read) access.
     ##     :return: A lock object, which should be passed to Transport.unlock()
@@ -667,6 +675,25 @@ class SmartTransport(sftp.SFTPUrlHandling):
     ##         def unlock(self):
     ##             pass
     ##     return BogusLock(relpath)
+
+    def listable(self):
+        return True
+
+    def list_dir(self, relpath):
+        resp = self._client._call('list_dir',
+                                  self._remote_path(relpath))
+        if resp[0] == 'names':
+            return resp[1:]
+        else:
+            self._translate_error(resp)
+
+    def iter_files_recursive(self):
+        resp = self._client._call('iter_files_recursive',
+                                  self._remote_path(''))
+        if resp[0] == 'names':
+            return resp[1:]
+        else:
+            self._translate_error(resp)
 
 
 class SmartStreamClient(SmartProtocolBase):
