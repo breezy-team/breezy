@@ -501,6 +501,7 @@ class BundleReader(object):
                 self._next().next()
                 break
 
+
 class BundleInfo08(BundleInfo):
     def _update_tree(self, bundle_tree, revision_id):
         bundle_tree.note_last_changed('', revision_id)
