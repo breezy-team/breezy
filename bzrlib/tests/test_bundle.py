@@ -799,6 +799,14 @@ class BundleTester(TestCaseWithTransport):
         self.assertEqual(19800, rev.timezone)
         self.assertEqual(1152544886.0, rev.timestamp)
 
+    def test_bundle_root_id(self):
+        self.tree1 = self.make_branch_and_tree('b1')
+        self.b1 = self.tree1.branch
+        self.tree1.commit('message', rev_id='revid1')
+        bundle = self.get_valid_bundle(None, 'revid1')
+        tree = bundle.revision_tree(self.b1.repository, 'revid1')
+        self.assertEqual(tree.inventory.root.revision, 'revid1')
+
 
 class MungedBundleTester(TestCaseWithTransport):
 

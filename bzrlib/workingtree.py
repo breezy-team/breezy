@@ -399,6 +399,7 @@ class WorkingTree(bzrlib.tree.Tree):
             try:
                 xml = self.read_basis_inventory()
                 inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+                inv.root.revision = revision_id
             except NoSuchFile:
                 inv = None
             if inv is not None and inv.revision_id == revision_id:
