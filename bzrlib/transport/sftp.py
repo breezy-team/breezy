@@ -757,7 +757,7 @@ class SFTPTransport(SFTPUrlHandling):
         # does anything actually use this?
         path = self._remote_path(relpath)
         try:
-            return self._sftp.listdir(path)
+            return map(urlutils.escape, self._sftp.listdir(path))
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
 
