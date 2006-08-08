@@ -16,6 +16,7 @@
 
 """Tests for InterRepository implementastions."""
 
+import sys
 
 import bzrlib
 import bzrlib.bzrdir as bzrdir
@@ -27,6 +28,7 @@ from bzrlib.errors import (FileExists,
                            UninitializableFormat,
                            NotBranchError,
                            )
+from bzrlib.inventory import Inventory
 import bzrlib.repository as repository
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
@@ -68,6 +70,31 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
         made_control = self.make_bzrdir(relpath,
             self.repository_format_to._matchingbzrdir)
         return self.repository_format_to.initialize(made_control)
+
+
+def check_old_format_lock_error(repository_format):
+    """Potentially ignore LockError on old formats.
+
+    On win32, with the old OS locks, we get a failure of double-lock when
+    we open a object in 2 objects and try to lock both.
+
+    On new formats, LockError would be invalid, but for old formats
+    this was not supported on Win32.
+    """
+    if sys.platform != 'win32':
+        raise
+
+    description = repository_format.get_format_description()
+    if description in ("Repository format 4",
+                       "Weave repository format 5",
+                       "Weave repository format 6"):
+        # jam 20060701
+        # win32 OS locks are not re-entrant. So one process cannot
+        # open the same repository twice and lock them both.
+        raise TestSkipped('%s on win32 cannot open the same'
+                          ' repository twice in different objects'
+                          % description)
+    raise
 
 
 class TestInterRepository(TestCaseWithInterRepository):
@@ -112,12 +139,18 @@ class TestInterRepository(TestCaseWithInterRepository):
     def test_fetch_missing_revision_same_location_fails(self):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
-        self.assertRaises(errors.NoSuchRevision, repo_b.fetch, repo_a, revision_id='XXX')
+        try:
+            self.assertRaises(errors.NoSuchRevision, repo_b.fetch, repo_a, revision_id='XXX')
+        except errors.LockError, e:
+            check_old_format_lock_error(self.repository_format)
 
     def test_fetch_same_location_trivial_works(self):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
-        repo_a.fetch(repo_b)
+        try:
+            repo_a.fetch(repo_b)
+        except errors.LockError, e:
+            check_old_format_lock_error(self.repository_format)
 
     def test_fetch_missing_text_other_location_fails(self):
         source_tree = self.make_branch_and_tree('source')
@@ -146,6 +179,14 @@ class TestInterRepository(TestCaseWithInterRepository):
         source.add_revision('b', rev)
         self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
         self.assertFalse(target.has_revision('b'))
+
+    def test_fetch_funky_file_id(self):
+        from_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/filename'])
+        from_tree.add('filename', 'funky-chars<>%&;"\'')
+        from_tree.commit('commit filename')
+        to_repo = self.make_to_repository('to')
+        to_repo.fetch(from_tree.branch.repository, from_tree.last_revision())
 
 
 class TestCaseWithComplexRepository(TestCaseWithInterRepository):
@@ -207,7 +248,7 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         # repository.
 
         # 'ghost' is a ghost in missing_ghost and not in with_ghost_rev
-        inv = bzrlib.tree.EmptyTree().inventory
+        inv = Inventory()
         repo = self.make_repository('with_ghost_rev')
         sha1 = repo.add_inventory('ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,

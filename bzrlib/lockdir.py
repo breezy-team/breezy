@@ -96,7 +96,6 @@ Example usage:
 
 import os
 import time
-from warnings import warn
 from StringIO import StringIO
 
 import bzrlib.config
@@ -106,7 +105,6 @@ from bzrlib.errors import (
         LockBreakMismatch,
         LockBroken,
         LockContention,
-        LockError,
         LockNotHeld,
         NoSuchFile,
         PathError,
@@ -373,7 +371,7 @@ class LockDir(object):
         self.attempt_lock()
 
     def lock_read(self):
-        """Compatability-mode shared lock.
+        """Compatibility-mode shared lock.
 
         LockDir doesn't support shared read-only locks, so this 
         just pretends that the lock is taken but really does nothing.

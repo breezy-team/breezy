@@ -29,6 +29,7 @@
 import codecs
 from cStringIO import StringIO
 import difflib
+import doctest
 import errno
 import logging
 import os
@@ -69,7 +70,11 @@ import bzrlib.transport
 from bzrlib.transport.local import LocalRelpathServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
-from bzrlib.tests.TestUtil import TestLoader, TestSuite
+from bzrlib.tests import TestUtil
+from bzrlib.tests.TestUtil import (
+                          TestSuite,
+                          TestLoader,
+                          )
 from bzrlib.tests.treeshape import build_tree_contents
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
@@ -214,6 +219,9 @@ class _MyResult(unittest._TextTestResult):
             self.stream.write('E')
         elif self.dots:
             self.pb.update(self._ellipsise_unimportant_words('ERROR', 13), self.testsRun, None)
+            self.pb.note(self._ellipsise_unimportant_words(
+                            test.id() + ': ERROR',
+                            osutils.terminal_width()))
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -227,6 +235,9 @@ class _MyResult(unittest._TextTestResult):
             self.stream.write('F')
         elif self.dots:
             self.pb.update(self._ellipsise_unimportant_words('FAIL', 13), self.testsRun, None)
+            self.pb.note(self._ellipsise_unimportant_words(
+                            test.id() + ': FAIL',
+                            osutils.terminal_width()))
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -257,7 +268,14 @@ class _MyResult(unittest._TextTestResult):
         self.stream.flush()
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
-        unittest.TestResult.addSuccess(self, test)
+        try:
+            test.tearDown()
+        except KeyboardInterrupt:
+            raise
+        except:
+            self.addError(test, test.__exc_info())
+        else:
+            unittest.TestResult.addSuccess(self, test)
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
@@ -334,8 +352,16 @@ class TextTestRunner(object):
                 # If LANG=C we probably have created some bogus paths
                 # which rmtree(unicode) will fail to delete
                 # so make sure we are using rmtree(str) to delete everything
-                osutils.rmtree(test_root.encode(
-                    sys.getfilesystemencoding()))
+                # except on win32, where rmtree(str) will fail
+                # since it doesn't have the property of byte-stream paths
+                # (they are either ascii or mbcs)
+                if sys.platform == 'win32':
+                    # make sure we are using the unicode win32 api
+                    test_root = unicode(test_root)
+                else:
+                    test_root = test_root.encode(
+                        sys.getfilesystemencoding())
+                osutils.rmtree(test_root)
         else:
             if self.pb is not None:
                 self.pb.note("Failed tests working directories are in '%s'\n",
@@ -484,6 +510,12 @@ class TestCase(unittest.TestCase):
             raise AssertionError('pattern "%s" not found in "%s"'
                     % (needle_re, haystack))
 
+    def assertNotContainsRe(self, haystack, needle_re):
+        """Assert that a does not match a regular expression"""
+        if re.search(needle_re, haystack):
+            raise AssertionError('pattern "%s" found in "%s"'
+                    % (needle_re, haystack))
+
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
         missing = []
@@ -533,6 +565,8 @@ class TestCase(unittest.TestCase):
 
         Read contents into memory, close, and delete.
         """
+        if self._log_file is None:
+            return
         bzrlib.trace.disable_test_log(self._log_nonce)
         self._log_file.seek(0)
         self._log_contents = self._log_file.read()
@@ -670,7 +704,6 @@ class TestCase(unittest.TestCase):
         self.log('run bzr: %r', argv)
         # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
-        handler.setFormatter(bzrlib.trace.QuietFormatter())
         handler.setLevel(logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
@@ -721,20 +754,57 @@ class TestCase(unittest.TestCase):
             encoding = bzrlib.user_encoding
         return self.run_bzr(*args, **kwargs)[0].decode(encoding)
 
-    def run_bzr_external(self, *args, **kwargs):
+    def run_bzr_error(self, error_regexes, *args, **kwargs):
+        """Run bzr, and check that stderr contains the supplied regexes
+        
+        :param error_regexes: Sequence of regular expressions which 
+            must each be found in the error output. The relative ordering
+            is not enforced.
+        :param args: command-line arguments for bzr
+        :param kwargs: Keyword arguments which are interpreted by run_bzr
+            This function changes the default value of retcode to be 3,
+            since in most cases this is run when you expect bzr to fail.
+        :return: (out, err) The actual output of running the command (in case you
+                 want to do more inspection)
+
+        Examples of use:
+            # Make sure that commit is failing because there is nothing to do
+            self.run_bzr_error(['no changes to commit'],
+                               'commit', '-m', 'my commit comment')
+            # Make sure --strict is handling an unknown file, rather than
+            # giving us the 'nothing to do' error
+            self.build_tree(['unknown'])
+            self.run_bzr_error(['Commit refused because there are unknown files'],
+                               'commit', '--strict', '-m', 'my commit comment')
+        """
+        kwargs.setdefault('retcode', 3)
+        out, err = self.run_bzr(*args, **kwargs)
+        for regex in error_regexes:
+            self.assertContainsRe(err, regex)
+        return out, err
+
+    def run_bzr_subprocess(self, *args, **kwargs):
+        """Run bzr in a subprocess for testing.
+
+        This starts a new Python interpreter and runs bzr in there. 
+        This should only be used for tests that have a justifiable need for
+        this isolation: e.g. they are testing startup time, or signal
+        handling, or early startup code, etc.  Subprocess code can't be 
+        profiled or debugged so easily.
+
+        :param retcode: The status code that is expected.  Defaults to 0.  If
+        None is supplied, the status code is not checked.
+        """
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
-        if len(args) == 1:
-            args = shlex.split(args[0])
         args = list(args)
-        process = Popen([bzr_path]+args, stdout=PIPE, stderr=PIPE)
+        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
+                         stderr=PIPE)
         out = process.stdout.read()
         err = process.stderr.read()
         retcode = process.wait()
-        supplied_retcode = kwargs.get('retcode')
+        supplied_retcode = kwargs.get('retcode', 0)
         if supplied_retcode is not None:
             assert supplied_retcode == retcode
-        else:
-            assert retcode == 0
         return [out, err]
 
     def check_inventory_shape(self, inv, shape):
@@ -1117,7 +1187,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
 
 def filter_suite_by_re(suite, pattern):
-    result = TestSuite()
+    result = TestUtil.TestSuite()
     filter_re = re.compile(pattern)
     for test in iter_suite_tests(suite):
         if filter_re.search(test.id()):
@@ -1178,11 +1248,7 @@ def test_suite():
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
     """
-    from doctest import DocTestSuite
-
-    global MODULES_TO_DOCTEST
-
-    testmod_names = [ \
+    testmod_names = [
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
@@ -1194,6 +1260,7 @@ def test_suite():
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
+                   'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
@@ -1204,7 +1271,9 @@ def test_suite():
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_http',
+                   'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_identitymap',
+                   'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lockdir',
@@ -1228,6 +1297,7 @@ def test_suite():
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revprops',
+                   'bzrlib.tests.test_revisiontree',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
@@ -1257,20 +1327,21 @@ def test_suite():
                    'bzrlib.tests.test_xml',
                    ]
     test_transport_implementations = [
-        'bzrlib.tests.test_transport_implementations']
-
-    suite = TestSuite()
+        'bzrlib.tests.test_transport_implementations',
+        'bzrlib.tests.test_read_bundle',
+        ]
+    suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     from bzrlib.transport import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
-    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
         suite.addTest(loader.loadTestsFromModule(m))
-    for m in (MODULES_TO_DOCTEST):
-        suite.addTest(DocTestSuite(m))
+    for m in MODULES_TO_DOCTEST:
+        suite.addTest(doctest.DocTestSuite(m))
     for name, plugin in bzrlib.plugin.all_plugins().items():
         if getattr(plugin, 'test_suite', None) is not None:
             suite.addTest(plugin.test_suite())

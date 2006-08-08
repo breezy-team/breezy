@@ -22,6 +22,7 @@ import re
 
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.workingtree import WorkingTree
 
 
@@ -70,9 +71,9 @@ class TestInit(ExternalBase):
         
         out, err = self.run_bzr('init', 'subdir2/nothere', retcode=3)
         self.assertEqual('', out)
-        self.failUnless(err.startswith(
-            'bzr: ERROR: exceptions.OSError: '
-            '[Errno 2] No such file or directory: '))
+        self.assertContainsRe(err,
+            r'^bzr: ERROR: .*'
+            '\[Errno 2\] No such file or directory: ')
         
         os.mkdir('subdir2')
         out, err = self.run_bzr('init', 'subdir2')
@@ -100,3 +101,35 @@ class TestInit(ExternalBase):
         # suggests using checkout
         self.assertContainsRe(err, 'ontains a branch.*but no working tree.*checkout')
 
+    def test_no_defaults(self):
+        """Init creates no default ignore rules."""
+        self.run_bzr('init')
+        self.assertFalse(os.path.exists('.bzrignore'))
+
+
+class TestSFTPInit(TestCaseWithSFTPServer):
+
+    def test_init(self):
+        # init on a remote url should succeed.
+        out, err = self.run_bzr('init', self.get_url())
+        self.assertEqual('', out)
+        self.assertEqual('', err)
+    
+    def test_init_existing_branch(self):
+        # when there is already a branch present, make mention
+        self.make_branch('.')
+
+        # rely on SFTPServer get_url() pointing at '.'
+        out, err = self.run_bzr_error(['Already a branch'], 'init', self.get_url())
+
+        # make sure using 'bzr checkout' is not suggested
+        # for remote locations missing a working tree
+        self.assertFalse(re.search(r'checkout', err))
+
+    def test_init_existing_branch_with_workingtree(self):
+        # don't distinguish between the branch having a working tree or not
+        # when the branch itself is remote.
+        self.make_branch_and_tree('.')
+
+        # rely on SFTPServer get_url() pointing at '.'
+        self.run_bzr_error(['Already a branch'], 'init', self.get_url())

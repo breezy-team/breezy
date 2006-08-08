@@ -25,7 +25,12 @@ import sys
 import bzrlib
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
 import bzrlib.osutils as osutils
-from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
+from bzrlib.tests import (
+        StringIOWrapper,
+        TestCase, 
+        TestCaseInTempDir, 
+        TestSkipped,
+        )
 
 
 class TestOSUtils(TestCaseInTempDir):
@@ -171,7 +176,20 @@ class TestWin32Funcs(TestCase):
         self.assertEqual('path/to/foo', osutils._win32_normpath('path//from/../to/./foo'))
 
     def test_getcwd(self):
-        self.assertEqual(os.getcwdu().replace('\\', '/'), osutils._win32_getcwd())
+        cwd = osutils._win32_getcwd()
+        os_cwd = os.getcwdu()
+        self.assertEqual(os_cwd[1:].replace('\\', '/'), cwd[1:])
+        # win32 is inconsistent whether it returns lower or upper case
+        # and even if it was consistent the user might type the other
+        # so we force it to uppercase
+        # running python.exe under cmd.exe return capital C:\\
+        # running win32 python inside a cygwin shell returns lowercase
+        self.assertEqual(os_cwd[0].upper(), cwd[0])
+
+    def test_fixdrive(self):
+        self.assertEqual('H:/foo', osutils._win32_fixdrive('h:/foo'))
+        self.assertEqual('H:/foo', osutils._win32_fixdrive('H:/foo'))
+        self.assertEqual('C:\\foo', osutils._win32_fixdrive('c:\\foo'))
 
 
 class TestWin32FuncsDirs(TestCaseInTempDir):
@@ -180,16 +198,16 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
     def test_getcwd(self):
         # Make sure getcwd can handle unicode filenames
         try:
-            os.mkdir(u'B\xe5gfors')
+            os.mkdir(u'mu-\xb5')
         except UnicodeError:
             raise TestSkipped("Unable to create Unicode filename")
 
-        os.chdir(u'B\xe5gfors')
+        os.chdir(u'mu-\xb5')
         # TODO: jam 20060427 This will probably fail on Mac OSX because
         #       it will change the normalization of B\xe5gfors
         #       Consider using a different unicode character, or make
         #       osutils.getcwd() renormalize the path.
-        self.assertTrue(osutils._win32_getcwd().endswith(u'/B\xe5gfors'))
+        self.assertEndsWith(osutils._win32_getcwd(), u'mu-\xb5')
 
     def test_mkdtemp(self):
         tmpdir = osutils._win32_mkdtemp(dir='.')
@@ -208,6 +226,60 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         self.failIfExists('b')
         self.assertFileEqual('baz\n', 'a')
 
+    def test_rename_missing_file(self):
+        a = open('a', 'wb')
+        a.write('foo\n')
+        a.close()
+
+        try:
+            osutils._win32_rename('b', 'a')
+        except (IOError, OSError), e:
+            self.assertEqual(errno.ENOENT, e.errno)
+        self.assertFileEqual('foo\n', 'a')
+
+    def test_rename_missing_dir(self):
+        os.mkdir('a')
+        try:
+            osutils._win32_rename('b', 'a')
+        except (IOError, OSError), e:
+            self.assertEqual(errno.ENOENT, e.errno)
+
+    def test_rename_current_dir(self):
+        os.mkdir('a')
+        os.chdir('a')
+        # You can't rename the working directory
+        # doing rename non-existant . usually
+        # just raises ENOENT, since non-existant
+        # doesn't exist.
+        try:
+            osutils._win32_rename('b', '.')
+        except (IOError, OSError), e:
+            self.assertEqual(errno.ENOENT, e.errno)
+
+
+class TestMacFuncsDirs(TestCaseInTempDir):
+    """Test mac special functions that require directories."""
+
+    def test_getcwd(self):
+        # On Mac, this will actually create Ba\u030agfors
+        # but chdir will still work, because it accepts both paths
+        try:
+            os.mkdir(u'B\xe5gfors')
+        except UnicodeError:
+            raise TestSkipped("Unable to create Unicode filename")
+
+        os.chdir(u'B\xe5gfors')
+        self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
+
+    def test_getcwd_nonnorm(self):
+        # Test that _mac_getcwd() will normalize this path
+        try:
+            os.mkdir(u'Ba\u030agfors')
+        except UnicodeError:
+            raise TestSkipped("Unable to create Unicode filename")
+
+        os.chdir(u'Ba\u030agfors')
+        self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
 
 class TestSplitLines(TestCase):
 
@@ -259,3 +331,125 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertTrue(found_bzrdir)
         self.assertEqual(expected_dirblocks,
             [[line[0:3] for line in block] for block in result])
+        # you can search a subdir only, with a supplied prefix.
+        result = []
+        for dirblock in osutils.walkdirs('1dir', '1dir'):
+            result.append(dirblock)
+        self.assertEqual(expected_dirblocks[1:],
+            [[line[0:3] for line in block] for block in result])
+
+    def assertPathCompare(self, path_less, path_greater):
+        """check that path_less and path_greater compare correctly."""
+        self.assertEqual(0, osutils.compare_paths_prefix_order(
+            path_less, path_less))
+        self.assertEqual(0, osutils.compare_paths_prefix_order(
+            path_greater, path_greater))
+        self.assertEqual(-1, osutils.compare_paths_prefix_order(
+            path_less, path_greater))
+        self.assertEqual(1, osutils.compare_paths_prefix_order(
+            path_greater, path_less))
+
+    def test_compare_paths_prefix_order(self):
+        # root before all else
+        self.assertPathCompare("/", "/a")
+        # alpha within a dir
+        self.assertPathCompare("/a", "/b")
+        self.assertPathCompare("/b", "/z")
+        # high dirs before lower.
+        self.assertPathCompare("/z", "/a/a")
+        # except if the deeper dir should be output first
+        self.assertPathCompare("/a/b/c", "/d/g")
+        # lexical betwen dirs of the same height
+        self.assertPathCompare("/a/z", "/z/z")
+        self.assertPathCompare("/a/c/z", "/a/d/e")
+
+        # this should also be consistent for no leading / paths
+        # root before all else
+        self.assertPathCompare("", "a")
+        # alpha within a dir
+        self.assertPathCompare("a", "b")
+        self.assertPathCompare("b", "z")
+        # high dirs before lower.
+        self.assertPathCompare("z", "a/a")
+        # except if the deeper dir should be output first
+        self.assertPathCompare("a/b/c", "d/g")
+        # lexical betwen dirs of the same height
+        self.assertPathCompare("a/z", "z/z")
+        self.assertPathCompare("a/c/z", "a/d/e")
+
+    def test_path_prefix_sorting(self):
+        """Doing a sort on path prefix should match our sample data."""
+        original_paths = [
+            'a',
+            'a/b',
+            'a/b/c',
+            'b',
+            'b/c',
+            'd',
+            'd/e',
+            'd/e/f',
+            'd/f',
+            'd/g',
+            'g',
+            ]
+
+        dir_sorted_paths = [
+            'a',
+            'b',
+            'd',
+            'g',
+            'a/b',
+            'a/b/c',
+            'b/c',
+            'd/e',
+            'd/f',
+            'd/g',
+            'd/e/f',
+            ]
+
+        self.assertEqual(
+            dir_sorted_paths,
+            sorted(original_paths, key=osutils.path_prefix_key))
+        # using the comparison routine shoudl work too:
+        self.assertEqual(
+            dir_sorted_paths,
+            sorted(original_paths, cmp=osutils.compare_paths_prefix_order))
+
+
+class TestTerminalEncoding(TestCase):
+    """Test the auto-detection of proper terminal encoding."""
+
+    def setUp(self):
+        self._stdout = sys.stdout
+        self._stderr = sys.stderr
+        self._stdin = sys.stdin
+        self._user_encoding = bzrlib.user_encoding
+
+        self.addCleanup(self._reset)
+
+        sys.stdout = StringIOWrapper()
+        sys.stdout.encoding = 'stdout_encoding'
+        sys.stderr = StringIOWrapper()
+        sys.stderr.encoding = 'stderr_encoding'
+        sys.stdin = StringIOWrapper()
+        sys.stdin.encoding = 'stdin_encoding'
+        bzrlib.user_encoding = 'user_encoding'
+
+    def _reset(self):
+        sys.stdout = self._stdout
+        sys.stderr = self._stderr
+        sys.stdin = self._stdin
+        bzrlib.user_encoding = self._user_encoding
+
+    def test_get_terminal_encoding(self):
+        # first preference is stdout encoding
+        self.assertEqual('stdout_encoding', osutils.get_terminal_encoding())
+
+        sys.stdout.encoding = None
+        # if sys.stdout is None, fall back to sys.stdin
+        self.assertEqual('stdin_encoding', osutils.get_terminal_encoding())
+
+        sys.stdin.encoding = None
+        # and in the worst case, use bzrlib.user_encoding
+        self.assertEqual('user_encoding', osutils.get_terminal_encoding())
+

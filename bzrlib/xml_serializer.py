@@ -27,12 +27,14 @@ from bzrlib.trace import mutter, warning
 try:
     from cElementTree import (ElementTree, SubElement, Element,
                               XMLTreeBuilder, fromstring, tostring)
+    import elementtree
 except ImportError:
     mutter('WARNING: using slower ElementTree; consider installing cElementTree'
            " and make sure it's on your PYTHONPATH")
     from util.elementtree.ElementTree import (ElementTree, SubElement,
                                               Element, XMLTreeBuilder,
                                               fromstring, tostring)
+    import util.elementtree as elementtree
 
 from bzrlib.errors import BzrError
 
@@ -73,10 +75,9 @@ class Serializer(object):
         return ElementTree().parse(f)
 
 
-# performance tuning for elementree's serialiser. THis should be
+# performance tuning for elementree's serialiser. This should be
 # sent upstream - RBC 20060523.
-# the functions here are patched into elementree at runtime.
-import elementtree.ElementTree
+# the functions here are patched into elementtree at runtime.
 import re
 escape_re = re.compile("[&'\"<>]")
 escape_map = {

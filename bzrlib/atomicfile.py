@@ -38,7 +38,7 @@ class AtomicFile(object):
     An encoding can be specified; otherwise the default is ascii.
     """
 
-    __slots__ = ['f', 'tmpfilename', 'realfilename', 'write']
+    __slots__ = ['closed', 'f', 'tmpfilename', 'realfilename', 'write']
 
     def __init__(self, filename, mode='wb', new_mode=0666):
         self.f = None
@@ -54,6 +54,7 @@ class AtomicFile(object):
         # locked, so it being racy on NFS is not a concern. The only other
         # files we use this for are .bzr.ignore, which can race anyhow.
         self.tmpfilename = '%s.%d.tmp' % (filename, _pid)
+
         self.realfilename = filename
         
         # Use a low level fd operation to avoid chmodding later.
@@ -61,10 +62,12 @@ class AtomicFile(object):
             new_mode)
         # open a normal python file to get the text vs binary support needed
         # for windows.
+        self.closed = False
         try:
             self.f = os.fdopen(fd, mode)
         except:
             os.close(fd)
+            self.closed = True
             raise
         self.write = self.f.write
 
@@ -74,8 +77,7 @@ class AtomicFile(object):
 
     def commit(self):
         """Close the file and move to final name."""
-        
-        if self.f is None:
+        if self.closed:
             raise Exception('%r is already closed' % self)
 
         f = self.f

@@ -26,10 +26,8 @@
 # e.g. "3:12 Tue", "13 Oct", "Oct 2005", etc.  
 
 import sys
-import os
 import time
 
-import bzrlib.weave
 from bzrlib.config import extract_email_address
 from bzrlib.errors import BzrError
 

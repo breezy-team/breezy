@@ -32,22 +32,17 @@
 # raising them.  If there's more than one exception it'd be good to see them
 # all.
 
+from bzrlib.errors import BzrCheckError
 import bzrlib.ui
-from bzrlib.trace import note, warning
-from bzrlib.osutils import rename, sha_string, fingerprint_file
-from bzrlib.trace import mutter
-from bzrlib.errors import BzrCheckError, NoSuchRevision
-from bzrlib.inventory import ROOT_ID
-
+from bzrlib.trace import note
 
 class Check(object):
-    """Check a branch"""
+    """Check a repository"""
 
     # The Check object interacts with InventoryEntry.check, etc.
 
-    def __init__(self, branch):
-        self.branch = branch
-        self.repository = branch.repository
+    def __init__(self, repository):
+        self.repository = repository
         self.checked_text_cnt = 0
         self.checked_rev_cnt = 0
         self.ghosts = []
@@ -60,17 +55,13 @@ class Check(object):
         self.checked_weaves = {}
 
     def check(self):
-        self.branch.lock_read()
+        self.repository.lock_read()
         self.progress = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             self.progress.update('retrieving inventory', 0, 0)
             # do not put in init, as it should be done with progess,
             # and inside the lock.
-            self.inventory_weave = self.branch.repository.get_inventory_weave()
-            self.history = self.branch.revision_history()
-            if not len(self.history):
-                # nothing to see here
-                return
+            self.inventory_weave = self.repository.get_inventory_weave()
             self.plan_revisions()
             revno = 0
             self.check_weaves()
@@ -82,10 +73,10 @@ class Check(object):
                 self.check_one_rev(rev_id)
         finally:
             self.progress.finished()
-            self.branch.unlock()
+            self.repository.unlock()
 
     def plan_revisions(self):
-        repository = self.branch.repository
+        repository = self.repository
         self.planned_revisions = set(repository.all_revision_ids())
         self.progress.clear()
         inventoried = set(self.inventory_weave.versions())
@@ -96,10 +87,9 @@ class Check(object):
         self.planned_revisions = list(self.planned_revisions)
 
     def report_results(self, verbose):
-        note('checked branch %s format %s',
-             self.branch.base, 
-             self.branch._format)
-
+        note('checked repository %s format %s',
+             self.repository.bzrdir.root_transport,
+             self.repository._format)
         note('%6d revisions', self.checked_rev_cnt)
         note('%6d unique file texts', self.checked_text_cnt)
         note('%6d repeated file texts', self.repeated_text_cnt)
@@ -116,7 +106,7 @@ class Check(object):
                 for ghost in self.ghosts:
                     note('      %s', ghost)
         if len(self.missing_parent_links):
-            note('%6d revisions missing parents in ancestry', 
+            note('%6d revisions missing parents in ancestry',
                  len(self.missing_parent_links))
             if verbose:
                 for link, linkers in self.missing_parent_links.items():
@@ -128,66 +118,34 @@ class Check(object):
         """Check one revision.
 
         rev_id - the one to check
-
-        last_rev_id - the previous one on the mainline, if any.
         """
-
-        # mutter('    revision {%s}', rev_id)
-        branch = self.branch
-        try:
-            rev_history_position = self.history.index(rev_id)
-        except ValueError:
-            rev_history_position = None
-        last_rev_id = None
-        if rev_history_position:
-            rev = branch.repository.get_revision(rev_id)
-            if rev_history_position > 0:
-                last_rev_id = self.history[rev_history_position - 1]
-        else:
-            rev = branch.repository.get_revision(rev_id)
+        rev = self.repository.get_revision(rev_id)
                 
         if rev.revision_id != rev_id:
             raise BzrCheckError('wrong internal revision id in revision {%s}'
                                 % rev_id)
 
-        # check the previous history entry is a parent of this entry
-        if rev.parent_ids:
-            if last_rev_id is not None:
-                for parent_id in rev.parent_ids:
-                    if parent_id == last_rev_id:
-                        break
+        for parent in rev.parent_ids:
+            if not parent in self.planned_revisions:
+                missing_links = self.missing_parent_links.get(parent, [])
+                missing_links.append(rev_id)
+                self.missing_parent_links[parent] = missing_links
+                # list based so somewhat slow,
+                # TODO have a planned_revisions list and set.
+                if self.repository.has_revision(parent):
+                    missing_ancestry = self.repository.get_ancestry(parent)
+                    for missing in missing_ancestry:
+                        if (missing is not None 
+                            and missing not in self.planned_revisions):
+                            self.planned_revisions.append(missing)
                 else:
-                    raise BzrCheckError("previous revision {%s} not listed among "
-                                        "parents of {%s}"
-                                        % (last_rev_id, rev_id))
-            for parent in rev.parent_ids:
-                if not parent in self.planned_revisions:
-                    missing_links = self.missing_parent_links.get(parent, [])
-                    missing_links.append(rev_id)
-                    self.missing_parent_links[parent] = missing_links
-                    # list based so somewhat slow,
-                    # TODO have a planned_revisions list and set.
-                    if self.branch.repository.has_revision(parent):
-                        missing_ancestry = self.repository.get_ancestry(parent)
-                        for missing in missing_ancestry:
-                            if (missing is not None 
-                                and missing not in self.planned_revisions):
-                                self.planned_revisions.append(missing)
-                    else:
-                        self.ghosts.append(rev_id)
-        elif last_rev_id:
-            raise BzrCheckError("revision {%s} has no parents listed "
-                                "but preceded by {%s}"
-                                % (rev_id, last_rev_id))
+                    self.ghosts.append(rev_id)
 
         if rev.inventory_sha1:
-            inv_sha1 = branch.repository.get_inventory_sha1(rev_id)
+            inv_sha1 = self.repository.get_inventory_sha1(rev_id)
             if inv_sha1 != rev.inventory_sha1:
                 raise BzrCheckError('Inventory sha1 hash doesn\'t match'
                     ' value in revision {%s}' % rev_id)
-        else:
-            self.missing_inventory_sha_cnt += 1
-            mutter("no inventory_sha1 on revision {%s}", rev_id)
         self._check_revision_tree(rev_id)
         self.checked_rev_cnt += 1
 
@@ -196,21 +154,21 @@ class Check(object):
         """
         n_weaves = 1
         weave_ids = []
-        if self.branch.repository.weave_store.listable():
-            weave_ids = list(self.branch.repository.weave_store)
+        if self.repository.weave_store.listable():
+            weave_ids = list(self.repository.weave_store)
             n_weaves = len(weave_ids)
         self.progress.update('checking weave', 0, n_weaves)
         self.inventory_weave.check(progress_bar=self.progress)
         for i, weave_id in enumerate(weave_ids):
             self.progress.update('checking weave', i, n_weaves)
-            w = self.branch.repository.weave_store.get_weave(weave_id,
-                    self.branch.repository.get_transaction())
+            w = self.repository.weave_store.get_weave(weave_id,
+                    self.repository.get_transaction())
             # No progress here, because it looks ugly.
             w.check()
             self.checked_weaves[weave_id] = True
 
     def _check_revision_tree(self, rev_id):
-        tree = self.branch.repository.revision_tree(rev_id)
+        tree = self.repository.revision_tree(rev_id)
         inv = tree.inventory
         seen_ids = {}
         for file_id in inv:
@@ -232,7 +190,17 @@ class Check(object):
 
 
 def check(branch, verbose):
-    """Run consistency checks on a branch."""
-    checker = Check(branch)
-    checker.check()
-    checker.report_results(verbose)
+    """Run consistency checks on a branch.
+    
+    Results are reported through logging.
+    
+    :raise BzrCheckError: if there's a consistency error.
+    """
+    branch.lock_read()
+    try:
+        branch_result = branch.check()
+        repo_result = branch.repository.check([branch.last_revision()])
+    finally:
+        branch.unlock()
+    branch_result.report_results(verbose)
+    repo_result.report_results(verbose)

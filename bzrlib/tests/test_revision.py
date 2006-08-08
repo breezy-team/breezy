@@ -20,11 +20,11 @@ import warnings
 
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
-from bzrlib.commit import commit
 from bzrlib.graph import Graph
 from bzrlib.revision import (find_present_ancestors, combined_graph,
                              common_ancestor,
-                             is_ancestor, MultipleRevisionSources)
+                             is_ancestor, MultipleRevisionSources,
+                             NULL_REVISION)
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -147,7 +147,6 @@ class TestIsAncestor(TestCaseWithTransport):
 class TestIntermediateRevisions(TestCaseWithTransport):
 
     def setUp(self):
-        from bzrlib.commit import commit
         TestCaseWithTransport.setUp(self)
         self.br1, self.br2 = make_branches(self)
         wt1 = self.br1.bzrdir.open_workingtree()
@@ -223,6 +222,12 @@ class TestCommonAncestor(TestCaseWithTransport):
         self.assertTrue(common_ancestor(revisions_2[6], revisions[5], sources),
                         (revisions[4], revisions_2[5]))
         self.assertEqual(None, common_ancestor(None, revisions[5], sources))
+        self.assertEqual(NULL_REVISION,
+            common_ancestor(NULL_REVISION, NULL_REVISION, sources))
+        self.assertEqual(NULL_REVISION,
+            common_ancestor(revisions[0], NULL_REVISION, sources))
+        self.assertEqual(NULL_REVISION,
+            common_ancestor(NULL_REVISION, revisions[0], sources))
 
     def test_combined(self):
         """combined_graph
@@ -292,3 +297,33 @@ class TestMultipleRevisionSources(TestCaseWithTransport):
         self.assertEqual({'B':['A'],
                           'A':[]},
                          source.get_revision_graph('B'))
+
+class TestRevisionAttributes(TestCaseWithTransport):
+    """Test that revision attributes are correct."""
+
+    def test_revision_accessors(self):
+        """Make sure the values that come out of a revision are the same as the ones that go in.
+        """
+        tree1 = self.make_branch_and_tree("br1")
+
+        # create a revision
+        tree1.commit(message="quux", allow_pointless=True, committer="jaq")
+        assert len(tree1.branch.revision_history()) > 0
+        rev_a = tree1.branch.repository.get_revision(tree1.branch.last_revision())
+
+        tree2 = self.make_branch_and_tree("br2")
+        tree2.commit(message=rev_a.message,
+                     timestamp=rev_a.timestamp,
+                     timezone=rev_a.timezone,
+                     committer=rev_a.committer,
+                     rev_id=rev_a.revision_id,
+                     allow_pointless=True, # there's nothing in this commit
+                     strict=True,
+                     verbose=True)
+        rev_b = tree2.branch.repository.get_revision(tree2.branch.last_revision())
+        
+        self.assertEqual(rev_a.message, rev_b.message)
+        self.assertEqual(rev_a.timestamp, rev_b.timestamp)
+        self.assertEqual(rev_a.timezone, rev_b.timezone)
+        self.assertEqual(rev_a.committer, rev_b.committer)
+        self.assertEqual(rev_a.revision_id, rev_b.revision_id)

@@ -14,7 +14,7 @@ class TestLogFormats(TestCaseInTempDir):
         return self.run_bzr(*args, **kwargs)[0]
 
     def test_log_default_format(self):
-        setup_config()
+        self.setup_config()
 
         self.bzr('init')
         open('a', 'wb').write('foo\n')
@@ -42,7 +42,7 @@ class TestLogFormats(TestCaseInTempDir):
         self.assertEquals(7, len(self.bzr('log', '--log-format', 'short').split('\n')))
 
     def test_missing_default_format(self):
-        setup_config()
+        self.setup_config()
 
         os.mkdir('a')
         os.chdir('a')
@@ -69,7 +69,7 @@ class TestLogFormats(TestCaseInTempDir):
         os.chdir('..')
 
     def test_missing_format_arg(self):
-        setup_config()
+        self.setup_config()
 
         os.mkdir('a')
         os.chdir('a')
@@ -96,7 +96,7 @@ class TestLogFormats(TestCaseInTempDir):
         os.chdir('..')
 
 
-def setup_config():
+    def setup_config(self):
         if os.path.isfile(config_filename()):
                 # Something is wrong in environment, 
                 # we risk overwriting users config 
@@ -108,4 +108,3 @@ def setup_config():
                 "log_format=line\n")
 
         open(config_filename(),'wb').write(CONFIG)
-

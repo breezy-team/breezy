@@ -35,14 +35,15 @@ import errno
 import codecs
 
 import bzrlib
+import bzrlib.errors as errors
 from bzrlib.errors import (BzrError,
-                           BzrCheckError,
                            BzrCommandError,
-                           BzrOptionError,
+                           BzrCheckError,
                            NotBranchError)
 from bzrlib.option import Option
+import bzrlib.osutils
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, be_quiet
 
@@ -146,7 +147,7 @@ def get_cmd_object(cmd_name, plugins_override=True):
     if cmd_obj:
         return cmd_obj
 
-    raise BzrCommandError("unknown command %r" % cmd_name)
+    raise BzrCommandError('unknown command "%s"' % cmd_name)
 
 
 class Command(object):
@@ -235,16 +236,15 @@ class Command(object):
             self.outf = sys.stdout
             return
 
-        output_encoding = getattr(sys.stdout, 'encoding', None)
-        if not output_encoding:
-            output_encoding = bzrlib.user_encoding
-            mutter('encoding stdout bzrlib.user_encoding %r', output_encoding)
-        else:
-            mutter('encoding stdout log as sys.stdout encoding %r', output_encoding)
+        output_encoding = bzrlib.osutils.get_terminal_encoding()
 
         # use 'replace' so that we don't abort if trying to write out
         # in e.g. the default C locale.
         self.outf = codecs.getwriter(output_encoding)(sys.stdout, errors=self.encoding_type)
+        # For whatever reason codecs.getwriter() does not advertise its encoding
+        # it just returns the encoding of the wrapped file, which is completely
+        # bogus. So set the attribute, so we can find the correct encoding later.
+        self.outf.encoding = output_encoding
 
     @deprecated_method(zero_eight)
     def run_argv(self, argv):
@@ -265,8 +265,8 @@ class Command(object):
         allowed_names = self.options().keys()
         for oname in opts:
             if oname not in allowed_names:
-                raise BzrCommandError("option '--%s' is not allowed for"
-                                      " command %r" % (oname, self.name()))
+                raise BzrOptionError("option '--%s' is not allowed for"
+                                " command %r" % (oname, self.name()))
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
         cmdopts = {}
@@ -302,6 +302,17 @@ class Command(object):
 
     def name(self):
         return _unsquish_command_name(self.__class__.__name__)
+
+    def plugin_name(self):
+        """Get the name of the plugin that provides this command.
+
+        :return: The name of the plugin or None if the command is builtin.
+        """
+        mod_parts = self.__module__.split('.')
+        if len(mod_parts) >= 3 and mod_parts[1] == 'plugins':
+            return mod_parts[2]
+        else:
+            return None
 
 
 def parse_spec(spec):
@@ -357,6 +368,9 @@ def parse_args(command, argv, alias_argv=None):
             if argsover:
                 args.append(a)
                 continue
+            elif a == '-':
+                args.append(a)
+                continue
             elif a == '--':
                 # We've received a standalone -- No more flags
                 argsover = True
@@ -372,9 +386,7 @@ def parse_args(command, argv, alias_argv=None):
                     else:
                         optname = a[2:]
                     if optname not in cmd_options:
-                        raise BzrOptionError('unknown long option %r for'
-                                             ' command %s' % 
-                                             (a, command.name()))
+                        raise BzrCommandError('unknown option "%s"' % a)
                 else:
                     shortopt = a[1:]
                     if shortopt in Option.SHORT_OPTIONS:
@@ -389,7 +401,7 @@ def parse_args(command, argv, alias_argv=None):
                         if shortopt not in Option.SHORT_OPTIONS:
                             # We didn't find the multi-character name, and we
                             # didn't find the single char name
-                            raise BzrError('unknown short option %r' % a)
+                            raise BzrCommandError('unknown option "%s"' % a)
                         optname = Option.SHORT_OPTIONS[shortopt].name
 
                         if a[2:]:
@@ -406,15 +418,12 @@ def parse_args(command, argv, alias_argv=None):
                                 # This option takes an argument, so pack it
                                 # into the array
                                 optarg = a[2:]
-                
                     if optname not in cmd_options:
-                        raise BzrOptionError('unknown short option %r for'
-                                             ' command %s' % 
-                                             (shortopt, command.name()))
+                        raise BzrCommandError('unknown option "%s"' % shortopt)
                 if optname in opts:
                     # XXX: Do we ever want to support this, e.g. for -r?
                     if proc_aliasarg:
-                        raise BzrError('repeated option %r' % a)
+                        raise BzrCommandError('repeated option %r' % a)
                     elif optname in alias_opts:
                         # Replace what's in the alias with what's in the real
                         # argument
@@ -423,14 +432,14 @@ def parse_args(command, argv, alias_argv=None):
                         proc_argv.insert(0, a)
                         continue
                     else:
-                        raise BzrError('repeated option %r' % a)
+                        raise BzrCommandError('repeated option %r' % a)
                     
                 option_obj = cmd_options[optname]
                 optargfn = option_obj.type
                 if optargfn:
                     if optarg == None:
                         if not proc_argv:
-                            raise BzrError('option %r needs an argument' % a)
+                            raise BzrCommandError('option %r needs an argument' % a)
                         else:
                             optarg = proc_argv.pop(0)
                     opts[optname] = optargfn(optarg)
@@ -438,7 +447,7 @@ def parse_args(command, argv, alias_argv=None):
                         alias_opts[optname] = optargfn(optarg)
                 else:
                     if optarg != None:
-                        raise BzrError('option %r takes no argument' % optname)
+                        raise BzrCommandError('option %r takes no argument' % optname)
                     opts[optname] = True
                     if proc_aliasarg:
                         alias_opts[optname] = True
@@ -475,7 +484,7 @@ def _match_argform(cmd, takes_args, args):
                 raise BzrCommandError("command %r needs one or more %s"
                         % (cmd, argname.upper()))
             argdict[argname + '_list'] = args[:-1]
-            args[:-1] = []                
+            args[:-1] = []
         else:
             # just a plain arg
             argname = ap
@@ -590,6 +599,7 @@ def run_bzr(argv):
         elif a == '--lsprof':
             opt_lsprof = True
         elif a == '--lsprof-file':
+            opt_lsprof = True
             opt_lsprof_file = argv[i + 1]
             i += 1
         elif a == '--no-plugins':
@@ -663,7 +673,9 @@ def display_command(func):
             if not hasattr(e, 'errno'):
                 raise
             if e.errno != errno.EPIPE:
-                raise
+                # Win32 raises IOError with errno=0 on a broken pipe
+                if sys.platform != 'win32' or e.errno != 0:
+                    raise
             pass
         except KeyboardInterrupt:
             pass
@@ -673,10 +685,7 @@ def display_command(func):
 def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
-    ## bzrlib.trace.enable_default_logging()
-    bzrlib.trace.log_startup(argv)
     bzrlib.ui.ui_factory = TextUIFactory()
-
     argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
     ret = run_bzr_catch_errors(argv)
     mutter("return code %d", ret)
@@ -685,27 +694,18 @@ def main(argv):
 
 def run_bzr_catch_errors(argv):
     try:
-        try:
-            return run_bzr(argv)
-        finally:
-            # do this here inside the exception wrappers to catch EPIPE
-            sys.stdout.flush()
+        return run_bzr(argv)
+        # do this here inside the exception wrappers to catch EPIPE
+        sys.stdout.flush()
     except Exception, e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
-        import errno
-        if (isinstance(e, IOError) 
-            and hasattr(e, 'errno')
-            and e.errno == errno.EPIPE):
-            bzrlib.trace.note('broken pipe')
-            return 3
-        else:
-            bzrlib.trace.log_exception()
-            if os.environ.get('BZR_PDB'):
-                print '**** entering debugger'
-                import pdb
-                pdb.post_mortem(sys.exc_traceback)
-            return 3
+        bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)
+        if os.environ.get('BZR_PDB'):
+            print '**** entering debugger'
+            import pdb
+            pdb.post_mortem(sys.exc_traceback)
+        return 3
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

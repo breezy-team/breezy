@@ -28,7 +28,6 @@ from cStringIO import StringIO
 import os
 import shutil
 import sys
-import os
 
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError

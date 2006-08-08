@@ -57,36 +57,6 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCommands(ExternalBase):
 
-    def test_whoami(self):
-        # this should always identify something, if only "john@localhost"
-        self.runbzr("whoami")
-        self.runbzr("whoami --email")
-
-        self.assertEquals(self.runbzr("whoami --email",
-                                      backtick=True).count('@'), 1)
-        
-    def test_whoami_branch(self):
-        """branch specific user identity works."""
-        self.runbzr('init')
-        b = bzrlib.branch.Branch.open('.')
-        b.control_files.put_utf8('email', 'Branch Identity <branch@identi.ty>')
-        bzr_email = os.environ.get('BZREMAIL')
-        if bzr_email is not None:
-            del os.environ['BZREMAIL']
-        whoami = self.runbzr("whoami",backtick=True)
-        whoami_email = self.runbzr("whoami --email",backtick=True)
-        self.assertTrue(whoami.startswith('Branch Identity <branch@identi.ty>'))
-        self.assertTrue(whoami_email.startswith('branch@identi.ty'))
-        # Verify that the environment variable overrides the value 
-        # in the file
-        os.environ['BZREMAIL'] = 'Different ID <other@environ.ment>'
-        whoami = self.runbzr("whoami",backtick=True)
-        whoami_email = self.runbzr("whoami --email",backtick=True)
-        self.assertTrue(whoami.startswith('Different ID <other@environ.ment>'))
-        self.assertTrue(whoami_email.startswith('other@environ.ment'))
-        if bzr_email is not None:
-            os.environ['BZREMAIL'] = bzr_email
-
     def test_nick_command(self):
         """bzr nick for viewing, setting nicknames"""
         os.mkdir('me.dev')
@@ -102,33 +72,6 @@ class TestCommands(ExternalBase):
         self.runbzr("pants", retcode=3)
         self.runbzr("--pants off", retcode=3)
         self.runbzr("diff --message foo", retcode=3)
-
-    def test_ignore_patterns(self):
-        self.runbzr('init')
-        self.assertEquals(self.capture('unknowns'), '')
-
-        file('foo.tmp', 'wt').write('tmp files are ignored')
-        self.assertEquals(self.capture('unknowns'), '')
-
-        file('foo.c', 'wt').write('int main() {}')
-        self.assertEquals(self.capture('unknowns'), 'foo.c\n')
-
-        self.runbzr(['add', 'foo.c'])
-        self.assertEquals(self.capture('unknowns'), '')
-
-        # 'ignore' works when creating the .bzignore file
-        file('foo.blah', 'wt').write('blah')
-        self.assertEquals(self.capture('unknowns'), 'foo.blah\n')
-        self.runbzr('ignore *.blah')
-        self.assertEquals(self.capture('unknowns'), '')
-        self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\n')
-
-        # 'ignore' works when then .bzrignore file already exists
-        file('garh', 'wt').write('garh')
-        self.assertEquals(self.capture('unknowns'), 'garh\n')
-        self.runbzr('ignore garh')
-        self.assertEquals(self.capture('unknowns'), '')
-        self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\ngarh\n')
 
     def test_revert(self):
         self.runbzr('init')
@@ -179,17 +122,6 @@ class TestCommands(ExternalBase):
         os.chdir('revertdir')
         self.runbzr('revert')
         os.chdir('..')
-
-    def test_mv_modes(self):
-        """Test two modes of operation for mv"""
-        self.runbzr('init')
-        self.build_tree(['a', 'c', 'subdir/'])
-        self.run_bzr_captured(['add', self.test_dir])
-        self.run_bzr_captured(['mv', 'a', 'b'])
-        self.run_bzr_captured(['mv', 'b', 'subdir'])
-        self.run_bzr_captured(['mv', 'subdir/b', 'a'])
-        self.run_bzr_captured(['mv', 'a', 'c', 'subdir'])
-        self.run_bzr_captured(['mv', 'subdir/a', 'subdir/newa'])
 
     def test_main_version(self):
         """Check output from version command and master option is reasonable"""
@@ -282,115 +214,7 @@ class TestCommands(ExternalBase):
         bzr('commit -m add')
 
         output_equals('a\n', '--kind', 'file')
-        output_equals('b\n', '--kind', 'directory')        
-
-    def test_ls(self):
-        """Test the abilities of 'bzr ls'"""
-        bzr = self.runbzr
-        def bzrout(*args, **kwargs):
-            kwargs['backtick'] = True
-            return self.runbzr(*args, **kwargs)
-
-        def ls_equals(value, *args):
-            out = self.runbzr(['ls'] + list(args), backtick=True)
-            self.assertEquals(out, value)
-
-        bzr('init')
-        open('a', 'wb').write('hello\n')
-
-        # Can't supply both
-        bzr('ls --verbose --null', retcode=3)
-
-        ls_equals('a\n')
-        ls_equals('?        a\n', '--verbose')
-        ls_equals('a\n', '--unknown')
-        ls_equals('', '--ignored')
-        ls_equals('', '--versioned')
-        ls_equals('a\n', '--unknown', '--ignored', '--versioned')
-        ls_equals('', '--ignored', '--versioned')
-        ls_equals('a\0', '--null')
-
-        bzr('add a')
-        ls_equals('V        a\n', '--verbose')
-        bzr('commit -m add')
-        
-        os.mkdir('subdir')
-        ls_equals('V        a\n'
-                  '?        subdir/\n'
-                  , '--verbose')
-        open('subdir/b', 'wb').write('b\n')
-        bzr('add')
-        ls_equals('V        a\n'
-                  'V        subdir/\n'
-                  'V        subdir/b\n'
-                  , '--verbose')
-        bzr('commit -m subdir')
-
-        ls_equals('a\n'
-                  'subdir\n'
-                  , '--non-recursive')
-
-        ls_equals('V        a\n'
-                  'V        subdir/\n'
-                  , '--verbose', '--non-recursive')
-
-        # Check what happens in a sub-directory
-        os.chdir('subdir')
-        ls_equals('b\n')
-        ls_equals('b\0'
-                  , '--null')
-        ls_equals('a\n'
-                  'subdir\n'
-                  'subdir/b\n'
-                  , '--from-root')
-        ls_equals('a\0'
-                  'subdir\0'
-                  'subdir/b\0'
-                  , '--from-root', '--null')
-        ls_equals('a\n'
-                  'subdir\n'
-                  , '--from-root', '--non-recursive')
-
-        os.chdir('..')
-
-        # Check what happens when we supply a specific revision
-        ls_equals('a\n', '--revision', '1')
-        ls_equals('V        a\n'
-                  , '--verbose', '--revision', '1')
-
-        os.chdir('subdir')
-        ls_equals('', '--revision', '1')
-
-        # Now try to do ignored files.
-        os.chdir('..')
-        open('blah.py', 'wb').write('unknown\n')
-        open('blah.pyo', 'wb').write('ignored\n')
-        ls_equals('a\n'
-                  'blah.py\n'
-                  'blah.pyo\n'
-                  'subdir\n'
-                  'subdir/b\n')
-        ls_equals('V        a\n'
-                  '?        blah.py\n'
-                  'I        blah.pyo\n'
-                  'V        subdir/\n'
-                  'V        subdir/b\n'
-                  , '--verbose')
-        ls_equals('blah.pyo\n'
-                  , '--ignored')
-        ls_equals('blah.py\n'
-                  , '--unknown')
-        ls_equals('a\n'
-                  'subdir\n'
-                  'subdir/b\n'
-                  , '--versioned')
-
-    def test_cat(self):
-        self.runbzr('init')
-        file("myfile", "wb").write("My contents\n")
-        self.runbzr('add')
-        self.runbzr('commit -m myfile')
-        self.run_bzr_captured('cat -r 1 myfile'.split(' '))
+        output_equals('b\n', '--kind', 'directory')
 
     def test_pull_verbose(self):
         """Pull changes from one branch to another and watch the output."""
@@ -490,39 +314,6 @@ class TestCommands(ExternalBase):
         file('question', 'wb').write("What do you get when you multiply six"
                                    "times nine?")
         self.runbzr('commit -m this')
-
-    def test_remerge(self):
-        """Remerge command works as expected"""
-        self.create_conflicts()
-        self.runbzr('merge ../other --show-base', retcode=1)
-        conflict_text = file('hello').read()
-        assert '|||||||' in conflict_text
-        assert 'hi world' in conflict_text
-        self.runbzr('remerge', retcode=1)
-        conflict_text = file('hello').read()
-        assert '|||||||' not in conflict_text
-        assert 'hi world' not in conflict_text
-        os.unlink('hello.OTHER')
-        os.unlink('question.OTHER')
-        self.runbzr('remerge jello --merge-type weave', retcode=3)
-        self.runbzr('remerge hello --merge-type weave', retcode=1)
-        assert os.path.exists('hello.OTHER')
-        self.assertIs(False, os.path.exists('question.OTHER'))
-        file_id = self.runbzr('file-id hello')
-        file_id = self.runbzr('file-id hello.THIS', retcode=3)
-        self.runbzr('remerge --merge-type weave', retcode=1)
-        assert os.path.exists('hello.OTHER')
-        assert not os.path.exists('hello.BASE')
-        assert '|||||||' not in conflict_text
-        assert 'hi world' not in conflict_text
-        self.runbzr('remerge . --merge-type weave --show-base', retcode=3)
-        self.runbzr('remerge . --show-base --reprocess', retcode=3)
-        self.runbzr('remerge . --merge-type weave --reprocess', retcode=1)
-        self.runbzr('remerge hello --show-base', retcode=1)
-        self.runbzr('remerge hello --reprocess', retcode=1)
-        self.runbzr('resolve --all')
-        self.runbzr('commit -m done',)
-        self.runbzr('remerge', retcode=3)
 
     def test_status(self):
         os.mkdir('branch1')
@@ -696,12 +487,6 @@ class OldTests(ExternalBase):
         out = capture("status")
         self.assertEquals(out, 'unknown:\n  test.txt\n')
 
-        out = capture("status --all")
-        self.assertEquals(out, "unknown:\n  test.txt\n")
-
-        out = capture("status test.txt --all")
-        self.assertEquals(out, "unknown:\n  test.txt\n")
-
         f = file('test2.txt', 'wt')
         f.write('goodbye cruel world...\n')
         f.close()
@@ -715,7 +500,7 @@ class OldTests(ExternalBase):
         os.unlink('test2.txt')
 
         progress("command aliases")
-        out = capture("st --all")
+        out = capture("st")
         self.assertEquals(out, ("unknown:\n" "  test.txt\n"))
 
         out = capture("stat")
@@ -730,82 +515,20 @@ class OldTests(ExternalBase):
         out = capture("help ci")
         out.index('aliases: ')
 
-        progress("can't rename unversioned file")
-        runbzr("rename test.txt new-test.txt", 3)
-
-        progress("adding a file")
-
-        runbzr("add test.txt")
-        self.assertEquals(capture("unknowns"), '')
-        self.assertEquals(capture("status --all"), ("added:\n" "  test.txt\n"))
-
-        progress("rename newly-added file")
-        runbzr("rename test.txt hello.txt")
-        self.assert_(os.path.exists("hello.txt"))
-        self.assert_(not os.path.exists("test.txt"))
-
-        self.assertEquals(capture("revno"), '0\n')
-
-        progress("add first revision")
-        runbzr(['commit', '-m', 'add first revision'])
-
-        progress("more complex renames")
-        os.mkdir("sub1")
-        runbzr("rename hello.txt sub1", 3)
-        runbzr("rename hello.txt sub1/hello.txt", 3)
-        runbzr("move hello.txt sub1", 3)
-
-        runbzr("add sub1")
-        runbzr("rename sub1 sub2")
-        runbzr("move hello.txt sub2")
-        self.assertEqual(capture("relpath sub2/hello.txt"),
-                         pathjoin("sub2", "hello.txt\n"))
-
-        self.assert_(exists("sub2"))
-        self.assert_(exists("sub2/hello.txt"))
-        self.assert_(not exists("sub1"))
-        self.assert_(not exists("hello.txt"))
-
-        runbzr(['commit', '-m', 'commit with some things moved to subdirs'])
-
-        mkdir("sub1")
-        runbzr('add sub1')
-        runbzr('move sub2/hello.txt sub1')
-        self.assert_(not exists('sub2/hello.txt'))
-        self.assert_(exists('sub1/hello.txt'))
-        runbzr('move sub2 sub1')
-        self.assert_(not exists('sub2'))
-        self.assert_(exists('sub1/sub2'))
-
-        runbzr(['commit', '-m', 'rename nested subdirectories'])
-
-        chdir('sub1/sub2')
-        self.assertEquals(capture('root')[:-1],
-                          pathjoin(self.test_dir, 'branch1'))
-        runbzr('move ../hello.txt .')
-        self.assert_(exists('./hello.txt'))
-        self.assertEquals(capture('relpath hello.txt'),
-                          pathjoin('sub1', 'sub2', 'hello.txt') + '\n')
-        self.assertEquals(capture('relpath ../../sub1/sub2/hello.txt'), pathjoin('sub1', 'sub2', 'hello.txt\n'))
-        runbzr(['commit', '-m', 'move to parent directory'])
-        chdir('..')
-        self.assertEquals(capture('relpath sub2/hello.txt'), pathjoin('sub1', 'sub2', 'hello.txt\n'))
-
-        runbzr('move sub2/hello.txt .')
-        self.assert_(exists('hello.txt'))
-
         f = file('hello.txt', 'wt')
         f.write('some nice new content\n')
         f.close()
 
+        runbzr("add hello.txt")
+        
         f = file('msg.tmp', 'wt')
         f.write('this is my new commit\nand it has multiple lines, for fun')
         f.close()
 
         runbzr('commit -F msg.tmp')
 
-        self.assertEquals(capture('revno'), '5\n')
-        runbzr('export -r 5 export-5.tmp')
+        self.assertEquals(capture('revno'), '1\n')
+        runbzr('export -r 1 export-1.tmp')
         runbzr('export export.tmp')
 
         runbzr('log')

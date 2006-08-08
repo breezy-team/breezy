@@ -22,6 +22,7 @@ import time
 import unittest
 import warnings
 
+from bzrlib import osutils
 import bzrlib
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
@@ -35,6 +36,7 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
+from bzrlib.trace import note
 
 
 class SelftestTests(TestCase):
@@ -394,6 +396,9 @@ class MockProgress(_BaseProgressBar):
     def clear(self):
         self.calls.append(('clear',))
 
+    def note(self, msg, *args):
+        self.calls.append(('note', msg, args))
+
 
 class TestTestResult(TestCase):
 
@@ -404,44 +409,54 @@ class TestTestResult(TestCase):
         mypb = MockProgress()
         mypb.update('Running tests', 0, 4)
         last_calls = mypb.calls[:]
+
         result = bzrlib.tests._MyResult(self._log_file,
                                         descriptions=0,
                                         verbosity=1,
                                         pb=mypb)
         self.assertEqual(last_calls, mypb.calls)
 
+        def shorten(s):
+            """Shorten a string based on the terminal width"""
+            return result._ellipsise_unimportant_words(s,
+                                 osutils.terminal_width())
+
         # an error 
         result.startTest(dummy_test)
         # starting a test prints the test name
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 0, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 0, None)]
+        self.assertEqual(last_calls, mypb.calls)
         result.addError(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', 'ERROR        ', 1, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', 'ERROR        ', 1, None),
+                       ('note', shorten(dummy_test.id() + ': ERROR'), ())
+                      ]
+        self.assertEqual(last_calls, mypb.calls)
 
         # a failure
         result.startTest(dummy_test)
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 1, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 1, None)]
+        self.assertEqual(last_calls, mypb.calls)
+        last_calls += [('update', 'FAIL         ', 2, None),
+                       ('note', shorten(dummy_test.id() + ': FAIL'), ())
+                      ]
         result.addFailure(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', 'FAIL         ', 2, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        self.assertEqual(last_calls, mypb.calls)
 
         # a success
         result.startTest(dummy_test)
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 2, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 2, None)]
+        self.assertEqual(last_calls, mypb.calls)
         result.addSuccess(dummy_test)
-        self.assertEqual(last_calls + [('update', 'OK           ', 3, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', 'OK           ', 3, None)]
+        self.assertEqual(last_calls, mypb.calls)
 
         # a skip
         result.startTest(dummy_test)
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 3, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 3, None)]
+        self.assertEqual(last_calls, mypb.calls)
         result.addSkipped(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', 'SKIP         ', 4, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', 'SKIP         ', 4, None)]
+        self.assertEqual(last_calls, mypb.calls)
 
     def test_elapsed_time_with_benchmarking(self):
         result = bzrlib.tests._MyResult(self._log_file,
@@ -506,14 +521,15 @@ class TestTestResult(TestCase):
         #           1        0            ???         ???       ???(sleep) 
         # and then repeated but with 'world', rather than 'hello'.
         # this should appear in the output stream of our test result.
-        self.assertContainsRe(result_stream.getvalue(), 
-            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)\n"
-            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
-            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?"
-            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n"
-            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
-            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?"
-            )
+        output = result_stream.getvalue()
+        self.assertContainsRe(output,
+            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)")
+        self.assertContainsRe(output,
+            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n")
+        self.assertContainsRe(output,
+            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?")
+        self.assertContainsRe(output,
+            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
 
 
 class TestRunner(TestCase):
@@ -679,17 +695,3 @@ class TestSelftest(TestCase):
         self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
-
-    def test_run_bzr_external(self):
-        """The run_bzr_helper_external comand behaves nicely."""
-        result = self.run_bzr_external('--version')
-        self.assertContainsRe(result[0], 'is free software')
-        self.assertRaises(AssertionError, self.run_bzr_external, '--versionn')
-        result = self.run_bzr_external('--versionn', retcode=3)
-        self.assertContainsRe(result[1], 'unknown command')
-        err = self.run_bzr_external('merge --merge-type "magic merge"', 
-                                    retcode=3)[1]
-        self.assertContainsRe(err, 'No known merge type magic merge')
-        err = self.run_bzr_external('merge', '--merge-type', 'magic merge', 
-                                    retcode=3)[1]
-        self.assertContainsRe(err, 'No known merge type magic merge')

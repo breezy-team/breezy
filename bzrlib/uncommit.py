@@ -18,7 +18,6 @@
 """
 
 import os
-import bzrlib
 from bzrlib.errors import BoundBranchOutOfDate
 
 def test_remove(filename):
@@ -44,6 +43,8 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
         branch.lock_write()
         unlockable.append(branch)
 
+        pending_merges = []
+
         master = branch.get_master_branch()
         if master is not None:
             master.lock_write()
@@ -57,6 +58,12 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
         files_to_remove = []
         for r in range(revno-1, len(rh)):
             rev_id = rh.pop()
+            rev = branch.repository.get_revision(rev_id)
+            # When we finish popping off the pending merges, we want
+            # them to stay in the order that they used to be.
+            # but we pop from the end, so reverse the order, and
+            # then get the order right at the end
+            pending_merges.extend(reversed(rev.parent_ids[1:]))
             if verbose:
                 print 'Removing revno %d: %s' % (len(rh)+1, rev_id)
 
@@ -69,6 +76,8 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
             branch.set_revision_history(rh)
             if tree is not None:
                 tree.set_last_revision(branch.last_revision())
+                pending_merges.reverse()
+                tree.set_pending_merges(pending_merges)
     finally:
         for item in reversed(unlockable):
             item.unlock()

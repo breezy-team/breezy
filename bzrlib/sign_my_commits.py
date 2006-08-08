@@ -13,13 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 """Command which looks for unsigned commits by the current user, and signs them.
 """
 
+from bzrlib import config, gpg
 from bzrlib.commands import Command
-import bzrlib.config
-import bzrlib.errors as errors
-import bzrlib.gpg
+from bzrlib.bzrdir import BzrDir
 from bzrlib.option import Option
 
 
@@ -31,6 +31,9 @@ class cmd_sign_my_commits(Command):
 
     This does not sign commits that already have signatures.
     """
+    # Note that this signs everything on the branch's ancestry
+    # (both mainline and merged), but not other revisions that may be in the
+    # repository
 
     takes_options = [Option('dry-run'
                             , help='Don\'t actually sign anything, just print'
@@ -40,35 +43,27 @@ class cmd_sign_my_commits(Command):
 
     def run(self, location=None, committer=None, dry_run=False):
         if location is None:
-            from bzrlib.workingtree import WorkingTree
-            # Open the containing directory
-            wt = WorkingTree.open_containing('.')[0]
-            b = wt.branch
+            bzrdir = BzrDir.open_containing('.')[0]
         else:
             # Passed in locations should be exact
-            from bzrlib.branch import Branch
-            b = Branch.open(location)
-        repo = getattr(b, 'repository', b)
-
-        config = bzrlib.config.BranchConfig(b)
+            bzrdir = BzrDir.open(location)
+        branch = bzrdir.open_branch()
+        repo = branch.repository
+        branch_config = branch.get_config()
 
         if committer is None:
-            committer = config.username()
-
-        gpg_strategy = bzrlib.gpg.GPGStrategy(config)
+            committer = branch_config.username()
+        gpg_strategy = gpg.GPGStrategy(branch_config)
 
         count = 0
         repo.lock_write()
         try:
-            # return in partial topological order for the sake of reproducibility
-            for rev_id in repo.all_revision_ids():
+            for rev_id in repo.get_ancestry(branch.last_revision())[1:]:
                 if repo.has_signature_for_revision_id(rev_id):
                     continue
-                
                 rev = repo.get_revision(rev_id)
                 if rev.committer != committer:
                     continue
-
                 # We have a revision without a signature who has a 
                 # matching committer, start signing
                 print rev_id

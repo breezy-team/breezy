@@ -25,7 +25,7 @@ from bzrlib.errors import (NoSuchFile, FileExists,
                            TransportNotPossible,
                            ConnectionError,
                            DependencyNotPresent,
-                           InvalidURL,
+                           UnsupportedProtocol,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import (_get_protocol_handlers,
@@ -71,11 +71,16 @@ class TestTransport(TestCase):
         try:
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
                     'BadTransportHandler')
-            # TODO: jam 20060427 Now we get InvalidURL because it looks like 
-            #       a URL but we have no support for it.
-            #       Is it better to always fall back to LocalTransport?
-            #       I think this is a better error than a future NoSuchFile
-            self.assertRaises(InvalidURL, get_transport, 'foo://fooserver/foo')
+            try:
+                get_transport('foo://fooserver/foo')
+            except UnsupportedProtocol, e:
+                e_str = str(e)
+                self.assertEquals('Unsupported protocol'
+                                  ' for url "foo://fooserver/foo":'
+                                  ' Unable to import library "some_lib":'
+                                  ' testing missing dependency', str(e))
+            else:
+                self.fail('Did not raise UnsupportedProtocol')
         finally:
             # restore original values
             _set_protocol_handlers(saved_handlers)
@@ -306,3 +311,46 @@ class BadTransportHandler(Transport):
 class BackupTransportHandler(Transport):
     """Test transport that works as a backup for the BadTransportHandler"""
     pass
+
+
+class TestTransportImplementation(TestCaseInTempDir):
+    """Implementation verification for transports.
+    
+    To verify a transport we need a server factory, which is a callable
+    that accepts no parameters and returns an implementation of
+    bzrlib.transport.Server.
+    
+    That Server is then used to construct transport instances and test
+    the transport via loopback activity.
+
+    Currently this assumes that the Transport object is connected to the 
+    current working directory.  So that whatever is done 
+    through the transport, should show up in the working 
+    directory, and vice-versa. This is a bug, because its possible to have
+    URL schemes which provide access to something that may not be 
+    result in storage on the local disk, i.e. due to file system limits, or 
+    due to it being a database or some other non-filesystem tool.
+
+    This also tests to make sure that the functions work with both
+    generators and lists (assuming iter(list) is effectively a generator)
+    """
+    
+    def setUp(self):
+        super(TestTransportImplementation, self).setUp()
+        self._server = self.transport_server()
+        self._server.setUp()
+
+    def tearDown(self):
+        super(TestTransportImplementation, self).tearDown()
+        self._server.tearDown()
+        
+    def get_transport(self):
+        """Return a connected transport to the local directory."""
+        base_url = self._server.get_url()
+        # try getting the transport via the regular interface:
+        t = get_transport(base_url)
+        if not isinstance(t, self.transport_class): 
+            # we did not get the correct transport class type. Override the
+            # regular connection behaviour by direct construction.
+            t = self.transport_class(base_url)
+        return t

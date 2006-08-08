@@ -19,12 +19,12 @@
 
 import bzrlib
 import bzrlib.errors as errors
+from bzrlib.inventory import Inventory
 from bzrlib.reconcile import reconcile, Reconciler
 from bzrlib.revision import Revision
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
-from bzrlib.tree import EmptyTree
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
 
@@ -56,7 +56,7 @@ class TestsNeedingReweave(TestReconcile):
         t = get_transport(self.get_url())
         # an empty inventory with no revision for testing with.
         repo = self.make_repository('inventory_without_revision')
-        inv = EmptyTree().inventory
+        inv = Inventory()
         repo.add_inventory('missing', inv, [])
 
         # an empty inventory with no revision for testing with.
@@ -64,7 +64,7 @@ class TestsNeedingReweave(TestReconcile):
         # that all the cached data is correctly converted into ghost links
         # and the referenced inventory still cleaned.
         repo = self.make_repository('inventory_without_revision_and_ghost')
-        inv = EmptyTree().inventory
+        inv = Inventory()
         repo.add_inventory('missing', inv, [])
         sha1 = repo.add_inventory('references_missing', inv, ['missing'])
         rev = Revision(timestamp=0,
@@ -265,7 +265,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
         # now setup the wrong-first parent case
         repo = tree.branch.repository
-        inv = EmptyTree().inventory
+        inv = Inventory()
         sha1 = repo.add_inventory('wrong-first-parent', inv, ['2', '1'])
         rev = Revision(timestamp=0,
                        timezone=None,
@@ -278,7 +278,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
         # now setup the wrong-secondary parent case
         repo = repo_secondary
-        inv = EmptyTree().inventory
+        inv = Inventory()
         sha1 = repo.add_inventory('wrong-secondary-parent', inv, ['1', '3', '2'])
         rev = Revision(timestamp=0,
                        timezone=None,
