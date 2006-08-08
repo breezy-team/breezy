@@ -593,7 +593,7 @@ class TestCase(unittest.TestCase):
         new_env = {
             'HOME': os.getcwd(),
             'APPDATA': os.getcwd(),
-            'BZREMAIL': None,
+            'BZR_EMAIL': None,
             'EMAIL': None,
         }
         self.__old_env = {}
