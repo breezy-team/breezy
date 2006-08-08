@@ -683,7 +683,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
         resp = self._client._call('list_dir',
                                   self._remote_path(relpath))
         if resp[0] == 'names':
-            return resp[1:]
+            return [name.encode('ascii') for name in resp[1:]]
         else:
             self._translate_error(resp)
 
