@@ -164,7 +164,7 @@ class MemoryTransport(Transport):
                 len(path) > len(_abspath) and
                 path[len(_abspath)] == '/'):
                 result.append(path[len(_abspath) + 1:])
-        return result
+        return map(urlutils.escape, result)
 
     def rename(self, rel_from, rel_to):
         """Rename a file or directory; fail if the destination exists"""

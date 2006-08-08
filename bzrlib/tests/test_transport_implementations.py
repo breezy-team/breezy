@@ -748,8 +748,8 @@ class TransportTests(TestTransportImplementation):
         else:
             self.build_tree(['wd/a', 'wd/b', 'wd/c/', 'wd/c/d', 'wd/c/e', 'wd/c2/'])
 
-        self.assertEqual([u'a', u'b', u'c', u'c2'], sorted_list('.'))
-        self.assertEqual([u'd', u'e'], sorted_list('c'))
+        self.assertEqual(['a', 'b', 'c', 'c2'], sorted_list('.'))
+        self.assertEqual(['d', 'e'], sorted_list('c'))
 
         if not t.is_readonly():
             t.delete('c/d')
@@ -758,12 +758,24 @@ class TransportTests(TestTransportImplementation):
             os.unlink('wd/c/d')
             os.unlink('wd/b')
             
-        self.assertEqual([u'a', u'c', u'c2'], sorted_list('.'))
-        self.assertEqual([u'e'], sorted_list('c'))
+        self.assertEqual(['a', 'c', 'c2'], sorted_list('.'))
+        self.assertEqual(['e'], sorted_list('c'))
 
         self.assertListRaises(PathError, t.list_dir, 'q')
         self.assertListRaises(PathError, t.list_dir, 'c/f')
         self.assertListRaises(PathError, t.list_dir, 'a')
+
+    def test_list_dir_result_is_url_escaped(self):
+        t = self.get_transport()
+        if not t.listable():
+            raise TestSkipped("transport not listable")
+
+        if not t.is_readonly():
+            self.build_tree(['a/', 'a/%'], transport=t)
+        else:
+            self.build_tree(['a/', 'a/%'])
+        
+        self.assertEqual(['%25'], list(t.list_dir('a')))
 
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem
