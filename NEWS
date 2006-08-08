@@ -117,9 +117,14 @@ IN DEVELOPMENT
      connection keep-alive, which reduces dns requests and round trips.
      And for both urllib and pycurl we support multi-range requests, 
      which decreases the number of round-trips. Performance results for
-     ``bzr branch http://bazaar-vcs.org/bzr/bzr.dev/`` is not 2-3x faster.
-     And ``bzr pull`` in an existing branch is as much as 4x faster.
+     ``bzr branch http://bazaar-vcs.org/bzr/bzr.dev/`` indicate
+     http branching is now 2-3x faster, and ``bzr pull`` in an existing 
+     branch is as much as 4x faster.
      (Michael Ellerman, Johan Rydberg, John Arbash Meinel, #46768)
+
+   * Performance improvements for sftp. Branching and pulling are now up to
+     2x faster. Utilize paramiko.readv() support for async requests if it
+     is available (paramiko > 1.6) (John Arbash Meinel)
 
   BUG FIXES:
 
@@ -188,11 +193,23 @@ IN DEVELOPMENT
     * Restore terminal mode on C-c while reading sftp password.  (#48923, 
       Nicholas Allen, Martin Pool)
 
+    * Timestamps are rounded to 1ms, and revision entries can be recreated
+      exactly. (John Arbash Meinel, Jamie Wilkinson, #40693)
+
     * Branch.base has changed to a URL, but ~/.bazaar/locations.conf should
       use local paths, since it is user visible (John Arbash Meinel, #53653)
 
     * ``bzr status foo`` when foo was unversioned used to cause a full delta
       to be generated (John Arbash Meinel, #53638)
+
+    * When reading revision properties, an empty value should be considered
+      the empty string, not None (John Arbash Meinel, #47782)
+
+    * ``bzr diff --diff-options`` can now handle binary files being changed.
+      Also, the output is consistent when --diff-options is not supplied.
+      (John Arbash Meinel, #54651, #52930)
+
+    * Use the right suffixes for loading plugins (John Arbash Meinel, #51810)
 
   INTERNALS:
 
@@ -236,6 +253,8 @@ IN DEVELOPMENT
 
     * 'EmptyTree' is now deprecated, please use repository.revision_tree(None)
       instead. (Robert Collins)
+
+    * "RevisionTree" is now in bzrlib/revisiontree.py. (Robert Collins)
 
 bzr 0.8.2  2006-05-17
   
@@ -1100,7 +1119,6 @@ bzr 0.1 2005-10-11
 
     * Symlink support: working with symlinks when not in the root of a 
       bzr tree was broken, patch from Scott James Remnant.
-
 
   IMPROVEMENTS:
 

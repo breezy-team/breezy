@@ -1,15 +1,15 @@
 # Copyright (C) 2004, 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -980,6 +980,19 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[1], (1, '1'))
         self.assertEqual(d[2], (3, '34'))
         self.assertEqual(d[3], (9, '9'))
+
+    def test_readv_out_of_order(self):
+        transport = self.get_transport()
+        if transport.is_readonly():
+            file('a', 'w').write('0123456789')
+        else:
+            transport.put('a', StringIO('01234567890'))
+
+        d = list(transport.readv('a', ((1, 1), (9, 1), (0, 1), (3, 2))))
+        self.assertEqual(d[0], (1, '1'))
+        self.assertEqual(d[1], (9, '9'))
+        self.assertEqual(d[2], (0, '0'))
+        self.assertEqual(d[3], (3, '34'))
 
     def test_get_smart_client(self):
         """All transports must either give a smart client, or know they can't.

@@ -1,15 +1,15 @@
 # Copyright (C) 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -507,8 +507,7 @@ class TreeTransform(object):
                         self.tree_kind(t) == 'directory'])
         for trans_id in self._removed_id:
             file_id = self.tree_file_id(trans_id)
-            if self._tree.inventory[file_id].kind in ('directory', 
-                                                      'root_directory'):
+            if self._tree.inventory[file_id].kind == 'directory':
                 parents.append(trans_id)
 
         for parent_id in parents:
@@ -1071,10 +1070,7 @@ def _entry_changes(file_id, entry, working_tree):
         contents_mod = True
         meta_mod = False
     if has_contents is True:
-        real_e_kind = entry.kind
-        if real_e_kind == 'root_directory':
-            real_e_kind = 'directory'
-        if real_e_kind != working_kind:
+        if entry.kind != working_kind:
             contents_mod, meta_mod = True, False
         else:
             cur_entry._read_tree_state(working_tree.id2path(file_id), 

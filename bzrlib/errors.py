@@ -935,7 +935,7 @@ class NoDiff(BzrNewError):
     """Diff is not installed on this machine: %(msg)s"""
 
     def __init__(self, msg):
-        super(NoDiff, self).__init__(msg=msg)
+        BzrNewError.__init__(self, msg=msg)
 
 
 class NoDiff3(BzrNewError):

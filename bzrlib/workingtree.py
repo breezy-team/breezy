@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -459,6 +459,9 @@ class WorkingTree(bzrlib.tree.Tree):
     def get_file(self, file_id):
         return self.get_file_byname(self.id2path(file_id))
 
+    def get_file_text(self, file_id):
+        return self.get_file(file_id).read()
+
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
@@ -854,7 +857,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if to_dir_id == None and to_name != '':
             raise BzrError("destination %r is not a versioned directory" % to_name)
         to_dir_ie = inv[to_dir_id]
-        if to_dir_ie.kind not in ('directory', 'root_directory'):
+        if to_dir_ie.kind != 'directory':
             raise BzrError("destination %r is not a directory" % to_abs)
 
         to_idpath = inv.get_idpath(to_dir_id)
@@ -1015,7 +1018,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         ## TODO: Work from given directory downwards
         for path, dir_entry in self.inventory.directories():
-            mutter("search for unknowns in %r", path)
+            # mutter("search for unknowns in %r", path)
             dirabs = self.abspath(path)
             if not isdir(dirabs):
                 # e.g. directory deleted
@@ -1221,13 +1224,11 @@ class WorkingTree(bzrlib.tree.Tree):
         if new_revision is None:
             self.branch.set_revision_history([])
             return False
-        # current format is locked in with the branch
-        revision_history = self.branch.revision_history()
         try:
-            position = revision_history.index(new_revision)
-        except ValueError:
-            raise errors.NoSuchRevision(self.branch, new_revision)
-        self.branch.set_revision_history(revision_history[:position + 1])
+            self.branch.generate_revision_history(new_revision)
+        except errors.NoSuchRevision:
+            # not present in the repo - dont try to set it deeper than the tip
+            self.branch.set_revision_history([new_revision])
         return True
 
     def _cache_basis_inventory(self, new_revision):
@@ -1256,7 +1257,7 @@ class WorkingTree(bzrlib.tree.Tree):
             path = self._basis_inventory_name()
             sio = StringIO(xml)
             self._control_files.put(path, sio)
-        except WeaveRevisionNotPresent:
+        except (errors.NoSuchRevision, errors.RevisionNotPresent):
             pass
 
     def read_basis_inventory(self):
@@ -1524,10 +1525,6 @@ class WorkingTree3(WorkingTree):
                 pass
             return False
         else:
-            try:
-                self.branch.revision_history().index(revision_id)
-            except ValueError:
-                raise errors.NoSuchRevision(self.branch, revision_id)
             self._control_files.put_utf8('last-revision', revision_id)
             return True
 
@@ -1858,18 +1855,26 @@ class WorkingTreeTestProviderAdapter(object):
         self._transport_readonly_server = transport_readonly_server
         self._formats = formats
     
+    def _clone_test(self, test, bzrdir_format, workingtree_format, variation):
+        """Clone test for adaption."""
+        new_test = deepcopy(test)
+        new_test.transport_server = self._transport_server
+        new_test.transport_readonly_server = self._transport_readonly_server
+        new_test.bzrdir_format = bzrdir_format
+        new_test.workingtree_format = workingtree_format
+        def make_new_test_id():
+            new_id = "%s(%s)" % (test.id(), variation)
+            return lambda: new_id
+        new_test.id = make_new_test_id()
+        return new_test
+    
     def adapt(self, test):
         from bzrlib.tests import TestSuite
         result = TestSuite()
         for workingtree_format, bzrdir_format in self._formats:
-            new_test = deepcopy(test)
-            new_test.transport_server = self._transport_server
-            new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.bzrdir_format = bzrdir_format
-            new_test.workingtree_format = workingtree_format
-            def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), workingtree_format.__class__.__name__)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
+            new_test = self._clone_test(
+                test,
+                bzrdir_format,
+                workingtree_format, workingtree_format.__class__.__name__)
             result.addTest(new_test)
         return result

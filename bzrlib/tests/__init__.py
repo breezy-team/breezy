@@ -110,8 +110,10 @@ def packages_to_test():
     import bzrlib.tests.bzrdir_implementations
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
+    import bzrlib.tests.intertree_implementations
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.revisionstore_implementations
+    import bzrlib.tests.tree_implementations
     import bzrlib.tests.workingtree_implementations
     return [
             bzrlib.doc,
@@ -120,8 +122,10 @@ def packages_to_test():
             bzrlib.tests.bzrdir_implementations,
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
+            bzrlib.tests.intertree_implementations,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.revisionstore_implementations,
+            bzrlib.tests.tree_implementations,
             bzrlib.tests.workingtree_implementations,
             ]
 
@@ -590,7 +594,7 @@ class TestCase(unittest.TestCase):
         new_env = {
             'HOME': os.getcwd(),
             'APPDATA': os.getcwd(),
-            'BZREMAIL': None,
+            'BZR_EMAIL': None,
             'EMAIL': None,
         }
         self.__old_env = {}
@@ -1281,7 +1285,6 @@ def test_suite():
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
@@ -1318,7 +1321,6 @@ def test_suite():
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
-                   'bzrlib.tests.test_revprops',
                    'bzrlib.tests.test_revisiontree',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
@@ -1338,6 +1340,7 @@ def test_suite():
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
+                   'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
