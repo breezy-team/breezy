@@ -1,15 +1,15 @@
 # Copyright (C) 2005 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -84,6 +84,7 @@ _basis_inv_v5 = """<inventory revision_id="mbp@sourcefrog.net-20050905063503-439
       revision="mbp@foo-00"/>
 </inventory>
 """
+
 
 class TestSerializer(TestCase):
     """Test XML serialization"""
@@ -171,3 +172,14 @@ class TestSerializer(TestCase):
         outfile_contents = outp.getvalue()
         self.assertEqual(outfile_contents[-1], '\n')
         self.assertEqualDiff(outfile_contents, bzrlib.xml5.serializer_v5.write_revision_to_string(rev))
+
+    def test_empty_property_value(self):
+        """Create an empty property value check that it serializes correctly"""
+        s_v5 = bzrlib.xml5.serializer_v5
+        rev = s_v5.read_revision_from_string(_revision_v5)
+        outp = StringIO()
+        props = {'empty':'', 'one':'one'}
+        rev.properties = props
+        txt = s_v5.write_revision_to_string(rev)
+        new_rev = s_v5.read_revision_from_string(txt)
+        self.assertEqual(props, new_rev.properties)

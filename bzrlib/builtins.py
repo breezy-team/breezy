@@ -1,15 +1,15 @@
 # Copyright (C) 2004, 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -814,6 +814,7 @@ class cmd_update(Command):
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_write()
+        existing_pending_merges = tree.pending_merges()
         try:
             last_rev = tree.last_revision() 
             if last_rev == tree.branch.last_revision():
@@ -826,6 +827,9 @@ class cmd_update(Command):
             conflicts = tree.update()
             revno = tree.branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
+            if tree.pending_merges() != existing_pending_merges:
+                note('Your local commits will now show as pending merges with '
+                     "'bzr status', and can be committed with 'bzr commit'.")
             if conflicts != 0:
                 return 1
             else:
@@ -876,10 +880,9 @@ class cmd_remove(Command):
                 raise BzrCommandError('Specify one or more files to remove, or'
                                       ' use --new.')
         else:
-            from bzrlib.delta import compare_trees
-            added = [compare_trees(tree.basis_tree(), tree,
-                                   specific_files=file_list).added]
-            file_list = sorted([f[0] for f in added[0]], reverse=True)
+            added = tree.changes_from(tree.basis_tree(),
+                specific_files=file_list).added
+            file_list = sorted([f[0] for f in added], reverse=True)
             if len(file_list) == 0:
                 raise BzrCommandError('No matching files.')
         tree.remove(file_list, verbose=verbose, to_file=self.outf)
@@ -1171,9 +1174,14 @@ class cmd_diff(Command):
                 raise BzrCommandError("Files are in different branches")
             file_list = None
         except NotBranchError:
-            # Don't raise an error when bzr diff is called from
-            # outside a working tree.
-            tree1, tree2 = None, None
+            if (revision is not None and len(revision) == 2
+                and not revision[0].needs_branch()
+                and not revision[1].needs_branch()):
+                # If both revision specs include a branch, we can
+                # diff them without needing a local working tree
+                tree1, tree2 = None, None
+            else:
+                raise
         if revision is not None:
             if tree2 is not None:
                 raise BzrCommandError("Can't specify -r with two branches")
@@ -1227,11 +1235,8 @@ class cmd_modified(Command):
     hidden = True
     @display_command
     def run(self):
-        from bzrlib.delta import compare_trees
-
         tree = WorkingTree.open_containing(u'.')[0]
-        td = compare_trees(tree.basis_tree(), tree)
-
+        td = tree.changes_from(tree.basis_tree())
         for path, id, kind, text_modified, meta_modified in td.modified:
             self.outf.write(path + '\n')
 
@@ -1754,10 +1759,10 @@ class cmd_commit(Command):
             raise BzrCommandError("Commit refused because there are unknown "
                                   "files in the working tree.")
         except errors.BoundBranchOutOfDate, e:
-            raise BzrCommandError(str(e)
-                                  + ' Either unbind, update, or'
-                                    ' pass --local to commit.')
-
+            raise BzrCommandError(str(e) + "\n"
+                'To commit to master branch, run update and then commit.\n'
+                'You can also pass --local to commit to continue working '
+                'disconnected.')
 
 class cmd_check(Command):
     """Validate consistency of branch history.
@@ -1998,7 +2003,7 @@ def _get_bzr_branch():
 
 def show_version():
     import bzrlib
-    print "bzr (bazaar-ng) %s" % bzrlib.__version__
+    print "Bazaar (bzr) %s" % bzrlib.__version__
     # is bzrlib itself in a branch?
     branch = _get_bzr_branch()
     if branch:

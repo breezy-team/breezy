@@ -1,15 +1,15 @@
 # Copyright (C) 2005 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -20,7 +20,6 @@ import sys
 from bzrlib.add import smart_add
 from bzrlib.builtins import merge
 from bzrlib.errors import IllegalPath
-from bzrlib.delta import compare_trees
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.transform import TreeTransform
@@ -37,7 +36,7 @@ class FileIdInvolvedBase(TestCaseWithRepository):
     def compare_tree_fileids(self, branch, old_rev, new_rev):
         old_tree = self.branch.repository.revision_tree(old_rev)
         new_tree = self.branch.repository.revision_tree(new_rev)
-        delta = compare_trees(old_tree, new_tree)
+        delta = new_tree.changes_from(old_tree)
 
         l2 = [id for path, id, kind in delta.added] + \
              [id for oldpath, newpath, id, kind, text_modified, \

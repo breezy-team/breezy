@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -1557,10 +1557,9 @@ class ConvertBzrDir4To5(Converter):
     def _store_new_weave(self, rev, inv, present_parents):
         # the XML is now updated with text versions
         if __debug__:
-            for file_id in inv:
-                ie = inv[file_id]
-                if ie.kind == 'root_directory':
-                    continue
+            entries = inv.iter_entries()
+            entries.next()
+            for path, ie in entries:
                 assert hasattr(ie, 'revision'), \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
@@ -1579,8 +1578,9 @@ class ConvertBzrDir4To5(Converter):
         mutter('converting texts of revision {%s}',
                rev_id)
         parent_invs = map(self._load_updated_inventory, present_parents)
-        for file_id in inv:
-            ie = inv[file_id]
+        entries = inv.iter_entries()
+        entries.next()
+        for path, ie in entries:
             self._convert_file_version(rev, ie, parent_invs)
 
     def _convert_file_version(self, rev, ie, parent_invs):
@@ -1589,8 +1589,6 @@ class ConvertBzrDir4To5(Converter):
         The file needs to be added into the weave if it is a merge
         of >=2 parents or if it's changed from its parent.
         """
-        if ie.kind == 'root_directory':
-            return
         file_id = ie.file_id
         rev_id = rev.revision_id
         w = self.text_weaves.get(file_id)

@@ -122,6 +122,10 @@ IN DEVELOPMENT
      branch is as much as 4x faster.
      (Michael Ellerman, Johan Rydberg, John Arbash Meinel, #46768)
 
+   * Performance improvements for sftp. Branching and pulling are now up to
+     2x faster. Utilize paramiko.readv() support for async requests if it
+     is available (paramiko > 1.6) (John Arbash Meinel)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
@@ -198,6 +202,15 @@ IN DEVELOPMENT
     * ``bzr status foo`` when foo was unversioned used to cause a full delta
       to be generated (John Arbash Meinel, #53638)
 
+    * When reading revision properties, an empty value should be considered
+      the empty string, not None (John Arbash Meinel, #47782)
+
+    * ``bzr diff --diff-options`` can now handle binary files being changed.
+      Also, the output is consistent when --diff-options is not supplied.
+      (John Arbash Meinel, #54651, #52930)
+
+    * Use the right suffixes for loading plugins (John Arbash Meinel, #51810)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
@@ -240,6 +253,8 @@ IN DEVELOPMENT
 
     * 'EmptyTree' is now deprecated, please use repository.revision_tree(None)
       instead. (Robert Collins)
+
+    * "RevisionTree" is now in bzrlib/revisiontree.py. (Robert Collins)
 
 bzr 0.8.2  2006-05-17
   

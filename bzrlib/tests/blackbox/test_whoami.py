@@ -42,8 +42,11 @@ class TestWhoami(ExternalBase):
         b = bzrlib.branch.Branch.open('.')
         b.get_config().set_user_option('email',
                                        'Branch Identity <branch@identi.ty>')
-        bzr_email = os.environ.get('BZREMAIL')
+        bzr_email = os.environ.get('BZR_EMAIL')
         if bzr_email is not None:
+            del os.environ['BZR_EMAIL']
+        bzremail = os.environ.get('BZREMAIL')
+        if bzremail is not None:
             del os.environ['BZREMAIL']
         try:
             whoami = self.run_bzr("whoami")[0]
@@ -53,23 +56,31 @@ class TestWhoami(ExternalBase):
 
             # Verify that the environment variable overrides the value 
             # in the file
-            os.environ['BZREMAIL'] = 'Different ID <other@environ.ment>'
+            os.environ['BZR_EMAIL'] = 'Different ID <other@environ.ment>'
             whoami = self.run_bzr("whoami")[0]
             self.assertEquals('Different ID <other@environ.ment>\n', whoami)
             whoami_email = self.run_bzr("whoami", "--email")[0]
             self.assertEquals('other@environ.ment\n', whoami_email)
+            del os.environ['BZR_EMAIL']
+            os.environ['BZREMAIL'] = 'Yet Another ID <yetother@environ.ment>'
+            whoami, warn = self.run_bzr("whoami")
+            self.assertEquals('Yet Another ID <yetother@environ.ment>\n', whoami)
+            self.assertTrue(len(warn) > 0)
+            del os.environ['BZREMAIL']
         finally:
             if bzr_email is not None:
-                os.environ['BZREMAIL'] = bzr_email
+                os.environ['BZR_EMAIL'] = bzr_email
+            if bzremail is not None:
+                os.environ['BZREMAIL'] = bzremail
 
     def test_whoami_utf8(self):
         """verify that an identity can be in utf-8."""
         wt = self.make_branch_and_tree('.')
         self.run_bzr('whoami', u'Branch Identity \u20ac <branch@identi.ty>',
                      encoding='utf-8')
-        bzr_email = os.environ.get('BZREMAIL')
+        bzr_email = os.environ.get('BZR_EMAIL')
         if bzr_email is not None:
-            del os.environ['BZREMAIL']
+            del os.environ['BZR_EMAIL']
         try:
             whoami = self.run_bzr("whoami", encoding='utf-8')[0]
             self.assertEquals('Branch Identity \xe2\x82\xac ' +
@@ -79,7 +90,7 @@ class TestWhoami(ExternalBase):
             self.assertEquals('branch@identi.ty\n', whoami_email)
         finally:
             if bzr_email is not None:
-                os.environ['BZREMAIL'] = bzr_email
+                os.environ['BZR_EMAIL'] = bzr_email
 
     def test_whoami_ascii(self):
         """
@@ -90,9 +101,9 @@ class TestWhoami(ExternalBase):
         b = bzrlib.branch.Branch.open('.')
         b.get_config().set_user_option('email', u'Branch Identity \u20ac ' +
                                        '<branch@identi.ty>')
-        bzr_email = os.environ.get('BZREMAIL')
+        bzr_email = os.environ.get('BZR_EMAIL')
         if bzr_email is not None:
-            del os.environ['BZREMAIL']
+            del os.environ['BZR_EMAIL']
         try:
             whoami = self.run_bzr("whoami", encoding='ascii')[0]
             self.assertEquals('Branch Identity ? <branch@identi.ty>\n', whoami)
@@ -101,7 +112,7 @@ class TestWhoami(ExternalBase):
             self.assertEquals('branch@identi.ty\n', whoami_email)
         finally:
             if bzr_email is not None:
-                os.environ['BZREMAIL'] = bzr_email
+                os.environ['BZR_EMAIL'] = bzr_email
 
     def test_warning(self):
         """verify that a warning is displayed if no email is given."""
