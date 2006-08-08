@@ -20,13 +20,14 @@ from cStringIO import StringIO
 import re
 import time
 from unittest import TestSuite
+from warnings import warn
 
 from bzrlib import bzrdir, check, delta, gpg, errors, xml5, ui, transactions, osutils
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.graph import Graph
 from bzrlib.inter import InterObject
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
 from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
@@ -1974,7 +1975,7 @@ class CommitBuilder(object):
             assert isinstance(committer, basestring), type(committer)
             self._committer = committer
 
-        self.new_inventory = Inventory()
+        self.new_inventory = Inventory(None)
         self._new_revision_id = revision_id
         self.parents = parents
         self.repository = repository
@@ -2014,6 +2015,11 @@ class CommitBuilder(object):
 
     def finish_inventory(self):
         """Tell the builder that the inventory is finished."""
+        if self.new_inventory.root is None:
+            warn('Root entry should be supplied to record_entry_contents, as'
+                 ' of bzr 0.10.',
+                 DeprecationWarning, stacklevel=2)
+            self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
         self.new_inventory.revision_id = self._new_revision_id
         self.inv_sha1 = self.repository.add_inventory(
             self._new_revision_id,
@@ -2043,6 +2049,8 @@ class CommitBuilder(object):
     def record_entry_contents(self, ie, parent_invs, path, tree):
         """Record the content of ie from tree into the commit if needed.
 
+        Side effect: sets ie.revision when unchanged
+
         :param ie: An inventory entry present in the commit.
         :param parent_invs: The inventories of the parent revisions of the
             commit.
@@ -2056,6 +2064,14 @@ class CommitBuilder(object):
         # for committing. ie.snapshot will record the correct revision 
         # which may be the sole parent if it is untouched.
         if ie.revision is not None:
+            return
+
+        # In this revision format, root entries have no knit or weave
+        if ie is self.new_inventory.root:
+            if len(parent_invs):
+                ie.revision = parent_invs[0].root.revision
+            else:
+                ie.revision = None
             return
         previous_entries = ie.find_previous_heads(
             parent_invs,

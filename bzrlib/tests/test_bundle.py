@@ -27,7 +27,8 @@ from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
-from bzrlib.errors import BzrError, TestamentMismatch, NotABundle, BadBundle
+from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle, 
+                           NoSuchFile,)
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
 from bzrlib.tests import (TestCaseInTempDir, TestCaseWithTransport,
@@ -411,7 +412,7 @@ class BundleTester(TestCaseWithTransport):
             for inventory_id in old:
                 try:
                     old_file = old.get_file(inventory_id)
-                except:
+                except NoSuchFile:
                     continue
                 if old_file is None:
                     continue
