@@ -63,6 +63,30 @@ class GzipFile(gzip.GzipFile):
         self.extrasize += len_data
         self.size += len_data
 
+    def _write_gzip_header(self):
+        """A tuned version of gzip._write_gzip_header
+
+        We have some extra constrains that plain Gzip does not.
+        1) We can write the whole blob at once. rather than multiple calls to 
+           fileobj.write().
+        2) We never have a filename
+        3) We don't care about the time
+        """
+        self.fileobj.write(
+           '\037\213'   # self.fileobj.write('\037\213')  # magic header
+            '\010'      # self.fileobj.write('\010')      # compression method
+                        # fname = self.filename[:-3]
+                        # flags = 0
+                        # if fname:
+                        #     flags = FNAME
+            '\x00'      # self.fileobj.write(chr(flags))
+            '\0\0\0\0'  # write32u(self.fileobj, long(time.time()))
+            '\002'      # self.fileobj.write('\002')
+            '\377'      # self.fileobj.write('\377')
+                        # if fname:
+            ''          #     self.fileobj.write(fname + '\000')
+            )
+
     def _read(self, size=1024):
         # various optimisations:
         # reduces lsprof count from 2500 to 

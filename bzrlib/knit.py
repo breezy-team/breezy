@@ -1324,12 +1324,16 @@ class _KnitData(_KnitComponentFile):
         """
         sio = StringIO()
         data_file = GzipFile(None, mode='wb', fileobj=sio)
-        data_file.writelines(chain(
-            ["version %s %d %s\n" % (version_id.encode('utf-8'), 
+        version_id_utf8 = version_id.encode('utf-8')
+        # GzipFile.writelines() just iterates and calls self.write() for
+        # each line in the list. So do the faster thing and write it all out
+        # at once.
+        data_file.write(''.join(chain(
+            ["version %s %d %s\n" % (version_id_utf8,
                                      len(lines),
                                      digest)],
             lines,
-            ["end %s\n" % version_id.encode('utf-8')]))
+            ["end %s\n" % version_id_utf8])))
         data_file.close()
         length= sio.tell()
 
