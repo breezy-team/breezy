@@ -994,8 +994,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         except errors.IncompatibleFormat:
             found_transport = dir.get_branch_transport(identifiable_format)
         self.assertTrue(isinstance(found_transport, transport.Transport))
-        # and the dir which has been initialized for us must be statable.
-        found_transport.stat('.')
+        # and the dir which has been initialized for us must exist.
+        found_transport.list_dir('.')
 
     def test_get_repository_transport(self):
         dir = self.make_bzrdir('.')
