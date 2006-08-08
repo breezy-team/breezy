@@ -209,7 +209,7 @@ def _show_working_stats(working):
     dir_cnt = 0
     entries = work_inv.iter_entries()
     entries.next()
-    dir_cnt = len([ie for path, ie in entries if ie.kind == 'directory'])
+    dir_cnt = sum(1 for path, ie in entries if ie.kind == 'directory')
     print '  %8d versioned %s' \
           % (dir_cnt,
              plural(dir_cnt, 'subdirectory', 'subdirectories'))
