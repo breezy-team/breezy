@@ -366,6 +366,10 @@ class SmartServer(object):
     def do_rmdir(self, relpath):
         self._backing_transport.rmdir(relpath)
 
+    def do_stat(self, relpath):
+        stat = self._backing_transport.stat(relpath)
+        return SmartServerResponse(('stat', str(stat.st_size), oct(stat.st_mode)))
+        
     def do_get_bundle(self, path, revision_id):
         # open transport relative to our base
         t = self._backing_transport.clone(path)
@@ -485,6 +489,13 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     def get_bogus_url(self):
         """Return a URL which will fail to connect"""
         return 'bzr://127.0.0.1:1/'
+
+
+class SmartStat(object):
+
+    def __init__(self, size, mode):
+        self.st_size = size
+        self.st_mode = mode
 
 
 class SmartTransport(sftp.SFTPUrlHandling):
@@ -661,7 +672,11 @@ class SmartTransport(sftp.SFTPUrlHandling):
         raise errors.TransportNotPossible('readonly transport')
 
     def stat(self, relpath):
-        raise errors.TransportNotPossible('smart client does not support stat()')
+        resp = self._client._call('stat', self._remote_path(relpath))
+        if resp[0] == 'stat':
+            return SmartStat(int(resp[1]), int(resp[2], 8))
+        else:
+            self._translate_error(resp)
 
     ## def lock_read(self, relpath):
     ##     """Lock the given file for shared (read) access.
