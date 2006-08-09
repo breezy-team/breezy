@@ -642,6 +642,27 @@ class WorkingTree(bzrlib.tree.Tree):
         self._write_inventory(inv)
 
     @needs_write_lock
+    def add_parent_tree_id(self, revision_id):
+        """Add revision_id as a parent.
+
+        This is equivalent to retrieving the current list of parent ids
+        and setting the list to its value plus revision_id.
+
+        :param revision_id: The revision id to add to the parent list. It may
+        be a ghost revision.
+        """
+        revision_ids = self.get_parent_ids() + [revision_id]
+        trees = []
+        for rev_id in revision_ids:
+            try:
+                trees.append(
+                    (rev_id, self.branch.repository.revision_tree(rev_id)))
+            except errors.RevisionNotPresent:
+                trees.append((rev_id, None))
+                pass
+        self.set_parent_trees(trees)
+
+    @needs_write_lock
     def add_pending_merge(self, *revision_ids):
         # TODO: Perhaps should check at this point that the
         # history of the revision is actually present?

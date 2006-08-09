@@ -78,3 +78,36 @@ class TestSetParents(TestParents):
             (third_revision, rev_tree3)])
         self.assertConsistentParents(
             [first_revision, second_revision, third_revision], t)
+
+
+class TestAddParentId(TestParents):
+
+    def test_add_first_parent_id(self):
+        """Test adding the first parent id"""
+        tree = self.make_branch_and_tree('.')
+        first_revision = tree.commit('first post')
+        uncommit(tree.branch, tree=tree)
+        tree.add_parent_tree_id(first_revision)
+        self.assertConsistentParents([first_revision], tree)
+        
+    def test_add_first_parent_id_ghost(self):
+        """Test adding the first parent id - as a ghost"""
+        tree = self.make_branch_and_tree('.')
+        tree.add_parent_tree_id('first-revision')
+        self.assertConsistentParents(['first-revision'], tree)
+        
+    def test_add_second_parent_id(self):
+        """Test adding the second parent id"""
+        tree = self.make_branch_and_tree('.')
+        first_revision = tree.commit('first post')
+        uncommit(tree.branch, tree=tree)
+        second_revision = tree.commit('second post')
+        tree.add_parent_tree_id(first_revision)
+        self.assertConsistentParents([second_revision, first_revision], tree)
+        
+    def test_add_second_parent_id_ghost(self):
+        """Test adding the second parent id - as a ghost"""
+        tree = self.make_branch_and_tree('.')
+        first_revision = tree.commit('first post')
+        tree.add_parent_tree_id('second')
+        self.assertConsistentParents([first_revision, 'second'], tree)
