@@ -996,8 +996,8 @@ class TestCaseInTempDir(TestCase):
                 # As long as the files didn't exist in the past, append() will
                 # do the same thing as put()
                 # On jam's machine, make_kernel_like_tree is:
-                #   put:    5-7s (averaging 6s)
-                #   append: 3-4s
+                #   put:    4.5-7.5s (averaging 6s)
+                #   append: 2.9-4.5s
                 transport.append(urlutils.escape(name), StringIO(content))
 
     def build_tree_contents(self, shape):
