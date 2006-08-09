@@ -67,7 +67,6 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
             if verbose:
                 print 'Removing revno %d: %s' % (len(rh)+1, rev_id)
 
-
         # Committing before we start removing files, because
         # once we have removed at least one, all the rest are invalid.
         if not dry_run:
@@ -75,9 +74,16 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
                 master.set_revision_history(rh)
             branch.set_revision_history(rh)
             if tree is not None:
-                tree.set_last_revision(branch.last_revision())
-                pending_merges.reverse()
-                tree.set_pending_merges(pending_merges)
+                branch_tip = branch.last_revision()
+                if branch_tip is not None:
+                    parents = [branch.last_revision()]
+                else:
+                    parents = []
+                parents.extend(reversed(pending_merges))
+                parent_trees = [
+                    (parent, branch.repository.revision_tree(parent))
+                    for parent in parents]
+                tree.set_parent_trees(parent_trees)
     finally:
         for item in reversed(unlockable):
             item.unlock()

@@ -351,10 +351,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.commit('A', rev_id='A')
         wt.rename_one('foo', 'bar')
         wt.commit('B', rev_id='B')
-        wt.set_last_revision('B')
+        wt.set_parent_trees(
+            [('B', wt.branch.repository.revision_tree('B'))])
         tree = wt.basis_tree()
         self.failUnless(tree.has_filename('bar'))
-        wt.set_last_revision('A')
+        wt.set_parent_trees(
+            [('A', wt.branch.repository.revision_tree('A'))])
         tree = wt.basis_tree()
         self.failUnless(tree.has_filename('foo'))
 
@@ -509,9 +511,11 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             return
         tree.commit('foo', rev_id='foo', allow_pointless=True, local=True)
         tree.commit('bar', rev_id='bar', allow_pointless=True, local=True)
+        # put a new commit on the master tree to update to.
+        master_rev = master_tree.commit('first master commit')
         tree.update()
-        self.assertEqual(None, tree.last_revision())
-        self.assertEqual([], tree.branch.revision_history())
+        self.assertEqual(master_rev, tree.last_revision())
+        self.assertEqual([master_rev], tree.branch.revision_history())
         self.assertEqual(['bar'], tree.pending_merges())
 
     def test_merge_modified(self):

@@ -51,8 +51,10 @@ class MergeBuilder(object):
         self.base_tt.apply()
         self.base.commit('base commit')
         for tt, wt in ((self.this_tt, self.this), (self.other_tt, self.other)):
+            # why does this not do wt.pull() ?
             wt.branch.pull(self.base.branch)
-            wt.set_last_revision(wt.branch.last_revision())
+            wt.set_parent_trees([(wt.branch.last_revision(),
+                wt.branch.repository.revision_tree(wt.branch.last_revision()))])
             tt.apply()
             wt.commit('branch commit')
             assert len(wt.branch.revision_history()) == 2

@@ -517,9 +517,11 @@ class WorkingTree(bzrlib.tree.Tree):
         if revision_id is None:
             transform_tree(tree, self)
         else:
-            # TODO now merge from tree.last_revision to revision
+            # TODO now merge from tree.last_revision to revision (to preserve
+            # user local changes)
             transform_tree(tree, self)
-            tree.set_last_revision(revision_id)
+            tree.set_parent_trees([(revision_id,
+                tree.branch.repository.revision_tree(revision_id))])
 
     @needs_write_lock
     def commit(self, message=None, revprops=None, *args, **kwargs):
@@ -1010,14 +1012,21 @@ class WorkingTree(bzrlib.tree.Tree):
                 repository = self.branch.repository
                 pb = bzrlib.ui.ui_factory.nested_progress_bar()
                 try:
+                    new_basis_tree = self.branch.basis_tree()
                     merge_inner(self.branch,
-                                self.branch.basis_tree(),
-                                basis_tree, 
-                                this_tree=self, 
+                                new_basis_tree,
+                                basis_tree,
+                                this_tree=self,
                                 pb=pb)
                 finally:
                     pb.finished()
-                self.set_last_revision(self.branch.last_revision())
+                # TODO - dedup parents list with things merged by pull ?
+                parent_trees = [(self.branch.last_revision(), new_basis_tree)]
+                merges = self.get_parent_ids()[1:]
+                parent_trees.extend([
+                    (parent, repository.revision_tree(parent)) for
+                     parent in merges])
+                self.set_parent_trees(parent_trees)
             return count
         finally:
             source.unlock()
@@ -1431,6 +1440,13 @@ class WorkingTree(bzrlib.tree.Tree):
                                       basis,
                                       this_tree=self)
                 self.set_last_revision(self.branch.last_revision())
+                # TODO - dedup parents list with things merged by pull ?
+                parent_trees = [(self.branch.last_revision(), to_tree)]
+                merges = self.get_parent_ids()[1:]
+                parent_trees.extend([
+                    (parent, self.branch.repository.revision_tree(parent)) for
+                     parent in merges])
+                self.set_parent_trees(parent_trees)
             if old_tip and old_tip != self.last_revision():
                 # our last revision was not the prior branch last revision
                 # and we have converted that last revision to a pending merge.
@@ -1716,7 +1732,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             finally:
                 branch.unlock()
         revision = branch.last_revision()
-        inv = Inventory() 
+        inv = Inventory()
         wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
@@ -1725,9 +1741,9 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                          _bzrdir=a_bzrdir)
         wt._write_inventory(inv)
         wt.set_root_id(inv.root.file_id)
-        wt.set_last_revision(revision)
-        wt.set_pending_merges([])
-        build_tree(wt.basis_tree(), wt)
+        basis_tree = branch.repository.revision_tree(revision)
+        wt.set_parent_trees([(revision, basis_tree)])
+        build_tree(basis_tree, wt)
         return wt
 
     def __init__(self):
@@ -1807,9 +1823,9 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         try:
             wt._write_inventory(inv)
             wt.set_root_id(inv.root.file_id)
-            wt.set_last_revision(revision_id)
-            wt.set_pending_merges([])
-            build_tree(wt.basis_tree(), wt)
+            basis_tree = branch.repository.revision_tree(revision_id)
+            wt.set_parent_trees([(revision_id, basis_tree)])
+            build_tree(basis_tree, wt)
         finally:
             wt.unlock()
             control_files.unlock()
