@@ -24,6 +24,7 @@ from bzrlib import (
     atomicfile,
     errors,
     osutils,
+    symbol_versioning,
     )
 from bzrlib.tests import TestCaseInTempDir
 
@@ -126,3 +127,30 @@ class TestAtomicFile(TestCaseInTempDir):
         f.commit()
         st = os.lstat('test')
         self.assertEqualMode(0666 & ~umask, stat.S_IMODE(st.st_mode))
+
+    def test_closed(self):
+        local_warnings = []
+        def capture_warnings(msg, cls, stacklevel=None):
+            self.assertEqual(cls, DeprecationWarning)
+            local_warnings.append(msg)
+
+        method = symbol_versioning.warn
+        try:
+            symbol_versioning.set_warning_method(capture_warnings)
+            f = atomicfile.AtomicFile('test', mode='wb')
+            self.assertEqual(False, f.closed)
+            f.abort()
+            self.assertEqual(True, f.closed)
+
+            f = atomicfile.AtomicFile('test', mode='wb')
+            f.close()
+            self.assertEqual(True, f.closed)
+
+            f = atomicfile.AtomicFile('test', mode='wb')
+            f.commit()
+            self.assertEqual(True, f.closed)
+        finally:
+            symbol_versioning.set_warning_method(method)
+
+        txt = 'AtomicFile.closed deprecated in bzr 0.10'
+        self.assertEqual([txt]*4, local_warnings)

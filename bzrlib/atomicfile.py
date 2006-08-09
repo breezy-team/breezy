@@ -21,7 +21,7 @@ import os
 import stat
 import socket
 import sys
-from warnings import warn
+import warnings
 
 from bzrlib import (
     errors,
@@ -78,7 +78,7 @@ class AtomicFile(object):
     def _get_closed(self):
         symbol_versioning.warn('AtomicFile.closed deprecated in bzr 0.10',
                                DeprecationWarning, stacklevel=2)
-        return self.f is None
+        return self._fd is None
 
     closed = property(_get_closed)
 
@@ -116,4 +116,4 @@ class AtomicFile(object):
 
     def __del__(self):
         if self._fd is not None:
-            warn("%r leaked" % self)
+            warnings.warn("%r leaked" % self)
