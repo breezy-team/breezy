@@ -1217,8 +1217,13 @@ class BzrDirFormat5(BzrDirFormat):
         result = (super(BzrDirFormat5, self).initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
         if not _cloning:
-            BzrBranchFormat4().initialize(result)
-            WorkingTreeFormat2().initialize(result)
+            branch = BzrBranchFormat4().initialize(result)
+            try:
+                WorkingTreeFormat2().initialize(result)
+            except errors.NotLocalUrl:
+                # Even though we can't access the working tree, we need to
+                # create its control files.
+                WorkingTreeFormat2().stub_initialize_remote(branch.control_files)
         return result
 
     def _open(self, transport):
@@ -1271,13 +1276,13 @@ class BzrDirFormat6(BzrDirFormat):
         result = super(BzrDirFormat6, self).initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
         if not _cloning:
-            BzrBranchFormat4().initialize(result)
+            branch = BzrBranchFormat4().initialize(result)
             try:
                 WorkingTreeFormat2().initialize(result)
             except errors.NotLocalUrl:
-                # emulate pre-check behaviour for working tree and silently 
-                # fail.
-                pass
+                # Even though we can't access the working tree, we need to
+                # create its control files.
+                WorkingTreeFormat2().stub_initialize_remote(branch.control_files)
         return result
 
     def _open(self, transport):
