@@ -120,7 +120,9 @@ class TestRepository(TestCaseWithRepository):
         t = get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
-        self.failUnless(isinstance(made_repo, repository.Repository))
+        # Check that we have a repository object.
+        made_repo.has_revision('foo')
+        
         self.assertEqual(made_control, made_repo.bzrdir)
         
     def test_create_repository_shared(self):
@@ -138,7 +140,9 @@ class TestRepository(TestCaseWithRepository):
             # not all repository formats understand being shared, or
             # may only be shared in some circumstances.
             return
-        self.failUnless(isinstance(made_repo, repository.Repository))
+        # Check that we have a repository object.
+        made_repo.has_revision('foo')
+
         self.assertEqual(made_control, made_repo.bzrdir)
         self.assertTrue(made_repo.is_shared())
 

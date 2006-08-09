@@ -882,7 +882,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         t = get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
-        self.failUnless(isinstance(made_repo, repository.Repository))
+        # Check that we have a repository object.
+        made_repo.has_revision('foo')
+
         self.assertEqual(made_control, made_repo.bzrdir)
 
     def test_create_repository_shared(self):

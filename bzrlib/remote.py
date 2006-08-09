@@ -52,7 +52,15 @@ class RemoteBzrDir(BzrDir):
         self._branch = None
 
     def create_repository(self, shared=False):
-        return self._real_bzrdir.create_repository(shared=shared)
+        return RemoteRepository(self._real_bzrdir.create_repository(shared=shared), self)
+
+    def create_branch(self):
+        self._real_bzrdir.create_branch()
+        return self.open_branch()
+
+    def create_workingtree(self, revision_id=None):
+        self._real_bzrdir.create_workingtree(revision_id=revision_id)
+        return self.open_workingtree()
 
     def open_repository(self):
         # OK just very fake response for now
@@ -63,6 +71,9 @@ class RemoteBzrDir(BzrDir):
     def open_branch(self):
         # Very fake - use file-level transport
         return RemoteBranch(self, self.client)
+
+    def open_workingtree(self, _unsupported=False):
+        return RemoteWorkingTree(self._real_bzrdir.open_workingtree(_unsupported=_unsupported), self)
 
     def get_branch_transport(self, branch_format):
         return self._real_bzrdir.get_branch_transport(branch_format)
@@ -85,19 +96,28 @@ class RemoteBzrDir(BzrDir):
 class RemoteRepositoryFormat(repository.RepositoryFormatKnit1):
     """Format for repositories accessed over rpc.
 
-    Instances of this repository are represented by RemoteRepository 
+    Instances of this repository are represented by RemoteRepository
     instances.
     """
 
     _matchingbzrdir = RemoteBzrDirFormat
 
 
-class RemoteRepository(repository.Repository):
+class RemoteRepository(object):
     """Repository accessed over rpc.
 
-    For the moment everything is delegated to IO-like operations over 
+    For the moment everything is delegated to IO-like operations over
     the transport.
     """
+
+    def __init__(self, real_repository, remote_bzrdir):
+        self.real_repository = real_repository
+        self.bzrdir = remote_bzrdir
+
+    def __getattr__(self, name):
+        # XXX: temporary way to lazily delegate everything to the real
+        # repository
+        return getattr(self.real_repository, name)
 
 
 class RemoteBranchFormat(branch.BranchFormat):
@@ -131,6 +151,17 @@ class RemoteBranch(branch.Branch):
     def revision_history(self):
         return self._real_branch.revision_history()
 
+
+class RemoteWorkingTree(object):
+
+    def __init__(self, real_workingtree, remote_bzrdir):
+        self.real_workingtree = real_workingtree
+        self.bzrdir = remote_bzrdir
+
+    def __getattr__(self, name):
+        # XXX: temporary way to lazily delegate everything to the real
+        # workingtree
+        return getattr(self.real_workingtree, name)
 
 # when first loaded, register this format.
 #
