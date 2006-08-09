@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Tests of the parent related functions of WorkingTrees."""
+
 import os
 
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
@@ -23,7 +25,18 @@ from bzrlib.uncommit import uncommit
 import bzrlib.xml5
 
 
-class TestSetParents(TestCaseWithWorkingTree):
+class TestParents(TestCaseWithWorkingTree):
+
+    def assertConsistentParents(self, expected, tree):
+        self.assertEqual(expected, tree.get_parent_ids())
+        if expected == []:
+            self.assertEqual(None, tree.last_revision())
+        else:
+            self.assertEqual(expected[0], tree.last_revision())
+        self.assertEqual(expected[1:], tree.pending_merges())
+
+
+class TestSetParents(TestParents):
 
     def test_set_no_parents(self):
         t = self.make_branch_and_tree('.')
@@ -32,16 +45,12 @@ class TestSetParents(TestCaseWithWorkingTree):
         # now give it a real parent, and then set it to no parents again.
         t.commit('first post')
         t.set_parent_trees([])
-        self.assertEqual([], t.get_parent_ids())
-        self.assertEqual(None, t.last_revision())
-        self.assertEqual([], t.pending_merges())
+        self.assertConsistentParents([], t)
 
     def test_set_one_ghost_parent(self):
         t = self.make_branch_and_tree('.')
         t.set_parent_trees([('missing-revision-id', None)])
-        self.assertEqual(['missing-revision-id'], t.get_parent_ids())
-        self.assertEqual('missing-revision-id', t.last_revision())
-        self.assertEqual([], t.pending_merges())
+        self.assertConsistentParents(['missing-revision-id'], t)
 
     def test_set_two_parents_one_ghost(self):
         t = self.make_branch_and_tree('.')
@@ -51,10 +60,7 @@ class TestSetParents(TestCaseWithWorkingTree):
         rev_tree = t.branch.repository.revision_tree(revision_in_repo)
         t.set_parent_trees([(revision_in_repo, rev_tree),
             ('another-missing', None)])
-        self.assertEqual([revision_in_repo, 'another-missing'],
-            t.get_parent_ids())
-        self.assertEqual(revision_in_repo, t.last_revision())
-        self.assertEqual(['another-missing'], t.pending_merges())
+        self.assertConsistentParents([revision_in_repo, 'another-missing'], t)
 
     def test_set_three_parents(self):
         t = self.make_branch_and_tree('.')
@@ -70,7 +76,5 @@ class TestSetParents(TestCaseWithWorkingTree):
         t.set_parent_trees([(first_revision, rev_tree1),
             (second_revision, rev_tree2),
             (third_revision, rev_tree3)])
-        self.assertEqual([first_revision, second_revision, third_revision],
-            t.get_parent_ids())
-        self.assertEqual(first_revision, t.last_revision())
-        self.assertEqual([second_revision, third_revision], t.pending_merges())
+        self.assertConsistentParents(
+            [first_revision, second_revision, third_revision], t)
