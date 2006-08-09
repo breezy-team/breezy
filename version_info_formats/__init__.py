@@ -1,37 +1,29 @@
-# Copyright (C) 2005 Canonical Ltd
-
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""\
-Routines for extracting all version information from a bzr branch.
-"""
+"""Routines for extracting all version information from a bzr branch."""
 
 import time
-import pprint
 
-from cStringIO import StringIO
-
-import bzrlib.delta
 from bzrlib.osutils import local_time_offset, format_date
-import bzrlib.revision
-from bzrlib.rio import RioReader, RioWriter, Stanza
 
 
 # This contains a map of format id => formatter
 # None is considered the default formatter
-version_formats = {}
+_version_formats = {}
 
 def create_date_str(timestamp=None, offset=None):
     """Just a wrapper around format_date to provide the right format.
@@ -100,8 +92,13 @@ class VersionInfoBuilder(object):
             return
 
         # We have both a working tree, and we are checking
-        delta = bzrlib.delta.compare_trees(basis_tree, self._working_tree,
-                                          want_unchanged=False)
+        # COMPATIBILITY:
+        # bzr < 0.9 did not have Tree.changes_from
+        try:
+            delta = self._working_tree.changes_from(basis_tree)
+        except AttributeError:
+            import bzrlib.delta
+            delta = bzrlib.delta.compare_trees(basis_tree, self._working_tree)
 
         # Using a 2-pass algorithm for renames. This is because you might have
         # renamed something out of the way, and then created a new file
@@ -167,144 +164,44 @@ class VersionInfoBuilder(object):
         :return: None
         """
         raise NotImplementedError(VersionInfoBuilder.generate)
-            
-
-class RioVersionInfoBuilder(VersionInfoBuilder):
-    """This writes a rio stream out."""
-
-    def generate(self, to_file):
-        info = Stanza()
-        revision_id = self._get_revision_id()
-        if revision_id is not None:
-            info.add('revision-id', revision_id)
-            rev = self._branch.repository.get_revision(revision_id)
-            info.add('date', create_date_str(rev.timestamp, rev.timezone))
-            revno = str(self._branch.revision_id_to_revno(revision_id))
-        else:
-            revno = '0'
-
-        info.add('build-date', create_date_str())
-        info.add('revno', revno)
-
-        if self._branch.nick is not None:
-            info.add('branch-nick', self._branch.nick)
-
-        if self._check or self._include_file_revs:
-            self._extract_file_revisions()
-
-        if self._check:
-            if self._clean:
-                info.add('clean', 'True')
-            else:
-                info.add('clean', 'False')
-
-        if self._include_history:
-            self._extract_revision_history()
-            log = Stanza()
-            for (revision_id, message,
-                 timestamp, timezone) in self._revision_history_info:
-                log.add('id', revision_id)
-                log.add('message', message)
-                log.add('date', create_date_str(timestamp, timezone))
-            sio = StringIO()
-            log_writer = RioWriter(to_file=sio)
-            log_writer.write_stanza(log)
-            info.add('revisions', sio.getvalue())
-
-        if self._include_file_revs:
-            files = Stanza()
-            for path in sorted(self._file_revisions.keys()):
-                files.add('path', path)
-                files.add('revision', self._file_revisions[path])
-            sio = StringIO()
-            file_writer = RioWriter(to_file=sio)
-            file_writer.write_stanza(files)
-            info.add('file-revisions', sio.getvalue())
-
-        writer = RioWriter(to_file=to_file)
-        writer.write_stanza(info)
 
 
-version_formats['rio'] = RioVersionInfoBuilder
-# Default format is rio
-version_formats[None] = RioVersionInfoBuilder
+
+def register_builder(format, module, class_name):
+    """Register a version info format.
+
+    :param format: The short name of the format, this will be used as the
+        lookup key.
+    :param module: The string name to the module where the format class 
+        can be found
+    :param class_name: The string name of the class to instantiate
+    """
+    if len(_version_formats) == 0:
+        _version_formats[None] = (module, class_name)
+    _version_formats[format] = (module, class_name)
 
 
-# Header and footer for the python format
-_py_version_header = '''#!/usr/bin/env python
-"""This file is automatically generated by generate_version_info
-It uses the current working tree to determine the revision.
-So don't edit it. :)
-"""
+def get_builder(format):
+    """Get a handle to the version info builder class
 
-'''
-
-
-_py_version_footer = '''
-
-if __name__ == '__main__':
-    print 'revision: %(revno)d' % version_info
-    print 'nick: %(branch_nick)s' % version_info
-    print 'revision id: %(revision_id)s' % version_info
-'''
+    :param format: The lookup key supplied to register_builder
+    :return: A class, which follows the VersionInfoBuilder api.
+    """
+    builder_module, builder_class_name = _version_formats[format]
+    module = __import__(builder_module, globals(), locals(),
+                        [builder_class_name])
+    klass = getattr(module, builder_class_name)
+    return klass
 
 
-class PythonVersionInfoBuilder(VersionInfoBuilder):
-    """Create a version file which is a python source module."""
-
-    def generate(self, to_file):
-        info = {'build_date':create_date_str()
-                  , 'revno':None
-                  , 'revision_id':None
-                  , 'branch_nick':self._branch.nick
-                  , 'clean':None
-                  , 'date':None
-        }
-        revisions = []
-
-        revision_id = self._get_revision_id()
-        if revision_id is None:
-            info['revno'] = 0
-        else:
-            info['revno'] = self._branch.revision_id_to_revno(revision_id)
-            info['revision_id'] = revision_id
-            rev = self._branch.repository.get_revision(revision_id)
-            info['date'] = create_date_str(rev.timestamp, rev.timezone)
-
-        if self._check or self._include_file_revs:
-            self._extract_file_revisions()
-
-        if self._check:
-            if self._clean:
-                info['clean'] = True
-            else:
-                info['clean'] = False
-
-        info_str = pprint.pformat(info)
-        to_file.write(_py_version_header)
-        to_file.write('version_info = ')
-        to_file.write(info_str)
-        to_file.write('\n\n')
-
-        if self._include_history:
-            self._extract_revision_history()
-            revision_str = pprint.pformat(self._revision_history_info)
-            to_file.write('revisions = ')
-            to_file.write(revision_str)
-            to_file.write('\n\n')
-        else:
-            to_file.write('revisions = {}\n\n')
-
-        if self._include_file_revs:
-            file_rev_str = pprint.pformat(self._file_revisions)
-            to_file.write('file_revisions = ')
-            to_file.write(file_rev_str)
-            to_file.write('\n\n')
-        else:
-            to_file.write('file_revisions = {}\n\n')
-
-        to_file.write(_py_version_footer)
+def get_builder_formats():
+    """Get the possible list of formats"""
+    formats = _version_formats.keys()
+    formats.remove(None)
+    return formats
 
 
-version_formats['python'] = PythonVersionInfoBuilder
-
+register_builder('rio', 'bzrlib.plugins.version_info.version_info_formats.format_rio',
+                 'RioVersionInfoBuilder')
+register_builder('python', 'bzrlib.plugins.version_info.version_info_formats.format_python',
+                 'PythonVersionInfoBuilder')
