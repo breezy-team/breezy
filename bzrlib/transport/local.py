@@ -22,15 +22,21 @@ This is a fairly thin wrapper on regular file IO.
 import os
 import shutil
 import sys
-from stat import ST_MODE, S_ISDIR, ST_SIZE
+from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
 import tempfile
 
-from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename, 
+from bzrlib import (
+    osutils,
+    urlutils,
+    )
+from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename,
                             check_legal_path, rmtree)
 from bzrlib.symbol_versioning import warn
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, Server
-import bzrlib.urlutils as urlutils
+
+
+_append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY
 
 
 class LocalTransport(Transport):
@@ -51,7 +57,13 @@ class LocalTransport(Transport):
             base = base + '/'
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
-        ## mutter("_local_base: %r => %r", base, self._local_base)
+        self._get_default_modes()
+
+    def _get_default_modes(self):
+        """Figure out what the default file and directory modes are"""
+        umask = osutils.get_umask()
+        self._default_file_mode = 0666 & ~umask
+        self._default_dir_mode = 0777 & ~umask
 
     def should_cache(self):
         return False
@@ -125,7 +137,7 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
-    def put(self, relpath, f, mode=0666):
+    def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
@@ -134,7 +146,7 @@ class LocalTransport(Transport):
         from bzrlib.atomicfile import AtomicFile
 
         if mode is None:
-            mode = 0666
+            mode = self._default_file_mode
         path = relpath
         try:
             path = self._abspath(relpath)
@@ -164,24 +176,37 @@ class LocalTransport(Transport):
         """Create a directory at the given path."""
         path = relpath
         try:
+            if mode is None:
+                local_mode = self._default_dir_mode
+            else:
+                local_mode = mode
             path = self._abspath(relpath)
-            os.mkdir(path)
+            os.mkdir(path, local_mode)
             if mode is not None:
+                # It is probably faster to just do the chmod, rather than
+                # doing a stat, and then trying to compare
                 os.chmod(path, mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
-    def append(self, relpath, f, mode=0666):
+    def append(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final location."""
         abspath = self._abspath(relpath)
         if mode is None:
-            mode = 0666
+            local_mode = self._default_file_mode
+        else:
+            local_mode = mode
         try:
-            fd = os.open(abspath, os.O_CREAT | os.O_APPEND | os.O_WRONLY, mode)
+            fd = os.open(abspath, _append_flags, local_mode)
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
         try:
-            result = os.lseek(fd, 0, 2)
+            st = os.fstat(fd)
+            result = st.st_size
+            if mode is not None and mode != S_IMODE(st.st_mode):
+                # Because of umask, we may still need to chmod the file.
+                # But in the general case, we won't have to
+                os.chmod(abspath, mode)
             # TODO: make a raw FD version of _pump ?
             self._pump_to_fd(f, fd)
         finally:

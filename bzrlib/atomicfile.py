@@ -25,6 +25,7 @@ from warnings import warn
 
 from bzrlib import (
     errors,
+    osutils,
     symbol_versioning,
     )
 from bzrlib.osutils import rename
@@ -32,11 +33,6 @@ from bzrlib.osutils import rename
 # not forksafe - but we dont fork.
 _pid = os.getpid()
 _hostname = socket.gethostname()
-
-# On win32 O_BINARY will set binary versus text mode
-# but the constant doesn't exist on platforms where it isn't
-# needed
-_binary = getattr(os, 'O_BINARY', 0)
 
 
 class AtomicFile(object):
@@ -61,7 +57,7 @@ class AtomicFile(object):
         
         flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY
         if mode == 'wb':
-            flags |= _binary
+            flags |= osutils.O_BINARY
         
         self._new_mode = new_mode
         # Use a low level fd operation to avoid chmodding later.
