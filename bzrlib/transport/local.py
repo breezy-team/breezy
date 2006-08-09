@@ -57,13 +57,6 @@ class LocalTransport(Transport):
             base = base + '/'
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
-        self._get_default_modes()
-
-    def _get_default_modes(self):
-        """Figure out what the default file and directory modes are"""
-        umask = osutils.get_umask()
-        self._default_file_mode = 0666 & ~umask
-        self._default_dir_mode = 0777 & ~umask
 
     def should_cache(self):
         return False
@@ -145,8 +138,6 @@ class LocalTransport(Transport):
         """
         from bzrlib.atomicfile import AtomicFile
 
-        if mode is None:
-            mode = self._default_file_mode
         path = relpath
         try:
             path = self._abspath(relpath)
@@ -177,7 +168,8 @@ class LocalTransport(Transport):
         path = relpath
         try:
             if mode is None:
-                local_mode = self._default_dir_mode
+                # os.mkdir() will filter through umask
+                local_mode = 0777
             else:
                 local_mode = mode
             path = self._abspath(relpath)
@@ -193,7 +185,8 @@ class LocalTransport(Transport):
         """Append the text in the file-like object into the final location."""
         abspath = self._abspath(relpath)
         if mode is None:
-            local_mode = self._default_file_mode
+            # os.open() will automatically use the umask
+            local_mode = 0666
         else:
             local_mode = mode
         try:

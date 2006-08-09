@@ -23,6 +23,7 @@ import sys
 from bzrlib import (
     atomicfile,
     errors,
+    osutils,
     )
 from bzrlib.tests import TestCaseInTempDir
 
@@ -85,7 +86,7 @@ class TestAtomicFile(TestCaseInTempDir):
     def _test_mode(self, mode):
         if not self.can_sys_preserve_mode():
             return
-        f = atomicfile.AtomicFile('test', mode='wt', new_mode=mode)
+        f = atomicfile.AtomicFile('test', mode='wb', new_mode=mode)
         f.write('foo\n')
         f.commit()
         st = os.lstat('test')
@@ -116,3 +117,12 @@ class TestAtomicFile(TestCaseInTempDir):
         self._test_mode(0400)
         # Make it read-write again so cleanup doesn't complain
         os.chmod('test', 0600)
+
+    def test_no_mode(self):
+        # The default file permissions should be based on umask
+        umask = osutils.get_umask()
+        f = atomicfile.AtomicFile('test', mode='wb')
+        f.write('foo\n')
+        f.commit()
+        st = os.lstat('test')
+        self.assertEqualMode(0666 & ~umask, stat.S_IMODE(st.st_mode))

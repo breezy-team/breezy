@@ -44,9 +44,9 @@ class AtomicFile(object):
     place or abort() to cancel.
     """
 
-    __slots__ = ['tmpfilename', 'realfilename', '_fd', '_new_mode']
+    __slots__ = ['tmpfilename', 'realfilename', '_fd']
 
-    def __init__(self, filename, mode='wb', new_mode=0666):
+    def __init__(self, filename, mode='wb', new_mode=None):
         self._fd = None
         assert mode in ('wb', 'wt'), \
             "invalid AtomicFile mode %r" % mode
@@ -58,14 +58,22 @@ class AtomicFile(object):
         flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY
         if mode == 'wb':
             flags |= osutils.O_BINARY
+
+        if new_mode is not None:
+            local_mode = new_mode
+        else:
+            local_mode = 0666
         
-        self._new_mode = new_mode
         # Use a low level fd operation to avoid chmodding later.
         # This may not succeed, but it should help most of the time
-        self._fd = os.open(self.tmpfilename, flags, new_mode)
-        st = os.fstat(self._fd)
-        if stat.S_IMODE(st.st_mode) != new_mode:
-            os.chmod(self.tmpfilename, new_mode)
+        self._fd = os.open(self.tmpfilename, flags, local_mode)
+
+        if new_mode is not None:
+            # Because of umask issues, we may need to chmod anyway
+            # the common case is that we won't, though.
+            st = os.fstat(self._fd)
+            if stat.S_IMODE(st.st_mode) != new_mode:
+                os.chmod(self.tmpfilename, new_mode)
 
     def _get_closed(self):
         symbol_versioning.warn('AtomicFile.closed deprecated in bzr 0.10',
