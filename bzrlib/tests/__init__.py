@@ -991,6 +991,13 @@ class TestCaseInTempDir(TestCase):
                 else:
                     raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
+                # Technically 'put()' is the right command. However, put
+                # uses an AtomicFile, which requires an extra rename into place
+                # As long as the files didn't exist in the past, append() will
+                # do the same thing as put()
+                # On jam's machine, make_kernel_like_tree is:
+                #   put:    5-7s (averaging 6s)
+                #   append: 3-4s
                 transport.append(urlutils.escape(name), StringIO(content))
 
     def build_tree_contents(self, shape):

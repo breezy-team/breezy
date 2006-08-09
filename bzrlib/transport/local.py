@@ -207,7 +207,6 @@ class LocalTransport(Transport):
                 # Because of umask, we may still need to chmod the file.
                 # But in the general case, we won't have to
                 os.chmod(abspath, mode)
-            # TODO: make a raw FD version of _pump ?
             self._pump_to_fd(f, fd)
         finally:
             os.close(fd)
