@@ -74,9 +74,9 @@ class AddAction(object):
         :param path: The FastPath being added
         :param kind: The kind of the object being added.
         """
-        if not self.should_print:
-            return
-        self._to_file.write('added %s\n' % _quote(path.raw_path))
+        if self.should_print:
+            self._to_file.write('added %s\n' % _quote(path.raw_path))
+        return None
 
 
 # TODO: jam 20050105 These could be used for compatibility
@@ -321,9 +321,11 @@ def __add_one(tree, inv, parent_ie, path, kind, action):
     :param inv: Inventory which will receive the new entry.
     :param parent_ie: Parent inventory entry.
     :param kind: Kind of new entry (file, directory, etc)
-    :param action: callback(inv, parent_ie, path, kind); return ignored.
+    :param action: callback(inv, parent_ie, path, kind); return a file_id 
+        or None to generate a new file id
     :returns: None
     """
-    action(inv, parent_ie, path, kind)
-    entry = bzrlib.inventory.make_entry(kind, path.base_path, parent_ie.file_id)
+    file_id = action(inv, parent_ie, path, kind)
+    entry = bzrlib.inventory.make_entry(kind, path.base_path, parent_ie.file_id,
+                                        file_id=file_id)
     inv.add(entry)

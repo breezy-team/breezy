@@ -1,8 +1,25 @@
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+from cStringIO import StringIO
 import os
 import unittest
 
 from bzrlib import errors, ignores, osutils
-from bzrlib.add import smart_add, smart_add_tree
+from bzrlib.add import smart_add, smart_add_tree, AddAction
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.errors import NoSuchFile
 from bzrlib.inventory import InventoryFile, Inventory
@@ -128,6 +145,18 @@ class TestSmartAdd(TestCaseWithTransport):
         self.assertSubset(('inertiatic/foo.pyc',), ignored['*.py[co]'])
 
 
+class CustomIDAddAction(AddAction):
+
+    def __call__(self, inv, parent_ie, path, kind):
+        # The first part just logs if appropriate
+        # Now generate a custom id
+        file_id = kind + '-' + path.raw_path.replace('/', '%')
+        if self.should_print:
+            self._to_file.write('added %s with id %s\n' 
+                                % (path.raw_path, file_id))
+        return file_id
+
+
 class TestSmartAddTree(TestCaseWithTransport):
     """Test smart adds with a specified branch."""
 
@@ -211,6 +240,24 @@ class TestSmartAddTree(TestCaseWithTransport):
             self.assertEqual(None, wt.path2id(path.rstrip('/')),
                     'Accidentally added path: %s' % (path,))
 
+    def test_custom_ids(self):
+        sio = StringIO()
+        action = CustomIDAddAction(to_file=sio, should_print=True)
+        self.build_tree(['file1', 'dir1/', 'dir1/file2'])
+
+        wt = self.make_branch_and_tree('.')
+        smart_add_tree(wt, ['.'], action=action)
+        self.assertEqualDiff('added dir1 with id directory-dir1\n'
+                             'added file1 with id file-file1\n'
+                             'added dir1/file2 with id file-dir1%file2\n',
+                             sio.getvalue())
+        self.assertEqual([('', wt.inventory.root.file_id),
+                          ('dir1', 'directory-dir1'),
+                          ('dir1/file2', 'file-dir1%file2'),
+                          ('file1', 'file-file1'),
+                         ], [(path, ie.file_id) for path, ie
+                                in wt.inventory.iter_entries()])
+
 
 class TestAddNonNormalized(TestCaseWithTransport):
 
@@ -280,7 +327,6 @@ class TestAddActions(TestCase):
 
     def run_action(self, output):
         from bzrlib.add import AddAction, FastPath
-        from cStringIO import StringIO
         inv = Inventory()
         stdout = StringIO()
         action = AddAction(to_file=stdout, should_print=bool(output))
