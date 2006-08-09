@@ -79,6 +79,44 @@ class TestSetParents(TestParents):
         self.assertConsistentParents(
             [first_revision, second_revision, third_revision], t)
 
+    def test_set_no_parents_ids(self):
+        t = self.make_branch_and_tree('.')
+        t.set_parent_ids([])
+        self.assertEqual([], t.get_parent_ids())
+        # now give it a real parent, and then set it to no parents again.
+        t.commit('first post')
+        t.set_parent_ids([])
+        self.assertConsistentParents([], t)
+
+    def test_set_one_ghost_parent_ids(self):
+        t = self.make_branch_and_tree('.')
+        t.set_parent_ids(['missing-revision-id'])
+        self.assertConsistentParents(['missing-revision-id'], t)
+
+    def test_set_two_parents_one_ghost_ids(self):
+        t = self.make_branch_and_tree('.')
+        revision_in_repo = t.commit('first post')
+        # remove the tree's history
+        uncommit(t.branch, tree=t)
+        rev_tree = t.branch.repository.revision_tree(revision_in_repo)
+        t.set_parent_ids([revision_in_repo, 'another-missing'])
+        self.assertConsistentParents([revision_in_repo, 'another-missing'], t)
+
+    def test_set_three_parents_ids(self):
+        t = self.make_branch_and_tree('.')
+        first_revision = t.commit('first post')
+        uncommit(t.branch, tree=t)
+        second_revision = t.commit('second post')
+        uncommit(t.branch, tree=t)
+        third_revision = t.commit('third post')
+        uncommit(t.branch, tree=t)
+        rev_tree1 = t.branch.repository.revision_tree(first_revision)
+        rev_tree2 = t.branch.repository.revision_tree(second_revision)
+        rev_tree3 = t.branch.repository.revision_tree(third_revision)
+        t.set_parent_ids([first_revision, second_revision, third_revision])
+        self.assertConsistentParents(
+            [first_revision, second_revision, third_revision], t)
+
 
 class TestAddParentId(TestParents):
 
