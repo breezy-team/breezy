@@ -47,12 +47,12 @@ class cmd_bisect(Command):
 
         revision = None
         log_fn = None
-        if subcommand in ('yes', 'no') and len(args_list) == 2:
+        if subcommand in ('yes', 'no') and args_list and len(args_list) == 2:
             if args_list[0] == "-r":
                 revision = args_list[1]
             else:
                 raise BzrCommandError("Improper arguments to bisect " + subcommand)
-        elif subcommand in ('replay',) and len(args_list) == 1:
+        elif subcommand in ('replay',) and args_list and len(args_list) == 1:
             log_fn = args_list[0]
         elif args_list:
             raise BzrCommandError("Improper arguments to bisect " + subcommand)
@@ -133,7 +133,7 @@ class BisectTests(bzrlib.tests.TestCaseWithTransport):
 
         self.run_bzr('bisect', 'start')
         self.run_bzr('bisect', 'yes')
-        self,run_bzr('bisect', 'no', '-r', '1')
+        self.run_bzr('bisect', 'no', '-r', '1')
         self.assertRevno(3)
 
         # Mark feature as present in the middle.  Should move us
@@ -155,7 +155,7 @@ class BisectTests(bzrlib.tests.TestCaseWithTransport):
 
         self.run_bzr('bisect', 'start')
         self.run_bzr('bisect', 'yes')
-        self,run_bzr('bisect', 'no', '-r', '1')
+        self.run_bzr('bisect', 'no', '-r', '1')
         self.run_bzr('bisect', 'yes')
         self.assertRevno(2)
 
@@ -169,7 +169,7 @@ class BisectTests(bzrlib.tests.TestCaseWithTransport):
 
         self.run_bzr('bisect', 'start')
         self.run_bzr('bisect', 'yes')
-        self,run_bzr('bisect', 'no', '-r', '1')
+        self.run_bzr('bisect', 'no', '-r', '1')
         self.run_bzr('bisect', 'yes')
         self.assertRevno(2)
 
