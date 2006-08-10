@@ -170,7 +170,7 @@ class BisectTests(bzrlib.tests.TestCaseWithTransport):
 
         # Now save the log.
 
-        log_data = self.capture('bisect', 'log')
+        log_data = self.capture('bisect log')
         f = open("bisect_log", "w")
         f.write(log_data)
         f.close()
