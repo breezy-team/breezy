@@ -41,20 +41,17 @@ class cmd_bisect(Command):
     """
 
     takes_args = ['subcommand', 'args*']
+    takes_options = ['revision']
 
-    def run(self, subcommand, args_list):
+    def run(self, subcommand, args_list, revision=None):
         # Handle subcommand parameters.
 
-        revision = None
         log_fn = None
-        if subcommand in ('yes', 'no') and args_list and len(args_list) == 2:
-            if args_list[0] == "-r":
-                revision = args_list[1]
-            else:
-                raise BzrCommandError("Improper arguments to bisect " + subcommand)
+        if subcommand in ('yes', 'no') and revision:
+            pass
         elif subcommand in ('replay',) and args_list and len(args_list) == 1:
             log_fn = args_list[0]
-        elif args_list:
+        elif args_list or revision:
             raise BzrCommandError("Improper arguments to bisect " + subcommand)
 
         # Dispatch.
