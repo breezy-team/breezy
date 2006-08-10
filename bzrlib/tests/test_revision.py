@@ -18,6 +18,9 @@
 import os
 import warnings
 
+from bzrlib import (
+    revision,
+    )
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
 from bzrlib.graph import Graph
@@ -25,7 +28,7 @@ from bzrlib.revision import (find_present_ancestors, combined_graph,
                              common_ancestor,
                              is_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
@@ -334,3 +337,30 @@ class TestRevisionAttributes(TestCaseWithTransport):
         self.assertEqual(rev_a.committer, rev_b.committer)
         self.assertEqual(rev_a.revision_id, rev_b.revision_id)
         self.assertEqual(rev_a.properties, rev_b.properties)
+
+
+class TestRevisionEncodeCache(TestCase):
+    
+    def setUp(self):
+        super(TestRevisionEncodeCache, self).setUp()
+        revision.clear_encoding_cache()
+        self.addCleanup(revision.clear_encoding_cache)
+
+    def check_one(self, rev_id):
+        rev_id_utf8 = rev_id.encode('utf-8')
+        self.failIf(rev_id in revision._revision_to_utf8_map)
+        self.failIf(rev_id_utf8 in revision._revision_from_utf8_map)
+
+        # After a single encode, the mapping should exist for
+        # both directions
+        self.assertEqual(rev_id_utf8, revision.encode_utf8(rev_id))
+        self.failUnless(rev_id in revision._revision_to_utf8_map)
+        self.failUnless(rev_id_utf8 in revision._revision_from_utf8_map)
+        self.assertEqual(rev_id, revision.decode_utf8(rev_id_utf8))
+
+    def test_ascii(self):
+        self.check_one(u'all_ascii_characters123123123')
+
+    def test_unicode(self):
+        self.check_one(u'some_\xb5_unicode_\xe5_chars')
+

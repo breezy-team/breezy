@@ -110,6 +110,7 @@ def test_suite():
                    'bzrlib.benchmarks.bench_bench',
                    'bzrlib.benchmarks.bench_checkout',
                    'bzrlib.benchmarks.bench_commit',
+                   'bzrlib.benchmarks.bench_encoding',
                    'bzrlib.benchmarks.bench_inventory',
                    'bzrlib.benchmarks.bench_log',
                    'bzrlib.benchmarks.bench_osutils',

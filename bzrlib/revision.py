@@ -28,6 +28,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
 
 NULL_REVISION="null:"
 
+
 class Revision(object):
     """Single revision on a branch.
 
@@ -452,3 +453,41 @@ def get_intervening_revisions(ancestor_id, rev_id, rev_source,
         next = best_ancestor(next)
     path.reverse()
     return path
+
+
+# Map revisions from and to utf8 encoding
+# Whenever we do an encode/decode operation, we save the result, so that
+# we don't have to do it again.
+_revision_to_utf8_map = {}
+_revision_from_utf8_map = {}
+
+
+def encode_utf8(revision_id,
+                _to_map=_revision_to_utf8_map,
+                _from_map=_revision_from_utf8_map):
+    """Take this unicode revision id, and get a unicode version"""
+    try:
+        return _to_map[revision_id]
+    except KeyError:
+        _to_map[revision_id] = as_utf8 = revision_id.encode('utf-8')
+        _from_map[as_utf8] = revision_id
+        return as_utf8
+
+
+def decode_utf8(revision_id_utf8,
+                _to_map=_revision_to_utf8_map,
+                _from_map=_revision_from_utf8_map):
+    """Take a utf8 revision id, and decode it, but cache the result"""
+    try:
+        return _from_map[revision_id_utf8]
+    except KeyError:
+        _from_map[revision_id_utf8] = as_uni = revision_id_utf8.decode('utf-8')
+        _to_map[as_uni] = revision_id_utf8
+        return as_uni
+
+
+def clear_encoding_cache():
+    """Clear the encoding and decoding caches"""
+    _revision_to_utf8_map = {}
+    _revision_from_utf8_map = {}
+
