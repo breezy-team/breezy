@@ -23,7 +23,7 @@ class SFTPBenchmark(Benchmark):
         super(SFTPBenchmark, self).setUp()
         test_sftp_transport.set_transport(self) 
          
-    def make_parametrized(self, num_files, num_commits, directory_name='.'):
+    def create_with_commits(self, num_files, num_commits, directory_name='.'):
         """Create a tree with many commits.
         
         No files change are included.
@@ -68,13 +68,13 @@ class SFTPBenchmark(Benchmark):
 
     def test_branch(self):
         os.mkdir("a")
-        t, files = self.make_parametrized(100, 100, "a")
+        t, files = self.create_with_commits(100, 100, "a")
 
         self.time(bzrdir.BzrDir.open(self.get_url('a')).sprout, "b")
 
     def test_pull_1(self):
         os.mkdir("a")
-        t, files = self.make_parametrized(100, 100, "a")
+        t, files = self.create_with_commits(100, 100, "a")
         rbzrdir = bzrdir.BzrDir.open(self.get_url('a'))
         b2 = rbzrdir.sprout("b") # branch
         # change a few files and commit
@@ -83,43 +83,32 @@ class SFTPBenchmark(Benchmark):
         
     def test_pull_100(self):
         os.mkdir("a")
-        t, files = self.make_parametrized(100, 100, "a")
+        t, files = self.create_with_commits(100, 100, "a")
         rbzrdir = bzrdir.BzrDir.open(self.get_url('a'))
         b2 = rbzrdir.sprout("b") # branch
         # change a few files and commit
         self.commit_some_revisions(t, files, 100)
         self.time(b2.open_branch().pull, rbzrdir.open_branch())
 
-    def test_push_1(self):
+    def create_commit_and_push(self, num_push_revisions):
         os.mkdir("a")
-        t, files = self.make_parametrized(100, 100, "a")
+        t, files = self.create_with_commits(100, 100, "a")
         rbzrdir = bzrdir.BzrDir.open(self.get_url('a'))
         b2 = rbzrdir.sprout("b") # branch
         # change a few files and commit
         self.commit_some_revisions(
-            b2.open_workingtree(), ["b/%i" for i in range(100)], 1)
+            b2.open_workingtree(), ["b/%i" for i in range(100)], 
+            num_commits=num_push_revisions)
         self.time(rbzrdir.open_branch().pull, b2.open_branch())
+
+    def test_push_1(self):
+        self.create_commit_and_push(1)
 
     def test_push_10(self):
-        os.mkdir("a")
-        t, files = self.make_parametrized(100, 100, "a")
-        rbzrdir = bzrdir.BzrDir.open(self.get_url('a'))
-        b2 = rbzrdir.sprout("b") # branch
-        # change a few files and commit
-        self.commit_some_revisions(
-            b2.open_workingtree(), ["b/%i" for i in range(100)], 10)
-        self.time(rbzrdir.open_branch().pull, b2.open_branch())
+        self.create_commit_and_push(10)
 
     def test_push_100(self):
-        os.mkdir("a")
-        t, files = self.make_parametrized(100, 100, "a")
-        rbzrdir = bzrdir.BzrDir.open(self.get_url('a'))
-        b2 = rbzrdir.sprout("b") # branch
-        # change a few files and commit
-        self.commit_some_revisions(
-            b2.open_workingtree(), ["b/%i" for i in range(100)], 100)
-        self.time(rbzrdir.open_branch().pull, b2.open_branch())
-
+        self.create_commit_and_push(100)
 
 
 class SFTPSlowSocketBenchmark(SFTPBenchmark):
