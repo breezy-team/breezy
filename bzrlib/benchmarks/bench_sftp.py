@@ -5,6 +5,7 @@ from bzrlib import bzrdir
 import bzrlib.transport
 import bzrlib.transport.http
 from bzrlib.workingtree import WorkingTree
+from bzrlib.tests import test_sftp_transport
 
 try:
     import paramiko
@@ -17,20 +18,11 @@ class SFTPBenchmark(Benchmark):
     """A benchmark base class that provides a sftp server on localhost."""
 
     def setUp(self):
-        # XXX just a cut-and-paste from TestCaseWithSFTPServer.
-        # What's the proper way to get a different transport for benchmarks?
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
         super(SFTPBenchmark, self).setUp()
-        from bzrlib.transport.sftp import SFTPAbsoluteServer, SFTPHomeDirServer
-        if getattr(self, '_get_remote_is_absolute', None) is None:
-            self._get_remote_is_absolute = True
-        if self._get_remote_is_absolute:
-            self.transport_server = SFTPAbsoluteServer
-        else:
-            self.transport_server = SFTPHomeDirServer
-        self.transport_readonly_server = bzrlib.transport.http.HttpServer
-
+        test_sftp_transport.set_transport(self) 
+         
     def make_parametrized(self, num_files, num_commits, directory_name='.'):
         """Create a tree with many commits.
         
