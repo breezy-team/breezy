@@ -38,12 +38,12 @@ from bzrlib.workingtree import WorkingTree
 
 class MockTree(object):
     def __init__(self):
-        from bzrlib.inventory import RootEntry, ROOT_ID
+        from bzrlib.inventory import InventoryDirectory, ROOT_ID
         object.__init__(self)
         self.paths = {ROOT_ID: ""}
         self.ids = {"": ROOT_ID}
         self.contents = {}
-        self.root = RootEntry(ROOT_ID)
+        self.root = InventoryDirectory(ROOT_ID, '', None)
 
     inventory = property(lambda x:x)
 
