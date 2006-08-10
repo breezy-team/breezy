@@ -25,9 +25,12 @@ from cStringIO import StringIO
 import stat
 import sys
 
-from bzrlib import errors
+from bzrlib import (
+    osutils,
+    urlutils,
+    )
 from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
-                           LockError, PathError,
+                           LockError, NoSmartServer, PathError,
                            TransportNotPossible, ConnectionError,
                            InvalidURL)
 from bzrlib.osutils import getcwd
@@ -35,7 +38,6 @@ from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import memory, smart
 import bzrlib.transport
-import bzrlib.urlutils as urlutils
 
 
 def _append(fn, txt):
@@ -161,6 +163,11 @@ class TransportTests(TestTransportImplementation):
         self.assertTransportMode(t, 'mode400', 0400)
         t.put_multi([('mmode644', StringIO('text\n'))], mode=0644)
         self.assertTransportMode(t, 'mmode644', 0644)
+
+        # The default permissions should be based on the current umask
+        umask = osutils.get_umask()
+        t.put('nomode', StringIO('test text\n'), mode=None)
+        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
         
     def test_mkdir(self):
         t = self.get_transport()
@@ -225,9 +232,13 @@ class TransportTests(TestTransportImplementation):
         self.assertTransportMode(t, 'dmode777', 0777)
         t.mkdir('dmode700', mode=0700)
         self.assertTransportMode(t, 'dmode700', 0700)
-        # TODO: jam 20051215 test mkdir_multi with a mode
         t.mkdir_multi(['mdmode755'], mode=0755)
         self.assertTransportMode(t, 'mdmode755', 0755)
+
+        # Default mode should be based on umask
+        umask = osutils.get_umask()
+        t.mkdir('dnomode', mode=None)
+        self.assertTransportMode(t, 'dnomode', 0777 & ~umask)
 
     def test_copy_to(self):
         # FIXME: test:   same server to same server (partly done)
@@ -958,7 +969,7 @@ class TransportTests(TestTransportImplementation):
         transport.put('lock', StringIO())
         try:
             lock = transport.lock_write('lock')
-        except errors.TransportNotPossible:
+        except TransportNotPossible:
             return
         # TODO make this consistent on all platforms:
         # self.assertRaises(LockError, transport.lock_write, 'lock')
@@ -976,7 +987,7 @@ class TransportTests(TestTransportImplementation):
             transport.put('lock', StringIO())
         try:
             lock = transport.lock_read('lock')
-        except errors.TransportNotPossible:
+        except TransportNotPossible:
             return
         # TODO make this consistent on all platforms:
         # self.assertRaises(LockError, transport.lock_read, 'lock')
@@ -1020,6 +1031,6 @@ class TransportTests(TestTransportImplementation):
             client = transport.get_smart_client()
             # XXX: should be a more general class
             self.assertIsInstance(client, smart.SmartStreamClient)
-        except errors.NoSmartServer:
+        except NoSmartServer:
             # as long as we got it we're fine
             pass
