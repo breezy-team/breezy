@@ -1087,7 +1087,7 @@ class SocketDelay(object):
 
     simulated_time = 0
 
-    def __init__(self, sock, latency, time_per_char=0.0001,
+    def __init__(self, sock, latency, time_per_char=0.00001,
                  really_sleep=False):
         self.sock = sock
         self.latency = latency

@@ -20,6 +20,7 @@
 from bzrlib import bzrdir, plugin
 from bzrlib.tests.TestUtil import TestLoader
 from bzrlib.tests.blackbox import ExternalBase
+import bzrlib.branch
 
 
 class Benchmark(ExternalBase):
@@ -117,6 +118,7 @@ def test_suite():
                    'bzrlib.benchmarks.bench_status',
                    'bzrlib.benchmarks.bench_transform',
                    'bzrlib.benchmarks.bench_workingtree',
+                   'bzrlib.benchmarks.bench_sftp',
                    ]
     suite = TestLoader().loadTestsFromModuleNames(testmod_names) 
 
