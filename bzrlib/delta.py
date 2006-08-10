@@ -189,9 +189,6 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
         """We have matched up 2 file_ids, check for changes."""
         assert old_entry.kind == new_entry.kind
 
-        if old_entry.kind == 'root_directory':
-            return
-
         if specific_file_ids:
             if (old_entry.file_id not in specific_file_ids and 
                 new_entry.file_id not in specific_file_ids):

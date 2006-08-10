@@ -213,8 +213,8 @@ class EmptyTree(Tree):
         return False
 
     def kind(self, file_id):
-        assert self._inventory[file_id].kind == "root_directory"
-        return "root_directory"
+        assert self._inventory[file_id].kind == "directory"
+        return "directory"
 
     def list_files(self):
         return iter([])
@@ -223,7 +223,6 @@ class EmptyTree(Tree):
         return file_id in self._inventory
 
     def get_file_sha1(self, file_id, path=None):
-        assert self._inventory[file_id].kind == "root_directory"
         return None
 
 

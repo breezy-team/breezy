@@ -52,10 +52,9 @@ def unescape(s):
 def write_text_inventory(inv, outf):
     """Write out inv in a simple trad-unix text format."""
     outf.write(START_MARK)
-    for path, ie in inv.iter_entries():
-        if ie.kind == 'root_directory':
-            continue
-        
+    entries = inv.iter_entries()
+    entries.next()
+    for path, ie in entries:
         outf.write(ie.file_id + ' ')
         outf.write(escape(ie.name) + ' ')
         outf.write(ie.kind + ' ')
