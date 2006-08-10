@@ -157,7 +157,6 @@ class BisectTests(bzrlib.tests.TestCaseWithTransport):
         self.run_bzr('bisect', 'yes')
         self.run_bzr('bisect', 'no', '-r', '1')
         self.run_bzr('bisect', 'yes')
-        self.assertRevno(2)
 
         # Now reset.
 
@@ -171,7 +170,6 @@ class BisectTests(bzrlib.tests.TestCaseWithTransport):
         self.run_bzr('bisect', 'yes')
         self.run_bzr('bisect', 'no', '-r', '1')
         self.run_bzr('bisect', 'yes')
-        self.assertRevno(2)
 
         # Now save the log.
 
@@ -180,10 +178,9 @@ class BisectTests(bzrlib.tests.TestCaseWithTransport):
         f.write(log_data)
         f.close()
 
-        # Reset and check.
+        # Reset.
 
         self.run_bzr('bisect', 'reset')
-        self.assertRevno(5)
 
         # Read it back in.
 
