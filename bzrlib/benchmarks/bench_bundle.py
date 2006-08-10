@@ -15,7 +15,6 @@
 
 """Tests for bzr bundle performance."""
 
-
 from bzrlib.benchmarks import Benchmark
 
 
@@ -24,7 +23,6 @@ class BundleBenchmark(Benchmark):
     The bundle tests should (also) be done at a lower level with
     direct call to the bzrlib."""
     
-
     def test_create_bundle_known_kernel_like_tree(self):
         """
         Create a bundle for a kernel sized tree with no ignored, unknowns,
@@ -46,7 +44,20 @@ class BundleBenchmark(Benchmark):
         self.make_heavily_merged_tree()
         self.time(self.run_bzr, 'bundle', '--revision', '..-1')
 
-    #XXX tests for applying a bundle are still missing
-
-        
+    def test_apply_bundle_known_kernel_like_tree(self):
+        """
+        Create a bundle for a kernel sized tree with no ignored, unknowns,
+        or added and one commit.""" 
+        self.make_kernel_like_tree()
+        self.run_bzr('add')
+        self.run_bzr('commit', '-m', 'initial import')
+        self.run_bzr('branch', '.', '../branch_a')
+        self.run_bzr('bundle', '--revision', '..-1')
+        f = file('../bundle', 'wb')
+        try:
+            f.write(self.run_bzr('bundle', '--revision', '..-1')[0])
+        finally:
+            f.close()
+        os.chdir('../branch_a')
+        self.time(self.run_bzr, 'merge', '../bundle')
  
