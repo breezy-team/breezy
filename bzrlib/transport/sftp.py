@@ -1087,12 +1087,15 @@ class SocketDelay(object):
 
     simulated_time = 0
 
-    def __init__(self, sock, latency, time_per_char=0.00001,
+    def __init__(self, sock, latency, bandwidth=1.0, 
                  really_sleep=False):
+        """ 
+        :param bandwith: simulated bandwith (MegaBit)
+        """
         self.sock = sock
         self.latency = latency
         self.really_sleep = really_sleep
-        self.time_per_char = time_per_char
+        self.time_per_byte = 1 / (bandwidth / 8.0 * 1024 * 1024) 
         self.new_roundtrip = False
 
     def sleep(self, s):
@@ -1104,7 +1107,7 @@ class SocketDelay(object):
         return self.sock.close()
 
     def dup(self):
-        return SocketDelay(self.sock.dup(), self.latency, self.time_per_char,
+        return SocketDelay(self.sock.dup(), self.latency, self.time_per_byte,
                            self._sleep)
 
     def getpeername(self, *args):
@@ -1124,14 +1127,14 @@ class SocketDelay(object):
         if data and self.new_roundtrip:
             self.new_roundtrip = False
             self.sleep(self.latency)
-            self.sleep(len(data) * self.time_per_char)
+        self.sleep(len(data) * self.time_per_byte)
         return data
 
     def sendall(self, data, flags=0):
         if not self.new_roundtrip:
             self.new_roundtrip = True
             self.sleep(self.latency)
-        self.sleep(len(data) * self.time_per_char)
+        self.sleep(len(data) * self.time_per_byte)
         return self.sock.sendall(data, flags)
 
     def send(self, data, flags=0):
@@ -1139,7 +1142,7 @@ class SocketDelay(object):
             self.new_roundtrip = True
             self.sleep(self.latency)
         bytes_sent = self.sock.send(data, flags)
-        self.sleep(bytes_sent * self.time_per_char)
+        self.sleep(bytes_sent * self.time_per_byte)
         return bytes_sent
 
     def setblocking(self, *args):

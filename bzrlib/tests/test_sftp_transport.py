@@ -396,7 +396,7 @@ class TestSocketDelay(TestCase):
     def test_delay(self):
         from bzrlib.transport.sftp import SocketDelay
         sending = FakeSocket()
-        receiving = SocketDelay(sending, 0.1, 0)
+        receiving = SocketDelay(sending, 0.1, bandwidth=1000000)
         # check that simulated time is charged only per round-trip:
         t1 = SocketDelay.simulated_time
         receiving.send("connect1")
@@ -421,7 +421,7 @@ class TestSocketDelay(TestCase):
     def test_bandwidth(self):
         from bzrlib.transport.sftp import SocketDelay
         sending = FakeSocket()
-        receiving = SocketDelay(sending, 0, 1)
+        receiving = SocketDelay(sending, 0, bandwidth=8.0/(1024*1024))
         # check that simulated time is charged only per round-trip:
         t1 = SocketDelay.simulated_time
         receiving.send("connect")
