@@ -213,6 +213,9 @@ bzr 0.9.0rc1  2006-08-01
 
     * Use the right suffixes for loading plugins (John Arbash Meinel, #51810)
 
+    * Fix Branch.get_parent() to handle the case when the parent is not 
+      accessible (John Arbash Meinel, #52976)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
