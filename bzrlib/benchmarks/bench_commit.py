@@ -34,3 +34,20 @@ class CommitBenchmark(Benchmark):
         # on robertc's machine the first sample of this took 59750ms/77682ms
         # after initial call reduction                       53922ms/73918ms
         self.time(self.run_bzr, 'commit', '-m', 'first post')
+
+    def test_commit_single_file_in_kernel_like_tree(self):
+        """Commit of a new singel file to a kernel sized tree."""
+        # uncomment this to run the benchmark with the repository in memory
+        # not disk
+        # self.transport_server = MemoryServer
+        # self.make_kernel_like_tree(self.get_url())
+        self.make_kernel_like_tree()
+        self.run_bzr('add')
+        self.run_bzr('commit', '-m', 'first post')
+        filename = 'unique_file_name'
+        self.build_tree([filename])
+        self.run_bzr('add', filename)
+        self.time(self.run_bzr, 'commit', '-m', 'added singel file',
+                  filename)
+        
+        
