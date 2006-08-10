@@ -458,36 +458,36 @@ def get_intervening_revisions(ancestor_id, rev_id, rev_source,
 # Map revisions from and to utf8 encoding
 # Whenever we do an encode/decode operation, we save the result, so that
 # we don't have to do it again.
-_revision_to_utf8_map = {}
-_revision_from_utf8_map = {}
+_unicode_to_utf8_map = {}
+_utf8_to_unicode_map = {}
 
 
-def encode_utf8(revision_id,
-                _to_map=_revision_to_utf8_map,
-                _from_map=_revision_from_utf8_map):
+def encode_utf8(unicode_str,
+                _u_to_8=_unicode_to_utf8_map,
+                _8_to_u=_utf8_to_unicode_map):
     """Take this unicode revision id, and get a unicode version"""
     try:
-        return _to_map[revision_id]
+        return _u_to_8[unicode_str]
     except KeyError:
-        _to_map[revision_id] = as_utf8 = revision_id.encode('utf-8')
-        _from_map[as_utf8] = revision_id
-        return as_utf8
+        _u_to_8[unicode_str] = utf8_str = unicode_str.encode('utf-8')
+        _8_to_u[utf8_str] = unicode_str
+        return utf8_str
 
 
-def decode_utf8(revision_id_utf8,
-                _to_map=_revision_to_utf8_map,
-                _from_map=_revision_from_utf8_map):
+def decode_utf8(utf8_str,
+                _u_to_8=_unicode_to_utf8_map,
+                _8_to_u=_utf8_to_unicode_map):
     """Take a utf8 revision id, and decode it, but cache the result"""
     try:
-        return _from_map[revision_id_utf8]
+        return _8_to_u[utf8_str]
     except KeyError:
-        _from_map[revision_id_utf8] = as_uni = revision_id_utf8.decode('utf-8')
-        _to_map[as_uni] = revision_id_utf8
-        return as_uni
+        _8_to_u[utf8_str] = unicode_str = utf8_str.decode('utf-8')
+        _u_to_8[unicode_str] = utf8_str
+        return unicode_str
 
 
 def clear_encoding_cache():
     """Clear the encoding and decoding caches"""
-    _revision_to_utf8_map = {}
-    _revision_from_utf8_map = {}
+    _unicode_to_utf8_map = {}
+    _utf8_to_unicode_map = {}
 

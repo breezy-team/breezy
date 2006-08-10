@@ -348,14 +348,14 @@ class TestRevisionEncodeCache(TestCase):
 
     def check_one(self, rev_id):
         rev_id_utf8 = rev_id.encode('utf-8')
-        self.failIf(rev_id in revision._revision_to_utf8_map)
-        self.failIf(rev_id_utf8 in revision._revision_from_utf8_map)
+        self.failIf(rev_id in revision._unicode_to_utf8_map)
+        self.failIf(rev_id_utf8 in revision._utf8_to_unicode_map)
 
         # After a single encode, the mapping should exist for
         # both directions
         self.assertEqual(rev_id_utf8, revision.encode_utf8(rev_id))
-        self.failUnless(rev_id in revision._revision_to_utf8_map)
-        self.failUnless(rev_id_utf8 in revision._revision_from_utf8_map)
+        self.failUnless(rev_id in revision._unicode_to_utf8_map)
+        self.failUnless(rev_id_utf8 in revision._utf8_to_unicode_map)
         self.assertEqual(rev_id, revision.decode_utf8(rev_id_utf8))
 
     def test_ascii(self):
