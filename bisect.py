@@ -98,7 +98,7 @@ register_command(cmd_bisect)
 
 # Tests.
 
-class BisectTests(bzrlib.tests.TestCaseWithTransport):
+class BisectFuncTests(bzrlib.tests.TestCaseWithTransport):
     def assertRevno(self, rev):
         "Make sure the revision number is as specified."
 
@@ -108,6 +108,8 @@ class BisectTests(bzrlib.tests.TestCaseWithTransport):
 
     def setUp(self):
         bzrlib.tests.TestCaseWithTransport.setUp(self)
+
+        # These tests assume a branch with five revisions.
 
         self.tree = self.make_branch_and_tree(".")
 
@@ -192,4 +194,4 @@ class BisectTests(bzrlib.tests.TestCaseWithTransport):
 
 def test_suite():
     from bzrlib.tests.TestUtil import TestLoader
-    return TestLoader().loadTestsFromTestCase(BisectTests)
+    return TestLoader().loadTestsFromTestCase(BisectFuncTests)
