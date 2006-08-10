@@ -16,8 +16,7 @@
 
 
 # XXX: Can we do any better about making interrupted commits change
-# nothing?  Perhaps the best approach is to integrate commit of
-# AtomicFiles with releasing the lock on the Branch.
+# nothing?  
 
 # TODO: Separate 'prepare' phase where we find a list of potentially
 # committed files.  We then can then pause the commit to prompt for a
@@ -73,7 +72,6 @@ import warnings
 
 from cStringIO import StringIO
 
-from bzrlib.atomicfile import AtomicFile
 import bzrlib.config
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
