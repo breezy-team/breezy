@@ -515,11 +515,13 @@ class Transport(object):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """Append the text in the file-like or string object to 
         the supplied location.
 
         returns the length of f before the content was written to it.
+        
+        If the file does not exist, it is created with the supplied mode.
         """
         raise NotImplementedError(self.append)
 
