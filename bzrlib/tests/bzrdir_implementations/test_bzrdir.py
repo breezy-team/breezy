@@ -348,6 +348,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.commit('revision 1')
         dir = tree.bzrdir
         target = dir.clone(self.get_url('target'))
+        try:
+            target.open_workingtree()
+        except (errors.NotLocalUrl, errors.NoWorkingTree):
+            raise TestSkipped("clone cannot make working tree with transport %r"
+                              % target.transport)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
                                      './.bzr/checkout/stat-cache',
