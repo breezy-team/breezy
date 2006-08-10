@@ -86,7 +86,7 @@ class TestRepository(TestCaseWithRepository):
         readonly_t = get_transport(self.get_readonly_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = self.repository_format.initialize(made_control)
-        self.failUnless(isinstance(made_repo, repository.Repository))
+        ## self.failUnless(isinstance(made_repo, repository.Repository))
         self.assertEqual(made_control, made_repo.bzrdir)
 
         # find it via bzrdir opening:
@@ -95,8 +95,8 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual(direct_opened_repo.__class__, made_repo.__class__)
         self.assertEqual(opened_control, direct_opened_repo.bzrdir)
 
-        self.failUnless(isinstance(direct_opened_repo._format,
-                        self.repository_format.__class__))
+        self.assertIsInstance(direct_opened_repo._format,
+                              self.repository_format.__class__)
         # find it via Repository.open
         opened_repo = repository.Repository.open(readonly_t.base)
         self.failUnless(isinstance(opened_repo, made_repo.__class__))

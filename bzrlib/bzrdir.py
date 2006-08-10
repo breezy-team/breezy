@@ -76,6 +76,8 @@ class BzrDir(object):
         If there is a tree, the tree is opened and break_lock() called.
         Otherwise, branch is tried, and finally repository.
         """
+        # XXX: This seems more like a UI function than something that really
+        # belongs in this class.
         try:
             thing_to_unlock = self.open_workingtree()
         except (errors.NotLocalUrl, errors.NoWorkingTree):
@@ -979,7 +981,7 @@ class BzrDirFormat(object):
 
     @classmethod
     def probe_transport(klass, transport):
-        """Return the .bzrdir style transport present at URL."""
+        """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get(".bzr/branch-format").read()
         except errors.NoSuchFile:

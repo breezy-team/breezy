@@ -1080,10 +1080,12 @@ class RepositoryFormat(object):
 
         :param a_bzrdir: The bzrdir to put the new repository in it.
         :param shared: The repository should be initialized as a sharable one.
-
+        :returns: The new repository object.
+        
         This may raise UninitializableFormat if shared repository are not
         compatible the a_bzrdir.
         """
+        raise NotImplementedError(self.initialize)
 
     def is_supported(self):
         """Is this format supported?

@@ -436,6 +436,7 @@ class SmartTCPServer(object):
 
     def accept_and_serve(self):
         conn, client_addr = self._server_socket.accept()
+        conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         from_client = conn.makefile('r')
         to_client = conn.makefile('w')
         handler = SmartStreamServer(from_client, to_client,
@@ -542,11 +543,11 @@ class SmartTransport(sftp.SFTPUrlHandling):
         """Smart server transport can do read/write file operations."""
         return False
                                                    
-    def get_smart_client(self):                    
-        return self._client                        
+    def get_smart_client(self):
+        return self._client
                                                    
-    def _unparse_url(self, path):                  
-        """Return URL for a path.                 l
+    def _unparse_url(self, path):
+        """Return URL for a path.
 
         :see: SFTPUrlHandling._unparse_url
         """
@@ -583,9 +584,9 @@ class SmartTransport(sftp.SFTPUrlHandling):
         
         :see: Transport.get()
         """
-        mutter("%s.get %s", self, relpath)
+        ## mutter("%s.get %s", self, relpath)
         remote = self._remote_path(relpath)
-        mutter("  remote path: %s", remote)
+        ## mutter("  remote path: %s", remote)
         resp = self._client._call('get', remote)
         if resp != ('ok', ):
             self._translate_error(resp)
@@ -772,6 +773,7 @@ class SmartTCPTransport(SmartTransport):
 
     def _connect_to_server(self):
         self._socket = socket.socket()
+        self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         result = self._socket.connect_ex((self._host, int(self._port)))
         if result:
             raise errors.ConnectionError("failed to connect to %s:%d: %s" %

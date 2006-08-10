@@ -760,12 +760,15 @@ class BzrBranchFormat5(BranchFormat):
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
-        transport = a_bzrdir.get_branch_transport(None)
-        control_files = LockableFiles(transport, 'lock', lockdir.LockDir)
-        return BzrBranch5(_format=self,
-                          _control_files=control_files,
-                          a_bzrdir=a_bzrdir,
-                          _repository=a_bzrdir.find_repository())
+        try:
+            transport = a_bzrdir.get_branch_transport(None)
+            control_files = LockableFiles(transport, 'lock', lockdir.LockDir)
+            return BzrBranch5(_format=self,
+                              _control_files=control_files,
+                              a_bzrdir=a_bzrdir,
+                              _repository=a_bzrdir.find_repository())
+        except NoSuchFile:
+            raise NotBranchError(path=transport.base)
 
     def __str__(self):
         return "Bazaar-NG Metadir branch format 5"
