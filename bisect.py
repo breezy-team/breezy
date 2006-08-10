@@ -1,3 +1,4 @@
+import os
 import bzrlib.tests
 from bzrlib.commands import Command, register_command
 from bzrlib.errors import BzrCommandError
@@ -101,7 +102,26 @@ register_command(cmd_bisect)
 # Tests.
 
 class BisectTests(bzrlib.tests.TestCaseWithTransport):
-    pass
+    def setUp(self):
+        bzrlib.tests.TestCaseWithTransport.setUp(self)
+
+        self.tree = self.make_branch_and_tree(".")
+
+        f = open("test_file", "w")
+        f.write("one")
+        f.close()
+        self.tree.add(self.tree.relpath(os.path.join(os.getcwd(), 'test_file')))
+        self.tree.commit(message = "add test file")
+
+        file_contents = ["two", "three", "four", "five"]
+        for content in file_contents:
+            f = open("test_file", "w")
+            f.write(content)
+            f.close()
+            self.tree.commit(message = "make test change")
+
+    def testNothing(self):
+        pass
 
 def test_suite():
     from bzrlib.tests.TestUtil import TestLoader
