@@ -1,5 +1,6 @@
+import bzrlib.tests
 from bzrlib.commands import Command, register_command
-from errors import CommandError
+from bzrlib.errors import BzrCommandError
 
 class cmd_bisect(Command):
     """Find an interesting commit using a binary search.
@@ -49,11 +50,11 @@ class cmd_bisect(Command):
             if args_list[0] == "-r":
                 revision = args_list[1]
             else:
-                raise CommandError("Improper arguments to bisect " + subcommand)
+                raise BzrCommandError("Improper arguments to bisect " + subcommand)
         elif subcommand in ('replay',) and len(args_list) == 1:
             log_fn = args_list[0]
         elif args_list:
-            raise CommandError("Improper arguments to bisect " + subcommand)
+            raise BzrCommandError("Improper arguments to bisect " + subcommand)
 
         # Dispatch.
 
@@ -96,3 +97,12 @@ class cmd_bisect(Command):
         pass
 
 register_command(cmd_bisect)
+
+# Tests.
+
+class BisectTests(bzrlib.tests.TestCaseWithTransport):
+    pass
+
+def test_suite():
+    from bzrlib.tests.TestUtil import TestLoader
+    return TestLoader().loadTestsFromTestCase(BisectTests)
