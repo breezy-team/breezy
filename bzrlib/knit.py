@@ -74,7 +74,10 @@ import sys
 import warnings
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    cache_utf8,
+    errors,
+    )
 from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
         InvalidRevisionId, KnitCorrupt, KnitHeaderError, \
         RevisionNotPresent, RevisionAlreadyPresent
@@ -82,7 +85,6 @@ from bzrlib.tuned_gzip import GzipFile
 from bzrlib.trace import mutter
 from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
      sha_strings
-import bzrlib.revision
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.tsort import topo_sort
 import bzrlib.weave
@@ -163,7 +165,7 @@ class KnitAnnotateFactory(_KnitFactory):
         internal representation is of the format:
         (revid, plaintext)
         """
-        decode_utf8 = bzrlib.revision.decode_utf8
+        decode_utf8 = cache_utf8.decode
         lines = []
         for line in content:
             origin, text = line.split(' ', 1)
@@ -184,7 +186,7 @@ class KnitAnnotateFactory(_KnitFactory):
         internal representation is
         (start, end, count, [1..count tuples (revid, newline)])
         """
-        decode_utf8 = bzrlib.revision.decode_utf8
+        decode_utf8 = cache_utf8.decode
         result = []
         lines = iter(lines)
         next = lines.next
@@ -205,7 +207,7 @@ class KnitAnnotateFactory(_KnitFactory):
 
         see parse_fulltext which this inverts.
         """
-        encode_utf8 = bzrlib.revision.encode_utf8
+        encode_utf8 = cache_utf8.encode
         return ['%s %s' % (encode_utf8(o), t) for o, t in content._lines]
 
     def lower_line_delta(self, delta):
@@ -213,7 +215,7 @@ class KnitAnnotateFactory(_KnitFactory):
 
         See parse_line_delta which this inverts.
         """
-        encode_utf8 = bzrlib.revision.encode_utf8
+        encode_utf8 = cache_utf8.encode
         out = []
         for start, end, c, lines in delta:
             out.append('%d,%d,%d\n' % (start, end, c))
@@ -1211,7 +1213,7 @@ class _KnitIndex(_KnitComponentFile):
         return self._cache[version_id][5]
 
     def _version_list_to_index(self, versions):
-        encode_utf8 = bzrlib.revision.encode_utf8
+        encode_utf8 = cache_utf8.encode
         result_list = []
         for version in versions:
             if version in self._cache:
@@ -1233,7 +1235,7 @@ class _KnitIndex(_KnitComponentFile):
                          (version_id, options, pos, size, parents).
         """
         lines = []
-        encode_utf8 = bzrlib.revision.encode_utf8
+        encode_utf8 = cache_utf8.encode
         for version_id, options, pos, size, parents in versions:
             line = "\n%s %s %s %s %s :" % (encode_utf8(version_id),
                                            ','.join(options),
@@ -1332,7 +1334,7 @@ class _KnitData(_KnitComponentFile):
         sio = StringIO()
         data_file = GzipFile(None, mode='wb', fileobj=sio)
 
-        version_id_utf8 = bzrlib.revision.encode_utf8(version_id)
+        version_id_utf8 = cache_utf8.encode(version_id)
         data_file.writelines(chain(
             ["version %s %d %s\n" % (version_id_utf8,
                                      len(lines),
@@ -1373,7 +1375,7 @@ class _KnitData(_KnitComponentFile):
         rec = df.readline().split()
         if len(rec) != 4:
             raise KnitCorrupt(self._filename, 'unexpected number of elements in record header')
-        if bzrlib.revision.decode_utf8(rec[1]) != version_id:
+        if cache_utf8.decode(rec[1]) != version_id:
             raise KnitCorrupt(self._filename, 
                               'unexpected version, wanted %r, got %r' % (
                                 version_id, rec[1]))
@@ -1388,7 +1390,7 @@ class _KnitData(_KnitComponentFile):
         record_contents = df.readlines()
         l = record_contents.pop()
         assert len(record_contents) == int(rec[2])
-        if l != 'end %s\n' % bzrlib.revision.encode_utf8(version_id):
+        if l != 'end %s\n' % cache_utf8.encode(version_id):
             raise KnitCorrupt(self._filename, 'unexpected version end line %r, wanted %r' 
                         % (l, version_id))
         df.close()

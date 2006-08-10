@@ -108,9 +108,9 @@ def test_suite():
     testmod_names = [ \
                    'bzrlib.benchmarks.bench_add',
                    'bzrlib.benchmarks.bench_bench',
+                   'bzrlib.benchmarks.bench_cache_utf8',
                    'bzrlib.benchmarks.bench_checkout',
                    'bzrlib.benchmarks.bench_commit',
-                   'bzrlib.benchmarks.bench_encoding',
                    'bzrlib.benchmarks.bench_inventory',
                    'bzrlib.benchmarks.bench_log',
                    'bzrlib.benchmarks.bench_osutils',

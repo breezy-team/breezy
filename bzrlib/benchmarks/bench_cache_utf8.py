@@ -16,7 +16,7 @@
 """Tests for encoding performance."""
 
 from bzrlib import (
-    revision,
+    cache_utf8,
     osutils,
     )
 
@@ -37,8 +37,8 @@ class EncodingBenchmark(Benchmark):
     def setUp(self):
         super(EncodingBenchmark, self).setUp()
         # Make sure we start and end with a clean cache
-        revision.clear_encoding_cache()
-        self.addCleanup(revision.clear_encoding_cache)
+        cache_utf8.clear_encoding_cache()
+        self.addCleanup(cache_utf8.clear_encoding_cache)
 
     def encode_1M(self, revision_id):
         """Encode the given revision id 1 million times"""
@@ -50,9 +50,9 @@ class EncodingBenchmark(Benchmark):
 
     def encode_cached_1M(self, revision_id):
         """Encode the given revision id 1 million times using the cache"""
-        encode_utf8 = revision.encode_utf8
+        encode = cache_utf8.encode
         for i in xrange(1000000):
-            encode_utf8(revision_id)
+            encode(revision_id)
 
     def encode_multi(self, revision_list, count):
         """Encode each entry in the list count times"""
@@ -62,10 +62,10 @@ class EncodingBenchmark(Benchmark):
 
     def encode_cached_multi(self, revision_list, count):
         """Encode each entry in the list count times"""
-        encode_utf8 = revision.encode_utf8
+        encode = cache_utf8.encode
         for i in xrange(count):
             for revision_id in revision_list:
-                encode_utf8(revision_id)
+                encode(revision_id)
 
     def test_encode_1_by_1M_ascii(self):
         """Test encoding a single revision id 1 million times."""
@@ -120,17 +120,17 @@ class DecodingBenchmarks(Benchmark):
     def setUp(self):
         super(DecodingBenchmarks, self).setUp()
         # Make sure we start and end with a clean cache
-        revision.clear_encoding_cache()
-        self.addCleanup(revision.clear_encoding_cache)
+        cache_utf8.clear_encoding_cache()
+        self.addCleanup(cache_utf8.clear_encoding_cache)
 
     def decode_1M(self, revision_id):
         for i in xrange(1000000):
             revision_id.decode('utf8')
 
     def decode_cached_1M(self, revision_id):
-        decode_utf8 = revision.decode_utf8
+        decode = cache_utf8.decode
         for i in xrange(1000000):
-            decode_utf8(revision_id)
+            decode(revision_id)
 
     def decode_multi(self, revision_list, count):
         for i in xrange(count):
@@ -138,10 +138,10 @@ class DecodingBenchmarks(Benchmark):
                 revision_id.decode('utf-8')
 
     def decode_cached_multi(self, revision_list, count):
-        decode_utf8 = revision.decode_utf8
+        decode = cache_utf8.decode
         for i in xrange(count):
             for revision_id in revision_list:
-                decode_utf8(revision_id)
+                decode(revision_id)
 
     def test_decode_1_by_1M_ascii(self):
         """Test decoding a single revision id 1 million times."""
