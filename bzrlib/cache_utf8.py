@@ -51,6 +51,18 @@ def decode(utf8_str,
         return unicode_str
 
 
+def get_cached_unicode(unicode_str):
+    """Return a cached version of the unicode string.
+
+    This has a similar idea to that of intern() in that it tries
+    to return a singleton string. Only it works for unicode strings.
+    """
+    # This might return the same object, or it might return the cached one
+    # the decode() should just be a hash lookup, because the encode() side
+    # should add the entry to the maps
+    return decode(encode(unicode_str))
+
+
 def clear_encoding_cache():
     """Clear the encoding and decoding caches"""
     global _unicode_to_utf8_map, _utf8_to_unicode_map
