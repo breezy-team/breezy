@@ -1,4 +1,5 @@
 from bzrlib.commands import Command, register_command
+from errors import CommandError
 
 class cmd_bisect(Command):
     """Find an interesting commit using a binary search.
@@ -35,6 +36,63 @@ class cmd_bisect(Command):
     bzr bisect replay <logfile>
         Replay a previously-saved bisect log, forgetting any bisection
         that might be in progress.
-"""
+    """
+
+    takes_args = ['subcommand', 'args*']
+
+    def run(self, subcommand, args_list):
+        # Handle subcommand parameters.
+
+        revision = None
+        log_fn = None
+        if subcommand in ('yes', 'no') and len(args_list) == 2:
+            if args_list[0] == "-r":
+                revision = args_list[1]
+            else:
+                raise CommandError("Improper arguments to bisect " + subcommand)
+        elif subcommand in ('replay',) and len(args_list) == 1:
+            log_fn = args_list[0]
+        elif args_list:
+            raise CommandError("Improper arguments to bisect " + subcommand)
+
+        # Dispatch.
+
+        if subcommand == "start":
+            self.start()
+        elif subcommand == "yes":
+            self.yes(revision)
+        elif subcommand == "no":
+            self.no(revision)
+        elif subcommand == "reset":
+            self.reset()
+        elif subcommand == "log":
+            self.log(None)
+        elif subcommand == "replay":
+            self.replay(log_fn)
+
+    def reset(self):
+        "Reset the bisect state to no state."
+        pass
+
+    def start(self):
+        "Reset the bisect state, then prepare for a new bisection."
+        pass
+
+    def yes(self, revision):
+        "Mark that a given revision has the state we're looking for."
+        pass
+
+    def no(self, revision):
+        "Mark that a given revision does not have the state we're looking for."
+        pass
+
+    def log(self, filename):
+        "Write the current bisect log to a file."
+        pass
+
+    def replay(self, filename):
+        """Apply the given log file to a clean state, so the state is
+        exactly as it was when the log was saved."""
+        pass
 
 register_command(cmd_bisect)
