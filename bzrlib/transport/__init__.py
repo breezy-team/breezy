@@ -575,8 +575,9 @@ class Transport(object):
 
         The file is created if it does not already exist.
 
-        :param mode: Unix mode for newly created files.  This is not used for existing
-            files.
+        :param f: a file-like object or string of the bytes to append.
+        :param mode: Unix mode for newly created files.  This is not used for
+            existing files.
 
         :returns: the length of f before the content was written to it.
         """
