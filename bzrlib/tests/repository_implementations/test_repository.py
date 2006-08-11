@@ -221,7 +221,9 @@ class TestRepository(TestCaseWithRepository):
             return
         made_repo.set_make_working_trees(False)
         result = made_control.clone(self.get_url('target'))
-        self.failUnless(isinstance(made_repo, repository.Repository))
+        # Check that we have a repository object.
+        made_repo.has_revision('foo')
+
         self.assertEqual(made_control, made_repo.bzrdir)
         self.assertTrue(result.open_repository().is_shared())
         self.assertFalse(result.open_repository().make_working_trees())
