@@ -332,6 +332,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.commit('revision 1')
         dir = tree.bzrdir
         target = dir.clone(self.get_url('target'))
+        try:
+            target.open_workingtree()
+        except (errors.NotLocalUrl, errors.NoWorkingTree):
+            raise TestSkipped("clone cannot make working tree with transport %r"
+                              % target.transport)
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
@@ -378,8 +383,17 @@ class TestBzrDir(TestCaseWithBzrDir):
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
-        dir.create_workingtree()
+        try:
+            dir.create_workingtree()
+        except errors.NotLocalUrl:
+            raise TestSkipped("cannot make working tree with transport %r"
+                              % dir.transport)
         target = dir.clone(self.get_url('target'))
+        try:
+            target.open_workingtree()
+        except (errors.NotLocalUrl, errors.NoWorkingTree):
+            raise TestSkipped("clone cannot make working tree with transport %r"
+                              % target.transport)
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
@@ -401,6 +415,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         dir = tree.bzrdir
         target = dir.clone(self.get_url('target'), revision_id='1')
+        try:
+            target.open_workingtree()
+        except (errors.NotLocalUrl, errors.NoWorkingTree):
+            raise TestSkipped("clone cannot make working tree with transport %r"
+                              % target.transport)
         self.assertEqual('1', target.open_workingtree().last_revision())
 
     def test_clone_bzrdir_incomplete_source_with_basis(self):
