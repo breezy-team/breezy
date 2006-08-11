@@ -520,8 +520,7 @@ class WorkingTree(bzrlib.tree.Tree):
             # TODO now merge from tree.last_revision to revision (to preserve
             # user local changes)
             transform_tree(tree, self)
-            tree.set_parent_trees([(revision_id,
-                tree.branch.repository.revision_tree(revision_id))])
+            tree.set_parent_ids([revision_id])
 
     @needs_write_lock
     def commit(self, message=None, revprops=None, *args, **kwargs):
@@ -1056,7 +1055,12 @@ class WorkingTree(bzrlib.tree.Tree):
                 finally:
                     pb.finished()
                 # TODO - dedup parents list with things merged by pull ?
+                # reuse the revisiontree we merged against to set the new
+                # tree data.
                 parent_trees = [(self.branch.last_revision(), new_basis_tree)]
+                # we have to pull the merge trees out again, because 
+                # merge_inner has set the ids. - this corner is not yet 
+                # layered well enough to prevent double handling.
                 merges = self.get_parent_ids()[1:]
                 parent_trees.extend([
                     (parent, repository.revision_tree(parent)) for
@@ -1476,8 +1480,12 @@ class WorkingTree(bzrlib.tree.Tree):
                                       this_tree=self)
                 self.set_last_revision(self.branch.last_revision())
                 # TODO - dedup parents list with things merged by pull ?
+                # reuse the tree we've updated to to set the basis:
                 parent_trees = [(self.branch.last_revision(), to_tree)]
                 merges = self.get_parent_ids()[1:]
+                # pull the other trees out of the repository. This could be
+                # better expressed - for instance by inserting a parent, and
+                # that would remove duplication.
                 parent_trees.extend([
                     (parent, self.branch.repository.revision_tree(parent)) for
                      parent in merges])

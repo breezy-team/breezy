@@ -80,10 +80,7 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
                 else:
                     parents = []
                 parents.extend(reversed(pending_merges))
-                parent_trees = [
-                    (parent, branch.repository.revision_tree(parent))
-                    for parent in parents]
-                tree.set_parent_trees(parent_trees)
+                tree.set_parent_ids(parents)
     finally:
         for item in reversed(unlockable):
             item.unlock()

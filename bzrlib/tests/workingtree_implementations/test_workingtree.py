@@ -351,12 +351,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.commit('A', rev_id='A')
         wt.rename_one('foo', 'bar')
         wt.commit('B', rev_id='B')
-        wt.set_parent_trees(
-            [('B', wt.branch.repository.revision_tree('B'))])
+        wt.set_parent_ids(['B'])
         tree = wt.basis_tree()
         self.failUnless(tree.has_filename('bar'))
-        wt.set_parent_trees(
-            [('A', wt.branch.repository.revision_tree('A'))])
+        wt.set_parent_ids(['A'])
         tree = wt.basis_tree()
         self.failUnless(tree.has_filename('foo'))
 

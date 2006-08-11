@@ -59,7 +59,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
     def test_basis_inv_gets_revision(self):
         """When the inventory of the basis tree has no revision id it gets set.
 
-        It gets set during set_parent_trees()
+        It gets set during set_parent_trees() or set_parent_ids().
         """
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
