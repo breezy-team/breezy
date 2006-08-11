@@ -34,6 +34,7 @@ import re
 import sys
 import tarfile
 import types
+from warnings import warn
 
 import bzrlib
 from bzrlib import errors, osutils
@@ -85,7 +86,7 @@ class InventoryEntry(object):
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
     ... 
-    (True, RootEntry('TREE_ROOT', u'', parent_id=None, revision=None))
+    (True, InventoryDirectory('TREE_ROOT', '', parent_id=None, revision=None))
     (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None))
     (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None))
     >>> i.add(InventoryFile('2323', 'bye.c', '123'))
@@ -295,7 +296,7 @@ class InventoryEntry(object):
         """Return a short kind indicator useful for appending to names."""
         raise BzrError('unknown kind %r' % self.kind)
 
-    known_kinds = ('file', 'directory', 'symlink', 'root_directory')
+    known_kinds = ('file', 'directory', 'symlink')
 
     def _put_in_tar(self, item, tree):
         """populate item for stashing in a tar, and return the content stream.
@@ -509,10 +510,13 @@ class RootEntry(InventoryEntry):
     def __init__(self, file_id):
         self.file_id = file_id
         self.children = {}
-        self.kind = 'root_directory'
+        self.kind = 'directory'
         self.parent_id = None
         self.name = u''
         self.revision = None
+        warn('RootEntry is deprecated as of bzr 0.10.  Please use '
+             'InventoryDirectory instead.',
+            DeprecationWarning, stacklevel=2)
 
     def __eq__(self, other):
         if not isinstance(other, RootEntry):
@@ -861,7 +865,7 @@ class Inventory(object):
         # root id. Rather than generating a random one here.
         #if root_id is None:
         #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
-        self.root = RootEntry(root_id)
+        self.root = InventoryDirectory(root_id, '', None)
         # FIXME: this isn't ever used, changing it to self.revision may break
         # things. TODO make everything use self.revision_id
         self.revision_id = revision_id
@@ -1070,7 +1074,7 @@ class Inventory(object):
         if len(parts) == 0:
             if file_id is None:
                 file_id = bzrlib.workingtree.gen_root_id()
-            self.root = RootEntry(file_id)
+            self.root = InventoryDirectory(file_id, '', None)
             self._byid = {self.root.file_id: self.root}
             return
         else:
