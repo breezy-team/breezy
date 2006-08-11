@@ -608,6 +608,10 @@ class SmartTransport(sftp.SFTPUrlHandling):
         # FIXME: upload_file is probably not safe for non-ascii characters -
         # should probably just pass all parameters as length-delimited
         # strings?
+        # XXX: wrap strings in a StringIO.  There should be a better way of
+        # handling this.
+        if isinstance(upload_file, str):
+            upload_file = StringIO(upload_file)
         resp = self._client._call_with_upload('put', 
                                               (self._remote_path(relpath), 
                                                self._optional_mode(mode)),
