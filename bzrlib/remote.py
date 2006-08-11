@@ -62,7 +62,6 @@ class RemoteBzrDir(BzrDir):
         
         self._real_bzrdir = BzrDirFormat.get_default_format().open(transport, _found=True)
         self._real_bzrdir._format.probe_transport(transport)
-        self._repository = None
         self._branch = None
 
     def create_repository(self, shared=False):
@@ -80,7 +79,8 @@ class RemoteBzrDir(BzrDir):
         return RemoteRepository.open(self._real_bzrdir.open_repository(), self)
 
     def open_branch(self):
-        return RemoteBranch.open(self)
+        format = RemoteBranchFormat.find_format(self)
+        return RemoteBranchFormat().open(self)
 
     def open_workingtree(self):
         return RemoteWorkingTree.open(self._real_bzrdir.open_workingtree(), self)
@@ -153,8 +153,14 @@ class RemoteRepository(object):
 
 class RemoteBranchFormat(branch.BranchFormat):
 
+    @classmethod
+    def find_format(cls, a_bzrdir):
+        BranchFormat.find_format(a_bzrdir._real_bzrdir)
+        return cls.open(cls(), a_bzrdir)
+    
     def open(self, a_bzrdir):
-        return RemoteBranch.open(a_bzrdir)
+        return RemoteBranch(a_bzrdir,
+                            _repository=a_bzrdir.open_repository())
 
     def initialize(self, a_bzrdir):
         assert isinstance(a_bzrdir, RemoteBzrDir)
@@ -167,10 +173,10 @@ class RemoteBranch(branch.Branch):
     At the moment most operations are mapped down to simple file operations.
     """
 
-    def __init__(self, my_bzrdir):
+    def __init__(self, my_bzrdir, _repository=None):
         self.bzrdir = my_bzrdir
         self.transport = my_bzrdir.transport
-        ## self.repository = self.bzrdir.open_repository()
+        self.repository = _repository
         # XXX: Should be possible to open things other than the default format.
         real_format = BranchFormat.get_default_format()
         self._real_branch = real_format.open(my_bzrdir, _found=True)
