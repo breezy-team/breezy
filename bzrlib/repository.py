@@ -45,6 +45,10 @@ from bzrlib.tsort import topo_sort
 from bzrlib.weave import WeaveFile
 
 
+# Old formats display a warning, but only once
+_deprecation_warning_done = False
+
+
 class Repository(object):
     """Repository holding history for one or more branches.
 
@@ -682,6 +686,10 @@ class Repository(object):
         return result
 
     def _warn_if_deprecated(self):
+        global _deprecation_warning_done
+        if _deprecation_warning_done:
+            return
+        _deprecation_warning_done = True
         warning("Format %s for %s is deprecated - please use 'bzr upgrade' to get better performance"
                 % (self._format, self.bzrdir.transport.base))
 
