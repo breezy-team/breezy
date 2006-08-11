@@ -732,7 +732,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.bzrdir.open_repository().copy_content_into(source.repository)
         tree.bzrdir.open_branch().copy_content_into(source)
         dir = source.bzrdir
-        target = dir.sprout(self.get_url('target'), revision_id='1')
+        try:
+            target_url = self.get_url('target')
+            target = dir.sprout(target_url, revision_id='1')
+        except errors.NotLocalUrl:
+            raise TestSkipped("sprout cannot make working tree at %r"
+                              % target_url)
         self.assertEqual('1', target.open_branch().last_revision())
         
     def test_sprout_bzrdir_tree_branch_repo(self):
@@ -741,7 +746,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.add('foo')
         tree.commit('revision 1')
         dir = tree.bzrdir
-        target = dir.sprout(self.get_url('target'))
+        try:
+            target_url = self.get_url('target')
+            target = dir.sprout(target_url)
+        except errors.NotLocalUrl:
+            raise TestSkipped("sprout cannot make working tree at %r"
+                              % target_url)
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache',
@@ -763,10 +773,19 @@ class TestBzrDir(TestCaseWithBzrDir):
             # this is ok too, not all formats have to support references.
             return
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
-        tree = dir.create_workingtree()
+        try:
+            tree = dir.create_workingtree()
+        except errors.NotLocalUrl:
+            raise TestSkipped("cannot make working tree with transport %r"
+                              % dir.transport)
         tree.bzrdir.root_transport.mkdir('subdir')
         tree.add('subdir')
-        target = dir.sprout(self.get_url('target'))
+        try:
+            target_url = self.get_url('target')
+            target = dir.sprout(target_url)
+        except (errors.NotLocalUrl, errors.NoWorkingTree):
+            raise TestSkipped("sprout cannot make working tree at %r"
+                              % target_url)
         self.assertNotEqual(dir.transport.base, target.transport.base)
         # we want target to have a branch that is in-place.
         self.assertEqual(target, target.open_branch().bzrdir)
@@ -789,12 +808,21 @@ class TestBzrDir(TestCaseWithBzrDir):
             # this is ok too, not all formats have to support references.
             return
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
-        tree = dir.create_workingtree()
+        try:
+            tree = dir.create_workingtree()
+        except errors.NotLocalUrl:
+            raise TestSkipped("cannot make working tree with transport %r"
+                              % dir.transport)
         self.build_tree(['foo'], transport=dir.root_transport)
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         target = dir.sprout(self.get_url('target'), revision_id='1')
+        try:
+            target.open_workingtree()
+        except (errors.NotLocalUrl, errors.NoWorkingTree):
+            raise TestSkipped("sprout cannot make working tree on transport %r"
+                              % target.transport)
         self.assertNotEqual(dir.transport.base, target.transport.base)
         # we want target to have a branch that is in-place.
         self.assertEqual(target, target.open_branch().bzrdir)
@@ -817,7 +845,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         dir = tree.bzrdir
-        target = dir.sprout(self.get_url('target'), revision_id='1')
+        try:
+            target_url = self.get_url('target')
+            target = dir.sprout(target_url, revision_id='1')
+        except errors.NotLocalUrl:
+            raise TestSkipped("sprout cannot make working tree at %r"
+                              % target_url)
         self.assertEqual('1', target.open_workingtree().last_revision())
 
     def test_sprout_bzrdir_incomplete_source_with_basis(self):
