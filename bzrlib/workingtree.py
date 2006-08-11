@@ -654,6 +654,20 @@ class WorkingTree(bzrlib.tree.Tree):
         self.set_parent_ids(self.get_parent_ids() + [revision_id])
 
     @needs_write_lock
+    def add_parent_tree(self, parent_tuple):
+        """Add revision_id, tree tuple as a parent.
+
+        This is equivalent to retrieving the current list of parent trees
+        and setting the list to its value plus parent_tuple. See also
+        add_parent_tree_id - if you only have a parent id available it will be
+        simpler to use that api. If you have the parent already available, using
+        this api is preferred.
+
+        :param parent_tuple: The (revision id, tree) to add to the parent list.             If the revision_id is a ghost, pass None for the tree.
+        """
+        self.set_parent_ids(self.get_parent_ids() + [parent_tuple[0]])
+
+    @needs_write_lock
     def add_pending_merge(self, *revision_ids):
         # TODO: Perhaps should check at this point that the
         # history of the revision is actually present?

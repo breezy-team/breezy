@@ -118,7 +118,7 @@ class TestSetParents(TestParents):
             [first_revision, second_revision, third_revision], t)
 
 
-class TestAddParentId(TestParents):
+class TestAddParent(TestParents):
 
     def test_add_first_parent_id(self):
         """Test adding the first parent id"""
@@ -148,4 +148,36 @@ class TestAddParentId(TestParents):
         tree = self.make_branch_and_tree('.')
         first_revision = tree.commit('first post')
         tree.add_parent_tree_id('second')
+        self.assertConsistentParents([first_revision, 'second'], tree)
+        
+    def test_add_first_parent_tree(self):
+        """Test adding the first parent id"""
+        tree = self.make_branch_and_tree('.')
+        first_revision = tree.commit('first post')
+        uncommit(tree.branch, tree=tree)
+        tree.add_parent_tree((first_revision,
+            tree.branch.repository.revision_tree(first_revision)))
+        self.assertConsistentParents([first_revision], tree)
+        
+    def test_add_first_parent_tree_ghost(self):
+        """Test adding the first parent id - as a ghost"""
+        tree = self.make_branch_and_tree('.')
+        tree.add_parent_tree(('first-revision', None))
+        self.assertConsistentParents(['first-revision'], tree)
+        
+    def test_add_second_parent_tree(self):
+        """Test adding the second parent id"""
+        tree = self.make_branch_and_tree('.')
+        first_revision = tree.commit('first post')
+        uncommit(tree.branch, tree=tree)
+        second_revision = tree.commit('second post')
+        tree.add_parent_tree((first_revision,
+            tree.branch.repository.revision_tree(first_revision)))
+        self.assertConsistentParents([second_revision, first_revision], tree)
+        
+    def test_add_second_parent_tree_ghost(self):
+        """Test adding the second parent id - as a ghost"""
+        tree = self.make_branch_and_tree('.')
+        first_revision = tree.commit('first post')
+        tree.add_parent_tree(('second', None))
         self.assertConsistentParents([first_revision, 'second'], tree)
