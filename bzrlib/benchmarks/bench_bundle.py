@@ -17,13 +17,19 @@
 
 
 import os
+import shutil
 from StringIO import StringIO
 
 from bzrlib.benchmarks import Benchmark
 from bzrlib.workingtree import WorkingTree
 from bzrlib.branch import Branch
 from bzrlib.bundle.serializer import write_bundle
+from bzrlib.bundle import read_bundle
 from bzrlib.revisionspec import RevisionSpec
+
+# If the CACHEDIR flag is set, make_parametrized_tree below will cache the tree
+# it creates in the .bazaar/temp dir.
+CACHEDIR = os.path.expanduser("~/.bazaar/temp")
 
 
 class BundleBenchmark(Benchmark):
@@ -85,6 +91,30 @@ class BundleLibraryLevelBenchmark(Benchmark):
         :param num_revisions: number of revisions
         :param num_files_in_bundle: number of files changed in the revisions
         """
+        if CACHEDIR is None:
+            return self._make_parametrized_tree(num_files, num_revisions,
+                                                num_files_in_bundle)
+        olddir = os.getcwd()
+        try:
+            if not os.path.exists(CACHEDIR):
+                os.makedirs(CACHEDIR)
+            os.chdir(CACHEDIR)
+            cache_name = "make_parametrized_tree_%s_%s_%s" % (
+                num_files, num_revisions, num_files_in_bundle)
+            if not os.path.exists(cache_name):
+                os.mkdir(cache_name)
+                os.chdir(cache_name)
+                self._make_parametrized_tree(num_files, num_revisions,
+                                             num_files_in_bundle)
+                os.chdir(CACHEDIR)
+            for subdir in os.listdir(cache_name):
+                shutil.copytree(os.path.join(cache_name, subdir),
+                                os.path.join(olddir, subdir))
+        finally:
+            os.chdir(olddir)
+
+    def _make_parametrized_tree(self, num_files, num_revisions,
+                                num_files_in_bundle):
         # create files
         directories = []
         files = []
@@ -116,6 +146,7 @@ class BundleLibraryLevelBenchmark(Benchmark):
                 self.run_bzr("commit", '-m', 'some changes')
         assert count >= num_revisions
 
+
     for treesize, treesize_h in [(5, "small"), (100, "moderate"),
                                  (1000, "big")]:
         for bundlefiles, bundlefiles_h in [(5, "few"), (100, "some"),
@@ -130,7 +161,10 @@ def test_%s_files_%s_tree_%s_revision(self):
     revision_history = branch.revision_history()
     bundle_text = StringIO()
     self.time(write_bundle, branch.repository, revision_history[-1],
-              None, bundle_text)""" % (
+              None, bundle_text)
+    bundle_text.seek(0)
+    self.time(read_bundle, bundle_text)""" % (
                     bundlefiles_h, treesize_h, num_revisions,
                     treesize, num_revisions, bundlefiles)
-              exec code
+                exec code
+
