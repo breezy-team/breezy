@@ -40,7 +40,7 @@ from bzrlib.symbol_versioning import (deprecated_method,
         zero_nine, 
         )
 from bzrlib.testament import Testament
-from bzrlib.trace import mutter, note
+from bzrlib.trace import mutter, note, warning
 from bzrlib.tsort import topo_sort
 from bzrlib.weave import WeaveFile
 
@@ -188,6 +188,7 @@ class Repository(object):
         self.control_weaves = control_store
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
+        self._warn_if_deprecated()
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, 
@@ -680,6 +681,10 @@ class Repository(object):
         result.check()
         return result
 
+    def _warn_if_deprecated(self):
+        warning("Format %s for %s is deprecated - please use 'bzr upgrade' to get better performance"
+                % (self._format, self.bzrdir.transport.base))
+
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
@@ -792,7 +797,6 @@ class MetaDirRepository(Repository):
                                                 _revision_store,
                                                 control_store,
                                                 text_store)
-
         dir_mode = self.control_files._dir_mode
         file_mode = self.control_files._file_mode
 
@@ -826,6 +830,10 @@ class MetaDirRepository(Repository):
 
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
+
+    def _warn_if_deprecated(self):
+        # This class isn't deprecated
+        pass
 
     def _inventory_add_lines(self, inv_vf, revid, parents, lines):
         inv_vf.add_lines_with_ghosts(revid, parents, lines)
@@ -998,6 +1006,9 @@ class RepositoryFormat(object):
 
     _formats = {}
     """The known formats."""
+
+    def __str__(self):
+        return "<%s>" % self.__class__.__name__
 
     @classmethod
     def find_format(klass, a_bzrdir):
