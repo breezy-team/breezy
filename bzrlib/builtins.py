@@ -1642,19 +1642,16 @@ class cmd_cat(Command):
         if revision is not None and len(revision) != 1:
             raise BzrCommandError("bzr cat --revision takes exactly one number")
         tree = None
-        b = None
+        try:
+            tree, relpath = WorkingTree.open_containing(filename)
+            b = tree.branch
+        except NotBranchError:
+            pass
+
+        if tree is None:
+            b, relpath = Branch.open_containing(filename)
         if revision is not None and revision[0].get_branch() is not None:
             b = Branch.open(revision[0].get_branch())
-            relpath = filename
-        else:
-            try:
-                tree, relpath = WorkingTree.open_containing(filename)
-                b = tree.branch
-            except NotBranchError:
-                pass
-
-        if b is None:
-            b, relpath = Branch.open_containing(filename)
         if revision is None:
             revision_id = b.last_revision()
         else:
