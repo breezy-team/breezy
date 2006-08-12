@@ -21,7 +21,8 @@ class DebianChanges(object):
   """
 
   def __init__(self, package, version, dir):
-    status, arch = commands.getstatusoutput('dpkg-architecture -qDEB_BUILD_ARCH')
+    status, arch = commands.getstatusoutput(
+        'dpkg-architecture -qDEB_BUILD_ARCH')
     if status > 0:
       raise DebianError("Could not find the build architecture")
     changes = str(package)+"_"+str(version)+"_"+str(arch)+".changes"
@@ -54,6 +55,8 @@ class DebianChangelog(object):
   """
 
   def __init__(self, file=None):
+    self._full_version = None
+    self._package = None
     if file is None:
       f = open("debian/changelog", 'r')
       contents = f.read()
@@ -61,12 +64,13 @@ class DebianChangelog(object):
       self._file = contents
     else:
       self._file = file
-    p = re.compile('([a-z0-9][-a-z0-9.+]+) \(([-0-9a-z.:]+)\) [-a-zA-Z]+; urgency=[a-z]+')
+    p = re.compile('([a-z0-9][-a-z0-9.+]+) \(([-0-9a-z.:]+)\) [-a-zA-Z]+;'
+        +' urgency=[a-z]+')
     m = p.search(self._file)
     if m is not None:
       self._package = m.group(1)
       self._full_version = m.group(2)
- 
+
     if self._full_version is None:
       raise DebianError("Could not parse debian/changelog")
 
@@ -171,7 +175,8 @@ class DebMergeBuild(DebBuild):
     tarballdir = self._properties.tarball_dir()
     tarball = tarballdir+"/"+package+"_"+upstream+".orig.tar.gz"
     if not os.path.exists(tarballdir):
-      raise DebianError('Could not find dir with upstream tarballs: '+tarballdir)
+      raise DebianError('Could not find dir with upstream tarballs: '
+          +tarballdir)
     if not os.path.exists(tarball):
       raise DebianError('Could not find upstrean tarball at '+tarball)
 
@@ -204,16 +209,22 @@ class DebianError(BzrNewError):
     BzrNewError.__init__(self)
     self.message = message
 
-class BuildDebConfig(ConfigObj):
+class BuildDebConfig(object):
 
   def __init__(self):
-    file = os.path.expanduser('~/.bazaar/builddeb.conf')
-    super(ConfigObj, self).__init__(file)
+    globalfile = os.path.expanduser('~/.bazaar/builddeb.conf')
+    localfile = ('.bzr-builddeb/builddeb.conf')
+    self._global = ConfigObj(globalfile)
+    self._local = ConfigObj(localfile)
 
   def _get_opt(self, key):
     try:
-      return self.get_value('builddeb', key)
+      return self._local.get_value('builddeb', key)
     except KeyError:
+      try:
+        return self._global.get_value('builddeb', key)
+      except:
+        return None
       return None
 
   def build_dir(self):
@@ -236,19 +247,28 @@ class cmd_builddeb(Command):
   Option.SHORT_OPTIONS['w'] = working_tree_opt
   export_only_opt = Option('export-only', help="Export only, don't build")
   Option.SHORT_OPTIONS['e'] = export_only_opt
-  dont_purge_opt = Option('dont-purge', help="Don't purge the build directory after building")
-  result_opt = Option('result', help="Directory in which to place the resulting package files", type=str)
-  builder_opt = Option('builder', help="Command to build the package", type=str)
-  merge_opt = Option('merge', help='Merge the debian part of the source in to the upstream tarball')
-#  Option.SHORT_OPTIONS['m'] = merge_opt
-  build_dir_opt = Option('build-dir', help="The dir to use for building", type=str)
-  orig_dir_opt = Option('orig-dir', help="Directory containing the .orig.tar.gz files. For use when only debian/ is versioned", type=str)
+  dont_purge_opt = Option('dont-purge', 
+      help="Don't purge the build directory after building")
+  result_opt = Option('result', 
+      help="Directory in which to place the resulting package files", type=str)
+  builder_opt = Option('builder', 
+      help="Command to build the package", type=str)
+  merge_opt = Option('merge', 
+      help='Merge the debian part of the source in to the upstream tarball')
+  build_dir_opt = Option('build-dir', 
+      help="The dir to use for building", type=str)
+  orig_dir_opt = Option('orig-dir', 
+      help="Directory containing the .orig.tar.gz files. For use when only"
+         +"debian/ is versioned", type=str)
   takes_args = ['branch?', 'version?']
   aliases = ['bd']
-  takes_options = ['verbose',
-           working_tree_opt, export_only_opt, dont_purge_opt, result_opt, builder_opt, merge_opt, build_dir_opt, orig_dir_opt]
+  takes_options = ['verbose', working_tree_opt, export_only_opt, 
+      dont_purge_opt, result_opt, builder_opt, merge_opt, build_dir_opt, 
+      orig_dir_opt]
 
-  def run(self, branch=None, version=None, verbose=False, working_tree=False, export_only=False, dont_purge=False, result=None, builder=None, merge=False, build_dir=None, orig_dir=None):
+  def run(self, branch=None, version=None, verbose=False, working_tree=False, 
+          export_only=False, dont_purge=False, result=None, builder=None, 
+          merge=False, build_dir=None, orig_dir=None):
     retcode = 0
 
     if branch is not None:
