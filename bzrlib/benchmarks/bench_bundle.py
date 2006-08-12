@@ -28,8 +28,8 @@ from bzrlib.bundle import read_bundle
 from bzrlib.revisionspec import RevisionSpec
 
 # if set, creation of test trees will be globally cached (even across test runs)
-CACHEDIR = os.path.expanduser("~/.bazaar/devtemp")
-#CACHEDIR = None 
+#CACHEDIR = os.path.expanduser("~/.bazaar/devtemp")
+CACHEDIR = None 
 
 def cached_make(maker, *args):
     if CACHEDIR is None:
