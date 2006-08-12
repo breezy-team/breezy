@@ -25,3 +25,5 @@
 - remove the need to specify the merge flag
 
 - import of NMU diffs
+
+- WRITE SOME TESTS
