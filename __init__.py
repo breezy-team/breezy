@@ -216,8 +216,17 @@ class BuildDebConfig(ConfigObj):
     except KeyError:
       return None
 
+  def build_dir(self):
+    return self._get_opt('build-dir')
+
+  def orig_dir(self):
+    return self._get_opt('orig-dir')
+
   def builder(self):
     return self._get_opt('builder')
+
+  def result_dir(self):
+    return self._get_opt('result-dir')
 
 
 class cmd_builddeb(Command):
@@ -232,23 +241,27 @@ class cmd_builddeb(Command):
   builder_opt = Option('builder', help="Command to build the package", type=str)
   merge_opt = Option('merge', help='Merge the debian part of the source in to the upstream tarball')
 #  Option.SHORT_OPTIONS['m'] = merge_opt
+  build_dir_opt = Option('build-dir', help="The dir to use for building", type=str)
+  orig_dir_opt = Option('orig-dir', help="Directory containing the .orig.tar.gz files. For use when only debian/ is versioned", type=str)
   takes_args = ['branch?', 'version?']
   aliases = ['bd']
   takes_options = ['verbose',
-           working_tree_opt, export_only_opt, dont_purge_opt, result_opt, builder_opt, merge_opt]
+           working_tree_opt, export_only_opt, dont_purge_opt, result_opt, builder_opt, merge_opt, build_dir_opt, orig_dir_opt]
 
-  def run(self, branch=None, version=None, verbose=False, working_tree=False, export_only=False, dont_purge=False, result=None, builder=None, merge=False):
+  def run(self, branch=None, version=None, verbose=False, working_tree=False, export_only=False, dont_purge=False, result=None, builder=None, merge=False, build_dir=None, orig_dir=None):
     retcode = 0
 
-    if branch is None:
-      tree = WorkingTree.open_containing('.')[0]
-    else:
-      tree = WorkingTree.open_containing(branch)[0]
+    if branch is not None:
+      os.chdir(branch)
 
+    tree = WorkingTree.open_containing('.')[0]
+    
+    config = BuildDebConfig()
+
+    if result is None:
+      result = config.result_dir()
     if result is not None:
       result = os.path.realpath(result)
-
-    config = BuildDebConfig()
 
     if builder is None:
       builder = config.builder()
@@ -276,13 +289,17 @@ class cmd_builddeb(Command):
     changelog_id = t.inventory.path2id(changelog_file)
     contents = t.get_file_text(changelog_id)
     changelog = DebianChangelog(contents)
-    if branch is None:
-      build_dir = '../build-area'
-      tarball_dir = '../tarballs'
-    else:
-      build_dir = 'build-area'
-      tarball_dir = 'tarballs'
-    properties = BuildProperties(changelog,build_dir,tarball_dir,larstiq)
+    if build_dir is None:
+      build_dir = config.build_dir()
+      if build_dir is None:
+        build_dir = '../build-area'
+
+    if orig_dir is None:
+      orig_dir = config.orig_dir()
+      if orig_dir is None:
+        orig_dir = '../tarballs'
+    
+    properties = BuildProperties(changelog,build_dir,orig_dir,larstiq)
     if merge:
       build = DebMergeBuild(properties, t)
     else:
