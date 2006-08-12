@@ -14,13 +14,15 @@ from bzrlib.errors import (NoSuchFile, NotBranchError, BzrNewError)
 from bzrlib.branch import Branch
 from bzrlib.workingtree import WorkingTree
 from bzrlib.export import export
+from bzrlib.config import ConfigObj
 
 class DebianChanges(object):
   """Abstraction of the .changes file. Use it to find out what files were built
   """
 
   def __init__(self, package, version, dir):
-    status, arch = commands.getstatusoutput('dpkg-architecture -qDEB_BUILD_ARCH')
+    status, arch = commands.getstatusoutput(
+        'dpkg-architecture -qDEB_BUILD_ARCH')
     if status > 0:
       raise DebianError("Could not find the build architecture")
     changes = str(package)+"_"+str(version)+"_"+str(arch)+".changes"
@@ -53,6 +55,8 @@ class DebianChangelog(object):
   """
 
   def __init__(self, file=None):
+    self._full_version = None
+    self._package = None
     if file is None:
       f = open("debian/changelog", 'r')
       contents = f.read()
@@ -60,12 +64,13 @@ class DebianChangelog(object):
       self._file = contents
     else:
       self._file = file
-    p = re.compile('([a-z0-9][-a-z0-9.+]+) \(([-0-9a-z.:]+)\) [-a-zA-Z]+; urgency=[a-z]+')
+    p = re.compile('([a-z0-9][-a-z0-9.+]+) \(([-0-9a-z.:]+)\) [-a-zA-Z]+;'
+        +' urgency=[a-z]+')
     m = p.search(self._file)
     if m is not None:
       self._package = m.group(1)
       self._full_version = m.group(2)
- 
+
     if self._full_version is None:
       raise DebianError("Could not parse debian/changelog")
 
@@ -170,7 +175,8 @@ class DebMergeBuild(DebBuild):
     tarballdir = self._properties.tarball_dir()
     tarball = tarballdir+"/"+package+"_"+upstream+".orig.tar.gz"
     if not os.path.exists(tarballdir):
-      raise DebianError('Could not find dir with upstream tarballs: '+tarballdir)
+      raise DebianError('Could not find dir with upstream tarballs: '
+          +tarballdir)
     if not os.path.exists(tarball):
       raise DebianError('Could not find upstrean tarball at '+tarball)
 
@@ -203,52 +209,139 @@ class DebianError(BzrNewError):
     BzrNewError.__init__(self)
     self.message = message
 
-class BuildDebProperties(object):
+class ChangedError(DebianError):
+  """There are modified files in the working tree. Either commit the 
+     changes, use --working to build the working tree, or --ignore-changes
+     to override this and build the branch without the changes in the working 
+     tree. Use bzr status to see the changes"""
 
   def __init__(self):
-    self._merge = False
-    if os.path.exists('bzr-builddeb'):
-      if os.path.exists('bzr-builddeb/mergeWithUpstream'):
-        self._merge = True
+    DebianError.__init__(self, None)
 
-  def merge(self):
-    return self._merge
+class BuildDebConfig(object):
+
+  def __init__(self):
+    globalfile = os.path.expanduser('~/.bazaar/builddeb.conf')
+    localfile = ('.bzr-builddeb/builddeb.conf')
+    self._global = ConfigObj(globalfile)
+    self._local = ConfigObj(localfile)
+
+  def _get_opt(self, key):
+    try:
+      return self._local.get_value('builddeb', key)
+    except KeyError:
+      try:
+        return self._global.get_value('builddeb', key)
+      except:
+        return None
+      return None
+
+  def build_dir(self):
+    return self._get_opt('build-dir')
+
+  def orig_dir(self):
+    return self._get_opt('orig-dir')
+
+  def builder(self):
+    return self._get_opt('builder')
+
+  def result_dir(self):
+    return self._get_opt('result-dir')
+
+def is_clean(oldtree, newtree):
+  """Return True if there are no uncommited changes or unknown files. 
+     I don't like this, but I can't see a better way to do it, and dont
+     want to add the dependency on bzrtools for an equivalent method, (even
+     if I knew how to access it)."""
+  changes = newtree.changes_from(oldtree)
+  if changes.has_changed() or len(list(newtree.unknowns())) > 0:
+    return False
+  return True
 
 class cmd_builddeb(Command):
-  """Build the package
+  """Builds a Debian package from a branch.
+
+  If BRANCH is specified it is assumed that the branch you wish to build is
+  located there. If it is not specified then the current directory is used.
+
+  By default the commited modifications of the branch are used to build
+  the package. If you wish to use the woking tree to build the package use
+  --working-tree.
+
+  If you only wish to export the package, and not build it (especially useful
+  for merge mode), use --export-only.
+
+  To leave the build directory when the build is completed use --dont-purge.
+
+  Specify the command to use when building using the --builder option,
+
+  You can also specify directories to use for different things. --build-dir
+  is the directory to build the packages beneath, defaults to ../build-area.
+  --orig-dir specifies the directory that contains the .orig.tar.gz files 
+  for use in merge mode, defaults to ../tarballs. --result-dir specifies where
+  the resulting package files should be placed, defaults to whatever is 
+  used for the build directory.
+
+  When not using --working-tree and there uncommited changes or unknown files 
+  in the working tree the build will not proceed. Use --ignore-changes to 
+  override this and build ignoring all changes in the working tree.
+  
   """
-  working_tree_opt = Option('working-tree', help="Use the wokring tree")
+  working_tree_opt = Option('working-tree', help="Use the working tree")
   Option.SHORT_OPTIONS['w'] = working_tree_opt
   export_only_opt = Option('export-only', help="Export only, don't build")
   Option.SHORT_OPTIONS['e'] = export_only_opt
-  dont_purge_opt = Option('dont-purge', help="Don't purge the build directory after building")
-  result_opt = Option('result', help="Directory in which to place the resulting package files", type=str)
-  builder_opt = Option('builder', help="Command to build the package", type=str)
-  merge_opt = Option('merge', help='Merge the debian part of the source in to the upstream tarball')
-#  Option.SHORT_OPTIONS['m'] = merge_opt
-  takes_args = ['branch?', 'version?']
+  dont_purge_opt = Option('dont-purge', 
+      help="Don't purge the build directory after building")
+  result_opt = Option('result', 
+      help="Directory in which to place the resulting package files", type=str)
+  builder_opt = Option('builder', 
+      help="Command to build the package", type=str)
+  merge_opt = Option('merge', 
+      help='Merge the debian part of the source in to the upstream tarball')
+  build_dir_opt = Option('build-dir', 
+      help="The dir to use for building", type=str)
+  orig_dir_opt = Option('orig-dir', 
+      help="Directory containing the .orig.tar.gz files. For use when only"
+         +"debian/ is versioned", type=str)
+  ignore_changes_opt = Option('ignore-changes',
+      help="Ignore any changes that are in the working tree when building the"
+         +" branch. You may also want --working to use these uncommited "
+         + "changes")
+  takes_args = ['branch?']
   aliases = ['bd']
-  takes_options = ['verbose',
-           working_tree_opt, export_only_opt, dont_purge_opt, result_opt, builder_opt, merge_opt]
+  takes_options = ['verbose', working_tree_opt, export_only_opt, 
+      dont_purge_opt, result_opt, builder_opt, merge_opt, build_dir_opt, 
+      orig_dir_opt, ignore_changes_opt]
 
-  def run(self, branch=None, version=None, verbose=False, working_tree=False, export_only=False, dont_purge=False, result=None, builder=None, merge=False):
+  def run(self, branch=None, verbose=False, working_tree=False, 
+          export_only=False, dont_purge=False, result=None, builder=None, 
+          merge=False, build_dir=None, orig_dir=None, ignore_changes=False):
     retcode = 0
 
-    if branch is None:
-      tree = WorkingTree.open_containing('.')[0]
-    else:
-      tree = WorkingTree.open_containing(branch)[0]
+    if branch is not None:
+      os.chdir(branch)
 
+    tree = WorkingTree.open_containing('.')[0]
+    
+    config = BuildDebConfig()
+
+    if result is None:
+      result = config.result_dir()
     if result is not None:
       result = os.path.realpath(result)
 
     if builder is None:
-      builder = "dpkg-buildpackage -uc -us -rfakeroot"
+      builder = config.builder()
+      if builder is None:
+        builder = "dpkg-buildpackage -uc -us -rfakeroot"
 
     if not working_tree:
       b = tree.branch
       rev_id = b.last_revision()
       t = b.repository.revision_tree(rev_id)
+      if not ignore_changes and not is_clean(t, tree):
+        raise ChangedError
     else:
       t = tree
     changelog_file = 'debian/changelog'
@@ -259,20 +352,24 @@ class cmd_builddeb(Command):
         changelog_file = 'changelog'
         larstiq = True
         if not t.has_filename(changelog_file):
-          raise DebianError("Could not open changelog")
+          raise DebianError("Could not open debian/changelog or changelog")
       else:
         raise DebianError("Could not open debian/changelog")
 
     changelog_id = t.inventory.path2id(changelog_file)
     contents = t.get_file_text(changelog_id)
     changelog = DebianChangelog(contents)
-    if branch is None:
-      build_dir = '../build-area'
-      tarball_dir = '../tarballs'
-    else:
-      build_dir = 'build-area'
-      tarball_dir = 'tarballs'
-    properties = BuildProperties(changelog,build_dir,tarball_dir,larstiq)
+    if build_dir is None:
+      build_dir = config.build_dir()
+      if build_dir is None:
+        build_dir = '../build-area'
+
+    if orig_dir is None:
+      orig_dir = config.orig_dir()
+      if orig_dir is None:
+        orig_dir = '../tarballs'
+    
+    properties = BuildProperties(changelog,build_dir,orig_dir,larstiq)
     if merge:
       build = DebMergeBuild(properties, t)
     else:
