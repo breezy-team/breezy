@@ -145,7 +145,90 @@ class BundleLibraryLevelBenchmark(Benchmark):
                 self.run_bzr("commit", '-m', 'some changes')
         assert count >= num_revisions
 
+    def _time_read_write(self):
+        branch, _ = Branch.open_containing(".")
+        revision_history = branch.revision_history()
+        bundle_text = StringIO()
+        self.time(write_bundle, branch.repository, revision_history[-1],
+                  None, bundle_text)
+        bundle_text.seek(0)
+        self.time(read_bundle, bundle_text)
 
+    def test_few_files_small_tree_1_revision(self):
+        cached_make(self.make_parametrized_tree, 5, 1, 5)
+        self._time_read_write()
+
+    def test_few_files_small_tree_500_revision(self):
+        cached_make(self.make_parametrized_tree, 5, 500, 5)
+        self._time_read_write()
+
+    def test_few_files_small_tree_1000_revision(self):
+        cached_make(self.make_parametrized_tree, 5, 1000, 5)
+        self._time_read_write()
+
+    def test_few_files_moderate_tree_1_revision(self):
+        cached_make(self.make_parametrized_tree, 100, 1, 5)
+        self._time_read_write()
+
+    def test_few_files_moderate_tree_500_revision(self):
+        cached_make(self.make_parametrized_tree, 100, 500, 5)
+        self._time_read_write()
+
+    def test_few_files_moderate_tree_1000_revision(self):
+        cached_make(self.make_parametrized_tree, 100, 1000, 5)
+        self._time_read_write()
+
+    def test_some_files_moderate_tree_1_revision(self):
+        cached_make(self.make_parametrized_tree, 100, 1, 100)
+        self._time_read_write()
+
+    def test_some_files_moderate_tree_500_revision(self):
+        cached_make(self.make_parametrized_tree, 100, 500, 100)
+        self._time_read_write()
+
+    def test_some_files_moderate_tree_1000_revision(self):
+        cached_make(self.make_parametrized_tree, 100, 1000, 100)
+        self._time_read_write()
+
+    def test_few_files_big_tree_1_revision(self):
+        cached_make(self.make_parametrized_tree, 1000, 1, 5)
+        self._time_read_write()
+
+    def test_few_files_big_tree_500_revision(self):
+        cached_make(self.make_parametrized_tree, 1000, 500, 5)
+        self._time_read_write()
+
+    def test_few_files_big_tree_1000_revision(self):
+        cached_make(self.make_parametrized_tree, 1000, 1000, 5)
+        self._time_read_write()
+
+    def test_some_files_big_tree_1_revision(self):
+        cached_make(self.make_parametrized_tree, 1000, 1, 100)
+        self._time_read_write()
+
+    def test_some_files_big_tree_500_revision(self):
+        cached_make(self.make_parametrized_tree, 1000, 500, 100)
+        self._time_read_write()
+
+    def test_some_files_big_tree_1000_revision(self):
+        cached_make(self.make_parametrized_tree, 1000, 1000, 100)
+        self._time_read_write()
+
+    def test_many_files_big_tree_1_revision(self):
+        cached_make(self.make_parametrized_tree, 1000, 1, 1000)
+        self._time_read_write()
+
+    def test_many_files_big_tree_500_revision(self):
+        cached_make(self.make_parametrized_tree, 1000, 500, 1000)
+        self._time_read_write()
+
+    def test_many_files_big_tree_1000_revision(self):
+        cached_make(self.make_parametrized_tree, 1000, 1000, 1000)
+        self._time_read_write()
+
+
+if __name__ == '__main__':
+    # USE the following if you want to regenerate the above test functions 
     for treesize, treesize_h in [(5, "small"), (100, "moderate"),
                                  (1000, "big")]:
         for bundlefiles, bundlefiles_h in [(5, "few"), (100, "some"),
@@ -153,17 +236,11 @@ class BundleLibraryLevelBenchmark(Benchmark):
             if bundlefiles > treesize:
                 continue
             for num_revisions in [1, 500, 1000]:
-                code = """
-def test_%s_files_%s_tree_%s_revision(self):
-    cached_make(self.make_parametrized_tree, %s, %s, %s)
-    branch, _ = Branch.open_containing(".")
-    revision_history = branch.revision_history()
-    bundle_text = StringIO()
-    self.time(write_bundle, branch.repository, revision_history[-1],
-              None, bundle_text)
-    bundle_text.seek(0)
-    self.time(read_bundle, bundle_text)""" % (
-                    bundlefiles_h, treesize_h, num_revisions,
-                    treesize, num_revisions, bundlefiles)
-                exec code
+                code = """\
+    def test_%s_files_%s_tree_%s_revision(self):
+        cached_make(self.make_parametrized_tree, %s, %s, %s)
+        self._time_read_write()
+""" % (bundlefiles_h, treesize_h, num_revisions,
+       treesize, num_revisions, bundlefiles)
+                print code 
 
