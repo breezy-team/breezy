@@ -223,7 +223,7 @@ class BuildDebConfig(ConfigObj):
 class cmd_builddeb(Command):
   """Build the package
   """
-  working_tree_opt = Option('working-tree', help="Use the wokring tree")
+  working_tree_opt = Option('working-tree', help="Use the working tree")
   Option.SHORT_OPTIONS['w'] = working_tree_opt
   export_only_opt = Option('export-only', help="Export only, don't build")
   Option.SHORT_OPTIONS['e'] = export_only_opt
