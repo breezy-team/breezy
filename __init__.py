@@ -209,6 +209,15 @@ class DebianError(BzrNewError):
     BzrNewError.__init__(self)
     self.message = message
 
+class ChangedError(DebianError):
+  """There are modified files in the working tree. Either commit the 
+     changes, use --working to build the working tree, or --ignore-changes
+     to override this and build the branch without the changes in the working 
+     tree. Use bzr status to see the changes"""
+
+  def __init__(self):
+    DebianError.__init__(self, None)
+
 class BuildDebConfig(object):
 
   def __init__(self):
@@ -260,15 +269,19 @@ class cmd_builddeb(Command):
   orig_dir_opt = Option('orig-dir', 
       help="Directory containing the .orig.tar.gz files. For use when only"
          +"debian/ is versioned", type=str)
-  takes_args = ['branch?', 'version?']
+  ignore_changes_opt = Option('ignore-changes',
+      help="Ignore any changes that are in the working tree when building the"
+         +" branch. You may also want --working to use these uncommited "
+         + "changes")
+  takes_args = ['branch?']
   aliases = ['bd']
   takes_options = ['verbose', working_tree_opt, export_only_opt, 
       dont_purge_opt, result_opt, builder_opt, merge_opt, build_dir_opt, 
-      orig_dir_opt]
+      orig_dir_opt, ignore_changes_opt]
 
-  def run(self, branch=None, version=None, verbose=False, working_tree=False, 
+  def run(self, branch=None, verbose=False, working_tree=False, 
           export_only=False, dont_purge=False, result=None, builder=None, 
-          merge=False, build_dir=None, orig_dir=None):
+          merge=False, build_dir=None, orig_dir=None, ignore_changes=False):
     retcode = 0
 
     if branch is not None:
@@ -292,6 +305,8 @@ class cmd_builddeb(Command):
       b = tree.branch
       rev_id = b.last_revision()
       t = b.repository.revision_tree(rev_id)
+      if not ignore_changes and not is_clean(t, tree):
+        raise ChangedError
     else:
       t = tree
     changelog_file = 'debian/changelog'
@@ -302,7 +317,7 @@ class cmd_builddeb(Command):
         changelog_file = 'changelog'
         larstiq = True
         if not t.has_filename(changelog_file):
-          raise DebianError("Could not open changelog")
+          raise DebianError("Could not open debian/changelog or changelog")
       else:
         raise DebianError("Could not open debian/changelog")
 
