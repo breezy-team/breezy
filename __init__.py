@@ -248,9 +248,44 @@ class BuildDebConfig(object):
   def result_dir(self):
     return self._get_opt('result-dir')
 
+def is_clean(oldtree, newtree):
+  """Return True if there are no uncommited changes or unknown files. 
+     I don't like this, but I can't see a better way to do it, and dont
+     want to add the dependency on bzrtools for an equivalent method, (even
+     if I knew how to access it)."""
+  changes = newtree.changes_from(oldtree)
+  if changes.has_changed() or len(list(newtree.unknowns())) > 0:
+    return False
+  return True
 
 class cmd_builddeb(Command):
-  """Build the package
+  """Builds a Debian package from a branch.
+
+  If BRANCH is specified it is assumed that the branch you wish to build is
+  located there. If it is not specified then the current directory is used.
+
+  By default the commited modifications of the branch are used to build
+  the package. If you wish to use the woking tree to build the package use
+  --working-tree.
+
+  If you only wish to export the package, and not build it (especially useful
+  for merge mode), use --export-only.
+
+  To leave the build directory when the build is completed use --dont-purge.
+
+  Specify the command to use when building using the --builder option,
+
+  You can also specify directories to use for different things. --build-dir
+  is the directory to build the packages beneath, defaults to ../build-area.
+  --orig-dir specifies the directory that contains the .orig.tar.gz files 
+  for use in merge mode, defaults to ../tarballs. --result-dir specifies where
+  the resulting package files should be placed, defaults to whatever is 
+  used for the build directory.
+
+  When not using --working-tree and there uncommited changes or unknown files 
+  in the working tree the build will not proceed. Use --ignore-changes to 
+  override this and build ignoring all changes in the working tree.
+  
   """
   working_tree_opt = Option('working-tree', help="Use the working tree")
   Option.SHORT_OPTIONS['w'] = working_tree_opt
