@@ -14,6 +14,7 @@ from bzrlib.errors import (NoSuchFile, NotBranchError, BzrNewError)
 from bzrlib.branch import Branch
 from bzrlib.workingtree import WorkingTree
 from bzrlib.export import export
+from bzrlib.config import ConfigObj
 
 class DebianChanges(object):
   """Abstraction of the .changes file. Use it to find out what files were built
@@ -203,16 +204,21 @@ class DebianError(BzrNewError):
     BzrNewError.__init__(self)
     self.message = message
 
-class BuildDebProperties(object):
+class BuildDebConfig(ConfigObj):
 
   def __init__(self):
-    self._merge = False
-    if os.path.exists('bzr-builddeb'):
-      if os.path.exists('bzr-builddeb/mergeWithUpstream'):
-        self._merge = True
+    file = os.path.expanduser('~/.bazaar/builddeb.conf')
+    super(ConfigObj, self).__init__(file)
 
-  def merge(self):
-    return self._merge
+  def _get_opt(self, key):
+    try:
+      return self.get_value('builddeb', key)
+    except KeyError:
+      return None
+
+  def builder(self):
+    return self._get_opt('builder')
+
 
 class cmd_builddeb(Command):
   """Build the package
@@ -242,8 +248,12 @@ class cmd_builddeb(Command):
     if result is not None:
       result = os.path.realpath(result)
 
+    config = BuildDebConfig()
+
     if builder is None:
-      builder = "dpkg-buildpackage -uc -us -rfakeroot"
+      builder = config.builder()
+      if builder is None:
+        builder = "dpkg-buildpackage -uc -us -rfakeroot"
 
     if not working_tree:
       b = tree.branch
