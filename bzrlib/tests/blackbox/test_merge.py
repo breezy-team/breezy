@@ -52,6 +52,7 @@ class TestMerge(ExternalBase):
         os.mkdir('a')
         os.chdir('a')
         self.example_branch()
+        ancestor = Branch.open('.').revno()
         os.chdir('..')
         self.runbzr('branch a b')
         os.chdir('b')
@@ -81,9 +82,13 @@ class TestMerge(ExternalBase):
         self.assertEquals(a.pending_merges(),
                           [b.last_revision()])
         self.runbzr('revert --no-backup')
-        self.runbzr('merge -r revno:1:../b..revno:1:../c',
-                    retcode=3)
-        self.runbzr('revert --no-backup')
+        # If bzr merge is fixed to work with two revno:N:path with
+        # different paths, uncomment this section.        
+        #         self.runbzr('merge -r revno:%d:./..revno:%d:../b'
+        #                     %(ancestor,b.revno()))
+        #         self.assertEquals(a.pending_merges(), [b.last_revision()])
+        #         self.check_file_contents('goodbye', 'quux')
+        #         self.runbzr('revert --no-backup')
         self.runbzr('merge -r revno:%d:../b'%b.revno())
         self.assertEquals(a.pending_merges(),
                           [b.last_revision()])

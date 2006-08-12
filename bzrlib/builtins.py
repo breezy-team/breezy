@@ -1352,6 +1352,9 @@ class cmd_log(Command):
             rev1 = rev2 = revision[0].in_history(b).revno
         elif len(revision) == 2:
             if revision[1].get_branch() != revision[0].get_branch():
+                # b is taken from revision[0].get_branch(), and
+                # show_log will use its revision_history. Having
+                # different branches will lead to weird behaviors.
                 raise BzrCommandError(
                     "Log doesn't accept two revisions in different branches.")
             if revision[0].spec is None:
@@ -2182,6 +2185,11 @@ class cmd_merge(Command):
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
                 if revision[1].get_branch() != revision[0].get_branch():
+                    # branch is obtained from
+                    # revision[0].get_branch(), and will be used for
+                    # the merge. Having two different branches here
+                    # does not work. Fix it and uncomment the relevant
+                    # section in test_merge if you want it to work.
                     raise BzrCommandError(
                         "Merge doesn't accept two revisions in different branches.")
                 other_branch, path = Branch.open_containing(branch)
