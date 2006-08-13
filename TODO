@@ -27,3 +27,9 @@
 - import of NMU diffs
 
 - WRITE SOME TESTS
+
+- Add tagging packages, or at least a reminder to tag packages. Maybe with 
+dput/dupload as well.
+
+- New changelog stanza command for after tagging.
+

@@ -15,8 +15,9 @@ from bzrlib.branch import Branch
 from bzrlib.workingtree import WorkingTree
 from bzrlib.export import export
 from bzrlib.config import ConfigObj
+from debian_bundle import deb822
 
-class DebianChanges(object):
+class DebianChanges(deb822.changes):
   """Abstraction of the .changes file. Use it to find out what files were built
   """
 
@@ -30,21 +31,12 @@ class DebianChanges(object):
       changes = dir+"/"+changes
     if not os.path.exists(changes):
       raise DebianError("Could not find "+package)
-    f = open(changes)
-    p = re.compile('^ [a-z0-9]+ [0-9]+ [a-z]+ [a-z]+ (.*)$')
-    files = []
-    for line in f:
-      m = p.match(line)
-      if m is not None:
-        file = m.group(1)
-        if dir is not None:
-          file = dir+"/"+file
-        files.append(file)
-    self._files = files
+    fp = open(changes)
+    super(DebianChanges, self).__init__(fp)
     self._filename = changes
-
+    
   def files(self):
-    return self._files
+    return self['Files']
 
   def filename(self):
     return self._filename
@@ -164,7 +156,7 @@ class DebBuild(object):
       os.makedirs(result)
     shutil.move(changes.filename(), result)
     for file in files:
-      shutil.move(file, result)
+      shutil.move(self._properties.build_dir()+"/"+file['name'], result)
 
 class DebMergeBuild(DebBuild):
 
@@ -222,31 +214,34 @@ class BuildDebConfig(object):
 
   def __init__(self):
     globalfile = os.path.expanduser('~/.bazaar/builddeb.conf')
-    localfile = ('.bzr-builddeb/builddeb.conf')
-    self._global = ConfigObj(globalfile)
-    self._local = ConfigObj(localfile)
+    localfile = ('.bzr-builddeb/local.conf')
+    defaultfile = ('.bzr-builddeb/default.conf')
+    self._config_files = [ConfigObj(localfile), ConfigObj(globalfile), ConfigObj(defaultfile)]
 
-  def _get_opt(self, key):
+  def _get_opt(self, config, key):
     try:
-      return self._local.get_value('builddeb', key)
+      return config.get_value('BUILDDEB', key)
     except KeyError:
-      try:
-        return self._global.get_value('builddeb', key)
-      except:
-        return None
       return None
 
+  def _get_best_opt(self, key):
+    for file in self._config_files:
+      value = self._get_opt(file, key)
+      if value is not None:
+        return value
+    return None
+
   def build_dir(self):
-    return self._get_opt('build-dir')
+    return self._get_best_opt('build-dir')
 
   def orig_dir(self):
-    return self._get_opt('orig-dir')
+    return self._get_best_opt('orig-dir')
 
   def builder(self):
-    return self._get_opt('builder')
+    return self._get_best_opt('builder')
 
   def result_dir(self):
-    return self._get_opt('result-dir')
+    return self._get_best_opt('result-dir')
 
 def is_clean(oldtree, newtree):
   """Return True if there are no uncommited changes or unknown files. 
