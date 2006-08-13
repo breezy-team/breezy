@@ -18,9 +18,11 @@
 """GPG signing and checking logic."""
 
 import errno
+import os
 import subprocess
 
 import bzrlib.errors as errors
+
 
 class DisabledGPGStrategy(object):
     """A GPG Strategy that makes everything fail."""
@@ -42,6 +44,12 @@ class LoopbackGPGStrategy(object):
         return content
 
 
+def _set_gpg_tty():
+    tty = os.environ.get('TTY')
+    if tty is not None:
+        os.environ['GPG_TTY'] = tty
+
+
 class GPGStrategy(object):
     """GPG Signing and checking facilities."""
         
@@ -55,7 +63,8 @@ class GPGStrategy(object):
         try:
             process = subprocess.Popen(self._command_line(),
                                        stdin=subprocess.PIPE,
-                                       stdout=subprocess.PIPE)
+                                       stdout=subprocess.PIPE,
+                                       preexec_fn=_set_gpg_tty)
             try:
                 result = process.communicate(content)[0]
                 if process.returncode is None:
