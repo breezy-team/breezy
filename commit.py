@@ -18,7 +18,6 @@ import svn.delta
 import svn.ra
 from svn.core import Pool, SubversionException
 
-from bzrlib.delta import compare_trees
 from bzrlib.errors import (UnsupportedOperation, BzrError, InvalidRevisionId, 
                            DivergedBranches)
 from bzrlib.inventory import Inventory, ROOT_ID
@@ -343,7 +342,7 @@ def push_as_merged(target, source, revision_id):
     new_tree = target.repository.revision_tree(target.last_revision())
 
     builder = target.get_commit_builder([revision_id, target.last_revision()])
-    delta = compare_trees(old_tree, new_tree)
+    delta = new_tree.changes_from(old_tree)
     builder.new_inventory = inv
 
     for (name, ie) in inv.entries():

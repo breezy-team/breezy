@@ -16,14 +16,13 @@
 
 from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, BzrBranch
 from bzrlib.config import TreeConfig
-from bzrlib.delta import compare_trees
 from bzrlib.errors import (NotBranchError, NoWorkingTree, NoSuchRevision, 
                            NoSuchFile, DivergedBranches)
 from bzrlib.inventory import (Inventory, InventoryFile, InventoryDirectory, 
                               ROOT_ID)
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.symbol_versioning import deprecated_function, zero_nine
-from bzrlib.tree import Tree, EmptyTree
+from bzrlib.tree import Tree
 from bzrlib.trace import mutter, note
 from bzrlib.workingtree import WorkingTree
 

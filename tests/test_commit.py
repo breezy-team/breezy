@@ -16,7 +16,6 @@
 
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
-from bzrlib.delta import compare_trees
 from bzrlib.errors import DivergedBranches
 from bzrlib.inventory import Inventory
 from bzrlib.workingtree import WorkingTree

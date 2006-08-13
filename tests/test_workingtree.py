@@ -16,16 +16,16 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.delta import compare_trees
 from bzrlib.errors import NoSuchRevision, NoSuchFile
 from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
-from bzrlib.tree import EmptyTree
 from bzrlib.workingtree import WorkingTree
 
 import os
 import format
 import checkout
+import tree
 from tests import TestCaseWithSubversionRepository, RENAMES
 
 class TestWorkingTree(TestCaseWithSubversionRepository):
@@ -114,8 +114,9 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
 
     def test_empty_basis_tree(self):
         self.make_client_and_bzrdir('a', 'dc')
-        tree = WorkingTree.open("dc")
-        self.assertIsInstance(tree.basis_tree(), EmptyTree)
+        wt = WorkingTree.open("dc")
+        self.assertEqual(NULL_REVISION, wt.basis_tree().inventory.revision_id)
+        self.assertEqual(Inventory(), wt.basis_tree().inventory)
 
     def test_basis_tree(self):
         self.make_client_and_bzrdir('a', 'dc')
@@ -167,7 +168,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.build_tree({"dc/bl": "data2"})
         tree = WorkingTree.open("dc")
         basis = tree.basis_tree()
-        delta = compare_trees(tree.basis_tree(), tree)
+        delta = tree.changes_from(tree.basis_tree())
         self.assertEqual("bl", delta.modified[0][0])
  
     def test_working_inventory(self):
@@ -283,10 +284,10 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree.commit(message="data")
         self.assertEqual("svn-v1:1@%s-" % tree.branch.repository.uuid, 
                          tree.basis_tree().get_revision_id())
-        delta = compare_trees(orig_tree, tree.basis_tree())
+        delta = tree.basis_tree().changes_from(orig_tree)
         self.assertTrue(delta.has_changed())
         tree = WorkingTree.open("dc")
-        delta = compare_trees(tree, tree.basis_tree())
+        delta = tree.basis_tree().changes_from(tree)
         self.assertEqual("svn-v1:1@%s-" % tree.branch.repository.uuid, 
                          tree.basis_tree().get_revision_id())
         self.assertFalse(delta.has_changed())

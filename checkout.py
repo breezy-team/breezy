@@ -16,7 +16,6 @@
 
 from binascii import hexlify
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
-from bzrlib.delta import compare_trees
 from bzrlib.errors import NotBranchError, NoSuchFile, InvalidRevisionId
 from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile, 
                               ROOT_ID)
@@ -26,7 +25,6 @@ from bzrlib.osutils import rand_bytes, fingerprint_file
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
-from bzrlib.tree import EmptyTree
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
@@ -370,7 +368,7 @@ class SvnWorkingTree(WorkingTree):
 
     def basis_tree(self):
         if self.base_revid is None or self.base_revid == NULL_REVISION:
-            return EmptyTree()
+            return self.branch.repository.revision_tree(self.base_revid)
 
         return SvnBasisTree(self, self.base_revid)
 

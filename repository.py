@@ -20,7 +20,7 @@ from bzrlib.config import config_dir
 from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile, 
                            NoSuchRevision, NotBranchError)
 from bzrlib.graph import Graph
-from bzrlib.inventory import ROOT_ID
+from bzrlib.inventory import ROOT_ID, Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar
@@ -28,7 +28,6 @@ from bzrlib.repository import Repository
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
 from bzrlib.trace import mutter
-from bzrlib.tree import EmptyTree
 
 from svn.core import SubversionException, Pool
 import svn.core
@@ -119,7 +118,6 @@ def parse_revision_id(self, revid):
     :raises: NoSuchRevision
     :return: Tuple with branch path and revision number.
     """
-
     try:
         (uuid, branch_path, revnum) = parse_svn_revision_id(revid)
     except InvalidRevisionId:
@@ -313,10 +311,13 @@ See http://bazaar-vcs.org/BzrSvn for details.
             yield self.revision_tree(revid)
 
     def revision_tree(self, revision_id, inventory=None):
-        if revision_id is None or revision_id == NULL_REVISION:
-            return EmptyTree()
-        else:
-            return SvnRevisionTree(self, revision_id, inventory)
+        if revision_id is None:
+            revision_id = NULL_REVISION
+
+        if revision_id == NULL_REVISION:
+            inventory = Inventory()
+
+        return SvnRevisionTree(self, revision_id, inventory)
 
     def revision_parents(self, revision_id, merged_data=None):
         (path, revnum) = self.parse_revision_id(revision_id)
@@ -574,8 +575,8 @@ See http://bazaar-vcs.org/BzrSvn for details.
         return stream
 
     def get_revision_graph(self, revision_id):
-        if revision_id is None:
-            raise NotImplementedError()
+        if revision_id == NULL_REVISION:
+            return {}
 
         (path, revnum) = self.parse_revision_id(revision_id)
 

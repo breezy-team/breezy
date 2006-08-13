@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.delta import compare_trees
 from bzrlib.errors import NotBranchError
 from bzrlib.repository import Repository
 

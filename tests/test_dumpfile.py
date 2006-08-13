@@ -16,7 +16,6 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.delta import compare_trees
 from bzrlib.transport import Transport, get_transport
 from bzrlib.workingtree import WorkingTree
 
