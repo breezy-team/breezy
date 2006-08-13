@@ -220,7 +220,7 @@ class BuildDebConfig(object):
 
   def _get_opt(self, config, key):
     try:
-      return config.get_value('builddeb', key)
+      return config.get_value('BUILDDEB', key)
     except KeyError:
       return None
 
