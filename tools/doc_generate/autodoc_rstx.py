@@ -190,7 +190,7 @@ Environment
 **BZRPATH**
                 Path where **%(bzrcmd)s** is to look for external command.
 
-**BZREMAIL**
+**BZR_EMAIL**
                 E-Mail address of the user. Overrides default user config.
 
 **EMAIL**
