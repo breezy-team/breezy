@@ -1,32 +1,65 @@
-*******************************
-Release notes for Bazaar-NG 0.8
-*******************************
+README for Bazaar 0.9
+=====================
 
-bazaar-ng is a distributed/decentralized version control system.
+Bazaar is a decentralized revision control system, designed to be easy
+for developers and end users alike.
 
-Features include:
+To install Bazaar from source, follow the instructions in the INSTALL
+file. Otherwise, you may want to check your distribution package manager
+for ready-to-install packages, or http://bazaar-vcs.org/DistroDownloads.
 
- * simple to use
+To learn how to use Bazaar, check the documentation in the doc/ directory.
+Once installed, you can also run 'bzr help'. An always up-to-date and more
+complete set of documents can be found in the Bazaar website, at:
 
- * runs on Unix and Windows
+    http://bazaar-vcs.org/Documentation
 
- * branches can be hosted on an http server with no special software
+Bazaar is written in Python, and is sponsored by Canonical Limited, the
+founders of Ubuntu and Launchpad. Bazaar is Free Software, and is released
+under the GNU General Public License.
 
- * full directory versioning including tracking subdirectories, 
-   file renames, symlinks and execute-bits
-   
- * friendly interface that should be familiar to users of cvs, 
-   svn or other systems
+Bazaar was formerly known as Bazaar-NG, and some documentation still uses
+that old name. Also, since the Bazaar binary is called "bzr", many times this
+shorter name is used instead (like Subversion/svn and Mercurial/hg).
 
- * Python interface for extending and embedding, including a 
-   plugin interface
+Bazaar highlights
+=================
 
- * strong integrity protection, including gpg-signing
+  * Easy to use and intuitive.
 
- * vibrant and active community
+    Only five commands are needed to do all basic operations, and all
+    commands have documentation accessible via 'bzr help command'.
+    Bazaar's interface is also easy to lern for CVS and Subversion users.
 
-For usage instructions see 
-http://bazaar.canonical.com/IntroductionToBzr
-or run "bzr help"
+  * Robust and reliable.
 
-For installation instructions see ./INSTALL
+    Bazaar is developed under an extensive test suite. Branches can be
+    checked and verified for integrity at any time, and revisions can be
+    signed with PGP/GnuPG.
+
+ * Publish branches with HTTP.
+
+   Branches can be hosted on an HTTP server with no need for special
+   software on the server side. Branches can be uploaded by bzr itself
+   over SSH (SFTP), or with rsync.
+
+ * Adapts to multiple environments.
+
+   Bazaar runs on Linux and Windows, fully supports Unicode filenames,
+   and suits different development models, including centralized.
+
+ * Easily extended and customized.
+
+   A rich Python interface is provided for extending and embedding,
+   including a plugin interface. There are already many available plugins,
+   most of them registered at http://bazaar-vcs.org/PluginRegistry.
+
+ * Smart merging.
+
+    Changes will never be merged more than once, conflicts will be
+    minimized, and identical changes are dealt with well.
+
+ * Vibrant and active community.
+
+   Help with Bazaar is obtained easily, via the mailing list, or the IRC
+   channel. Check http://bazaar-vcs.org/BzrSupport for details.
