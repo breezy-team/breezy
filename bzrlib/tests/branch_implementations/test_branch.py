@@ -396,7 +396,7 @@ class TestBranch(TestCaseWithBranch):
         tree.branch.generate_revision_history(bzrlib.revision.NULL_REVISION)
         self.assertEqual([], tree.branch.revision_history())
 
-    def test_checkout_convenience(self):
+    def test_create_checkout(self):
         tree_a = self.make_branch_and_tree('a')
         branch_a = tree_a.branch
         checkout_b = branch_a.create_checkout('b')
