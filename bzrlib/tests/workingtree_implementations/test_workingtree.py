@@ -429,8 +429,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # create an out of date working tree by making a checkout in this
         # current format
         self.build_tree(['checkout/', 'tree/file'])
-        checkout = bzrdir.BzrDir.create_checkout_convenience('checkout',
-                                                             main_branch)
+        checkout = main_branch.create_checkout_convenience('checkout')
         # now commit to 'tree'
         wt.add('file')
         wt.commit('A', rev_id='A')
