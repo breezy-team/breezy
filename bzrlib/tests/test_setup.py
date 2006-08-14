@@ -22,7 +22,7 @@ import subprocess
 import shutil
 from tempfile import TemporaryFile
 
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestSkipped
 import bzrlib.osutils as osutils
 
 # TODO: ideally run this in a separate directory, so as not to clobber the
@@ -36,6 +36,9 @@ class TestSetup(TestCase):
         This tests that the build process and man generator run correctly.
         It also can catch new subdirectories that weren't added to setup.py.
         """
+        if not os.path.isfile('setup.py'):
+            raise TestSkipped('There is no setup.py file in current directory')
+
         self.log('test_build running in %s' % os.getcwd())
         try:
             # run setup.py build as subproces and catch return code
