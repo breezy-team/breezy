@@ -312,6 +312,14 @@ class AtomicFileAlreadyClosed(PathError):
         self.function = function
 
 
+class InaccessibleParent(PathError):
+    """Parent not accessible given base %(base)s and relative path %(path)s"""
+
+    def __init__(self, path, base):
+        PathError.__init__(self, path)
+        self.base = base
+
+
 class NoRepositoryPresent(BzrNewError):
     """No repository present: %(path)r"""
     def __init__(self, bzrdir):
