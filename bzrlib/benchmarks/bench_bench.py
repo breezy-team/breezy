@@ -19,11 +19,12 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.benchmarks import Benchmark
+from bzrlib.tests import TestSkipped
 
 
 class MakeKernelLikeTreeBenchmark(Benchmark):
 
-    def test_01_make_kernel_like_tree(self):
+    def test_make_kernel_like_tree(self):
         """Making a kernel sized tree should be ~ 5seconds on modern disk.""" 
         # on roberts machine: this originally took:  7372ms/ 7479ms
         # with the LocalTransport._abspath call:     3730ms/ 3778ms
@@ -34,9 +35,15 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
     def test_02_make_kernel_like_tree(self):
         """Hardlinking a kernel-like working tree should be ~1s"""
         # make sure kernel_like_tree is cached
-        self._cache_kernel_like_tree()
+        cache_dir, is_cached = self.get_cache_dir('kernel_like_tree')
+        if cache_dir is None:
+            # Caching is disabled, this test is meaningless
+            raise TestSkipped('caching is disabled')
+        if not is_cached:
+            # If it has not been cached yet, create it
+            self.make_kernel_like_tree(root='foo', link_working=True)
         self.time(self.make_kernel_like_tree, root='bar',
-                  hardlink_working=True)
+                  link_working=True)
 
     def test_03_make_kernel_like_added_tree(self):
         """Time the first creation of a kernel like added tree"""
@@ -44,7 +51,7 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
         try:
             # Change to a local cache directory so we know this
             # really creates the files
-            Benchmark.CACHE_ROOT = osutils.abspath('cache')
+            Benchmark.CACHE_ROOT = None
             self.time(self.make_kernel_like_added_tree, root='foo')
         finally:
             Benchmark.CACHE_ROOT = orig_cache
@@ -54,7 +61,13 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
         (this should be a clone)
         """
         # make sure kernel_like_added_tree is cached
-        self._cache_kernel_like_added_tree()
+        cache_dir, is_cached = self.get_cache_dir('kernel_like_added_tree')
+        if cache_dir is None:
+            # Caching is disabled, this test is meaningless
+            raise TestSkipped('caching is disabled')
+        if not is_cached:
+            # If it has not been cached yet, create it
+            self.make_kernel_like_added_tree(root='foo')
         self.time(self.make_kernel_like_added_tree, root='bar')
 
     def test_05_make_kernel_like_committed_tree(self):
@@ -63,7 +76,7 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
         try:
             # Change to a local cache directory so we know this
             # really creates the files
-            Benchmark.CACHE_ROOT = osutils.abspath('cache')
+            Benchmark.CACHE_ROOT = None
             self.time(self.make_kernel_like_committed_tree, root='foo')
         finally:
             Benchmark.CACHE_ROOT = orig_cache
@@ -73,7 +86,11 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
         (this should be a clone)
         """
         # Call make_kernel_like_committed_tree to make sure it is cached
-        self._cache_kernel_like_committed_tree()
+        cache_dir, is_cached = self.get_cache_dir('kernel_like_committed_tree')
+        if cache_dir is None:
+            raise TestSkipped('caching is disabled')
+        if not is_cached:
+            self.make_kernel_like_committed_tree(root='foo')
         self.time(self.make_kernel_like_committed_tree, root='bar')
 
     def test_07_make_kernel_like_committed_tree_hardlink(self):
@@ -81,8 +98,12 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
         (this should also hardlink the .bzr/ directory)
         """
         # make sure kernel_like_committed_tree is cached
-        self._cache_kernel_like_committed_tree()
+        cache_dir, is_cached = self.get_cache_dir('kernel_like_committed_tree')
+        if cache_dir is None:
+            raise TestSkipped('caching is disabled')
+        if not is_cached:
+            self.make_kernel_like_committed_tree(root='foo')
         self.time(self.make_kernel_like_committed_tree, root='bar',
-                    hardlink_bzr=True)
+                    link_bzr=True)
 
 

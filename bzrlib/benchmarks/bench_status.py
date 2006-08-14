@@ -32,5 +32,5 @@ class StatusBenchmark(Benchmark):
 
     def test_no_changes_known_kernel_like_tree(self):
         """Status in a kernel sized tree with no ignored, unknowns, or added.""" 
-        self.make_kernel_like_committed_tree(hardlink_bzr=True)
+        self.make_kernel_like_committed_tree(link_bzr=True)
         self.time(self.run_bzr, 'status')
