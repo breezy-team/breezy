@@ -4,6 +4,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Handle TZ=UTC properly when reading/writing revisions.
+      (John Arbash Meinel, #55783)
+
   INTERNALS:
 
 bzr 0.9.0  2006-08-11
