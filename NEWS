@@ -4,6 +4,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * External diff does the right thing for binaries even in foreign 
+      languages. (John Arbash Meinel, #56307)
+
   INTERNALS:
 
 bzr 0.9.0  2006-08-11
