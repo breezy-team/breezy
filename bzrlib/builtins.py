@@ -2114,7 +2114,9 @@ class cmd_merge(Command):
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
                      Option('show-base', help="Show base revision text in "
-                            "conflicts")]
+                            "conflicts"), 
+                     Option('uncommitted', help='Apply uncommitted changes'
+                            ' from a working copy, instead of branch changes')]
 
     def help(self):
         from merge import merge_type_help
@@ -2122,7 +2124,8 @@ class cmd_merge(Command):
         return getdoc(self) + '\n' + merge_type_help() 
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
-            show_base=False, reprocess=False, remember=False):
+            show_base=False, reprocess=False, remember=False, 
+            uncommitted=False):
         if merge_type is None:
             merge_type = Merge3Merger
 
@@ -2144,10 +2147,17 @@ class cmd_merge(Command):
         branch = self._get_remembered_parent(tree, branch, 'Merging from')
 
         if revision is None or len(revision) < 1:
-            base = [None, None]
-            other = [branch, -1]
+            if uncommitted:
+                base = [branch, -1]
+                other = [branch, None]
+            else:
+                base = [None, None]
+                other = [branch, -1]
             other_branch, path = Branch.open_containing(branch)
         else:
+            if uncommitted:
+                raise BzrCommandError('Cannot use --uncommitted and --revision'
+                                      ' at the same time.')
             if len(revision) == 1:
                 base = [None, None]
                 other_branch, path = Branch.open_containing(branch)

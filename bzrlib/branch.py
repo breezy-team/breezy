@@ -541,9 +541,13 @@ class Branch(object):
                 rev = self.repository.get_revision(revision_id)
                 new_history = rev.get_history(self.repository)[1:]
         destination.set_revision_history(new_history)
-        parent = self.get_parent()
-        if parent:
-            destination.set_parent(parent)
+        try:
+            parent = self.get_parent()
+        except errors.InaccessibleParent, e:
+            mutter('parent was not accessible to copy: %s', e)
+        else:
+            if parent:
+                destination.set_parent(parent)
 
     @needs_read_lock
     def check(self):
@@ -1206,7 +1210,10 @@ class BzrBranch(Branch):
             # turn it into a url
             if parent.startswith('/'):
                 parent = urlutils.local_path_to_url(parent.decode('utf8'))
-            return urlutils.join(self.base[:-1], parent)
+            try:
+                return urlutils.join(self.base[:-1], parent)
+            except errors.InvalidURLJoin, e:
+                raise errors.InaccessibleParent(parent, self.base)
         return None
 
     def get_push_location(self):
