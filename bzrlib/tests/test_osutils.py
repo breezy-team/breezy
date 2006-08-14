@@ -131,6 +131,25 @@ class TestOSUtils(TestCaseInTempDir):
             finally:
                 os.remove('socket')
 
+    def test_get_umask(self):
+        if sys.platform == 'win32':
+            # umask always returns '0', no way to set it
+            self.assertEqual(0, osutils.get_umask())
+            return
+
+        orig_umask = osutils.get_umask()
+        try:
+            os.umask(0222)
+            self.assertEqual(0222, osutils.get_umask())
+            os.umask(0022)
+            self.assertEqual(0022, osutils.get_umask())
+            os.umask(0002)
+            self.assertEqual(0002, osutils.get_umask())
+            os.umask(0027)
+            self.assertEqual(0027, osutils.get_umask())
+        finally:
+            os.umask(orig_umask)
+
 
 class TestSafeUnicode(TestCase):
 

@@ -53,6 +53,14 @@ from bzrlib.symbol_versioning import (deprecated_function,
 from bzrlib.trace import mutter
 
 
+# On win32, O_BINARY is used to indicate the file should
+# be opened in binary mode, rather than text mode.
+# On other platforms, O_BINARY doesn't exist, because
+# they always open in binary mode, so it is okay to
+# OR with 0 on those platforms
+O_BINARY = getattr(os, 'O_BINARY', 0)
+
+
 def make_readonly(filename):
     """Make a filename read-only."""
     mod = os.stat(filename).st_mode
@@ -116,6 +124,16 @@ def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
         if getattr(e, 'errno', None) == errno.ENOENT:
             raise bzrlib.errors.NoSuchFile(f)
         raise
+
+
+def get_umask():
+    """Return the current umask"""
+    # Assume that people aren't messing with the umask while running
+    # XXX: This is not thread safe, but there is no way to get the
+    #      umask without setting it
+    umask = os.umask(0)
+    os.umask(umask)
+    return umask
 
 
 def kind_marker(kind):

@@ -27,6 +27,8 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
         """Making a kernel sized tree should be ~ 5seconds on modern disk.""" 
         # on roberts machine: this originally took:  7372ms/ 7479ms
         # with the LocalTransport._abspath call:     3730ms/ 3778ms
+        # with AtomicFile tuning:                    2888ms/ 2926ms
+        # switching to transport.append:             1468ms/ 2849ms
         self.time(self.make_kernel_like_tree)
 
     def test_02_make_kernel_like_tree(self):
