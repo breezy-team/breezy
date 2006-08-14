@@ -551,7 +551,7 @@ Revision store:
         self.assertCheckoutStatusOutput('tree/lightcheckout', tree2, shared_repo=repo)
 
         # Create normal checkout
-        tree3 = branch1.create_checkout_convenience('tree/checkout')
+        tree3 = branch1.create_checkout('tree/checkout')
         self.assertCheckoutStatusOutput('tree/checkout --verbose', tree3,
             verbose=True,
             light_checkout=False, repo_branch=branch1)
