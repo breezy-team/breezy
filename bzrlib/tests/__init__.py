@@ -594,6 +594,7 @@ class TestCase(unittest.TestCase):
             'HOME': os.getcwd(),
             'APPDATA': os.getcwd(),
             'BZR_EMAIL': None,
+            'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
         }
         self.__old_env = {}
@@ -964,6 +965,8 @@ class TestCaseInTempDir(TestCase):
         shape is a sequence of file specifications.  If the final
         character is '/', a directory is created.
 
+        This assumes that all the elements in the tree being built are new.
+
         This doesn't add anything to a branch.
         :param line_endings: Either 'binary' or 'native'
                              in binary mode, exact contents are written
@@ -974,7 +977,7 @@ class TestCaseInTempDir(TestCase):
                           VFS's. If the transport is readonly or None,
                           "." is opened automatically.
         """
-        # XXX: It's OK to just create them using forward slashes on windows?
+        # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
             transport = get_transport(".")
         for name in shape:
@@ -989,7 +992,14 @@ class TestCaseInTempDir(TestCase):
                 else:
                     raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
-                transport.put(urlutils.escape(name), StringIO(content))
+                # Technically 'put()' is the right command. However, put
+                # uses an AtomicFile, which requires an extra rename into place
+                # As long as the files didn't exist in the past, append() will
+                # do the same thing as put()
+                # On jam's machine, make_kernel_like_tree is:
+                #   put:    4.5-7.5s (averaging 6s)
+                #   append: 2.9-4.5s
+                transport.append(urlutils.escape(name), StringIO(content))
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
@@ -1226,6 +1236,12 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              test_suite_factory=None,
              lsprof_timed=None):
     """Run the whole test suite under the enhanced runner"""
+    # XXX: Very ugly way to do this...
+    # Disable warning about old formats because we don't want it to disturb
+    # any blackbox tests.
+    from bzrlib import repository
+    repository._deprecation_warning_done = True
+
     global default_transport
     if transport is None:
         transport = default_transport
@@ -1253,6 +1269,7 @@ def test_suite():
     testmod_names = [
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_api',
+                   'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_bundle',
