@@ -393,6 +393,7 @@ class TestBranch(TestCaseWithBranch):
         os.mkdir('e')
         checkout_e = branch_a.create_checkout_convenience('e')
 
+
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.
 

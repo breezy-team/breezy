@@ -21,10 +21,17 @@ from unittest import TestSuite
 from warnings import warn
 
 import bzrlib
-from bzrlib import bzrdir, errors, lockdir, osutils, revision, \
-        tree, \
-        ui, \
+from bzrlib import (
+        bzrdir, 
+        errors, 
+        lockdir, 
+        osutils, 
+        revision,
+        transport,
+        tree,
+        ui,
         urlutils
+        )
 from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
@@ -43,7 +50,6 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       zero_eight, zero_nine,
                                       )
 from bzrlib.trace import mutter, note
-from bzrlib import transport
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"

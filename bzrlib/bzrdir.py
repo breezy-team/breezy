@@ -284,7 +284,7 @@ class BzrDir(object):
             except errors.NotLocalUrl:
                 pass
         return result
-
+        
     @staticmethod
     def create_repository(base, shared=False):
         """Create a new BzrDir and Repository at the url 'base'.
