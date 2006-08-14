@@ -594,6 +594,7 @@ class TestCase(unittest.TestCase):
             'HOME': os.getcwd(),
             'APPDATA': os.getcwd(),
             'BZR_EMAIL': None,
+            'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
         }
         self.__old_env = {}
