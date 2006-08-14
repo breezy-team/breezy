@@ -373,25 +373,23 @@ class TestBranch(TestCaseWithBranch):
         tree.branch.generate_revision_history(bzrlib.revision.NULL_REVISION)
         self.assertEqual([], tree.branch.revision_history())
 
-    def test_checkout_convenience(self):
+    def test_create_checkout(self):
         tree_a = self.make_branch_and_tree('a')
         branch_a = tree_a.branch
-        checkout_b = branch_a.create_checkout_convenience('b')
+        checkout_b = branch_a.create_checkout('b')
         checkout_b.commit('rev1', rev_id='rev1')
         self.assertEqual('rev1', branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)
 
-        checkout_c = branch_a.create_checkout_convenience('c', 
-                                                          lightweight=True)
+        checkout_c = branch_a.create_checkout('c', lightweight=True)
         checkout_c.commit('rev2', rev_id='rev2')
         self.assertEqual('rev2', branch_a.last_revision())
         self.assertEqual(checkout_c.branch.base, branch_a.base)
 
         os.mkdir('d')
-        checkout_d = branch_a.create_checkout_convenience('d', 
-                                                          lightweight=True)
+        checkout_d = branch_a.create_checkout('d', lightweight=True)
         os.mkdir('e')
-        checkout_e = branch_a.create_checkout_convenience('e')
+        checkout_e = branch_a.create_checkout('e')
 
 
 class ChrootedTests(TestCaseWithBranch):

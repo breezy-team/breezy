@@ -575,13 +575,13 @@ class Branch(object):
             mainline_parent_id = revision_id
         return BranchCheckResult(self)
 
-    def create_checkout_convenience(self, to_location, revision_id=None,
-                                    lightweight=False):
+    def create_checkout(self, to_location, revision_id=None, 
+                        lightweight=False):
         """Create a checkout of a branch.
         
         :param to_location: The url to produce the checkout at
         :param revision_id: The revision to check out
-        :param lightweight: If True, produce a lightweight checkout, othewise
+        :param lightweight: If True, produce a lightweight checkout, otherwise,
         produce a bound branch (heavyweight checkout)
         :return: The tree of the created checkout
         """
