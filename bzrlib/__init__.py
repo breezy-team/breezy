@@ -33,7 +33,6 @@ user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
 __copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
-__version__ = version_string = '0.10'
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
