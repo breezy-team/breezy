@@ -1,7 +1,46 @@
+import sys
 import os
 import bzrlib.tests
 from bzrlib.commands import Command, register_command
 from bzrlib.errors import BzrCommandError
+
+bisect_info_path = ".bzr/bisect"
+
+class BisectLog(object):
+    "Bisect log file handler."
+
+    def __init__(self, filename = bisect_info_path):
+        self._items = []
+        self.change_file_name(filename)
+        self.load()
+
+    def _open_for_read(self):
+        if self._filename:
+            return open(self._filename)
+        else:
+            return sys.stdin
+
+    def _open_for_write(self):
+        if self._filename:
+            return open(self._filename, "w")
+        else:
+            return sys.stdout
+
+    def change_file_name(self, filename):
+        self._filename = filename
+
+    def load(self):
+        self._items = []
+        if os.path.exists(self._filename):
+            f = self._open_for_read()
+            for line in f:
+                (revid, status) = line.split()
+                self._items.append((revid, status))
+
+    def save(self):
+        f = self._open_for_write()
+        for (revid, status) in self._items:
+            f.write("%s %s\n" % (revid, status))
 
 class cmd_bisect(Command):
     """Find an interesting commit using a binary search.
@@ -43,6 +82,13 @@ class cmd_bisect(Command):
     takes_args = ['subcommand', 'args*']
     takes_options = ['revision']
 
+    def _check(self):
+        # Conditions that must be true for most operations to
+        # work.
+
+        if not os.path.exists(bisect_info_path):
+            raise BzrCommandError("No bisect info found")
+
     def run(self, subcommand, args_list, revision=None):
         # Handle subcommand parameters.
 
@@ -71,11 +117,15 @@ class cmd_bisect(Command):
 
     def reset(self):
         "Reset the bisect state to no state."
-        pass
+
+        if os.path.exists(bisect_info_path):
+            os.unlink(bisect_info_path)
 
     def start(self):
         "Reset the bisect state, then prepare for a new bisection."
-        pass
+
+        self.reset()
+        BisectLog().save()
 
     def yes(self, revision):
         "Mark that a given revision has the state we're looking for."
@@ -87,16 +137,53 @@ class cmd_bisect(Command):
 
     def log(self, filename):
         "Write the current bisect log to a file."
-        pass
+
+        self._check()
+
+        bl = BisectLog()
+        bl.change_file_name(filename)
+        bl.save()
 
     def replay(self, filename):
         """Apply the given log file to a clean state, so the state is
         exactly as it was when the log was saved."""
-        pass
+
+        self.reset()
+
+        bl = BisectLog(filename)
+        bl.change_file_name(bisect_info_path)
+        bl.save()
 
 register_command(cmd_bisect)
 
 # Tests.
+
+class BisectLogUnitTests(bzrlib.tests.TestCaseWithTransport):
+    def setUp(self):
+        bzrlib.tests.TestCaseWithTransport.setUp(self)
+        self.tree = self.make_branch_and_tree(".")
+
+    def testCreateBlank(self):
+        bl = BisectLog()
+        bl.save()
+        assert os.path.exists(bisect_info_path)
+
+    def testLoad(self):
+        open(bisect_info_path, "w").write("rev1 yes\nrev2 no\nrev3 yes\n")
+
+        bl = BisectLog()
+        assert len(bl._items) == 3
+        assert bl._items[0] == ("rev1", "yes")
+        assert bl._items[1] == ("rev2", "no")
+        assert bl._items[2] == ("rev3", "yes")
+
+    def testSave(self):
+        bl = BisectLog()
+        bl._items = [("rev1", "yes"), ("rev2", "no"), ("rev3", "yes")]
+        bl.save()
+
+        f = open(bisect_info_path)
+        assert f.read() == "rev1 yes\nrev2 no\nrev3 yes\n"
 
 class BisectFuncTests(bzrlib.tests.TestCaseWithTransport):
     def assertRevno(self, rev):
@@ -193,5 +280,8 @@ class BisectFuncTests(bzrlib.tests.TestCaseWithTransport):
         self.assertRevno(3)
 
 def test_suite():
-    from bzrlib.tests.TestUtil import TestLoader
-    return TestLoader().loadTestsFromTestCase(BisectFuncTests)
+    from bzrlib.tests.TestUtil import TestLoader, TestSuite
+    suite = TestSuite()
+    suite.addTest(TestLoader().loadTestsFromTestCase(BisectFuncTests))
+    suite.addTest(TestLoader().loadTestsFromTestCase(BisectLogUnitTests))
+    return suite
