@@ -152,7 +152,7 @@ class DebBuild(object):
       if keep_source_dir:
         raise NoSourceDirError;
 
-  def export(self):
+  def export(self, reuse_existing=False):
     source_dir = self._properties.source_dir()
     export(self._tree,source_dir,None,None)
 
