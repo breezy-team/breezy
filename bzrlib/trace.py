@@ -54,6 +54,7 @@ form.
 import errno
 import os
 import sys
+import re
 import logging
 
 import bzrlib
@@ -293,3 +294,37 @@ def report_bug(exc_info, err_file):
     print >>err_file, 'arguments: %r' % sys.argv
     print >>err_file
     print >>err_file, "** please send this report to bazaar-ng@lists.ubuntu.com"
+
+
+def format_exception_short(exc_info):
+    """Make a short string form of an exception.
+
+    This is used for display to stderr.  It specially handles exception
+    classes without useful string methods.
+
+    The result has no trailing newline.
+
+    exc_info - typically an exception from sys.exc_info()
+    """
+    exc_type, exc_object, exc_tb = exc_info
+    if exc_type is not None:
+        exc_type = re.sub("<class '([A-Za-z0-9_.]+)'>", r'\1',
+                str(exc_type), 1)
+    try:
+        if exc_type is None:
+            return '(no exception)'
+        if isinstance(exc_object, (BzrError, BzrNewError)):
+            return str(exc_object)
+        else:
+            import traceback
+            tb = traceback.extract_tb(exc_tb)
+            msg = '%s: %s' % (exc_type, exc_object)
+            if msg[-1] == '\n':
+                msg = msg[:-1]
+            if tb:
+                msg += '\n  at %s line %d\n  in %s' % (tb[-1][:3])
+            return msg
+    except Exception, formatting_exc:
+        # XXX: is this really better than just letting it run up?
+        return '(error formatting exception of type %s: %s)' \
+                % (exc_type, formatting_exc)

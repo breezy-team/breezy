@@ -6,6 +6,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+  PORTABILITY:
+
+  * Fixes to run on Python 2.5 (Brian M. Carlson, Martin Pool)
+
 bzr 0.9.0  2006-08-11
 
   SURPRISES:
