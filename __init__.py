@@ -225,6 +225,7 @@ class DebMergeBuild(DebBuild):
       for file in files:
         shutil.move(file, source_dir)
       shutil.rmtree(tempdir)
+      shutil.copy(tarball, build_dir)
     else:
       info("Reusing existing build dir as requested")
 
