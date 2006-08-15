@@ -59,8 +59,8 @@ class DebianChangelog(object):
       self._file = contents
     else:
       self._file = file
-    p = re.compile('([a-z0-9][-a-z0-9.+]+) \(([-0-9a-z.:]+)\) [-a-zA-Z]+;'
-        +' urgency=[a-z]+')
+    p = re.compile('([a-z0-9][-a-z0-9.+]+) \(([-0-9a-z.:]+)\) '
+        +'[-a-zA-Z]+( [-a-zA-Z]+)*; urgency=[a-z]+')
     m = p.search(self._file)
     if m is not None:
       self._package = m.group(1)
