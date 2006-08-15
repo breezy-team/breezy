@@ -99,7 +99,7 @@ class TestRevisionAttributes(TestCaseWithRepository):
         self.assertEqual(rev_a.revision_id, rev_b.revision_id)
         self.assertEqual(rev_a.properties, rev_b.properties)
 
-    def test_zero_timestamp(self):
+    def test_zero_timezone(self):
         tree1 = self.make_branch_and_tree("br1")
 
         # create a revision
