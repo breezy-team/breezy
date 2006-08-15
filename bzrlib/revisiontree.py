@@ -40,6 +40,7 @@ class RevisionTree(Tree):
         self._repository = branch
         self._weave_store = branch.weave_store
         self._inventory = inv
+        assert inv.root is not None
         self._revision_id = revision_id
 
     def get_parent_ids(self):

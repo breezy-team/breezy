@@ -74,7 +74,10 @@ import sys
 import warnings
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    cache_utf8,
+    errors,
+    )
 from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
         InvalidRevisionId, KnitCorrupt, KnitHeaderError, \
         RevisionNotPresent, RevisionAlreadyPresent
@@ -82,10 +85,10 @@ from bzrlib.tuned_gzip import GzipFile
 from bzrlib.trace import mutter
 from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
      sha_strings
-from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.tsort import topo_sort
 import bzrlib.weave
+from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 
 
 # TODO: Split out code specific to this format into an associated object.
@@ -162,10 +165,11 @@ class KnitAnnotateFactory(_KnitFactory):
         internal representation is of the format:
         (revid, plaintext)
         """
+        decode_utf8 = cache_utf8.decode
         lines = []
         for line in content:
             origin, text = line.split(' ', 1)
-            lines.append((origin.decode('utf-8'), text))
+            lines.append((decode_utf8(origin), text))
         return KnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
@@ -182,6 +186,7 @@ class KnitAnnotateFactory(_KnitFactory):
         internal representation is
         (start, end, count, [1..count tuples (revid, newline)])
         """
+        decode_utf8 = cache_utf8.decode
         result = []
         lines = iter(lines)
         next = lines.next
@@ -193,7 +198,7 @@ class KnitAnnotateFactory(_KnitFactory):
             while remaining:
                 origin, text = next().split(' ', 1)
                 remaining -= 1
-                contents.append((origin.decode('utf-8'), text))
+                contents.append((decode_utf8(origin), text))
             result.append((start, end, count, contents))
         return result
 
@@ -202,18 +207,20 @@ class KnitAnnotateFactory(_KnitFactory):
 
         see parse_fulltext which this inverts.
         """
-        return ['%s %s' % (o.encode('utf-8'), t) for o, t in content._lines]
+        encode_utf8 = cache_utf8.encode
+        return ['%s %s' % (encode_utf8(o), t) for o, t in content._lines]
 
     def lower_line_delta(self, delta):
         """convert a delta into a serializable form.
 
         See parse_line_delta which this inverts.
         """
+        encode_utf8 = cache_utf8.encode
         out = []
         for start, end, c, lines in delta:
             out.append('%d,%d,%d\n' % (start, end, c))
-            for origin, text in lines:
-                out.append('%s %s' % (origin.encode('utf-8'), text))
+            out.extend(encode_utf8(origin) + ' ' + text
+                       for origin, text in lines)
         return out
 
 
@@ -1206,6 +1213,7 @@ class _KnitIndex(_KnitComponentFile):
         return self._cache[version_id][5]
 
     def _version_list_to_index(self, versions):
+        encode_utf8 = cache_utf8.encode
         result_list = []
         for version in versions:
             if version in self._cache:
@@ -1213,7 +1221,7 @@ class _KnitIndex(_KnitComponentFile):
                 result_list.append(str(self._cache[version][5]))
                 # -- end lookup () --
             else:
-                result_list.append('.' + version.encode('utf-8'))
+                result_list.append('.' + encode_utf8(version))
         return ' '.join(result_list)
 
     def add_version(self, version_id, options, pos, size, parents):
@@ -1227,8 +1235,9 @@ class _KnitIndex(_KnitComponentFile):
                          (version_id, options, pos, size, parents).
         """
         lines = []
+        encode_utf8 = cache_utf8.encode
         for version_id, options, pos, size, parents in versions:
-            line = "\n%s %s %s %s %s :" % (version_id.encode('utf-8'),
+            line = "\n%s %s %s %s %s :" % (encode_utf8(version_id),
                                            ','.join(options),
                                            pos,
                                            size,
@@ -1324,12 +1333,14 @@ class _KnitData(_KnitComponentFile):
         """
         sio = StringIO()
         data_file = GzipFile(None, mode='wb', fileobj=sio)
+
+        version_id_utf8 = cache_utf8.encode(version_id)
         data_file.writelines(chain(
-            ["version %s %d %s\n" % (version_id.encode('utf-8'), 
+            ["version %s %d %s\n" % (version_id_utf8,
                                      len(lines),
                                      digest)],
             lines,
-            ["end %s\n" % version_id.encode('utf-8')]))
+            ["end %s\n" % version_id_utf8]))
         data_file.close()
         length= sio.tell()
 
@@ -1364,7 +1375,7 @@ class _KnitData(_KnitComponentFile):
         rec = df.readline().split()
         if len(rec) != 4:
             raise KnitCorrupt(self._filename, 'unexpected number of elements in record header')
-        if rec[1].decode('utf-8')!= version_id:
+        if cache_utf8.decode(rec[1]) != version_id:
             raise KnitCorrupt(self._filename, 
                               'unexpected version, wanted %r, got %r' % (
                                 version_id, rec[1]))
@@ -1379,7 +1390,7 @@ class _KnitData(_KnitComponentFile):
         record_contents = df.readlines()
         l = record_contents.pop()
         assert len(record_contents) == int(rec[2])
-        if l.decode('utf-8') != 'end %s\n' % version_id:
+        if l != 'end %s\n' % cache_utf8.encode(version_id):
             raise KnitCorrupt(self._filename, 'unexpected version end line %r, wanted %r' 
                         % (l, version_id))
         df.close()

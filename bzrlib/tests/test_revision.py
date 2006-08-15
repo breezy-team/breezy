@@ -18,6 +18,9 @@
 import os
 import warnings
 
+from bzrlib import (
+    revision,
+    )
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
 from bzrlib.graph import Graph
@@ -25,7 +28,7 @@ from bzrlib.revision import (find_present_ancestors, combined_graph,
                              common_ancestor,
                              is_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
