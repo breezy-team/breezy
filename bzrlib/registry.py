@@ -43,7 +43,7 @@ class Registry(object):
             self._default_key = key
         self._dict[key] = object
 
-    def get(self, key=_marker, fallback_key=_marker):
+    def get(self, key=None, fallback_key=_marker):
         """Return the object register()'ed by the given key.
 
         This may raise KeyError if the key is not present.
@@ -58,13 +58,16 @@ class Registry(object):
         if fallback_key is _marker:
             fallback_key = self.default_key
 
-        if key is _marker:
-            return self._dict[fallback_key]
-        else:
-            try:
-                return self._dict[key]
-            except KeyError:
+        try:
+            if key is None:
                 return self._dict[fallback_key]
+            else:
+                return self._dict[key]
+        except KeyError:
+            if fallback_key is not None:
+                return self._dict[fallback_key]
+            else:
+                raise
 
     def keys(self):
         """Get a list of registered entries"""

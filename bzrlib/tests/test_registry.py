@@ -42,9 +42,11 @@ class TestRegistry(TestCase):
 
         # test get() (self.default_key == None)
         self.assertRaises(KeyError, registry_.get)
+        self.assertRaises(KeyError, registry_.get, None)
         self.assertEqual(2, registry_.get('two'))
         self.assertRaises(KeyError, registry_.get, 'three')
         self.assertEqual(4, registry_.get('three', 'four'))
+        self.assertEqual(4, registry_.get(None, 'four'))
         self.assertRaises(KeyError, registry_.get, 'three', 'no-such-key')
 
         # test _set_default_key
@@ -64,9 +66,11 @@ class TestRegistry(TestCase):
 
         # test get() (self.default_key == 'one')
         self.assertEqual(1, registry_.get())
+        self.assertEqual(1, registry_.get(None))
         self.assertEqual(2, registry_.get('two'))
         self.assertEqual(1, registry_.get('three'))
         self.assertEqual(4, registry_.get('three', 'four'))
+        self.assertEqual(4, registry_.get(None, 'four'))
         self.assertRaises(KeyError, registry_.get, 'three', 'no-such-key')
 
         # test _set_default_key
