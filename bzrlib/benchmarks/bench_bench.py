@@ -18,8 +18,8 @@
 from bzrlib import (
     osutils,
     )
-from bzrlib.benchmarks import (
-    Benchmark,
+from bzrlib.benchmarks import Benchmark
+from bzrlib.benchmarks.tree_creator.kernel_like import (
     KernelLikeTreeCreator,
     KernelLikeAddedTreeCreator,
     KernelLikeCommittedTreeCreator,

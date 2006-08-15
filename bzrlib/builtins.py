@@ -1944,9 +1944,10 @@ class cmd_selftest(Command):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
+        from bzrlib.benchmarks import tree_creator
 
         if cache_dir is not None:
-            benchmarks.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
+            tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         # we don't want progress meters from the tests to go to the
         # real output; and we don't want log messages cluttering up
         # the real logs.
