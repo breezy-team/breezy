@@ -43,28 +43,28 @@ class Registry(object):
             self._default_key = key
         self._dict[key] = object
 
-    def get(self, key=_marker, default_key=_marker):
+    def get(self, key=_marker, fallback_key=_marker):
         """Return the object register()'ed by the given key.
 
         This may raise KeyError if the key is not present.
 
         :param key: The key to obtain the object for; if not given, :param
-            default_key: will be used.
-        :param default_key: Key to use if an object for :param key: can't be
+            fallback_key: will be used.
+        :param fallback_key: Key to use if an object for :param key: can't be
             found; defaults to self.default_key. Set it to None if you'd like
             to ensure an exception is raised for non-found keys.
         :return: The previously registered object.
         """
-        if default_key is _marker:
-            default_key = self.default_key
+        if fallback_key is _marker:
+            fallback_key = self.default_key
 
         if key is _marker:
-            return self._dict[default_key]
+            return self._dict[fallback_key]
         else:
             try:
                 return self._dict[key]
             except KeyError:
-                return self._dict[default_key]
+                return self._dict[fallback_key]
 
     def keys(self):
         """Get a list of registered entries"""
