@@ -4,6 +4,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Use GPG_TTY to allow gpg --cl to work with gpg-agent in a pipeline,
+      (passing text to sign in on stdin). (John Arbash Meinel, #54468)
+
   INTERNALS:
 
 bzr 0.9.0  2006-08-11
