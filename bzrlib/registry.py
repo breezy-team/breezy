@@ -48,8 +48,9 @@ class Registry(object):
 
         This may raise KeyError if the key is not present.
 
-        :param key: The key to obtain the object for; if not given, :param
-            fallback_key: will be used.
+        :param key: The key to obtain the object for. If no object was
+            registered to that key, the object registered for :param
+            fallback_key:, if exists, will be returned instead.
         :param fallback_key: Key to use if an object for :param key: can't be
             found; defaults to self.default_key. Set it to None if you'd like
             to ensure an exception is raised for non-found keys.
