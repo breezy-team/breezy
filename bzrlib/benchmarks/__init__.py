@@ -17,6 +17,7 @@
 
 """Benchmark test suite for bzr."""
 
+import errno
 import os
 import shutil
 
@@ -309,7 +310,12 @@ class Benchmark(ExternalBase):
                                 hot_cache=True)
 
     def _create_heavily_merged_tree(self, root, in_cache=False):
-        os.mkdir(root)
+        try:
+            os.mkdir(root)
+        except (IOError, OSError), e:
+            if e.errno not in (errno.EEXIST,):
+                raise
+
         tree = bzrdir.BzrDir.create_standalone_workingtree(
                 root + '/tree1')
         tree.lock_write()
