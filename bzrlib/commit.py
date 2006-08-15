@@ -306,8 +306,11 @@ class Commit(object):
                 raise PointlessCommit()
 
             self._emit_progress_update()
-            # TODO: Now the new inventory is known, check for conflicts and prompt the 
-            # user for a commit message.
+            # TODO: Now the new inventory is known, check for conflicts and
+            # prompt the user for a commit message.
+            # ADHB 2006-08-08: If this is done, populate_new_inv should not add
+            # weave lines, because nothing should be recorded until it is known
+            # that commit will succeed.
             self.builder.finish_inventory()
             self._emit_progress_update()
             self.rev_id = self.builder.commit(self.message)
@@ -500,10 +503,13 @@ class Commit(object):
         # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
         # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
-        # at this point we dont copy the root entry:
         entries = self.work_inv.iter_entries()
-        entries.next()
-        self._emit_progress_update()
+        if not self.builder.record_root_entry:
+            warnings.warn('CommitBuilders should support recording the root'
+                ' entry as of bzr 0.10.', DeprecationWarning, stacklevel=1)
+            self.builder.new_inventory.add(self.basis_inv.root.copy())
+            entries.next()
+            self._emit_progress_update()
         for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id
