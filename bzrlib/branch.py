@@ -307,7 +307,7 @@ class Branch(object):
         raise errors.UpgradeRequired(self.base)
 
     def last_revision(self):
-        """Return last patch hash, or None if no history."""
+        """Return last revision id, or None"""
         ph = self.revision_history()
         if ph:
             return ph[-1]

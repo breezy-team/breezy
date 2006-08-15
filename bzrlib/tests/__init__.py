@@ -142,9 +142,9 @@ class _MyResult(unittest._TextTestResult):
         unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
         self.pb = pb
         if bench_history is not None:
-            #XXX is there a simpler way to get the revison id?
-            branch = bzrlib.branch.Branch.open_containing('.')[0]
-            revision_id = RevisionSpec(branch.revno()).in_history(branch).rev_id
+            # XXX: If there's no branch, what should we do?
+            branch = bzrlib.branch.Branch.open_containing(__file__)[0]
+            revision_id = branch.last_revision()
             bench_history.write("--date %s %s\n" % (time.time(), revision_id))
         self._bench_history = bench_history
     
