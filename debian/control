@@ -7,7 +7,7 @@ Standards-Version: 3.7.2
 
 Package: bzr-builddeb
 Architecture: all
-Depends: bzr (>= 0.9), python-debian, ${python:Depends}
+Depends: bzr (>= 0.9~rc1-1), python-debian, ${python:Depends}
 Provides: bzr-buildpackage
 Description: bzr plugin for Debian package management
  bzr-buildpackage is a plugin for the bzr version control system that helps to
