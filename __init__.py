@@ -8,14 +8,16 @@ import commands
 import tempfile
 import glob
 
-from bzrlib.commands import Command, register_command
-from bzrlib.option import Option
-from bzrlib.errors import (NoSuchFile, NotBranchError, BzrNewError)
+from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import Branch
-from bzrlib.workingtree import WorkingTree
-from bzrlib.export import export
+from bzrlib.commands import Command, register_command
 from bzrlib.config import ConfigObj
+from bzrlib.errors import (NoSuchFile, NotBranchError, BzrNewError)
+from bzrlib.export import export
+from bzrlib.ignores import parse_ignore_file
+from bzrlib.option import Option
 from bzrlib.trace import mutter
+from bzrlib.workingtree import WorkingTree
 from debian_bundle import deb822
 
 class DebianChanges(deb822.changes):
@@ -243,6 +245,36 @@ class NoSourceDirError(DebianError):
   def __init__(self):
     DebianError.__init__(self, None)
 
+def add_ignore(file):
+  """Adds file to .bzrignore if it exists and not already in the file."""
+  if os.path.exists(file):
+    tree, relpath = WorkingTree.open_containing(u'.')
+    ifn = tree.abspath('.bzrignore')
+    ignored = set()
+    if os.path.exists(ifn):
+      f = open(ifn, 'rt')
+      ignored = parse_ignore_file(f)
+      f.close()
+    
+    if file not in ignored:
+      ignored.add(file)
+
+    f = AtomicFile(ifn, 'wt')
+    try:
+      for ign in ignored:
+        f.write(ign.encode('utf-8')+"\n")
+      f.commit()
+    finally:
+      f.close()
+
+    inv = tree.inventory
+    if inv.path2id('.bzrignore'):
+      mutter('.bzrignore is already versioned')
+    else:
+      mutter('need to make new .bzrignore file versioned')
+      tree.add(['.bzrignore'])
+
+
 class BuildDebConfig(object):
   """Holds the configuration settings for builddeb. These are taken from
   a hierarchy of config files. .bzr-builddeb/local.conf then 
@@ -254,6 +286,7 @@ class BuildDebConfig(object):
     localfile = ('.bzr-builddeb/local.conf')
     defaultfile = ('.bzr-builddeb/default.conf')
     self._config_files = [ConfigObj(localfile), ConfigObj(globalfile), ConfigObj(defaultfile)]
+    add_ignore(localfile)
 
   def _get_opt(self, config, key):
     """Returns the value for key from config, of None if it is not defined in 
