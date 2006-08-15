@@ -1100,7 +1100,7 @@ class BzrBranch(Branch):
         transaction = self.get_transaction()
         history = transaction.map.find_revision_history()
         if history is not None:
-            mutter("cache hit for revision-history in %s", self)
+            # mutter("cache hit for revision-history in %s", self)
             return list(history)
         history = [l.rstrip('\r\n') for l in
                 self.control_files.get_utf8('revision-history').readlines()]
