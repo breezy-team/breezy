@@ -374,11 +374,19 @@ class KnitVersionedFile(VersionedFile):
         """
         # write all the data
         pos = self._data.add_raw_record(data)
+        offset = 0
         index_entries = []
         for (version_id, options, parents, size) in records:
-            index_entries.append((version_id, options, pos, size, parents))
-            pos += size
+            index_entries.append((version_id, options, pos+offset,
+                                  size, parents))
+            if self._data._do_cache:
+                self._data._cache[version_id] = data[offset:offset+size]
+            offset += size
         self._index.add_versions(index_entries)
+
+    def enable_cache(self):
+        """Start caching data for this knit"""
+        self._data.enable_cache()
 
     def clear_cache(self):
         """Clear the data cache only."""
@@ -390,9 +398,13 @@ class KnitVersionedFile(VersionedFile):
         # writes
         transport.put(name + INDEX_SUFFIX + '.tmp', self.transport.get(self._index._filename),)
         # copy the data file
-        transport.put(name + DATA_SUFFIX, self._data._open_file())
-        # rename the copied index into place
-        transport.rename(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
+        f = self._data._open_file()
+        try:
+            transport.put(name + DATA_SUFFIX, f)
+        finally:
+            f.close()
+        # move the copied index into place
+        transport.move(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
 
     def create_empty(self, name, transport, mode=None):
         return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta, create=True)
@@ -691,8 +703,8 @@ class KnitVersionedFile(VersionedFile):
         # c = component_id, m = method, p = position, s = size, n = next
         records = [(c, p, s) for c, (m, p, s, n) in position_map.iteritems()]
         record_map = {}
-        for component_id, content, digest in\
-            self._data.read_records_iter(records): 
+        for component_id, content, digest in \
+                self._data.read_records_iter(records):
             method, position, size, next = position_map[component_id]
             record_map[component_id] = method, content, digest, next
                           
@@ -1044,61 +1056,64 @@ class _KnitIndex(_KnitComponentFile):
             try:
                 pb.update('read knit index', count, total)
                 fp = self._transport.get(self._filename)
-                self.check_header(fp)
-                # readlines reads the whole file at once:
-                # bad for transports like http, good for local disk
-                # we save 60 ms doing this one change (
-                # from calling readline each time to calling
-                # readlines once.
-                # probably what we want for nice behaviour on
-                # http is a incremental readlines that yields, or
-                # a check for local vs non local indexes,
-                for l in fp.readlines():
-                    rec = l.split()
-                    if len(rec) < 5 or rec[-1] != ':':
-                        # corrupt line.
-                        # FIXME: in the future we should determine if its a
-                        # short write - and ignore it 
-                        # or a different failure, and raise. RBC 20060407
-                        continue
-                    count += 1
-                    total += 1
-                    #pb.update('read knit index', count, total)
-                    # See self._parse_parents
-                    parents = []
-                    for value in rec[4:-1]:
-                        if '.' == value[0]:
-                            # uncompressed reference
-                            parents.append(value[1:])
+                try:
+                    self.check_header(fp)
+                    # readlines reads the whole file at once:
+                    # bad for transports like http, good for local disk
+                    # we save 60 ms doing this one change (
+                    # from calling readline each time to calling
+                    # readlines once.
+                    # probably what we want for nice behaviour on
+                    # http is a incremental readlines that yields, or
+                    # a check for local vs non local indexes,
+                    for l in fp.readlines():
+                        rec = l.split()
+                        if len(rec) < 5 or rec[-1] != ':':
+                            # corrupt line.
+                            # FIXME: in the future we should determine if its a
+                            # short write - and ignore it 
+                            # or a different failure, and raise. RBC 20060407
+                            continue
+                        count += 1
+                        total += 1
+                        #pb.update('read knit index', count, total)
+                        # See self._parse_parents
+                        parents = []
+                        for value in rec[4:-1]:
+                            if '.' == value[0]:
+                                # uncompressed reference
+                                parents.append(value[1:])
+                            else:
+                                # this is 15/4000ms faster than isinstance,
+                                # (in lsprof)
+                                # this function is called thousands of times a 
+                                # second so small variations add up.
+                                assert value.__class__ is str
+                                parents.append(self._history[int(value)])
+                        # end self._parse_parents
+                        # self._cache_version(rec[0], 
+                        #                     rec[1].split(','),
+                        #                     int(rec[2]),
+                        #                     int(rec[3]),
+                        #                     parents)
+                        # --- self._cache_version
+                        # only want the _history index to reference the 1st 
+                        # index entry for version_id
+                        version_id = rec[0]
+                        if version_id not in self._cache:
+                            index = len(self._history)
+                            self._history.append(version_id)
                         else:
-                            # this is 15/4000ms faster than isinstance,
-                            # (in lsprof)
-                            # this function is called thousands of times a 
-                            # second so small variations add up.
-                            assert value.__class__ is str
-                            parents.append(self._history[int(value)])
-                    # end self._parse_parents
-                    # self._cache_version(rec[0], 
-                    #                     rec[1].split(','),
-                    #                     int(rec[2]),
-                    #                     int(rec[3]),
-                    #                     parents)
-                    # --- self._cache_version
-                    # only want the _history index to reference the 1st 
-                    # index entry for version_id
-                    version_id = rec[0]
-                    if version_id not in self._cache:
-                        index = len(self._history)
-                        self._history.append(version_id)
-                    else:
-                        index = self._cache[version_id][5]
-                    self._cache[version_id] = (version_id,
-                                               rec[1].split(','),
-                                               int(rec[2]),
-                                               int(rec[3]),
-                                               parents,
-                                               index)
-                    # --- self._cache_version 
+                            index = self._cache[version_id][5]
+                        self._cache[version_id] = (version_id,
+                                                   rec[1].split(','),
+                                                   int(rec[2]),
+                                                   int(rec[3]),
+                                                   parents,
+                                                   index)
+                        # --- self._cache_version 
+                finally:
+                    fp.close()
             except NoSuchFile, e:
                 if mode != 'w' or not create:
                     raise
@@ -1276,22 +1291,31 @@ class _KnitData(_KnitComponentFile):
 
     def __init__(self, transport, filename, mode, create=False, file_mode=None):
         _KnitComponentFile.__init__(self, transport, filename, mode)
-        self._file = None
         self._checked = False
+        # TODO: jam 20060713 conceptually, this could spill to disk
+        #       if the cached size gets larger than a certain amount
+        #       but it complicates the model a bit, so for now just use
+        #       a simple dictionary
+        self._cache = {}
+        self._do_cache = False
         if create:
             self._transport.put(self._filename, StringIO(''), mode=file_mode)
 
+    def enable_cache(self):
+        """Enable caching of reads."""
+        self._do_cache = True
+
     def clear_cache(self):
         """Clear the record cache."""
-        pass
+        self._do_cache = False
+        self._cache = {}
 
     def _open_file(self):
-        if self._file is None:
-            try:
-                self._file = self._transport.get(self._filename)
-            except NoSuchFile:
-                pass
-        return self._file
+        try:
+            return self._transport.get(self._filename)
+        except NoSuchFile:
+            pass
+        return None
 
     def _record_to_data(self, version_id, digest, lines):
         """Convert version_id, digest, lines into a raw data block.
@@ -1326,6 +1350,8 @@ class _KnitData(_KnitComponentFile):
         size, sio = self._record_to_data(version_id, digest, lines)
         # write to disk
         start_pos = self._transport.append(self._filename, sio)
+        if self._do_cache:
+            self._cache[version_id] = sio.getvalue()
         return start_pos, size
 
     def _parse_record_header(self, version_id, raw_data):
@@ -1364,60 +1390,88 @@ class _KnitData(_KnitComponentFile):
 
         This unpacks enough of the text record to validate the id is
         as expected but thats all.
-
-        It will actively recompress currently cached records on the
-        basis that that is cheaper than I/O activity.
         """
         # setup an iterator of the external records:
         # uses readv so nice and fast we hope.
         if len(records):
             # grab the disk data needed.
-            raw_records = self._transport.readv(self._filename,
-                [(pos, size) for version_id, pos, size in records])
+            if self._cache:
+                # Don't check _cache if it is empty
+                needed_offsets = [(pos, size) for version_id, pos, size
+                                              in records
+                                              if version_id not in self._cache]
+            else:
+                needed_offsets = [(pos, size) for version_id, pos, size
+                                               in records]
+
+            raw_records = self._transport.readv(self._filename, needed_offsets)
+                
 
         for version_id, pos, size in records:
-            pos, data = raw_records.next()
-            # validate the header
-            df, rec = self._parse_record_header(version_id, data)
-            df.close()
+            if version_id in self._cache:
+                # This data has already been validated
+                data = self._cache[version_id]
+            else:
+                pos, data = raw_records.next()
+                if self._do_cache:
+                    self._cache[version_id] = data
+
+                # validate the header
+                df, rec = self._parse_record_header(version_id, data)
+                df.close()
             yield version_id, data
 
     def read_records_iter(self, records):
         """Read text records from data file and yield result.
 
-        Each passed record is a tuple of (version_id, pos, len) and
-        will be read in the given order.  Yields (version_id,
-        contents, digest).
+        The result will be returned in whatever is the fastest to read.
+        Not by the order requested. Also, multiple requests for the same
+        record will only yield 1 response.
+        :param records: A list of (version_id, pos, len) entries
+        :return: Yields (version_id, contents, digest) in the order
+                 read, not the order requested
         """
-        if len(records) == 0:
+        if not records:
             return
-        # profiling notes:
-        # 60890  calls for 4168 extractions in 5045, 683 internal.
-        # 4168   calls to readv              in 1411
-        # 4168   calls to parse_record       in 2880
 
-        # Get unique records, sorted by position
-        needed_records = sorted(set(records), key=operator.itemgetter(1))
+        if self._cache:
+            # Skip records we have alread seen
+            yielded_records = set()
+            needed_records = set()
+            for record in records:
+                if record[0] in self._cache:
+                    if record[0] in yielded_records:
+                        continue
+                    yielded_records.add(record[0])
+                    data = self._cache[record[0]]
+                    content, digest = self._parse_record(record[0], data)
+                    yield (record[0], content, digest)
+                else:
+                    needed_records.add(record)
+            needed_records = sorted(needed_records, key=operator.itemgetter(1))
+        else:
+            needed_records = sorted(set(records), key=operator.itemgetter(1))
 
-        # We take it that the transport optimizes the fetching as good
-        # as possible (ie, reads continuous ranges.)
-        response = self._transport.readv(self._filename,
+        if not needed_records:
+            return
+
+        # The transport optimizes the fetching as well 
+        # (ie, reads continuous ranges.)
+        readv_response = self._transport.readv(self._filename,
             [(pos, size) for version_id, pos, size in needed_records])
 
-        record_map = {}
-        for (record_id, pos, size), (pos, data) in \
-            izip(iter(needed_records), response):
-            content, digest = self._parse_record(record_id, data)
-            record_map[record_id] = (digest, content)
-
-        for version_id, pos, size in records:
-            digest, content = record_map[version_id]
+        for (version_id, pos, size), (pos, data) in \
+                izip(iter(needed_records), readv_response):
+            content, digest = self._parse_record(version_id, data)
+            if self._do_cache:
+                self._cache[version_id] = data
             yield version_id, content, digest
 
     def read_records(self, records):
         """Read records into a dictionary."""
         components = {}
-        for record_id, content, digest in self.read_records_iter(records):
+        for record_id, content, digest in \
+                self.read_records_iter(records):
             components[record_id] = (content, digest)
         return components
 

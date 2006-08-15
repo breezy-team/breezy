@@ -1,15 +1,15 @@
 # Copyright (C) 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -26,6 +26,7 @@ from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
                             delete_any)
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, warning
+from bzrlib import tree
 import bzrlib.ui 
 import bzrlib.urlutils as urlutils
 
@@ -259,11 +260,22 @@ class TreeTransform(object):
         New file takes the permissions of any existing file with that id,
         unless mode_id is specified.
         """
-        f = file(self._limbo_name(trans_id), 'wb')
-        unique_add(self._new_contents, trans_id, 'file')
-        for segment in contents:
-            f.write(segment)
-        f.close()
+        name = self._limbo_name(trans_id)
+        f = open(name, 'wb')
+        try:
+            try:
+                unique_add(self._new_contents, trans_id, 'file')
+            except:
+                # Clean up the file, it never got registered so
+                # TreeTransform.finalize() won't clean it up.
+                f.close()
+                os.unlink(name)
+                raise
+
+            for segment in contents:
+                f.write(segment)
+        finally:
+            f.close()
         self._set_mode(trans_id, mode_id, S_ISREG)
 
     def _set_mode(self, trans_id, mode_id, typefunc):
@@ -495,8 +507,7 @@ class TreeTransform(object):
                         self.tree_kind(t) == 'directory'])
         for trans_id in self._removed_id:
             file_id = self.tree_file_id(trans_id)
-            if self._tree.inventory[file_id].kind in ('directory', 
-                                                      'root_directory'):
+            if self._tree.inventory[file_id].kind == 'directory':
                 parents.append(trans_id)
 
         for parent_id in parents:
@@ -987,20 +998,8 @@ def create_entry_executability(tt, entry, trans_id):
 
 def find_interesting(working_tree, target_tree, filenames):
     """Find the ids corresponding to specified filenames."""
-    if not filenames:
-        interesting_ids = None
-    else:
-        interesting_ids = set()
-        for tree_path in filenames:
-            not_found = True
-            for tree in (working_tree, target_tree):
-                file_id = tree.inventory.path2id(tree_path)
-                if file_id is not None:
-                    interesting_ids.add(file_id)
-                    not_found = False
-            if not_found:
-                raise NotVersionedError(path=tree_path)
-    return interesting_ids
+    trees = (working_tree, target_tree)
+    return tree.find_ids_across_trees(filenames, trees)
 
 
 def change_entry(tt, file_id, working_tree, target_tree, 
@@ -1071,10 +1070,7 @@ def _entry_changes(file_id, entry, working_tree):
         contents_mod = True
         meta_mod = False
     if has_contents is True:
-        real_e_kind = entry.kind
-        if real_e_kind == 'root_directory':
-            real_e_kind = 'directory'
-        if real_e_kind != working_kind:
+        if entry.kind != working_kind:
             contents_mod, meta_mod = True, False
         else:
             cur_entry._read_tree_state(working_tree.id2path(file_id), 

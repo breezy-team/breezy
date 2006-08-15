@@ -16,11 +16,14 @@
 
 import errno
 import os
+import re
 import subprocess
 import sys
 import tempfile
 import time
 
+# compatability - plugins import compare_trees from diff!!!
+# deprecated as of 0.10
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 import bzrlib.errors as errors
@@ -88,13 +91,6 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
-    if hasattr(to_file, 'fileno'):
-        out_file = to_file
-        have_fileno = True
-    else:
-        out_file = subprocess.PIPE
-        have_fileno = False
-    
     # make sure our own output is properly ordered before the diff
     to_file.flush()
 
@@ -154,25 +150,40 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         try:
             pipe = subprocess.Popen(diffcmd,
                                     stdin=subprocess.PIPE,
-                                    stdout=out_file)
+                                    stdout=subprocess.PIPE)
         except OSError, e:
             if e.errno == errno.ENOENT:
                 raise errors.NoDiff(str(e))
             raise
         pipe.stdin.close()
 
-        if not have_fileno:
-            bzrlib.osutils.pumpfile(pipe.stdout, to_file)
+        first_line = pipe.stdout.readline()
+        to_file.write(first_line)
+        bzrlib.osutils.pumpfile(pipe.stdout, to_file)
         rc = pipe.wait()
         
-        if rc != 0 and rc != 1:
+        if rc == 2:
+            # 'diff' gives retcode == 2 for all sorts of errors
+            # one of those is 'Binary files differ'.
+            # Bad options could also be the problem.
+            # 'Binary files' is not a real error, so we suppress that error
+            m = re.match('^binary files.*differ$', first_line, re.I)
+            if not m:
+                raise BzrError('external diff failed with exit code 2;'
+                               ' command: %r' % (diffcmd,))
+        elif rc not in (0, 1):
             # returns 1 if files differ; that's OK
             if rc < 0:
                 msg = 'signal %d' % (-rc)
             else:
                 msg = 'exit code %d' % rc
                 
-            raise BzrError('external diff failed with %s; command: %r' % (rc, diffcmd))
+            raise BzrError('external diff failed with %s; command: %r' 
+                           % (rc, diffcmd))
+
+        # internal_diff() adds a trailing newline, add one here for consistency
+        to_file.write('\n')
+
     finally:
         oldtmpf.close()                 # and delete
         newtmpf.close()
@@ -256,10 +267,14 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
-    output = sys.stdout
     def spec_tree(spec):
-        revision_id = spec.in_store(tree.branch).rev_id
-        return tree.branch.repository.revision_tree(revision_id)
+        if tree:
+            revision = spec.in_store(tree.branch)
+        else:
+            revision = spec.in_store(None)
+        revision_id = revision.rev_id
+        branch = revision.branch
+        return branch.repository.revision_tree(revision_id)
     if old_revision_spec is None:
         old_tree = tree.basis_tree()
     else:
@@ -269,15 +284,21 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
         new_tree = tree
     else:
         new_tree = spec_tree(new_revision_spec)
+    if new_tree is not tree:
+        extra_trees = (tree,)
+    else:
+        extra_trees = None
 
     return show_diff_trees(old_tree, new_tree, sys.stdout, specific_files,
                            external_diff_options,
-                           old_label=old_label, new_label=new_label)
+                           old_label=old_label, new_label=new_label,
+                           extra_trees=extra_trees)
 
 
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     external_diff_options=None,
-                    old_label='a/', new_label='b/'):
+                    old_label='a/', new_label='b/',
+                    extra_trees=None):
     """Show in text form the changes from one tree to another.
 
     to_files
@@ -285,6 +306,9 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
     external_diff_options
         If set, use an external GNU diff and pass these options.
+
+    extra_trees
+        If set, more Trees to use for looking up file ids
     """
     old_tree.lock_read()
     try:
@@ -292,7 +316,8 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         try:
             return _show_diff_trees(old_tree, new_tree, to_file,
                                     specific_files, external_diff_options,
-                                    old_label=old_label, new_label=new_label)
+                                    old_label=old_label, new_label=new_label,
+                                    extra_trees=extra_trees)
         finally:
             new_tree.unlock()
     finally:
@@ -301,7 +326,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
 def _show_diff_trees(old_tree, new_tree, to_file,
                      specific_files, external_diff_options, 
-                     old_label='a/', new_label='b/' ):
+                     old_label='a/', new_label='b/', extra_trees=None):
 
     # GNU Patch uses the epoch date to detect files that are being added
     # or removed in a diff.
@@ -309,8 +334,6 @@ def _show_diff_trees(old_tree, new_tree, to_file,
 
     # TODO: Generation of pseudo-diffs for added/deleted files could
     # be usefully made into a much faster special case.
-
-    _raise_if_doubly_unversioned(specific_files, old_tree, new_tree)
 
     if external_diff_options:
         assert isinstance(external_diff_options, basestring)
@@ -320,8 +343,9 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     else:
         diff_file = internal_diff
     
-    delta = compare_trees(old_tree, new_tree, want_unchanged=False,
-                          specific_files=specific_files)
+    delta = new_tree.changes_from(old_tree,
+        specific_files=specific_files,
+        extra_trees=extra_trees, require_versioned=True)
 
     has_changes = 0
     for path, file_id, kind in delta.removed:
@@ -378,17 +402,6 @@ def _patch_header_date(tree, file_id, path):
     tm = time.gmtime(tree.get_file_mtime(file_id, path))
     return time.strftime('%Y-%m-%d %H:%M:%S +0000', tm)
 
-
-def _raise_if_doubly_unversioned(specific_files, old_tree, new_tree):
-    """Complain if paths are not versioned in either tree."""
-    if not specific_files:
-        return
-    old_unversioned = old_tree.filter_unversioned_files(specific_files)
-    new_unversioned = new_tree.filter_unversioned_files(specific_files)
-    unversioned = old_unversioned.intersection(new_unversioned)
-    if unversioned:
-        raise errors.PathsNotVersionedError(sorted(unversioned))
-    
 
 def _raise_if_nonexistent(paths, old_tree, new_tree):
     """Complain if paths are not in either inventory or tree.

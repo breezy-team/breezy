@@ -49,8 +49,8 @@ check_signatures - this option controls whether bzr will require good gpg
 create_signatures - this option controls whether bzr will always create 
                     gpg signatures, never create them, or create them if the
                     branch is configured to require them.
-log_format - This options set the default log format.  Options are long, 
-             short, line, or a plugin can register new formats
+log_format - this option sets the default log format.  Possible values are
+             long, short, line, or a plugin can register new formats.
 
 In bazaar.conf you can also define aliases in the ALIASES sections, example
 
@@ -70,7 +70,7 @@ import sys
 from StringIO import StringIO
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import errors, urlutils
 from bzrlib.osutils import pathjoin
 from bzrlib.trace import mutter, warning
 import bzrlib.util.configobj.configobj as configobj
@@ -167,7 +167,8 @@ class Config(object):
     
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
         
-        $BZREMAIL can be set to override this, then
+        $BZR_EMAIL can be set to override this (as well as the
+        deprecated $BZREMAIL), then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If none is found, a reasonable default is (hopefully)
@@ -175,8 +176,12 @@ class Config(object):
     
         TODO: Check it's reasonably well-formed.
         """
+        v = os.environ.get('BZR_EMAIL')
+        if v:
+            return v.decode(bzrlib.user_encoding)
         v = os.environ.get('BZREMAIL')
         if v:
+            warning('BZREMAIL is deprecated in favor of BZR_EMAIL. Please update your configuration.')
             return v.decode(bzrlib.user_encoding)
     
         v = self._get_user_id()
@@ -337,6 +342,19 @@ class GlobalConfig(IniBasedConfig):
     def __init__(self):
         super(GlobalConfig, self).__init__(config_filename)
 
+    def set_user_option(self, option, value):
+        """Save option and its value in the configuration."""
+        # FIXME: RBC 20051029 This should refresh the parser and also take a
+        # file lock on bazaar.conf.
+        conf_dir = os.path.dirname(self._get_filename())
+        ensure_config_dir_exists(conf_dir)
+        if 'DEFAULT' not in self._get_parser():
+            self._get_parser()['DEFAULT'] = {}
+        self._get_parser()['DEFAULT'][option] = value
+        f = open(self._get_filename(), 'wb')
+        self._get_parser().write(f)
+        f.close()
+
 
 class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""
@@ -345,9 +363,20 @@ class LocationConfig(IniBasedConfig):
         name_generator = locations_config_filename
         if (not os.path.exists(name_generator()) and 
                 os.path.exists(branches_config_filename())):
-            warning('Please rename branches.conf to locations.conf')
+            if sys.platform == 'win32':
+                warning('Please rename %s to %s' 
+                         % (branches_config_filename(),
+                            locations_config_filename()))
+            else:
+                warning('Please rename ~/.bazaar/branches.conf'
+                        ' to ~/.bazaar/locations.conf')
             name_generator = branches_config_filename
         super(LocationConfig, self).__init__(name_generator)
+        # local file locations are looked up by local path, rather than
+        # by file url. This is because the config file is a user
+        # file, and we would rather not expose the user to file urls.
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
         self.location = location
 
     def _get_section(self):
@@ -363,7 +392,15 @@ class LocationConfig(IniBasedConfig):
             del location_names[-1]
         matches=[]
         for section in sections:
-            section_names = section.split('/')
+            # location is a local path if possible, so we need
+            # to convert 'file://' urls to local paths if necessary.
+            # This also avoids having file:///path be a more exact
+            # match than '/path'.
+            if section.startswith('file://'):
+                section_path = urlutils.local_path_from_url(section)
+            else:
+                section_path = section
+            section_names = section_path.split('/')
             if section.endswith('/'):
                 del section_names[-1]
             names = zip(location_names, section_names)
@@ -512,10 +549,17 @@ class BranchConfig(Config):
         return self._get_safe_value('_post_commit')
 
     def _get_nickname(self):
-        value = self._get_best_value('_get_nickname')
+        value = self._get_explicit_nickname()
         if value is not None:
             return value
         return self.branch.base.split('/')[-2]
+
+    def has_explicit_nickname(self):
+        """Return true if a nickname has been explicitly assigned."""
+        return self._get_explicit_nickname() is not None
+
+    def _get_explicit_nickname(self):
+        return self._get_best_value('_get_nickname')
 
     def _log_format(self):
         """See Config.log_format."""
@@ -572,9 +616,15 @@ def branches_config_filename():
     """Return per-user configuration ini file filename."""
     return pathjoin(config_dir(), 'branches.conf')
 
+
 def locations_config_filename():
     """Return per-user configuration ini file filename."""
     return pathjoin(config_dir(), 'locations.conf')
+
+
+def user_ignore_config_filename():
+    """Return the user default ignore filename"""
+    return pathjoin(config_dir(), 'ignore')
 
 
 def _auto_user_id():
@@ -597,13 +647,25 @@ def _auto_user_id():
         uid = os.getuid()
         w = pwd.getpwuid(uid)
 
+        # we try utf-8 first, because on many variants (like Linux),
+        # /etc/passwd "should" be in utf-8, and because it's unlikely to give
+        # false positives.  (many users will have their user encoding set to
+        # latin-1, which cannot raise UnicodeError.)
         try:
-            gecos = w.pw_gecos.decode(bzrlib.user_encoding)
-            username = w.pw_name.decode(bzrlib.user_encoding)
-        except UnicodeDecodeError:
-            # We're using pwd, therefore we're on Unix, so /etc/passwd is ok.
-            raise errors.BzrError("Can't decode username in " \
-                    "/etc/passwd as %s." % bzrlib.user_encoding)
+            gecos = w.pw_gecos.decode('utf-8')
+            encoding = 'utf-8'
+        except UnicodeError:
+            try:
+                gecos = w.pw_gecos.decode(bzrlib.user_encoding)
+                encoding = bzrlib.user_encoding
+            except UnicodeError:
+                raise errors.BzrCommandError('Unable to determine your name.  '
+                   'Use "bzr whoami" to set it.')
+        try:
+            username = w.pw_name.decode(encoding)
+        except UnicodeError:
+            raise errors.BzrCommandError('Unable to determine your name.  '
+                'Use "bzr whoami" to set it.')
 
         comma = gecos.find(',')
         if comma == -1:

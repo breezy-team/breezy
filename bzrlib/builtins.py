@@ -1,15 +1,15 @@
 # Copyright (C) 2004, 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -20,14 +20,28 @@
 import codecs
 import errno
 import os
+import os.path
 import sys
 
 import bzrlib
+from bzrlib import (
+    branch,
+    bundle,
+    bzrdir,
+    config,
+    errors,
+    ignores,
+    log,
+    osutils,
+    repository,
+    transport,
+    ui,
+    urlutils,
+    )
 from bzrlib.branch import Branch, BranchReferenceFormat
-from bzrlib import (bundle, branch, bzrdir, errors, osutils, ui, config,
-    repository, log)
 from bzrlib.bundle import read_bundle_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
+from bzrlib.conflicts import ConflictList
 from bzrlib.commands import Command, display_command
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
@@ -40,7 +54,6 @@ from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 from bzrlib.transport.local import LocalTransport
-import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
 
 
@@ -373,6 +386,9 @@ class cmd_mv(Command):
     encoding_type = 'replace'
 
     def run(self, names_list):
+        if names_list is None:
+            names_list = []
+
         if len(names_list) < 2:
             raise BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list)
@@ -511,7 +527,6 @@ class cmd_push(Command):
             create_prefix=False, verbose=False):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
-        from bzrlib.transport import get_transport
         
         br_from = Branch.open_containing('.')[0]
         stored_loc = br_from.get_push_location()
@@ -524,8 +539,8 @@ class cmd_push(Command):
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
-        transport = get_transport(location)
-        location_url = transport.base
+        to_transport = transport.get_transport(location)
+        location_url = to_transport.base
 
         old_rh = []
         try:
@@ -533,28 +548,28 @@ class cmd_push(Command):
             br_to = dir_to.open_branch()
         except NotBranchError:
             # create a branch.
-            transport = transport.clone('..')
+            to_transport = to_transport.clone('..')
             if not create_prefix:
                 try:
-                    relurl = transport.relpath(location_url)
+                    relurl = to_transport.relpath(location_url)
                     mutter('creating directory %s => %s', location_url, relurl)
-                    transport.mkdir(relurl)
+                    to_transport.mkdir(relurl)
                 except NoSuchFile:
                     raise BzrCommandError("Parent directory of %s "
                                           "does not exist." % location)
             else:
-                current = transport.base
-                needed = [(transport, transport.relpath(location_url))]
+                current = to_transport.base
+                needed = [(to_transport, to_transport.relpath(location_url))]
                 while needed:
                     try:
-                        transport, relpath = needed[-1]
-                        transport.mkdir(relpath)
+                        to_transport, relpath = needed[-1]
+                        to_transport.mkdir(relpath)
                         needed.pop()
                     except NoSuchFile:
-                        new_transport = transport.clone('..')
+                        new_transport = to_transport.clone('..')
                         needed.append((new_transport,
-                                       new_transport.relpath(transport.base)))
-                        if new_transport.base == transport.base:
+                                       new_transport.relpath(to_transport.base)))
+                        if new_transport.base == to_transport.base:
                             raise BzrCommandError("Could not create "
                                                   "path prefix.")
             dir_to = br_from.bzrdir.clone(location_url,
@@ -613,7 +628,6 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
-        from bzrlib.transport import get_transport
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -646,7 +660,7 @@ class cmd_branch(Command):
             else:
                 name = os.path.basename(to_location) + '\n'
 
-            to_transport = get_transport(to_location)
+            to_transport = transport.get_transport(to_location)
             try:
                 to_transport.mkdir('.')
             except errors.FileExists:
@@ -748,18 +762,7 @@ class cmd_checkout(Command):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
         try:
-            if lightweight:
-                checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
-                branch.BranchReferenceFormat().initialize(checkout, source)
-            else:
-                checkout_branch =  bzrdir.BzrDir.create_branch_convenience(
-                    to_location, force_new_tree=False)
-                checkout = checkout_branch.bzrdir
-                checkout_branch.bind(source)
-                if revision_id is not None:
-                    rh = checkout_branch.revision_history()
-                    checkout_branch.set_revision_history(rh[:rh.index(revision_id) + 1])
-            checkout.create_workingtree(revision_id)
+            source.create_checkout(to_location, revision_id, lightweight)
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
@@ -795,20 +798,27 @@ class cmd_update(Command):
     'bzr revert' instead of 'bzr commit' after the update.
     """
     takes_args = ['dir?']
+    aliases = ['up']
 
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_write()
+        existing_pending_merges = tree.pending_merges()
         try:
-            if tree.last_revision() == tree.branch.last_revision():
+            last_rev = tree.last_revision() 
+            if last_rev == tree.branch.last_revision():
                 # may be up to date, check master too.
                 master = tree.branch.get_master_branch()
-                if master is None or master.last_revision == tree.last_revision():
-                    note("Tree is up to date.")
-                    return
+                if master is None or last_rev == master.last_revision():
+                    revno = tree.branch.revision_id_to_revno(last_rev)
+                    note("Tree is up to date at revision %d." % (revno,))
+                    return 0
             conflicts = tree.update()
-            note('Updated to revision %d.' %
-                 (tree.branch.revision_id_to_revno(tree.last_revision()),))
+            revno = tree.branch.revision_id_to_revno(tree.last_revision())
+            note('Updated to revision %d.' % (revno,))
+            if tree.pending_merges() != existing_pending_merges:
+                note('Your local commits will now show as pending merges with '
+                     "'bzr status', and can be committed with 'bzr commit'.")
             if conflicts != 0:
                 return 1
             else:
@@ -859,10 +869,9 @@ class cmd_remove(Command):
                 raise BzrCommandError('Specify one or more files to remove, or'
                                       ' use --new.')
         else:
-            from bzrlib.delta import compare_trees
-            added = [compare_trees(tree.basis_tree(), tree,
-                                   specific_files=file_list).added]
-            file_list = sorted([f[0] for f in added[0]], reverse=True)
+            added = tree.changes_from(tree.basis_tree(),
+                specific_files=file_list).added
+            file_list = sorted([f[0] for f in added], reverse=True)
             if len(file_list) == 0:
                 raise BzrCommandError('No matching files.')
         tree.remove(file_list, verbose=verbose, to_file=self.outf)
@@ -1009,14 +1018,20 @@ class cmd_init(Command):
             format = get_format_type('default')
         if location is None:
             location = u'.'
-        else:
-            # The path has to exist to initialize a
-            # branch inside of it.
-            # Just using os.mkdir, since I don't
-            # believe that we want to create a bunch of
-            # locations if the user supplies an extended path
-            if not os.path.exists(location):
-                os.mkdir(location)
+
+        to_transport = transport.get_transport(location)
+
+        # The path has to exist to initialize a
+        # branch inside of it.
+        # Just using os.mkdir, since I don't
+        # believe that we want to create a bunch of
+        # locations if the user supplies an extended path
+        # TODO: create-prefix
+        try:
+            to_transport.mkdir('.')
+        except errors.FileExists:
+            pass
+                    
         try:
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except NotBranchError:
@@ -1024,10 +1039,10 @@ class cmd_init(Command):
             bzrdir.BzrDir.create_branch_convenience(location, format=format)
         else:
             if existing_bzrdir.has_branch():
-                if existing_bzrdir.has_workingtree():
-                    raise errors.AlreadyBranchError(location)
-                else:
-                    raise errors.BranchExistsWithoutWorkingTree(location)
+                if (isinstance(to_transport, LocalTransport)
+                    and not existing_bzrdir.has_workingtree()):
+                        raise errors.BranchExistsWithoutWorkingTree(location)
+                raise errors.AlreadyBranchError(location)
             else:
                 existing_bzrdir.create_branch()
                 existing_bzrdir.create_workingtree()
@@ -1059,19 +1074,25 @@ class cmd_init_repository(Command):
                              ' a working tree')]
     aliases = ["init-repo"]
     def run(self, location, format=None, trees=False):
-        from bzrlib.transport import get_transport
         if format is None:
             format = get_format_type('default')
-        transport = get_transport(location)
-        if not transport.has('.'):
-            transport.mkdir('')
-        newdir = format.initialize_on_transport(transport)
+
+        if location is None:
+            location = '.'
+
+        to_transport = transport.get_transport(location)
+        try:
+            to_transport.mkdir('.')
+        except errors.FileExists:
+            pass
+
+        newdir = format.initialize_on_transport(to_transport)
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(trees)
 
 
 class cmd_diff(Command):
-    """Show differences in working tree.
+    """Show differences in the working tree or between revisions.
     
     If files are listed, only the changes in those files are listed.
     Otherwise, all changes for the tree are listed.
@@ -1081,11 +1102,17 @@ class cmd_diff(Command):
 
     examples:
         bzr diff
+            Shows the difference in the working tree versus the last commit
         bzr diff -r1
+            Difference between the working tree and revision 1
         bzr diff -r1..2
+            Difference between revision 2 and revision 1
         bzr diff --diff-prefix old/:new/
+            Same as 'bzr diff' but prefix paths with old/ and new/
         bzr diff bzr.mine bzr.dev
+            Show the differences between the two working trees
         bzr diff foo.c
+            Show just the differences for 'foo.c'
     """
     # TODO: Option to use external diff command; could be GNU diff, wdiff,
     #       or a graphical diff.
@@ -1135,6 +1162,15 @@ class cmd_diff(Command):
                 # FIXME diff those two files. rbc 20051123
                 raise BzrCommandError("Files are in different branches")
             file_list = None
+        except NotBranchError:
+            if (revision is not None and len(revision) == 2
+                and not revision[0].needs_branch()
+                and not revision[1].needs_branch()):
+                # If both revision specs include a branch, we can
+                # diff them without needing a local working tree
+                tree1, tree2 = None, None
+            else:
+                raise
         if revision is not None:
             if tree2 is not None:
                 raise BzrCommandError("Can't specify -r with two branches")
@@ -1188,11 +1224,8 @@ class cmd_modified(Command):
     hidden = True
     @display_command
     def run(self):
-        from bzrlib.delta import compare_trees
-
         tree = WorkingTree.open_containing(u'.')[0]
-        td = compare_trees(tree.basis_tree(), tree)
-
+        td = tree.changes_from(tree.basis_tree())
         for path, id, kind, text_modified, meta_modified in td.modified:
             self.outf.write(path + '\n')
 
@@ -1453,15 +1486,23 @@ class cmd_ignore(Command):
         bzr ignore '*.class'
     """
     # TODO: Complain if the filename is absolute
-    takes_args = ['name_pattern']
+    takes_args = ['name_pattern?']
+    takes_options = [
+                     Option('old-default-rules',
+                            help='Out the ignore rules bzr < 0.9 always used.')
+                     ]
     
-    def run(self, name_pattern):
+    def run(self, name_pattern=None, old_default_rules=None):
         from bzrlib.atomicfile import AtomicFile
-        import os.path
-
+        if old_default_rules is not None:
+            # dump the rules and exit
+            for pattern in ignores.OLD_DEFAULTS:
+                print pattern
+            return
+        if name_pattern is None:
+            raise BzrCommandError("ignore requires a NAME_PATTERN")
         tree, relpath = WorkingTree.open_containing(u'.')
         ifn = tree.abspath('.bzrignore')
-
         if os.path.exists(ifn):
             f = open(ifn, 'rt')
             try:
@@ -1552,7 +1593,6 @@ class cmd_export(Command):
     takes_args = ['dest']
     takes_options = ['revision', 'format', 'root']
     def run(self, dest, revision=None, format=None, root=None):
-        import os.path
         from bzrlib.export import export
         tree = WorkingTree.open_containing(u'.')[0]
         b = tree.branch
@@ -1708,10 +1748,10 @@ class cmd_commit(Command):
             raise BzrCommandError("Commit refused because there are unknown "
                                   "files in the working tree.")
         except errors.BoundBranchOutOfDate, e:
-            raise BzrCommandError(str(e)
-                                  + ' Either unbind, update, or'
-                                    ' pass --local to commit.')
-
+            raise BzrCommandError(str(e) + "\n"
+                'To commit to master branch, run update and then commit.\n'
+                'You can also pass --local to commit to continue working '
+                'disconnected.')
 
 class cmd_check(Command):
     """Validate consistency of branch history.
@@ -1777,19 +1817,48 @@ class cmd_upgrade(Command):
 
 
 class cmd_whoami(Command):
-    """Show bzr user id."""
-    takes_options = ['email']
+    """Show or set bzr user id.
+    
+    examples:
+        bzr whoami --email
+        bzr whoami 'Frank Chu <fchu@example.com>'
+    """
+    takes_options = [ Option('email',
+                             help='display email address only'),
+                      Option('branch',
+                             help='set identity for the current branch instead of '
+                                  'globally'),
+                    ]
+    takes_args = ['name?']
+    encoding_type = 'replace'
     
     @display_command
-    def run(self, email=False):
+    def run(self, email=False, branch=False, name=None):
+        if name is None:
+            # use branch if we're inside one; otherwise global config
+            try:
+                c = Branch.open_containing('.')[0].get_config()
+            except NotBranchError:
+                c = config.GlobalConfig()
+            if email:
+                self.outf.write(c.user_email() + '\n')
+            else:
+                self.outf.write(c.username() + '\n')
+            return
+
+        # display a warning if an email address isn't included in the given name.
         try:
-            c = WorkingTree.open_containing(u'.')[0].branch.get_config()
-        except NotBranchError:
-            c = config.GlobalConfig()
-        if email:
-            print c.user_email()
+            config.extract_email_address(name)
+        except BzrError, e:
+            warning('"%s" does not seem to contain an email address.  '
+                    'This is allowed, but not recommended.', name)
+        
+        # use global config unless --branch given
+        if branch:
+            c = Branch.open_containing('.')[0].get_config()
         else:
-            print c.username()
+            c = config.GlobalConfig()
+        c.set_user_option('email', name)
 
 
 class cmd_nick(Command):
@@ -1864,14 +1933,21 @@ class cmd_selftest(Command):
                      Option('lsprof-timed',
                             help='generate lsprof output for benchmarked'
                                  ' sections of code.'),
+                     Option('cache-dir', type=str,
+                            help='a directory to cache intermediate'
+                                 ' benchmark steps'),
                      ]
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
-            lsprof_timed=None):
+            lsprof_timed=None, cache_dir=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
+        from bzrlib.benchmarks import tree_creator
+
+        if cache_dir is not None:
+            tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         # we don't want progress meters from the tests to go to the
         # real output; and we don't want log messages cluttering up
         # the real logs.
@@ -1930,7 +2006,7 @@ def _get_bzr_branch():
 
 def show_version():
     import bzrlib
-    print "bzr (bazaar-ng) %s" % bzrlib.__version__
+    print "Bazaar (bzr) %s" % bzrlib.__version__
     # is bzrlib itself in a branch?
     branch = _get_bzr_branch()
     if branch:
@@ -1962,21 +2038,24 @@ def show_version():
 
 class cmd_version(Command):
     """Show version of bzr."""
+
     @display_command
     def run(self):
         show_version()
 
+
 class cmd_rocks(Command):
     """Statement of optimism."""
+
     hidden = True
+
     @display_command
     def run(self):
         print "it sure does!"
 
 
 class cmd_find_merge_base(Command):
-    """Find and print a base revision for merging two branches.
-    """
+    """Find and print a base revision for merging two branches."""
     # TODO: Options to specify revisions on either side, as if
     #       merging only part of the history.
     takes_args = ['branch', 'other']
@@ -2047,7 +2126,9 @@ class cmd_merge(Command):
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
                      Option('show-base', help="Show base revision text in "
-                            "conflicts")]
+                            "conflicts"), 
+                     Option('uncommitted', help='Apply uncommitted changes'
+                            ' from a working copy, instead of branch changes')]
 
     def help(self):
         from merge import merge_type_help
@@ -2055,7 +2136,8 @@ class cmd_merge(Command):
         return getdoc(self) + '\n' + merge_type_help() 
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
-            show_base=False, reprocess=False, remember=False):
+            show_base=False, reprocess=False, remember=False, 
+            uncommitted=False):
         if merge_type is None:
             merge_type = Merge3Merger
 
@@ -2077,10 +2159,17 @@ class cmd_merge(Command):
         branch = self._get_remembered_parent(tree, branch, 'Merging from')
 
         if revision is None or len(revision) < 1:
-            base = [None, None]
-            other = [branch, -1]
+            if uncommitted:
+                base = [branch, -1]
+                other = [branch, None]
+            else:
+                base = [None, None]
+                other = [branch, -1]
             other_branch, path = Branch.open_containing(branch)
         else:
+            if uncommitted:
+                raise BzrCommandError('Cannot use --uncommitted and --revision'
+                                      ' at the same time.')
             if len(revision) == 1:
                 base = [None, None]
                 other_branch, path = Branch.open_containing(branch)
@@ -2185,14 +2274,16 @@ class cmd_remerge(Command):
             pending_merges = tree.pending_merges() 
             if len(pending_merges) != 1:
                 raise BzrCommandError("Sorry, remerge only works after normal"
-                                      + " merges.  Not cherrypicking or"
-                                      + "multi-merges.")
+                                      " merges.  Not cherrypicking or"
+                                      " multi-merges.")
             repository = tree.branch.repository
             base_revision = common_ancestor(tree.branch.last_revision(), 
                                             pending_merges[0], repository)
             base_tree = repository.revision_tree(base_revision)
             other_tree = repository.revision_tree(pending_merges[0])
             interesting_ids = None
+            new_conflicts = []
+            conflicts = tree.conflicts()
             if file_list is not None:
                 interesting_ids = set()
                 for filename in file_list:
@@ -2205,7 +2296,9 @@ class cmd_remerge(Command):
                     
                     for name, ie in tree.inventory.iter_entries(file_id):
                         interesting_ids.add(ie.file_id)
+                new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
             transform_tree(tree, tree.basis_tree(), interesting_ids)
+            tree.set_conflicts(ConflictList(new_conflicts))
             if file_list is None:
                 restore_files = list(tree.iter_conflicts())
             else:
@@ -2215,13 +2308,13 @@ class cmd_remerge(Command):
                     restore(tree.abspath(filename))
                 except NotConflicted:
                     pass
-            conflicts =  merge_inner(tree.branch, other_tree, base_tree,
-                                     this_tree=tree,
-                                     interesting_ids = interesting_ids, 
-                                     other_rev_id=pending_merges[0], 
-                                     merge_type=merge_type, 
-                                     show_base=show_base,
-                                     reprocess=reprocess)
+            conflicts = merge_inner(tree.branch, other_tree, base_tree,
+                                    this_tree=tree,
+                                    interesting_ids=interesting_ids, 
+                                    other_rev_id=pending_merges[0], 
+                                    merge_type=merge_type, 
+                                    show_base=show_base,
+                                    reprocess=reprocess)
         finally:
             tree.unlock()
         if conflicts > 0:
@@ -2332,7 +2425,9 @@ class cmd_missing(Command):
                      'show-ids',
                      'verbose'
                      ]
+    encoding_type = 'replace'
 
+    @display_command
     def run(self, other_branch=None, reverse=False, mine_only=False,
             theirs_only=False, log_format=None, long=False, short=False, line=False, 
             show_ids=False, verbose=False):
@@ -2343,7 +2438,7 @@ class cmd_missing(Command):
         if other_branch is None:
             other_branch = parent
             if other_branch is None:
-                raise BzrCommandError("No missing location known or specified.")
+                raise BzrCommandError("No peer location known or specified.")
             print "Using last location: " + local_branch.get_parent()
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
@@ -2357,7 +2452,8 @@ class cmd_missing(Command):
                     default = local_branch.get_config().log_format()
                     log_format = get_log_format(long=long, short=short, 
                                                 line=line, default=default)
-                lf = log_formatter(log_format, sys.stdout,
+                lf = log_formatter(log_format,
+                                   to_file=self.outf,
                                    show_ids=show_ids,
                                    show_timezone='original')
                 if reverse is False:
@@ -2584,10 +2680,10 @@ class cmd_uncommit(Command):
     takes_args = ['location?']
     aliases = []
 
-    def run(self, location=None, 
+    def run(self, location=None,
             dry_run=False, verbose=False,
             revision=None, force=False):
-        from bzrlib.log import log_formatter
+        from bzrlib.log import log_formatter, show_log
         import sys
         from bzrlib.uncommit import uncommit
 
@@ -2601,18 +2697,33 @@ class cmd_uncommit(Command):
             tree = None
             b = control.open_branch()
 
+        rev_id = None
         if revision is None:
             revno = b.revno()
-            rev_id = b.last_revision()
         else:
-            revno, rev_id = revision[0].in_history(b)
-        if rev_id is None:
-            print 'No revisions to uncommit.'
+            # 'bzr uncommit -r 10' actually means uncommit
+            # so that the final tree is at revno 10.
+            # but bzrlib.uncommit.uncommit() actually uncommits
+            # the revisions that are supplied.
+            # So we need to offset it by one
+            revno = revision[0].in_history(b).revno+1
 
-        for r in range(revno, b.revno()+1):
-            rev_id = b.get_rev_id(r)
-            lf = log_formatter('short', to_file=sys.stdout,show_timezone='original')
-            lf.show(r, b.repository.get_revision(rev_id), None)
+        if revno <= b.revno():
+            rev_id = b.get_rev_id(revno)
+        if rev_id is None:
+            self.outf.write('No revisions to uncommit.\n')
+            return 1
+
+        lf = log_formatter('short',
+                           to_file=self.outf,
+                           show_timezone='original')
+
+        show_log(b,
+                 lf,
+                 verbose=False,
+                 direction='forward',
+                 start_revision=revno,
+                 end_revision=b.revno())
 
         if dry_run:
             print 'Dry-run, pretending to remove the above revisions.'

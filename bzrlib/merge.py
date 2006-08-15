@@ -22,7 +22,6 @@ import warnings
 
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
-from bzrlib.delta import compare_trees
 from bzrlib.errors import (BzrCommandError,
                            BzrError,
                            NoCommonAncestor,
@@ -51,11 +50,13 @@ from bzrlib import ui
 # TODO: Report back as changes are merged in
 
 def _get_tree(treespec, local_branch=None):
+    from bzrlib import workingtree
     location, revno = treespec
-    branch = Branch.open_containing(location)[0]
     if revno is None:
-        revision = None
-    elif revno == -1:
+        tree = workingtree.WorkingTree.open_containing(location)[0]
+        return tree.branch, tree
+    branch = Branch.open_containing(location)[0]
+    if revno == -1:
         revision = branch.last_revision()
     else:
         revision = branch.get_rev_id(revno)
@@ -116,7 +117,7 @@ class Merger(object):
 
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
-            changes = compare_trees(self.other_tree, other_basis_tree)
+            changes = other_basis_tree.changes_from(self.other_tree)
             if changes.has_changed():
                 raise WorkingTreeNotRevision(self.this_tree)
             other_rev_id = self.other_basis
@@ -145,8 +146,7 @@ class Merger(object):
                 raise BzrCommandError("Working tree has uncommitted changes.")
 
     def compare_basis(self):
-        changes = compare_trees(self.this_tree, 
-                                self.this_tree.basis_tree(), False)
+        changes = self.this_tree.changes_from(self.this_tree.basis_tree())
         if not changes.has_changed():
             self.this_rev_id = self.this_basis
 
@@ -390,14 +390,11 @@ class Merge3Merger(object):
             results = self.tt.apply()
             self.write_modified(results)
             try:
-                working_tree.set_conflicts(ConflictList(self.cooked_conflicts))
+                working_tree.add_conflicts(self.cooked_conflicts)
             except UnsupportedOperation:
                 pass
         finally:
-            try:
-                self.tt.finalize()
-            except:
-                pass
+            self.tt.finalize()
             working_tree.unlock()
             self.pb.clear()
 
@@ -521,8 +518,6 @@ class Merge3Merger(object):
             if file_id not in tree:
                 return (None, None)
             kind = tree.kind(file_id)
-            if kind == "root_directory":
-                kind = "directory"
             if kind == "file":
                 contents = tree.get_file_sha1(file_id)
             elif kind == "symlink":
@@ -693,7 +688,7 @@ class Merge3Merger(object):
         if winner == "conflict":
         # There must be a None in here, if we have a conflict, but we
         # need executability since file status was not deleted.
-            if self.other_tree.is_executable(file_id) is None:
+            if self.executable(self.other_tree, file_id) is None:
                 winner = "this"
             else:
                 winner = "other"
@@ -845,12 +840,16 @@ class WeaveMerger(Merge3Merger):
 
 class Diff3Merger(Merge3Merger):
     """Three-way merger using external diff3 for text merging"""
+
     def dump_file(self, temp_dir, name, tree, file_id):
         out_path = pathjoin(temp_dir, name)
-        out_file = file(out_path, "wb")
-        in_file = tree.get_file(file_id)
-        for line in in_file:
-            out_file.write(line)
+        out_file = open(out_path, "wb")
+        try:
+            in_file = tree.get_file(file_id)
+            for line in in_file:
+                out_file.write(line)
+        finally:
+            out_file.close()
         return out_path
 
     def text_merge(self, file_id, trans_id):
@@ -868,7 +867,11 @@ class Diff3Merger(Merge3Merger):
             status = bzrlib.patch.diff3(new_file, this, base, other)
             if status not in (0, 1):
                 raise BzrError("Unhandled diff3 exit code")
-            self.tt.create_file(file(new_file, "rb"), trans_id)
+            f = open(new_file, 'rb')
+            try:
+                self.tt.create_file(f, trans_id)
+            finally:
+                f.close()
             if status == 1:
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)

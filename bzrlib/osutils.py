@@ -1,4 +1,4 @@
-# Bazaar-NG -- distributed version control
+# Bazaar -- distributed version control
 #
 # Copyright (C) 2005 by Canonical Ltd
 #
@@ -22,6 +22,7 @@ from ntpath import (abspath as _nt_abspath,
                     join as _nt_join,
                     normpath as _nt_normpath,
                     realpath as _nt_realpath,
+                    splitdrive as _nt_splitdrive,
                     )
 import os
 from os import listdir
@@ -50,6 +51,14 @@ from bzrlib.errors import (BzrError,
 from bzrlib.symbol_versioning import (deprecated_function, 
         zero_nine)
 from bzrlib.trace import mutter
+
+
+# On win32, O_BINARY is used to indicate the file should
+# be opened in binary mode, rather than text mode.
+# On other platforms, O_BINARY doesn't exist, because
+# they always open in binary mode, so it is okay to
+# OR with 0 on those platforms
+O_BINARY = getattr(os, 'O_BINARY', 0)
 
 
 def make_readonly(filename):
@@ -115,6 +124,16 @@ def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
         if getattr(e, 'errno', None) == errno.ENOENT:
             raise bzrlib.errors.NoSuchFile(f)
         raise
+
+
+def get_umask():
+    """Return the current umask"""
+    # Assume that people aren't messing with the umask while running
+    # XXX: This is not thread safe, but there is no way to get the
+    #      umask without setting it
+    umask = os.umask(0)
+    os.umask(umask)
+    return umask
 
 
 def kind_marker(kind):
@@ -215,14 +234,27 @@ def _posix_realpath(path):
     return posixpath.realpath(path.encode(_fs_enc)).decode(_fs_enc)
 
 
+def _win32_fixdrive(path):
+    """Force drive letters to be consistent.
+
+    win32 is inconsistent whether it returns lower or upper case
+    and even if it was consistent the user might type the other
+    so we force it to uppercase
+    running python.exe under cmd.exe return capital C:\\
+    running win32 python inside a cygwin shell returns lowercase c:\\
+    """
+    drive, path = _nt_splitdrive(path)
+    return drive.upper() + path
+
+
 def _win32_abspath(path):
     # Real _nt_abspath doesn't have a problem with a unicode cwd
-    return _nt_abspath(unicode(path)).replace('\\', '/')
+    return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_realpath(path):
     # Real _nt_realpath doesn't have a problem with a unicode cwd
-    return _nt_realpath(unicode(path)).replace('\\', '/')
+    return _win32_fixdrive(_nt_realpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_pathjoin(*args):
@@ -230,19 +262,37 @@ def _win32_pathjoin(*args):
 
 
 def _win32_normpath(path):
-    return _nt_normpath(unicode(path)).replace('\\', '/')
+    return _win32_fixdrive(_nt_normpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_getcwd():
-    return os.getcwdu().replace('\\', '/')
+    return _win32_fixdrive(os.getcwdu().replace('\\', '/'))
 
 
 def _win32_mkdtemp(*args, **kwargs):
-    return tempfile.mkdtemp(*args, **kwargs).replace('\\', '/')
+    return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
 
 
 def _win32_rename(old, new):
-    fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+    """We expect to be able to atomically replace 'new' with old.
+
+    On win32, if new exists, it must be moved out of the way first,
+    and then deleted. 
+    """
+    try:
+        fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+    except OSError, e:
+        if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
+            # If we try to rename a non-existant file onto cwd, we get 
+            # EPERM or EACCES instead of ENOENT, this will raise ENOENT 
+            # if the old path doesn't exist, sometimes we get EACCES
+            # On Linux, we seem to get EBUSY, on Mac we get EINVAL
+            os.lstat(old)
+        raise
+
+
+def _mac_getcwd():
+    return unicodedata.normalize('NFKC', os.getcwdu())
 
 
 # Default is to just use the python builtins, but these can be rebound on
@@ -288,6 +338,8 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
+elif sys.platform == 'darwin':
+    getcwd = _mac_getcwd
 
 
 def get_terminal_encoding():
@@ -761,39 +813,35 @@ def normalizes_filenames():
     return _platform_normalizes_filenames
 
 
+def _accessible_normalized_filename(path):
+    """Get the unicode normalized path, and if you can access the file.
+
+    On platforms where the system normalizes filenames (Mac OSX),
+    you can access a file by any path which will normalize correctly.
+    On platforms where the system does not normalize filenames 
+    (Windows, Linux), you have to access a file by its exact path.
+
+    Internally, bzr only supports NFC/NFKC normalization, since that is 
+    the standard for XML documents.
+
+    So return the normalized path, and a flag indicating if the file
+    can be accessed by that path.
+    """
+
+    return unicodedata.normalize('NFKC', unicode(path)), True
+
+
+def _inaccessible_normalized_filename(path):
+    __doc__ = _accessible_normalized_filename.__doc__
+
+    normalized = unicodedata.normalize('NFKC', unicode(path))
+    return normalized, normalized == path
+
+
 if _platform_normalizes_filenames:
-    def unicode_filename(path):
-        """Make sure 'path' is a properly normalized filename.
-
-        On platforms where the system normalizes filenames (Mac OSX),
-        you can access a file by any path which will normalize
-        correctly.
-        Internally, bzr only supports NFC/NFKC normalization, since
-        that is the standard for XML documents.
-        So we return an normalized path, and indicate this has been
-        properly normalized.
-
-        :return: (path, is_normalized) Return a path which can
-                access the file, and whether or not this path is
-                normalized.
-        """
-        return unicodedata.normalize('NFKC', path), True
+    normalized_filename = _accessible_normalized_filename
 else:
-    def unicode_filename(path):
-        """Make sure 'path' is a properly normalized filename.
-
-        On platforms where the system does not normalize filenames 
-        (Windows, Linux), you have to access a file by its exact path.
-        Internally, bzr only supports NFC/NFKC normalization, since
-        that is the standard for XML documents.
-        So we return the original path, and indicate if this is
-        properly normalized.
-
-        :return: (path, is_normalized) Return a path which can
-                access the file, and whether or not this path is
-                normalized.
-        """
-        return path, unicodedata.normalize('NFKC', path) == path
+    normalized_filename = _inaccessible_normalized_filename
 
 
 def terminal_width():
@@ -845,13 +893,31 @@ def walkdirs(top, prefix=""):
     to exclude some directories, they are then not descended into.
     
     The data yielded is of the form:
-    [(relpath, basename, kind, lstat, path_from_top), ...]
+    ((directory-relpath, directory-path-from-top),
+    [(relpath, basename, kind, lstat), ...]),
+     - directory-relpath is the relative path of the directory being returned
+       with respect to top. prefix is prepended to this.
+     - directory-path-from-root is the path including top for this directory. 
+       It is suitable for use with os functions.
+     - relpath is the relative path within the subtree being walked.
+     - basename is the basename of the path
+     - kind is the kind of the file now. If unknown then the file is not
+       present within the tree - but it may be recorded as versioned. See
+       versioned_kind.
+     - lstat is the stat data *if* the file was statted.
+     - planned, not implemented: 
+       path_from_tree_root is the path from the root of the tree.
 
     :param prefix: Prefix the relpaths that are yielded with 'prefix'. This 
         allows one to walk a subtree but get paths that are relative to a tree
         rooted higher up.
     :return: an iterator over the dirs.
     """
+    #TODO there is a bit of a smell where the results of the directory-
+    # summary in this, and the path from the root, may not agree 
+    # depending on top and prefix - i.e. ./foo and foo as a pair leads to
+    # potentially confusing output. We should make this more robust - but
+    # not at a speed cost. RBC 20060731
     lstat = os.lstat
     pending = []
     _directory = _directory_kind
@@ -869,12 +935,56 @@ def walkdirs(top, prefix=""):
         for name in sorted(_listdir(top)):
             abspath = top + '/' + name
             statvalue = lstat(abspath)
-            dirblock.append ((relroot + name, name, file_kind_from_stat_mode(statvalue.st_mode), statvalue, abspath))
-        yield dirblock
+            dirblock.append((relroot + name, name,
+                file_kind_from_stat_mode(statvalue.st_mode),
+                statvalue, abspath))
+        yield (currentdir[0], top), dirblock
         # push the user specified dirs from dirblock
         for dir in reversed(dirblock):
             if dir[2] == _directory:
                 pending.append(dir)
+
+
+def copy_tree(from_path, to_path, handlers={}):
+    """Copy all of the entries in from_path into to_path.
+
+    :param from_path: The base directory to copy. 
+    :param to_path: The target directory. If it does not exist, it will
+        be created.
+    :param handlers: A dictionary of functions, which takes a source and
+        destinations for files, directories, etc.
+        It is keyed on the file kind, such as 'directory', 'symlink', or 'file'
+        'file', 'directory', and 'symlink' should always exist.
+        If they are missing, they will be replaced with 'os.mkdir()',
+        'os.readlink() + os.symlink()', and 'shutil.copy2()', respectively.
+    """
+    # Now, just copy the existing cached tree to the new location
+    # We use a cheap trick here.
+    # Absolute paths are prefixed with the first parameter
+    # relative paths are prefixed with the second.
+    # So we can get both the source and target returned
+    # without any extra work.
+
+    def copy_dir(source, dest):
+        os.mkdir(dest)
+
+    def copy_link(source, dest):
+        """Copy the contents of a symlink"""
+        link_to = os.readlink(source)
+        os.symlink(link_to, dest)
+
+    real_handlers = {'file':shutil.copy2,
+                     'symlink':copy_link,
+                     'directory':copy_dir,
+                    }
+    real_handlers.update(handlers)
+
+    if not os.path.exists(to_path):
+        real_handlers['directory'](from_path, to_path)
+
+    for dir_info, entries in walkdirs(from_path, prefix=to_path):
+        for relpath, name, kind, st, abspath in entries:
+            real_handlers[kind](abspath, relpath)
 
 
 def path_prefix_key(path):

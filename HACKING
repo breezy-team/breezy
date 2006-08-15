@@ -5,7 +5,7 @@ Guidelines for modifying bzr
 .. contents::
 
 (The current version of this document is available in the file ``HACKING``
-in the source tree, or at http://bazaar-ng.org/hacking.html)
+in the source tree, or at http://doc.bazaar-vcs.org/current/hacking.html)
 
 Overall
 =======
@@ -38,12 +38,12 @@ Overall
   pipelines.
 
   Recommended values are 
-    0- OK, 
-    1- Conflicts in merge-like operations, or changes are present in
+    0. OK, 
+    1. Conflicts in merge-like operations, or changes are present in
        diff-like operations. 
-    2- Unrepresentable diff changes (i.e. binary files that we cannot show 
+    2. Unrepresentable diff changes (i.e. binary files that we cannot show 
        a diff of).
-    3- An error or exception has occurred.
+    3. An error or exception has occurred.
 
 Evolving interfaces
 -------------------
@@ -260,7 +260,7 @@ Choose whichever is appropriate: if adding a new command, or a new command
 option, then you should be writing a UI test.  If you are both adding UI
 functionality and library functionality, you will want to write tests for 
 both the UI and the core behaviours.  We call UI tests 'blackbox' tests
-and they are found in bzrlib/tests/blackbox/*.py. 
+and they are found in ``bzrlib/tests/blackbox/*.py``. 
 
 When writing blackbox tests please honour the following conventions:
 
@@ -305,6 +305,7 @@ to run just the blackbox tests, run::
 
 To skip a particular test (or set of tests), you need to use a negative
 match, like so::
+
   ./bzr selftest '^(?!.*blackbox)'  
 
 
@@ -365,7 +366,7 @@ to the correct URL, because we don't know what encoding the server expects
 for those characters.  (Although this is not totally reliable we might still
 accept these and assume they should be put into UTF-8.)
 
-A similar edge case is that the url ``http://foo/sweet%2Fsour" contains
+A similar edge case is that the url ``http://foo/sweet%2Fsour`` contains
 one directory component whose name is "sweet/sour".  The escaped slash is
 not a directory separator.  If we try to convert URLs to regular Unicode
 paths this information will be lost.
@@ -374,6 +375,61 @@ This implies that Transports must natively deal with URLs; for simplicity
 they *only* deal with URLs and conversion of other strings to URLs is done
 elsewhere.  Information they return, such as from ``list_dir``, is also in
 the form of URL components.
+
+
+Unicode and Encoding Support
+============================
+
+This section discusses various techniques that Bazaar uses to handle
+characters that are outside the ASCII set.
+
+``Command.outf``
+----------------
+
+When a ``Command`` object is created, it is given a member variable
+accessible by ``self.outf``.  This is a file-like object, which is bound to
+``sys.stdout``, and should be used to write information to the screen,
+rather than directly writing to ``sys.stdout`` or calling ``print``.
+This file has the ability to translate Unicode objects into the correct
+representation, based on the console encoding.  Also, the class attribute
+``encoding_type`` will effect how unprintable characters will be
+handled.  This parameter can take one of 3 values:
+
+  replace
+    Unprintable characters will be represented with a suitable replacement
+    marker (typically '?'), and no exception will be raised. This is for
+    any command which generates text for the user to review, rather than
+    for automated processing.
+    For example: ``bzr log`` should not fail if one of the entries has text
+    that cannot be displayed.
+  
+  strict
+    Attempting to print and unprintable character will cause a UnicodeError.
+    This is for commands that are intended more as scripting support, rather
+    than plain user review.
+    For exampl: ``bzr ls`` is designed to be used with shell scripting. One
+    use would be ``bzr ls --null --unknows | xargs -0 rm``.  If ``bzr``
+    printed a filename with a '?', the wrong file could be deleted. (At the
+    very least, the correct file would not be deleted). An error is used to
+    indicate that the requested action could not be performed.
+  
+  exact
+    Do not attempt to automatically convert Unicode strings. This is used
+    for commands that must handle conversion themselves.
+    For example: ``bzr diff`` needs to translate Unicode paths, but should
+    not change the exact text of the contents of the files.
+
+
+``bzrlib.urlutils.unescape_for_display``
+----------------------------------------
+
+Because Transports work in URLs (as defined earlier), printing the raw URL
+to the user is usually less than optimal. Characters outside the standard
+set are printed as escapes, rather than the real character, and local
+paths would be printed as ``file://`` urls. The function
+``unescape_for_display`` attempts to unescape a URL, such that anything
+that cannot be printed in the current encoding stays an escaped URL, but
+valid characters are generated where possible.
 
 
 Merge/review process
@@ -417,6 +473,12 @@ If something gets say two +1 votes from core reviewers, and no
 vetos, then it's OK to come in.  Any of the core developers can bring it
 into their integration branch, which I'll merge regularly.  (If you do
 so, please reply and say so.)
+
+
+Making installers for OS Windows
+================================
+To build a win32 installer, see the instructions on the wiki page:
+http://bazaar-vcs.org/BzrWin32Installer
 
 
 :: vim: ft=rst tw=74 ai

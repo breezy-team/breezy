@@ -1,21 +1,22 @@
 # Copyright (C) 2005, 2006 Canonical
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter
+from bzrlib.symbol_versioning import deprecated_function, zero_nine
 
 
 class TreeDelta(object):
@@ -142,40 +143,19 @@ class TreeDelta(object):
             show_list(self.unchanged)
 
 
-def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None):
-    """Describe changes from one tree to another.
-
-    Returns a TreeDelta with details of added, modified, renamed, and
-    deleted entries.
-
-    The root entry is specifically exempt.
-
-    This only considers versioned files.
-
-    want_unchanged
-        If true, also list files unchanged from one version to
-        the next.
-
-    specific_files
-        If true, only check for changes to specified names or
-        files within them.  Any unversioned files given have no effect
-        (but this might change in the future).
-    """
-    # NB: show_status depends on being able to pass in non-versioned files and
-    # report them as unknown
-    old_tree.lock_read()
-    try:
-        new_tree.lock_read()
-        try:
-            return _compare_trees(old_tree, new_tree, want_unchanged,
-                                  specific_files)
-        finally:
-            new_tree.unlock()
-    finally:
-        old_tree.unlock()
+@deprecated_function(zero_nine)
+def compare_trees(old_tree, new_tree, want_unchanged=False,
+                  specific_files=None, extra_trees=None,
+                  require_versioned=False):
+    """compare_trees was deprecated in 0.10. Please see Tree.changes_from."""
+    return new_tree.changes_from(old_tree,
+        want_unchanged=want_unchanged,
+        specific_files=specific_files,
+        extra_trees=extra_trees,
+        require_versioned=require_versioned)
 
 
-def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
+def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
 
     from osutils import is_inside_any
     
@@ -186,8 +166,6 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
 
     # TODO: Rather than iterating over the whole tree and then filtering, we
     # could diff just the specified files (if any) and their subtrees.  
-    # Perhaps should take a list of file-ids instead?   Need to indicate any
-    # ids or names which were not found in the trees.
 
     old_files = old_tree.list_files()
     new_files = new_tree.list_files()
@@ -211,12 +189,9 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
         """We have matched up 2 file_ids, check for changes."""
         assert old_entry.kind == new_entry.kind
 
-        if old_entry.kind == 'root_directory':
-            return
-
-        if specific_files:
-            if (not is_inside_any(specific_files, old_path)
-                and not is_inside_any(specific_files, new_path)):
+        if specific_file_ids:
+            if (old_entry.file_id not in specific_file_ids and 
+                new_entry.file_id not in specific_file_ids):
                 return
 
         # temporary hack until all entries are populated before clients 
@@ -314,13 +289,13 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
 
     # Now we have a set of added and removed files, mark them all
     for old_path, old_entry in removed.itervalues():
-        if specific_files:
-            if not is_inside_any(specific_files, old_path):
+        if specific_file_ids:
+            if not old_entry.file_id in specific_file_ids:
                 continue
         delta.removed.append((old_path, old_entry.file_id, old_entry.kind))
     for new_path, new_entry in added.itervalues():
-        if specific_files:
-            if not is_inside_any(specific_files, new_path):
+        if specific_file_ids:
+            if not new_entry.file_id in specific_file_ids:
                 continue
         delta.added.append((new_path, new_entry.file_id, new_entry.kind))
 

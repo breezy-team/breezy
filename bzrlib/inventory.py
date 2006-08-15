@@ -34,8 +34,10 @@ import re
 import sys
 import tarfile
 import types
+from warnings import warn
 
 import bzrlib
+from bzrlib import errors, osutils
 from bzrlib.osutils import (pumpfile, quotefn, splitpath, joinpath,
                             pathjoin, sha_strings)
 from bzrlib.errors import (NotVersionedError, InvalidEntryName,
@@ -80,10 +82,11 @@ class InventoryEntry(object):
     InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None)
     >>> i.add(InventoryFile('2323', 'hello.c', parent_id='123'))
     InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None)
-    >>> shouldbe = {0: 'src', 1: pathjoin('src','hello.c')}
+    >>> shouldbe = {0: '', 1: 'src', 2: pathjoin('src','hello.c')}
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
     ... 
+    (True, InventoryDirectory('TREE_ROOT', '', parent_id=None, revision=None))
     (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None))
     (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None))
     >>> i.add(InventoryFile('2323', 'bye.c', '123'))
@@ -106,6 +109,7 @@ class InventoryEntry(object):
     ...     print path
     ...     assert i.path2id(path)
     ... 
+    <BLANKLINE>
     src
     src/bye.c
     src/hello.c
@@ -292,7 +296,7 @@ class InventoryEntry(object):
         """Return a short kind indicator useful for appending to names."""
         raise BzrError('unknown kind %r' % self.kind)
 
-    known_kinds = ('file', 'directory', 'symlink', 'root_directory')
+    known_kinds = ('file', 'directory', 'symlink')
 
     def _put_in_tar(self, item, tree):
         """populate item for stashing in a tar, and return the content stream.
@@ -309,8 +313,8 @@ class InventoryEntry(object):
         """
         fullpath = pathjoin(dest, dp)
         self._put_on_disk(fullpath, tree)
-        mutter("  export {%s} kind %s to %s", self.file_id,
-                self.kind, fullpath)
+        # mutter("  export {%s} kind %s to %s", self.file_id,
+        #         self.kind, fullpath)
 
     def _put_on_disk(self, fullpath, tree):
         """Put this entry onto disk at fullpath, from tree tree."""
@@ -407,7 +411,7 @@ class InventoryEntry(object):
         This means that all its fields are populated, that it has its
         text stored in the text store or weave.
         """
-        mutter('new parents of %s are %r', path, previous_entries)
+        # mutter('new parents of %s are %r', path, previous_entries)
         self._read_tree_state(path, work_tree)
         # TODO: Where should we determine whether to reuse a
         # previous revision id or create a new revision? 20060606
@@ -415,7 +419,7 @@ class InventoryEntry(object):
             # cannot be unchanged unless there is only one parent file rev.
             parent_ie = previous_entries.values()[0]
             if self._unchanged(parent_ie):
-                mutter("found unchanged entry")
+                # mutter("found unchanged entry")
                 self.revision = parent_ie.revision
                 return "unchanged"
         return self._snapshot_into_revision(revision, previous_entries, 
@@ -432,7 +436,7 @@ class InventoryEntry(object):
 
         :returns: String description of the commit (e.g. "merged", "modified"), etc.
         """
-        mutter('new revision {%s} for {%s}', revision, self.file_id)
+        # mutter('new revision {%s} for {%s}', revision, self.file_id)
         self.revision = revision
         self._snapshot_text(previous_entries, work_tree, commit_builder)
 
@@ -506,10 +510,13 @@ class RootEntry(InventoryEntry):
     def __init__(self, file_id):
         self.file_id = file_id
         self.children = {}
-        self.kind = 'root_directory'
+        self.kind = 'directory'
         self.parent_id = None
         self.name = u''
         self.revision = None
+        warn('RootEntry is deprecated as of bzr 0.10.  Please use '
+             'InventoryDirectory instead.',
+            DeprecationWarning, stacklevel=2)
 
     def __eq__(self, other):
         if not isinstance(other, RootEntry):
@@ -692,7 +699,6 @@ class InventoryFile(InventoryEntry):
 
     def _forget_tree_state(self):
         self.text_sha1 = None
-        self.executable = None
 
     def _snapshot_text(self, file_parents, work_tree, commit_builder):
         """See InventoryEntry._snapshot_text."""
@@ -840,7 +846,7 @@ class Inventory(object):
     May also look up by name:
 
     >>> [x[0] for x in inv.iter_entries()]
-    [u'hello.c']
+    ['', u'hello.c']
     >>> inv = Inventory('TREE_ROOT-12345678-12345678')
     >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
     InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678', sha1=None, len=None)
@@ -859,20 +865,26 @@ class Inventory(object):
         # root id. Rather than generating a random one here.
         #if root_id is None:
         #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
-        self.root = RootEntry(root_id)
+        if root_id is not None:
+            self._set_root(InventoryDirectory(root_id, '', None))
+        else:
+            self.root = None
+            self._byid = {}
         # FIXME: this isn't ever used, changing it to self.revision may break
         # things. TODO make everything use self.revision_id
         self.revision_id = revision_id
+
+    def _set_root(self, ie):
+        self.root = ie
         self._byid = {self.root.file_id: self.root}
 
     def copy(self):
         # TODO: jam 20051218 Should copy also copy the revision_id?
-        other = Inventory(self.root.file_id)
+        entries = self.iter_entries()
+        other = Inventory(entries.next()[1].file_id)
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
-        for path, entry in self.iter_entries():
-            if entry == self.root:
-                continue
+        for path, entry in entries():
             other.add(entry.copy())
         return other
 
@@ -888,6 +900,7 @@ class Inventory(object):
         if from_dir is None:
             assert self.root
             from_dir = self.root
+            yield '', self.root
         elif isinstance(from_dir, basestring):
             from_dir = self._byid[from_dir]
             
@@ -940,6 +953,7 @@ class Inventory(object):
         if from_dir is None:
             assert self.root
             from_dir = self.root
+            yield '', self.root
         elif isinstance(from_dir, basestring):
             from_dir = self._byid[from_dir]
             
@@ -1039,7 +1053,12 @@ class Inventory(object):
         if entry.file_id in self._byid:
             raise BzrError("inventory already contains entry with id {%s}" % entry.file_id)
 
-        if entry.parent_id == ROOT_ID or entry.parent_id is None:
+        if entry.parent_id is None:
+            assert self.root is None and len(self._byid) == 0
+            self._set_root(entry)
+            return entry
+        if entry.parent_id == ROOT_ID:
+            assert self.root is not None, self
             entry.parent_id = self.root.file_id
 
         try:
@@ -1062,12 +1081,12 @@ class Inventory(object):
 
         Returns the new entry object."""
         
-        parts = bzrlib.osutils.splitpath(relpath)
+        parts = osutils.splitpath(relpath)
 
         if len(parts) == 0:
             if file_id is None:
                 file_id = bzrlib.workingtree.gen_root_id()
-            self.root = RootEntry(file_id)
+            self.root = InventoryDirectory(file_id, '', None)
             self._byid = {self.root.file_id: self.root}
             return
         else:
@@ -1238,6 +1257,16 @@ def make_entry(kind, name, parent_id, file_id=None):
     """
     if file_id is None:
         file_id = bzrlib.workingtree.gen_file_id(name)
+
+    norm_name, can_access = osutils.normalized_filename(name)
+    if norm_name != name:
+        if can_access:
+            name = norm_name
+        else:
+            # TODO: jam 20060701 This would probably be more useful
+            #       if the error was raised with the full path
+            raise errors.InvalidNormalization(name)
+
     if kind == 'directory':
         return InventoryDirectory(file_id, name, parent_id)
     elif kind == 'file':
@@ -1246,7 +1275,6 @@ def make_entry(kind, name, parent_id, file_id=None):
         return InventoryLink(file_id, name, parent_id)
     else:
         raise BzrError("unknown kind %r" % kind)
-
 
 
 _NAME_RE = None

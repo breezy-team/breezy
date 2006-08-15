@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -110,8 +110,10 @@ def packages_to_test():
     import bzrlib.tests.bzrdir_implementations
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
+    import bzrlib.tests.intertree_implementations
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.revisionstore_implementations
+    import bzrlib.tests.tree_implementations
     import bzrlib.tests.workingtree_implementations
     return [
             bzrlib.doc,
@@ -120,8 +122,10 @@ def packages_to_test():
             bzrlib.tests.bzrdir_implementations,
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
+            bzrlib.tests.intertree_implementations,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.revisionstore_implementations,
+            bzrlib.tests.tree_implementations,
             bzrlib.tests.workingtree_implementations,
             ]
 
@@ -227,6 +231,9 @@ class _MyResult(unittest._TextTestResult):
             self.stream.write('E')
         elif self.dots:
             self.pb.update(self._ellipsise_unimportant_words('ERROR', 13), self.testsRun, None)
+            self.pb.note(self._ellipsise_unimportant_words(
+                            test.id() + ': ERROR',
+                            osutils.terminal_width()))
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -240,6 +247,9 @@ class _MyResult(unittest._TextTestResult):
             self.stream.write('F')
         elif self.dots:
             self.pb.update(self._ellipsise_unimportant_words('FAIL', 13), self.testsRun, None)
+            self.pb.note(self._ellipsise_unimportant_words(
+                            test.id() + ': FAIL',
+                            osutils.terminal_width()))
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -275,7 +285,14 @@ class _MyResult(unittest._TextTestResult):
         self.stream.flush()
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
-        unittest.TestResult.addSuccess(self, test)
+        try:
+            test.tearDown()
+        except KeyboardInterrupt:
+            raise
+        except:
+            self.addError(test, test.__exc_info())
+        else:
+            unittest.TestResult.addSuccess(self, test)
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
@@ -568,6 +585,8 @@ class TestCase(unittest.TestCase):
 
         Read contents into memory, close, and delete.
         """
+        if self._log_file is None:
+            return
         bzrlib.trace.disable_test_log(self._log_nonce)
         self._log_file.seek(0)
         self._log_contents = self._log_file.read()
@@ -590,7 +609,8 @@ class TestCase(unittest.TestCase):
         new_env = {
             'HOME': os.getcwd(),
             'APPDATA': os.getcwd(),
-            'BZREMAIL': None,
+            'BZR_EMAIL': None,
+            'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
         }
         self.__old_env = {}
@@ -754,6 +774,35 @@ class TestCase(unittest.TestCase):
         else:
             encoding = bzrlib.user_encoding
         return self.run_bzr(*args, **kwargs)[0].decode(encoding)
+
+    def run_bzr_error(self, error_regexes, *args, **kwargs):
+        """Run bzr, and check that stderr contains the supplied regexes
+        
+        :param error_regexes: Sequence of regular expressions which 
+            must each be found in the error output. The relative ordering
+            is not enforced.
+        :param args: command-line arguments for bzr
+        :param kwargs: Keyword arguments which are interpreted by run_bzr
+            This function changes the default value of retcode to be 3,
+            since in most cases this is run when you expect bzr to fail.
+        :return: (out, err) The actual output of running the command (in case you
+                 want to do more inspection)
+
+        Examples of use:
+            # Make sure that commit is failing because there is nothing to do
+            self.run_bzr_error(['no changes to commit'],
+                               'commit', '-m', 'my commit comment')
+            # Make sure --strict is handling an unknown file, rather than
+            # giving us the 'nothing to do' error
+            self.build_tree(['unknown'])
+            self.run_bzr_error(['Commit refused because there are unknown files'],
+                               'commit', '--strict', '-m', 'my commit comment')
+        """
+        kwargs.setdefault('retcode', 3)
+        out, err = self.run_bzr(*args, **kwargs)
+        for regex in error_regexes:
+            self.assertContainsRe(err, regex)
+        return out, err
 
     def run_bzr_subprocess(self, *args, **kwargs):
         """Run bzr in a subprocess for testing.
@@ -932,6 +981,8 @@ class TestCaseInTempDir(TestCase):
         shape is a sequence of file specifications.  If the final
         character is '/', a directory is created.
 
+        This assumes that all the elements in the tree being built are new.
+
         This doesn't add anything to a branch.
         :param line_endings: Either 'binary' or 'native'
                              in binary mode, exact contents are written
@@ -942,7 +993,7 @@ class TestCaseInTempDir(TestCase):
                           VFS's. If the transport is readonly or None,
                           "." is opened automatically.
         """
-        # XXX: It's OK to just create them using forward slashes on windows?
+        # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
             transport = get_transport(".")
         for name in shape:
@@ -957,7 +1008,14 @@ class TestCaseInTempDir(TestCase):
                 else:
                     raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
-                transport.put(urlutils.escape(name), StringIO(content))
+                # Technically 'put()' is the right command. However, put
+                # uses an AtomicFile, which requires an extra rename into place
+                # As long as the files didn't exist in the past, append() will
+                # do the same thing as put()
+                # On jam's machine, make_kernel_like_tree is:
+                #   put:    4.5-7.5s (averaging 6s)
+                #   append: 2.9-4.5s
+                transport.append(urlutils.escape(name), StringIO(content))
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
@@ -1196,6 +1254,12 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              lsprof_timed=None,
              bench_history=None):
     """Run the whole test suite under the enhanced runner"""
+    # XXX: Very ugly way to do this...
+    # Disable warning about old formats because we don't want it to disturb
+    # any blackbox tests.
+    from bzrlib import repository
+    repository._deprecation_warning_done = True
+
     global default_transport
     if transport is None:
         transport = default_transport
@@ -1224,6 +1288,7 @@ def test_suite():
     testmod_names = [
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_api',
+                   'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_bundle',
@@ -1236,7 +1301,6 @@ def test_suite():
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
-                   'bzrlib.tests.test_emptytree',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
@@ -1244,7 +1308,9 @@ def test_suite():
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_http',
+                   'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_identitymap',
+                   'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lockdir',
@@ -1267,7 +1333,6 @@ def test_suite():
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
-                   'bzrlib.tests.test_revprops',
                    'bzrlib.tests.test_revisiontree',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
@@ -1286,6 +1351,7 @@ def test_suite():
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
+                   'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
@@ -1303,10 +1369,10 @@ def test_suite():
         ]
     suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     from bzrlib.transport import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
-    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:

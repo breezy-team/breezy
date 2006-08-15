@@ -22,6 +22,7 @@ import time
 import unittest
 import warnings
 
+from bzrlib import osutils
 import bzrlib
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
@@ -323,6 +324,99 @@ class TestWorkingTreeProviderAdapter(TestCase):
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
 
+class TestTreeProviderAdapter(TestCase):
+    """Test the setup of tree_implementation tests."""
+
+    def test_adapted_tests(self):
+        # the tree implementation adapter is meant to setup one instance for
+        # each working tree format, and one additional instance that will
+        # use the default wt format, but create a revision tree for the tests.
+        # this means that the wt ones should have the workingtree_to_test_tree
+        # attribute set to 'return_parameter' and the revision one set to
+        # revision_tree_from_workingtree.
+
+        from bzrlib.tests.tree_implementations import (
+            TreeTestProviderAdapter,
+            return_parameter,
+            revision_tree_from_workingtree
+            )
+        from bzrlib.workingtree import WorkingTreeFormat
+        input_test = TestTreeProviderAdapter(
+            "test_adapted_tests")
+        server1 = "a"
+        server2 = "b"
+        formats = [("c", "C"), ("d", "D")]
+        adapter = TreeTestProviderAdapter(server1, server2, formats)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(3, len(tests))
+        default_format = WorkingTreeFormat.get_default_format()
+        self.assertEqual(tests[0].workingtree_format, formats[0][0])
+        self.assertEqual(tests[0].bzrdir_format, formats[0][1])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[0].workingtree_to_test_tree, return_parameter)
+        self.assertEqual(tests[1].workingtree_format, formats[1][0])
+        self.assertEqual(tests[1].bzrdir_format, formats[1][1])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+        self.assertEqual(tests[1].workingtree_to_test_tree, return_parameter)
+        self.assertEqual(tests[2].workingtree_format, default_format)
+        self.assertEqual(tests[2].bzrdir_format, default_format._matchingbzrdir)
+        self.assertEqual(tests[2].transport_server, server1)
+        self.assertEqual(tests[2].transport_readonly_server, server2)
+        self.assertEqual(tests[2].workingtree_to_test_tree,
+            revision_tree_from_workingtree)
+
+
+class TestInterTreeProviderAdapter(TestCase):
+    """A group of tests that test the InterTreeTestAdapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        # for InterTree tests we want the machinery to bring up two trees in
+        # each instance: the base one, and the one we are interacting with.
+        # because each optimiser can be direction specific, we need to test
+        # each optimiser in its chosen direction.
+        # unlike the TestProviderAdapter we dont want to automatically add a
+        # parameterised one for WorkingTree - the optimisers will tell us what
+        # ones to add.
+        from bzrlib.tests.tree_implementations import (
+            return_parameter,
+            revision_tree_from_workingtree
+            )
+        from bzrlib.tests.intertree_implementations import (
+            InterTreeTestProviderAdapter,
+            )
+        from bzrlib.workingtree import WorkingTreeFormat2, WorkingTreeFormat3
+        input_test = TestInterTreeProviderAdapter(
+            "test_adapted_tests")
+        server1 = "a"
+        server2 = "b"
+        format1 = WorkingTreeFormat2()
+        format2 = WorkingTreeFormat3()
+        formats = [(str, format1, format2, False, True),
+            (int, format2, format1, False, True)]
+        adapter = InterTreeTestProviderAdapter(server1, server2, formats)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].intertree_class, formats[0][0])
+        self.assertEqual(tests[0].workingtree_format, formats[0][1])
+        self.assertEqual(tests[0].workingtree_to_test_tree, formats[0][2])
+        self.assertEqual(tests[0].workingtree_format_to, formats[0][3])
+        self.assertEqual(tests[0].workingtree_to_test_tree_to, formats[0][4])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].intertree_class, formats[1][0])
+        self.assertEqual(tests[1].workingtree_format, formats[1][1])
+        self.assertEqual(tests[1].workingtree_to_test_tree, formats[1][2])
+        self.assertEqual(tests[1].workingtree_format_to, formats[1][3])
+        self.assertEqual(tests[1].workingtree_to_test_tree_to, formats[1][4])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+
 class TestTestCaseWithTransport(TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
@@ -395,6 +489,9 @@ class MockProgress(_BaseProgressBar):
     def clear(self):
         self.calls.append(('clear',))
 
+    def note(self, msg, *args):
+        self.calls.append(('note', msg, args))
+
 
 class TestTestResult(TestCase):
 
@@ -405,44 +502,54 @@ class TestTestResult(TestCase):
         mypb = MockProgress()
         mypb.update('Running tests', 0, 4)
         last_calls = mypb.calls[:]
+
         result = bzrlib.tests._MyResult(self._log_file,
                                         descriptions=0,
                                         verbosity=1,
                                         pb=mypb)
         self.assertEqual(last_calls, mypb.calls)
 
+        def shorten(s):
+            """Shorten a string based on the terminal width"""
+            return result._ellipsise_unimportant_words(s,
+                                 osutils.terminal_width())
+
         # an error 
         result.startTest(dummy_test)
         # starting a test prints the test name
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 0, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 0, None)]
+        self.assertEqual(last_calls, mypb.calls)
         result.addError(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', 'ERROR        ', 1, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', 'ERROR        ', 1, None),
+                       ('note', shorten(dummy_test.id() + ': ERROR'), ())
+                      ]
+        self.assertEqual(last_calls, mypb.calls)
 
         # a failure
         result.startTest(dummy_test)
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 1, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 1, None)]
+        self.assertEqual(last_calls, mypb.calls)
+        last_calls += [('update', 'FAIL         ', 2, None),
+                       ('note', shorten(dummy_test.id() + ': FAIL'), ())
+                      ]
         result.addFailure(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', 'FAIL         ', 2, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        self.assertEqual(last_calls, mypb.calls)
 
         # a success
         result.startTest(dummy_test)
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 2, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 2, None)]
+        self.assertEqual(last_calls, mypb.calls)
         result.addSuccess(dummy_test)
-        self.assertEqual(last_calls + [('update', 'OK           ', 3, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', 'OK           ', 3, None)]
+        self.assertEqual(last_calls, mypb.calls)
 
         # a skip
         result.startTest(dummy_test)
-        self.assertEqual(last_calls + [('update', '...tyle_quiet', 3, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', '...tyle_quiet', 3, None)]
+        self.assertEqual(last_calls, mypb.calls)
         result.addSkipped(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', 'SKIP         ', 4, None)], mypb.calls)
-        last_calls = mypb.calls[:]
+        last_calls += [('update', 'SKIP         ', 4, None)]
+        self.assertEqual(last_calls, mypb.calls)
 
     def test_elapsed_time_with_benchmarking(self):
         result = bzrlib.tests._MyResult(self._log_file,
@@ -539,14 +646,15 @@ class TestTestResult(TestCase):
         #           1        0            ???         ???       ???(sleep) 
         # and then repeated but with 'world', rather than 'hello'.
         # this should appear in the output stream of our test result.
-        self.assertContainsRe(result_stream.getvalue(), 
-            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)\n"
-            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
-            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?"
-            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n"
-            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
-            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?"
-            )
+        output = result_stream.getvalue()
+        self.assertContainsRe(output,
+            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)")
+        self.assertContainsRe(output,
+            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n")
+        self.assertContainsRe(output,
+            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?")
+        self.assertContainsRe(output,
+            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
 
 
 class TestRunner(TestCase):
@@ -727,17 +835,3 @@ class TestSelftest(TestCase):
         self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
-
-    def test_run_bzr_subprocess(self):
-        """The run_bzr_helper_external comand behaves nicely."""
-        result = self.run_bzr_subprocess('--version')
-        result = self.run_bzr_subprocess('--version', retcode=None)
-        self.assertContainsRe(result[0], 'is free software')
-        self.assertRaises(AssertionError, self.run_bzr_subprocess, 
-                          '--versionn')
-        result = self.run_bzr_subprocess('--versionn', retcode=3)
-        result = self.run_bzr_subprocess('--versionn', retcode=None)
-        self.assertContainsRe(result[1], 'unknown command')
-        err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
-                                      retcode=3)[1]
-        self.assertContainsRe(err, 'No known merge type magic merge')

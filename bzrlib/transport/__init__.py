@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -164,6 +164,21 @@ def split_url(url):
     return (scheme, username, password, host, port, path)
 
 
+class _CoalescedOffset(object):
+    """A data container for keeping track of coalesced offsets."""
+
+    __slots__ = ['start', 'length', 'ranges']
+
+    def __init__(self, start, length, ranges):
+        self.start = start
+        self.length = length
+        self.ranges = ranges
+
+    def __cmp__(self, other):
+        return cmp((self.start, self.length, self.ranges),
+                   (other.start, other.length, other.ranges))
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -175,6 +190,17 @@ class Transport(object):
     In general implementations should support having a generator or a list
     as an argument (ie always iterate, never index)
     """
+
+    # implementations can override this if it is more efficient
+    # for them to combine larger read chunks together
+    _max_readv_combine = 50
+    # It is better to read this much more data in order, rather
+    # than doing another seek. Even for the local filesystem,
+    # there is a benefit in just reading.
+    # TODO: jam 20060714 Do some real benchmarking to figure out
+    #       where the biggest benefit between combining reads and
+    #       and seeking is. Consider a runtime auto-tune.
+    _bytes_to_read_before_seek = 0
 
     def __init__(self, base):
         super(Transport, self).__init__()
@@ -307,7 +333,7 @@ class Transport(object):
         
         Note that some transports MAY allow querying on directories, but this
         is not part of the protocol.  In other words, the results of 
-        t.has("a_directory_name") are undefined."
+        t.has("a_directory_name") are undefined.
         """
         raise NotImplementedError(self.has)
 
@@ -353,43 +379,92 @@ class Transport(object):
         :offsets: A list of (offset, size) tuples.
         :return: A list or generator of (offset, data) tuples
         """
-        def do_combined_read(combined_offsets):
-            total_size = 0
-            for offset, size in combined_offsets:
-                total_size += size
-            mutter('readv coalesced %d reads.', len(combined_offsets))
-            offset = combined_offsets[0][0]
-            fp.seek(offset)
-            data = fp.read(total_size)
-            pos = 0
-            for offset, size in combined_offsets:
-                yield offset, data[pos:pos + size]
-                pos += size
-
-        if not len(offsets):
+        if not offsets:
             return
+
         fp = self.get(relpath)
-        pending_offsets = deque(offsets)
-        combined_offsets = []
-        while len(pending_offsets):
-            offset, size = pending_offsets.popleft()
-            if not combined_offsets:
-                combined_offsets = [[offset, size]]
+        return self._seek_and_read(fp, offsets)
+
+    def _seek_and_read(self, fp, offsets):
+        """An implementation of readv that uses fp.seek and fp.read.
+
+        This uses _coalesce_offsets to issue larger reads and fewer seeks.
+
+        :param fp: A file-like object that supports seek() and read(size)
+        :param offsets: A list of offsets to be read from the given file.
+        :return: yield (pos, data) tuples for each request
+        """
+        # We are going to iterate multiple times, we need a list
+        offsets = list(offsets)
+        sorted_offsets = sorted(offsets)
+
+        # turn the list of offsets into a stack
+        offset_stack = iter(offsets)
+        cur_offset_and_size = offset_stack.next()
+        coalesced = self._coalesce_offsets(sorted_offsets,
+                               limit=self._max_readv_combine,
+                               fudge_factor=self._bytes_to_read_before_seek)
+
+        # Cache the results, but only until they have been fulfilled
+        data_map = {}
+        for c_offset in coalesced:
+            # TODO: jam 20060724 it might be faster to not issue seek if 
+            #       we are already at the right location. This should be
+            #       benchmarked.
+            fp.seek(c_offset.start)
+            data = fp.read(c_offset.length)
+            for suboffset, subsize in c_offset.ranges:
+                key = (c_offset.start+suboffset, subsize)
+                data_map[key] = data[suboffset:suboffset+subsize]
+
+            # Now that we've read some data, see if we can yield anything back
+            while cur_offset_and_size in data_map:
+                this_data = data_map.pop(cur_offset_and_size)
+                yield cur_offset_and_size[0], this_data
+                cur_offset_and_size = offset_stack.next()
+
+    @staticmethod
+    def _coalesce_offsets(offsets, limit, fudge_factor):
+        """Yield coalesced offsets.
+
+        With a long list of neighboring requests, combine them
+        into a single large request, while retaining the original
+        offsets.
+        Turns  [(15, 10), (25, 10)] => [(15, 20, [(0, 10), (10, 10)])]
+
+        :param offsets: A list of (start, length) pairs
+        :param limit: Only combine a maximum of this many pairs
+                      Some transports penalize multiple reads more than
+                      others, and sometimes it is better to return early.
+                      0 means no limit
+        :param fudge_factor: All transports have some level of 'it is
+                better to read some more data and throw it away rather 
+                than seek', so collapse if we are 'close enough'
+        :return: yield _CoalescedOffset objects, which have members for wher
+                to start, how much to read, and how to split those 
+                chunks back up
+        """
+        last_end = None
+        cur = _CoalescedOffset(None, None, [])
+
+        for start, size in offsets:
+            end = start + size
+            if (last_end is not None 
+                and start <= last_end + fudge_factor
+                and start >= cur.start
+                and (limit <= 0 or len(cur.ranges) < limit)):
+                cur.length = end - cur.start
+                cur.ranges.append((start-cur.start, size))
             else:
-                if (len (combined_offsets) < 50 and
-                    combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
-                    # combatible offset:
-                    combined_offsets.append([offset, size])
-                else:
-                    # incompatible, or over the threshold issue a read and yield
-                    pending_offsets.appendleft((offset, size))
-                    for result in do_combined_read(combined_offsets):
-                        yield result
-                    combined_offsets = []
-        # whatever is left is a single coalesced request
-        if len(combined_offsets):
-            for result in do_combined_read(combined_offsets):
-                yield result
+                if cur.start is not None:
+                    yield cur
+                cur = _CoalescedOffset(start, size, [(0, size)])
+            last_end = end
+
+        if cur.start is not None:
+            yield cur
+
+        return
 
     def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
@@ -440,11 +515,13 @@ class Transport(object):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """Append the text in the file-like or string object to 
         the supplied location.
 
         returns the length of f before the content was written to it.
+        
+        If the file does not exist, it is created with the supplied mode.
         """
         raise NotImplementedError(self.append)
 
@@ -698,12 +775,14 @@ def get_transport(base):
     if base is None:
         base = '.'
 
+    last_err = None
+
     def convert_path_to_url(base, error_str):
         m = _urlRE.match(base)
         if m:
             # This looks like a URL, but we weren't able to 
             # instantiate it as such raise an appropriate error
-            raise errors.InvalidURL(base, error_str % m.group('proto'))
+            raise errors.UnsupportedProtocol(base, last_err)
         # This doesn't look like a protocol, consider it a local path
         new_base = urlutils.local_path_to_url(base)
         mutter('converting os path %r => url %s', base, new_base)
@@ -719,7 +798,7 @@ def get_transport(base):
     
     for proto, factory_list in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
-            t = _try_transport_factories(base, factory_list)
+            t, last_err = _try_transport_factories(base, factory_list)
             if t:
                 return t
 
@@ -728,18 +807,20 @@ def get_transport(base):
     base = convert_path_to_url(base, 'Unsupported protocol: %s')
 
     # The default handler is the filesystem handler, stored as protocol None
-    return _try_transport_factories(base, _protocol_handlers[None])
+    return _try_transport_factories(base, _protocol_handlers[None])[0]
 
 
 def _try_transport_factories(base, factory_list):
+    last_err = None
     for factory in factory_list:
         try:
-            return factory(base)
+            return factory(base), None
         except DependencyNotPresent, e:
             mutter("failed to instantiate transport %r for %r: %r" %
                     (factory, base, e))
+            last_err = e
             continue
-    return None
+    return None, last_err
 
 
 class Server(object):

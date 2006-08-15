@@ -109,7 +109,7 @@ class BundleInfo(object):
         split up, based on the assumptions that can be made
         when information is missing.
         """
-        from bzrlib.bundle.common import unpack_highres_date
+        from bzrlib.bundle.serializer import unpack_highres_date
         # Put in all of the guessable information.
         if not self.timestamp and self.date:
             self.timestamp, self.timezone = unpack_highres_date(self.date)
@@ -652,6 +652,7 @@ class BundleTree(Tree):
             inv = Inventory(root_id, self.revision_id)
         except TypeError:
             inv = Inventory(revision_id=self.revision_id)
+        inv.root.revision = self.get_last_changed(root_id)
 
         def add_entry(file_id):
             path = self.id2path(file_id)
@@ -723,4 +724,7 @@ def patched_file(file_patch, original):
     from bzrlib.iterablefile import IterableFile
     if file_patch == "":
         return IterableFile(())
-    return IterableFile(iter_patched(original, file_patch.splitlines(True)))
+    # string.splitlines(True) also splits on '\r', but the iter_patched code
+    # only expects to iterate over '\n' style lines
+    return IterableFile(iter_patched(original,
+                StringIO(file_patch).readlines()))

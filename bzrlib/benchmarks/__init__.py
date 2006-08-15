@@ -14,93 +14,104 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
 """Benchmark test suite for bzr."""
 
-import bzrlib
+from bzrlib import (
+    plugin,
+    )
 from bzrlib.tests.TestUtil import TestLoader
-from bzrlib.bzrdir import BzrDir
 from bzrlib.tests.blackbox import ExternalBase
+
 
 class Benchmark(ExternalBase):
 
-    def make_kernel_like_tree(self, url=None):
+    def make_kernel_like_tree(self, url=None, root='.',
+                              link_working=False):
         """Setup a temporary tree roughly like a kernel tree.
         
         :param url: Creat the kernel like tree as a lightweight checkout
         of a new branch created at url.
+        :param link_working: instead of creating a new copy of all files
+            just hardlink the working tree. Tests must request this, because
+            they must break links if they want to change the files
         """
-        # a kernel tree has ~10000 and 500 directory, with most files around 
-        # 3-4 levels deep. 
-        # we simulate this by three levels of dirs named 0-7, givin 512 dirs,
-        # and 20 files each.
-        if url is not None:
-            b = bzrlib.bzrdir.BzrDir.create_branch_convenience(url)
-            d = bzrlib.bzrdir.BzrDir.create('.')
-            bzrlib.branch.BranchReferenceFormat().initialize(d, b)
-            d.create_workingtree()
-        else:
-            self.run_bzr('init')
-        files = []
-        for outer in range(8):
-            files.append("%s/" % outer)
-            for middle in range(8):
-                files.append("%s/%s/" % (outer, middle))
-                for inner in range(8):
-                    prefix = "%s/%s/%s/" % (outer, middle, inner)
-                    files.append(prefix)
-                    files.extend([prefix + str(foo) for foo in range(20)])
-        self.build_tree(files)
+        from bzrlib.benchmarks.tree_creator.kernel_like import (
+            KernelLikeTreeCreator,
+            )
+        creator = KernelLikeTreeCreator(self, link_working=link_working,
+                                        url=url)
+        return creator.create(root=root)
 
-    def make_many_commit_tree(self, directory_name='.'):
+    def make_kernel_like_added_tree(self, root='.',
+                                    link_working=True,
+                                    hot_cache=True):
+        """Make a kernel like tree, with all files added
+
+        :param root: Where to create the files
+        :param link_working: Instead of copying all of the working tree
+            files, just hardlink them to the cached files. Tests can unlink
+            files that they will change.
+        :param hot_cache: Run through the newly created tree and make sure
+            the stat-cache is correct. The old way of creating a freshly
+            added tree always had a hot cache.
+        """
+        from bzrlib.benchmarks.tree_creator.kernel_like import (
+            KernelLikeAddedTreeCreator,
+            )
+        creator = KernelLikeAddedTreeCreator(self, link_working=link_working,
+                                             hot_cache=hot_cache)
+        return creator.create(root=root)
+
+    def make_kernel_like_committed_tree(self, root='.',
+                                    link_working=True,
+                                    link_bzr=False,
+                                    hot_cache=True):
+        """Make a kernel like tree, with all files added and committed
+
+        :param root: Where to create the files
+        :param link_working: Instead of copying all of the working tree
+            files, just hardlink them to the cached files. Tests can unlink
+            files that they will change.
+        :param link_bzr: Hardlink the .bzr directory. For readonly 
+            operations this is safe, and shaves off a lot of setup time
+        """
+        from bzrlib.benchmarks.tree_creator.kernel_like import (
+            KernelLikeCommittedTreeCreator,
+            )
+        creator = KernelLikeCommittedTreeCreator(self,
+                                                 link_working=link_working,
+                                                 link_bzr=link_bzr,
+                                                 hot_cache=hot_cache)
+        return creator.create(root=root)
+
+    def make_many_commit_tree(self, directory_name='.',
+                              hardlink=False):
         """Create a tree with many commits.
         
-        No files change are included.
+        No file changes are included. Not hardlinking the working tree, 
+        because there are no working tree files.
         """
-        tree = BzrDir.create_standalone_workingtree(directory_name)
-        tree.lock_write()
-        tree.branch.lock_write()
-        tree.branch.repository.lock_write()
-        try:
-            for i in xrange(1000):
-                tree.commit('no-changes commit %d' % i)
-        finally:
-            try:
-                try:
-                    tree.branch.repository.unlock()
-                finally:
-                    tree.branch.unlock()
-            finally:
-                tree.unlock()
-        return tree
+        from bzrlib.benchmarks.tree_creator.simple_many_commit import (
+            SimpleManyCommitTreeCreator,
+            )
+        creator = SimpleManyCommitTreeCreator(self, link_bzr=hardlink)
+        return creator.create(root=directory_name)
 
-    def make_heavily_merged_tree(self, directory_name='.'):
+    def make_heavily_merged_tree(self, directory_name='.',
+                                 hardlink=False):
         """Create a tree in which almost every commit is a merge.
        
-        No files change are included.  This produces two trees, 
+        No file changes are included.  This produces two trees, 
         one of which is returned.  Except for the first commit, every
         commit in its revision-history is a merge another commit in the other
-        tree.
+        tree.  Not hardlinking the working tree, because there are no working 
+        tree files.
         """
-        tree = BzrDir.create_standalone_workingtree(directory_name)
-        tree.lock_write()
-        try:
-            tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
-            tree2.lock_write()
-            try:
-                for i in xrange(250):
-                    revision_id = tree.commit('no-changes commit %d-a' % i)
-                    tree2.branch.fetch(tree.branch, revision_id)
-                    tree2.set_pending_merges([revision_id])
-                    revision_id = tree2.commit('no-changes commit %d-b' % i)
-                    tree.branch.fetch(tree2.branch, revision_id)
-                    tree.set_pending_merges([revision_id])
-                tree.set_pending_merges([])
-            finally:
-                tree.unlock()
-        finally:
-            tree2.unlock()
-        return tree
+        from bzrlib.benchmarks.tree_creator.heavily_merged import (
+            HeavilyMergedTreeCreator,
+            )
+        creator = HeavilyMergedTreeCreator(self, link_bzr=hardlink)
+        return creator.create(root=directory_name)
 
 
 def test_suite():
@@ -118,4 +129,11 @@ def test_suite():
                    'bzrlib.benchmarks.bench_transform',
                    'bzrlib.benchmarks.bench_workingtree',
                    ]
-    return TestLoader().loadTestsFromModuleNames(testmod_names)
+    suite = TestLoader().loadTestsFromModuleNames(testmod_names) 
+
+    # Load any benchmarks from plugins
+    for name, module in plugin.all_plugins().items():
+        if getattr(module, 'bench_suite', None) is not None:
+            suite.addTest(module.bench_suite())
+
+    return suite

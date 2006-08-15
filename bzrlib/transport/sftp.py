@@ -1,16 +1,16 @@
 # Copyright (C) 2005 Robey Pointer <robey@lag.net>
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -19,10 +19,12 @@
 
 import errno
 import getpass
+import itertools
 import os
 import random
 import re
 import select
+import socket
 import stat
 import subprocess
 import sys
@@ -40,7 +42,7 @@ from bzrlib.errors import (ConnectionError,
                            PathError,
                            ParamikoNotPresent,
                            )
-from bzrlib.osutils import pathjoin, fancy_rename
+from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import (
     register_urlparse_netloc_protocol,
@@ -101,10 +103,15 @@ def os_specific_subprocess_params():
                 }
 
 
-# don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
-_default_do_prefetch = False
-if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 5):
-    _default_do_prefetch = True
+_paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
+# don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
+_default_do_prefetch = (_paramiko_version >= (1, 5, 5))
+
+# Paramiko 1.5 tries to open a socket.AF_UNIX in order to connect
+# to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
+# so we get an AttributeError exception. So we will not try to
+# connect to an agent if we are on win32 and using Paramiko older than 1.6
+_use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
 
 
 _ssh_vendor = None
@@ -305,10 +312,25 @@ class SFTPLock(object):
 
 
 class SFTPTransport (Transport):
-    """
-    Transport implementation for SFTP access.
-    """
+    """Transport implementation for SFTP access"""
+
     _do_prefetch = _default_do_prefetch
+    # TODO: jam 20060717 Conceivably these could be configurable, either
+    #       by auto-tuning at run-time, or by a configuration (per host??)
+    #       but the performance curve is pretty flat, so just going with
+    #       reasonable defaults.
+    _max_readv_combine = 200
+    # Having to round trip to the server means waiting for a response,
+    # so it is better to download extra bytes.
+    # 8KiB had good performance for both local and remote network operations
+    _bytes_to_read_before_seek = 8192
+
+    # The sftp spec says that implementations SHOULD allow reads
+    # to be at least 32K. paramiko.readv() does an async request
+    # for the chunks. So we need to keep it within a single request
+    # size for paramiko <= 1.6.1. paramiko 1.6.2 will probably chop
+    # up the request itself, rather than us having to worry about it
+    _max_request_size = 32768
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
@@ -375,6 +397,7 @@ class SFTPTransport (Transport):
                 basepath.append(p)
 
         path = '/'.join(basepath)
+        # mutter('relpath => remotepath %s => %s', relpath, path)
         return path
 
     def relpath(self, abspath):
@@ -419,24 +442,121 @@ class SFTPTransport (Transport):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
 
-    def get_partial(self, relpath, start, length=None):
-        """
-        Get just part of a file.
+    def readv(self, relpath, offsets):
+        """See Transport.readv()"""
+        # We overload the default readv() because we want to use a file
+        # that does not have prefetch enabled.
+        # Also, if we have a new paramiko, it implements an async readv()
+        if not offsets:
+            return
 
-        :param relpath: Path to the file, relative to base
-        :param start: The starting position to read from
-        :param length: The length to read. A length of None indicates
-                       read to the end of the file.
-        :return: A file-like object containing at least the specified bytes.
-                 Some implementations may return objects which can be read
-                 past this length, but this is not guaranteed.
+        try:
+            path = self._remote_path(relpath)
+            fp = self._sftp.file(path, mode='rb')
+            readv = getattr(fp, 'readv', None)
+            if readv:
+                return self._sftp_readv(fp, offsets)
+            mutter('seek and read %s offsets', len(offsets))
+            return self._seek_and_read(fp, offsets)
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, path, ': error retrieving')
+
+    def _sftp_readv(self, fp, offsets):
+        """Use the readv() member of fp to do async readv.
+
+        And then read them using paramiko.readv(). paramiko.readv()
+        does not support ranges > 64K, so it caps the request size, and
+        just reads until it gets all the stuff it wants
         """
-        # TODO: implement get_partial_multi to help with knit support
-        f = self.get(relpath)
-        f.seek(start)
-        if self._do_prefetch and hasattr(f, 'prefetch'):
-            f.prefetch()
-        return f
+        offsets = list(offsets)
+        sorted_offsets = sorted(offsets)
+
+        # The algorithm works as follows:
+        # 1) Coalesce nearby reads into a single chunk
+        #    This generates a list of combined regions, the total size
+        #    and the size of the sub regions. This coalescing step is limited
+        #    in the number of nearby chunks to combine, and is allowed to
+        #    skip small breaks in the requests. Limiting it makes sure that
+        #    we can start yielding some data earlier, and skipping means we
+        #    make fewer requests. (Beneficial even when using async)
+        # 2) Break up this combined regions into chunks that are smaller
+        #    than 64KiB. Technically the limit is 65536, but we are a
+        #    little bit conservative. This is because sftp has a maximum
+        #    return chunk size of 64KiB (max size of an unsigned short)
+        # 3) Issue a readv() to paramiko to create an async request for
+        #    all of this data
+        # 4) Read in the data as it comes back, until we've read one
+        #    continuous section as determined in step 1
+        # 5) Break up the full sections into hunks for the original requested
+        #    offsets. And put them in a cache
+        # 6) Check if the next request is in the cache, and if it is, remove
+        #    it from the cache, and yield its data. Continue until no more
+        #    entries are in the cache.
+        # 7) loop back to step 4 until all data has been read
+        #
+        # TODO: jam 20060725 This could be optimized one step further, by
+        #       attempting to yield whatever data we have read, even before
+        #       the first coallesced section has been fully processed.
+
+        # When coalescing for use with readv(), we don't really need to
+        # use any fudge factor, because the requests are made asynchronously
+        coalesced = list(self._coalesce_offsets(sorted_offsets,
+                               limit=self._max_readv_combine,
+                               fudge_factor=0,
+                               ))
+        requests = []
+        for c_offset in coalesced:
+            start = c_offset.start
+            size = c_offset.length
+
+            # We need to break this up into multiple requests
+            while size > 0:
+                next_size = min(size, self._max_request_size)
+                requests.append((start, next_size))
+                size -= next_size
+                start += next_size
+
+        mutter('SFTP.readv() %s offsets => %s coalesced => %s requests',
+                len(offsets), len(coalesced), len(requests))
+
+        # Queue the current read until we have read the full coalesced section
+        cur_data = []
+        cur_data_len = 0
+        cur_coalesced_stack = iter(coalesced)
+        cur_coalesced = cur_coalesced_stack.next()
+
+        # Cache the results, but only until they have been fulfilled
+        data_map = {}
+        # turn the list of offsets into a stack
+        offset_stack = iter(offsets)
+        cur_offset_and_size = offset_stack.next()
+
+        for data in fp.readv(requests):
+            cur_data += data
+            cur_data_len += len(data)
+
+            if cur_data_len < cur_coalesced.length:
+                continue
+            assert cur_data_len == cur_coalesced.length, \
+                "Somehow we read too much: %s != %s" % (cur_data_len,
+                                                        cur_coalesced.length)
+            all_data = ''.join(cur_data)
+            cur_data = []
+            cur_data_len = 0
+
+            for suboffset, subsize in cur_coalesced.ranges:
+                key = (cur_coalesced.start+suboffset, subsize)
+                data_map[key] = all_data[suboffset:suboffset+subsize]
+
+            # Now that we've read some data, see if we can yield anything back
+            while cur_offset_and_size in data_map:
+                this_data = data_map.pop(cur_offset_and_size)
+                yield cur_offset_and_size[0], this_data
+                cur_offset_and_size = offset_stack.next()
+
+            # Now that we've read all of the data for this coalesced section
+            # on to the next
+            cur_coalesced = cur_coalesced_stack.next()
 
     def put(self, relpath, f, mode=None):
         """
@@ -498,8 +618,8 @@ class SFTPTransport (Transport):
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
+        path = self._remote_path(relpath)
         try:
-            path = self._remote_path(relpath)
             # In the paramiko documentation, it says that passing a mode flag 
             # will filtered against the server umask.
             # StubSFTPServer does not do this, which would be nice, because it is
@@ -711,9 +831,21 @@ class SFTPTransport (Transport):
                                       % (self._host, self._port, e))
             self._sftp = SFTPClient(LoopbackSFTP(sock))
         elif vendor != 'none':
-            sock = SFTPSubprocess(self._host, vendor, self._port,
-                                  self._username)
-            self._sftp = SFTPClient(sock)
+            try:
+                sock = SFTPSubprocess(self._host, vendor, self._port,
+                                      self._username)
+                self._sftp = SFTPClient(sock)
+            except (EOFError, paramiko.SSHException), e:
+                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                      % (self._host, self._port, e))
+            except (OSError, IOError), e:
+                # If the machine is fast enough, ssh can actually exit
+                # before we try and send it the sftp request, which
+                # raises a Broken Pipe
+                if e.errno not in (errno.EPIPE,):
+                    raise
+                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                      % (self._host, self._port, e))
         else:
             self._paramiko_connect()
 
@@ -728,7 +860,7 @@ class SFTPTransport (Transport):
             t = paramiko.Transport((self._host, self._port or 22))
             t.set_log_channel('bzr.paramiko')
             t.start_client()
-        except paramiko.SSHException, e:
+        except (paramiko.SSHException, socket.error), e:
             raise ConnectionError('Unable to reach SSH host %s:%s: %s' 
                                   % (self._host, self._port, e))
             
@@ -773,11 +905,7 @@ class SFTPTransport (Transport):
         # Also, it would mess up the self.relpath() functionality
         username = self._username or getpass.getuser()
 
-        # Paramiko tries to open a socket.AF_UNIX in order to connect
-        # to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
-        # so we get an AttributeError exception. For now, just don't try to
-        # connect to an agent if we are on win32
-        if sys.platform != 'win32':
+        if _use_ssh_agent:
             agent = paramiko.Agent()
             for key in agent.get_keys():
                 mutter('Trying SSH agent key %s' % paramiko.util.hexify(key.get_fingerprint()))
@@ -850,6 +978,7 @@ class SFTPTransport (Transport):
         :param mode: The mode permissions bits for the new file
         """
         path = self._sftp._adjust_cwd(abspath)
+        # mutter('sftp abspath %s => %s', abspath, path)
         attr = SFTPAttributes()
         if mode is not None:
             attr.st_mode = mode
@@ -959,7 +1088,7 @@ class SFTPServer(Server):
 
     def _run_server(self, s):
         ssh_server = paramiko.Transport(s)
-        key_file = os.path.join(self._homedir, 'test_rsa.key')
+        key_file = pathjoin(self._homedir, 'test_rsa.key')
         f = open(key_file, 'w')
         f.write(STUB_SERVER_KEY)
         f.close()
@@ -977,11 +1106,17 @@ class SFTPServer(Server):
         global _ssh_vendor
         self._original_vendor = _ssh_vendor
         _ssh_vendor = self._vendor
-        self._homedir = os.getcwd()
+        if sys.platform == 'win32':
+            # Win32 needs to use the UNICODE api
+            self._homedir = getcwd()
+        else:
+            # But Linux SFTP servers should just deal in bytestreams
+            self._homedir = os.getcwd()
         if self._server_homedir is None:
             self._server_homedir = self._homedir
         self._root = '/'
-        # FIXME WINDOWS: _root should be _server_homedir[0]:/
+        if sys.platform == 'win32':
+            self._root = ''
         self._listener = SocketListener(self._run_server)
         self._listener.setDaemon(True)
         self._listener.start()
@@ -994,10 +1129,12 @@ class SFTPServer(Server):
 
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
-        # this is chosen to try to prevent trouble with proxies, wierd dns,
-        # etc
-        return 'sftp://127.0.0.1:1/'
-
+        # this is chosen to try to prevent trouble with proxies, wierd dns, etc
+        # we bind a random socket, so that we get a guaranteed unused port
+        # we just never listen on that port
+        s = socket.socket()
+        s.bind(('localhost', 0))
+        return 'sftp://%s:%s/' % s.getsockname()
 
 
 class SFTPFullAbsoluteServer(SFTPServer):
@@ -1030,7 +1167,17 @@ class SFTPServerWithoutSSH(SFTPServer):
 
         server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
                                      root=self._root, home=self._server_homedir)
-        server.start_subsystem('sftp', None, sock)
+        try:
+            server.start_subsystem('sftp', None, sock)
+        except socket.error, e:
+            if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
+                # it's okay for the client to disconnect abruptly
+                # (bug in paramiko 1.6: it should absorb this exception)
+                pass
+            else:
+                raise
+        except Exception, e:
+            import sys; sys.stderr.write('\nEXCEPTION %r\n\n' % e.__class__)
         server.finish_subsystem()
 
 
@@ -1039,7 +1186,10 @@ class SFTPAbsoluteServer(SFTPServerWithoutSSH):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
+        if sys.platform == 'win32':
+            return self._get_sftp_url(urlutils.escape(self._homedir))
+        else:
+            return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
 
 
 class SFTPHomeDirServer(SFTPServerWithoutSSH):

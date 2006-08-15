@@ -1,5 +1,5 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -16,8 +16,7 @@
 
 
 # XXX: Can we do any better about making interrupted commits change
-# nothing?  Perhaps the best approach is to integrate commit of
-# AtomicFiles with releasing the lock on the Branch.
+# nothing?  
 
 # TODO: Separate 'prepare' phase where we find a list of potentially
 # committed files.  We then can then pause the commit to prompt for a
@@ -71,7 +70,6 @@ import warnings
 
 from cStringIO import StringIO
 
-from bzrlib.atomicfile import AtomicFile
 import bzrlib.config
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
@@ -308,8 +306,11 @@ class Commit(object):
                 raise PointlessCommit()
 
             self._emit_progress_update()
-            # TODO: Now the new inventory is known, check for conflicts and prompt the 
-            # user for a commit message.
+            # TODO: Now the new inventory is known, check for conflicts and
+            # prompt the user for a commit message.
+            # ADHB 2006-08-08: If this is done, populate_new_inv should not add
+            # weave lines, because nothing should be recorded until it is known
+            # that commit will succeed.
             self.builder.finish_inventory()
             self._emit_progress_update()
             self.rev_id = self.builder.commit(self.message)
@@ -497,21 +498,29 @@ class Commit(object):
         None; inventory entries that are carried over untouched have their
         revision set to their prior value.
         """
+        # ESEPARATIONOFCONCERNS: this function is diffing and using the diff
+        # results to create a new inventory at the same time, which results
+        # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
+        # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
-        # iter_entries does not visit the ROOT_ID node so we need to call
-        # self._emit_progress_update once by hand.
-        self._emit_progress_update()
-        for path, new_ie in self.work_inv.iter_entries():
+        entries = self.work_inv.iter_entries()
+        if not self.builder.record_root_entry:
+            warnings.warn('CommitBuilders should support recording the root'
+                ' entry as of bzr 0.10.', DeprecationWarning, stacklevel=1)
+            self.builder.new_inventory.add(self.basis_inv.root.copy())
+            entries.next()
+            self._emit_progress_update()
+        for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id
-            mutter('check %s {%s}', path, file_id)
+            # mutter('check %s {%s}', path, file_id)
             if (not self.specific_files or 
                 is_inside_or_parent_of_any(self.specific_files, path)):
-                    mutter('%s selected for commit', path)
+                    # mutter('%s selected for commit', path)
                     ie = new_ie.copy()
                     ie.revision = None
             else:
-                mutter('%s not selected for commit', path)
+                # mutter('%s not selected for commit', path)
                 if self.basis_inv.has_id(file_id):
                     ie = self.basis_inv[file_id].copy()
                 else:
@@ -533,6 +542,20 @@ class Commit(object):
                 self.reporter.renamed(change, old_path, path)
             else:
                 self.reporter.snapshot_change(change, path)
+
+        if not self.specific_files:
+            return
+
+        # ignore removals that don't match filespec
+        for path, new_ie in self.basis_inv.iter_entries():
+            if new_ie.file_id in self.work_inv:
+                continue
+            if is_inside_any(self.specific_files, path):
+                continue
+            ie = new_ie.copy()
+            ie.revision = None
+            self.builder.record_entry_contents(ie, self.parent_invs, path,
+                                               self.basis_tree)
 
     def _emit_progress_update(self):
         """Emit an update to the progress bar."""

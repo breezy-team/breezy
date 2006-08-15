@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -20,30 +20,34 @@ from cStringIO import StringIO
 import re
 import time
 from unittest import TestSuite
+from warnings import warn
 
 from bzrlib import bzrdir, check, delta, gpg, errors, xml5, ui, transactions, osutils
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.graph import Graph
 from bzrlib.inter import InterObject
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
 from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import (safe_unicode, rand_bytes, compact_date, 
                             local_time_offset)
 from bzrlib.revision import NULL_REVISION, Revision
+from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore, WeaveStore
 from bzrlib.store.text import TextStore
 from bzrlib.symbol_versioning import (deprecated_method,
         zero_nine, 
         )
-from bzrlib.trace import mutter, note
-from bzrlib.tree import RevisionTree, EmptyTree
-from bzrlib.tsort import topo_sort
 from bzrlib.testament import Testament
-from bzrlib.tree import EmptyTree
+from bzrlib.trace import mutter, note, warning
+from bzrlib.tsort import topo_sort
 from bzrlib.weave import WeaveFile
+
+
+# Old formats display a warning, but only once
+_deprecation_warning_done = False
 
 
 class Repository(object):
@@ -70,6 +74,7 @@ class Repository(object):
         assert inv.revision_id is None or inv.revision_id == revid, \
             "Mismatch between inventory revision" \
             " id and insertion revid (%r, %r)" % (inv.revision_id, revid)
+        assert inv.root is not None
         inv_text = xml5.serializer_v5.write_inventory_to_string(inv)
         inv_sha1 = osutils.sha_string(inv_text)
         inv_vf = self.control_weaves.get_weave('inventory',
@@ -189,6 +194,7 @@ class Repository(object):
         self.control_weaves = control_store
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
+        self._warn_if_deprecated()
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, 
@@ -256,8 +262,8 @@ class Repository(object):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
-        return CommitBuilder(self, parents, config, timestamp, timezone,
-                             committer, revprops, revision_id)
+        return _CommitBuilder(self, parents, config, timestamp, timezone,
+                              committer, revprops, revision_id)
 
     def unlock(self):
         self.control_files.unlock()
@@ -347,10 +353,10 @@ class Repository(object):
                      t in self.revision_trees(required_trees))
         for revision in revisions:
             if not revision.parent_ids:
-                old_tree = EmptyTree()
+                old_tree = self.revision_tree(None)
             else:
                 old_tree = trees[revision.parent_ids[0]]
-            yield delta.compare_trees(old_tree, trees[revision.revision_id])
+            yield trees[revision.revision_id].changes_from(old_tree)
 
     @needs_read_lock
     def get_revision_delta(self, revision_id):
@@ -444,7 +450,9 @@ class Repository(object):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
-        return xml5.serializer_v5.read_inventory_from_string(xml)
+        result = xml5.serializer_v5.read_inventory_from_string(xml)
+        result.root.revision = revision_id
+        return result
 
     @needs_read_lock
     def get_inventory_xml(self, revision_id):
@@ -466,8 +474,14 @@ class Repository(object):
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
         
+        :param revision_id: The revision_id to get a graph from. If None, then
+        the entire revision graph is returned. This is a deprecated mode of
+        operation and will be removed in the future.
         :return: a dictionary of revision_id->revision_parents_list.
         """
+        # special case NULL_REVISION
+        if revision_id == NULL_REVISION:
+            return {}
         weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(weave.versions())
         entire_graph = dict([(node, weave.get_parents(node)) for 
@@ -501,7 +515,10 @@ class Repository(object):
             required = set([])
         else:
             pending = set(revision_ids)
-            required = set(revision_ids)
+            # special case NULL_REVISION
+            if NULL_REVISION in pending:
+                pending.remove(NULL_REVISION)
+            required = set(pending)
         done = set([])
         while len(pending):
             revision_id = pending.pop()
@@ -556,12 +573,12 @@ class Repository(object):
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
-        `revision_id` may be None for the null revision, in which case
-        an `EmptyTree` is returned."""
+        `revision_id` may be None for the empty tree revision.
+        """
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id is None or revision_id == NULL_REVISION:
-            return EmptyTree()
+            return RevisionTree(self, Inventory(), NULL_REVISION)
         else:
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
@@ -672,6 +689,14 @@ class Repository(object):
         result.check()
         return result
 
+    def _warn_if_deprecated(self):
+        global _deprecation_warning_done
+        if _deprecation_warning_done:
+            return
+        _deprecation_warning_done = True
+        warning("Format %s for %s is deprecated - please use 'bzr upgrade' to get better performance"
+                % (self._format, self.bzrdir.transport.base))
+
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
@@ -737,12 +762,15 @@ def install_revision(repository, rev, revision_tree):
             present_parents.append(p_id)
             parent_trees[p_id] = repository.revision_tree(p_id)
         else:
-            parent_trees[p_id] = EmptyTree()
+            parent_trees[p_id] = repository.revision_tree(None)
 
     inv = revision_tree.inventory
     
+    # backwards compatability hack: skip the root id.
+    entries = inv.iter_entries()
+    entries.next()
     # Add the texts that are not already present
-    for path, ie in inv.iter_entries():
+    for path, ie in entries:
         w = repository.weave_store.get_weave_or_empty(ie.file_id,
                 repository.get_transaction())
         if ie.revision not in w:
@@ -781,7 +809,6 @@ class MetaDirRepository(Repository):
                                                 _revision_store,
                                                 control_store,
                                                 text_store)
-
         dir_mode = self.control_files._dir_mode
         file_mode = self.control_files._file_mode
 
@@ -815,6 +842,10 @@ class MetaDirRepository(Repository):
 
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
+
+    def _warn_if_deprecated(self):
+        # This class isn't deprecated
+        pass
 
     def _inventory_add_lines(self, inv_vf, revid, parents, lines):
         inv_vf.add_lines_with_ghosts(revid, parents, lines)
@@ -873,9 +904,15 @@ class KnitRepository(MetaDirRepository):
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
-        
+
+        :param revision_id: The revision_id to get a graph from. If None, then
+        the entire revision graph is returned. This is a deprecated mode of
+        operation and will be removed in the future.
         :return: a dictionary of revision_id->revision_parents_list.
         """
+        # special case NULL_REVISION
+        if revision_id == NULL_REVISION:
+            return {}
         weave = self._get_revision_vf()
         entire_graph = weave.get_graph()
         if revision_id is None:
@@ -909,7 +946,10 @@ class KnitRepository(MetaDirRepository):
             required = set([])
         else:
             pending = set(revision_ids)
-            required = set(revision_ids)
+            # special case NULL_REVISION
+            if NULL_REVISION in pending:
+                pending.remove(NULL_REVISION)
+            required = set(pending)
         done = set([])
         while len(pending):
             revision_id = pending.pop()
@@ -978,6 +1018,9 @@ class RepositoryFormat(object):
 
     _formats = {}
     """The known formats."""
+
+    def __str__(self):
+        return "<%s>" % self.__class__.__name__
 
     @classmethod
     def find_format(klass, a_bzrdir):
@@ -1561,17 +1604,6 @@ class InterRepository(InterObject):
             return
         self.target.fetch(self.source, revision_id=revision_id)
 
-    def _double_lock(self, lock_source, lock_target):
-        """Take out too locks, rolling back the first if the second throws."""
-        lock_source()
-        try:
-            lock_target()
-        except Exception:
-            # we want to ensure that we don't leave source locked by mistake.
-            # and any error on target should not confuse source.
-            self.source.unlock()
-            raise
-
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id.
@@ -1595,22 +1627,6 @@ class InterRepository(InterObject):
                                pb=pb)
         return f.count_copied, f.failed_revisions
 
-    def lock_read(self):
-        """Take out a logical read lock.
-
-        This will lock the source branch and the target branch. The source gets
-        a read lock and the target a read lock.
-        """
-        self._double_lock(self.source.lock_read, self.target.lock_read)
-
-    def lock_write(self):
-        """Take out a logical write lock.
-
-        This will lock the source branch and the target branch. The source gets
-        a read lock and the target a write lock.
-        """
-        self._double_lock(self.source.lock_read, self.target.lock_write)
-
     @needs_read_lock
     def missing_revision_ids(self, revision_id=None):
         """Return the revision ids that source has that target does not.
@@ -1633,13 +1649,6 @@ class InterRepository(InterObject):
         # other_ids had while only returning the members from other_ids
         # that we've decided we need.
         return [rev_id for rev_id in source_ids if rev_id in result_set]
-
-    def unlock(self):
-        """Release the locks on source and target."""
-        try:
-            self.target.unlock()
-        finally:
-            self.source.unlock()
 
 
 class InterWeaveRepo(InterRepository):
@@ -1964,6 +1973,8 @@ class CommitBuilder(object):
     This allows describing a tree to be committed without needing to 
     know the internals of the format of the repository.
     """
+    
+    record_root_entry = False
     def __init__(self, repository, parents, config, timestamp=None, 
                  timezone=None, committer=None, revprops=None, 
                  revision_id=None):
@@ -1986,7 +1997,7 @@ class CommitBuilder(object):
             assert isinstance(committer, basestring), type(committer)
             self._committer = committer
 
-        self.new_inventory = Inventory()
+        self.new_inventory = Inventory(None)
         self._new_revision_id = revision_id
         self.parents = parents
         self.repository = repository
@@ -1996,9 +2007,9 @@ class CommitBuilder(object):
             self._revprops.update(revprops)
 
         if timestamp is None:
-            self._timestamp = time.time()
-        else:
-            self._timestamp = long(timestamp)
+            timestamp = time.time()
+        # Restrict resolution to 1ms
+        self._timestamp = round(timestamp, 3)
 
         if timezone is None:
             self._timezone = local_time_offset()
@@ -2026,6 +2037,11 @@ class CommitBuilder(object):
 
     def finish_inventory(self):
         """Tell the builder that the inventory is finished."""
+        if self.new_inventory.root is None:
+            warn('Root entry should be supplied to record_entry_contents, as'
+                 ' of bzr 0.10.',
+                 DeprecationWarning, stacklevel=2)
+            self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
         self.new_inventory.revision_id = self._new_revision_id
         self.inv_sha1 = self.repository.add_inventory(
             self._new_revision_id,
@@ -2055,6 +2071,8 @@ class CommitBuilder(object):
     def record_entry_contents(self, ie, parent_invs, path, tree):
         """Record the content of ie from tree into the commit if needed.
 
+        Side effect: sets ie.revision when unchanged
+
         :param ie: An inventory entry present in the commit.
         :param parent_invs: The inventories of the parent revisions of the
             commit.
@@ -2068,6 +2086,14 @@ class CommitBuilder(object):
         # for committing. ie.snapshot will record the correct revision 
         # which may be the sole parent if it is untouched.
         if ie.revision is not None:
+            return
+
+        # In this revision format, root entries have no knit or weave
+        if ie is self.new_inventory.root:
+            if len(parent_invs):
+                ie.revision = parent_invs[0].root.revision
+            else:
+                ie.revision = None
             return
         previous_entries = ie.find_previous_heads(
             parent_invs,
@@ -2097,8 +2123,8 @@ class CommitBuilder(object):
         :param text_sha1: Optional SHA1 of the file contents.
         :param text_size: Optional size of the file contents.
         """
-        mutter('storing text of file {%s} in revision {%s} into %r',
-               file_id, self._new_revision_id, self.repository.weave_store)
+        # mutter('storing text of file {%s} in revision {%s} into %r',
+        #        file_id, self._new_revision_id, self.repository.weave_store)
         # special case to avoid diffing on renames or 
         # reparenting
         if (len(file_parents) == 1
@@ -2134,11 +2160,34 @@ class CommitBuilder(object):
         versionedfile.clear_cache()
 
 
-# Copied from xml.sax.saxutils
-def _unescape_xml(data):
-    """Unescape &amp;, &lt;, and &gt; in a string of data.
+class _CommitBuilder(CommitBuilder):
+    """Temporary class so old CommitBuilders are detected properly
+    
+    Note: CommitBuilder works whether or not root entry is recorded.
     """
-    data = data.replace("&lt;", "<")
-    data = data.replace("&gt;", ">")
-    # must do ampersand last
-    return data.replace("&amp;", "&")
+
+    record_root_entry = True
+
+
+_unescape_map = {
+    'apos':"'",
+    'quot':'"',
+    'amp':'&',
+    'lt':'<',
+    'gt':'>'
+}
+
+
+def _unescaper(match, _map=_unescape_map):
+    return _map[match.group(1)]
+
+
+_unescape_re = None
+
+
+def _unescape_xml(data):
+    """Unescape predefined XML entities in a string of data."""
+    global _unescape_re
+    if _unescape_re is None:
+	_unescape_re = re.compile('\&([^;]*);')
+    return _unescape_re.sub(_unescaper, data)

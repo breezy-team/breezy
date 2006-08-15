@@ -99,6 +99,7 @@ class TestDiff(TestCase):
     def test_external_diff(self):
         lines = external_udiff_lines(['boo\n'], ['goo\n'])
         self.check_patch(lines)
+        self.assertEqual('\n', lines[-1])
 
     def test_external_diff_no_fileno(self):
         # Make sure that we can handle not having a fileno, even
@@ -107,6 +108,22 @@ class TestDiff(TestCase):
                                      ['goo\n']*10000,
                                      use_stringio=True)
         self.check_patch(lines)
+
+    def test_external_diff_binary(self):
+        lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
+        self.assertEqual(['Binary files old and new differ\n', '\n'], lines)
+
+    def test_no_external_diff(self):
+        """Check that NoDiff is raised when diff is not available"""
+        # Use os.environ['PATH'] to make sure no 'diff' command is available
+        orig_path = os.environ['PATH']
+        try:
+            os.environ['PATH'] = ''
+            self.assertRaises(NoDiff, external_diff,
+                              'old', ['boo\n'], 'new', ['goo\n'],
+                              StringIO(), diff_opts=['-u'])
+        finally:
+            os.environ['PATH'] = orig_path
         
     def test_internal_diff_default(self):
         # Default internal diff encoding is utf8
@@ -205,10 +222,15 @@ class TestDiffDates(TestCaseWithTransport):
         # set the date stamps for files in the working tree to known values
         os.utime('file1', (1144195200, 1144195200)) # 2006-04-05 00:00:00 UTC
 
-    def get_diff(self, tree1, tree2):
+    def get_diff(self, tree1, tree2, specific_files=None, working_tree=None):
         output = StringIO()
-        show_diff_trees(tree1, tree2, output,
-                        old_label='old/', new_label='new/')
+        if working_tree is not None:
+            extra_trees = (working_tree,)
+        else:
+            extra_trees = ()
+        show_diff_trees(tree1, tree2, output, specific_files=specific_files,
+                        extra_trees=extra_trees, old_label='old/', 
+                        new_label='new/')
         return output.getvalue()
 
     def test_diff_rev_tree_working_tree(self):
@@ -274,6 +296,30 @@ class TestDiffDates(TestCaseWithTransport):
 -file2 contents at rev 3
 
 ''')
+
+    def test_show_diff_specified(self):
+        """A working tree filename can be used to identify a file"""
+        self.wt.rename_one('file1', 'file1b')
+        old_tree = self.b.repository.revision_tree('rev-1')
+        new_tree = self.b.repository.revision_tree('rev-4')
+        out = self.get_diff(old_tree, new_tree, specific_files=['file1b'], 
+                            working_tree=self.wt)
+        self.assertContainsRe(out, 'file1\t')
+
+    def test_recursive_diff(self):
+        """Children of directories are matched"""
+        os.mkdir('dir1')
+        os.mkdir('dir2')
+        self.wt.add(['dir1', 'dir2'])
+        self.wt.rename_one('file1', 'dir1/file1')
+        old_tree = self.b.repository.revision_tree('rev-1')
+        new_tree = self.b.repository.revision_tree('rev-4')
+        out = self.get_diff(old_tree, new_tree, specific_files=['dir1'], 
+                            working_tree=self.wt)
+        self.assertContainsRe(out, 'file1\t')
+        out = self.get_diff(old_tree, new_tree, specific_files=['dir2'], 
+                            working_tree=self.wt)
+        self.assertNotContainsRe(out, 'file1\t')
 
 
 class TestPatienceDiffLib(TestCase):

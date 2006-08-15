@@ -24,7 +24,6 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import ConflictList
-from bzrlib.delta import compare_trees
 from bzrlib.osutils import abspath
 from bzrlib.tests.blackbox import ExternalBase
 import bzrlib.urlutils as urlutils
@@ -207,6 +206,24 @@ class TestMerge(ExternalBase):
         # it is legal to attempt to merge an already-merged bundle
         output = self.runbzr('merge ../bundle')[1]
         # but it does nothing
-        self.assertFalse(compare_trees(tree_a.basis_tree(), 
-                                       tree_a).has_changed())
+        self.assertFalse(tree_a.changes_from(tree_a.basis_tree()).has_changed())
         self.assertEqual('Nothing to do.\n', output)
+
+    def test_merge_uncommitted(self):
+        """Check that merge --uncommitted behaves properly"""
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/file_1', 'a/file_2'])
+        tree_a.add(['file_1', 'file_2'])
+        tree_a.commit('commit 1')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        self.failUnlessExists('b/file_1')
+        tree_a.rename_one('file_1', 'file_i')
+        tree_a.commit('commit 2')
+        tree_a.rename_one('file_2', 'file_ii')
+        os.chdir('b')
+        self.run_bzr('merge', '../a', '--uncommitted')
+        self.failUnlessExists('file_1')
+        self.failUnlessExists('file_ii')
+        tree_b.revert([])
+        self.run_bzr_error(('Cannot use --uncommitted and --revision',), 
+                           'merge', '../a', '--uncommitted', '-r1')

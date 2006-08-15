@@ -1,15 +1,15 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
-
+# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -48,7 +48,6 @@ class TestParent(TestCaseWithTransport):
         self.assertEqual(None, b.get_parent())
 
         b.set_parent('../other_branch')
-        cwd = getcwd()
 
         self.assertEqual(local_path_to_url('../other_branch'), b.get_parent())
         path = local_path_to_url('../yanb')
@@ -60,7 +59,7 @@ class TestParent(TestCaseWithTransport):
 
         self.assertRaises(bzrlib.errors.InvalidURL, b.set_parent, u'\xb5')
         b.set_parent(escape(u'\xb5'))
-        self.assertEqual('%C2%B5', 
+        self.assertEqual('%C2%B5',
             b.control_files.get('parent').read().strip('\n'))
 
         self.assertEqual(b.base + '%C2%B5', b.get_parent())
@@ -73,4 +72,18 @@ class TestParent(TestCaseWithTransport):
         else:
             b.control_files.put('parent', cStringIO.StringIO('/local/abs/path'))
             self.assertEqual('file:///local/abs/path', b.get_parent())
+
+    def test_get_invalid_parent(self):
+        b = self.make_branch('.')
+
+        cwd = getcwd()
+        n_dirs = len(cwd.split('/'))
+
+        # Force the relative path to be something invalid
+        # This should attempt to go outside the filesystem
+        path = ('../'*(n_dirs+5)) + 'foo'
+        b.control_files.put('parent', cStringIO.StringIO(path))
+
+        # With an invalid branch parent, just return None
+        self.assertRaises(bzrlib.errors.InaccessibleParent, b.get_parent)
 
