@@ -252,10 +252,13 @@ class TestSmartAddTree(TestCaseWithTransport):
 
         wt = self.make_branch_and_tree('.')
         smart_add_tree(wt, ['.'], action=action)
-        self.assertEqualDiff('added dir1 with id directory-dir1\n'
-                             'added file1 with id file-file1\n'
-                             'added dir1/file2 with id file-dir1%file2\n',
-                             sio.getvalue())
+        # The order of adds is not strictly fixed:
+        sio.seek(0)
+        lines = sorted(sio.readlines())
+        self.assertEqualDiff(['added dir1 with id directory-dir1\n',
+                              'added dir1/file2 with id file-dir1%file2\n',
+                              'added file1 with id file-file1\n',
+                             ], lines)
         self.assertEqual([('', wt.inventory.root.file_id),
                           ('dir1', 'directory-dir1'),
                           ('dir1/file2', 'file-dir1%file2'),
