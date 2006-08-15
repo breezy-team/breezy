@@ -1,0 +1,5 @@
+bzr-builddeb (0.1-1) unstable; urgency=low
+
+  * Initial Release. (Closes: #380198)
+
+ -- James Westby <jw+debian@jameswestby.net>  Thu,  3 Aug 2006 19:16:22 +0100

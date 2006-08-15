@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+include /usr/share/cdbs/1/rules/debhelper.mk$
+$
+# Hook to add dh_python$
+$(patsubst %,binary-install/%,$(DEB_PACKAGES)) :: binary-install/%:$
+	dh_python -p$(cdbs_curpkg)$
+
+
