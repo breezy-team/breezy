@@ -53,6 +53,11 @@ BZRLIB = {'packages': ['bzrlib',
                       ],
          }
 
+PKG_DATA = {# install files from selftest suite
+            'package_data': {'bzrlib': ['doc/api/*.txt',
+                                        'tests/test_patches_data/*',
+                                       ]},
+           }
 
 ######################################################################
 # Reinvocation stolen from bzr, we need python2.4 by virtue of bzr_man
@@ -155,14 +160,13 @@ if 'bdist_wininst' in sys.argv:
     docs = glob.glob('doc/*.htm') + ['doc/default.css']
     # python's distutils-based win32 installer
     ARGS = {'scripts': ['bzr', 'tools/win32/bzr-win32-bdist-postinstall.py'],
-            # install the txt files from bzrlib.doc.api.
-            'package_data': {'bzrlib': ['doc/api/*.txt']},
             # help pages
             'data_files': [('Doc/Bazaar', docs)],
            }
 
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
+    ARGS.update(PKG_DATA)
     
     setup(**ARGS)
 
@@ -209,8 +213,6 @@ else:
     # std setup
     ARGS = {'scripts': ['bzr'],
             'data_files': [('man/man1', ['bzr.1'])],
-            # install the txt files from bzrlib.doc.api.
-            'package_data': {'bzrlib': ['doc/api/*.txt']},
             'cmdclass': {'build': bzr_build,
                          'install_scripts': my_install_scripts,
                         },
@@ -218,5 +220,6 @@ else:
     
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
+    ARGS.update(PKG_DATA)
 
     setup(**ARGS)
