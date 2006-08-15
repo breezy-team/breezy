@@ -181,14 +181,37 @@ class TestBranch(TestCaseWithBranch):
         br_b = wt_a.bzrdir.open_branch().sprout(repo_b.bzrdir, revision_id='1')
         self.assertEqual(br_b.last_revision(), '1')
 
+    def get_parented_branch(self):
+        wt_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/one'])
+        wt_a.add(['one'])
+        wt_a.commit('commit one', rev_id='1')
+
+        branch_b = wt_a.bzrdir.sprout('b', revision_id='1').open_branch()
+        self.assertEqual(wt_a.branch.base, branch_b.get_parent())
+        return branch_b
+
     def test_clone_branch_nickname(self):
         # test the nick name is preserved always
         raise TestSkipped('XXX branch cloning is not yet tested..')
 
     def test_clone_branch_parent(self):
         # test the parent is preserved always
-        raise TestSkipped('XXX branch cloning is not yet tested..')
-        
+        branch_b = self.get_parented_branch()
+        repo_c = self.make_repository('c')
+        branch_b.repository.copy_content_into(repo_c)
+        branch_c = branch_b.clone(repo_c.bzrdir)
+        self.assertNotEqual(None, branch_c.get_parent())
+        self.assertEqual(branch_b.get_parent(), branch_c.get_parent())
+
+        # We can also set a specific parent, and it should be honored
+        random_parent = 'http://bazaar-vcs.org/path/to/branch'
+        branch_b.set_parent(random_parent)
+        repo_d = self.make_repository('d')
+        branch_b.repository.copy_content_into(repo_d)
+        branch_d = branch_b.clone(repo_d.bzrdir)
+        self.assertEqual(random_parent, branch_d.get_parent())
+
     def test_sprout_branch_nickname(self):
         # test the nick name is reset always
         raise TestSkipped('XXX branch sprouting is not yet tested..')
@@ -372,6 +395,24 @@ class TestBranch(TestCaseWithBranch):
         rev1 = tree.commit('foo')
         tree.branch.generate_revision_history(bzrlib.revision.NULL_REVISION)
         self.assertEqual([], tree.branch.revision_history())
+
+    def test_create_checkout(self):
+        tree_a = self.make_branch_and_tree('a')
+        branch_a = tree_a.branch
+        checkout_b = branch_a.create_checkout('b')
+        checkout_b.commit('rev1', rev_id='rev1')
+        self.assertEqual('rev1', branch_a.last_revision())
+        self.assertNotEqual(checkout_b.branch.base, branch_a.base)
+
+        checkout_c = branch_a.create_checkout('c', lightweight=True)
+        checkout_c.commit('rev2', rev_id='rev2')
+        self.assertEqual('rev2', branch_a.last_revision())
+        self.assertEqual(checkout_c.branch.base, branch_a.base)
+
+        os.mkdir('d')
+        checkout_d = branch_a.create_checkout('d', lightweight=True)
+        os.mkdir('e')
+        checkout_e = branch_a.create_checkout('e')
 
 
 class ChrootedTests(TestCaseWithBranch):
