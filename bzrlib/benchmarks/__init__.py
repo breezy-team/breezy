@@ -36,20 +36,6 @@ class Benchmark(ExternalBase):
 
     CACHE_ROOT = None
 
-    def get_cache_dir(self, extra):
-        """Get the directory to use for caching the given object.
-
-        :return: (cache_dir, is_cached)
-            cache_dir: The path to use for caching. If None, caching is disabled
-            is_cached: Has the path already been created?
-        """
-        if Benchmark.CACHE_ROOT is None:
-            return None, False
-        if not os.path.isdir(Benchmark.CACHE_ROOT):
-            os.mkdir(Benchmark.CACHE_ROOT)
-        cache_dir = osutils.pathjoin(self.CACHE_ROOT, extra)
-        return cache_dir, os.path.exists(cache_dir)
-
     def make_kernel_like_tree(self, url=None, root='.',
                               link_working=False):
         """Setup a temporary tree roughly like a kernel tree.
@@ -126,68 +112,6 @@ class Benchmark(ExternalBase):
         # Hardlinking the target directory is *much* faster (7s => <1s).
         osutils.copy_tree(cache_dir, root,
                           handlers={'file':os.link})
-
-    def _clone_tree(self, source, dest, link_bzr=False, link_working=True,
-                    hot_cache=True):
-        """Copy the contents from a given location to another location.
-        Optionally hardlink certain pieces of the tree.
-
-        :param source: The directory to copy
-        :param dest: The destination
-        :param link_bzr: Should the .bzr/ files be hardlinked?
-        :param link_working: Should the working tree be hardlinked?
-        :param hot_cache: Update the hash-cache when you are done
-        """
-        # We use shutil.copyfile so that we don't copy permissions
-        # because most of our source trees are marked readonly to
-        # prevent modifying in the case of hardlinks
-        handlers = {'file':shutil.copyfile}
-        if osutils.hardlinks_good():
-            if link_working:
-                if link_bzr:
-                    handlers = {'file':os.link}
-                else:
-                    # Don't hardlink files inside bzr
-                    def file_handler(source, dest):
-                        if '.bzr/' in source:
-                            shutil.copyfile(source, dest)
-                        else:
-                            os.link(source, dest)
-                    handlers = {'file':file_handler}
-            elif link_bzr:
-                # Only link files inside .bzr/
-                def file_handler(source, dest):
-                    if '.bzr/' in source:
-                        os.link(source, dest)
-                    else:
-                        shutil.copyfile(source, dest)
-                handlers = {'file':file_handler}
-        osutils.copy_tree(source, dest, handlers=handlers)
-        tree = workingtree.WorkingTree.open(dest)
-        if hot_cache:
-            tree.lock_write()
-            try:
-                # tree._hashcache.scan() just checks and removes
-                # entries that are out of date
-                # we need to actually store new ones
-                for path, ie in tree.inventory.iter_entries_by_dir():
-                    tree.get_file_sha1(ie.file_id, path)
-            finally:
-                tree.unlock()
-        # If we didn't iterate the tree, the hash cache is technically
-        # invalid, and it would be better to remove it, but there is
-        # no public api for that.
-        return tree
-
-    def _protect_files(self, root):
-        """Chmod all files underneath 'root' to prevent writing
-
-        :param root: The base directory to modify
-        """
-        for dirinfo, entries in osutils.walkdirs(root):
-            for relpath, name, kind, st, abspath in entries:
-                if kind == 'file':
-                    os.chmod(abspath, 0440)
 
     def _create_kernel_like_added_tree(self, root, in_cache=False):
         """Create a kernel-like tree with the all files added
@@ -362,6 +286,130 @@ class Benchmark(ExternalBase):
         return self._clone_tree(tree_dir, directory_name,
                                 link_bzr=hardlink,
                                 hot_cache=True)
+
+
+class TreeCreator(object):
+    """Just a basic class which is used to create various test trees"""
+
+    CACHE_ROOT = None
+
+    def __init__(self, tree_name, link_bzr=False, link_working=False,
+                 hot_cache=True):
+        """Instantiate a new creator object, supply the id of the tree"""
+
+        self._tree_name = tree_name
+        self._link_bzr = link_bzr
+        self._link_working = link_working
+        self._hot_cache = hot_cache
+
+    @staticmethod
+    def is_caching_enabled():
+        """Will we try to cache the tree we create?"""
+        return TreeCreator.CACHE_ROOT is not None
+
+    def is_cached(self):
+        """Is this tree already cached?"""
+        cache_dir = self._get_cache_dir()
+        if cache_dir is None:
+            return False
+        return os.path.exists(cache_dir):
+        
+    def create(self, root):
+        """Create a new tree at 'root'.
+
+        :return: A WorkingTree object.
+        """
+        cache_dir = self._get_cache_dir()
+        if cache_dir is None:
+            # Not caching
+            return self._create_tree(root, in_cache=False)
+
+        if not self.is_cached():
+            self._create_tree(root=cache_dir, in_cache=True)
+
+        return self._clone_cached_tree(root)
+
+    def _get_cache_dir(self):
+        """Get the directory to use for caching this tree
+
+        :return: The path to use for caching. If None, caching is disabled
+        """
+        if self.CACHE_ROOT is None:
+            return None
+        return osutils.pathjoin(self.CACHE_ROOT, extra)
+
+    def _create_tree(self, root, in_cache=False):
+        """Create the desired tree in the given location.
+
+        Children should override this function to provide the actual creation
+        of the desired tree. This will be called by 'create()'. If it is
+        building a tree in the cache, before copying it to the real target,
+        it will pass in_cache=True
+        """
+        raise NotImplemented(self._create_tree)
+
+    def _clone_cached_tree(self, dest):
+        """Copy the contents of the cached dir into the destination
+        Optionally hardlink certain pieces of the tree.
+
+        This is just meant as a helper function for child classes
+
+        :param dest: The destination to copy things to
+        """
+        # We use shutil.copyfile so that we don't copy permissions
+        # because most of our source trees are marked readonly to
+        # prevent modifying in the case of hardlinks
+        handlers = {'file':shutil.copyfile}
+        if osutils.hardlinks_good():
+            if self._link_working:
+                if self._link_bzr:
+                    handlers = {'file':os.link}
+                else:
+                    # Don't hardlink files inside bzr
+                    def file_handler(source, dest):
+                        if '.bzr/' in source:
+                            shutil.copyfile(source, dest)
+                        else:
+                            os.link(source, dest)
+                    handlers = {'file':file_handler}
+            elif self._link_bzr:
+                # Only link files inside .bzr/
+                def file_handler(source, dest):
+                    if '.bzr/' in source:
+                        os.link(source, dest)
+                    else:
+                        shutil.copyfile(source, dest)
+                handlers = {'file':file_handler}
+
+        source = self._get_cache_dir()
+        osutils.copy_tree(source, dest, handlers=handlers)
+        tree = workingtree.WorkingTree.open(dest)
+        if self._hot_cache:
+            tree.lock_write()
+            try:
+                # tree._hashcache.scan() just checks and removes
+                # entries that are out of date
+                # we need to actually store new ones
+                for path, ie in tree.inventory.iter_entries_by_dir():
+                    tree.get_file_sha1(ie.file_id, path)
+            finally:
+                tree.unlock()
+        # If we didn't iterate the tree, the hash cache is technically
+        # invalid, and it would be better to remove it, but there is
+        # no public api for that.
+        return tree
+
+    def _protect_files(self, root):
+        """Chmod all files underneath 'root' to prevent writing
+
+        This is a helper function for child classes.
+
+        :param root: The base directory to modify
+        """
+        for dirinfo, entries in osutils.walkdirs(root):
+            for relpath, name, kind, st, abspath in entries:
+                if kind == 'file':
+                    os.chmod(abspath, 0440)
 
 
 def test_suite():
