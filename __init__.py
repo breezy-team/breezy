@@ -15,6 +15,7 @@ from bzrlib.branch import Branch
 from bzrlib.workingtree import WorkingTree
 from bzrlib.export import export
 from bzrlib.config import ConfigObj
+from bzrlib.trace import mutter
 from debian_bundle import deb822
 
 class DebianChanges(deb822.changes):
@@ -231,6 +232,19 @@ class BuildDebConfig(object):
         return value
     return None
 
+  def _get_bool(self, config, key):
+    try:
+      return True, config.get_bool('BUILDDEB', key)
+    except KeyError:
+      return False, False
+
+  def _get_best_bool(self, key, default=False):
+    for file in self._config_files:
+      (found, value) = self._get_bool(file, key)
+      if found:
+        return value
+    return default
+
   def build_dir(self):
     return self._get_best_opt('build-dir')
 
@@ -242,6 +256,9 @@ class BuildDebConfig(object):
 
   def result_dir(self):
     return self._get_best_opt('result-dir')
+
+  def merge(self):
+    return self._get_best_bool('merge', False)
 
 def is_clean(oldtree, newtree):
   """Return True if there are no uncommited changes or unknown files. 
@@ -321,6 +338,10 @@ class cmd_builddeb(Command):
     
     config = BuildDebConfig()
 
+    if not merge:
+      merge = config.merge()
+    mutter("Only debian/ versioned, merging with upstream tarball")
+
     if result is None:
       result = config.result_dir()
     if result is not None:
@@ -365,6 +386,7 @@ class cmd_builddeb(Command):
         orig_dir = '../tarballs'
     
     properties = BuildProperties(changelog,build_dir,orig_dir,larstiq)
+
     if merge:
       build = DebMergeBuild(properties, t)
     else:
