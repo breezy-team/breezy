@@ -24,7 +24,7 @@ import tempfile
 from tempfile import TemporaryFile
 
 import bzrlib
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestSkipped
 import bzrlib.osutils as osutils
 
 # XXX: This clobbers the build directory in the real source tree; it'd be nice
@@ -44,7 +44,8 @@ class TestSetup(TestCase):
         This tests that the build process and man generator run correctly.
         It also can catch new subdirectories that weren't added to setup.py.
         """
-
+        if not os.path.isfile('setup.py'):
+            raise TestSkipped('There is no setup.py file in current directory')
         self.log('test_build running in %s' % os.getcwd())
         install_dir = tempfile.mkdtemp()
         # setup.py must be run from the root source directory, but the tests

@@ -762,18 +762,7 @@ class cmd_checkout(Command):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
         try:
-            if lightweight:
-                checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
-                branch.BranchReferenceFormat().initialize(checkout, source)
-            else:
-                checkout_branch =  bzrdir.BzrDir.create_branch_convenience(
-                    to_location, force_new_tree=False)
-                checkout = checkout_branch.bzrdir
-                checkout_branch.bind(source)
-                if revision_id is not None:
-                    rh = checkout_branch.revision_history()
-                    checkout_branch.set_revision_history(rh[:rh.index(revision_id) + 1])
-            checkout.create_workingtree(revision_id)
+            source.create_checkout(to_location, revision_id, lightweight)
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
@@ -1944,14 +1933,21 @@ class cmd_selftest(Command):
                      Option('lsprof-timed',
                             help='generate lsprof output for benchmarked'
                                  ' sections of code.'),
+                     Option('cache-dir', type=str,
+                            help='a directory to cache intermediate'
+                                 ' benchmark steps'),
                      ]
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
-            lsprof_timed=None):
+            lsprof_timed=None, cache_dir=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
+        from bzrlib.benchmarks import tree_creator
+
+        if cache_dir is not None:
+            tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         # we don't want progress meters from the tests to go to the
         # real output; and we don't want log messages cluttering up
         # the real logs.
