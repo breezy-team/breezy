@@ -28,6 +28,7 @@ from bzrlib import (
         lockdir,
         osutils,
         revision,
+        transport,
         tree,
         ui,
         urlutils,
