@@ -17,6 +17,9 @@
 
 
 from bzrlib.benchmarks import Benchmark
+from bzrlib.benchmarks.tree_creator.kernel_like import (
+    make_kernel_like_added_tree,
+    )
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport import get_transport
 
@@ -29,12 +32,12 @@ class CommitBenchmark(Benchmark):
         # not disk
         # self.transport_server = MemoryServer
         # self.make_kernel_like_tree(self.get_url())
-        tree = self.make_kernel_like_added_tree()
+        tree = make_kernel_like_added_tree(self, '.')
         # on robertc's machine the first sample of this took 59750ms/77682ms
         # after initial call reduction                       53922ms/73918ms
         self.time(self.run_bzr, 'commit', '-m', 'first post')
 
     def test_partial_commit_kernel_like_tree(self):
         """Commit of 1/8th of a fresh import of a clean kernel sized tree."""
-        tree = self.make_kernel_like_added_tree()
+        tree = make_kernel_like_added_tree(self, '.')
         self.time(self.run_bzr, 'commit', '-m', 'first post', '1')

@@ -144,3 +144,57 @@ class KernelLikeCommittedTreeCreator(TreeCreator):
         if in_cache:
             self._protect_files(root+'/.bzr')
         return tree
+
+
+# Helper functions to change the above classes into a single function call
+
+def make_kernel_like_tree(test, root, link_working=True):
+    """Setup a temporary tree roughly like a kernel tree.
+    
+    :param url: Creat the kernel like tree as a lightweight checkout
+    of a new branch created at url.
+    :param link_working: instead of creating a new copy of all files
+        just hardlink the working tree. Tests must request this, because
+        they must break links if they want to change the files
+    """
+    creator = KernelLikeTreeCreator(test, link_working=link_working)
+    return creator.create(root=root)
+
+
+def make_kernel_like_added_tree(test, root,
+                                link_working=True,
+                                hot_cache=True):
+    """Make a kernel like tree, with all files added
+
+    :param root: Where to create the files
+    :param link_working: Instead of copying all of the working tree
+        files, just hardlink them to the cached files. Tests can unlink
+        files that they will change.
+    :param hot_cache: Run through the newly created tree and make sure
+        the stat-cache is correct. The old way of creating a freshly
+        added tree always had a hot cache.
+    """
+    creator = KernelLikeAddedTreeCreator(test, link_working=link_working,
+                                         hot_cache=hot_cache)
+    return creator.create(root=root)
+
+
+def make_kernel_like_committed_tree(test, root='.',
+                                    link_working=True,
+                                    link_bzr=False,
+                                    hot_cache=True):
+    """Make a kernel like tree, with all files added and committed
+
+    :param root: Where to create the files
+    :param link_working: Instead of copying all of the working tree
+        files, just hardlink them to the cached files. Tests can unlink
+        files that they will change.
+    :param link_bzr: Hardlink the .bzr directory. For readonly 
+        operations this is safe, and shaves off a lot of setup time
+    """
+    creator = KernelLikeCommittedTreeCreator(test,
+                                             link_working=link_working,
+                                             link_bzr=link_bzr,
+                                             hot_cache=hot_cache)
+    return creator.create(root=root)
+

@@ -17,6 +17,10 @@
 
 
 from bzrlib.benchmarks import Benchmark
+from bzrlib.benchmarks.tree_creator.kernel_like import (
+    make_kernel_like_added_tree,
+    make_kernel_like_committed_tree,
+    )
 
 
 class StatusBenchmark(Benchmark):
@@ -26,11 +30,11 @@ class StatusBenchmark(Benchmark):
         
         This should be bearable (<2secs) fast.
         """ 
-        self.make_kernel_like_added_tree()
+        make_kernel_like_added_tree(self, '.')
         # on robertc's machine the first sample of this took 1687ms/15994ms
         self.time(self.run_bzr, 'status')
 
     def test_no_changes_known_kernel_like_tree(self):
         """Status in a kernel sized tree with no ignored, unknowns, or added.""" 
-        self.make_kernel_like_committed_tree(link_bzr=True)
+        make_kernel_like_committed_tree(self, '.', link_bzr=True)
         self.time(self.run_bzr, 'status')
