@@ -108,6 +108,8 @@ class BundleSerializerV08(BundleSerializer):
         self.to_file = f
         source.lock_read()
         try:
+            # Extract the list of Revision objects
+            self.revisions = source.get_revisions(revision_ids)
             self._write_main_header()
             pb = DummyProgress()
             try:
@@ -147,22 +149,29 @@ class BundleSerializerV08(BundleSerializer):
     def _write_revisions(self, pb):
         """Write the information for all of the revisions."""
 
-        # Optimize for the case of revisions in order
-        last_rev_id = None
-        last_rev_tree = None
+        i_max = len(self.revision_ids)
+        # Taken from Repository.get_deltas_for_revisions, and modified for our
+        # case of manually specified base trees, and prefering deltas against
+        # last parent, rather than first parent
+        required_trees = set(self.forced_bases.values())
+        for rev in self.revisions:
+            required_trees.add(rev.revision_id)
+            required_trees.update(rev.parent_ids[-1:])
 
-        i_max = len(self.revision_ids) 
-        for i, rev_id in enumerate(self.revision_ids):
+        # TODO: jam 20060815 handle ghosts
+        # TODO: jam 20060815 This can potentially grow without bound
+        #       It keeps a full RevisionTree for every entry being bundled
+        #       We really should have a convenience function for only extracting
+        #       a portion, while still allowing the optimization of reading
+        #       many at once.
+        trees = dict((t.get_revision_id(), t) for 
+                     t in self.source.revision_trees(required_trees))
+        trees[NULL_REVISION] = self.source.revision_tree(NULL_REVISION)
+        for i, rev in enumerate(self.revisions):
             pb.update("Generating revsion data", i, i_max)
-            rev = self.source.get_revision(rev_id)
-            if rev_id == last_rev_id:
-                rev_tree = last_rev_tree
-            else:
-                base_tree = self.source.revision_tree(rev_id)
-            rev_tree = self.source.revision_tree(rev_id)
-            if rev_id in self.forced_bases:
+            if rev.revision_id in self.forced_bases:
                 explicit_base = True
-                base_id = self.forced_bases[rev_id]
+                base_id = self.forced_bases[rev.revision_id]
                 if base_id is None:
                     base_id = NULL_REVISION
             else:
@@ -171,19 +180,13 @@ class BundleSerializerV08(BundleSerializer):
                     base_id = rev.parent_ids[-1]
                 else:
                     base_id = NULL_REVISION
-
-            if base_id == last_rev_id:
-                base_tree = last_rev_tree
-            else:
-                base_tree = self.source.revision_tree(base_id)
+            base_tree = trees[base_id]
+            rev_tree = trees[rev.revision_id]
             force_binary = (i != 0)
-            self._write_revision(rev, rev_tree, base_id, base_tree, 
+            self._write_revision(rev, rev_tree, base_id, base_tree,
                                  explicit_base, force_binary)
 
-            last_rev_id = base_id
-            last_rev_tree = base_tree
-
-    def _write_revision(self, rev, rev_tree, base_rev, base_tree, 
+    def _write_revision(self, rev, rev_tree, base_rev, base_tree,
                         explicit_base, force_binary):
         """Write out the information for a revision."""
         def w(key, value):
