@@ -22,15 +22,16 @@ from warnings import warn
 
 import bzrlib
 from bzrlib import (
-        bzrdir, 
-        errors, 
-        lockdir, 
-        osutils, 
+        bzrdir,
+        cache_utf8,
+        errors,
+        lockdir,
+        osutils,
         revision,
         transport,
         tree,
         ui,
-        urlutils
+        urlutils,
         )
 from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -1102,8 +1103,9 @@ class BzrBranch(Branch):
         if history is not None:
             # mutter("cache hit for revision-history in %s", self)
             return list(history)
-        history = [l.rstrip('\r\n') for l in
-                self.control_files.get_utf8('revision-history').readlines()]
+        decode_utf8 = cache_utf8.decode
+        history = [decode_utf8(l.rstrip('\r\n')) for l in
+                self.control_files.get('revision-history').readlines()]
         transaction.map.add_revision_history(history)
         # this call is disabled because revision_history is 
         # not really an object yet, and the transaction is for objects.
