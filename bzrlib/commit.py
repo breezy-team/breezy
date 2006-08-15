@@ -508,7 +508,7 @@ class Commit(object):
         entries = self.work_inv.iter_entries()
         if not self.builder.record_root_entry:
             warnings.warn('CommitBuilders should support recording the root'
-                ' entry as of bzr 0.10.', DeprecationWarning, stacklevel=2)
+                ' entry as of bzr 0.10.', DeprecationWarning, stacklevel=1)
             self.builder.new_inventory.add(self.basis_inv.root.copy())
             entries.next()
             self._emit_progress_update()

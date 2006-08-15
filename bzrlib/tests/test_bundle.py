@@ -806,7 +806,7 @@ class BundleTester(TestCaseWithTransport):
         self.tree1.commit('message', rev_id='revid1')
         bundle = self.get_valid_bundle(None, 'revid1')
         tree = bundle.revision_tree(self.b1.repository, 'revid1')
-        self.assertEqual(tree.inventory.root.revision, 'revid1')
+        self.assertEqual('revid1', tree.inventory.root.revision)
 
 
 class MungedBundleTester(TestCaseWithTransport):

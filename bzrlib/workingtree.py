@@ -322,6 +322,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self.branch.break_lock()
 
     def _set_inventory(self, inv):
+        assert inv.root is not None
         self._inventory = inv
         self.path2id = self._inventory.path2id
 

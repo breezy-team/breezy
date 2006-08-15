@@ -70,6 +70,7 @@ class Repository(object):
         assert inv.revision_id is None or inv.revision_id == revid, \
             "Mismatch between inventory revision" \
             " id and insertion revid (%r, %r)" % (inv.revision_id, revid)
+        assert inv.root is not None
         inv_text = xml5.serializer_v5.write_inventory_to_string(inv)
         inv_sha1 = osutils.sha_string(inv_text)
         inv_vf = self.control_weaves.get_weave('inventory',
@@ -256,8 +257,8 @@ class Repository(object):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
-        return NewCommitBuilder(self, parents, config, timestamp, timezone,
-                                committer, revprops, revision_id)
+        return _CommitBuilder(self, parents, config, timestamp, timezone,
+                              committer, revprops, revision_id)
 
     def unlock(self):
         self.control_files.unlock()
@@ -2140,7 +2141,7 @@ class CommitBuilder(object):
         versionedfile.clear_cache()
 
 
-class NewCommitBuilder(CommitBuilder):
+class _CommitBuilder(CommitBuilder):
     """Temporary class so old CommitBuilders are detected properly
     
     Note: CommitBuilder works whether or not root entry is recorded.
