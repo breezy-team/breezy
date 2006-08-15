@@ -348,12 +348,24 @@ class cmd_builddeb(Command):
   --orig-dir specifies the directory that contains the .orig.tar.gz files 
   for use in merge mode, defaults to ../tarballs. --result-dir specifies where
   the resulting package files should be placed, defaults to whatever is 
-  used for the build directory.
+  used for the build directory. --result-dir will have problems if you use a
+  build command that places the results in a different directory.
 
   When not using --working-tree and there uncommited changes or unknown files 
   in the working tree the build will not proceed. Use --ignore-changes to 
   override this and build ignoring all changes in the working tree.
   
+  The --reuse option will be useful if you are in merge mode, and the upstream
+  tarball is very large. It attempts to reuse a build directory from an earlier
+  build. It will fail if one doesn't exist, but you can create one by using 
+  --export-only. 
+
+  --quick allows you to define a quick-builder in your configuration files, 
+  which will be used when this option is passed. It defaults to 'fakeroot 
+  debian/rules binary'. It is overriden if --builder is passed. Using this
+  and --reuse allows for fast rebuilds. If --working-tree is used as well 
+  then changes do not need to be commited. 
+
   """
   working_tree_opt = Option('working-tree', help="Use the working tree")
   Option.SHORT_OPTIONS['w'] = working_tree_opt
