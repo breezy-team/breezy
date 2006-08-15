@@ -29,7 +29,7 @@ class DebianChanges(deb822.changes):
       raise DebianError("Could not find the build architecture")
     changes = str(package)+"_"+str(version)+"_"+str(arch)+".changes"
     if dir is not None:
-      changes = dir+"/"+changes
+      changes = os.path.join(dir,changes)
     if not os.path.exists(changes):
       raise DebianError("Could not find "+package)
     fp = open(changes)
@@ -51,7 +51,7 @@ class DebianChangelog(object):
     self._full_version = None
     self._package = None
     if file is None:
-      f = open("debian/changelog", 'r')
+      f = open(os.path.join("debian","changelog"), 'r')
       contents = f.read()
       close(f)
       self._file = contents
@@ -89,6 +89,18 @@ class DebianChangelog(object):
   def package(self):
     return self._package
 
+
+def recursive_copy(fromdir, todir):
+  for entry in os.listdir(fromdir):
+    path = os.path.join(fromdir, entry)
+    if os.path.isdir(path):
+      tosubdir = os.path.join(todir, entry)
+      if not os.path.exists(tosubdir):
+        os.mkdir(tosubdir)
+      recursive_copy(path, tosubdir)
+    else:
+      shutil.copy(path, todir)
+
 class BuildProperties(object):
 
   def __init__(self, changelog, build_dir, tarball_dir, larstiq):
@@ -113,7 +125,8 @@ class BuildProperties(object):
     return self._build_dir
 
   def source_dir(self):
-    return self.build_dir()+"/"+self.package()+"-"+self.full_version()
+    return os.path.join(self.build_dir(), 
+                        self.package()+"-"+self.full_version())
 
   def tarball_dir(self):
     return self._tarball_dir
@@ -161,42 +174,54 @@ class DebBuild(object):
       os.makedirs(result)
     shutil.move(changes.filename(), result)
     for file in files:
-      shutil.move(self._properties.build_dir()+"/"+file['name'], result)
+      shutil.move(os.path.join(self._properties.build_dir(), file['name']), 
+                  result)
 
 class DebMergeBuild(DebBuild):
 
-  def export(self):
+  def export(self, use_existing):
     package = self._properties.package()
     upstream = self._properties.upstream_version()
     build_dir = self._properties.build_dir()
     tarballdir = self._properties.tarball_dir()
-    tarball = tarballdir+"/"+package+"_"+upstream+".orig.tar.gz"
-    if not os.path.exists(tarballdir):
-      raise DebianError('Could not find dir with upstream tarballs: '
-          +tarballdir)
-    if not os.path.exists(tarball):
-      raise DebianError('Could not find upstrean tarball at '+tarball)
-
-    tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
-
-    os.system('tar xzf '+tarball+' -C '+tempdir)
-
+    tarball = os.path.join(tarballdir,package+"_"+upstream+".orig.tar.gz")
     source_dir = self._properties.source_dir()
 
-    if self._properties.larstiq():
-      export_dir = source_dir+'/debian/'
-      os.makedirs(source_dir)
-    else:
-      export_dir = source_dir
+    if not use_existing:
+      if not os.path.exists(tarballdir):
+        raise DebianError('Could not find dir with upstream tarballs: '
+            +tarballdir)
+      if not os.path.exists(tarball):
+        raise DebianError('Could not find upstrean tarball at '+tarball)
 
+      tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
+
+      os.system('tar xzf '+tarball+' -C '+tempdir)
+
+      files = glob.glob(tempdir+'/*/*')
+
+      os.makedirs(source_dir)
+
+      for file in files:
+        shutil.move(file, source_dir)
+
+      shutil.rmtree(tempdir)
+   
+    basetempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
+
+    tempdir = os.path.join(basetempdir,"export")
+
+    if self._properties.larstiq():
+      os.makedirs(tempdir)
+      export_dir = os.path.join(tempdir,'debian')
+    else:
+      export_dir = tempdir
+    
     export(self._tree,export_dir,None,None)
 
-    files = glob.glob(tempdir+'/*/*')
+    recursive_copy(tempdir, source_dir)
 
-    for file in files:
-      shutil.move(file, source_dir)
-
-    shutil.rmtree(tempdir)
+    shutil.rmtree(basetempdir)
 
 
 class DebianError(BzrNewError):
@@ -272,6 +297,9 @@ class BuildDebConfig(object):
   def merge(self):
     return self._get_best_bool('merge', False)
 
+  def quick_builder(self):
+    return self._get_best_opt('quick-builder')
+
 def is_clean(oldtree, newtree):
   """Return True if there are no uncommited changes or unknown files. 
      I don't like this, but I can't see a better way to do it, and dont
@@ -333,16 +361,18 @@ class cmd_builddeb(Command):
       help="Ignore any changes that are in the working tree when building the"
          +" branch. You may also want --working to use these uncommited "
          + "changes")
+  quick_opt = Option('quick', help="Quickly build the package, uses quick-builder, which defaults to \"fakeroot debian/rules binary\"")
+  reuse_opt = Option('reuse', help="Try to avoid expoting too much on each build. Only works in merge mode; it saves unpacking the upstream tarball each time. Implies --dont-purge and --use-existing")
   takes_args = ['branch?']
   aliases = ['bd']
   takes_options = ['verbose', working_tree_opt, export_only_opt, 
       dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt, 
-      build_dir_opt, orig_dir_opt, ignore_changes_opt]
+      build_dir_opt, orig_dir_opt, ignore_changes_opt, quick_opt, reuse_opt]
 
   def run(self, branch=None, verbose=False, working_tree=False, 
           export_only=False, dont_purge=False, use_existing=False, 
           result=None, builder=None, merge=False, build_dir=None, 
-          orig_dir=None, ignore_changes=False):
+          orig_dir=None, ignore_changes=False, quick=False, reuse=False):
     retcode = 0
 
     if branch is not None:
@@ -352,9 +382,12 @@ class cmd_builddeb(Command):
     
     config = BuildDebConfig()
 
+    if reuse:
+      dont_purge = True
+      use_existing = True
+
     if not merge:
       merge = config.merge()
-    mutter("Only debian/ versioned, merging with upstream tarball")
 
     if result is None:
       result = config.result_dir()
@@ -362,9 +395,14 @@ class cmd_builddeb(Command):
       result = os.path.realpath(result)
 
     if builder is None:
-      builder = config.builder()
-      if builder is None:
-        builder = "dpkg-buildpackage -uc -us -rfakeroot"
+      if quick:
+        builder = config.quick_builder()
+        if builder is None:
+          builder = "fakeroot debian/rules binary"
+      else:
+        builder = config.builder()
+        if builder is None:
+          builder = "dpkg-buildpackage -uc -us -rfakeroot"
 
     if not working_tree:
       b = tree.branch
@@ -407,8 +445,7 @@ class cmd_builddeb(Command):
       build = DebBuild(properties, t)
 
     build.prepare(use_existing)
-    if not use_existing:
-      build.export()
+    build.export(use_existing)
 
     if not export_only:
       build.build(builder)
