@@ -19,6 +19,7 @@ from bzrlib.option import Option
 from bzrlib.trace import mutter, info, warning
 from bzrlib.workingtree import WorkingTree
 from debian_bundle import deb822
+from debian_bundle.changelog import Changelog
 
 class DebianChanges(deb822.changes):
   """Abstraction of the .changes file. Use it to find out what files were 
@@ -44,52 +45,6 @@ class DebianChanges(deb822.changes):
 
   def filename(self):
     return self._filename
-
-class DebianChangelog(object):
-  """Represents a debian/changelog file. You can ask it several things about
-  the file."""
-
-  def __init__(self, file=None):
-    self._full_version = None
-    self._package = None
-    if file is None:
-      f = open(os.path.join("debian","changelog"), 'r')
-      contents = f.read()
-      close(f)
-      self._file = contents
-    else:
-      self._file = file
-    p = re.compile('([a-z0-9][-a-z0-9.+]+) \(([-0-9a-z.:]+)\) '
-        +'[-a-zA-Z]+( [-a-zA-Z]+)*; urgency=[a-z]+')
-    m = p.search(self._file)
-    if m is not None:
-      self._package = m.group(1)
-      self._full_version = m.group(2)
-
-    if self._full_version is None:
-      raise DebianError("Could not parse debian/changelog")
-
-    p = re.compile('(.+)-([^-]+)')
-    m = p.match(self._full_version)
-    if m is not None:
-      self._upstream_version = m.group(1)
-      self._debian_version = m.group(2)
-    else:
-      self._upstream_version = self._full_version
-      self._debian_version = None
-
-
-  def full_version(self):
-    return self._full_version
-
-  def debian_version(self):
-    return self._debian_version
-
-  def upstream_version(self):
-    return self._upstream_version
-
-  def package(self):
-    return self._package
 
 
 def recursive_copy(fromdir, todir):
@@ -495,7 +450,7 @@ class cmd_builddeb(Command):
     info("Using '%s' to get package information", changelog_file)
     changelog_id = t.inventory.path2id(changelog_file)
     contents = t.get_file_text(changelog_id)
-    changelog = DebianChangelog(contents)
+    changelog = Changelog(contents)
     if build_dir is None:
       build_dir = config.build_dir()
       if build_dir is None:
