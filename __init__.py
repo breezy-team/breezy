@@ -19,8 +19,8 @@ from bzrlib.trace import mutter
 from debian_bundle import deb822
 
 class DebianChanges(deb822.changes):
-  """Abstraction of the .changes file. Use it to find out what files were built
-  """
+  """Abstraction of the .changes file. Use it to find out what files were 
+  built."""
 
   def __init__(self, package, version, dir):
     status, arch = commands.getstatusoutput(
@@ -44,8 +44,7 @@ class DebianChanges(deb822.changes):
 
 class DebianChangelog(object):
   """Represents a debian/changelog file. You can ask it several things about
-     the file.
-  """
+  the file."""
 
   def __init__(self, file=None):
     self._full_version = None
@@ -91,6 +90,10 @@ class DebianChangelog(object):
 
 
 def recursive_copy(fromdir, todir):
+  """Copy the contents of fromdir to todir. Like shutil.copytree, but the 
+  destination directory must already exist with this method, rather than 
+  not exists for shutil."""
+
   for entry in os.listdir(fromdir):
     path = os.path.join(fromdir, entry)
     if os.path.isdir(path):
@@ -102,6 +105,7 @@ def recursive_copy(fromdir, todir):
       shutil.copy(path, todir)
 
 class BuildProperties(object):
+  """Properties of this specific build"""
 
   def __init__(self, changelog, build_dir, tarball_dir, larstiq):
     self._changelog = changelog
@@ -135,6 +139,7 @@ class BuildProperties(object):
     return self._larstiq
 
 class DebBuild(object):
+  """The object that does the building work."""
 
   def __init__(self, properties, tree):
     self._properties = properties
@@ -178,6 +183,7 @@ class DebBuild(object):
                   result)
 
 class DebMergeBuild(DebBuild):
+  """A subclass of DebBuild that uses the merge method."""
 
   def export(self, use_existing):
     package = self._properties.package()
@@ -195,32 +201,22 @@ class DebMergeBuild(DebBuild):
         raise DebianError('Could not find upstrean tarball at '+tarball)
 
       tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
-
       os.system('tar xzf '+tarball+' -C '+tempdir)
-
       files = glob.glob(tempdir+'/*/*')
-
       os.makedirs(source_dir)
-
       for file in files:
         shutil.move(file, source_dir)
-
       shutil.rmtree(tempdir)
-   
+
     basetempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
-
     tempdir = os.path.join(basetempdir,"export")
-
     if self._properties.larstiq():
       os.makedirs(tempdir)
       export_dir = os.path.join(tempdir,'debian')
     else:
       export_dir = tempdir
-    
     export(self._tree,export_dir,None,None)
-
     recursive_copy(tempdir, source_dir)
-
     shutil.rmtree(basetempdir)
 
 
@@ -233,22 +229,25 @@ class DebianError(BzrNewError):
 
 class ChangedError(DebianError):
   """There are modified files in the working tree. Either commit the 
-     changes, use --working to build the working tree, or --ignore-changes
-     to override this and build the branch without the changes in the working 
-     tree. Use bzr status to see the changes"""
+  changes, use --working to build the working tree, or --ignore-changes
+  to override this and build the branch without the changes in the working 
+  tree. Use bzr status to see the changes"""
 
   def __init__(self):
     DebianError.__init__(self, None)
 
 class NoSourceDirError(DebianError):
   """There is no existing source directory to use. Use --export-only or 
-     --dont-purge to get one that can be used"""
+  --dont-purge to get one that can be used"""
 
   def __init__(self):
     DebianError.__init__(self, None)
 
-
 class BuildDebConfig(object):
+  """Holds the configuration settings for builddeb. These are taken from
+  a hierarchy of config files. .bzr-builddeb/local.conf then 
+  ~/.bazaar/builddeb.conf, finally .bzr-builddeb/default.conf. The value is 
+  taken from the first file in which it is specified."""
 
   def __init__(self):
     globalfile = os.path.expanduser('~/.bazaar/builddeb.conf')
@@ -257,12 +256,17 @@ class BuildDebConfig(object):
     self._config_files = [ConfigObj(localfile), ConfigObj(globalfile), ConfigObj(defaultfile)]
 
   def _get_opt(self, config, key):
+    """Returns the value for key from config, of None if it is not defined in 
+    the file"""
     try:
       return config.get_value('BUILDDEB', key)
     except KeyError:
       return None
 
   def _get_best_opt(self, key):
+    """Returns the value for key from the first file in which it is defined,
+    or None if none of the files define it."""
+
     for file in self._config_files:
       value = self._get_opt(file, key)
       if value is not None:
@@ -302,9 +306,10 @@ class BuildDebConfig(object):
 
 def is_clean(oldtree, newtree):
   """Return True if there are no uncommited changes or unknown files. 
-     I don't like this, but I can't see a better way to do it, and dont
-     want to add the dependency on bzrtools for an equivalent method, (even
-     if I knew how to access it)."""
+  I don't like this, but I can't see a better way to do it, and dont
+  want to add the dependency on bzrtools for an equivalent method, (even
+  if I knew how to access it)."""
+
   changes = newtree.changes_from(oldtree)
   if changes.has_changed() or len(list(newtree.unknowns())) > 0:
     return False
