@@ -84,19 +84,6 @@ class Benchmark(ExternalBase):
                                                  hot_cache=hot_cache)
         return creator.create(root=root)
 
-    def _create_many_commit_tree(self, root, in_cache=False):
-        tree = bzrdir.BzrDir.create_standalone_workingtree(root)
-        tree.lock_write()
-        try:
-            for i in xrange(1000):
-                tree.commit('no-changes commit %d' % i)
-        finally:
-            tree.unlock()
-        if in_cache:
-            self._protect_files(root+'/.bzr')
-
-        return tree
-
     def make_many_commit_tree(self, directory_name='.',
                               hardlink=False):
         """Create a tree with many commits.
@@ -104,47 +91,8 @@ class Benchmark(ExternalBase):
         No file changes are included. Not hardlinking the working tree, 
         because there are no working tree files.
         """
-        cache_dir, is_cached = self.get_cache_dir('many_commit_tree')
-        if cache_dir is None:
-            return self._create_many_commit_tree(root=directory_name,
-                                                 in_cache=False)
-
-        if not is_cached:
-            self._create_many_commit_tree(root=cache_dir, in_cache=True)
-
-        return self._clone_tree(cache_dir, directory_name,
-                                link_bzr=hardlink,
-                                hot_cache=True)
-
-    def _create_heavily_merged_tree(self, root, in_cache=False):
-        try:
-            os.mkdir(root)
-        except (IOError, OSError), e:
-            if e.errno not in (errno.EEXIST,):
-                raise
-
-        tree = bzrdir.BzrDir.create_standalone_workingtree(
-                root + '/tree1')
-        tree.lock_write()
-        try:
-            tree2 = tree.bzrdir.sprout(root + '/tree2').open_workingtree()
-            tree2.lock_write()
-            try:
-                for i in xrange(250):
-                    revision_id = tree.commit('no-changes commit %d-a' % i)
-                    tree2.branch.fetch(tree.branch, revision_id)
-                    tree2.set_pending_merges([revision_id])
-                    revision_id = tree2.commit('no-changes commit %d-b' % i)
-                    tree.branch.fetch(tree2.branch, revision_id)
-                    tree.set_pending_merges([revision_id])
-                tree.set_pending_merges([])
-            finally:
-                tree2.unlock()
-        finally:
-            tree.unlock()
-        if in_cache:
-            self._protect_files(root+'/tree1/.bzr')
-        return tree
+        creator = SimpleManyCommitTreeCreator(self, link_bzr=hardlink)
+        return creator.create(root=directory_name)
 
     def make_heavily_merged_tree(self, directory_name='.',
                                  hardlink=False):
@@ -156,19 +104,8 @@ class Benchmark(ExternalBase):
         tree.  Not hardlinking the working tree, because there are no working 
         tree files.
         """
-        cache_dir, is_cached = self.get_cache_dir('heavily_merged_tree')
-        if cache_dir is None:
-            # Not caching
-            return self._create_heavily_merged_tree(root=directory_name,
-                                                    in_cache=False)
-
-        if not is_cached:
-            self._create_heavily_merged_tree(root=cache_dir, in_cache=True)
-
-        tree_dir = cache_dir + '/tree1'
-        return self._clone_tree(tree_dir, directory_name,
-                                link_bzr=hardlink,
-                                hot_cache=True)
+        creator = HeavilyMergedTreeCreator(self, link_bzr=hardlink)
+        return creator.create(root=directory_name)
 
 
 class TreeCreator(object):
@@ -404,6 +341,7 @@ class KernelLikeAddedTreeCreator(TreeCreator):
 
 
 class KernelLikeCommittedTreeCreator(TreeCreator):
+    """Create a tree with ~10K files, and a single commit adding all of them"""
 
     def __init__(self, test, link_working=False, link_bzr=False,
                  hot_cache=True):
@@ -414,7 +352,7 @@ class KernelLikeCommittedTreeCreator(TreeCreator):
             hot_cache=hot_cache)
 
     def _create_tree(self, root, in_cache=False):
-        """Create a kernel-like tree with the all files added
+        """Create a kernel-like tree with all files committed
 
         :param root: The root directory to create the files
         :param in_cache: Is this being created in the cache dir?
@@ -429,6 +367,76 @@ class KernelLikeCommittedTreeCreator(TreeCreator):
             self._protect_files(root+'/.bzr')
         return tree
 
+
+class SimpleManyCommitTreeCreator(TreeCreator):
+    """Create an empty tree with lots of commits"""
+
+    def __init__(self, test, link_bzr=False):
+        super(SimpleManyCommitTreeCreator, self).__init__(test,
+            tree_name='many_commit_tree',
+            link_bzr=link_bzr,
+            link_working=False,
+            hot_cache=True)
+
+    def _create_tree(self, root, in_cache=False):
+        tree = bzrdir.BzrDir.create_standalone_workingtree(root)
+        tree.lock_write()
+        try:
+            for i in xrange(1000):
+                tree.commit('no-changes commit %d' % i)
+        finally:
+            tree.unlock()
+        if in_cache:
+            self._protect_files(root+'/.bzr')
+
+        return tree
+
+
+class HeavilyMergedTreeCreator(TreeCreator):
+    """Create a tree in which almost every commit is a merge.
+   
+    No file changes are included.  This produces two trees, 
+    one of which is returned.  Except for the first commit, every
+    commit in its revision-history is a merge of another commit in the other
+    tree.  
+    Not hardlinking the working tree, because there are no working tree files.
+    """
+
+    def __init__(self, test, link_bzr=True):
+        super(HeavilyMergedTreeCreator, self).__init__(test,
+            tree_name='heavily_merged_tree',
+            link_bzr=link_bzr,
+            link_working=False,
+            hot_cache=True)
+
+    def _create_tree(self, root, in_cache=False):
+        try:
+            os.mkdir(root)
+        except (IOError, OSError), e:
+            if e.errno not in (errno.EEXIST,):
+                raise
+
+        tree = bzrdir.BzrDir.create_standalone_workingtree(root)
+        tree.lock_write()
+        try:
+            tree2 = tree.bzrdir.sprout(root + '/tree2').open_workingtree()
+            tree2.lock_write()
+            try:
+                for i in xrange(250):
+                    revision_id = tree.commit('no-changes commit %d-a' % i)
+                    tree2.branch.fetch(tree.branch, revision_id)
+                    tree2.set_pending_merges([revision_id])
+                    revision_id = tree2.commit('no-changes commit %d-b' % i)
+                    tree.branch.fetch(tree2.branch, revision_id)
+                    tree.set_pending_merges([revision_id])
+                tree.set_pending_merges([])
+            finally:
+                tree2.unlock()
+        finally:
+            tree.unlock()
+        if in_cache:
+            self._protect_files(root+'/.bzr')
+        return tree
 
 
 def test_suite():
