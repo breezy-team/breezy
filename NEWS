@@ -13,6 +13,13 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * New Registry class to provide name-to-object registry-like support,
+      for example for schemes where plugins can register new classes to
+      do certain tasks (e.g. log formatters). Subclass LazyImportRegistry
+      provides support modules to be loaded on request. (John Arbash
+      Meinel, Adeodato Simó)
+
+
 bzr 0.9.0  2006-08-11
 
   SURPRISES:
