@@ -16,7 +16,7 @@ from bzrlib.errors import (NoSuchFile, NotBranchError, BzrNewError)
 from bzrlib.export import export
 from bzrlib.ignores import parse_ignore_file
 from bzrlib.option import Option
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, info, warning
 from bzrlib.workingtree import WorkingTree
 from debian_bundle import deb822
 
@@ -32,6 +32,7 @@ class DebianChanges(deb822.changes):
     changes = str(package)+"_"+str(version)+"_"+str(arch)+".changes"
     if dir is not None:
       changes = os.path.join(dir,changes)
+    info("Looking for %s", changes)    
     if not os.path.exists(changes):
       raise DebianError("Could not find "+package)
     fp = open(changes)
@@ -95,7 +96,7 @@ def recursive_copy(fromdir, todir):
   """Copy the contents of fromdir to todir. Like shutil.copytree, but the 
   destination directory must already exist with this method, rather than 
   not exists for shutil."""
-
+  mutter("Copying %s to %s", fromdir, todir)
   for entry in os.listdir(fromdir):
     path = os.path.join(fromdir, entry)
     if os.path.isdir(path):
@@ -149,38 +150,51 @@ class DebBuild(object):
 
   def prepare(self, keep_source_dir=False):
     build_dir = self._properties.build_dir()
+    info("Preparing the build area: %s", build_dir);
     if not os.path.exists(build_dir):
       os.makedirs(build_dir)
     source_dir = self._properties.source_dir()
     if os.path.exists(source_dir):
       if not keep_source_dir:
+        info("Purging the build dir: %s", build_dir)
         shutil.rmtree(source_dir)
+      else:
+        info("Not purging build dir as requested: %s", build_dir)
     else:
       if keep_source_dir:
         raise NoSourceDirError;
 
   def export(self, reuse_existing=False):
     source_dir = self._properties.source_dir()
+    info("Exporting to %s", source_dir)
     export(self._tree,source_dir,None,None)
 
   def build(self, builder):
     wd = os.getcwdu()
-    os.chdir(self._properties.source_dir())
+    source_dir = self._properties.source_dir()
+    info("Building the package in %s, using %s", source_dir, builder)
+    os.chdir(source_dir)
     os.system(builder)
     os.chdir(wd)
 
   def clean(self):
-    shutil.rmtree(self._properties.source_dir())
+    source_dir = self._properties.source_dir()
+    info("Cleaning build dir: %s", source_dir)
+    shutil.rmtree(source_dir)
 
   def move_result(self, result):
+    info("Placing result in %s", result)
     package = self._properties.package()
     version = self._properties.full_version()
     changes = DebianChanges(package, version, self._properties.build_dir())
     files = changes.files()
     if not os.path.exists(result):
       os.makedirs(result)
+    info("Moving %s to %s", changes.filename(), result)
     shutil.move(changes.filename(), result)
+    info("Moving all files given in %s", changes.filename())
     for file in files:
+      info("Moving %s to %s", file(), result)
       shutil.move(os.path.join(self._properties.build_dir(), file['name']), 
                   result)
 
@@ -194,14 +208,16 @@ class DebMergeBuild(DebBuild):
     tarballdir = self._properties.tarball_dir()
     tarball = os.path.join(tarballdir,package+"_"+upstream+".orig.tar.gz")
     source_dir = self._properties.source_dir()
-
+    info("Exporting to %s in merge mode", source_dir)
     if not use_existing:
+      info("Looking for %s to use as upstream source", tarball)
       if not os.path.exists(tarballdir):
         raise DebianError('Could not find dir with upstream tarballs: '
             +tarballdir)
       if not os.path.exists(tarball):
         raise DebianError('Could not find upstrean tarball at '+tarball)
 
+      info("Extracting %s to %s", tarball, source_dir)
       tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
       os.system('tar xzf '+tarball+' -C '+tempdir)
       files = glob.glob(tempdir+'/*/*')
@@ -209,7 +225,10 @@ class DebMergeBuild(DebBuild):
       for file in files:
         shutil.move(file, source_dir)
       shutil.rmtree(tempdir)
+    else:
+      info("Reusing existing build dir as requested")
 
+    info("Exporting debian/ part to %s", source_dir)
     basetempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
     tempdir = os.path.join(basetempdir,"export")
     if self._properties.larstiq():
@@ -257,15 +276,16 @@ def add_ignore(file):
       f.close()
     
     if file not in ignored:
+      info("Adding %s to .bzrignore", file)
       ignored.add(file)
 
-    f = AtomicFile(ifn, 'wt')
-    try:
-      for ign in ignored:
-        f.write(ign.encode('utf-8')+"\n")
-      f.commit()
-    finally:
-      f.close()
+      f = AtomicFile(ifn, 'wt')
+      try:
+        for ign in ignored:
+          f.write(ign.encode('utf-8')+"\n")
+        f.commit()
+      finally:
+        f.close()
 
     inv = tree.inventory
     if inv.path2id('.bzrignore'):
@@ -303,6 +323,7 @@ class BuildDebConfig(object):
     for file in self._config_files:
       value = self._get_opt(file, key)
       if value is not None:
+        info("Using %s for %s, taken from %s", value, key, file.filename)
         return value
     return None
 
@@ -316,6 +337,7 @@ class BuildDebConfig(object):
     for file in self._config_files:
       (found, value) = self._get_bool(file, key)
       if found:
+        info("Using %s for %s, taken from %s", value, key, file.filename)
         return value
     return default
 
@@ -414,6 +436,7 @@ class cmd_builddeb(Command):
     retcode = 0
 
     if branch is not None:
+      info("Building using branch at %s", branch)
       os.chdir(branch)
 
     tree = WorkingTree.open_containing('.')[0]
@@ -421,11 +444,15 @@ class cmd_builddeb(Command):
     config = BuildDebConfig()
 
     if reuse:
+      info("Reusing existing build dir")
       dont_purge = True
       use_existing = True
 
     if not merge:
       merge = config.merge()
+
+    if merge:
+      info("Running in merge mode")
 
     if result is None:
       result = config.result_dir()
@@ -445,10 +472,12 @@ class cmd_builddeb(Command):
     if not working_tree:
       b = tree.branch
       rev_id = b.last_revision()
+      info("Building branch from revision %s", rev_id)
       t = b.repository.revision_tree(rev_id)
       if not ignore_changes and not is_clean(t, tree):
         raise ChangedError
     else:
+      info("Building using working tree")
       t = tree
     changelog_file = 'debian/changelog'
     larstiq = False
@@ -462,6 +491,7 @@ class cmd_builddeb(Command):
       else:
         raise DebianError("Could not open debian/changelog")
 
+    info("Using '%s' to get package information", changelog_file)
     changelog_id = t.inventory.path2id(changelog_file)
     contents = t.get_file_text(changelog_id)
     changelog = DebianChangelog(contents)
