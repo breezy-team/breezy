@@ -47,7 +47,7 @@ htm_files := $(patsubst %.txt, %.htm, $(txt_files)) doc/bzr_man.htm
 	rst2html.py --link-stylesheet --stylesheet=default.css $*.txt $*.htm
 
 doc/bzr_man.txt:
-	generate_docs.py -o doc/bzr_man.txt rstx
+	python generate_docs.py -o doc/bzr_man.txt rstx
 
 docs: $(htm_files)
 

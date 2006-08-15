@@ -594,6 +594,7 @@ class TestCase(unittest.TestCase):
             'HOME': os.getcwd(),
             'APPDATA': os.getcwd(),
             'BZR_EMAIL': None,
+            'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
         }
         self.__old_env = {}
@@ -1273,6 +1274,7 @@ def test_suite():
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
+                   'bzrlib.tests.test_cache_utf8',
                    'bzrlib.tests.test_command',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
