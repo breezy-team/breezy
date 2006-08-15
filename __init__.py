@@ -127,13 +127,17 @@ class DebBuild(object):
     self._properties = properties
     self._tree = tree
 
-  def prepare(self):
+  def prepare(self, keep_source_dir=False):
     build_dir = self._properties.build_dir()
     if not os.path.exists(build_dir):
       os.makedirs(build_dir)
     source_dir = self._properties.source_dir()
     if os.path.exists(source_dir):
-      shutil.rmtree(source_dir)
+      if not keep_source_dir:
+        shutil.rmtree(source_dir)
+    else:
+      if keep_source_dir:
+        raise NoSourceDirError;
 
   def export(self):
     source_dir = self._properties.source_dir()
@@ -210,6 +214,14 @@ class ChangedError(DebianError):
 
   def __init__(self):
     DebianError.__init__(self, None)
+
+class NoSourceDirError(DebianError):
+  """There is no existing source directory to use. Use --export-only or 
+     --dont-purge to get one that can be used"""
+
+  def __init__(self):
+    DebianError.__init__(self, None)
+
 
 class BuildDebConfig(object):
 
@@ -303,6 +315,7 @@ class cmd_builddeb(Command):
   Option.SHORT_OPTIONS['w'] = working_tree_opt
   export_only_opt = Option('export-only', help="Export only, don't build")
   Option.SHORT_OPTIONS['e'] = export_only_opt
+  use_existing_opt = Option('use-existing', help="Use an existing build directory")
   dont_purge_opt = Option('dont-purge', 
       help="Don't purge the build directory after building")
   result_opt = Option('result', 
@@ -323,12 +336,13 @@ class cmd_builddeb(Command):
   takes_args = ['branch?']
   aliases = ['bd']
   takes_options = ['verbose', working_tree_opt, export_only_opt, 
-      dont_purge_opt, result_opt, builder_opt, merge_opt, build_dir_opt, 
-      orig_dir_opt, ignore_changes_opt]
+      dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt, 
+      build_dir_opt, orig_dir_opt, ignore_changes_opt]
 
   def run(self, branch=None, verbose=False, working_tree=False, 
-          export_only=False, dont_purge=False, result=None, builder=None, 
-          merge=False, build_dir=None, orig_dir=None, ignore_changes=False):
+          export_only=False, dont_purge=False, use_existing=False, 
+          result=None, builder=None, merge=False, build_dir=None, 
+          orig_dir=None, ignore_changes=False):
     retcode = 0
 
     if branch is not None:
@@ -392,8 +406,9 @@ class cmd_builddeb(Command):
     else:
       build = DebBuild(properties, t)
 
-    build.prepare()
-    build.export()
+    build.prepare(use_existing)
+    if not use_existing:
+      build.export()
 
     if not export_only:
       build.build(builder)
