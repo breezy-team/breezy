@@ -96,10 +96,6 @@ from bzrlib.patches import (PatchSyntax,
 class BzrError(StandardError):
     
     is_user_error = True
-    
-    def __init__(self, *args):
-        if not hasattr(self, 'args'):
-            self.args = args
 
     def __str__(self):
         # XXX: Should we show the exception class in 
@@ -1069,16 +1065,43 @@ class NotABundle(BzrNewError):
     """Not a bzr revision-bundle: %(text)r"""
 
     def __init__(self, text):
+        BzrNewError.__init__(self)
         self.text = text
 
 
-class BadBundle(Exception): pass
+class BadBundle(BzrNewError): 
+    """Bad bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        BzrNewError.__init__(self)
+        self.text = text
 
 
-class MalformedHeader(BadBundle): pass
+class MalformedHeader(BadBundle): 
+    """Malformed bzr revision-bundle header: %(text)r"""
+
+    def __init__(self, text):
+        BzrNewError.__init__(self)
+        self.text = text
 
 
-class MalformedPatches(BadBundle): pass
+class MalformedPatches(BadBundle): 
+    """Malformed patches in bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        BzrNewError.__init__(self)
+        self.text = text
 
 
-class MalformedFooter(BadBundle): pass
+class MalformedFooter(BadBundle): 
+    """Malformed footer in bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        BzrNewError.__init__(self)
+        self.text = text
+
+class UnsupportedEOLMarker(BadBundle):
+    """End of line marker was not \\n in bzr revision-bundle"""    
+
+    def __init__(self):
+        BzrNewError.__init__(self)    
