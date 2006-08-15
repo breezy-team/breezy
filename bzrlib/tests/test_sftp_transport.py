@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-from operator import lt, gt, ge
 import socket
 import threading
 import time
@@ -34,7 +33,7 @@ except ImportError:
     paramiko_loaded = False
 
 def set_transport(testcase):
-    """ A helper to set transports on test case instances. """
+    """A helper to set transports on test case instances."""
     from bzrlib.transport.sftp import SFTPAbsoluteServer, SFTPHomeDirServer
     if getattr(testcase, '_get_remote_is_absolute', None) is None:
         testcase._get_remote_is_absolute = True
@@ -44,13 +43,14 @@ def set_transport(testcase):
         testcase.transport_server = SFTPHomeDirServer
     testcase.transport_readonly_server = bzrlib.transport.http.HttpServer
 
+
 class TestCaseWithSFTPServer(TestCaseWithTransport):
     """A test case base class that provides a sftp server on localhost."""
 
     def setUp(self):
+        super(TestCaseWithSFTPServer, self).setUp()
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
-        super(TestCaseWithSFTPServer, self).setUp()
         set_transport(self) 
 
     def get_transport(self, path=None):
@@ -351,25 +351,29 @@ class SSHVendorBadConnection(TestCaseWithTransport):
 class SFTPLatencyKnob(TestCaseWithSFTPServer):
     """Test that the testing SFTPServer's latency knob works."""
 
-    def test_make_transport_slow(self):
-        # change the latency knob to 100ms. We take about 40ms for a 
+    def test_latency_knob_slows_transport(self):
+        # change the latency knob to 500ms. We take about 40ms for a 
         # loopback connection ordinarily.
-        self.get_server().add_latency = 0.1
-        self.assertConnectionTime(ge)
-
-    def assertConnectionTime(self, operator):
-        from bzrlib.transport.sftp import SocketDelay
-        start_time = SocketDelay.simulated_time
+        start_time = time.time()
+        self.get_server().add_latency = 0.5
         transport = self.get_transport()
-        stop_time = SocketDelay.simulated_time
-        self.failUnless(operator(stop_time - start_time, 0.1))
+        with_latency_knob_time = time.time() - start_time
+        print with_latency_knob_time
+        self.assertTrue(with_latency_knob_time > 0.4)
 
-    def test_default_fast(self):
-        self.assertConnectionTime(lt)
+    def test_default(self):
+        # This test is potentially brittle: under extremely high machine load
+        # it could fail, but that is quite unlikely
+        start_time = time.time()
+        transport = self.get_transport()
+        regular_time = time.time() - start_time
+        self.assertTrue(regular_time < 0.5)
+
 
 class FakeSocket(object):
-    """ Fake socket object used to test the SocketDelay wrapper without
-    using a real socket."""
+    """Fake socket object used to test the SocketDelay wrapper without
+    using a real socket.
+    """
 
     def __init__(self):
         self._data = ""
@@ -392,14 +396,17 @@ class FakeSocket(object):
             self._data = ""
             return result
 
+
 class TestSocketDelay(TestCase):
+
     def setUp(self):
         TestCase.setUp(self)
 
     def test_delay(self):
         from bzrlib.transport.sftp import SocketDelay
         sending = FakeSocket()
-        receiving = SocketDelay(sending, 0.1, bandwidth=1000000)
+        receiving = SocketDelay(sending, 0.1, bandwidth=1000000,
+                                really_sleep=False)
         # check that simulated time is charged only per round-trip:
         t1 = SocketDelay.simulated_time
         receiving.send("connect1")
@@ -424,7 +431,8 @@ class TestSocketDelay(TestCase):
     def test_bandwidth(self):
         from bzrlib.transport.sftp import SocketDelay
         sending = FakeSocket()
-        receiving = SocketDelay(sending, 0, bandwidth=8.0/(1024*1024))
+        receiving = SocketDelay(sending, 0, bandwidth=8.0/(1024*1024),
+                                really_sleep=False)
         # check that simulated time is charged only per round-trip:
         t1 = SocketDelay.simulated_time
         receiving.send("connect")

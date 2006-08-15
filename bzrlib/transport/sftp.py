@@ -1076,21 +1076,23 @@ class SocketDelay(object):
     In addition every send, sendall and recv sleeps a bit per character send to
     simulate bandwidth.
 
-    The function used to sleep moves a counter forwards to not make the tests
-    slower. It could be made more clever, by adding the time that was passing
-    between sleep calls to the simulated time too.
-
     Not all methods are implemented, this is deliberate as this class is not a
     replacement for the builtin sockets layer. fileno is not implemented to
     prevent the proxy being bypassed. 
     """
 
     simulated_time = 0
+    _proxied_arguments = dict.fromkeys([
+        "close", "getpeername", "getsockname", "getsockopt", "gettimeout",
+        "setblocking", "setsockopt", "settimeout", "shutdown"])
 
     def __init__(self, sock, latency, bandwidth=1.0, 
-                 really_sleep=False):
+                 really_sleep=True):
         """ 
         :param bandwith: simulated bandwith (MegaBit)
+        :param really_sleep: If set to false, the SocketDelay will just
+        increase a counter, instead of calling time.sleep. This is useful for
+        unittesting the SocketDelay.
         """
         self.sock = sock
         self.latency = latency
@@ -1101,26 +1103,18 @@ class SocketDelay(object):
     def sleep(self, s):
         if self.really_sleep:
             time.sleep(s)
-        SocketDelay.simulated_time += s
+        else:
+            SocketDelay.simulated_time += s
 
-    def close(self):
-        return self.sock.close()
+    def __getattr__(self, attr):
+        if attr in SocketDelay._proxied_arguments:
+            return getattr(self.sock, attr)
+        raise AttributeError("'SocketDelay' object has no attribute %r" %
+                             attr)
 
     def dup(self):
         return SocketDelay(self.sock.dup(), self.latency, self.time_per_byte,
                            self._sleep)
-
-    def getpeername(self, *args):
-        return self.sock.getpeername(*args)
-
-    def getsockname(self, *args):
-        return self.sock.getsockname(*args)
-    
-    def getsockopt(self, *args):
-        return self.sock.getsockopt(*args)
-
-    def gettimeout(self, *args):
-        return self.sock.gettimeout(*args)
 
     def recv(self, *args):
         data = self.sock.recv(*args)
@@ -1145,18 +1139,6 @@ class SocketDelay(object):
         self.sleep(bytes_sent * self.time_per_byte)
         return bytes_sent
 
-    def setblocking(self, *args):
-        return self.sock.setblocking(*args)
-
-    def setsockopt(self, *args):
-        return self.sock.setsockopt(*args)
-
-    def settimeout(self, *args):
-        return self.sock.settimeout(*args)
-
-    def shutdown(self, *args):
-        return self.sock.shutdown(*args)
-        
 
 class SFTPServer(Server):
     """Common code for SFTP server facilities."""

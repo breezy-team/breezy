@@ -17,10 +17,10 @@
 
 """Benchmark test suite for bzr."""
 
+import bzrlib.branch
 from bzrlib import bzrdir, plugin
 from bzrlib.tests.TestUtil import TestLoader
 from bzrlib.tests.blackbox import ExternalBase
-import bzrlib.branch
 
 
 class Benchmark(ExternalBase):
@@ -66,13 +66,7 @@ class Benchmark(ExternalBase):
             for i in xrange(1000):
                 tree.commit('no-changes commit %d' % i)
         finally:
-            try:
-                try:
-                    tree.branch.repository.unlock()
-                finally:
-                    tree.branch.unlock()
-            finally:
-                tree.unlock()
+            tree.unlock()
         return tree
 
     def make_heavily_merged_tree(self, directory_name='.'):
@@ -102,6 +96,54 @@ class Benchmark(ExternalBase):
         finally:
             tree2.unlock()
         return tree
+
+    def create_with_commits(self, num_files, num_commits, directory_name='.'):
+        """Create a tree with many files and many commits.
+        
+        :param num_files: number of files to be created
+        :param num_commits: number of commits in the newly created tree
+        """
+        files = ["%s/%s" % (directory_name, i) for i in range(num_files)]
+        for fn in files:
+            f = open(fn, "wb")
+            f.write("some content\n")
+            f.close()
+        tree = bzrdir.BzrDir.create_standalone_workingtree(directory_name)
+        for i in range(num_files):
+            tree.add(str(i))
+        tree.lock_write()
+        try:
+            tree.commit('initial commit')
+            for i in range(num_commits):
+                fn = files[i % len(files)]
+                f = open(fn, "wb")
+                content = range(i) + [i, i, i, ""]
+                f.write("\n".join([str(i) for i in content]))
+                f.close()
+                tree.commit("changing file %s" % fn)
+        finally:
+            tree.unlock()
+        return tree, files
+
+    def commit_some_revisions(self, tree, files, num_commits,
+                              changes_per_commit):
+        """Commit a specified number of revisions to some files in a tree,
+        makeing a specified number of changes per commit.
+
+        :param tree: The tree in which the changes happen.
+        :param files: The list of files where changes should occur.
+        :param num_commits: The number of commits
+        :param changes_per_commit: The number of files that are touched in 
+        each commit.
+        """
+        for j in range(num_commits):
+            for i in range(changes_per_commit):
+                fn = files[(i + j) % changes_per_commit]
+                f = open(fn, "w")
+                content = range(i) + [i, i, i, '']
+                f.write("\n".join([str(k) for k in content]))
+                f.close()
+            tree.commit("new revision")
 
 
 def test_suite():
