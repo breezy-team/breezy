@@ -45,13 +45,12 @@ class TestRegistry(TestCase):
         self.assertRaises(KeyError, registry_.get, None)
         self.assertEqual(2, registry_.get('two'))
         self.assertRaises(KeyError, registry_.get, 'three')
-        self.assertEqual(4, registry_.get('three', 'four'))
-        self.assertEqual(4, registry_.get(None, 'four'))
-        self.assertRaises(KeyError, registry_.get, 'three', 'no-such-key')
 
         # test _set_default_key
         registry_.default_key = 'five'
         self.failUnless(registry_.default_key == 'five')
+        self.assertEqual(5, registry_.get())
+        self.assertEqual(5, registry_.get(None))
         self.assertEqual(5, registry_.get('six'))
         self.assertRaises(KeyError, registry_._set_default_key, 'six')
 
@@ -69,13 +68,12 @@ class TestRegistry(TestCase):
         self.assertEqual(1, registry_.get(None))
         self.assertEqual(2, registry_.get('two'))
         self.assertEqual(1, registry_.get('three'))
-        self.assertEqual(4, registry_.get('three', 'four'))
-        self.assertEqual(4, registry_.get(None, 'four'))
-        self.assertRaises(KeyError, registry_.get, 'three', 'no-such-key')
 
         # test _set_default_key
         registry_.default_key = 'five'
         self.failUnless(registry_.default_key == 'five')
+        self.assertEqual(5, registry_.get())
+        self.assertEqual(5, registry_.get(None))
         self.assertEqual(5, registry_.get('six'))
         self.assertRaises(KeyError, registry_._set_default_key, 'six')
 

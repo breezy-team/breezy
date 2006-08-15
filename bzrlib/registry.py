@@ -17,9 +17,6 @@
 """Classes to provide name-to-object registry-like support."""
 
 
-_marker = object()
-
-
 class Registry(object):
     """A class that registers objects to a name."""
 
@@ -43,30 +40,20 @@ class Registry(object):
             self._default_key = key
         self._dict[key] = object
 
-    def get(self, key=None, fallback_key=_marker):
-        """Return the object register()'ed by the given key.
+    def get(self, key=None):
+        """Return the object register()'ed to the given key.
 
-        This may raise KeyError if the key is not present.
-
-        :param key: The key to obtain the object for. If no object was
-            registered to that key, the object registered for :param
-            fallback_key:, if exists, will be returned instead.
-        :param fallback_key: Key to use if an object for :param key: can't be
-            found; defaults to self.default_key. Set it to None if you'd like
-            to ensure an exception is raised for non-found keys.
+        :param key: The key to obtain the object for. If no object has been
+            registered to that key, the object registered for self.default_key
+            will be returned instead, if it exists. Otherwise KeyError will be
+            raised.
         :return: The previously registered object.
         """
-        if fallback_key is _marker:
-            fallback_key = self.default_key
-
         try:
-            if key is None:
-                return self._dict[fallback_key]
-            else:
-                return self._dict[key]
+            return self._dict[key]
         except KeyError:
-            if fallback_key is not None:
-                return self._dict[fallback_key]
+            if self.default_key is not None:
+                return self._dict[self.default_key]
             else:
                 raise
 
@@ -99,13 +86,13 @@ class LazyImportRegistry(Registry):
         """
         Registry.register(self, key, (module_name, member_name))
 
-    def get(self, key=None, default_key=_marker):
+    def get(self, key=None):
         """Load the module and return the object specified by the given key.
 
         May raise ImportError if there are any problems, or AttributeError if
         the module does not have the supplied member.
         """
-        module_name, member_name = Registry.get(self, key, default_key)
+        module_name, member_name = Registry.get(self, key)
         module = __import__(module_name, globals(), locals(), [member_name])
         if member_name:
             return getattr(module, member_name)
