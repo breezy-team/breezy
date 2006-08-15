@@ -18,7 +18,12 @@
 from bzrlib import (
     osutils,
     )
-from bzrlib.benchmarks import Benchmark
+from bzrlib.benchmarks import (
+    Benchmark,
+    KernelLikeTreeCreator,
+    KernelLikeAddedTreeCreator,
+    KernelLikeCommittedTreeCreator,
+    )
 from bzrlib.tests import TestSkipped
 
 
@@ -35,75 +40,60 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
     def test_02_make_kernel_like_tree(self):
         """Hardlinking a kernel-like working tree should be ~1s"""
         # make sure kernel_like_tree is cached
-        cache_dir, is_cached = self.get_cache_dir('kernel_like_tree')
-        if cache_dir is None:
-            # Caching is disabled, this test is meaningless
+        creator = KernelLikeTreeCreator(self, link_working=True)
+        if not creator.is_caching_enabled():
             raise TestSkipped('caching is disabled')
-        if not is_cached:
-            # If it has not been cached yet, create it
-            self.make_kernel_like_tree(root='foo', link_working=True)
-        self.time(self.make_kernel_like_tree, root='bar',
-                  link_working=True)
+        creator.ensure_cached()
+        self.time(creator.create, root='bar')
 
     def test_03_make_kernel_like_added_tree(self):
         """Time the first creation of a kernel like added tree"""
-        orig_cache = Benchmark.CACHE_ROOT
-        try:
-            # Change to a local cache directory so we know this
-            # really creates the files
-            Benchmark.CACHE_ROOT = None
-            self.time(self.make_kernel_like_added_tree, root='foo')
-        finally:
-            Benchmark.CACHE_ROOT = orig_cache
+        creator = KernelLikeAddedTreeCreator(self)
+        creator.disable_cache()
+        self.time(creator.create, root='foo')
 
     def test_04_make_kernel_like_added_tree(self):
         """Time the second creation of a kernel like added tree 
         (this should be a clone)
         """
         # make sure kernel_like_added_tree is cached
-        cache_dir, is_cached = self.get_cache_dir('kernel_like_added_tree')
-        if cache_dir is None:
+        creator = KernelLikeAddedTreeCreator(self, link_working=True)
+        if not creator.is_caching_enabled():
             # Caching is disabled, this test is meaningless
             raise TestSkipped('caching is disabled')
-        if not is_cached:
-            # If it has not been cached yet, create it
-            self.make_kernel_like_added_tree(root='foo')
-        self.time(self.make_kernel_like_added_tree, root='bar')
+        creator.ensure_cached()
+        self.time(creator.create, root='bar')
 
     def test_05_make_kernel_like_committed_tree(self):
         """Time the first creation of a committed kernel like tree"""
-        orig_cache = Benchmark.CACHE_ROOT
-        try:
-            # Change to a local cache directory so we know this
-            # really creates the files
-            Benchmark.CACHE_ROOT = None
-            self.time(self.make_kernel_like_committed_tree, root='foo')
-        finally:
-            Benchmark.CACHE_ROOT = orig_cache
+        creator = KernelLikeCommittedTreeCreator(self)
+        creator.disable_cache()
+        self.time(creator.create, root='foo')
 
     def test_06_make_kernel_like_committed_tree(self):
         """Time the second creation of a committed kernel like tree 
         (this should be a clone)
         """
-        # Call make_kernel_like_committed_tree to make sure it is cached
-        cache_dir, is_cached = self.get_cache_dir('kernel_like_committed_tree')
-        if cache_dir is None:
+        creator = KernelLikeCommittedTreeCreator(self,
+                                                 link_working=True,
+                                                 link_bzr=False)
+        if not creator.is_caching_enabled():
+            # Caching is disabled, this test is meaningless
             raise TestSkipped('caching is disabled')
-        if not is_cached:
-            self.make_kernel_like_committed_tree(root='foo')
-        self.time(self.make_kernel_like_committed_tree, root='bar')
+        creator.ensure_cached()
+        self.time(creator.create, root='bar')
 
     def test_07_make_kernel_like_committed_tree_hardlink(self):
         """Time the creation of a committed kernel like tree 
         (this should also hardlink the .bzr/ directory)
         """
-        # make sure kernel_like_committed_tree is cached
-        cache_dir, is_cached = self.get_cache_dir('kernel_like_committed_tree')
-        if cache_dir is None:
+        creator = KernelLikeCommittedTreeCreator(self,
+                                                 link_working=True,
+                                                 link_bzr=True)
+        if not creator.is_caching_enabled():
+            # Caching is disabled, this test is meaningless
             raise TestSkipped('caching is disabled')
-        if not is_cached:
-            self.make_kernel_like_committed_tree(root='foo')
-        self.time(self.make_kernel_like_committed_tree, root='bar',
-                    link_bzr=True)
+        creator.ensure_cached()
+        self.time(creator.create, root='bar')
 
 

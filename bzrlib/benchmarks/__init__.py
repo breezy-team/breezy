@@ -34,8 +34,6 @@ from bzrlib.tests.blackbox import ExternalBase
 
 class Benchmark(ExternalBase):
 
-    CACHE_ROOT = None
-
     def make_kernel_like_tree(self, url=None, root='.',
                               link_working=False):
         """Setup a temporary tree roughly like a kernel tree.
@@ -46,91 +44,9 @@ class Benchmark(ExternalBase):
             just hardlink the working tree. Tests must request this, because
             they must break links if they want to change the files
         """
-        if url is not None:
-            b = bzrdir.BzrDir.create_branch_convenience(url)
-            d = bzrdir.BzrDir.create(root)
-            bzrlib.branch.BranchReferenceFormat().initialize(d, b)
-            tree = d.create_workingtree()
-        else:
-            tree = bzrdir.BzrDir.create_standalone_workingtree(root)
-
-        self._link_or_copy_kernel_files(root=root, do_link=link_working)
-        return tree
-
-    def _make_kernel_files(self, root='.'):
-        # a kernel tree has ~10000 and 500 directory, with most files around 
-        # 3-4 levels deep. 
-        # we simulate this by three levels of dirs named 0-7, givin 512 dirs,
-        # and 20 files each.
-        files = []
-        for outer in range(8):
-            files.append("%s/" % outer)
-            for middle in range(8):
-                files.append("%s/%s/" % (outer, middle))
-                for inner in range(8):
-                    prefix = "%s/%s/%s/" % (outer, middle, inner)
-                    files.append(prefix)
-                    files.extend([prefix + str(foo) for foo in range(20)])
-        cwd = osutils.getcwd()
-        os.chdir(root)
-        self.build_tree(files)
-        os.chdir(cwd)
-
-    def _cache_kernel_like_tree(self):
-        """Create the kernel_like_tree cache dir if it doesn't exist"""
-        cache_dir, is_cached = self.get_cache_dir('kernel_like_tree')
-        if cache_dir is None:
-            return None
-        if is_cached:
-            return cache_dir
-        os.mkdir(cache_dir)
-        self._make_kernel_files(root=cache_dir)
-        self._protect_files(cache_dir)
-        return cache_dir
-
-    def _link_or_copy_kernel_files(self, root, do_link=True):
-        """Hardlink the kernel files from the cached location.
-
-        If the platform doesn't correctly support hardlinking files, it
-        reverts to just creating new ones.
-        """
-
-        if not osutils.hardlinks_good() or not do_link:
-            # Turns out that 'shutil.copytree()' is no faster than
-            # just creating them. Probably the python overhead.
-            # Plain _make_kernel_files takes 5s
-            # cp -a takes 3s
-            # using hardlinks takes < 1s.
-            self._make_kernel_files(root=root)
-            return
-
-        cache_dir = self._cache_kernel_like_tree()
-        if cache_dir is None:
-            self._make_kernel_files(root=root)
-            return
-
-        # Hardlinking the target directory is *much* faster (7s => <1s).
-        osutils.copy_tree(cache_dir, root,
-                          handlers={'file':os.link})
-
-    def _create_kernel_like_added_tree(self, root, in_cache=False):
-        """Create a kernel-like tree with the all files added
-
-        :param root: The root directory to create the files
-        :param in_cache: Is this being created in the cache dir?
-        """
-        # Get a basic tree with working files
-        tree = self.make_kernel_like_tree(root=root,
-                                          link_working=in_cache)
-        # Add everything to it
-        tree.lock_write()
-        try:
-            add.smart_add_tree(tree, [root], recurse=True, save=True)
-            if in_cache:
-                self._protect_files(root+'/.bzr')
-        finally:
-            tree.unlock()
-        return tree
+        creator = KernelLikeTreeCreator(self, link_working=link_working,
+                                        url=url)
+        return creator.create(root=root)
 
     def make_kernel_like_added_tree(self, root='.',
                                     link_working=True,
@@ -145,33 +61,9 @@ class Benchmark(ExternalBase):
             the stat-cache is correct. The old way of creating a freshly
             added tree always had a hot cache.
         """
-        # There isn't much underneath .bzr, so we don't support hardlinking
-        # it. Testing showed there wasn't much gain, and there is potentially
-        # a problem if someone modifies something underneath us.
-        cache_dir, is_cached = self.get_cache_dir('kernel_like_added_tree')
-        if cache_dir is None:
-            # Not caching
-            return self._create_kernel_like_added_tree(root, in_cache=False)
-
-        if not is_cached:
-            self._create_kernel_like_added_tree(root=cache_dir,
-                                                in_cache=True)
-
-        return self._clone_tree(cache_dir, root,
-                                link_working=link_working,
-                                hot_cache=hot_cache)
-
-    def _create_kernel_like_committed_tree(self, root, in_cache=False):
-        """Create a kernel-like tree with all files added and committed"""
-        # Get a basic tree with working files
-        tree = self.make_kernel_like_added_tree(root=root,
-                                                link_working=in_cache,
-                                                hot_cache=(not in_cache))
-        tree.commit('first post', rev_id='r1')
-
-        if in_cache:
-            self._protect_files(root+'/.bzr')
-        return tree
+        creator = KernelLikeAddedTreeCreator(self, link_working=link_working,
+                                             hot_cache=hot_cache)
+        return creator.create(root=root)
 
     def make_kernel_like_committed_tree(self, root='.',
                                     link_working=True,
@@ -186,20 +78,11 @@ class Benchmark(ExternalBase):
         :param link_bzr: Hardlink the .bzr directory. For readonly 
             operations this is safe, and shaves off a lot of setup time
         """
-        cache_dir, is_cached = self.get_cache_dir('kernel_like_committed_tree')
-        if cache_dir is None:
-            return self._create_kernel_like_committed_tree(root=root,
-                                                           in_cache=False)
-
-        if not is_cached:
-            self._create_kernel_like_committed_tree(root=cache_dir,
-                                                    in_cache=True)
-
-        # Now we have a cached tree, just copy it
-        return self._clone_tree(cache_dir, root,
-                                link_bzr=link_bzr,
-                                link_working=link_working,
-                                hot_cache=hot_cache)
+        creator = KernelLikeCommittedTreeCreator(self,
+                                                 link_working=link_working,
+                                                 link_bzr=link_bzr,
+                                                 hot_cache=hot_cache)
+        return creator.create(root=root)
 
     def _create_many_commit_tree(self, root, in_cache=False):
         tree = bzrdir.BzrDir.create_standalone_workingtree(root)
@@ -293,27 +176,45 @@ class TreeCreator(object):
 
     CACHE_ROOT = None
 
-    def __init__(self, tree_name, link_bzr=False, link_working=False,
+    def __init__(self, test, tree_name,
+                 link_bzr=False,
+                 link_working=False,
                  hot_cache=True):
         """Instantiate a new creator object, supply the id of the tree"""
 
+        self._cache_root = TreeCreator.CACHE_ROOT
+        self._test = test
         self._tree_name = tree_name
         self._link_bzr = link_bzr
         self._link_working = link_working
         self._hot_cache = hot_cache
+        if not osutils.hardlinks_good():
+            self._link_working = self._link_bzr = False
 
-    @staticmethod
-    def is_caching_enabled():
+    def is_caching_enabled(self):
         """Will we try to cache the tree we create?"""
-        return TreeCreator.CACHE_ROOT is not None
+        return self._cache_root is not None
 
     def is_cached(self):
         """Is this tree already cached?"""
         cache_dir = self._get_cache_dir()
         if cache_dir is None:
             return False
-        return os.path.exists(cache_dir):
+        return os.path.exists(cache_dir)
         
+    def disable_cache(self):
+        """Do not use the cache"""
+        self._cache_root = None
+
+    def ensure_cached(self):
+        """If caching, make sure the cached copy exists"""
+        cache_dir = self._get_cache_dir()
+        if cache_dir is None:
+            return
+
+        if not self.is_cached():
+            self._create_tree(root=cache_dir, in_cache=True)
+
     def create(self, root):
         """Create a new tree at 'root'.
 
@@ -324,8 +225,7 @@ class TreeCreator(object):
             # Not caching
             return self._create_tree(root, in_cache=False)
 
-        if not self.is_cached():
-            self._create_tree(root=cache_dir, in_cache=True)
+        self.ensure_cached()
 
         return self._clone_cached_tree(root)
 
@@ -334,9 +234,9 @@ class TreeCreator(object):
 
         :return: The path to use for caching. If None, caching is disabled
         """
-        if self.CACHE_ROOT is None:
+        if self._cache_root is None:
             return None
-        return osutils.pathjoin(self.CACHE_ROOT, extra)
+        return osutils.pathjoin(self._cache_root, self._tree_name)
 
     def _create_tree(self, root, in_cache=False):
         """Create the desired tree in the given location.
@@ -410,6 +310,125 @@ class TreeCreator(object):
             for relpath, name, kind, st, abspath in entries:
                 if kind == 'file':
                     os.chmod(abspath, 0440)
+
+
+class KernelLikeTreeCreator(TreeCreator):
+    """Create a basic tree with ~10k unversioned files""" 
+
+    def __init__(self, test, link_working=False, url=None):
+        super(KernelLikeTreeCreator, self).__init__(test,
+            tree_name='kernel_like_tree',
+            link_working=link_working,
+            link_bzr=False)
+
+        self._url = url
+
+    def create(self, root):
+        """Create all the kernel files in the given location.
+
+        This is overloaded for compatibility reasons.
+        """
+        if self._url is not None:
+            b = bzrdir.BzrDir.create_branch_convenience(self._url)
+            d = bzrdir.BzrDir.create(root)
+            bzrlib.branch.BranchReferenceFormat().initialize(d, b)
+            tree = d.create_workingtree()
+        else:
+            tree = bzrdir.BzrDir.create_standalone_workingtree(root)
+
+        if not self._link_working or not self.is_caching_enabled():
+            # Turns out that 'shutil.copytree()' is no faster than
+            # just creating them. Probably the python overhead.
+            # Plain _make_kernel_files takes 3-5s
+            # cp -a takes 3s
+            # using hardlinks takes < 1s.
+            self._create_tree(root=root, in_cache=False)
+            return tree
+
+        self.ensure_cached()
+        cache_dir = self._get_cache_dir()
+        osutils.copy_tree(cache_dir, root,
+                          handlers={'file':os.link})
+        return tree
+
+    def _create_tree(self, root, in_cache=False):
+        # a kernel tree has ~10000 and 500 directory, with most files around 
+        # 3-4 levels deep. 
+        # we simulate this by three levels of dirs named 0-7, givin 512 dirs,
+        # and 20 files each.
+        files = []
+        for outer in range(8):
+            files.append("%s/" % outer)
+            for middle in range(8):
+                files.append("%s/%s/" % (outer, middle))
+                for inner in range(8):
+                    prefix = "%s/%s/%s/" % (outer, middle, inner)
+                    files.append(prefix)
+                    files.extend([prefix + str(foo) for foo in range(20)])
+        cwd = osutils.getcwd()
+        os.chdir(root)
+        self._test.build_tree(files)
+        os.chdir(cwd)
+        if in_cache:
+            self._protect_files(root)
+
+
+class KernelLikeAddedTreeCreator(TreeCreator):
+
+    def __init__(self, test, link_working=False, hot_cache=True):
+        super(KernelLikeAddedTreeCreator, self).__init__(test,
+            tree_name='kernel_like_added_tree',
+            link_working=link_working,
+            link_bzr=False,
+            hot_cache=hot_cache)
+
+    def _create_tree(self, root, in_cache=False):
+        """Create a kernel-like tree with the all files added
+
+        :param root: The root directory to create the files
+        :param in_cache: Is this being created in the cache dir?
+        """
+        kernel_creator = KernelLikeTreeCreator(self._test,
+                                               link_working=in_cache)
+        tree = kernel_creator.create(root=root)
+
+        # Add everything to it
+        tree.lock_write()
+        try:
+            add.smart_add_tree(tree, [root], recurse=True, save=True)
+            if in_cache:
+                self._protect_files(root+'/.bzr')
+        finally:
+            tree.unlock()
+        return tree
+
+
+class KernelLikeCommittedTreeCreator(TreeCreator):
+
+    def __init__(self, test, link_working=False, link_bzr=False,
+                 hot_cache=True):
+        super(KernelLikeCommittedTreeCreator, self).__init__(test,
+            tree_name='kernel_like_committed_tree',
+            link_working=link_working,
+            link_bzr=link_bzr,
+            hot_cache=hot_cache)
+
+    def _create_tree(self, root, in_cache=False):
+        """Create a kernel-like tree with the all files added
+
+        :param root: The root directory to create the files
+        :param in_cache: Is this being created in the cache dir?
+        """
+        kernel_creator = KernelLikeAddedTreeCreator(self._test,
+                                                    link_working=in_cache,
+                                                    hot_cache=(not in_cache))
+        tree = kernel_creator.create(root=root)
+        tree.commit('first post', rev_id='r1')
+
+        if in_cache:
+            self._protect_files(root+'/.bzr')
+        return tree
+
 
 
 def test_suite():
