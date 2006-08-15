@@ -18,21 +18,17 @@
 import os
 
 from bzrlib.benchmarks import Benchmark
-from bzrlib.benchmarks.tree_creator.kernel_like import (
-    make_kernel_like_tree,
-    make_kernel_like_added_tree,
-    )
 from bzrlib.workingtree import WorkingTree
 
 
 class WorkingTreeBenchmark(Benchmark):
 
     def test_list_files_kernel_like_tree(self):
-        tree = make_kernel_like_added_tree(self, '.')
+        tree = self.make_kernel_like_added_tree()
         self.time(list, tree.list_files())
 
     def test_list_files_unknown_kernel_like_tree(self):
-        tree = make_kernel_like_tree(self, '.')
+        tree = self.make_kernel_like_tree(link_working=True)
         tree = WorkingTree.open('.')
         # Bzr only traverses directories if they are versioned
         # So add all the directories, but not the files, yielding

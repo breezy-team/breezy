@@ -42,6 +42,48 @@ class Benchmark(ExternalBase):
                                         url=url)
         return creator.create(root=root)
 
+    def make_kernel_like_added_tree(self, root='.',
+                                    link_working=True,
+                                    hot_cache=True):
+        """Make a kernel like tree, with all files added
+
+        :param root: Where to create the files
+        :param link_working: Instead of copying all of the working tree
+            files, just hardlink them to the cached files. Tests can unlink
+            files that they will change.
+        :param hot_cache: Run through the newly created tree and make sure
+            the stat-cache is correct. The old way of creating a freshly
+            added tree always had a hot cache.
+        """
+        from bzrlib.benchmarks.tree_creator.kernel_like import (
+            KernelLikeAddedTreeCreator,
+            )
+        creator = KernelLikeAddedTreeCreator(self, link_working=link_working,
+                                             hot_cache=hot_cache)
+        return creator.create(root=root)
+
+    def make_kernel_like_committed_tree(self, root='.',
+                                    link_working=True,
+                                    link_bzr=False,
+                                    hot_cache=True):
+        """Make a kernel like tree, with all files added and committed
+
+        :param root: Where to create the files
+        :param link_working: Instead of copying all of the working tree
+            files, just hardlink them to the cached files. Tests can unlink
+            files that they will change.
+        :param link_bzr: Hardlink the .bzr directory. For readonly 
+            operations this is safe, and shaves off a lot of setup time
+        """
+        from bzrlib.benchmarks.tree_creator.kernel_like import (
+            KernelLikeCommittedTreeCreator,
+            )
+        creator = KernelLikeCommittedTreeCreator(self,
+                                                 link_working=link_working,
+                                                 link_bzr=link_bzr,
+                                                 hot_cache=hot_cache)
+        return creator.create(root=root)
+
     def make_many_commit_tree(self, directory_name='.',
                               hardlink=False):
         """Create a tree with many commits.
