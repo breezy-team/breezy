@@ -1933,14 +1933,21 @@ class cmd_selftest(Command):
                      Option('lsprof-timed',
                             help='generate lsprof output for benchmarked'
                                  ' sections of code.'),
+                     Option('cache-dir', type=str,
+                            help='a directory to cache intermediate'
+                                 ' benchmark steps'),
                      ]
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
-            lsprof_timed=None):
+            lsprof_timed=None, cache_dir=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
+        from bzrlib.benchmarks import tree_creator
+
+        if cache_dir is not None:
+            tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         # we don't want progress meters from the tests to go to the
         # real output; and we don't want log messages cluttering up
         # the real logs.

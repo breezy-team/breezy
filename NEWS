@@ -2,7 +2,14 @@ IN DEVELOPMENT
   
   IMPROVEMENTS:
 
+    * ``bzr selftest --benchmark`` now allows a ``--cache-dir`` parameter.
+      This will cache some of the intermediate trees, and decrease the
+      setup time for benchmark tests. (John Arbash Meinel)
+
   BUG FIXES:
+
+    * Use GPG_TTY to allow gpg --cl to work with gpg-agent in a pipeline,
+      (passing text to sign in on stdin). (John Arbash Meinel, #54468)
 
     * External diff does the right thing for binaries even in foreign 
       languages. (John Arbash Meinel, #56307)
