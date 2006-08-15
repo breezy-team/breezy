@@ -1,0 +1,14 @@
+Source: bzr-builddeb
+Section: devel
+Priority: optional
+Maintainer: James Westby <jw+debian@jameswestby.net>
+Build-Depends: debhelper (>= 5), cdbs (>= 0.4.26-2)
+Standards-Version: 3.7.2
+
+Package: bzr-builddeb
+Architecture: all
+Depends: bzr (>= 0.9), python-debian, ${python:Depends}
+Provides: bzr-buildpackage
+Description: bzr plugin for Debian package management
+ bzr-buildpackage is a plugin for the bzr version control system that helps to
+ automate the task of maintaining Debian packages using bzr. 
