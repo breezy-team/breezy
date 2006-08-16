@@ -162,7 +162,7 @@ def label(code, calltree=False):
     try:
         mname = _fn2mod[code.co_filename]
     except KeyError:
-        for k, v in sys.modules.iteritems():
+        for k, v in sys.modules.items():
             if v is None:
                 continue
             if not hasattr(v, '__file__'):

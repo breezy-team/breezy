@@ -319,6 +319,13 @@ class TestRepository(TestCaseWithRepository):
             self.assertEqual(revision.revision_id, revision_id)
             self.assertEqual(revision, repo.get_revision(revision_id))
 
+    def test_root_entry_has_revision(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('message', rev_id='rev_id')
+        self.assertEqual('rev_id', tree.basis_tree().inventory.root.revision)
+        rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
+        self.assertEqual('rev_id', rev_tree.inventory.root.revision)
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
