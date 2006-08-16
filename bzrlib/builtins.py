@@ -274,18 +274,37 @@ class cmd_add(Command):
 
     --dry-run will show which files would be added, but not actually 
     add them.
+
+    --file-ids-from will try to use the file ids from the supplied path.
+    It looks up ids trying to find a matching parent directory with the
+    same filename, and then by pure path.
     """
     takes_args = ['file*']
-    takes_options = ['no-recurse', 'dry-run', 'verbose']
+    takes_options = ['no-recurse', 'dry-run', 'verbose',
+                     Option('file-ids-from', type=unicode,
+                            help='Lookup file ids from here')]
     encoding_type = 'replace'
 
-    def run(self, file_list, no_recurse=False, dry_run=False, verbose=False):
+    def run(self, file_list, no_recurse=False, dry_run=False, verbose=False,
+            file_ids_from=None):
         import bzrlib.add
 
-        action = bzrlib.add.AddAction(to_file=self.outf,
-            should_print=(not is_quiet()))
+        if file_ids_from is not None:
+            try:
+                base_tree, base_path = WorkingTree.open_containing(
+                                            file_ids_from)
+            except errors.NoWorkingTree:
+                base_branch, base_path = branch.Branch.open_containing(
+                                            file_ids_from)
+                base_tree = base_branch.basis_tree()
 
-        added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
+            action = bzrlib.add.AddFromBaseAction(base_tree, base_path,
+                          to_file=self.outf, should_print=(not is_quiet()))
+        else:
+            action = bzrlib.add.AddAction(to_file=self.outf,
+                should_print=(not is_quiet()))
+
+        added, ignored = bzrlib.add.smart_add(file_list, not no_recurse,
                                               action=action, save=not dry_run)
         if len(ignored) > 0:
             if verbose:
