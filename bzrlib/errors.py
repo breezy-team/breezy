@@ -216,19 +216,13 @@ class StrictCommitFailed(BzrNewError):
 class PathError(BzrNewError):
     """Generic path error: %(path)r%(extra)s)"""
 
-    extra = ''
-
     def __init__(self, path, extra=None):
         BzrNewError.__init__(self)
         self.path = path
-        # evaluate extra later, because we raise NoSuchFile a lot
-        # and most times we don't care about this yet.
-        self._extra = extra
-
-    def __str__(self):
-        if self._extra:
-            self.extra = ': ' + str(self._extra)
-        return BzrNewError.__str__(self)
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
 
 
 class NoSuchFile(PathError):
@@ -298,9 +292,7 @@ class NotBranchError(PathError):
 
     def __init__(self, path):
        import bzrlib.urlutils as urlutils
-       path = urlutils.unescape_for_display(path, 'ascii')
-       PathError.__init__(self, path=path, extra=None)
-       self._extra = None
+       self.path = urlutils.unescape_for_display(path, 'ascii')
 
 
 class AlreadyBranchError(PathError):

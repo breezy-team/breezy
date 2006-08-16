@@ -19,7 +19,6 @@
 This is a fairly thin wrapper on regular file IO.
 """
 
-import errno
 import os
 import shutil
 import sys
@@ -27,7 +26,6 @@ from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
 import tempfile
 
 from bzrlib import (
-    errors,
     osutils,
     urlutils,
     )
@@ -126,13 +124,10 @@ class LocalTransport(Transport):
 
         :param relpath: The relative path to the file
         """
-        path = self._abspath(relpath)
         try:
+            path = self._abspath(relpath)
             return open(path, 'rb')
         except (IOError, OSError),e:
-            # Fast path this *one* case, because it happens *a lot*
-            if e.errno == errno.ENOENT:
-                raise errors.NoSuchFile(path, e)
             self._translate_error(e, path)
 
     def put(self, relpath, f, mode=None):
