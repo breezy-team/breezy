@@ -21,6 +21,22 @@ from bzrlib.workingtree import WorkingTree
 from debian_bundle import deb822
 from debian_bundle.changelog import Changelog
 
+dont_purge_opt = Option('dont-purge', 
+    help="Don't purge the build directory after building")
+result_opt = Option('result', 
+    help="Directory in which to place the resulting package files", type=str)
+builder_opt = Option('builder', 
+    help="Command to build the package", type=str)
+merge_opt = Option('merge', 
+    help='Merge the debian part of the source in to the upstream tarball')
+build_dir_opt = Option('build-dir', 
+    help="The dir to use for building", type=str)
+orig_dir_opt = Option('orig-dir', 
+    help="Directory containing the .orig.tar.gz files. For use when only"
+       +"debian/ is versioned", type=str)
+
+
+
 class DebianChanges(deb822.changes):
   """Abstraction of the .changes file. Use it to find out what files were 
   built."""
@@ -153,10 +169,16 @@ class DebBuild(object):
       shutil.move(os.path.join(self._properties.build_dir(), file['name']), 
                   result)
 
+  def tag_release(self):
+    #TODO decide what command should be able to remove a tag notice
+    info("If you are happy with the results and upload use tagdeb to tag this"
+        +" release. If you do not release it...")
+
+
 class DebMergeBuild(DebBuild):
   """A subclass of DebBuild that uses the merge method."""
 
-  def export(self, use_existing):
+  def export(self, use_existing=False):
     package = self._properties.package()
     upstream = self._properties.upstream_version()
     build_dir = self._properties.build_dir()
@@ -219,6 +241,11 @@ class NoSourceDirError(DebianError):
 
   def __init__(self):
     DebianError.__init__(self, None)
+
+class NotInBaseError(BzrNewError):
+  """Must be invoked from the base of a branch."""
+  def __init__(self):
+    BzrNewError.__init__(self)
 
 def add_ignore(file):
   """Adds file to .bzrignore if it exists and not already in the file."""
@@ -326,6 +353,30 @@ def is_clean(oldtree, newtree):
     return False
   return True
 
+def goto_branch(branch):
+  """Changes to the specified branch dir if it is not None"""
+  if branch is not None:
+    info("Building using branch at %s", branch)
+    os.chdir(branch)
+
+def find_changelog(t, merge):
+    changelog_file = 'debian/changelog'
+    larstiq = False
+    if not t.has_filename(changelog_file):
+      if merge:
+        #Assume LartstiQ's layout (.bzr in debian/)
+        changelog_file = 'changelog'
+        larstiq = True
+        if not t.has_filename(changelog_file):
+          raise DebianError("Could not open debian/changelog or changelog")
+      else:
+        raise DebianError("Could not open debian/changelog")
+    info("Using '%s' to get package information", changelog_file)
+    changelog_id = t.inventory.path2id(changelog_file)
+    contents = t.get_file_text(changelog_id)
+    changelog = Changelog(contents)
+    return changelog, larstiq 
+
 class cmd_builddeb(Command):
   """Builds a Debian package from a branch.
 
@@ -372,19 +423,6 @@ class cmd_builddeb(Command):
   export_only_opt = Option('export-only', help="Export only, don't build")
   Option.SHORT_OPTIONS['e'] = export_only_opt
   use_existing_opt = Option('use-existing', help="Use an existing build directory")
-  dont_purge_opt = Option('dont-purge', 
-      help="Don't purge the build directory after building")
-  result_opt = Option('result', 
-      help="Directory in which to place the resulting package files", type=str)
-  builder_opt = Option('builder', 
-      help="Command to build the package", type=str)
-  merge_opt = Option('merge', 
-      help='Merge the debian part of the source in to the upstream tarball')
-  build_dir_opt = Option('build-dir', 
-      help="The dir to use for building", type=str)
-  orig_dir_opt = Option('orig-dir', 
-      help="Directory containing the .orig.tar.gz files. For use when only"
-         +"debian/ is versioned", type=str)
   ignore_changes_opt = Option('ignore-changes',
       help="Ignore any changes that are in the working tree when building the"
          +" branch. You may also want --working to use these uncommited "
@@ -403,11 +441,12 @@ class cmd_builddeb(Command):
           orig_dir=None, ignore_changes=False, quick=False, reuse=False):
     retcode = 0
 
-    if branch is not None:
-      info("Building using branch at %s", branch)
-      os.chdir(branch)
+    goto_branch(branch)
 
-    tree = WorkingTree.open_containing('.')[0]
+    tree, relpath = WorkingTree.open_containing('.')
+
+    if relpath != '':
+      raise NotInBaseError()
     
     config = BuildDebConfig()
 
@@ -447,22 +486,9 @@ class cmd_builddeb(Command):
     else:
       info("Building using working tree")
       t = tree
-    changelog_file = 'debian/changelog'
-    larstiq = False
-    if not t.has_filename(changelog_file):
-      if merge:
-        #Assume LartstiQ's layout (.bzr in debian/)
-        changelog_file = 'changelog'
-        larstiq = True
-        if not t.has_filename(changelog_file):
-          raise DebianError("Could not open debian/changelog or changelog")
-      else:
-        raise DebianError("Could not open debian/changelog")
 
-    info("Using '%s' to get package information", changelog_file)
-    changelog_id = t.inventory.path2id(changelog_file)
-    contents = t.get_file_text(changelog_id)
-    changelog = Changelog(contents)
+    (changelog, larstiq) = find_changelog(t, merge)
+
     if build_dir is None:
       build_dir = config.build_dir()
       if build_dir is None:
@@ -493,6 +519,92 @@ class cmd_builddeb(Command):
 
     return retcode
 
+class cmd_releasedeb(Command):
+  """Build a version of the deb after running dch -r. Also marks the tree to
+  remind the user to tag the release."""
+
+  distribution_opt = Option('distribution', help="The distribution that should"
+            +" be relased to. Defaults to unstable", type=str)
+  takes_args = ['package?']
+  takes_options = ['verbose', distribution_opt, builder_opt, dont_purge_opt,
+      build_dir_opt, orig_dir_opt, merge_opt, result_opt]
+
+  def run(self, branch=None, distribution='unstable', builder=None, 
+          dont_purge=False, build_dir=None, orig_dir=None, merge=False, 
+          result=None):
+    retcode = 0
+
+    goto_branch(branch)
+
+    config = BuildDebConfig()
+    
+    if not merge:
+      merge = config.merge()
+
+    if merge:
+      info("Running in merge mode")
+
+    if result is None:
+      result = config.result_dir()
+    if result is not None:
+      result = os.path.realpath(result)
+
+    if builder is None:
+        builder = config.builder()
+        if builder is None:
+          builder = "dpkg-buildpackage -uc -us -rfakeroot"
+
+    tree, relpath = WorkingTree.open_containing('.')
+
+    if relpath != '':
+      raise NotInBaseError()
+
+    b = tree.branch
+    rev_id = b.last_revision()
+    info("Building branch from revision %s", rev_id)
+    t = b.repository.revision_tree(rev_id)
+    if not is_clean(t, tree):
+      raise ChangedError
+
+    (changelog, larstiq) = find_changelog(t, merge)
+
+    if build_dir is None:
+      build_dir = config.build_dir()
+      if build_dir is None:
+        build_dir = '../build-area'
+
+    if orig_dir is None:
+      orig_dir = config.orig_dir()
+      if orig_dir is None:
+        orig_dir = '../tarballs'
+    
+    properties = BuildProperties(changelog,build_dir,orig_dir,larstiq)
+
+    if merge:
+      build = DebMergeBuild(properties, t)
+    else:
+      build = DebBuild(properties, t)
+
+    build.prepare()
+    build.export()
+    wd = os.getcwdu()
+    os.chdir(properties.source_dir())
+    command = 'dch -r --distribution '+distribution+" \" \""
+    info("Executing %s to ready the package for release", command)
+    (status, output) = commands.getstatusoutput(command)
+    if status > 0:
+      raise DebianError("Couldn't execute dch: %s" % output)
+    os.chdir(wd)
+    build.build(builder)
+    if not dont_purge:
+      build.clean()
+    if result is not None:
+      build.move_result(result)
+
+    build.tag_release()
+
+    return retcode
+
 #class cmd_recorddeb(Command):
 #  """Record the package
 #  """
@@ -515,4 +627,5 @@ def test_suite():
   return suite
 
 register_command(cmd_builddeb)
+register_command(cmd_releasedeb)
 #register_command(cmd_recorddeb)
