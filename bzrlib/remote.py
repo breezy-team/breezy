@@ -76,11 +76,19 @@ class RemoteBzrDir(BzrDir):
         return self.open_workingtree()
 
     def open_repository(self):
-        return RemoteRepository.open(self._real_bzrdir.open_repository(), self)
+        return RemoteRepository(self._real_bzrdir.open_repository(), self)
 
     def open_branch(self):
-        format = RemoteBranchFormat.find_format(self)
-        return RemoteBranchFormat().open(self)
+        real_branch = self._real_bzrdir.open_branch()
+        if real_branch.bzrdir is self._real_bzrdir:
+            # This branch accessed through the smart server, so wrap the
+            # file-level objects.
+            real_repository = real_branch.repository
+            remote_repository = RemoteRepository(real_repository, self)
+            return RemoteBranch(self, remote_repository, real_branch)
+        else:
+            # We were redirected to somewhere else, so don't wrap.
+            return real_branch
 
     def open_workingtree(self):
         return RemoteWorkingTree.open(self._real_bzrdir.open_workingtree(), self)
@@ -115,12 +123,12 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     def initialize(self, a_bzrdir, shared=False):
         real_format = repository.RepositoryFormatKnit1()
         real_repo = real_format.initialize(a_bzrdir, shared=shared)
-        return RemoteRepository.open(real_repo, a_bzrdir)
+        return RemoteRepository(real_repo, a_bzrdir)
     
     def open(self, a_bzrdir):
         real_format = repository.RepositoryFormatKnit1()
         real_repo = real_format.open(a_bzrdir)
-        return RemoteRepository.open(real_repo, a_bzrdir)
+        return RemoteRepository(real_repo, a_bzrdir)
 
     def get_format_description(self):
         return 'bzr remote repository'
@@ -141,10 +149,6 @@ class RemoteRepository(object):
         self.bzrdir = remote_bzrdir
         self._format = RemoteRepositoryFormat()
 
-    @classmethod
-    def open(cls, real_repository, remote_bzrdir):
-        return cls(real_repository, remote_bzrdir)
-
     def __getattr__(self, name):
         # XXX: temporary way to lazily delegate everything to the real
         # repository
@@ -159,8 +163,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         return cls.open(cls(), a_bzrdir)
     
     def open(self, a_bzrdir):
-        return RemoteBranch(a_bzrdir,
-                            _repository=a_bzrdir.open_repository())
+        return RemoteBranch.open(a_bzrdir)
 
     def initialize(self, a_bzrdir):
         assert isinstance(a_bzrdir, RemoteBzrDir)
@@ -173,18 +176,19 @@ class RemoteBranch(branch.Branch):
     At the moment most operations are mapped down to simple file operations.
     """
 
-    def __init__(self, my_bzrdir, _repository=None):
-        self.bzrdir = my_bzrdir
-        self.transport = my_bzrdir.transport
-        self.repository = _repository
-        # XXX: Should be possible to open things other than the default format.
-        real_format = BranchFormat.get_default_format()
-        self._real_branch = real_format.open(my_bzrdir, _found=True)
+    def __init__(self, remote_bzrdir, remote_repository, real_branch):
+        self.bzrdir = remote_bzrdir
+        self.transport = remote_bzrdir.transport
+        self.repository = remote_repository
+        self._real_branch = real_branch
         self._format = RemoteBranchFormat()
 
     @classmethod
     def open(cls, my_bzrdir):
-        return cls(my_bzrdir)
+        # XXX: Should be possible to open things other than the default format.
+        real_format = BranchFormat.get_default_format()
+        real_branch = real_format.open(my_bzrdir, _found=True)
+        return cls(my_bzrdir, my_bzrdir.open_repository(), real_branch)
 
     def lock_read(self):
         return self._real_branch.lock_read()
