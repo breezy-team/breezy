@@ -626,8 +626,6 @@ class BundleTree(Tree):
 
     def get_last_changed(self, file_id):
         path = self.id2path(file_id)
-        if path == '':
-            return None
         if path in self._last_changed:
             return self._last_changed[path]
         return self.base_tree.inventory[file_id].revision
@@ -672,6 +670,7 @@ class BundleTree(Tree):
             inv = Inventory(root_id, self.revision_id)
         except TypeError:
             inv = Inventory(revision_id=self.revision_id)
+        inv.root.revision = self.get_last_changed(root_id)
 
         def add_entry(file_id):
             path = self.id2path(file_id)

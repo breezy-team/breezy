@@ -328,7 +328,7 @@ class BundleReader(object):
         self.from_file = iter(from_file)
         self._next_line = None
         
-        self.info = BundleInfo()
+        self.info = BundleInfo08()
         # We put the actual inventory ids in the footer, so that the patch
         # is easier to read for humans.
         # Unfortunately, that means we need to read everything before we
@@ -511,3 +511,9 @@ class BundleReader(object):
                 # Consume the trailing \n and stop processing
                 self._next().next()
                 break
+
+
+class BundleInfo08(BundleInfo):
+    def _update_tree(self, bundle_tree, revision_id):
+        bundle_tree.note_last_changed('', revision_id)
+        BundleInfo._update_tree(self, bundle_tree, revision_id)

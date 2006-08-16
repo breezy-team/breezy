@@ -134,6 +134,8 @@ class ReportCommitToLog(NullCommitReporter):
     def snapshot_change(self, change, path):
         if change == 'unchanged':
             return
+        if change == 'added' and path == '':
+            return
         note("%s %s", change, path)
 
     def completed(self, revno, rev_id):
@@ -308,8 +310,11 @@ class Commit(object):
                 raise PointlessCommit()
 
             self._emit_progress_update()
-            # TODO: Now the new inventory is known, check for conflicts and prompt the 
-            # user for a commit message.
+            # TODO: Now the new inventory is known, check for conflicts and
+            # prompt the user for a commit message.
+            # ADHB 2006-08-08: If this is done, populate_new_inv should not add
+            # weave lines, because nothing should be recorded until it is known
+            # that commit will succeed.
             self.builder.finish_inventory()
             self._emit_progress_update()
             self.rev_id = self.builder.commit(self.message)
@@ -503,13 +508,12 @@ class Commit(object):
         # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
         entries = self.work_inv.iter_entries()
-        # root requires special handling
-        path, new_ie = entries.next()
-        new_ie = new_ie.copy()
-        new_ie.revision = None
-        self.builder.record_entry_contents(new_ie, self.parent_invs, '', 
-                                           self.work_tree)
-        self._emit_progress_update()
+        if not self.builder.record_root_entry:
+            warnings.warn('CommitBuilders should support recording the root'
+                ' entry as of bzr 0.10.', DeprecationWarning, stacklevel=1)
+            self.builder.new_inventory.add(self.basis_inv.root.copy())
+            entries.next()
+            self._emit_progress_update()
         for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id

@@ -865,12 +865,15 @@ class Inventory(object):
         an id of None.
         """
         if root_id is not None:
-            self.root = InventoryDirectory(root_id, '', None)
-            self._byid = {self.root.file_id: self.root}
+            self._set_root(InventoryDirectory(root_id, '', None))
         else:
             self.root = None
             self._byid = {}
         self.revision_id = revision_id
+
+    def _set_root(self, ie):
+        self.root = ie
+        self._byid = {self.root.file_id: self.root}
 
     def copy(self):
         # TODO: jam 20051218 Should copy also copy the revision_id?
@@ -1049,8 +1052,9 @@ class Inventory(object):
             raise BzrError("inventory already contains entry with id {%s}" % entry.file_id)
 
         if entry.parent_id is None:
-            entry.parent_id = self.root.file_id
-
+            assert self.root is None and len(self._byid) == 0
+            self._set_root(entry)
+            return entry
         try:
             parent = self._byid[entry.parent_id]
         except KeyError:

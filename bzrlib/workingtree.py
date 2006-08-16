@@ -322,6 +322,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self.branch.break_lock()
 
     def _set_inventory(self, inv):
+        assert inv.root is not None
         self._inventory = inv
         self.path2id = self._inventory.path2id
 
@@ -399,6 +400,7 @@ class WorkingTree(bzrlib.tree.Tree):
             try:
                 xml = self.read_basis_inventory()
                 inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+                inv.root.revision = revision_id
             except NoSuchFile:
                 inv = None
             if inv is not None and inv.revision_id == revision_id:

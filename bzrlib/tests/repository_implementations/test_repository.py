@@ -147,8 +147,11 @@ class TestRepository(TestCaseWithRepository):
         wt.set_root_id('fixed-root')
         wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = wt.branch.repository.revision_tree('revision-1')
-        self.assertEqual(list(tree.list_files()), [('', 'V', 'directory', 
-            'fixed-root', InventoryDirectory('fixed-root', '', None))])
+        self.assertEqual('revision-1', tree.inventory.root.revision) 
+        expected = InventoryDirectory('fixed-root', '', None)
+        expected.revision = 'revision-1'
+        self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
+                         list(tree.list_files()))
         tree = wt.branch.repository.revision_tree(None)
         self.assertEqual([], list(tree.list_files()))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
@@ -314,6 +317,13 @@ class TestRepository(TestCaseWithRepository):
         for revision, revision_id in zipped:
             self.assertEqual(revision.revision_id, revision_id)
             self.assertEqual(revision, repo.get_revision(revision_id))
+
+    def test_root_entry_has_revision(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('message', rev_id='rev_id')
+        self.assertEqual('rev_id', tree.basis_tree().inventory.root.revision)
+        rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
+        self.assertEqual('rev_id', rev_tree.inventory.root.revision)
 
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
