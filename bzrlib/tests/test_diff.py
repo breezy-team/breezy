@@ -18,7 +18,7 @@ import os
 from cStringIO import StringIO
 import errno
 import subprocess
-from tempfile import TemporaryFile, mkdtemp
+from tempfile import TemporaryFile
 
 from bzrlib.diff import internal_diff, external_diff, show_diff_trees
 from bzrlib.errors import BinaryFile, NoDiff
