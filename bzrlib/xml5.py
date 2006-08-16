@@ -15,6 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+from bzrlib import (
+    cache_utf8,
+    )
 from bzrlib.xml_serializer import SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 import bzrlib.inventory as inventory
@@ -125,6 +128,8 @@ class Serializer_v5(Serializer):
                 raise BzrError("invalid format version %r on inventory"
                                 % format)
         revision_id = elt.get('revision_id')
+        if revision_id is not None:
+            revision_id = cache_utf8.get_cached_unicode(revision_id)
         inv = Inventory(root_id, revision_id=revision_id)
         for e in elt:
             ie = self._unpack_entry(e)
@@ -139,16 +144,20 @@ class Serializer_v5(Serializer):
         if not InventoryEntry.versionable_kind(kind):
             raise AssertionError('unsupported entry kind %s' % kind)
 
+        get_cached = cache_utf8.get_cached_unicode
+
         parent_id = elt.get('parent_id')
         if parent_id == None:
             parent_id = ROOT_ID
+        parent_id = get_cached(parent_id)
+        file_id = get_cached(elt.get('file_id'))
 
         if kind == 'directory':
-            ie = inventory.InventoryDirectory(elt.get('file_id'),
+            ie = inventory.InventoryDirectory(file_id,
                                               elt.get('name'),
                                               parent_id)
         elif kind == 'file':
-            ie = inventory.InventoryFile(elt.get('file_id'),
+            ie = inventory.InventoryFile(file_id,
                                          elt.get('name'),
                                          parent_id)
             ie.text_sha1 = elt.get('text_sha1')
@@ -157,13 +166,16 @@ class Serializer_v5(Serializer):
             v = elt.get('text_size')
             ie.text_size = v and int(v)
         elif kind == 'symlink':
-            ie = inventory.InventoryLink(elt.get('file_id'),
+            ie = inventory.InventoryLink(file_id,
                                          elt.get('name'),
                                          parent_id)
             ie.symlink_target = elt.get('symlink_target')
         else:
             raise BzrError("unknown kind %r" % kind)
-        ie.revision = elt.get('revision')
+        revision = elt.get('revision')
+        if revision is not None:
+            revision = get_cached(revision)
+        ie.revision = revision
 
         return ie
 
@@ -176,16 +188,17 @@ class Serializer_v5(Serializer):
             if format != '5':
                 raise BzrError("invalid format version %r on inventory"
                                 % format)
+        get_cached = cache_utf8.get_cached_unicode
         rev = Revision(committer = elt.get('committer'),
                        timestamp = float(elt.get('timestamp')),
-                       revision_id = elt.get('revision_id'),
+                       revision_id = get_cached(elt.get('revision_id')),
                        inventory_sha1 = elt.get('inventory_sha1')
                        )
         parents = elt.find('parents') or []
         for p in parents:
             assert p.tag == 'revision_ref', \
                    "bad parent node tag %r" % p.tag
-            rev.parent_ids.append(p.get('revision_id'))
+            rev.parent_ids.append(get_cached(p.get('revision_id')))
         self._unpack_revision_properties(elt, rev)
         v = elt.get('timezone')
         rev.timezone = v and int(v)

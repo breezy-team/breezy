@@ -865,10 +865,17 @@ class Inventory(object):
         # root id. Rather than generating a random one here.
         #if root_id is None:
         #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
-        self.root = InventoryDirectory(root_id, '', None)
+        if root_id is not None:
+            self._set_root(InventoryDirectory(root_id, '', None))
+        else:
+            self.root = None
+            self._byid = {}
         # FIXME: this isn't ever used, changing it to self.revision may break
         # things. TODO make everything use self.revision_id
         self.revision_id = revision_id
+
+    def _set_root(self, ie):
+        self.root = ie
         self._byid = {self.root.file_id: self.root}
 
     def copy(self):
@@ -1046,7 +1053,12 @@ class Inventory(object):
         if entry.file_id in self._byid:
             raise BzrError("inventory already contains entry with id {%s}" % entry.file_id)
 
-        if entry.parent_id == ROOT_ID or entry.parent_id is None:
+        if entry.parent_id is None:
+            assert self.root is None and len(self._byid) == 0
+            self._set_root(entry)
+            return entry
+        if entry.parent_id == ROOT_ID:
+            assert self.root is not None, self
             entry.parent_id = self.root.file_id
 
         try:
