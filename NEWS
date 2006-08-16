@@ -1,6 +1,8 @@
 IN DEVELOPMENT
   
   IMPROVEMENTS:
+    * 'merge' now takes --uncommitted, to apply uncommitted changes from a
+      tree.  (Aaron Bentley)
   
     * 'bzr add --file-ids-from' can be used to specify another path to use
       for creating file ids, rather than generating all new ones. Internally,
