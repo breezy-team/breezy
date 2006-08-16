@@ -17,7 +17,7 @@
 
 """Bzrlib specific gzip tunings. We plan to feed these to the upstream gzip."""
 
-import cStringIO
+from cStringIO import StringIO
 
 # make GzipFile faster:
 import gzip
@@ -281,7 +281,7 @@ class GzipFile(gzip.GzipFile):
         # to :
         # 4168 calls in 417.
         # Negative numbers result in reading all the lines
-        content = cStringIO.StringIO(self.read(-1))
+        content = StringIO(self.read(-1))
         return content.readlines()
 
     def _unread(self, buf, len_buf=None):
