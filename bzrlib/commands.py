@@ -257,6 +257,10 @@ class Command(object):
 
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
+        if argv is None:
+            warn("Passing None for [] is deprecated from bzrlib 0.10", 
+                 DeprecationWarning, stacklevel=2)
+            argv = []
         args, opts = parse_args(self, argv, alias_argv)
         if 'help' in opts:  # e.g. bzr add --help
             from bzrlib.help import help_on_command
