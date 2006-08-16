@@ -67,12 +67,3 @@ class BenchXMLSerializer(Benchmark):
 
         self.time(xml5.serializer_v5.write_inventory_to_string, inv)
 
-    def test_write_to_string_no_cache_kernel_like_inventory(self):
-        tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
-
-        cache_utf8.clear_encoding_cache()
-        xml5._clear_cache()
-        # We want a real tree with lots of file ids and sha strings, etc.
-        inv = tree.basis_tree().inventory
-        self.time(xml5.serializer_v5.write_inventory_to_string, inv)
-
