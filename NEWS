@@ -1,6 +1,8 @@
 IN DEVELOPMENT
   
   IMPROVEMENTS:
+    Merge now takes --uncommit, to apply uncommitted changes from a tree.
+    (Aaron Bentley)
 
   BUG FIXES:
 
