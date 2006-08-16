@@ -1,0 +1,9 @@
+- When doing an initial push with:
+  
+  bzr push http+webdav://u:p@localhost/pub/web.dav
+
+  bzr fails reporting: 
+
+  bzr: ERROR: File exists: 'http://u:p@localhost/pub/web.dav'
+
+  why trying to create an already existent directory ?
