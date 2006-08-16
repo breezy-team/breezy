@@ -28,7 +28,7 @@ class BenchXMLSerializer(Benchmark):
         #                      with Robert's serializer:  631ms/10770ms
         #                      with Entity escaper:       487ms/11636ms
         #           caching Entity escaper, empty cache:  448ms/ 9489ms
-        #           caching Entity escaper, full cache:   381ms/ 9489ms
+        #           caching Entity escaper, full cache:   375ms/ 9489ms
         # Really all we want is a real inventory
         tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
 

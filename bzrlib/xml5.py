@@ -53,17 +53,11 @@ def _utf8_escape_replace(match, _map=_utf8_escape_map):
     This helps us remain compatible to older versions of bzr. We may change
     our policy in the future, though.
     """
-    # TODO: jam 20060816 Benchmark this, is it better to use try/except or
-    #       to use _map.get() and check for None.
-    #       Or still further, it might be better to pre-generate all
-    #       possible conversions. However, the occurance of unicode
-    #       characters is quite low, so an initial guess is that this
-    #       is the most efficient method
-    #       Also need to benchmark whether it is better to have a regex
-    #       which matches multiple characters, or if it is better to
-    #       only match a single character and call this function multiple
-    #       times. The chance that we actually need multiple escapes
-    #       is probably very low for our expected usage
+    # jam 20060816 Benchmarks show that try/KeyError is faster if you
+    # expect the entity to rarely miss. There is about a 10% difference
+    # in overall time. But if you miss frequently, then if None is much
+    # faster. For our use case, we *rarely* have a revision id, file id
+    # or path name that is unicode. So use try/KeyError.
     try:
         return _map[match.group()]
     except KeyError:
@@ -74,6 +68,8 @@ _unicode_to_escaped_map = {}
 
 def _encode_and_escape(unicode_str, _map=_unicode_to_escaped_map):
     """Encode the string into utf8, and escape invalid XML characters"""
+    # We frequently get entities we have not seen before, so it is better
+    # to check if None, rather than try/KeyError
     text = _map.get(unicode_str)
     if text is None:
         # The alternative policy is to do a regular UTF8 encoding
