@@ -20,20 +20,17 @@
 
 import os
 from sha import sha
-import sys
 
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.branch import Branch
 from bzrlib.testament import Testament, StrictTestament
-from bzrlib.trace import mutter
 from bzrlib.transform import TreeTransform
 from bzrlib.osutils import has_symlinks
 
 
-class TestamentTests(TestCaseWithTransport):
+class TestamentSetup(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestamentTests, self).setUp()
+        super(TestamentSetup, self).setUp()
         self.wt = self.make_branch_and_tree('.')
         b = self.b = self.wt.branch
         b.nick = "test branch"
@@ -56,6 +53,9 @@ class TestamentTests(TestCaseWithTransport):
                  timezone=36000,
                  rev_id='test@user-2',
                  committer='test@user')
+
+
+class TestamentTests(TestamentSetup):
 
     def test_null_testament(self):
         """Testament for a revision with no contents."""
@@ -99,24 +99,6 @@ class TestamentTests(TestCaseWithTransport):
         self.assertEqualDiff(text_form, REV_2_STRICT_TESTAMENT)
         actual_short = t.as_short_text()
         self.assertEqualDiff(actual_short, REV_2_SHORT_STRICT)
-
-    def test_testament_command(self):
-        """Testament containing a file and a directory."""
-        out, err = self.run_bzr_captured(['testament', '--long'])
-        self.assertEqualDiff(err, '')
-        self.assertEqualDiff(out, REV_2_TESTAMENT)
-
-    def test_testament_command_2(self):
-        """Command getting short testament of previous version."""
-        out, err = self.run_bzr_captured(['testament', '-r1'])
-        self.assertEqualDiff(err, '')
-        self.assertEqualDiff(out, REV_1_SHORT)
-
-    def test_testament_command_3(self):
-        """Command getting short testament of previous version."""
-        out, err = self.run_bzr_captured(['testament', '-r1', '--strict'])
-        self.assertEqualDiff(err, '')
-        self.assertEqualDiff(out, REV_1_SHORT_STRICT)
 
     def test_testament_symlinks(self):
         """Testament containing symlink (where possible)"""
