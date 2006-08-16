@@ -1,10 +1,59 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-include /usr/share/cdbs/1/rules/debhelper.mk$
-$
-# Hook to add dh_python$
-$(patsubst %,binary-install/%,$(DEB_PACKAGES)) :: binary-install/%:$
-	dh_python -p$(cdbs_curpkg)$
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+build: build-stamp
+build-stamp:
+	dh_testdir
+
+	# Add here commands to compile the package.
+	python setup.py build
+
+	touch $@
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp
+
+	# Add here commands to clean up after the build process.
+	python setup.py clean
+	rm -rf build/
+
+	dh_clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean
+	dh_installdirs
+
+	# Add here commands to install the package into debian/tmp
+	python setup.py install --root=$(CURDIR)/debian/bzr-builddeb --no-compile
 
 
+# Build architecture-independent files here.
+binary-indep: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs
+	dh_installdocs
+	dh_installexamples
+#	dh_install
+	dh_compress
+	dh_fixperms
+	dh_pysupport -d
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+# Build architecture-dependent files here.
+binary-arch: build install
+# We have nothing to do by default.
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install
