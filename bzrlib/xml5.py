@@ -42,7 +42,7 @@ def _ensure_utf8_re():
     global _utf8_re
     if _utf8_re is not None:
         return
-    _utf8_re = re.compile('[&<>\'\"]')
+    _utf8_re = re.compile(u'[&<>\'\"\u0080-\uffff]')
 
 
 def _utf8_escape_replace(match, _map=_utf8_escape_map):
@@ -58,23 +58,28 @@ def _utf8_escape_replace(match, _map=_utf8_escape_map):
     # in overall time. But if you miss frequently, then if None is much
     # faster. For our use case, we *rarely* have a revision id, file id
     # or path name that is unicode. So use try/KeyError.
-    return _map[match.group()]
+    try:
+        return _map[match.group()]
+    except KeyError:
+        return "&#%d;" % ord(match.group())
 
 
 _unicode_to_escaped_map = {}
 
-def _encode_and_escape(unicode_str, _map=_unicode_to_escaped_map,
-                       _encode=cache_utf8.encode):
+def _encode_and_escape(unicode_str, _map=_unicode_to_escaped_map):
     """Encode the string into utf8, and escape invalid XML characters"""
     # We frequently get entities we have not seen before, so it is better
     # to check if None, rather than try/KeyError
     text = _map.get(unicode_str)
     if text is None:
         # The alternative policy is to do a regular UTF8 encoding
-        # and then escape only XML meta characters. This could take
-        # advantage of cache_utf8 since a lot of the revision ids
-        # and file ids would already be cached.
-        text = _utf8_re.sub(_utf8_escape_replace, _encode(unicode_str)) + '"'
+        # and then escape only XML meta characters.
+        # Performance is equivalent once you use cache_utf8. *However*
+        # this makes the serialized texts incompatible with old versions
+        # of bzr. So no net gain. (Perhaps the read code would handle utf8
+        # better than entity escapes, but cElementTree seems to do just fine
+        # either way)
+        text = str(_utf8_re.sub(_utf8_escape_replace, unicode_str)) + '"'
         _map[unicode_str] = text
     return text
 
