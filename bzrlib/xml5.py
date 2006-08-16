@@ -161,7 +161,7 @@ class Serializer_v5(Serializer):
             append(' symlink_target="')
             append(_encode_and_escape(ie.symlink_target))
         if ie.text_sha1 is not None:
-            append(' text_size="')
+            append(' text_sha1="')
             append(ie.text_sha1)
             append('"')
         if ie.text_size is not None:
