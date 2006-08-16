@@ -74,7 +74,9 @@ class TestCommitBuilder(TestCaseWithRepository):
         tree.add('foo', 'foo-id')
         entry = tree.inventory['foo-id']
         builder = tree.branch.get_commit_builder([])
-        builder.record_entry_contents(entry, [], 'foo', tree)
+        self.assertDeprecated(['Root entry should be supplied to'
+            ' record_entry_contents, as of bzr 0.10.'], 
+            builder.record_entry_contents, entry, [], 'foo', tree)
         builder.finish_inventory()
         rev_id = builder.commit('foo bar')
 
