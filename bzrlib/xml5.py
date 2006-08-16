@@ -14,13 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import cStringIO
 
 from bzrlib import (
     cache_utf8,
+    inventory,
     )
 from bzrlib.xml_serializer import SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
-import bzrlib.inventory as inventory
 from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 
@@ -31,8 +32,102 @@ class Serializer_v5(Serializer):
     Packs objects into XML and vice versa.
     """
     
-    __slots__ = []
+    __slots__ = ['_utf8_re']
+
+    def __init__(self):
+        self._utf8_re = None
     
+    def write_inventory_to_string(self, inv):
+        sio = cStringIO.StringIO()
+        self.write_inventory(inv, sio)
+        return sio.getvalue()
+
+    def write_inventory(self, inv, f):
+        """Write inventory to a file.
+        
+        :param inv: the inventory to write.
+        :param f: the file to write.
+        """
+        output = []
+        self._append_inventory_root(output, inv)
+        entries = inv.iter_entries()
+        root_path, root_ie = entries.next()
+        for path, ie in entries:
+            self._append_entry(output, ie)
+        f.write(''.join(output))
+#        elt = self._pack_inventory(inv)
+#        for child in elt.getchildren():
+#            if isinstance(child, inventory.InventoryDirectory):
+#                print "foo\nbar\n"
+#            print child
+#            ElementTree(child).write(f, 'utf-8')
+        f.write('</inventory>\n')
+
+    def _append_inventory_root(self, output, inv):
+        """Append the inventory root to output."""
+        output.append('<inventory')
+        if inv.root.file_id not in (None, ROOT_ID):
+            output.append(' file_id="')
+            self._append_utf8_escaped(output, inv.root.file_id)
+        output.append(' format="5"')
+        if inv.revision_id is not None:
+            output.append(' revision_id="')
+            self._append_utf8_escaped(output, inv.revision_id)
+        output.append('>\n')
+        
+    def _append_entry(self, output, ie):
+        """Convert InventoryEntry to XML element and append to output."""
+        # TODO: should just be a plain assertion
+        assert InventoryEntry.versionable_kind(ie.kind), \
+            'unsupported entry kind %s' % ie.kind
+
+        output.append("<")
+        output.append(ie.kind)
+        if ie.executable:
+            output.append(' executable="yes"')
+        output.append(' file_id="')
+        self._append_utf8_escaped(output, ie.file_id)
+        output.append(' name="')
+        self._append_utf8_escaped(output, ie.name)
+        if ie.parent_id != ROOT_ID:
+            assert isinstance(ie.parent_id, basestring)
+            output.append(' parent_id="')
+            self._append_utf8_escaped(output, ie.parent_id)
+        if ie.revision is not None:
+            output.append(' revision="')
+            self._append_utf8_escaped(output, ie.revision)
+        if ie.symlink_target is not None:
+            output.append(' symlink_target="')
+            self._append_utf8_escaped(output, ie.symlink_target)
+        if ie.text_sha1 is not None:
+            output.append(' text_size="')
+            output.append(ie.text_sha1)
+            output.append('"')
+        if ie.text_size is not None:
+            output.append(' text_size="%d"' % ie.text_size)
+        output.append(" />\n")
+        return
+
+    def _append_utf8_escaped(self, output, a_string):
+        """Append a_string to output as utf8."""
+        if self._utf8_re is None:
+            import re
+            self._utf8_re = re.compile("[&'\"<>]")
+        # escape attribute value
+        text = a_string.encode('utf8')
+        output.append(self._utf8_re.sub(self._utf8_escape_replace, text))
+        output.append('"')
+
+    _utf8_escape_map = {
+        "&":'&amp;',
+        "'":"&apos;", # FIXME: overkill
+        "\"":"&quot;",
+        "<":"&lt;",
+        ">":"&gt;",
+        }
+    def _utf8_escape_replace(self, match, map=_utf8_escape_map):
+        return map[match.group()]
+
     def _pack_inventory(self, inv):
         """Convert to XML Element"""
         entries = inv.iter_entries()
