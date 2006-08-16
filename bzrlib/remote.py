@@ -207,6 +207,9 @@ class RemoteBranch(branch.Branch):
     def get_parent(self):
         return self._real_branch.get_parent()
         
+    def set_parent(self, url):
+        return self._real_branch.set_parent(url)
+        
 
 class RemoteWorkingTree(object):
 
