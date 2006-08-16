@@ -68,17 +68,18 @@ class BenchXMLSerializer(Benchmark):
         inv = self.make_kernel_like_inventory()
         as_str = xml5.serializer_v5.write_inventory_to_string(inv)
 
-        read_inv = self.time(xml5.serializer_v5.read_inventory_from_string,
-                             as_str)
-        # TODO: make sure the final inventory is equal as a sanity check
-
-    def test_read_from_string_no_cache_kernel_like_inventory(self):
-        inv = self.make_kernel_like_inventory()
-        as_str = xml5.serializer_v5.write_inventory_to_string(inv)
-
-        xml5._clear_cache()
         cache_utf8.clear_encoding_cache()
         read_inv = self.time(xml5.serializer_v5.read_inventory_from_string,
                              as_str)
         # TODO: make sure the final inventory is equal as a sanity check
 
+    def test_read_from_string_cached_kernel_like_inventory(self):
+        cache_utf8.clear_encoding_cache()
+        inv = self.make_kernel_like_inventory()
+        as_str = xml5.serializer_v5.write_inventory_to_string(inv)
+
+        xml5.serializer_v5.read_inventory_from_string(as_str)
+
+        read_inv = self.time(xml5.serializer_v5.read_inventory_from_string,
+                             as_str)
+        # TODO: make sure the final inventory is equal as a sanity check

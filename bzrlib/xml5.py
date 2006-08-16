@@ -285,8 +285,9 @@ class Serializer_v5(Serializer):
         parent_id = elt.get('parent_id')
         if parent_id == None:
             parent_id = ROOT_ID
-        parent_id = get_cached(parent_id)
-        file_id = get_cached(elt.get('file_id'))
+        #parent_id = get_cached(parent_id)
+        #file_id = get_cached(elt.get('file_id'))
+        file_id = elt.get('file_id')
 
         if kind == 'directory':
             ie = inventory.InventoryDirectory(file_id,
