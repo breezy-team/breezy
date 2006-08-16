@@ -1241,12 +1241,16 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir.needs_format_conversion(None)
 
     def test_upgrade_new_instance(self):
-        """Does an available updater work ?."""
+        """Does an available updater work?"""
         dir = self.make_bzrdir('.')
-        # for now, check is not ready for partial bzrdirs.
+        # for now, upgrade is not ready for partial bzrdirs.
         dir.create_repository()
         dir.create_branch()
-        dir.create_workingtree()
+        try:
+            dir.create_workingtree()
+        except errors.NotLocalUrl:
+            raise TestSkipped(
+                "Cannot make working tree on non-local transport.")
         if dir.can_convert_format():
             # if its default updatable there must be an updater 
             # (we change the default to match the lastest known format
