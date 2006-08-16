@@ -172,10 +172,8 @@ class Option(object):
                               default=OptionParser.DEFAULT_VALUE,
                               *option_strings)
             negation_strings = ['--%s' % self.get_negation_name()]
-            parser.add_option(action='store_const', dest=self.name, 
-                              help=optparse.SUPPRESS_HELP,
-                              const=OptionParser.DEFAULT_VALUE,
-                              *negation_strings)
+            parser.add_option(action='store_false', dest=self.name, 
+                              help=optparse.SUPPRESS_HELP, *negation_strings)
         else:
             parser.add_option(action='callback', 
                               callback=self._optparse_callback, 
