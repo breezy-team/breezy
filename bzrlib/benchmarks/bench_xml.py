@@ -16,6 +16,7 @@
 """Tests for bzr xml serialization performance."""
 
 from bzrlib import (
+    cache_utf8,
     xml5,
     )
 from bzrlib.benchmarks import Benchmark
@@ -33,6 +34,8 @@ class BenchXMLSerializer(Benchmark):
         #              cached, passing around function:   328ms/11248ms
         #                      removing extra function:   354ms/ 8942ms
         #              cached, removing extra function:   275ms/11248ms
+        #                          no cache, real utf8:   363ms/11697ms
+        #                            cached, real utf8:   272ms/12827ms
         # Really all we want is a real inventory
         tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
 
@@ -62,5 +65,14 @@ class BenchXMLSerializer(Benchmark):
         inv = tree.basis_tree().inventory
         xml5.serializer_v5.write_inventory_to_string(inv)
 
+        self.time(xml5.serializer_v5.write_inventory_to_string, inv)
+
+    def test_serialize_to_string_no_cache_kernel_like_inventory(self):
+        tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
+
+        cache_utf8.clear_encoding_cache()
+        xml5._clear_cache()
+        # We want a real tree with lots of file ids and sha strings, etc.
+        inv = tree.basis_tree().inventory
         self.time(xml5.serializer_v5.write_inventory_to_string, inv)
 
