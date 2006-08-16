@@ -2080,6 +2080,12 @@ class CommitBuilder(object):
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
         """
+        if self.new_inventory.root is None and ie.parent_id is not None:
+            warn('Root entry should be supplied to record_entry_contents, as'
+                 ' of bzr 0.10.',
+                 DeprecationWarning, stacklevel=2)
+            self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
+                                       '', tree)
         self.new_inventory.add(ie)
 
         # ie.revision is always None if the InventoryEntry is considered
