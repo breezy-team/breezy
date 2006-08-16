@@ -135,7 +135,9 @@ class TestamentTests(TestamentSetup):
             timestamp=1129025493,
             timezone=36000,
             rev_id='test@user-3',
-            committer='test@user')
+            committer='Erik B\xe5gfors <test@user>',
+            revprops={'uni':u'\xb5'}
+            )
         t = Testament.from_revision(self.b.repository, 'test@user-3')
         self.assertEqualDiff(
             SAMPLE_UNICODE_TESTAMENT.encode('utf-8'), t.as_text())
@@ -298,7 +300,7 @@ properties:
 SAMPLE_UNICODE_TESTAMENT = u"""\
 bazaar-ng testament version 1
 revision-id: test@user-3
-committer: test@user
+committer: Erik B\xe5gfors <test@user>
 timestamp: 1129025493
 timezone: 36000
 parents:
@@ -312,4 +314,6 @@ inventory:
 properties:
   branch-nick:
     test branch
+  uni:
+    \xb5
 """
