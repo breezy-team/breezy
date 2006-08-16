@@ -24,7 +24,7 @@ from bzrlib.benchmarks import Benchmark
 
 class BenchXMLSerializer(Benchmark):
 
-    def test_serialize_to_string_kernel_like_inventory(self):
+    def test_write_to_string_kernel_like_inventory(self):
         # On jam's machine, ElementTree serializer took: 2161ms/13487ms
         #                      with Robert's serializer:  631ms/10770ms
         #                      with Entity escaper:       487ms/11636ms
@@ -44,7 +44,7 @@ class BenchXMLSerializer(Benchmark):
         self.time(xml5.serializer_v5.write_inventory_to_string,
                   tree.basis_tree().inventory)
 
-    def test_serialize_kernel_like_inventory(self):
+    def test_write_kernel_like_inventory(self):
         # Really all we want is a real inventory
         tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
 
@@ -57,7 +57,7 @@ class BenchXMLSerializer(Benchmark):
         finally:
             f.close()
 
-    def test_serialize_to_string_cached_kernel_like_inventory(self):
+    def test_write_to_string_cached_kernel_like_inventory(self):
         tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
 
         xml5._clear_cache()
@@ -67,7 +67,7 @@ class BenchXMLSerializer(Benchmark):
 
         self.time(xml5.serializer_v5.write_inventory_to_string, inv)
 
-    def test_serialize_to_string_no_cache_kernel_like_inventory(self):
+    def test_write_to_string_no_cache_kernel_like_inventory(self):
         tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
 
         cache_utf8.clear_encoding_cache()
