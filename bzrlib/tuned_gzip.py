@@ -69,8 +69,8 @@ class GzipFile(gzip.GzipFile):
         """A tuned version of gzip._write_gzip_header
 
         We have some extra constrains that plain Gzip does not.
-        1) We can write the whole blob at once. rather than multiple calls to 
-           fileobj.write().
+        1) We want to write the whole blob at once. rather than multiple 
+           calls to fileobj.write().
         2) We never have a filename
         3) We don't care about the time
         """

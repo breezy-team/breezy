@@ -1333,6 +1333,7 @@ class _KnitData(_KnitComponentFile):
         """
         sio = StringIO()
         data_file = GzipFile(None, mode='wb', fileobj=sio)
+
         version_id_utf8 = cache_utf8.encode(version_id)
         data_file.writelines(chain(
             ["version %s %d %s\n" % (version_id_utf8,
