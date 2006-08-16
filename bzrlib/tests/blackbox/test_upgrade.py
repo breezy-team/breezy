@@ -110,10 +110,10 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
     def test_upgrade_explicit_metaformat(self):
         # users can force an upgrade to metadir format.
         url = get_transport(self.get_url('format_5_branch')).base
-        # check --metaweave takes effect
+        # check --format takes effect
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
         (out, err) = self.run_bzr_captured(
-            ['upgrade', '--metaweave', url])
+            ['upgrade', '--format=metaweave', url])
         self.assertEqualDiff("""starting upgrade of %s
 making backup of tree history
 %s.bzr has been backed up to %s.bzr.backup
@@ -134,10 +134,10 @@ finished
         # users can force an upgrade to knit format from a metadir weave 
         # branch
         url = get_transport(self.get_url('metadir_weave_branch')).base
-        # check --knit takes effect
+        # check --format takes effect
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
         (out, err) = self.run_bzr_captured(
-            ['upgrade', '--knit', url])
+            ['upgrade', '--format=knit', url])
         self.assertEqualDiff("""starting upgrade of %s
 making backup of tree history
 %s.bzr has been backed up to %s.bzr.backup
@@ -155,8 +155,8 @@ finished
                                    repository.RepositoryFormatKnit1))
 
     def test_upgrade_repo(self):
-        self.run_bzr('init-repository', '--metaweave', 'repo')
-        self.run_bzr('upgrade', '--knit', 'repo')
+        self.run_bzr('init-repository', '--format=metaweave', 'repo')
+        self.run_bzr('upgrade', '--format=knit', 'repo')
 
 
 class SFTPTests(TestCaseWithSFTPServer):
@@ -173,10 +173,10 @@ class SFTPTests(TestCaseWithSFTPServer):
         ui.ui_factory = self.old_ui_factory
 
     def test_upgrade_url(self):
-        self.run_bzr('init', '--weave')
+        self.run_bzr('init', '--format=weave')
         t = get_transport(self.get_url())
         url = t.base
-        out, err = self.run_bzr('upgrade', '--knit', url)
+        out, err = self.run_bzr('upgrade', '--format=knit', url)
         self.assertEqualDiff("""starting upgrade of %s
 making backup of tree history
 %s.bzr has been backed up to %s.bzr.backup

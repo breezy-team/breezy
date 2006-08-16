@@ -48,7 +48,7 @@ from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch,
                            NotVersionedError, NotABundle)
 from bzrlib.merge import Merge3Merger
-from bzrlib.option import Option, EnumOption
+from bzrlib.option import Option
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
@@ -982,20 +982,6 @@ class cmd_ancestry(Command):
         for revision_id in revision_ids:
             self.outf.write(revision_id + '\n')
 
-branch_format_option = EnumOption('Branch Format', get_format_type, 
-                                  [('default', 
-                                    'The current best format (knit)'),
-                                   ('knit', '0.8+ append-only format'),
-                                   ('metaweave', '0.8 transitional format'),
-                                   ('weave', '0.1+ format')
-                                  ])
-
-repo_format_option = EnumOption('Repository Format', get_format_type, 
-                                [('default', 
-                                  'The current best format (knit)'),
-                                 ('knit', '0.8+ append-only format'),
-                                 ('metaweave', '0.8 transitional format'),
-                                ])
 
 class cmd_init(Command):
     """Make a directory into a versioned branch.
@@ -1019,10 +1005,17 @@ class cmd_init(Command):
         bzr commit -m 'imported project'
     """
     takes_args = ['location?']
-    takes_options = [branch_format_option]
-    def run(self, location=None, branch_format=None):
-        if branch_format is None:
-            branch_format = get_format_type('default')
+    takes_options = [
+                     Option('format', 
+                            help='Specify a format for this branch. Current'
+                                 ' formats are: default, knit, metaweave and'
+                                 ' weave. Default is knit; metaweave and'
+                                 ' weave are deprecated',
+                            type=get_format_type),
+                     ]
+    def run(self, location=None, format=None):
+        if format is None:
+            format = get_format_type('default')
         if location is None:
             location = u'.'
 
@@ -1043,8 +1036,7 @@ class cmd_init(Command):
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except NotBranchError:
             # really a NotBzrDir error...
-            bzrdir.BzrDir.create_branch_convenience(location, 
-                                                    format=branch_format)
+            bzrdir.BzrDir.create_branch_convenience(location, format=format)
         else:
             if existing_bzrdir.has_branch():
                 if (isinstance(to_transport, LocalTransport)
@@ -1071,21 +1063,30 @@ class cmd_init_repository(Command):
         (add files here)
     """
     takes_args = ["location"] 
-    takes_options = [repo_format_option,
+    takes_options = [Option('format', 
+                            help='Specify a format for this repository.'
+                                 ' Current formats are: default, knit,'
+                                 ' metaweave and weave. Default is knit;'
+                                 ' metaweave and weave are deprecated',
+                            type=get_format_type),
                      Option('trees',
                              help='Allows branches in repository to have'
                              ' a working tree')]
     aliases = ["init-repo"]
-    def run(self, location, repository_format=None, trees=False):
-        if repository_format is None:
-            repository_format = get_format_type('default')
+    def run(self, location, format=None, trees=False):
+        if format is None:
+            format = get_format_type('default')
+
+        if location is None:
+            location = '.'
+
         to_transport = transport.get_transport(location)
         try:
             to_transport.mkdir('.')
         except errors.FileExists:
             pass
 
-        newdir = repository_format.initialize_on_transport(to_transport)
+        newdir = format.initialize_on_transport(to_transport)
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(trees)
 
@@ -1284,9 +1285,11 @@ class cmd_log(Command):
                              help='show files changed in each revision'),
                      'show-ids', 'revision',
                      'log-format',
+                     'line', 'long', 
                      Option('message',
                             help='show revisions whose message matches this regexp',
                             type=str),
+                     'short',
                      ]
     encoding_type = 'replace'
 
@@ -1297,7 +1300,10 @@ class cmd_log(Command):
             forward=False,
             revision=None,
             log_format=None,
-            message=None):
+            message=None,
+            long=False,
+            short=False,
+            line=False):
         from bzrlib.log import log_formatter, show_log
         assert message is None or isinstance(message, basestring), \
             "invalid message argument %r" % message
@@ -1351,7 +1357,9 @@ class cmd_log(Command):
             (rev2, rev1) = (rev1, rev2)
 
         if (log_format == None):
-            log_format = b.get_config().log_format()
+            default = b.get_config().log_format()
+            log_format = get_log_format(long=long, short=short, line=line, 
+                                        default=default)
         lf = log_formatter(log_format,
                            show_ids=show_ids,
                            to_file=self.outf,
@@ -1365,6 +1373,17 @@ class cmd_log(Command):
                  start_revision=rev1,
                  end_revision=rev2,
                  search=message)
+
+
+def get_log_format(long=False, short=False, line=False, default='long'):
+    log_format = default
+    if long:
+        log_format = 'long'
+    if short:
+        log_format = 'short'
+    if line:
+        log_format = 'line'
+    return log_format
 
 
 class cmd_touching_revisions(Command):
@@ -1780,13 +1799,21 @@ class cmd_upgrade(Command):
     during other operations to upgrade.
     """
     takes_args = ['url?']
-    takes_options = [ branch_format_option ]
+    takes_options = [
+                     Option('format', 
+                            help='Upgrade to a specific format. Current formats'
+                                 ' are: default, knit, metaweave and weave.'
+                                 ' Default is knit; metaweave and weave are'
+                                 ' deprecated',
+                            type=get_format_type),
+                    ]
 
-    def run(self, url='.', branch_format=None):
+
+    def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
-        if branch_format is None:
-            branch_format = get_format_type('default')
-        upgrade(url, branch_format)
+        if format is None:
+            format = get_format_type('default')
+        upgrade(url, format)
 
 
 class cmd_whoami(Command):
@@ -2378,6 +2405,9 @@ class cmd_missing(Command):
                      Option('theirs-only', 
                             'Display changes in the remote branch only'), 
                      'log-format',
+                     'line',
+                     'long', 
+                     'short',
                      'show-ids',
                      'verbose'
                      ]
@@ -2385,7 +2415,7 @@ class cmd_missing(Command):
 
     @display_command
     def run(self, other_branch=None, reverse=False, mine_only=False,
-            theirs_only=False, log_format=None,
+            theirs_only=False, log_format=None, long=False, short=False, line=False, 
             show_ids=False, verbose=False):
         from bzrlib.missing import find_unmerged, iter_log_data
         from bzrlib.log import log_formatter
@@ -2404,8 +2434,10 @@ class cmd_missing(Command):
             remote_branch.lock_read()
             try:
                 local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
-                if (log_format is None):
-                    log_format = local_branch.get_config().log_format()
+                if (log_format == None):
+                    default = local_branch.get_config().log_format()
+                    log_format = get_log_format(long=long, short=short, 
+                                                line=line, default=default)
                 lf = log_formatter(log_format,
                                    to_file=self.outf,
                                    show_ids=show_ids,

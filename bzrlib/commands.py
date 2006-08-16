@@ -37,7 +37,8 @@ import sys
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError,
-                           BzrCommandError, BzrCheckError,
+                           BzrCommandError,
+                           BzrCheckError,
                            NotBranchError)
 from bzrlib import option
 from bzrlib.option import Option
@@ -339,7 +340,6 @@ def parse_spec(spec):
     else:
         parsed = [spec, None]
     return parsed
-
 
 def parse_args(command, argv, alias_argv=None):
     """Parse command line.

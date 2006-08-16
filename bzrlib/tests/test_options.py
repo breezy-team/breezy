@@ -57,15 +57,6 @@ class OptionTests(TestCase):
         def parse(options, args):
             parser = option.get_optparser(dict((o.name, o) for o in options))
             return parser.parse_args(args)
-        options = [option.EnumOption('Lawn mower', str, 
-                   [('fast', 'mow quickly'), ('careful', 'mow carefully')])]
-        opts, args = parse(options, ['--fast', '--careful'])
-        self.assertEqual('careful', opts.lawn_mower)
-        options = [option.EnumOption('Number', int, [('11', 'one'), 
-                                                     ('22', 'two')])]
-        opts, args = parse(options, ['--22'])
-        self.assertEqual(22, opts.number)
-
         options = [option.Option('hello')]
         opts, args = parse(options, ['--no-hello', '--hello'])
         self.assertEqual(True, opts.hello)
@@ -81,12 +72,6 @@ class OptionTests(TestCase):
                           ['--no-number'])
 
     def test_iter_switches(self):
-        opt = option.EnumOption('Lawn mower', str, 
-                                [('fast', 'mow quickly'), 
-                                 ('careful', 'mow carefully')])
-        self.assertEqual(list(opt.iter_switches()), 
-                         [('fast', None, None, 'mow quickly'), 
-                          ('careful', None, None, 'mow carefully')])
         opt = option.Option('hello', help='fg')
         self.assertEqual(list(opt.iter_switches()),
                          [('hello', None, None, 'fg')])

@@ -69,9 +69,9 @@ class TestRemerge(ExternalBase):
         os.unlink('question.OTHER')
 
         self.run_bzr_error(['jello is not versioned'],
-                     'remerge', 'jello', '--weave')
+                     'remerge', 'jello', '--merge-type', 'weave')
         self.run_bzr_error(['conflicts encountered'],
-                           'remerge', 'hello', '--weave',
+                           'remerge', 'hello', '--merge-type', 'weave',
                            retcode=1)
 
         self.failUnlessExists('hello.OTHER')
@@ -82,7 +82,7 @@ class TestRemerge(ExternalBase):
                            'file-id', 'hello.THIS')
 
         self.run_bzr_error(['conflicts encountered'],
-                           'remerge', '--weave', retcode=1)
+                           'remerge', '--merge-type', 'weave', retcode=1)
 
         self.failUnlessExists('hello.OTHER')
         self.failIfExists('hello.BASE')
@@ -90,11 +90,11 @@ class TestRemerge(ExternalBase):
         self.assertFalse('hi world' in conflict_text)
 
         self.run_bzr_error(['Showing base is not supported.*Weave'],
-                           'remerge', '.', '--weave', '--show-base')
+                           'remerge', '.', '--merge-type', 'weave', '--show-base')
         self.run_bzr_error(['Can\'t reprocess and show base'],
                            'remerge', '.', '--show-base', '--reprocess')
         self.run_bzr_error(['conflicts encountered'],
-                           'remerge', '.', '--weave', '--reprocess',
+                           'remerge', '.', '--merge-type', 'weave', '--reprocess',
                            retcode=1)
         self.run_bzr_error(['conflicts encountered'],
                            'remerge', 'hello', '--show-base',

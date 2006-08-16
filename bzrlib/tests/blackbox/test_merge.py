@@ -44,7 +44,7 @@ class TestMerge(ExternalBase):
     def test_merge_reprocess(self):
         d = BzrDir.create_standalone_workingtree('.')
         d.commit('h')
-        self.run_bzr('merge', '.', '--reprocess', '--weave')
+        self.run_bzr('merge', '.', '--reprocess', '--merge-type', 'weave')
 
     def test_merge(self):
         from bzrlib.branch import Branch
@@ -63,11 +63,11 @@ class TestMerge(ExternalBase):
         # We can't merge when there are in-tree changes
         self.runbzr('merge ../b', retcode=3)
         self.runbzr(['commit', '-m', "Like an epidemic of u's"])
-        self.runbzr('merge ../b -r last:1..last:1 --blooof',
+        self.runbzr('merge ../b -r last:1..last:1 --merge-type blooof',
                     retcode=3)
-        self.runbzr('merge ../b -r last:1..last:1 --merge3')
+        self.runbzr('merge ../b -r last:1..last:1 --merge-type merge3')
         self.runbzr('revert --no-backup')
-        self.runbzr('merge ../b -r last:1..last:1 --weave')
+        self.runbzr('merge ../b -r last:1..last:1 --merge-type weave')
         self.runbzr('revert --no-backup')
         self.runbzr('merge ../b -r last:1..last:1 --reprocess')
         self.runbzr('revert --no-backup')
