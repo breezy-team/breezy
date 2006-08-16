@@ -515,11 +515,13 @@ class Transport(object):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """Append the text in the file-like or string object to 
         the supplied location.
 
         returns the length of f before the content was written to it.
+        
+        If the file does not exist, it is created with the supplied mode.
         """
         raise NotImplementedError(self.append)
 
@@ -783,7 +785,7 @@ def get_transport(base):
             raise errors.UnsupportedProtocol(base, last_err)
         # This doesn't look like a protocol, consider it a local path
         new_base = urlutils.local_path_to_url(base)
-        mutter('converting os path %r => url %s', base, new_base)
+        # mutter('converting os path %r => url %s', base, new_base)
         return new_base
 
     # Catch any URLs which are passing Unicode rather than ASCII
