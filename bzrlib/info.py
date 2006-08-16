@@ -207,9 +207,9 @@ def _show_working_stats(working):
     print '  %8d ignored' % ignore_cnt
 
     dir_cnt = 0
-    for file_id in work_inv:
-        if work_inv.get_file_kind(file_id) == 'directory':
-            dir_cnt += 1
+    entries = work_inv.iter_entries()
+    entries.next()
+    dir_cnt = sum(1 for path, ie in entries if ie.kind == 'directory')
     print '  %8d versioned %s' \
           % (dir_cnt,
              plural(dir_cnt, 'subdirectory', 'subdirectories'))

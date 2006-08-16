@@ -322,6 +322,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self.branch.break_lock()
 
     def _set_inventory(self, inv):
+        assert inv.root is not None
         self._inventory = inv
         self.path2id = self._inventory.path2id
 
@@ -399,6 +400,7 @@ class WorkingTree(bzrlib.tree.Tree):
             try:
                 xml = self.read_basis_inventory()
                 inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+                inv.root.revision = revision_id
             except NoSuchFile:
                 inv = None
             if inv is not None and inv.revision_id == revision_id:
@@ -922,7 +924,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if to_dir_id == None and to_name != '':
             raise BzrError("destination %r is not a versioned directory" % to_name)
         to_dir_ie = inv[to_dir_id]
-        if to_dir_ie.kind not in ('directory', 'root_directory'):
+        if to_dir_ie.kind != 'directory':
             raise BzrError("destination %r is not a directory" % to_abs)
 
         to_idpath = inv.get_idpath(to_dir_id)
