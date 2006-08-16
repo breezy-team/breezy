@@ -530,7 +530,7 @@ def run_bzr(argv):
         return 0
 
     if argv[0] == '--version':
-        from bzrlib.builtins import show_version
+        from bzrlib.version import show_version
         show_version()
         return 0
         
