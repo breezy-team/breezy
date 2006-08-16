@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import cStringIO
+import re
 
 from bzrlib import (
     cache_utf8,
@@ -26,18 +27,75 @@ from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 
 
+_unicode_to_escaped_map = {}
+
+_utf8_re = None
+_utf8_escape_map = {
+    "&":'&amp;',
+    "'":"&apos;", # FIXME: overkill
+    "\"":"&quot;",
+    "<":"&lt;",
+    ">":"&gt;",
+    }
+
+
+def _ensure_utf8_re():
+    """Make sure the _utf8_re regex has been compiled"""
+    global _utf8_re
+    if _utf8_re is not None:
+        return
+    _utf8_re = re.compile(u'[&<>\'\"\u0080-\uffff]')
+
+
+def _utf8_escape_replace(match, _map=_utf8_escape_map):
+    """Replace a string of non-ascii, non XML safe characters with their escape
+
+    This will escape both Standard XML escapes, like <>"', etc.
+    As well as escaping non ascii characters, because ElementTree did.
+    This helps us remain compatible to older versions of bzr. We may change
+    our policy in the future, though.
+    """
+    # TODO: jam 20060816 Benchmark this, is it better to use try/except or
+    #       to use _map.get() and check for None.
+    #       Or still further, it might be better to pre-generate all
+    #       possible conversions. However, the occurance of unicode
+    #       characters is quite low, so an initial guess is that this
+    #       is the most efficient method
+    #       Also need to benchmark whether it is better to have a regex
+    #       which matches multiple characters, or if it is better to
+    #       only match a single character and call this function multiple
+    #       times. The chance that we actually need multiple escapes
+    #       is probably very low for our expected usage
+    try:
+        return _map[match.group()]
+    except KeyError:
+        return "&#%d;" % ord(match.group())
+
+
+def _encode_and_escape(unicode_str, _map=_unicode_to_escaped_map):
+    """Encode the string into utf8, and escape invalid XML characters"""
+    try:
+        return _map[unicode_str]
+    except KeyError:
+        # The alternative policy is to do a regular UTF8 encoding
+        # and then escape only XML meta characters. This could take
+        # advantage of cache_utf8 since a lot of the revision ids
+        # and file ids would already be cached.
+        text = str(_utf8_re.sub(_utf8_escape_replace, unicode_str))
+        _map[unicode_str] = text
+        return text
+
+
 class Serializer_v5(Serializer):
     """Version 5 serializer
 
     Packs objects into XML and vice versa.
     """
     
-    __slots__ = ['_utf8_re']
+    __slots__ = []
 
-    def __init__(self):
-        self._utf8_re = None
-    
     def write_inventory_to_string(self, inv):
+        """Just call write_inventory with a StringIO and return the value"""
         sio = cStringIO.StringIO()
         self.write_inventory(inv, sio)
         return sio.getvalue()
@@ -48,20 +106,16 @@ class Serializer_v5(Serializer):
         :param inv: the inventory to write.
         :param f: the file to write.
         """
+        _ensure_utf8_re()
         output = []
         self._append_inventory_root(output, inv)
         entries = inv.iter_entries()
+        # Skip the root
         root_path, root_ie = entries.next()
         for path, ie in entries:
             self._append_entry(output, ie)
-        f.write(''.join(output))
-#        elt = self._pack_inventory(inv)
-#        for child in elt.getchildren():
-#            if isinstance(child, inventory.InventoryDirectory):
-#                print "foo\nbar\n"
-#            print child
-#            ElementTree(child).write(f, 'utf-8')
-        f.write('</inventory>\n')
+        output.append('</inventory>\n')
+        f.writelines(output)
 
     def _append_inventory_root(self, output, inv):
         """Append the inventory root to output."""
@@ -110,23 +164,10 @@ class Serializer_v5(Serializer):
 
     def _append_utf8_escaped(self, output, a_string):
         """Append a_string to output as utf8."""
-        if self._utf8_re is None:
-            import re
-            self._utf8_re = re.compile("[&'\"<>]")
-        # escape attribute value
-        text = a_string.encode('utf8')
-        output.append(self._utf8_re.sub(self._utf8_escape_replace, text))
+        #output.append(_encode_and_escape(a_string))
+        text = str(_utf8_re.sub(_utf8_escape_replace, a_string))
+        output.append(text)
         output.append('"')
-
-    _utf8_escape_map = {
-        "&":'&amp;',
-        "'":"&apos;", # FIXME: overkill
-        "\"":"&quot;",
-        "<":"&lt;",
-        ">":"&gt;",
-        }
-    def _utf8_escape_replace(self, match, map=_utf8_escape_map):
-        return map[match.group()]
 
     def _pack_inventory(self, inv):
         """Convert to XML Element"""
