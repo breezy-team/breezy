@@ -28,6 +28,7 @@ class BenchXMLSerializer(Benchmark):
         #                      with Robert's serializer:  631ms/10770ms
         #                      with Entity escaper:       487ms/11636ms
         #           caching Entity escaper, empty cache:  448ms/ 9489ms
+        #           caching Entity escaper, full cache:   381ms/ 9489ms
         # Really all we want is a real inventory
         tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
 
@@ -48,4 +49,14 @@ class BenchXMLSerializer(Benchmark):
                       tree.basis_tree().inventory, f)
         finally:
             f.close()
+
+    def test_serialize_to_string_cached_kernel_like_inventory(self):
+        tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
+
+        xml5._clear_cache()
+        # We want a real tree with lots of file ids and sha strings, etc.
+        inv = tree.basis_tree().inventory
+        xml5.serializer_v5.write_inventory_to_string(inv)
+
+        self.time(xml5.serializer_v5.write_inventory_to_string, inv)
 

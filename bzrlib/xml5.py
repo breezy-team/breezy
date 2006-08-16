@@ -122,7 +122,7 @@ class Serializer_v5(Serializer):
         f.writelines(output)
         # Just to keep the cache from growing without bounds
         # but we may actually not want to do clear the cache
-        _clear_cache()
+        #_clear_cache()
 
     def _append_inventory_root(self, output, inv):
         """Append the inventory root to output."""
