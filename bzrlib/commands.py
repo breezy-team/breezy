@@ -28,11 +28,11 @@
 # TODO: "--profile=cum", to change sort order.  Is there any value in leaving
 # the profile output behind so it can be interactively examined?
 
-import sys
+import codecs
+import errno
 import os
 from warnings import warn
-import errno
-import codecs
+import sys
 
 import bzrlib
 import bzrlib.errors as errors
@@ -40,6 +40,7 @@ from bzrlib.errors import (BzrError,
                            BzrCommandError,
                            BzrCheckError,
                            NotBranchError)
+from bzrlib import option
 from bzrlib.option import Option
 import bzrlib.osutils
 from bzrlib.revisionspec import RevisionSpec
@@ -221,7 +222,7 @@ class Command(object):
         r = dict()
         r['help'] = Option.OPTIONS['help']
         for o in self.takes_options:
-            if not isinstance(o, Option):
+            if isinstance(o, basestring):
                 o = Option.OPTIONS[o]
             r[o.name] = o
         return r
@@ -256,17 +257,15 @@ class Command(object):
 
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
+        if argv is None:
+            warn("Passing None for [] is deprecated from bzrlib 0.10", 
+                 DeprecationWarning, stacklevel=2)
+            argv = []
         args, opts = parse_args(self, argv, alias_argv)
         if 'help' in opts:  # e.g. bzr add --help
             from bzrlib.help import help_on_command
             help_on_command(self.name())
             return 0
-        # XXX: This should be handled by the parser
-        allowed_names = self.options().keys()
-        for oname in opts:
-            if oname not in allowed_names:
-                raise BzrOptionError("option '--%s' is not allowed for"
-                                " command %r" % (oname, self.name()))
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
         cmdopts = {}
@@ -354,106 +353,16 @@ def parse_args(command, argv, alias_argv=None):
     lookup table, something about the available options, what optargs
     they take, and which commands will accept them.
     """
-    # TODO: chop up this beast; make it a method of the Command
-    args = []
-    opts = {}
-    alias_opts = {}
+    # TODO: make it a method of the Command?
+    parser = option.get_optparser(command.options())
+    if alias_argv is not None:
+        args = alias_argv + argv
+    else:
+        args = argv
 
-    cmd_options = command.options()
-    argsover = False
-    proc_aliasarg = True # Are we processing alias_argv now?
-    for proc_argv in alias_argv, argv:
-        while proc_argv:
-            a = proc_argv.pop(0)
-            if argsover:
-                args.append(a)
-                continue
-            elif a == '-':
-                args.append(a)
-                continue
-            elif a == '--':
-                # We've received a standalone -- No more flags
-                argsover = True
-                continue
-            if a[0] == '-':
-                # option names must not be unicode
-                a = str(a)
-                optarg = None
-                if a[1] == '-':
-                    mutter("  got option %r", a)
-                    if '=' in a:
-                        optname, optarg = a[2:].split('=', 1)
-                    else:
-                        optname = a[2:]
-                    if optname not in cmd_options:
-                        raise BzrCommandError('unknown option "%s"' % a)
-                else:
-                    shortopt = a[1:]
-                    if shortopt in Option.SHORT_OPTIONS:
-                        # Multi-character options must have a space to delimit
-                        # their value
-                        # ^^^ what does this mean? mbp 20051014
-                        optname = Option.SHORT_OPTIONS[shortopt].name
-                    else:
-                        # Single character short options, can be chained,
-                        # and have their value appended to their name
-                        shortopt = a[1:2]
-                        if shortopt not in Option.SHORT_OPTIONS:
-                            # We didn't find the multi-character name, and we
-                            # didn't find the single char name
-                            raise BzrCommandError('unknown option "%s"' % a)
-                        optname = Option.SHORT_OPTIONS[shortopt].name
-
-                        if a[2:]:
-                            # There are extra things on this option
-                            # see if it is the value, or if it is another
-                            # short option
-                            optargfn = Option.OPTIONS[optname].type
-                            if optargfn is None:
-                                # This option does not take an argument, so the
-                                # next entry is another short option, pack it
-                                # back into the list
-                                proc_argv.insert(0, '-' + a[2:])
-                            else:
-                                # This option takes an argument, so pack it
-                                # into the array
-                                optarg = a[2:]
-                    if optname not in cmd_options:
-                        raise BzrCommandError('unknown option "%s"' % shortopt)
-                if optname in opts:
-                    # XXX: Do we ever want to support this, e.g. for -r?
-                    if proc_aliasarg:
-                        raise BzrCommandError('repeated option %r' % a)
-                    elif optname in alias_opts:
-                        # Replace what's in the alias with what's in the real
-                        # argument
-                        del alias_opts[optname]
-                        del opts[optname]
-                        proc_argv.insert(0, a)
-                        continue
-                    else:
-                        raise BzrCommandError('repeated option %r' % a)
-                    
-                option_obj = cmd_options[optname]
-                optargfn = option_obj.type
-                if optargfn:
-                    if optarg == None:
-                        if not proc_argv:
-                            raise BzrCommandError('option %r needs an argument' % a)
-                        else:
-                            optarg = proc_argv.pop(0)
-                    opts[optname] = optargfn(optarg)
-                    if proc_aliasarg:
-                        alias_opts[optname] = optargfn(optarg)
-                else:
-                    if optarg != None:
-                        raise BzrCommandError('option %r takes no argument' % optname)
-                    opts[optname] = True
-                    if proc_aliasarg:
-                        alias_opts[optname] = True
-            else:
-                args.append(a)
-        proc_aliasarg = False # Done with alias argv
+    options, args = parser.parse_args(args)
+    opts = dict([(k, v) for k, v in options.__dict__.iteritems() if 
+                 v is not option.OptionParser.DEFAULT_VALUE])
     return args, opts
 
 
