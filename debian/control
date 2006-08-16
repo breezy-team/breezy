@@ -2,7 +2,8 @@ Source: bzr-builddeb
 Section: devel
 Priority: optional
 Maintainer: James Westby <jw+debian@jameswestby.net>
-Build-Depends: debhelper (>= 5), cdbs (>= 0.4.26-2)
+Build-Depends: debhelper (>= 5.0.37.2), python
+Build-Depends-Indep: python-support (>= 0.3)
 Standards-Version: 3.7.2
 
 Package: bzr-builddeb

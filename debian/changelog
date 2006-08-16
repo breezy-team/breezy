@@ -1,4 +1,4 @@
-bzr-builddeb (0.1-1) unstable; urgency=low
+bzr-builddeb (0.1) unstable; urgency=low
 
   * Initial Release. (Closes: #380198)
 
