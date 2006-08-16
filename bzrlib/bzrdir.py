@@ -460,7 +460,7 @@ class BzrDir(object):
         _unsupported is a private parameter to the BzrDir class.
         """
         t = get_transport(base)
-        mutter("trying to open %r with transport %r", base, t)
+        # mutter("trying to open %r with transport %r", base, t)
         format = BzrDirFormat.find_format(t)
         BzrDir._check_supported(format, _unsupported)
         return format.open(t, _found=True)
