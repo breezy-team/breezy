@@ -76,7 +76,7 @@ def _encode_and_escape(unicode_str, _map=_unicode_to_escaped_map):
         # and then escape only XML meta characters. This could take
         # advantage of cache_utf8 since a lot of the revision ids
         # and file ids would already be cached.
-        text = str(_utf8_re.sub(_utf8_escape_replace, unicode_str))
+        text = str(_utf8_re.sub(_utf8_escape_replace, unicode_str)) + '"'
         _map[unicode_str] = text
     return text
 
@@ -126,11 +126,11 @@ class Serializer_v5(Serializer):
         append('<inventory')
         if inv.root.file_id not in (None, ROOT_ID):
             append(' file_id="')
-            self._append_utf8_escaped(append, inv.root.file_id)
+            append(_encode_and_escape(inv.root.file_id))
         append(' format="5"')
         if inv.revision_id is not None:
             append(' revision_id="')
-            self._append_utf8_escaped(append, inv.revision_id)
+            append(_encode_and_escape(inv.revision_id))
         append('>\n')
         
     def _append_entry(self, append, ie):
@@ -144,19 +144,19 @@ class Serializer_v5(Serializer):
         if ie.executable:
             append(' executable="yes"')
         append(' file_id="')
-        self._append_utf8_escaped(append, ie.file_id)
+        append(_encode_and_escape(ie.file_id))
         append(' name="')
-        self._append_utf8_escaped(append, ie.name)
+        append(_encode_and_escape(ie.name))
         if ie.parent_id != ROOT_ID:
             assert isinstance(ie.parent_id, basestring)
             append(' parent_id="')
-            self._append_utf8_escaped(append, ie.parent_id)
+            append(_encode_and_escape(ie.parent_id))
         if ie.revision is not None:
             append(' revision="')
-            self._append_utf8_escaped(append, ie.revision)
+            append(_encode_and_escape(ie.revision))
         if ie.symlink_target is not None:
             append(' symlink_target="')
-            self._append_utf8_escaped(append, ie.symlink_target)
+            append(_encode_and_escape(ie.symlink_target))
         if ie.text_sha1 is not None:
             append(' text_size="')
             append(ie.text_sha1)
@@ -165,11 +165,6 @@ class Serializer_v5(Serializer):
             append(' text_size="%d"' % ie.text_size)
         append(" />\n")
         return
-
-    def _append_utf8_escaped(self, append, a_string):
-        """Append a_string to output as utf8."""
-        append(_encode_and_escape(a_string))
-        append('"')
 
     def _pack_inventory(self, inv):
         """Convert to XML Element"""
