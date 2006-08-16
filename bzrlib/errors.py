@@ -312,6 +312,22 @@ class BranchExistsWithoutWorkingTree(PathError):
 (use bzr checkout if you wish to build a working tree): %(path)s"""
 
 
+class AtomicFileAlreadyClosed(PathError):
+    """'%(function)s' called on an AtomicFile after it was closed: %(path)s"""
+
+    def __init__(self, path, function):
+        PathError.__init__(self, path=path, extra=None)
+        self.function = function
+
+
+class InaccessibleParent(PathError):
+    """Parent not accessible given base %(base)s and relative path %(path)s"""
+
+    def __init__(self, path, base):
+        PathError.__init__(self, path)
+        self.base = base
+
+
 class NoRepositoryPresent(BzrNewError):
     """No repository present: %(path)r"""
     def __init__(self, bzrdir):
@@ -1053,16 +1069,43 @@ class NotABundle(BzrNewError):
     """Not a bzr revision-bundle: %(text)r"""
 
     def __init__(self, text):
+        BzrNewError.__init__(self)
         self.text = text
 
 
-class BadBundle(Exception): pass
+class BadBundle(BzrNewError): 
+    """Bad bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        BzrNewError.__init__(self)
+        self.text = text
 
 
-class MalformedHeader(BadBundle): pass
+class MalformedHeader(BadBundle): 
+    """Malformed bzr revision-bundle header: %(text)r"""
+
+    def __init__(self, text):
+        BzrNewError.__init__(self)
+        self.text = text
 
 
-class MalformedPatches(BadBundle): pass
+class MalformedPatches(BadBundle): 
+    """Malformed patches in bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        BzrNewError.__init__(self)
+        self.text = text
 
 
-class MalformedFooter(BadBundle): pass
+class MalformedFooter(BadBundle): 
+    """Malformed footer in bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        BzrNewError.__init__(self)
+        self.text = text
+
+class UnsupportedEOLMarker(BadBundle):
+    """End of line marker was not \\n in bzr revision-bundle"""    
+
+    def __init__(self):
+        BzrNewError.__init__(self)    

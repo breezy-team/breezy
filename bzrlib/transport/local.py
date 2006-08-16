@@ -29,13 +29,16 @@ import tempfile
 from bzrlib import (
     errors,
     osutils,
+    urlutils,
     )
-from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename, 
+from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename,
                             check_legal_path, rmtree)
 from bzrlib.symbol_versioning import warn
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, Server
-import bzrlib.urlutils as urlutils
+
+
+_append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY
 
 
 class LocalTransport(Transport):
@@ -169,9 +172,16 @@ class LocalTransport(Transport):
         """Create a directory at the given path."""
         path = relpath
         try:
+            if mode is None:
+                # os.mkdir() will filter through umask
+                local_mode = 0777
+            else:
+                local_mode = mode
             path = self._abspath(relpath)
-            os.mkdir(path)
+            os.mkdir(path, local_mode)
             if mode is not None:
+                # It is probably faster to just do the chmod, rather than
+                # doing a stat, and then trying to compare
                 os.chmod(path, mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
@@ -179,21 +189,35 @@ class LocalTransport(Transport):
     def append(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final location."""
         abspath = self._abspath(relpath)
-        fp = None
+        if mode is None:
+            # os.open() will automatically use the umask
+            local_mode = 0666
+        else:
+            local_mode = mode
         try:
-            try:
-                fp = open(abspath, 'ab')
-                st = os.fstat(fp.fileno())
-                if mode is not None and mode != S_IMODE(st.st_mode):
-                    os.chmod(abspath, mode)
-            except (IOError, OSError),e:
-                self._translate_error(e, relpath)
+            fd = os.open(abspath, _append_flags, local_mode)
+        except (IOError, OSError),e:
+            self._translate_error(e, relpath)
+        try:
+            st = os.fstat(fd)
             result = st.st_size
-            osutils.pumpfile(f, fp)
+            if mode is not None and mode != S_IMODE(st.st_mode):
+                # Because of umask, we may still need to chmod the file.
+                # But in the general case, we won't have to
+                os.chmod(abspath, mode)
+            self._pump_to_fd(f, fd)
         finally:
-            if fp is not None:
-                fp.close()
+            os.close(fd)
         return result
+
+    def _pump_to_fd(self, fromfile, to_fd):
+        """Copy contents of one file to another."""
+        BUFSIZE = 32768
+        while True:
+            b = fromfile.read(BUFSIZE)
+            if not b:
+                break
+            os.write(to_fd, b)
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""

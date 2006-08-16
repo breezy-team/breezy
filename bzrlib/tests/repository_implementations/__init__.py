@@ -17,7 +17,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""BzrDir implementation tests for bzr.
+"""Repository implementation tests for bzr.
 
 These test the conformance of all the repository variations to the expected API.
 Specific tests for individual formats are in the tests/test_repository.py file 
@@ -45,7 +45,7 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_fileid_involved',
         'bzrlib.tests.repository_implementations.test_reconcile',
         'bzrlib.tests.repository_implementations.test_repository',
-        'bzrlib.tests.repository_implementations.test_revprops',
+        'bzrlib.tests.repository_implementations.test_revision',
         ]
     adapter = RepositoryTestProviderAdapter(
         default_transport,
