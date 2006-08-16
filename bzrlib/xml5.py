@@ -108,67 +108,68 @@ class Serializer_v5(Serializer):
         """
         _ensure_utf8_re()
         output = []
-        self._append_inventory_root(output, inv)
+        append = output.append
+        self._append_inventory_root(append, inv)
         entries = inv.iter_entries()
         # Skip the root
         root_path, root_ie = entries.next()
         for path, ie in entries:
-            self._append_entry(output, ie)
-        output.append('</inventory>\n')
+            self._append_entry(append, ie)
+        append('</inventory>\n')
         f.writelines(output)
         # Just to keep the cache from growing without bounds
         # but we may actually not want to do clear the cache
         #_clear_cache()
 
-    def _append_inventory_root(self, output, inv):
+    def _append_inventory_root(self, append, inv):
         """Append the inventory root to output."""
-        output.append('<inventory')
+        append('<inventory')
         if inv.root.file_id not in (None, ROOT_ID):
-            output.append(' file_id="')
-            self._append_utf8_escaped(output, inv.root.file_id)
-        output.append(' format="5"')
+            append(' file_id="')
+            self._append_utf8_escaped(append, inv.root.file_id)
+        append(' format="5"')
         if inv.revision_id is not None:
-            output.append(' revision_id="')
-            self._append_utf8_escaped(output, inv.revision_id)
-        output.append('>\n')
+            append(' revision_id="')
+            self._append_utf8_escaped(append, inv.revision_id)
+        append('>\n')
         
-    def _append_entry(self, output, ie):
+    def _append_entry(self, append, ie):
         """Convert InventoryEntry to XML element and append to output."""
         # TODO: should just be a plain assertion
         assert InventoryEntry.versionable_kind(ie.kind), \
             'unsupported entry kind %s' % ie.kind
 
-        output.append("<")
-        output.append(ie.kind)
+        append("<")
+        append(ie.kind)
         if ie.executable:
-            output.append(' executable="yes"')
-        output.append(' file_id="')
-        self._append_utf8_escaped(output, ie.file_id)
-        output.append(' name="')
-        self._append_utf8_escaped(output, ie.name)
+            append(' executable="yes"')
+        append(' file_id="')
+        self._append_utf8_escaped(append, ie.file_id)
+        append(' name="')
+        self._append_utf8_escaped(append, ie.name)
         if ie.parent_id != ROOT_ID:
             assert isinstance(ie.parent_id, basestring)
-            output.append(' parent_id="')
-            self._append_utf8_escaped(output, ie.parent_id)
+            append(' parent_id="')
+            self._append_utf8_escaped(append, ie.parent_id)
         if ie.revision is not None:
-            output.append(' revision="')
-            self._append_utf8_escaped(output, ie.revision)
+            append(' revision="')
+            self._append_utf8_escaped(append, ie.revision)
         if ie.symlink_target is not None:
-            output.append(' symlink_target="')
-            self._append_utf8_escaped(output, ie.symlink_target)
+            append(' symlink_target="')
+            self._append_utf8_escaped(append, ie.symlink_target)
         if ie.text_sha1 is not None:
-            output.append(' text_size="')
-            output.append(ie.text_sha1)
-            output.append('"')
+            append(' text_size="')
+            append(ie.text_sha1)
+            append('"')
         if ie.text_size is not None:
-            output.append(' text_size="%d"' % ie.text_size)
-        output.append(" />\n")
+            append(' text_size="%d"' % ie.text_size)
+        append(" />\n")
         return
 
-    def _append_utf8_escaped(self, output, a_string):
+    def _append_utf8_escaped(self, append, a_string):
         """Append a_string to output as utf8."""
-        output.append(_encode_and_escape(a_string))
-        output.append('"')
+        append(_encode_and_escape(a_string))
+        append('"')
 
     def _pack_inventory(self, inv):
         """Convert to XML Element"""
