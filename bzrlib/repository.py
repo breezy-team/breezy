@@ -20,13 +20,14 @@ from cStringIO import StringIO
 import re
 import time
 from unittest import TestSuite
+from warnings import warn
 
 from bzrlib import bzrdir, check, delta, gpg, errors, xml5, ui, transactions, osutils
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.graph import Graph
 from bzrlib.inter import InterObject
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
 from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
@@ -40,9 +41,13 @@ from bzrlib.symbol_versioning import (deprecated_method,
         zero_nine, 
         )
 from bzrlib.testament import Testament
-from bzrlib.trace import mutter, note
+from bzrlib.trace import mutter, note, warning
 from bzrlib.tsort import topo_sort
 from bzrlib.weave import WeaveFile
+
+
+# Old formats display a warning, but only once
+_deprecation_warning_done = False
 
 
 class Repository(object):
@@ -69,6 +74,7 @@ class Repository(object):
         assert inv.revision_id is None or inv.revision_id == revid, \
             "Mismatch between inventory revision" \
             " id and insertion revid (%r, %r)" % (inv.revision_id, revid)
+        assert inv.root is not None
         inv_text = xml5.serializer_v5.write_inventory_to_string(inv)
         inv_sha1 = osutils.sha_string(inv_text)
         inv_vf = self.control_weaves.get_weave('inventory',
@@ -188,6 +194,7 @@ class Repository(object):
         self.control_weaves = control_store
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
+        self._warn_if_deprecated()
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, 
@@ -255,8 +262,8 @@ class Repository(object):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
-        return CommitBuilder(self, parents, config, timestamp, timezone,
-                             committer, revprops, revision_id)
+        return _CommitBuilder(self, parents, config, timestamp, timezone,
+                              committer, revprops, revision_id)
 
     def unlock(self):
         self.control_files.unlock()
@@ -443,7 +450,9 @@ class Repository(object):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
-        return xml5.serializer_v5.read_inventory_from_string(xml)
+        result = xml5.serializer_v5.read_inventory_from_string(xml)
+        result.root.revision = revision_id
+        return result
 
     @needs_read_lock
     def get_inventory_xml(self, revision_id):
@@ -680,6 +689,14 @@ class Repository(object):
         result.check()
         return result
 
+    def _warn_if_deprecated(self):
+        global _deprecation_warning_done
+        if _deprecation_warning_done:
+            return
+        _deprecation_warning_done = True
+        warning("Format %s for %s is deprecated - please use 'bzr upgrade' to get better performance"
+                % (self._format, self.bzrdir.transport.base))
+
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
@@ -792,7 +809,6 @@ class MetaDirRepository(Repository):
                                                 _revision_store,
                                                 control_store,
                                                 text_store)
-
         dir_mode = self.control_files._dir_mode
         file_mode = self.control_files._file_mode
 
@@ -826,6 +842,10 @@ class MetaDirRepository(Repository):
 
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
+
+    def _warn_if_deprecated(self):
+        # This class isn't deprecated
+        pass
 
     def _inventory_add_lines(self, inv_vf, revid, parents, lines):
         inv_vf.add_lines_with_ghosts(revid, parents, lines)
@@ -998,6 +1018,9 @@ class RepositoryFormat(object):
 
     _formats = {}
     """The known formats."""
+
+    def __str__(self):
+        return "<%s>" % self.__class__.__name__
 
     @classmethod
     def find_format(klass, a_bzrdir):
@@ -1950,6 +1973,8 @@ class CommitBuilder(object):
     This allows describing a tree to be committed without needing to 
     know the internals of the format of the repository.
     """
+    
+    record_root_entry = False
     def __init__(self, repository, parents, config, timestamp=None, 
                  timezone=None, committer=None, revprops=None, 
                  revision_id=None):
@@ -1972,7 +1997,7 @@ class CommitBuilder(object):
             assert isinstance(committer, basestring), type(committer)
             self._committer = committer
 
-        self.new_inventory = Inventory()
+        self.new_inventory = Inventory(None)
         self._new_revision_id = revision_id
         self.parents = parents
         self.repository = repository
@@ -2012,6 +2037,11 @@ class CommitBuilder(object):
 
     def finish_inventory(self):
         """Tell the builder that the inventory is finished."""
+        if self.new_inventory.root is None:
+            warn('Root entry should be supplied to record_entry_contents, as'
+                 ' of bzr 0.10.',
+                 DeprecationWarning, stacklevel=2)
+            self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
         self.new_inventory.revision_id = self._new_revision_id
         self.inv_sha1 = self.repository.add_inventory(
             self._new_revision_id,
@@ -2041,6 +2071,8 @@ class CommitBuilder(object):
     def record_entry_contents(self, ie, parent_invs, path, tree):
         """Record the content of ie from tree into the commit if needed.
 
+        Side effect: sets ie.revision when unchanged
+
         :param ie: An inventory entry present in the commit.
         :param parent_invs: The inventories of the parent revisions of the
             commit.
@@ -2054,6 +2086,14 @@ class CommitBuilder(object):
         # for committing. ie.snapshot will record the correct revision 
         # which may be the sole parent if it is untouched.
         if ie.revision is not None:
+            return
+
+        # In this revision format, root entries have no knit or weave
+        if ie is self.new_inventory.root:
+            if len(parent_invs):
+                ie.revision = parent_invs[0].root.revision
+            else:
+                ie.revision = None
             return
         previous_entries = ie.find_previous_heads(
             parent_invs,
@@ -2118,6 +2158,15 @@ class CommitBuilder(object):
             file_id, self.repository.get_transaction())
         versionedfile.add_lines(self._new_revision_id, parents, new_lines)
         versionedfile.clear_cache()
+
+
+class _CommitBuilder(CommitBuilder):
+    """Temporary class so old CommitBuilders are detected properly
+    
+    Note: CommitBuilder works whether or not root entry is recorded.
+    """
+
+    record_root_entry = True
 
 
 _unescape_map = {

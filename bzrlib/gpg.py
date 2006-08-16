@@ -18,9 +18,14 @@
 """GPG signing and checking logic."""
 
 import errno
+import os
 import subprocess
 
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    trace,
+    )
+
 
 class DisabledGPGStrategy(object):
     """A GPG Strategy that makes everything fail."""
@@ -42,6 +47,19 @@ class LoopbackGPGStrategy(object):
         return content
 
 
+def _set_gpg_tty():
+    tty = os.environ.get('TTY')
+    if tty is not None:
+        os.environ['GPG_TTY'] = tty
+        trace.mutter('setting GPG_TTY=%s', tty)
+    else:
+        # This is not quite worthy of a warning, because some people
+        # don't need GPG_TTY to be set. But it is worthy of a big mark
+        # in ~/.bzr.log, so that people can debug it if it happens to them
+        trace.mutter('** Env var TTY empty, cannot set GPG_TTY.'
+                     '  Is TTY exported?')
+
+
 class GPGStrategy(object):
     """GPG Signing and checking facilities."""
         
@@ -55,7 +73,8 @@ class GPGStrategy(object):
         try:
             process = subprocess.Popen(self._command_line(),
                                        stdin=subprocess.PIPE,
-                                       stdout=subprocess.PIPE)
+                                       stdout=subprocess.PIPE,
+                                       preexec_fn=_set_gpg_tty)
             try:
                 result = process.communicate(content)[0]
                 if process.returncode is None:

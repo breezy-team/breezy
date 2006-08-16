@@ -2,8 +2,6 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 
-Test osutils.file_kind for more than just regular files and directories
-
 The path/url handling in the smart server protocol needs some thought -- be
 explicit about what is to be passed over the wire and how it is to be
 interpreted.
