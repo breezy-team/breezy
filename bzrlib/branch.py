@@ -21,10 +21,17 @@ from unittest import TestSuite
 from warnings import warn
 
 import bzrlib
-from bzrlib import bzrdir, errors, lockdir, osutils, revision, \
-        tree, \
-        ui, \
+from bzrlib import (
+        bzrdir, 
+        errors, 
+        lockdir, 
+        osutils, 
+        revision,
+        transport,
+        tree,
+        ui,
         urlutils
+        )
 from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
@@ -534,9 +541,13 @@ class Branch(object):
                 rev = self.repository.get_revision(revision_id)
                 new_history = rev.get_history(self.repository)[1:]
         destination.set_revision_history(new_history)
-        parent = self.get_parent()
-        if parent:
-            destination.set_parent(parent)
+        try:
+            parent = self.get_parent()
+        except errors.InaccessibleParent, e:
+            mutter('parent was not accessible to copy: %s', e)
+        else:
+            if parent:
+                destination.set_parent(parent)
 
     @needs_read_lock
     def check(self):
@@ -567,6 +578,35 @@ class Branch(object):
                                         % (mainline_parent_id, revision_id))
             mainline_parent_id = revision_id
         return BranchCheckResult(self)
+
+    def create_checkout(self, to_location, revision_id=None, 
+                        lightweight=False):
+        """Create a checkout of a branch.
+        
+        :param to_location: The url to produce the checkout at
+        :param revision_id: The revision to check out
+        :param lightweight: If True, produce a lightweight checkout, otherwise,
+        produce a bound branch (heavyweight checkout)
+        :return: The tree of the created checkout
+        """
+        if lightweight:
+            t = transport.get_transport(to_location)
+            try:
+                t.mkdir('.')
+            except errors.FileExists:
+                pass
+            checkout = bzrdir.BzrDirMetaFormat1().initialize_on_transport(t)
+            BranchReferenceFormat().initialize(checkout, self)
+        else:
+            checkout_branch = bzrdir.BzrDir.create_branch_convenience(
+                to_location, force_new_tree=False)
+            checkout = checkout_branch.bzrdir
+            checkout_branch.bind(self)
+            if revision_id is not None:
+                rh = checkout_branch.revision_history()
+                new_rh = rh[:rh.index(revision_id) + 1]
+                checkout_branch.set_revision_history(new_rh)
+        return checkout.create_workingtree(revision_id)
 
 
 class BranchFormat(object):
@@ -1170,7 +1210,10 @@ class BzrBranch(Branch):
             # turn it into a url
             if parent.startswith('/'):
                 parent = urlutils.local_path_to_url(parent.decode('utf8'))
-            return urlutils.join(self.base[:-1], parent)
+            try:
+                return urlutils.join(self.base[:-1], parent)
+            except errors.InvalidURLJoin, e:
+                raise errors.InaccessibleParent(parent, self.base)
         return None
 
     def get_push_location(self):

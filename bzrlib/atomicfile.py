@@ -14,11 +14,26 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
+import codecs
 import errno
 import os
+import stat
+import socket
+import sys
+import warnings
 
-from warnings import warn
+from bzrlib import (
+    errors,
+    osutils,
+    symbol_versioning,
+    )
 from bzrlib.osutils import rename
+
+# not forksafe - but we dont fork.
+_pid = os.getpid()
+_hostname = socket.gethostname()
+
 
 class AtomicFile(object):
     """A file that does an atomic-rename to move into place.
@@ -27,76 +42,78 @@ class AtomicFile(object):
 
     Open this as for a regular file, then use commit() to move into
     place or abort() to cancel.
-
-    An encoding can be specified; otherwise the default is ascii.
     """
 
-    def __init__(self, filename, mode='wb', encoding=None, new_mode=None):
-        if mode != 'wb' and mode != 'wt':
-            raise ValueError("invalid AtomicFile mode %r" % mode)
+    __slots__ = ['tmpfilename', 'realfilename', '_fd']
 
-        import socket
-        self.tmpfilename = '%s.%d.%s.tmp' % (filename, os.getpid(),
-                                             socket.gethostname())
+    def __init__(self, filename, mode='wb', new_mode=None):
+        self._fd = None
+        assert mode in ('wb', 'wt'), \
+            "invalid AtomicFile mode %r" % mode
+
+        self.tmpfilename = '%s.%d.%s.tmp' % (filename, _pid, _hostname)
+
         self.realfilename = filename
         
-        if encoding:
-            import codecs
-            self.f = codecs.open(self.tmpfilename, mode, encoding)
+        flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY
+        if mode == 'wb':
+            flags |= osutils.O_BINARY
+
+        if new_mode is not None:
+            local_mode = new_mode
         else:
-            self.f = open(self.tmpfilename, mode)
+            local_mode = 0666
+        
+        # Use a low level fd operation to avoid chmodding later.
+        # This may not succeed, but it should help most of the time
+        self._fd = os.open(self.tmpfilename, flags, local_mode)
 
-        self.write = self.f.write
-        self.closed = False
-        self._new_mode = new_mode
+        if new_mode is not None:
+            # Because of umask issues, we may need to chmod anyway
+            # the common case is that we won't, though.
+            st = os.fstat(self._fd)
+            if stat.S_IMODE(st.st_mode) != new_mode:
+                os.chmod(self.tmpfilename, new_mode)
 
+    def _get_closed(self):
+        symbol_versioning.warn('AtomicFile.closed deprecated in bzr 0.10',
+                               DeprecationWarning, stacklevel=2)
+        return self._fd is None
+
+    closed = property(_get_closed)
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
                            self.realfilename)
-    
+
+    def write(self, data):
+        """Write some data to the file. Like file.write()"""
+        os.write(self._fd, data)
+
+    def _close_tmpfile(self, func_name):
+        """Close the local temp file in preparation for commit or abort"""
+        if self._fd is None:
+            raise errors.AtomicFileAlreadyClosed(path=self.realfilename,
+                                                 function=func_name)
+        fd = self._fd
+        self._fd = None
+        os.close(fd)
 
     def commit(self):
         """Close the file and move to final name."""
-
-        if self.closed:
-            raise Exception('%r is already closed' % self)
-
-        self.closed = True
-        self.f.close()
-        self.f = None
-        
-        try:
-            if self._new_mode is None:
-                self._new_mode = os.lstat(self.realfilename).st_mode
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
-        else:
-            os.chmod(self.tmpfilename, self._new_mode)
-
+        self._close_tmpfile('commit')
         rename(self.tmpfilename, self.realfilename)
-
 
     def abort(self):
         """Discard temporary file without committing changes."""
-
-        if self.closed:
-            raise Exception('%r is already closed' % self)
-
-        self.closed = True
-        self.f.close()
-        self.f = None
+        self._close_tmpfile('abort')
         os.remove(self.tmpfilename)
-
 
     def close(self):
         """Discard the file unless already committed."""
-        if not self.closed:
+        if self._fd is not None:
             self.abort()
 
-
     def __del__(self):
-        if hasattr(self, 'closed') and not self.closed:
-            warn("%r leaked" % self)
-        
+        if self._fd is not None:
+            warnings.warn("%r leaked" % self)

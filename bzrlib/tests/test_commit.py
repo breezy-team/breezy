@@ -494,6 +494,7 @@ class TestCommit(TestCaseWithTransport):
         reporter = CapturingReporter()
         this_tree.commit('do the commit', reporter=reporter)
         self.assertEqual([
+            ('change', 'unchanged', ''),
             ('change', 'unchanged', 'dirtoleave'),
             ('change', 'unchanged', 'filetoleave'),
             ('change', 'modified', 'filetomodify'),
