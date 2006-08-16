@@ -129,6 +129,7 @@ def test_suite():
                    'bzrlib.benchmarks.bench_status',
                    'bzrlib.benchmarks.bench_transform',
                    'bzrlib.benchmarks.bench_workingtree',
+                   'bzrlib.benchmarks.bench_xml',
                    ]
     suite = TestLoader().loadTestsFromModuleNames(testmod_names) 
 
