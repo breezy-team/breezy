@@ -26,13 +26,7 @@ class CommitBenchmark(Benchmark):
 
     def test_commit_kernel_like_tree(self):
         """Commit of a fresh import of a clean kernel sized tree."""
-        # uncomment this to run the benchmark with the repository in memory
-        # not disk
-        # self.transport_server = MemoryServer
-        # self.make_kernel_like_tree(self.get_url())
         tree = self.make_kernel_like_added_tree()
-        # on robertc's machine the first sample of this took 59750ms/77682ms
-        # after initial call reduction                       53922ms/73918ms
         self.time(self.run_bzr, 'commit', '-m', 'first post')
 
     def test_partial_commit_kernel_like_tree(self):
@@ -45,16 +39,7 @@ class CommitBenchmark(Benchmark):
         tree = self.make_kernel_like_committed_tree()
         self.time(self.run_bzr, 'commit', '-m', 'no changes', '--unchanged')
 
-    def test_commit_one_in_kernel_like_tree_cold_hash_cache(self):
-        """Time committing a single change, when not directly specified"""
-        tree = self.make_kernel_like_committed_tree(hot_cache=False)
-
-        # working-tree is hardlinked, so replace a file and commit the change
-        os.remove('4/4/4/4')
-        open('4/4/4/4', 'wb').write('new contents\n')
-        self.time(self.run_bzr, 'commit', '-m', 'second')
-
-    def test_commit_one_in_kernel_like_tree_hot_hash_cache(self):
+    def test_commit_one_in_kernel_like_tree(self):
         """Time committing a single change, when not directly specified"""
         tree = self.make_kernel_like_committed_tree()
 
@@ -63,19 +48,8 @@ class CommitBenchmark(Benchmark):
         open('4/4/4/4', 'wb').write('new contents\n')
         self.time(self.run_bzr, 'commit', '-m', 'second')
 
-    def test_partial_commit_one_in_kernel_like_tree_cold_hash_cache(self):
+    def test_partial_commit_one_in_kernel_like_tree(self):
         """Time committing a single change when it is directly specified"""
-
-        tree = self.make_kernel_like_committed_tree(hot_cache=False)
-
-        # working-tree is hardlinked, so replace a file and commit the change
-        os.remove('4/4/4/4')
-        open('4/4/4/4', 'wb').write('new contents\n')
-        self.time(self.run_bzr, 'commit', '-m', 'second', '4/4/4/4')
-
-    def test_partial_commit_one_in_kernel_like_tree_hot_hash_cache(self):
-        """Time committing a single change when it is directly specified"""
-
         tree = self.make_kernel_like_committed_tree()
 
         # working-tree is hardlinked, so replace a file and commit the change
