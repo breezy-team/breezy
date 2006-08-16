@@ -594,6 +594,7 @@ class TestCase(unittest.TestCase):
             'HOME': os.getcwd(),
             'APPDATA': os.getcwd(),
             'BZR_EMAIL': None,
+            'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
         }
         self.__old_env = {}
@@ -1235,6 +1236,12 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              test_suite_factory=None,
              lsprof_timed=None):
     """Run the whole test suite under the enhanced runner"""
+    # XXX: Very ugly way to do this...
+    # Disable warning about old formats because we don't want it to disturb
+    # any blackbox tests.
+    from bzrlib import repository
+    repository._deprecation_warning_done = True
+
     global default_transport
     if transport is None:
         transport = default_transport
@@ -1267,6 +1274,7 @@ def test_suite():
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
+                   'bzrlib.tests.test_cache_utf8',
                    'bzrlib.tests.test_command',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
