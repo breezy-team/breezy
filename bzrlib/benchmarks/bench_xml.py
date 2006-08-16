@@ -27,9 +27,11 @@ class BenchXMLSerializer(Benchmark):
         # On jam's machine, ElementTree serializer took: 2161ms/13487ms
         #                      with Robert's serializer:  631ms/10770ms
         #                      with Entity escaper:       487ms/11636ms
+        #           caching Entity escaper, empty cache:  448ms/ 9489ms
         # Really all we want is a real inventory
         tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
 
+        xml5._clear_cache()
         # We want a real tree with lots of file ids and sha strings, etc.
         self.time(xml5.serializer_v5.write_inventory_to_string,
                   tree.basis_tree().inventory)
@@ -38,6 +40,7 @@ class BenchXMLSerializer(Benchmark):
         # Really all we want is a real inventory
         tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
 
+        xml5._clear_cache()
         f = open('kernel-like-inventory', 'wb')
         try:
             # We want a real tree with lots of file ids and sha strings, etc.

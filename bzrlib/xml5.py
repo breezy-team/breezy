@@ -27,8 +27,6 @@ from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 
 
-_unicode_to_escaped_map = {}
-
 _utf8_re = None
 _utf8_escape_map = {
     "&":'&amp;',
@@ -72,18 +70,24 @@ def _utf8_escape_replace(match, _map=_utf8_escape_map):
         return "&#%d;" % ord(match.group())
 
 
+_unicode_to_escaped_map = {}
+
 def _encode_and_escape(unicode_str, _map=_unicode_to_escaped_map):
     """Encode the string into utf8, and escape invalid XML characters"""
-    try:
-        return _map[unicode_str]
-    except KeyError:
+    text = _map.get(unicode_str)
+    if text is None:
         # The alternative policy is to do a regular UTF8 encoding
         # and then escape only XML meta characters. This could take
         # advantage of cache_utf8 since a lot of the revision ids
         # and file ids would already be cached.
         text = str(_utf8_re.sub(_utf8_escape_replace, unicode_str))
         _map[unicode_str] = text
-        return text
+    return text
+
+
+def _clear_cache():
+    """Clean out the unicode => escaped map"""
+    _unicode_to_escaped_map.clear()
 
 
 class Serializer_v5(Serializer):
@@ -116,6 +120,9 @@ class Serializer_v5(Serializer):
             self._append_entry(output, ie)
         output.append('</inventory>\n')
         f.writelines(output)
+        # Just to keep the cache from growing without bounds
+        # but we may actually not want to do clear the cache
+        _clear_cache()
 
     def _append_inventory_root(self, output, inv):
         """Append the inventory root to output."""
@@ -164,9 +171,7 @@ class Serializer_v5(Serializer):
 
     def _append_utf8_escaped(self, output, a_string):
         """Append a_string to output as utf8."""
-        #output.append(_encode_and_escape(a_string))
-        text = str(_utf8_re.sub(_utf8_escape_replace, a_string))
-        output.append(text)
+        output.append(_encode_and_escape(a_string))
         output.append('"')
 
     def _pack_inventory(self, inv):
