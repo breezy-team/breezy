@@ -22,6 +22,9 @@ IN DEVELOPMENT
     * Use GPG_TTY to allow gpg --cl to work with gpg-agent in a pipeline,
       (passing text to sign in on stdin). (John Arbash Meinel, #54468)
 
+    * External diff does the right thing for binaries even in foreign 
+      languages. (John Arbash Meinel, #56307)
+
   INTERNALS:
 
     * ``bzrlib.cache_utf8`` contains ``encode()`` and ``decode()`` functions
