@@ -139,12 +139,21 @@ class _MyResult(unittest._TextTestResult):
     
     def __init__(self, stream, descriptions, verbosity, pb=None,
                  bench_history=None):
+        """Construct new TestResult.
+
+        :param bench_history: Optionally, a writable file object to accumulate
+            benchmark results.
+        """
         unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
         self.pb = pb
         if bench_history is not None:
-            # XXX: If there's no branch, what should we do?
-            branch = bzrlib.branch.Branch.open_containing(__file__)[0]
-            revision_id = branch.last_revision()
+            from bzrlib.version import _get_bzr_source_tree
+            src_tree = _get_bzr_source_tree()
+            if src_tree:
+                revision_id = src_tree.last_revision()
+            else:
+                # XXX: If there's no branch, what should we do?
+                revision_id = ''
             bench_history.write("--date %s %s\n" % (time.time(), revision_id))
         self._bench_history = bench_history
     
@@ -411,7 +420,6 @@ def iter_suite_tests(suite):
 
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
-    # XXX: Not used yet
 
 
 class CommandFailed(Exception):
@@ -1358,6 +1366,7 @@ def test_suite():
                    'bzrlib.tests.test_upgrade',
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
+                   'bzrlib.tests.test_version',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',
