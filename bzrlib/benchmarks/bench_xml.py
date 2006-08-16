@@ -23,11 +23,23 @@ from bzrlib.benchmarks import Benchmark
 
 class BenchXMLSerializer(Benchmark):
 
-    def test_serialize_kernel_like_inventory(self):
+    def test_serialize_to_string_kernel_like_inventory(self):
         # Really all we want is a real inventory
         tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
 
         # We want a real tree with lots of file ids and sha strings, etc.
         self.time(xml5.serializer_v5.write_inventory_to_string,
                   tree.basis_tree().inventory)
+
+    def test_serialize_kernel_like_inventory(self):
+        # Really all we want is a real inventory
+        tree = self.make_kernel_like_committed_tree('.', link_bzr=True)
+
+        f = open('kernel-like-inventory', 'wb')
+        try:
+            # We want a real tree with lots of file ids and sha strings, etc.
+            self.time(xml5.serializer_v5.write_inventory,
+                      tree.basis_tree().inventory, f)
+        finally:
+            f.close()
 
