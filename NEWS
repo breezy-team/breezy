@@ -14,6 +14,9 @@ IN DEVELOPMENT
       This will cache some of the intermediate trees, and decrease the
       setup time for benchmark tests. (John Arbash Meinel)
 
+    * Inverse forms are provided for all boolean options.  For example,
+      --strict has --no-strict, --no-recurse has --recurse (Aaron Bentley)
+
   BUG FIXES:
 
     * Handle TZ=UTC properly when reading/writing revisions.
