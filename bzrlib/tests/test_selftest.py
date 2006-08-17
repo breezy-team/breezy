@@ -36,6 +36,7 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
+from bzrlib import symbol_versioning
 from bzrlib.trace import note
 
 
@@ -807,6 +808,17 @@ class TestExtraAssertions(TestCase):
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
         self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
+
+    def test_assertDeprecated(self):
+        def testfunc(be_deprecated):
+            if be_deprecated is True:
+                symbol_versioning.warn('i am deprecated', DeprecationWarning, 
+                                       stacklevel=1)
+        self.assertDeprecated(['i am deprecated'], testfunc, True)
+        self.assertDeprecated([], testfunc, False)
+        self.assertDeprecated(['i am deprecated'], testfunc, 
+                              be_deprecated=True)
+        self.assertDeprecated([], testfunc, be_deprecated=False)
 
 
 class TestConvenienceMakers(TestCaseWithTransport):
