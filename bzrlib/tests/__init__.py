@@ -65,6 +65,7 @@ import bzrlib.progress as progress
 from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.store
+from bzrlib import symbol_versioning
 import bzrlib.trace
 from bzrlib.transport import get_transport
 import bzrlib.transport
@@ -575,6 +576,27 @@ class TestCase(unittest.TestCase):
         if not isinstance(obj, kls):
             self.fail("%r is an instance of %s rather than %s" % (
                 obj, obj.__class__, kls))
+
+    def assertDeprecated(self, expected, callable, *args, **kwargs):
+        """Assert that a callable is deprecated in a particular way.
+
+        :param expected: a list of the deprecation warnings expected, in order
+        :param callable: The callable to call
+        :param args: The positional arguments for the callable
+        :param kwargs: The keyword arguments for the callable
+        """
+        local_warnings = []
+        def capture_warnings(msg, cls, stacklevel=None):
+            self.assertEqual(cls, DeprecationWarning)
+            local_warnings.append(msg)
+        method = symbol_versioning.warn
+        symbol_versioning.set_warning_method(capture_warnings)
+        try:
+            callable(*args, **kwargs)
+        finally:
+            result = symbol_versioning.set_warning_method(method)
+        self.assertEqual(expected, local_warnings)
+        return result
 
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.

@@ -311,8 +311,8 @@ class SFTPLock(object):
             pass
 
 
-class SFTPTransport (Transport):
-    """Transport implementation for SFTP access"""
+class SFTPTransport(Transport):
+    """Transport implementation for SFTP access."""
 
     _do_prefetch = _default_do_prefetch
     # TODO: jam 20060717 Conceivably these could be configurable, either

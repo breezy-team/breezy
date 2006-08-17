@@ -81,6 +81,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_shared_repository',
                      'bzrlib.tests.blackbox.test_sign_my_commits',
                      'bzrlib.tests.blackbox.test_status',
+                     'bzrlib.tests.blackbox.test_testament',
                      'bzrlib.tests.blackbox.test_too_much',
                      'bzrlib.tests.blackbox.test_uncommit',
                      'bzrlib.tests.blackbox.test_update',
