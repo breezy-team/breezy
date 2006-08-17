@@ -136,3 +136,54 @@ class TestAdd(ExternalBase):
         """bzr add foo where foo is missing should error."""
         self.make_branch_and_tree('.')
         self.run_bzr('add', 'missing-file', retcode=3)
+
+    def test_add_from(self):
+        base_tree = self.make_branch_and_tree('base')
+        self.build_tree(['base/a', 'base/b/', 'base/b/c'])
+        base_tree.add(['a', 'b', 'b/c'])
+        base_tree.commit('foo')
+
+        new_tree = self.make_branch_and_tree('new')
+        self.build_tree(['new/a', 'new/b/', 'new/b/c', 'd'])
+
+        os.chdir('new')
+        out, err = self.run_bzr('add', '--file-ids-from', '../base')
+        self.assertEqual('', err)
+        self.assertEqualDiff('added a w/ file id from a\n'
+                             'added b w/ file id from b\n'
+                             'added b/c w/ file id from b/c\n',
+                             out)
+
+        new_tree.read_working_inventory()
+        self.assertEqual(base_tree.path2id('a'), new_tree.path2id('a'))
+        self.assertEqual(base_tree.path2id('b'), new_tree.path2id('b'))
+        self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('b/c'))
+
+    def test_add_from_subdir(self):
+        base_tree = self.make_branch_and_tree('base')
+        self.build_tree(['base/a', 'base/b/', 'base/b/c', 'base/b/d'])
+        base_tree.add(['a', 'b', 'b/c', 'b/d'])
+        base_tree.commit('foo')
+
+        new_tree = self.make_branch_and_tree('new')
+        self.build_tree(['new/c', 'new/d'])
+
+        os.chdir('new')
+        out, err = self.run_bzr('add', '--file-ids-from', '../base/b')
+        self.assertEqual('', err)
+        self.assertEqualDiff('added c w/ file id from b/c\n'
+                             'added d w/ file id from b/d\n',
+                             out)
+
+        new_tree.read_working_inventory()
+        self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('c'))
+        self.assertEqual(base_tree.path2id('b/d'), new_tree.path2id('d'))
+
+    def test_add_dry_run(self):
+        # ensure that --dry-run actually don't add anything
+        base_tree = self.make_branch_and_tree('.')
+        self.build_tree(['spam'])
+        out = self.run_bzr_captured(['add', '--dry-run'], retcode=0)[0]
+        self.assertEquals('added spam\n', out)
+        out = self.run_bzr_captured(['added'], retcode=0)[0]
+        self.assertEquals('', out)

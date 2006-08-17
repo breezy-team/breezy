@@ -100,7 +100,7 @@ editor
 ------
 The path of the editor that you wish to use if *bzr commit* is run without
 a commit log message. This setting is trumped by the environment variables
-$BZREDITOR or $EDITOR.
+$BZR_EDITOR or $EDITOR.
 
 check_signatures
 ----------------

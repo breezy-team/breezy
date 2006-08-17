@@ -57,6 +57,21 @@ _revision_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
 </revision>
 """
 
+_revision_v5_utc = """\
+<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
+    inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
+    revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
+    timestamp="1125907235.211783886"
+    timezone="0">
+<message>- start splitting code for xml (de)serialization away from objects
+  preparatory to supporting multiple formats by a single library
+</message>
+<parents>
+<revision_ref revision_id="mbp@sourcefrog.net-20050905063503-43948f59fa127d92"/>
+</parents>
+</revision>
+"""
+
 _committed_inv_v5 = """<inventory>
 <file file_id="bar-20050901064931-73b4b1138abc9cd2" 
       name="bar" parent_id="TREE_ROOT" 
@@ -120,6 +135,17 @@ class TestSerializer(TestCase):
         eq(rev.parent_ids[0],
            "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
 
+    def test_unpack_revision_5_utc(self):
+        inp = StringIO(_revision_v5_utc)
+        rev = bzrlib.xml5.serializer_v5.read_revision(inp)
+        eq = self.assertEqual
+        eq(rev.committer,
+           "Martin Pool <mbp@sourcefrog.net>")
+        eq(len(rev.parent_ids), 1)
+        eq(rev.timezone, 0)
+        eq(rev.parent_ids[0],
+           "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
+
     def test_unpack_inventory_5(self):
         """Unpack canned new-style inventory"""
         inp = StringIO(_committed_inv_v5)
@@ -153,15 +179,22 @@ class TestSerializer(TestCase):
         inv2 = bzrlib.xml5.serializer_v5.read_inventory(StringIO(outp.getvalue()))
         self.assertEqual(inv, inv2)
 
-    def test_repack_revision_5(self):
-        """Round-trip revision to XML v5"""
-        inp = StringIO(_revision_v5)
+    def check_repack_revision(self, txt):
+        """Check that repacking a revision yields the same information"""
+        inp = StringIO(txt)
         rev = bzrlib.xml5.serializer_v5.read_revision(inp)
         outp = StringIO()
         bzrlib.xml5.serializer_v5.write_revision(rev, outp)
         outfile_contents = outp.getvalue()
         rev2 = bzrlib.xml5.serializer_v5.read_revision(StringIO(outfile_contents))
         self.assertEqual(rev, rev2)
+
+    def test_repack_revision_5(self):
+        """Round-trip revision to XML v5"""
+        self.check_repack_revision(_revision_v5)
+
+    def test_repack_revision_5_utc(self):
+        self.check_repack_revision(_revision_v5_utc)
 
     def test_pack_revision_5(self):
         """Pack revision to XML v5"""

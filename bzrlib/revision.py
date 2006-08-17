@@ -28,6 +28,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
 
 NULL_REVISION="null:"
 
+
 class Revision(object):
     """Single revision on a branch.
 

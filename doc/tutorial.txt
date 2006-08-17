@@ -528,3 +528,26 @@ the following three methods:
 
 * The rspush plugin that comes with BzrTools
 
+
+Moving changes between trees 
+============================
+
+It happens to the best of us: sometimes you'll make changes in the wrong
+tree.  Maybe because you've accidentally started work in the wrong directory,
+maybe because as you're working, the change turns out to be bigger than you
+expected, so you start a new branch for it.
+
+To move your changes from one tree to another, use
+
+::
+
+  % cd NEWDIR
+  % bzr merge --uncommitted OLDDIR
+
+This will apply all of the uncommitted changes you made in OLDDIR to NEWDIR.
+It will not apply committed changes, even if they could be applied to NEWDIR
+with a regular merge.  The changes will remain in OLDDIR, but you can use **bzr
+revert OLDDIR** to remove them, once you're satisfied with NEWDIR.
+
+NEWDIR does not have to be a copy of OLDDIR, but they should be related.
+The more different they are, the greater the chance of conflicts.
