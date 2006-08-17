@@ -28,6 +28,10 @@ IN DEVELOPMENT
     * External diff does the right thing for binaries even in foreign 
       languages. (John Arbash Meinel, #56307)
 
+    * Testament handles more cases when content is unicode. Specific bug was
+      in handling of revision properties. (John Arbash Meinel, Holger Krekel,
+      #54723)
+
   INTERNALS:
 
     * ``bzrlib.cache_utf8`` contains ``encode()`` and ``decode()`` functions
