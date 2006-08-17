@@ -576,6 +576,38 @@ class TestTestResult(TestCase):
         # cheat. Yes, wash thy mouth out with soap.
         self._benchtime = None
 
+    def test_assigned_benchmark_file_stores_date(self):
+        output = StringIO()
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1,
+                                        bench_history=output
+                                        )
+        output_string = output.getvalue()
+        # if you are wondering about the regexp please read the comment in
+        # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
+        self.assertContainsRe(output_string, "--date [0-9.]+ \S")
+
+    def test_benchhistory_records_test_times(self):
+        result_stream = StringIO()
+        result = bzrlib.tests._MyResult(
+            self._log_file,
+            descriptions=0,
+            verbosity=1,
+            bench_history=result_stream
+            )
+
+        # we want profile a call and check that its test duration is recorded
+        # make a new test instance that when run will generate a benchmark
+        example_test_case = TestTestResult("_time_hello_world_encoding")
+        # execute the test, which should succeed and record times
+        example_test_case.run(result)
+        lines = result_stream.getvalue().splitlines()
+        self.assertEqual(2, len(lines))
+        self.assertContainsRe(lines[1],
+            " *[0-9]+ms bzrlib.tests.test_selftest.TestTestResult"
+            "._time_hello_world_encoding")
+ 
     def _time_hello_world_encoding(self):
         """Profile two sleep calls
         
@@ -670,6 +702,21 @@ class TestRunner(TestCase):
         test = unittest.FunctionTestCase(skipping_test)
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
+
+    def test_bench_history(self):
+        import bzrlib.branch
+        import bzrlib.revisionspec
+        test = TestRunner('dummy_test')
+        output = StringIO()
+        runner = TextTestRunner(stream=self._log_file, bench_history=output)
+        result = self.run_test_runner(runner, test)
+        output_string = output.getvalue()
+        # does anyone know a good regexp for revision ids?
+        # here we are using \S instead and checking the revision id afterwards
+        self.assertContainsRe(output_string, "--date [0-9.]+ \S")
+        branch = bzrlib.branch.Branch.open_containing('.')[0]
+        revision_id = bzrlib.revisionspec.RevisionSpec(branch.revno()).in_history(branch).rev_id
+        self.assert_(output_string.rstrip().endswith(revision_id))
 
 
 class TestTestCase(TestCase):
