@@ -653,7 +653,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self._write_inventory(inv)
 
     @needs_write_lock
-    def add_parent_tree_id(self, revision_id):
+    def add_parent_tree_id(self, revision_id, allow_leftmost_as_ghost=False):
         """Add revision_id as a parent.
 
         This is equivalent to retrieving the current list of parent ids
@@ -662,10 +662,11 @@ class WorkingTree(bzrlib.tree.Tree):
         :param revision_id: The revision id to add to the parent list. It may
         be a ghost revision.
         """
-        self.set_parent_ids(self.get_parent_ids() + [revision_id])
+        self.set_parent_ids(self.get_parent_ids() + [revision_id],
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
     @needs_write_lock
-    def add_parent_tree(self, parent_tuple):
+    def add_parent_tree(self, parent_tuple, allow_leftmost_as_ghost=False):
         """Add revision_id, tree tuple as a parent.
 
         This is equivalent to retrieving the current list of parent trees
@@ -676,7 +677,8 @@ class WorkingTree(bzrlib.tree.Tree):
 
         :param parent_tuple: The (revision id, tree) to add to the parent list.             If the revision_id is a ghost, pass None for the tree.
         """
-        self.set_parent_ids(self.get_parent_ids() + [parent_tuple[0]])
+        self.set_parent_ids(self.get_parent_ids() + [parent_tuple[0]],
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
     @needs_write_lock
     def add_pending_merge(self, *revision_ids):
@@ -712,7 +714,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return p
 
     @needs_write_lock
-    def set_parent_ids(self, revision_ids):
+    def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
         
         See also set_parent_trees. This api will try to retrieve the tree data
@@ -732,10 +734,11 @@ class WorkingTree(bzrlib.tree.Tree):
             except errors.RevisionNotPresent:
                 trees.append((rev_id, None))
                 pass
-        self.set_parent_trees(trees)
+        self.set_parent_trees(trees,
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
     @needs_write_lock
-    def set_parent_trees(self, parents_list):
+    def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """Set the parents of the working tree.
 
         :param parents_list: A list of (revision_id, tree) tuples. 
@@ -744,6 +747,9 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         parent = parents_list[:1]
         if len(parent):
+            if (not allow_leftmost_as_ghost and not
+                self.branch.repository.has_revision(parent[0][0])):
+                raise errors.GhostRevision(parent[0][0])
             self.set_last_revision(parent[0][0])
         else:
             self.set_last_revision(None)
@@ -1245,8 +1251,8 @@ class WorkingTree(bzrlib.tree.Tree):
         for regex, mapping in rules:
             match = regex.match(filename)
             if match is not None:
-                # one or more of the groups in mapping will have a non-None group 
-                # match.
+                # one or more of the groups in mapping will have a non-None
+                # group match.
                 groups = match.groups()
                 rules = [mapping[group] for group in 
                     mapping if groups[group] is not None]

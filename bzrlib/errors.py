@@ -161,6 +161,7 @@ class InvalidRevisionNumber(BzrNewError):
 
 class InvalidRevisionId(BzrNewError):
     """Invalid revision-id {%(revision_id)s} in %(branch)s"""
+
     def __init__(self, revision_id, branch):
         # branch can be any string or object with __str__ defined
         BzrNewError.__init__(self)
@@ -1096,8 +1097,17 @@ class MalformedFooter(BadBundle):
         BzrNewError.__init__(self)
         self.text = text
 
+
 class UnsupportedEOLMarker(BadBundle):
     """End of line marker was not \\n in bzr revision-bundle"""    
 
     def __init__(self):
-        BzrNewError.__init__(self)    
+        BzrNewError.__init__(self)
+
+
+class GhostRevision(BzrNewError):
+    """Revision {%(revision_id)s} is a ghost."""
+
+    def __init__(self, revision_id):
+        BzrNewError.__init__(self)
+        self.revision_id = revision_id
