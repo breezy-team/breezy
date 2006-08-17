@@ -34,7 +34,7 @@ TAGS: $(tag_files)
 # Produce HTML docs to upload on Canonical server
 HTMLDIR := html_docs
 
-htmldocs: docs
+html-docs: docs
 	python tools/win32/ostools.py copytodir $(htm_files) doc/default.css $(HTMLDIR)
 
 
