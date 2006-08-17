@@ -80,8 +80,8 @@ class TestTrace(TestCase):
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
         self.log(u'the unicode character for benzene is \N{BENZENE RING}')
-        self.assertContainsRe('the unicode character',
-                self._get_log())
+        self.assertContainsRe(self._get_log(keep_log_file=True),
+                              "the unicode character for benzene is")
 
     def test_report_broken_pipe(self):
         try:
@@ -97,12 +97,7 @@ class TestTrace(TestCase):
         # raise an exception
         mutter(u'Writing a greek mu (\xb5) works in a unicode string')
         mutter('But fails in an ascii string \xb5')
-        # TODO: jam 20051227 mutter() doesn't flush the log file, and
-        #       self._get_log() opens the file directly and reads it.
-        #       So we need to manually flush the log file
-        import bzrlib.trace
-        bzrlib.trace._trace_file.flush()
-        log = self._get_log()
+        log = self._get_log(keep_log_file=True)
         self.assertContainsRe(log, 'Writing a greek mu')
         self.assertContainsRe(log, 'UnicodeError')
         self.assertContainsRe(log, "'But fails in an ascii string")

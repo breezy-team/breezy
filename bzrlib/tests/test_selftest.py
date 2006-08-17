@@ -57,7 +57,8 @@ class MetaTestLog(TestCase):
         """Test logs are captured when a test fails."""
         self.log('a test message')
         self._log_file.flush()
-        self.assertContainsRe(self._get_log(), 'a test message\n')
+        self.assertContainsRe(self._get_log(keep_log_file=True),
+                              'a test message\n')
 
 
 class TestTreeShape(TestCaseInTempDir):

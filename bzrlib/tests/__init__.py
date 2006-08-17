@@ -216,6 +216,7 @@ class _MyResult(unittest._TextTestResult):
         if isinstance(err[1], TestSkipped):
             return self.addSkipped(test, err)    
         unittest.TestResult.addError(self, test, err)
+        test.setKeepLogfile()
         self.extractBenchmarkTime(test)
         if self.showAll:
             self.stream.writeln("ERROR %s" % self._testTimeString())
@@ -232,6 +233,7 @@ class _MyResult(unittest._TextTestResult):
 
     def addFailure(self, test, err):
         unittest.TestResult.addFailure(self, test, err)
+        test.setKeepLogfile()
         self.extractBenchmarkTime(test)
         if self.showAll:
             self.stream.writeln(" FAIL %s" % self._testTimeString())
@@ -451,6 +453,7 @@ class TestCase(unittest.TestCase):
 
     _log_file_name = None
     _log_contents = ''
+    _keep_log_file = False
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
 
@@ -567,16 +570,20 @@ class TestCase(unittest.TestCase):
     def _finishLogFile(self):
         """Finished with the log file.
 
-        Read contents into memory, close, and delete.
+        Close the file and delete it, unless setKeepLogfile was called.
         """
         if self._log_file is None:
             return
         bzrlib.trace.disable_test_log(self._log_nonce)
-        self._log_file.seek(0)
-        self._log_contents = self._log_file.read()
         self._log_file.close()
-        os.remove(self._log_file_name)
-        self._log_file = self._log_file_name = None
+        self._log_file = None
+        if not self._keep_log_file:
+            os.remove(self._log_file_name)
+            self._log_file_name = None
+
+    def setKeepLogfile(self):
+        """Make the logfile not be deleted when _finishLogFile is called."""
+        self._keep_log_file = True
 
     def addCleanup(self, callable):
         """Arrange to run a callable when this case is torn down.
@@ -663,13 +670,25 @@ class TestCase(unittest.TestCase):
     def log(self, *args):
         mutter(*args)
 
-    def _get_log(self):
+    def _get_log(self, keep_log_file=False):
         """Return as a string the log for this test"""
-        if self._log_file_name:
-            return open(self._log_file_name).read()
-        else:
+        # flush the log file, to get all content
+        import bzrlib.trace
+        bzrlib.trace._trace_file.flush()
+        if self._log_contents:
             return self._log_contents
-        # TODO: Delete the log after it's been read in
+        if self._log_file_name is not None:
+            logfile = open(self._log_file_name)
+            try:
+                log_contents = logfile.read()
+            finally:
+                logfile.close()
+            if not keep_log_file:
+                self._log_contents = log_contents
+                os.remove(self._log_file_name)
+            return log_contents
+        else:
+            return "DELETED log file to reduce memory footprint"
 
     def capture(self, cmd, retcode=0):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
