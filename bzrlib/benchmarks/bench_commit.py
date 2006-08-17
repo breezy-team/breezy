@@ -26,6 +26,10 @@ class CommitBenchmark(Benchmark):
 
     def test_commit_kernel_like_tree(self):
         """Commit of a fresh import of a clean kernel sized tree."""
+        # uncomment this to run the benchmark with the repository in memory
+        # not disk
+        # self.transport_server = MemoryServer
+        # self.make_kernel_like_tree(self.get_url())
         tree = self.make_kernel_like_added_tree()
         self.time(self.run_bzr, 'commit', '-m', 'first post')
 
