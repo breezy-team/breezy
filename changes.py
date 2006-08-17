@@ -3,17 +3,33 @@ import os
 
 from debian_bundle import deb822
 
-from logging import debug
+from bdlogging import debug
 
 class DebianChanges(deb822.changes):
   """Abstraction of the .changes file. Use it to find out what files were 
   built."""
 
-  def __init__(self, package, version, dir):
-    status, arch = commands.getstatusoutput(
-        'dpkg-architecture -qDEB_BUILD_ARCH')
-    if status > 0:
-      raise DebianError("Could not find the build architecture")
+  def __init__(self, package, version, dir, arch=None):
+    """
+    >>> c = DebianChanges('bzr-builddeb', '0.1-1', None, 'i386')
+    >>> fs = c.files()
+    >>> f = fs[0]
+    >>> f['name']
+    'bzr-builddeb_0.1-1.dsc'
+    >>> f['priority']
+    'optional'
+    >>> f['section']
+    'devel'
+    >>> f['size']
+    '290'
+    >>> f['md5sum']
+    'b4c9b646c741f531dd8349db83c77cae'
+    """
+    if arch is None:
+      status, arch = commands.getstatusoutput(
+          'dpkg-architecture -qDEB_BUILD_ARCH')
+      if status > 0:
+        raise DebianError("Could not find the build architecture")
     changes = str(package)+"_"+str(version)+"_"+str(arch)+".changes"
     if dir is not None:
       changes = os.path.join(dir,changes)
@@ -31,3 +47,10 @@ class DebianChanges(deb822.changes):
     return self._filename
 
 
+def _test():
+  import doctest
+  doctest.testmod()
+
+if __name__ == "__main__":
+  _test()
+  

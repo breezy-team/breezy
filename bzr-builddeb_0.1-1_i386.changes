@@ -1,0 +1,21 @@
+Format: 1.7
+Date: Thu,  3 Aug 2006 19:16:22 +0100
+Source: bzr-builddeb
+Binary: bzr-builddeb
+Architecture: source all
+Version: 0.1-1
+Distribution: unstable
+Urgency: low
+Maintainer: James Westby <jw+debian@jameswestby.net>
+Changed-By: James Westby <jw+debian@jameswestby.net>
+Description: 
+ bzr-builddeb - bzr plugin for Debian package management
+Closes: 380198
+Changes: 
+ bzr-builddeb (0.1-1) unstable; urgency=low
+ .
+   * Initial Release. (Closes: #380198)
+Files: 
+ b4c9b646c741f531dd8349db83c77cae 290 devel optional bzr-builddeb_0.1-1.dsc
+ da14c0e9ac9f48181a57e618f67e15f8 7261 devel optional bzr-builddeb_0.1-1.tar.gz
+ 705f7c7f2ded0cd871911736c5420861 7434 devel optional bzr-builddeb_0.1-1_all.deb

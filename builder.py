@@ -8,7 +8,7 @@ from bzrlib.export import export
 
 from changes import DebianChanges
 from errors import DebianError, NoSourceDirError
-from logging import info
+from bdlogging import info
 from util import recursive_copy
 
 class DebBuild(object):
@@ -64,7 +64,7 @@ class DebBuild(object):
     shutil.move(changes.filename(), result)
     debug("Moving all files given in %s", changes.filename())
     for file in files:
-      debug("Moving %s to %s", file(), result)
+      debug("Moving %s to %s", file['name'], result)
       shutil.move(os.path.join(self._properties.build_dir(), file['name']), 
                   result)
 

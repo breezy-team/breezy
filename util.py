@@ -9,7 +9,7 @@ from bzrlib.workingtree import WorkingTree
 from debian_bundle.changelog import Changelog
 
 from errors import DebianError
-from logging import info, debug
+from bdlogging import info, debug
 
 def add_ignore(file):
   """Adds file to .bzrignore if it exists and not already in the file."""
@@ -59,10 +59,7 @@ def recursive_copy(fromdir, todir):
 
 
 def is_clean(oldtree, newtree):
-  """Return True if there are no uncommited changes or unknown files. 
-  I don't like this, but I can't see a better way to do it, and dont
-  want to add the dependency on bzrtools for an equivalent method, (even
-  if I knew how to access it)."""
+  """Return True if there are no uncommited changes or unknown files."""
 
   changes = newtree.changes_from(oldtree)
   if changes.has_changed() or len(list(newtree.unknowns())) > 0:
