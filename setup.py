@@ -22,6 +22,7 @@ META_INFO = {'name':         'bzr',
 
 BZRLIB = {'packages': ['bzrlib',
                        'bzrlib.benchmarks',
+                       'bzrlib.benchmarks.tree_creator',
                        'bzrlib.bundle',
                        'bzrlib.bundle.serializer',
                        'bzrlib.doc',

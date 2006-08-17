@@ -86,7 +86,7 @@ class Serializer_v5(Serializer):
                        inventory_sha1 = rev.inventory_sha1,
                        format='5',
                        )
-        if rev.timezone:
+        if rev.timezone is not None:
             root.set('timezone', str(rev.timezone))
         root.text = '\n'
         msg = SubElement(root, 'message')
@@ -201,7 +201,10 @@ class Serializer_v5(Serializer):
             rev.parent_ids.append(get_cached(p.get('revision_id')))
         self._unpack_revision_properties(elt, rev)
         v = elt.get('timezone')
-        rev.timezone = v and int(v)
+        if v is None:
+            rev.timezone = 0
+        else:
+            rev.timezone = int(v)
         rev.message = elt.findtext('message') # text of <message>
         return rev
 
