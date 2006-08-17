@@ -36,6 +36,7 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
+from bzrlib import symbol_versioning
 from bzrlib.trace import note
 
 
@@ -577,6 +578,38 @@ class TestTestResult(TestCase):
         # cheat. Yes, wash thy mouth out with soap.
         self._benchtime = None
 
+    def test_assigned_benchmark_file_stores_date(self):
+        output = StringIO()
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1,
+                                        bench_history=output
+                                        )
+        output_string = output.getvalue()
+        # if you are wondering about the regexp please read the comment in
+        # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
+        self.assertContainsRe(output_string, "--date [0-9.]+ \S")
+
+    def test_benchhistory_records_test_times(self):
+        result_stream = StringIO()
+        result = bzrlib.tests._MyResult(
+            self._log_file,
+            descriptions=0,
+            verbosity=1,
+            bench_history=result_stream
+            )
+
+        # we want profile a call and check that its test duration is recorded
+        # make a new test instance that when run will generate a benchmark
+        example_test_case = TestTestResult("_time_hello_world_encoding")
+        # execute the test, which should succeed and record times
+        example_test_case.run(result)
+        lines = result_stream.getvalue().splitlines()
+        self.assertEqual(2, len(lines))
+        self.assertContainsRe(lines[1],
+            " *[0-9]+ms bzrlib.tests.test_selftest.TestTestResult"
+            "._time_hello_world_encoding")
+ 
     def _time_hello_world_encoding(self):
         """Profile two sleep calls
         
@@ -672,6 +705,21 @@ class TestRunner(TestCase):
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
 
+    def test_bench_history(self):
+        import bzrlib.branch
+        import bzrlib.revisionspec
+        test = TestRunner('dummy_test')
+        output = StringIO()
+        runner = TextTestRunner(stream=self._log_file, bench_history=output)
+        result = self.run_test_runner(runner, test)
+        output_string = output.getvalue()
+        # does anyone know a good regexp for revision ids?
+        # here we are using \S instead and checking the revision id afterwards
+        self.assertContainsRe(output_string, "--date [0-9.]+ \S")
+        branch = bzrlib.branch.Branch.open_containing('.')[0]
+        revision_id = bzrlib.revisionspec.RevisionSpec(branch.revno()).in_history(branch).rev_id
+        self.assert_(output_string.rstrip().endswith(revision_id))
+
 
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
@@ -761,6 +809,17 @@ class TestExtraAssertions(TestCase):
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
         self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
+
+    def test_assertDeprecated(self):
+        def testfunc(be_deprecated):
+            if be_deprecated is True:
+                symbol_versioning.warn('i am deprecated', DeprecationWarning, 
+                                       stacklevel=1)
+        self.assertDeprecated(['i am deprecated'], testfunc, True)
+        self.assertDeprecated([], testfunc, False)
+        self.assertDeprecated(['i am deprecated'], testfunc, 
+                              be_deprecated=True)
+        self.assertDeprecated([], testfunc, be_deprecated=False)
 
 
 class TestConvenienceMakers(TestCaseWithTransport):
