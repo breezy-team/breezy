@@ -43,7 +43,7 @@ class BranchStatus(TestCaseWithTransport):
     def test_branch_status(self):
         """Test basic branch status"""
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
+        wt.commit('create a parent to allow testing merge output')
 
         ignores._set_user_ignores(['./.bazaar'])
 

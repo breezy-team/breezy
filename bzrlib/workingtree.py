@@ -407,7 +407,16 @@ class WorkingTree(bzrlib.tree.Tree):
                 return bzrlib.tree.RevisionTree(self.branch.repository, inv,
                                                 revision_id)
         # FIXME? RBC 20060403 should we cache the inventory here ?
-        return self.branch.repository.revision_tree(revision_id)
+        try:
+            return self.branch.repository.revision_tree(revision_id)
+        except errors.RevisionNotPresent:
+            # the basis tree *may* be a ghost or a low level error may have
+            # occured. If the revision is present, its a problem, if its not
+            # its a ghost.
+            if self.branch.repository.has_revision(revision_id):
+                raise
+            # the basis tree is a ghost
+            return self.branch.repository.revision_tree(None)
 
     @staticmethod
     @deprecated_method(zero_eight)
@@ -648,9 +657,12 @@ class WorkingTree(bzrlib.tree.Tree):
         # TODO: Perhaps should check at this point that the
         # history of the revision is actually present?
         p = self.pending_merges()
+        existing_parents = self.get_parent_ids()
         updated = False
         for rev_id in revision_ids:
             if rev_id in p:
+                continue
+            if rev_id in existing_parents:
                 continue
             p.append(rev_id)
             updated = True
@@ -675,6 +687,11 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_write_lock
     def set_pending_merges(self, rev_list):
+        if self.last_revision() is None:
+            new_last_list = rev_list[:1]
+            rev_list = rev_list[1:]
+            if new_last_list:
+                self.set_last_revision(new_last_list[0])
         self._control_files.put_utf8('pending-merges', '\n'.join(rev_list))
 
     @needs_write_lock
@@ -1403,9 +1420,6 @@ class WorkingTree(bzrlib.tree.Tree):
         Do a 'normal' merge of the old branch basis if it is relevant.
         """
         old_tip = self.branch.update()
-        if old_tip is not None:
-            self.add_pending_merge(old_tip)
-        self.branch.lock_read()
         try:
             result = 0
             if self.last_revision() != self.branch.last_revision():
@@ -1437,7 +1451,8 @@ class WorkingTree(bzrlib.tree.Tree):
                                       this_tree=self)
             return result
         finally:
-            self.branch.unlock()
+            if old_tip is not None:
+                self.add_pending_merge(old_tip)
 
     @needs_write_lock
     def _write_inventory(self, inv):
