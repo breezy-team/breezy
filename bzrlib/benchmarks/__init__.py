@@ -130,7 +130,7 @@ class Benchmark(ExternalBase):
             finally:
                 f.close()
         tree = bzrdir.BzrDir.create_standalone_workingtree(directory_name)
-        tree.add([str(i) for i in range(num_files])
+        tree.add([str(i) for i in range(num_files)])
         tree.lock_write()
         try:
             tree.commit('initial commit')

@@ -57,7 +57,7 @@ class SFTPBenchmark(Benchmark):
             wtree, ["b/%i" for i in range(100)], 
             num_commits=num_push_revisions,
             changes_per_commit=20)
-        self.time(rbzrdir.open_branch().pull, wt.branch)
+        self.time(rbzrdir.open_branch().pull, wtree.branch)
 
     def test_push_1(self):
         self.create_commit_and_push(1)
