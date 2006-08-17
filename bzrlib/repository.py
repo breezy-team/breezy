@@ -399,10 +399,7 @@ class Repository(object):
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
-        assert isinstance(self._format, (RepositoryFormat5,
-                                         RepositoryFormat6,
-                                         RepositoryFormat7,
-                                         RepositoryFormatKnit1)), \
+        assert self._format.has_unnested_inventory(), \
             ("fileids_altered_by_revision_ids only supported for branches " 
              "which store inventory as unnested xml, not on %r" % self)
         selected_revision_ids = set(revision_ids)
@@ -1117,6 +1114,12 @@ class RepositoryFormat(object):
         """
         return True
 
+    def has_unnested_inventory(self):
+        raise NotImplementedError(self.has_unnested_inventory)
+
+    def check_conversion_target(self, target_format):
+        raise NotImplementedError(self.check_conversion_target)
+
     def open(self, a_bzrdir, _found=False):
         """Return an instance of this format for the bzrdir a_bzrdir.
         
@@ -1210,6 +1213,9 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
                                   control_store=control_store,
                                   text_store=text_store)
 
+    def check_conversion_target(self, target_format):
+        pass
+
 
 class RepositoryFormat4(PreSplitOutRepositoryFormat):
     """Bzr repository format 4.
@@ -1230,6 +1236,9 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Repository format 4"
+
+    def has_unnested_inventory(self):
+        return True
 
     def initialize(self, url, shared=False, _internal=False):
         """Format 4 branches cannot be created."""
@@ -1280,6 +1289,9 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 5"
 
+    def has_unnested_inventory(self):
+        return True
+
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
         """Return the revision store object for this a_bzrdir."""
@@ -1309,6 +1321,9 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 6"
+
+    def has_unnested_inventory(self):
+        return True
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
@@ -1382,6 +1397,12 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 7"
+
+    def has_unnested_inventory(self):
+        return True
+
+    def check_conversion_target(self, target_format):
+        pass
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
@@ -1493,6 +1514,9 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
                                               versionedfile_class=KnitVersionedFile,
                                               escaped=True)
 
+    def has_unnested_inventory(self):
+        return True
+
     def initialize(self, a_bzrdir, shared=False):
         """Create a knit format 1 repository.
 
@@ -1543,6 +1567,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
                               control_store=control_store,
                               text_store=text_store)
 
+
 class RepositoryFormatKnit1(RepositoryFormatKnit):
     """Bzr repository knit format 1.
 
@@ -1566,11 +1591,46 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
         """See RepositoryFormat.get_format_description()."""
         return "Knit repository format 1"
 
+    def check_conversion_target(self, target_format):
+        pass
+
+
+class RepositoryFormatKnit2(RepositoryFormatKnit):
+    """Bzr repository knit format 2.
+
+    THIS FORMAT IS EXPERIMENTAL
+    This repository format has:
+     - knits for file texts and inventory
+     - hash subdirectory based stores.
+     - knits for revisions and signatures
+     - TextStores for revisions and signatures.
+     - a format marker of its own
+     - an optional 'shared-storage' flag
+     - an optional 'no-working-trees' flag
+     - a LockDir lock
+     - Support for recording full info about the tree root
+
+    """
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar Knit Repository Format 2"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Knit repository format 2"
+
+    def check_conversion_target(self, target_format):
+        if not getattr(target_format, 'rich_root_data', False):
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format)
+
+
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 RepositoryFormat.register_format(RepositoryFormat7())
 _default_format = RepositoryFormatKnit1()
 RepositoryFormat.register_format(_default_format)
+RepositoryFormat.register_format(RepositoryFormatKnit2())
 RepositoryFormat.set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
@@ -1957,6 +2017,7 @@ class CopyConverter(object):
         self.step('Moving repository to repository.backup')
         self.repo_dir.transport.move('repository', 'repository.backup')
         backup_transport =  self.repo_dir.transport.clone('repository.backup')
+        repo._format.check_conversion_target(self.target_format)
         self.source_repo = repo._format.open(self.repo_dir,
             _found=True,
             _override_transport=backup_transport)

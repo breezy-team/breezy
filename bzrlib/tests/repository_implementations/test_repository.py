@@ -240,6 +240,8 @@ class TestRepository(TestCaseWithRepository):
         except errors.UpToDateFormat:
             # this is in the most current format already.
             return
+        except errors.BadConversionTarget, e:
+            raise TestSkipped(str(e))
         wt = WorkingTree.open(wt.basedir)
         new_signature = wt.branch.repository.get_signature_text('A')
         self.assertEqual(old_signature, new_signature)

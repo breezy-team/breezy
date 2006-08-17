@@ -86,6 +86,11 @@ class BzrDir(object):
         """Return true if this bzrdir is one whose format we can convert from."""
         return True
 
+    def check_conversion_target(self, target_format):
+        target_repo_format = target_format.repository_format
+        source_repo_format = self._format.repository_format
+        source_repo_format.check_conversion_target(target_repo_format)
+
     @staticmethod
     def _check_supported(format, allow_unsupported):
         """Check whether format is a supported format.
@@ -1173,7 +1178,7 @@ class BzrDirFormat4(BzrDirFormat):
     def __return_repository_format(self):
         """Circular import protection."""
         from bzrlib.repository import RepositoryFormat4
-        return RepositoryFormat4(self)
+        return RepositoryFormat4()
     repository_format = property(__return_repository_format)
 
 
@@ -1228,7 +1233,7 @@ class BzrDirFormat5(BzrDirFormat):
     def __return_repository_format(self):
         """Circular import protection."""
         from bzrlib.repository import RepositoryFormat5
-        return RepositoryFormat5(self)
+        return RepositoryFormat5()
     repository_format = property(__return_repository_format)
 
 
@@ -1287,7 +1292,7 @@ class BzrDirFormat6(BzrDirFormat):
     def __return_repository_format(self):
         """Circular import protection."""
         from bzrlib.repository import RepositoryFormat6
-        return RepositoryFormat6(self)
+        return RepositoryFormat6()
     repository_format = property(__return_repository_format)
 
 
