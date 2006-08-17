@@ -17,6 +17,10 @@ IN DEVELOPMENT
     * Inverse forms are provided for all boolean options.  For example,
       --strict has --no-strict, --no-recurse has --recurse (Aaron Bentley)
 
+    * Serialize out Inventories directly, rather than using ElementTree.
+      Writing out a kernel sized inventory drops from 2s down to ~350ms.
+      (Robert Collins, John Arbash Meinel)
+
   BUG FIXES:
 
     * Handle TZ=UTC properly when reading/writing revisions.
