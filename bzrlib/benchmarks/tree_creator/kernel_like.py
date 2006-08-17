@@ -22,6 +22,8 @@ from bzrlib import (
     add,
     bzrdir,
     osutils,
+    workingtree,
+    xml5,
     )
 
 from bzrlib.benchmarks.tree_creator import TreeCreator
@@ -144,3 +146,66 @@ class KernelLikeCommittedTreeCreator(TreeCreator):
         if in_cache:
             self._protect_files(root+'/.bzr')
         return tree
+
+
+class KernelLikeInventoryCreator(TreeCreator):
+    """Return just the memory representation of a committed kernel-like tree"""
+
+    def __init__(self, test):
+        super(KernelLikeInventoryCreator, self).__init__(test,
+            tree_name='kernel_like_inventory',
+            link_working=True,
+            link_bzr=True,
+            hot_cache=True)
+
+    def ensure_cached(self):
+        """Make sure we have a cached version of the kernel-like inventory"""
+        cache_dir = self._get_cache_dir()
+        if cache_dir is None:
+            return
+
+        if self.is_cached():
+            return
+
+        committed_creator = KernelLikeCommittedTreeCreator(self._test,
+                                                           link_working=True,
+                                                           link_bzr=True,
+                                                           hot_cache=False)
+        committed_creator.ensure_cached()
+        committed_cache_dir = committed_creator._get_cache_dir()
+        committed_tree = workingtree.WorkingTree.open(committed_cache_dir)
+        rev_tree = committed_tree.basis_tree()
+        os.mkdir(cache_dir)
+        f = open(cache_dir+'/inventory', 'wb')
+        try:
+            xml5.serializer_v5.write_inventory(rev_tree.inventory, f)
+        finally:
+            f.close()
+
+    def create(self):
+        """Create a kernel like inventory
+
+        :return: An Inventory object.
+        """
+        cache_dir = self._get_cache_dir()
+        if cache_dir is None:
+            return self._create_and_return()
+
+        self.ensure_cached()
+        return self._open_cached(cache_dir)
+
+    def _create_and_return(self):
+        """Create a kernel-like tree, and return its inventory"""
+        creator = KernelLikeCommittedTreeCreator(self._test,
+                                                 link_working=True,
+                                                 link_bzr=True,
+                                                 hot_cache=False)
+        tree = creator.create('.')
+        return tree.basis_tree().inventory
+
+    def _open_cached(self, cache_dir):
+        f = open(cache_dir + '/inventory', 'rb')
+        try:
+            return xml5.serializer_v5.read_inventory(f)
+        finally:
+            f.close()

@@ -14,15 +14,79 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import cStringIO
+import re
 
 from bzrlib import (
     cache_utf8,
+    inventory,
     )
 from bzrlib.xml_serializer import SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
-import bzrlib.inventory as inventory
 from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
+
+
+_utf8_re = None
+_utf8_escape_map = {
+    "&":'&amp;',
+    "'":"&apos;", # FIXME: overkill
+    "\"":"&quot;",
+    "<":"&lt;",
+    ">":"&gt;",
+    }
+
+
+def _ensure_utf8_re():
+    """Make sure the _utf8_re regex has been compiled"""
+    global _utf8_re
+    if _utf8_re is not None:
+        return
+    _utf8_re = re.compile(u'[&<>\'\"\u0080-\uffff]')
+
+
+def _utf8_escape_replace(match, _map=_utf8_escape_map):
+    """Replace a string of non-ascii, non XML safe characters with their escape
+
+    This will escape both Standard XML escapes, like <>"', etc.
+    As well as escaping non ascii characters, because ElementTree did.
+    This helps us remain compatible to older versions of bzr. We may change
+    our policy in the future, though.
+    """
+    # jam 20060816 Benchmarks show that try/KeyError is faster if you
+    # expect the entity to rarely miss. There is about a 10% difference
+    # in overall time. But if you miss frequently, then if None is much
+    # faster. For our use case, we *rarely* have a revision id, file id
+    # or path name that is unicode. So use try/KeyError.
+    try:
+        return _map[match.group()]
+    except KeyError:
+        return "&#%d;" % ord(match.group())
+
+
+_unicode_to_escaped_map = {}
+
+def _encode_and_escape(unicode_str, _map=_unicode_to_escaped_map):
+    """Encode the string into utf8, and escape invalid XML characters"""
+    # We frequently get entities we have not seen before, so it is better
+    # to check if None, rather than try/KeyError
+    text = _map.get(unicode_str)
+    if text is None:
+        # The alternative policy is to do a regular UTF8 encoding
+        # and then escape only XML meta characters.
+        # Performance is equivalent once you use cache_utf8. *However*
+        # this makes the serialized texts incompatible with old versions
+        # of bzr. So no net gain. (Perhaps the read code would handle utf8
+        # better than entity escapes, but cElementTree seems to do just fine
+        # either way)
+        text = str(_utf8_re.sub(_utf8_escape_replace, unicode_str)) + '"'
+        _map[unicode_str] = text
+    return text
+
+
+def _clear_cache():
+    """Clean out the unicode => escaped map"""
+    _unicode_to_escaped_map.clear()
 
 
 class Serializer_v5(Serializer):
@@ -32,50 +96,78 @@ class Serializer_v5(Serializer):
     """
     
     __slots__ = []
-    
-    def _pack_inventory(self, inv):
-        """Convert to XML Element"""
+
+    def write_inventory_to_string(self, inv):
+        """Just call write_inventory with a StringIO and return the value"""
+        sio = cStringIO.StringIO()
+        self.write_inventory(inv, sio)
+        return sio.getvalue()
+
+    def write_inventory(self, inv, f):
+        """Write inventory to a file.
+        
+        :param inv: the inventory to write.
+        :param f: the file to write.
+        """
+        _ensure_utf8_re()
+        output = []
+        append = output.append
+        self._append_inventory_root(append, inv)
         entries = inv.iter_entries()
-        e = Element('inventory',
-                    format='5')
-        e.text = '\n'
-        path, root = entries.next()
-        if root.file_id not in (None, ROOT_ID):
-            e.set('file_id', root.file_id)
-        if inv.revision_id is not None:
-            e.set('revision_id', inv.revision_id)
+        # Skip the root
+        root_path, root_ie = entries.next()
         for path, ie in entries:
-            e.append(self._pack_entry(ie))
-        return e
+            self._append_entry(append, ie)
+        append('</inventory>\n')
+        f.writelines(output)
+        # Just to keep the cache from growing without bounds
+        # but we may actually not want to do clear the cache
+        #_clear_cache()
 
-    def _pack_entry(self, ie):
-        """Convert InventoryEntry to XML element"""
+    def _append_inventory_root(self, append, inv):
+        """Append the inventory root to output."""
+        append('<inventory')
+        if inv.root.file_id not in (None, ROOT_ID):
+            append(' file_id="')
+            append(_encode_and_escape(inv.root.file_id))
+        append(' format="5"')
+        if inv.revision_id is not None:
+            append(' revision_id="')
+            append(_encode_and_escape(inv.revision_id))
+        append('>\n')
+        
+    def _append_entry(self, append, ie):
+        """Convert InventoryEntry to XML element and append to output."""
         # TODO: should just be a plain assertion
-        if not InventoryEntry.versionable_kind(ie.kind):
-            raise AssertionError('unsupported entry kind %s' % ie.kind)
-        e = Element(ie.kind)
-        e.set('name', ie.name)
-        e.set('file_id', ie.file_id)
+        assert InventoryEntry.versionable_kind(ie.kind), \
+            'unsupported entry kind %s' % ie.kind
 
-        if ie.text_size != None:
-            e.set('text_size', '%d' % ie.text_size)
-
-        for f in ['text_sha1', 'revision', 'symlink_target']:
-            v = getattr(ie, f)
-            if v != None:
-                e.set(f, v)
-
+        append("<")
+        append(ie.kind)
         if ie.executable:
-            e.set('executable', 'yes')
-
-        # to be conservative, we don't externalize the root pointers
-        # for now, leaving them as null in the xml form.  in a future
-        # version it will be implied by nested elements.
+            append(' executable="yes"')
+        append(' file_id="')
+        append(_encode_and_escape(ie.file_id))
+        append(' name="')
+        append(_encode_and_escape(ie.name))
         if ie.parent_id != ROOT_ID:
             assert isinstance(ie.parent_id, basestring)
-            e.set('parent_id', ie.parent_id)
-        e.tail = '\n'
-        return e
+            append(' parent_id="')
+            append(_encode_and_escape(ie.parent_id))
+        if ie.revision is not None:
+            append(' revision="')
+            append(_encode_and_escape(ie.revision))
+        if ie.symlink_target is not None:
+            append(' symlink_target="')
+            append(_encode_and_escape(ie.symlink_target))
+        if ie.text_sha1 is not None:
+            append(' text_sha1="')
+            append(ie.text_sha1)
+            append('"')
+        if ie.text_size is not None:
+            append(' text_size="%d"' % ie.text_size)
+        append(" />\n")
+        return
 
     def _pack_revision(self, rev):
         """Revision object -> xml tree"""
@@ -104,7 +196,6 @@ class Serializer_v5(Serializer):
             self._pack_revision_properties(rev, root)
         return root
 
-
     def _pack_revision_properties(self, rev, under_element):
         top_elt = SubElement(under_element, 'properties')
         for prop_name, prop_value in sorted(rev.properties.items()):
@@ -115,7 +206,6 @@ class Serializer_v5(Serializer):
             prop_elt.text = prop_value
             prop_elt.tail = '\n'
         top_elt.tail = '\n'
-
 
     def _unpack_inventory(self, elt):
         """Construct from XML Element
@@ -138,7 +228,6 @@ class Serializer_v5(Serializer):
             inv.add(ie)
         return inv
 
-
     def _unpack_entry(self, elt):
         kind = elt.tag
         if not InventoryEntry.versionable_kind(kind):
@@ -149,8 +238,15 @@ class Serializer_v5(Serializer):
         parent_id = elt.get('parent_id')
         if parent_id == None:
             parent_id = ROOT_ID
-        parent_id = get_cached(parent_id)
-        file_id = get_cached(elt.get('file_id'))
+        # TODO: jam 20060817 At present, caching file ids costs us too 
+        #       much time. It slows down overall read performances from
+        #       approx 500ms to 700ms. And doesn't improve future reads.
+        #       it might be because revision ids and file ids are mixing.
+        #       Consider caching *just* the file ids, for a limited period
+        #       of time.
+        #parent_id = get_cached(parent_id)
+        #file_id = get_cached(elt.get('file_id'))
+        file_id = elt.get('file_id')
 
         if kind == 'directory':
             ie = inventory.InventoryDirectory(file_id,
@@ -179,7 +275,6 @@ class Serializer_v5(Serializer):
 
         return ie
 
-
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
         assert elt.tag == 'revision'
@@ -207,7 +302,6 @@ class Serializer_v5(Serializer):
             rev.timezone = int(v)
         rev.message = elt.findtext('message') # text of <message>
         return rev
-
 
     def _unpack_revision_properties(self, elt, rev):
         """Unpack properties onto a revision."""

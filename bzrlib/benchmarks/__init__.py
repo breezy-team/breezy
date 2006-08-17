@@ -84,6 +84,18 @@ class Benchmark(ExternalBase):
                                                  hot_cache=hot_cache)
         return creator.create(root=root)
 
+    def make_kernel_like_inventory(self):
+        """Create an inventory with the properties of a kernel-like tree
+
+        This should be equivalent to a committed kernel like tree, not
+        just a working tree.
+        """
+        from bzrlib.benchmarks.tree_creator.kernel_like import (
+            KernelLikeInventoryCreator,
+            )
+        creator = KernelLikeInventoryCreator(self)
+        return creator.create()
+
     def make_many_commit_tree(self, directory_name='.',
                               hardlink=False):
         """Create a tree with many commits.
@@ -129,6 +141,7 @@ def test_suite():
                    'bzrlib.benchmarks.bench_status',
                    'bzrlib.benchmarks.bench_transform',
                    'bzrlib.benchmarks.bench_workingtree',
+                   'bzrlib.benchmarks.bench_xml',
                    ]
     suite = TestLoader().loadTestsFromModuleNames(testmod_names) 
 
