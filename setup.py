@@ -23,7 +23,9 @@ META_INFO = {'name':         'bzr',
              'license':      'GNU GPL v2',
             }
 
-BZRLIB = {'packages':get_bzrlib_packages()}
+# The list of packages is automatically generated later. Add other things
+# that are part of BZRLIB here.
+BZRLIB = {}
 
 PKG_DATA = {# install files from selftest suite
             'package_data': {'bzrlib': ['doc/api/*.txt',
@@ -79,6 +81,9 @@ def get_bzrlib_packages():
                             package_path.replace('/', '.').replace('\\', '.'))
             packages.append(package_name)
     return sorted(packages)
+
+
+BZRLIB['packages'] = get_bzrlib_packages()
 
 
 from distutils.core import setup
