@@ -281,6 +281,14 @@ class GzipFile(gzip.GzipFile):
         # to :
         # 4168 calls in 417.
         # Negative numbers result in reading all the lines
+        
+        # python's gzip routine uses sizehint. This is a more efficient way
+        # than python uses to honor it. But it is even more efficient to
+        # just read the entire thing and use cStringIO to split into lines.
+        # if sizehint <= 0:
+        #     sizehint = -1
+        # content = self.read(sizehint)
+        # return bzrlib.osutils.split_lines(content)
         content = StringIO(self.read(-1))
         return content.readlines()
 
