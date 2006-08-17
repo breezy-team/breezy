@@ -20,10 +20,7 @@ import os
 
 from bzrlib import errors
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
-from bzrlib.branch import Branch
-from bzrlib.revision import Revision
 from bzrlib.uncommit import uncommit
-import bzrlib.xml5
 
 
 class TestParents(TestCaseWithWorkingTree):
