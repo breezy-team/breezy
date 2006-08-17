@@ -51,6 +51,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
         basis_inv_txt = t.read_basis_inventory()
         basis_inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(basis_inv_txt)
+        basis_inv.root.revision = 'r2'
         self.assertEquals('r2', basis_inv.revision_id)
         store_inv = b.repository.get_inventory('r2')
 

@@ -50,11 +50,13 @@ from bzrlib import ui
 # TODO: Report back as changes are merged in
 
 def _get_tree(treespec, local_branch=None):
+    from bzrlib import workingtree
     location, revno = treespec
-    branch = Branch.open_containing(location)[0]
     if revno is None:
-        revision = None
-    elif revno == -1:
+        tree = workingtree.WorkingTree.open_containing(location)[0]
+        return tree.branch, tree
+    branch = Branch.open_containing(location)[0]
+    if revno == -1:
         revision = branch.last_revision()
     else:
         revision = branch.get_rev_id(revno)
@@ -516,8 +518,6 @@ class Merge3Merger(object):
             if file_id not in tree:
                 return (None, None)
             kind = tree.kind(file_id)
-            if kind == "root_directory":
-                kind = "directory"
             if kind == "file":
                 contents = tree.get_file_sha1(file_id)
             elif kind == "symlink":

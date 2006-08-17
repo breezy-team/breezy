@@ -16,8 +16,7 @@
 
 
 # XXX: Can we do any better about making interrupted commits change
-# nothing?  Perhaps the best approach is to integrate commit of
-# AtomicFiles with releasing the lock on the Branch.
+# nothing?  
 
 # TODO: Separate 'prepare' phase where we find a list of potentially
 # committed files.  We then can then pause the commit to prompt for a
@@ -71,7 +70,6 @@ import warnings
 
 from cStringIO import StringIO
 
-from bzrlib.atomicfile import AtomicFile
 import bzrlib.config
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
@@ -262,7 +260,9 @@ class Commit(object):
             # check for out of date working trees
             # if we are bound, then self.branch is the master branch and this
             # test is thus all we need.
-            if self.work_tree.last_revision() != self.master_branch.last_revision():
+            master_last = self.master_branch.last_revision()
+            if (master_last is not None and 
+                master_last != self.work_tree.last_revision()):
                 raise errors.OutOfDateTree(self.work_tree)
     
             if strict:
@@ -294,7 +294,7 @@ class Commit(object):
             if len(self.parents) > 1 and self.specific_files:
                 raise NotImplementedError('selected-file commit of merges is not supported yet: files %r',
                         self.specific_files)
-            self._check_parents_present()
+            
             self.builder = self.branch.get_commit_builder(self.parents, 
                 self.config, timestamp, timezone, committer, revprops, rev_id)
             
@@ -308,8 +308,11 @@ class Commit(object):
                 raise PointlessCommit()
 
             self._emit_progress_update()
-            # TODO: Now the new inventory is known, check for conflicts and prompt the 
-            # user for a commit message.
+            # TODO: Now the new inventory is known, check for conflicts and
+            # prompt the user for a commit message.
+            # ADHB 2006-08-08: If this is done, populate_new_inv should not add
+            # weave lines, because nothing should be recorded until it is known
+            # that commit will succeed.
             self.builder.finish_inventory()
             self._emit_progress_update()
             self.rev_id = self.builder.commit(self.message)
@@ -453,18 +456,12 @@ class Commit(object):
         self.parent_invs = []
         for revision in self.parents:
             if self.branch.repository.has_revision(revision):
+                mutter('commit parent revision {%s}', revision)
                 inventory = self.branch.repository.get_inventory(revision)
                 self.parent_invs.append(inventory)
+            else:
+                mutter('commit parent ghost revision {%s}', revision)
 
-    def _check_parents_present(self):
-        for parent_id in self.parents:
-            mutter('commit parent revision {%s}', parent_id)
-            if not self.branch.repository.has_revision(parent_id):
-                if parent_id == self.branch.last_revision():
-                    warning("parent is missing %r", parent_id)
-                    raise BzrCheckError("branch %s is missing revision {%s}"
-                            % (self.branch, parent_id))
-            
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.
 
@@ -505,10 +502,13 @@ class Commit(object):
         # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
         # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
-        # at this point we dont copy the root entry:
         entries = self.work_inv.iter_entries()
-        entries.next()
-        self._emit_progress_update()
+        if not self.builder.record_root_entry:
+            warnings.warn('CommitBuilders should support recording the root'
+                ' entry as of bzr 0.10.', DeprecationWarning, stacklevel=1)
+            self.builder.new_inventory.add(self.basis_inv.root.copy())
+            entries.next()
+            self._emit_progress_update()
         for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id

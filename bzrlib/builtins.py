@@ -274,18 +274,37 @@ class cmd_add(Command):
 
     --dry-run will show which files would be added, but not actually 
     add them.
+
+    --file-ids-from will try to use the file ids from the supplied path.
+    It looks up ids trying to find a matching parent directory with the
+    same filename, and then by pure path.
     """
     takes_args = ['file*']
-    takes_options = ['no-recurse', 'dry-run', 'verbose']
+    takes_options = ['no-recurse', 'dry-run', 'verbose',
+                     Option('file-ids-from', type=unicode,
+                            help='Lookup file ids from here')]
     encoding_type = 'replace'
 
-    def run(self, file_list, no_recurse=False, dry_run=False, verbose=False):
+    def run(self, file_list, no_recurse=False, dry_run=False, verbose=False,
+            file_ids_from=None):
         import bzrlib.add
 
-        action = bzrlib.add.AddAction(to_file=self.outf,
-            should_print=(not is_quiet()))
+        if file_ids_from is not None:
+            try:
+                base_tree, base_path = WorkingTree.open_containing(
+                                            file_ids_from)
+            except errors.NoWorkingTree:
+                base_branch, base_path = branch.Branch.open_containing(
+                                            file_ids_from)
+                base_tree = base_branch.basis_tree()
 
-        added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
+            action = bzrlib.add.AddFromBaseAction(base_tree, base_path,
+                          to_file=self.outf, should_print=(not is_quiet()))
+        else:
+            action = bzrlib.add.AddAction(to_file=self.outf,
+                should_print=(not is_quiet()))
+
+        added, ignored = bzrlib.add.smart_add(file_list, not no_recurse,
                                               action=action, save=not dry_run)
         if len(ignored) > 0:
             if verbose:
@@ -762,18 +781,7 @@ class cmd_checkout(Command):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
         try:
-            if lightweight:
-                checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
-                branch.BranchReferenceFormat().initialize(checkout, source)
-            else:
-                checkout_branch =  bzrdir.BzrDir.create_branch_convenience(
-                    to_location, force_new_tree=False)
-                checkout = checkout_branch.bzrdir
-                checkout_branch.bind(source)
-                if revision_id is not None:
-                    rh = checkout_branch.revision_history()
-                    checkout_branch.set_revision_history(rh[:rh.index(revision_id) + 1])
-            checkout.create_workingtree(revision_id)
+            source.create_checkout(to_location, revision_id, lightweight)
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
@@ -1944,14 +1952,21 @@ class cmd_selftest(Command):
                      Option('lsprof-timed',
                             help='generate lsprof output for benchmarked'
                                  ' sections of code.'),
+                     Option('cache-dir', type=str,
+                            help='a directory to cache intermediate'
+                                 ' benchmark steps'),
                      ]
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
-            lsprof_timed=None):
+            lsprof_timed=None, cache_dir=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
+        from bzrlib.benchmarks import tree_creator
+
+        if cache_dir is not None:
+            tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         # we don't want progress meters from the tests to go to the
         # real output; and we don't want log messages cluttering up
         # the real logs.
@@ -2123,7 +2138,9 @@ class cmd_merge(Command):
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
                      Option('show-base', help="Show base revision text in "
-                            "conflicts")]
+                            "conflicts"), 
+                     Option('uncommitted', help='Apply uncommitted changes'
+                            ' from a working copy, instead of branch changes')]
 
     def help(self):
         from merge import merge_type_help
@@ -2131,7 +2148,8 @@ class cmd_merge(Command):
         return getdoc(self) + '\n' + merge_type_help() 
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
-            show_base=False, reprocess=False, remember=False):
+            show_base=False, reprocess=False, remember=False, 
+            uncommitted=False):
         if merge_type is None:
             merge_type = Merge3Merger
 
@@ -2153,10 +2171,17 @@ class cmd_merge(Command):
         branch = self._get_remembered_parent(tree, branch, 'Merging from')
 
         if revision is None or len(revision) < 1:
-            base = [None, None]
-            other = [branch, -1]
+            if uncommitted:
+                base = [branch, -1]
+                other = [branch, None]
+            else:
+                base = [None, None]
+                other = [branch, -1]
             other_branch, path = Branch.open_containing(branch)
         else:
+            if uncommitted:
+                raise BzrCommandError('Cannot use --uncommitted and --revision'
+                                      ' at the same time.')
             if len(revision) == 1:
                 base = [None, None]
                 other_branch, path = Branch.open_containing(branch)
