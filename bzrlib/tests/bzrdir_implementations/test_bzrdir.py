@@ -1051,10 +1051,10 @@ class TestBzrDir(TestCaseWithBzrDir):
             # they may not be initializable.
             return
         t = self.get_transport()
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository()
+        made_branch = made_control.create_branch()
         try:
-            made_control = self.bzrdir_format.initialize(t.base)
-            made_repo = made_control.create_repository()
-            made_branch = made_control.create_branch()
             made_tree = made_control.create_workingtree()
         except errors.NotLocalUrl:
             raise TestSkipped("Can't initialize %r on transport %r"
