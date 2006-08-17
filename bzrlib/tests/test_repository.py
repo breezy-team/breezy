@@ -38,6 +38,7 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
+from bzrlib import upgrade
 
 
 class TestDefaultFormat(TestCase):
@@ -435,3 +436,19 @@ class TestMisc(TestCase):
     def test_unescape_xml(self):
         """We get some kind of error when malformed entities are passed"""
         self.assertRaises(KeyError, repository._unescape_xml, 'foo&bar;') 
+
+
+class TestRepositoryFormatKnit2(TestCaseWithTransport):
+
+    def test_convert(self):
+        """Ensure the upgrade adds weaves for roots"""
+        tree = self.make_branch_and_tree('.')
+        tree.commit("Dull commit", rev_id="dull")
+        revision_tree = tree.branch.repository.revision_tree('dull')
+        self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
+            revision_tree.inventory.root.file_id)
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        upgrade.Convert('.', format)
+        revision_tree = tree.branch.repository.revision_tree('dull')
+        revision_tree.get_file_lines(revision_tree.inventory.root.file_id)
