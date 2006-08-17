@@ -1447,8 +1447,8 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
                                  text_store=text_store)
 
 
-class RepositoryFormatKnit1(MetaDirRepositoryFormat):
-    """Bzr repository knit format 1.
+class RepositoryFormatKnit(MetaDirRepositoryFormat):
+    """Bzr repository knit format (generalized). 
 
     This repository format has:
      - knits for file texts and inventory
@@ -1459,8 +1459,6 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
      - an optional 'shared-storage' flag
      - an optional 'no-working-trees' flag
      - a LockDir lock
-
-    This format was introduced in bzr 0.8.
     """
 
     def _get_control_store(self, repo_transport, control_files):
@@ -1472,14 +1470,6 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
             versionedfile_class=KnitVersionedFile,
             versionedfile_kwargs={'factory':KnitPlainFactory()},
             )
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return "Bazaar-NG Knit Repository Format 1"
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return "Knit repository format 1"
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
@@ -1553,6 +1543,28 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
                               control_store=control_store,
                               text_store=text_store)
 
+class RepositoryFormatKnit1(RepositoryFormatKnit):
+    """Bzr repository knit format 1.
+
+    This repository format has:
+     - knits for file texts and inventory
+     - hash subdirectory based stores.
+     - knits for revisions and signatures
+     - TextStores for revisions and signatures.
+     - a format marker of its own
+     - an optional 'shared-storage' flag
+     - an optional 'no-working-trees' flag
+     - a LockDir lock
+
+    This format was introduced in bzr 0.8.
+    """
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar-NG Knit Repository Format 1"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Knit repository format 1"
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
