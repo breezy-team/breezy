@@ -169,50 +169,6 @@ class Serializer_v5(Serializer):
         append(" />\n")
         return
 
-    def _pack_inventory(self, inv):
-        """Convert to XML Element"""
-        entries = inv.iter_entries()
-        e = Element('inventory',
-                    format='5')
-        e.text = '\n'
-        path, root = entries.next()
-        if root.file_id not in (None, ROOT_ID):
-            e.set('file_id', root.file_id)
-        if inv.revision_id is not None:
-            e.set('revision_id', inv.revision_id)
-        for path, ie in entries:
-            e.append(self._pack_entry(ie))
-        return e
-
-    def _pack_entry(self, ie):
-        """Convert InventoryEntry to XML element"""
-        # TODO: should just be a plain assertion
-        if not InventoryEntry.versionable_kind(ie.kind):
-            raise AssertionError('unsupported entry kind %s' % ie.kind)
-        e = Element(ie.kind)
-        e.set('name', ie.name)
-        e.set('file_id', ie.file_id)
-
-        if ie.text_size != None:
-            e.set('text_size', '%d' % ie.text_size)
-
-        for f in ['text_sha1', 'revision', 'symlink_target']:
-            v = getattr(ie, f)
-            if v != None:
-                e.set(f, v)
-
-        if ie.executable:
-            e.set('executable', 'yes')
-
-        # to be conservative, we don't externalize the root pointers
-        # for now, leaving them as null in the xml form.  in a future
-        # version it will be implied by nested elements.
-        if ie.parent_id != ROOT_ID:
-            assert isinstance(ie.parent_id, basestring)
-            e.set('parent_id', ie.parent_id)
-        e.tail = '\n'
-        return e
-
     def _pack_revision(self, rev):
         """Revision object -> xml tree"""
         root = Element('revision',
@@ -240,7 +196,6 @@ class Serializer_v5(Serializer):
             self._pack_revision_properties(rev, root)
         return root
 
-
     def _pack_revision_properties(self, rev, under_element):
         top_elt = SubElement(under_element, 'properties')
         for prop_name, prop_value in sorted(rev.properties.items()):
@@ -251,7 +206,6 @@ class Serializer_v5(Serializer):
             prop_elt.text = prop_value
             prop_elt.tail = '\n'
         top_elt.tail = '\n'
-
 
     def _unpack_inventory(self, elt):
         """Construct from XML Element
@@ -273,7 +227,6 @@ class Serializer_v5(Serializer):
                 ie.parent_id = root_id
             inv.add(ie)
         return inv
-
 
     def _unpack_entry(self, elt):
         kind = elt.tag
@@ -316,7 +269,6 @@ class Serializer_v5(Serializer):
 
         return ie
 
-
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
         assert elt.tag == 'revision'
@@ -344,7 +296,6 @@ class Serializer_v5(Serializer):
             rev.timezone = int(v)
         rev.message = elt.findtext('message') # text of <message>
         return rev
-
 
     def _unpack_revision_properties(self, elt, rev):
         """Unpack properties onto a revision."""
