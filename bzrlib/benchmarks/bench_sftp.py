@@ -15,7 +15,7 @@ except ImportError:
 
 
 class SFTPBenchmark(Benchmark):
-    """A benchmark base class that provides a sftp server on localhost."""
+    """Benchmark branch, push and pull across a local sftp connection."""
 
     def setUp(self):
         super(SFTPBenchmark, self).setUp()
@@ -25,36 +25,36 @@ class SFTPBenchmark(Benchmark):
          
     def test_branch(self):
         os.mkdir("a")
-        t, files = self.create_with_commits(100, 100, "a")
+        tree, files = self.create_with_commits(100, 100, "a")
         self.time(bzrdir.BzrDir.open(self.get_url('a')).sprout, "b")
 
     def test_pull_1(self):
         os.mkdir("a")
-        t, files = self.create_with_commits(100, 100, "a")
+        tree, files = self.create_with_commits(100, 100, "a")
         rbzrdir = bzrdir.BzrDir.open(self.get_url('a'))
-        b2 = rbzrdir.sprout("b") # branch
+        b2 = tree.bzrdir.sprout("b") # branch
         # change a few files and commit
-        self.commit_some_revisions(t, files, 1, 20)
+        self.commit_some_revisions(tree, files, 1, 20)
         self.time(b2.open_branch().pull, rbzrdir.open_branch())
         
     def test_pull_100(self):
         os.mkdir("a")
-        t, files = self.create_with_commits(100, 100, "a")
+        tree, files = self.create_with_commits(100, 100, "a")
         rbzrdir = bzrdir.BzrDir.open(self.get_url('a'))
-        b2 = rbzrdir.sprout("b") # branch
+        b2 = tree.bzrdir.sprout("b") # branch
         # change a few files and commit
-        self.commit_some_revisions(t, files, 100, 20)
+        self.commit_some_revisions(tree, files, 100, 20)
         self.time(b2.open_branch().pull, rbzrdir.open_branch())
 
     def create_commit_and_push(self, num_push_revisions):
         os.mkdir("a")
-        t, files = self.create_with_commits(100, 100, "a")
+        tree, files = self.create_with_commits(100, 100, "a")
         rbzrdir = bzrdir.BzrDir.open(self.get_url('a'))
         b2 = rbzrdir.sprout("b") # branch
-        wt = b2.open_workingtree()
+        wtree = b2.open_workingtree()
         # change a few files and commit
         self.commit_some_revisions(
-            wt, ["b/%i" for i in range(100)], 
+            wtree, ["b/%i" for i in range(100)], 
             num_commits=num_push_revisions,
             changes_per_commit=20)
         self.time(rbzrdir.open_branch().pull, wt.branch)

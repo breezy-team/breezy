@@ -32,6 +32,7 @@ try:
 except ImportError:
     paramiko_loaded = False
 
+
 def set_transport(testcase):
     """A helper to set transports on test case instances."""
     from bzrlib.transport.sftp import SFTPAbsoluteServer, SFTPHomeDirServer

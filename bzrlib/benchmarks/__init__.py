@@ -16,11 +16,11 @@
 
 """Benchmark test suite for bzr."""
 
-import bzrlib.branch
 from bzrlib import (
     bzrdir,
     plugin,
     )
+import bzrlib.branch
 from bzrlib.tests.TestUtil import TestLoader
 from bzrlib.tests.blackbox import ExternalBase
 
@@ -116,7 +116,8 @@ class Benchmark(ExternalBase):
         return creator.create(root=directory_name)
 
     def create_with_commits(self, num_files, num_commits, directory_name='.'):
-        """Create a tree with many files and many commits.
+        """Create a tree with many files and many commits. Every commit changes
+        exactly one file.
         
         :param num_files: number of files to be created
         :param num_commits: number of commits in the newly created tree
@@ -124,20 +125,23 @@ class Benchmark(ExternalBase):
         files = ["%s/%s" % (directory_name, i) for i in range(num_files)]
         for fn in files:
             f = open(fn, "wb")
-            f.write("some content\n")
-            f.close()
+            try:
+                f.write("some content\n")
+            finally:
+                f.close()
         tree = bzrdir.BzrDir.create_standalone_workingtree(directory_name)
-        for i in range(num_files):
-            tree.add(str(i))
+        tree.add([str(i) for i in range(num_files])
         tree.lock_write()
         try:
             tree.commit('initial commit')
             for i in range(num_commits):
                 fn = files[i % len(files)]
-                f = open(fn, "wb")
                 content = range(i) + [i, i, i, ""]
-                f.write("\n".join([str(i) for i in content]))
-                f.close()
+                f = open(fn, "wb")
+                try:
+                    f.write("\n".join([str(i) for i in content]))
+                finally:
+                    f.close()
                 tree.commit("changing file %s" % fn)
         finally:
             tree.unlock()
@@ -157,10 +161,12 @@ class Benchmark(ExternalBase):
         for j in range(num_commits):
             for i in range(changes_per_commit):
                 fn = files[(i + j) % changes_per_commit]
-                f = open(fn, "w")
                 content = range(i) + [i, i, i, '']
-                f.write("\n".join([str(k) for k in content]))
-                f.close()
+                f = open(fn, "w")
+                try:
+                    f.write("\n".join([str(k) for k in content]))
+                finally:
+                    f.close()
             tree.commit("new revision")
 
 
