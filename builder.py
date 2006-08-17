@@ -26,7 +26,7 @@ class DebBuild(object):
     source_dir = self._properties.source_dir()
     if os.path.exists(source_dir):
       if not keep_source_dir:
-        info("Purging the build dir: %s", build_dir)
+        info("Purging the build dir: %s", source_dir)
         shutil.rmtree(source_dir)
       else:
         info("Not purging build dir as requested: %s", build_dir)

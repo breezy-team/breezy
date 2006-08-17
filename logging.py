@@ -8,10 +8,10 @@ def set_verbose(v):
   
 def debug(fmt, *args):
   if verbose:
-    bzrinfo(fmt, args)
+    bzrinfo(fmt, *args)
   else:
-    bzrmutter(fmt, args)
+    bzrmutter(fmt, *args)
 
 def info(fmt, *args):
-  bzrinfo(fmt, args)
+  bzrinfo(fmt, *args)
 
