@@ -40,6 +40,10 @@ IN DEVELOPMENT
       convert revision ids to utf8 to annotate lines in storage.
       (John Arbash Meinel)
 
+    * ``setup.py`` now searches the filesystem to find all packages which
+      need to be installed. This should help make the life of packagers
+      easier. (John Arbash Meinel)
+
 bzr 0.9.0  2006-08-11
 
   SURPRISES:
