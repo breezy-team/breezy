@@ -604,6 +604,58 @@ class SFTPTransport(Transport):
             # raise the original with its traceback if we can.
             raise
 
+    def non_atomic_put(self, relpath, f, mode=None):
+        """Copy the file-like object into the target location.
+
+        This function is not strictly safe to use. It is only meant to
+        be used when you already know that the target does not exist.
+        It is not safe, because it will open and truncate the remote
+        file. So there may be a time when the file has invalid contents.
+
+        :param relpath: The remote location to put the contents.
+        :param f:       File-like object.
+        :param mode:    Possible access permissions for new file.
+                        None means do not set remote permissions.
+        """
+        abspath = self._remote_path(relpath)
+        path = self._sftp._adjust_cwd(abspath)
+        attr = SFTPAttributes()
+        if mode is not None:
+            attr.st_mode = mode
+        omode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE | SFTP_FLAG_TRUNC)
+
+        fout = None
+        try:
+            t, msg = self._sftp._request(CMD_OPEN, path, omode, attr)
+            if t != CMD_HANDLE:
+                raise TransportError('Expected an SFTP handle')
+            handle = msg.get_string()
+            fout = SFTPFile(self._sftp, handle, 'wb', -1)
+        except (paramiko.SSHException, IOError), e:
+            self._translate_io_exception(e, abspath, ': unable to open',
+                failure_exc=FileExists)
+
+        try:
+            fout.set_pipelined(True)
+            self._pump(f, fout)
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, tmp_abspath)
+        # XXX: This doesn't truly help like we would like it to.
+        #      The problem is that openssh strips sticky bits. So while we
+        #      can properly set group write permission, we lose the group
+        #      sticky bit. So it is probably best to stop chmodding, and
+        #      just tell users that they need to set the umask correctly.
+        #      The attr.st_mode = mode, will handle when the user wants the
+        #      final mode to be more restrictive. And then we avoid a round 
+        #      trip. Unless paramiko decides to expose an async chmod()
+        #
+        #      This is designed to chmod() right before we close.
+        #      Because we set_pipelined() earlier, theoretically we might avoid
+        #      The round trip for fout.close()
+        if mode is not None:
+            self._sftp.chmod(tmp_abspath, mode)
+        fout.close()
+
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
         queue = list(self.list_dir('.'))
