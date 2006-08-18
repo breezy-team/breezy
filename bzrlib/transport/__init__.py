@@ -493,7 +493,7 @@ class Transport(object):
         """
         raise NotImplementedError(self.put)
 
-    def non_atomic_put(self, relpath, f, mode=None):
+    def non_atomic_put(self, relpath, f, mode=None, create_parent_dir=False):
         """Copy the file-like object into the target location.
 
         This function is not strictly safe to use. It is only meant to
@@ -505,17 +505,20 @@ class Transport(object):
         :param f:       File-like object.
         :param mode:    Possible access permissions for new file.
                         None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
         """
         # Default implementation just does an atomic put.
-        # TODO: jam 20060818 Frequently, this command will be called
-        #       when the parent directory may not exist. It might be possible
-        #       to optimize by adding another parameter requesting that
-        #       we create the parent dir if it does not exist.
-        #       For now, I will leave the api more simple, since I'm not
-        #       sure what sftp or local transport could do that would
-        #       be better than raising NoSuchFile and having the caller
-        #       call mkdir() and then call us again.
-        return self.put(relpath, f, mode=mode)
+        try:
+            return self.put(relpath, f, mode=mode)
+        except errors.NoSuchFile:
+            if not create_parent_dir:
+                raise
+            parent_dir = osutils.dirname(relpath)
+            if parent_dir:
+                self.mkdir(parent_dir)
+                return self.put(relpath, f, mode=mode)
 
     def put_multi(self, files, mode=None, pb=None):
         """Put a set of files into the location.

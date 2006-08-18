@@ -581,6 +581,19 @@ class SFTPTransport(Transport):
                 self._pump(f, fout)
             except (IOError, paramiko.SSHException), e:
                 self._translate_io_exception(e, tmp_abspath)
+            # XXX: This doesn't truly help like we would like it to.
+            #      The problem is that openssh strips sticky bits. So while we
+            #      can properly set group write permission, we lose the group
+            #      sticky bit. So it is probably best to stop chmodding, and
+            #      just tell users that they need to set the umask correctly.
+            #      The attr.st_mode = mode, in _sftp_open_exclusive
+            #      will handle when the user wants the final mode to be more 
+            #      restrictive. And then we avoid a round trip. Unless 
+            #      paramiko decides to expose an async chmod()
+
+            # This is designed to chmod() right before we close.
+            # Because we set_pipelined() earlier, theoretically we might 
+            # avoid the round trip for fout.close()
             if mode is not None:
                 self._sftp.chmod(tmp_abspath, mode)
             fout.close()
@@ -604,7 +617,7 @@ class SFTPTransport(Transport):
             # raise the original with its traceback if we can.
             raise
 
-    def non_atomic_put(self, relpath, f, mode=None):
+    def non_atomic_put(self, relpath, f, mode=None, create_parent_dir=False):
         """Copy the file-like object into the target location.
 
         This function is not strictly safe to use. It is only meant to
@@ -616,45 +629,49 @@ class SFTPTransport(Transport):
         :param f:       File-like object.
         :param mode:    Possible access permissions for new file.
                         None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
         """
         abspath = self._remote_path(relpath)
-        path = self._sftp._adjust_cwd(abspath)
-        attr = SFTPAttributes()
-        if mode is not None:
-            attr.st_mode = mode
-        omode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE | SFTP_FLAG_TRUNC)
+
+        # TODO: jam 20060816 paramiko doesn't publicly expose a way to
+        #       set the file mode at create time. If it does, use it.
+        #       But for now, we just chmod later anyway.
 
         fout = None
-        try:
-            t, msg = self._sftp._request(CMD_OPEN, path, omode, attr)
-            if t != CMD_HANDLE:
-                raise TransportError('Expected an SFTP handle')
-            handle = msg.get_string()
-            fout = SFTPFile(self._sftp, handle, 'wb', -1)
-        except (paramiko.SSHException, IOError), e:
-            self._translate_io_exception(e, abspath, ': unable to open',
-                failure_exc=FileExists)
+        def _open_and_write_file():
+            """Try to open the target file, raise error on failure"""
+            try:
+                fout = self._sftp.file(abspath, mode='wb')
+                fout.set_pipelined(True)
+                self._pump(f, fout)
+            except (paramiko.SSHException, IOError), e:
+                self._translate_io_exception(e, abspath, ': unable to open')
 
+            # This is designed to chmod() right before we close.
+            # Because we set_pipelined() earlier, theoretically we might 
+            # avoid the round trip for fout.close()
+            if mode is not None:
+                self._sftp.chmod(tmp_abspath, mode)
+            fout.close()
+
+        if not create_parent_dir:
+            _open_and_write_file()
+            return
+
+        # Try error handling to create the parent directory if we need to
         try:
-            fout.set_pipelined(True)
-            self._pump(f, fout)
-        except (IOError, paramiko.SSHException), e:
-            self._translate_io_exception(e, tmp_abspath)
-        # XXX: This doesn't truly help like we would like it to.
-        #      The problem is that openssh strips sticky bits. So while we
-        #      can properly set group write permission, we lose the group
-        #      sticky bit. So it is probably best to stop chmodding, and
-        #      just tell users that they need to set the umask correctly.
-        #      The attr.st_mode = mode, will handle when the user wants the
-        #      final mode to be more restrictive. And then we avoid a round 
-        #      trip. Unless paramiko decides to expose an async chmod()
-        #
-        #      This is designed to chmod() right before we close.
-        #      Because we set_pipelined() earlier, theoretically we might avoid
-        #      The round trip for fout.close()
-        if mode is not None:
-            self._sftp.chmod(tmp_abspath, mode)
-        fout.close()
+            _open_and_write_file()
+        except NoSuchFile:
+            # Try to create the parent directory, and then go back to
+            # writing the file
+            parent_dir = os.path.dirname(abspath)
+            try:
+                self._sftp.mkdir(parent_dir)
+            except (paramiko.SSHException, IOError), e:
+                self._translate_io_exception(e, abspath, ': unable to open')
+            _open_and_write_file()
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
@@ -1024,6 +1041,10 @@ class SFTPTransport(Transport):
         :param abspath: The remote absolute path where the file should be opened
         :param mode: The mode permissions bits for the new file
         """
+        # TODO: jam 20060816 Paramiko >= 1.6.2 (probably earlier) supports
+        #       using the 'x' flag to indicate SFTP_FLAG_EXCL.
+        #       However, there is no way to set the permission mode at open 
+        #       time using the sftp_client.file() functionality.
         path = self._sftp._adjust_cwd(abspath)
         # mutter('sftp abspath %s => %s', abspath, path)
         attr = SFTPAttributes()

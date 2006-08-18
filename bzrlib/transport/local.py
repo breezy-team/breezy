@@ -19,6 +19,7 @@
 This is a fairly thin wrapper on regular file IO.
 """
 
+import errno
 import os
 import shutil
 import sys
@@ -154,7 +155,7 @@ class LocalTransport(Transport):
         finally:
             fp.close()
 
-    def non_atomic_put(self, relpath, f, mode=None):
+    def non_atomic_put(self, relpath, f, mode=None, create_parent_dir=False):
         """Copy the file-like object into the target location.
 
         This function is not strictly safe to use. It is only meant to
@@ -166,6 +167,9 @@ class LocalTransport(Transport):
         :param f:       File-like object.
         :param mode:    Possible access permissions for new file.
                         None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
         """
         abspath = self._abspath(relpath)
         if mode is None:
@@ -176,7 +180,24 @@ class LocalTransport(Transport):
         try:
             fd = os.open(abspath, _non_atomic_put_flags, local_mode)
         except (IOError, OSError),e:
-            self._translate_error(e, relpath)
+            # We couldn't create the file, maybe we need to create
+            # the parent directory, and try again
+            if (not create_parent_dir
+                or e.errno not in (errno.ENOENT,errno.ENOTDIR)):
+                self._translate_error(e, relpath)
+            parent_dir = os.path.dirname(abspath)
+            if not parent_dir:
+                self._translate_error(e, relpath)
+            try:
+                os.mkdir(parent_dir)
+            except (IOError, OSError), e:
+                self._translate_error(e, relpath)
+            # We created the parent directory, lets try to open the
+            # file again
+            try:
+                fd = os.open(abspath, _non_atomic_put_flags, local_mode)
+            except (IOError, OSError), e:
+                self._translate_error(e, relpath)
         try:
             st = os.fstat(fd)
             if mode is not None and mode != S_IMODE(st.st_mode):

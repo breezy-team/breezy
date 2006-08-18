@@ -167,6 +167,20 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('contents for\nd\n', t, 'd')
         self.check_transport_contents('', t, 'a')
 
+        self.assertRaises(NoSuchFile, t.non_atomic_put, 'no/such/path',
+                                       StringIO('contents\n'))
+        # Now test the create_parent flag
+        self.assertRaises(NoSuchFile, t.non_atomic_put, 'dir/a',
+                                       StringIO('contents\n'))
+        self.failIf(t.has('dir/a'))
+        t.non_atomic_put('dir/a', StringIO('contents for dir/a\n'),
+                         create_parent_dir=True)
+        self.check_transport_contents('contents for dir/a\n', t, 'dir/a')
+        
+        # But we still get NoSuchFile if we can't make the parent dir
+        self.assertRaises(NoSuchFile, t.non_atomic_put, 'not/there/a',
+                                       StringIO('contents\n'))
+
     def test_put_permissions(self):
         t = self.get_transport()
 
