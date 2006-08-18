@@ -28,7 +28,8 @@ class BisectCurrent(object):
         f.close()
 
     def switch(self, revision):
-        self._bzrdir.revert([], revision, False)
+        wt = self._bzrdir.open_workingtree()
+        wt.revert([], revision, False)
         self._revid = revision.revision_id
         self._save()
 
