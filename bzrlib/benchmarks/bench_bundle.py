@@ -15,82 +15,49 @@
 
 """Tests for bzr bundle performance."""
 
-
 import os
 import shutil
-from StringIO import StringIO
+from cStringIO import StringIO
 
 from bzrlib.benchmarks import Benchmark
-from bzrlib.workingtree import WorkingTree
 from bzrlib.branch import Branch
-from bzrlib.bundle.serializer import write_bundle
 from bzrlib.bundle import read_bundle
+from bzrlib.bundle.serializer import write_bundle
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.workingtree import WorkingTree
 
-# if set, creation of test trees will be globally cached (even across test runs)
-#CACHEDIR = os.path.expanduser("~/.bazaar/devtemp")
-CACHEDIR = None 
-
-def cached_make(maker, *args):
-    if CACHEDIR is None:
-        return maker(*args)
-    olddir = os.getcwd()
-    try:
-        if not os.path.exists(CACHEDIR):
-            os.makedirs(CACHEDIR)
-        os.chdir(CACHEDIR)
-        cache_name = "_".join([maker.__name__] + [str(x) for x in args])
-        if not os.path.exists(cache_name):
-            os.mkdir(cache_name)
-            os.chdir(cache_name)
-            try:
-                maker(*args)
-            except:
-                os.chdir(CACHEDIR)
-                shutil.rmtree(cache_name)
-                raise
-            os.chdir(CACHEDIR)
-                
-        for subdir in os.listdir(cache_name):
-            shutil.copytree(os.path.join(cache_name, subdir),
-                            os.path.join(olddir, subdir))
-    finally:
-        os.chdir(olddir)
 
 class BundleBenchmark(Benchmark):
+    """The bundle tests should (also) be done at a lower level with
+    direct call to the bzrlib.
     """
-    The bundle tests should (also) be done at a lower level with
-    direct call to the bzrlib."""
    
-    def make_kernel_like_tree_committed(self): 
-        cached_make(self.make_kernel_like_tree)
-        self.run_bzr('add')
+    def make_kernel_like_tree_committed(self):
+        self.make_kernel_like_tree_added()
         self.run_bzr('commit', '-m', 'initial import')
 
     def test_create_bundle_known_kernel_like_tree(self):
-        """
-        Create a bundle for a kernel sized tree with no ignored, unknowns,
-        or added and one commit.""" 
-        cached_make(self.make_kernel_like_tree_committed)
+        """Create a bundle for a kernel sized tree with no ignored, unknowns,
+        or added and one commit.
+        """ 
+        self.make_kernel_like_tree_committed()
         self.time(self.run_bzr, 'bundle', '--revision', '..-1')
 
     def test_create_bundle_many_commit_tree (self):
-        """
-        Create a bundle for a tree with many commits but no changes.""" 
-        cached_make(self.make_many_commit_tree)
+        """Create a bundle for a tree with many commits but no changes.""" 
+        self.make_many_commit_tree()
         self.time(self.run_bzr, 'bundle', '--revision', '..-1')
 
     def test_create_bundle_heavily_merged_tree(self):
-        """
-        Create a bundle for a heavily merged tree.""" 
-        cached_make(self.make_heavily_merged_tree)
+        """Create a bundle for a heavily merged tree.""" 
+        self.make_heavily_merged_tree()
         self.time(self.run_bzr, 'bundle', '--revision', '..-1')
         
     def test_apply_bundle_known_kernel_like_tree(self):
-        """
-        Create a bundle for a kernel sized tree with no ignored, unknowns,
-        or added and one commit.""" 
-        cached_make(self.make_kernel_like_tree_committed)
+        """Create a bundle for a kernel sized tree with no ignored, unknowns,
+        or added and one commit.
+        """ 
+        self.make_kernel_like_tree_committed()
         f = file('../bundle', 'wb')
         try:
             f.write(self.run_bzr('bundle', '--revision', '..-1')[0])
@@ -146,7 +113,7 @@ class BundleLibraryLevelBenchmark(Benchmark):
         assert count >= num_revisions
 
     def _time_read_write(self):
-        branch, _ = Branch.open_containing(".")
+        branch, relpath = Branch.open_containing(".")
         revision_history = branch.revision_history()
         bundle_text = StringIO()
         self.time(write_bundle, branch.repository, revision_history[-1],
@@ -155,75 +122,75 @@ class BundleLibraryLevelBenchmark(Benchmark):
         self.time(read_bundle, bundle_text)
 
     def test_few_files_small_tree_1_revision(self):
-        cached_make(self.make_parametrized_tree, 5, 1, 5)
+        self.make_parametrized_tree(5, 1, 5)
         self._time_read_write()
 
     def test_few_files_small_tree_500_revision(self):
-        cached_make(self.make_parametrized_tree, 5, 500, 5)
+        self.make_parametrized_tree(5, 500, 5)
         self._time_read_write()
 
     def test_few_files_small_tree_1000_revision(self):
-        cached_make(self.make_parametrized_tree, 5, 1000, 5)
+        self.make_parametrized_tree(5, 1000, 5)
         self._time_read_write()
 
     def test_few_files_moderate_tree_1_revision(self):
-        cached_make(self.make_parametrized_tree, 100, 1, 5)
+        self.make_parametrized_tree(100, 1, 5)
         self._time_read_write()
 
     def test_few_files_moderate_tree_500_revision(self):
-        cached_make(self.make_parametrized_tree, 100, 500, 5)
+        self.make_parametrized_tree(100, 500, 5)
         self._time_read_write()
 
     def test_few_files_moderate_tree_1000_revision(self):
-        cached_make(self.make_parametrized_tree, 100, 1000, 5)
+        self.make_parametrized_tree(100, 1000, 5)
         self._time_read_write()
 
     def test_some_files_moderate_tree_1_revision(self):
-        cached_make(self.make_parametrized_tree, 100, 1, 100)
+        self.make_parametrized_tree(100, 1, 100)
         self._time_read_write()
 
     def test_some_files_moderate_tree_500_revision(self):
-        cached_make(self.make_parametrized_tree, 100, 500, 100)
+        self.make_parametrized_tree(100, 500, 100)
         self._time_read_write()
 
     def test_some_files_moderate_tree_1000_revision(self):
-        cached_make(self.make_parametrized_tree, 100, 1000, 100)
+        self.make_parametrized_tree(100, 1000, 100)
         self._time_read_write()
 
     def test_few_files_big_tree_1_revision(self):
-        cached_make(self.make_parametrized_tree, 1000, 1, 5)
+        self.make_parametrized_tree(1000, 1, 5)
         self._time_read_write()
 
     def test_few_files_big_tree_500_revision(self):
-        cached_make(self.make_parametrized_tree, 1000, 500, 5)
+        self.make_parametrized_tree(1000, 500, 5)
         self._time_read_write()
 
     def test_few_files_big_tree_1000_revision(self):
-        cached_make(self.make_parametrized_tree, 1000, 1000, 5)
+        self.make_parametrized_tree(1000, 1000, 5)
         self._time_read_write()
 
     def test_some_files_big_tree_1_revision(self):
-        cached_make(self.make_parametrized_tree, 1000, 1, 100)
+        self.make_parametrized_tree(1000, 1, 100)
         self._time_read_write()
 
     def test_some_files_big_tree_500_revision(self):
-        cached_make(self.make_parametrized_tree, 1000, 500, 100)
+        self.make_parametrized_tree(1000, 500, 100)
         self._time_read_write()
 
     def test_some_files_big_tree_1000_revision(self):
-        cached_make(self.make_parametrized_tree, 1000, 1000, 100)
+        self.make_parametrized_tree(1000, 1000, 100)
         self._time_read_write()
 
     def test_many_files_big_tree_1_revision(self):
-        cached_make(self.make_parametrized_tree, 1000, 1, 1000)
+        self.make_parametrized_tree(1000, 1, 1000)
         self._time_read_write()
 
     def test_many_files_big_tree_500_revision(self):
-        cached_make(self.make_parametrized_tree, 1000, 500, 1000)
+        self.make_parametrized_tree(1000, 500, 1000)
         self._time_read_write()
 
     def test_many_files_big_tree_1000_revision(self):
-        cached_make(self.make_parametrized_tree, 1000, 1000, 1000)
+        self.make_parametrized_tree(1000, 1000, 1000)
         self._time_read_write()
 
 
@@ -238,9 +205,9 @@ if __name__ == '__main__':
             for num_revisions in [1, 500, 1000]:
                 code = """\
     def test_%s_files_%s_tree_%s_revision(self):
-        cached_make(self.make_parametrized_tree, %s, %s, %s)
+        self.make_parametrized_tree(%s, %s, %s)
         self._time_read_write()
 """ % (bundlefiles_h, treesize_h, num_revisions,
        treesize, num_revisions, bundlefiles)
-                print code 
+                print code
 
