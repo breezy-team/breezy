@@ -17,6 +17,10 @@ IN DEVELOPMENT
     * Inverse forms are provided for all boolean options.  For example,
       --strict has --no-strict, --no-recurse has --recurse (Aaron Bentley)
 
+    * Serialize out Inventories directly, rather than using ElementTree.
+      Writing out a kernel sized inventory drops from 2s down to ~350ms.
+      (Robert Collins, John Arbash Meinel)
+
   BUG FIXES:
 
     * Handle TZ=UTC properly when reading/writing revisions.
@@ -28,6 +32,10 @@ IN DEVELOPMENT
     * External diff does the right thing for binaries even in foreign 
       languages. (John Arbash Meinel, #56307)
 
+    * Testament handles more cases when content is unicode. Specific bug was
+      in handling of revision properties. (John Arbash Meinel, Holger Krekel,
+      #54723)
+
   INTERNALS:
 
     * ``bzrlib.cache_utf8`` contains ``encode()`` and ``decode()`` functions
@@ -35,6 +43,10 @@ IN DEVELOPMENT
       Especially helpful for some of the knit annotation code, which has to
       convert revision ids to utf8 to annotate lines in storage.
       (John Arbash Meinel)
+
+    * ``setup.py`` now searches the filesystem to find all packages which
+      need to be installed. This should help make the life of packagers
+      easier. (John Arbash Meinel)
 
 bzr 0.9.0  2006-08-11
 

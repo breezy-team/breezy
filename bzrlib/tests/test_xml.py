@@ -80,7 +80,7 @@ _committed_inv_v5 = """<inventory>
            file_id="foo-20050801201819-4139aa4a272f4250"
            parent_id="TREE_ROOT" 
            revision="mbp@foo-00"/>
-<file file_id="bar-20050824000535-6bc48cfad47ed134" 
+<file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" 
       name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" 
       revision="mbp@foo-00"/>
 </inventory>
@@ -97,6 +97,35 @@ _basis_inv_v5 = """<inventory revision_id="mbp@sourcefrog.net-20050905063503-439
 <file file_id="bar-20050824000535-6bc48cfad47ed134" 
       name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" 
       revision="mbp@foo-00"/>
+</inventory>
+"""
+
+
+# DO NOT REFLOW THIS. Its the exact revision we want.
+_expected_rev_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;" format="5" inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41" revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9" timestamp="1125907235.211783886" timezone="36000">
+<message>- start splitting code for xml (de)serialization away from objects
+  preparatory to supporting multiple formats by a single library
+</message>
+<parents>
+<revision_ref revision_id="mbp@sourcefrog.net-20050905063503-43948f59fa127d92" />
+</parents>
+</revision>
+"""
+
+
+# DO NOT REFLOW THIS. Its the exact inventory we want.
+_expected_inv_v5 = """<inventory format="5">
+<file file_id="bar-20050901064931-73b4b1138abc9cd2" name="bar" revision="mbp@foo-123123" />
+<directory file_id="foo-20050801201819-4139aa4a272f4250" name="subdir" revision="mbp@foo-00" />
+<file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" />
+</inventory>
+"""
+
+
+_expected_inv_v5_root = """<inventory file_id="f&lt;" format="5" revision_id="mother!">
+<file file_id="bar-20050901064931-73b4b1138abc9cd2" name="bar" parent_id="f&lt;" revision="mbp@foo-123123" />
+<directory file_id="foo-20050801201819-4139aa4a272f4250" name="subdir" parent_id="f&lt;" revision="mbp@foo-00" />
+<file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" />
 </inventory>
 """
 
@@ -176,8 +205,21 @@ class TestSerializer(TestCase):
         inv = bzrlib.xml5.serializer_v5.read_inventory(inp)
         outp = StringIO()
         bzrlib.xml5.serializer_v5.write_inventory(inv, outp)
+        self.assertEqualDiff(_expected_inv_v5, outp.getvalue())
         inv2 = bzrlib.xml5.serializer_v5.read_inventory(StringIO(outp.getvalue()))
         self.assertEqual(inv, inv2)
+    
+    def assertRoundTrips(self, xml_string):
+        inp = StringIO(xml_string)
+        inv = bzrlib.xml5.serializer_v5.read_inventory(inp)
+        outp = StringIO()
+        bzrlib.xml5.serializer_v5.write_inventory(inv, outp)
+        self.assertEqualDiff(xml_string, outp.getvalue())
+        inv2 = bzrlib.xml5.serializer_v5.read_inventory(StringIO(outp.getvalue()))
+        self.assertEqual(inv, inv2)
+
+    def tests_serialize_inventory_v5_with_root(self):
+        self.assertRoundTrips(_expected_inv_v5_root)
 
     def check_repack_revision(self, txt):
         """Check that repacking a revision yields the same information"""
@@ -205,6 +247,7 @@ class TestSerializer(TestCase):
         outfile_contents = outp.getvalue()
         self.assertEqual(outfile_contents[-1], '\n')
         self.assertEqualDiff(outfile_contents, bzrlib.xml5.serializer_v5.write_revision_to_string(rev))
+        self.assertEqualDiff(outfile_contents, _expected_rev_v5)
 
     def test_empty_property_value(self):
         """Create an empty property value check that it serializes correctly"""
