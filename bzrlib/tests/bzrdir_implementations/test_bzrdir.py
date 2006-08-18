@@ -115,7 +115,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             raise TestSkipped("bzrdir on transport %r has no working tree"
                               % a_bzrdir.transport)
 
-    def createWorkingtreeOrSkip(self, a_bzrdir):
+    def createWorkingTreeOrSkip(self, a_bzrdir):
         """Create a working tree on a_bzrdir, or raise TestSkipped.
         
         A simple wrapper for create_workingtree that translates NotLocalUrl into
@@ -398,7 +398,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
-        self.createWorkingtreeOrSkip(dir)
+        self.createWorkingTreeOrSkip(dir)
         target = dir.clone(self.get_url('target'))
         self.skipIfNoWorkingTree(target)
         self.assertNotEqual(dir.transport.base, target.transport.base)
@@ -829,7 +829,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # this is ok too, not all formats have to support references.
             return
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
-        tree = self.createWorkingtreeOrSkip(dir)
+        tree = self.createWorkingTreeOrSkip(dir)
         tree.bzrdir.root_transport.mkdir('subdir')
         tree.add('subdir')
         try:
@@ -860,7 +860,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # this is ok too, not all formats have to support references.
             return
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
-        tree = self.createWorkingtreeOrSkip(dir)
+        tree = self.createWorkingTreeOrSkip(dir)
         self.build_tree(['foo'], transport=dir.root_transport)
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
@@ -1280,7 +1280,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # for now, upgrade is not ready for partial bzrdirs.
         dir.create_repository()
         dir.create_branch()
-        self.createWorkingtreeOrSkip(dir)
+        self.createWorkingTreeOrSkip(dir)
         if dir.can_convert_format():
             # if its default updatable there must be an updater 
             # (we change the default to match the lastest known format
