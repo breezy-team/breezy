@@ -1,11 +1,11 @@
 import os
-from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
+
 from bzrlib.benchmarks import Benchmark
 from bzrlib import bzrdir
-import bzrlib.transport
+from bzrlib.tests import test_sftp_transport
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 import bzrlib.transport.http
 from bzrlib.workingtree import WorkingTree
-from bzrlib.tests import test_sftp_transport
 
 try:
     import paramiko
@@ -21,7 +21,7 @@ class SFTPBenchmark(Benchmark):
         super(SFTPBenchmark, self).setUp()
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
-        test_sftp_transport.set_transport(self) 
+        test_sftp_transport.set_test_transport_to_sftp(self) 
          
     def test_branch(self):
         os.mkdir("a")

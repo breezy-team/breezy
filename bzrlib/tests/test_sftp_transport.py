@@ -33,7 +33,7 @@ except ImportError:
     paramiko_loaded = False
 
 
-def set_transport(testcase):
+def set_test_transport_to_sftp(testcase):
     """A helper to set transports on test case instances."""
     from bzrlib.transport.sftp import SFTPAbsoluteServer, SFTPHomeDirServer
     if getattr(testcase, '_get_remote_is_absolute', None) is None:
@@ -52,7 +52,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
         super(TestCaseWithSFTPServer, self).setUp()
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
-        set_transport(self) 
+        set_test_transport_to_sftp(self) 
 
     def get_transport(self, path=None):
         """Return a transport relative to self._test_root."""
