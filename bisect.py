@@ -1,5 +1,6 @@
 import sys
 import os
+import bzrlib.bzrdir
 import bzrlib.tests
 from bzrlib.commands import Command, register_command
 from bzrlib.errors import BzrCommandError
@@ -11,6 +12,9 @@ class BisectLog(object):
 
     def __init__(self, filename = bisect_info_path):
         self._items = []
+        self._bzrdir = None
+        self._low_revno = None
+        self._middle_revno = None
         self.change_file_name(filename)
         self.load()
 
@@ -25,6 +29,39 @@ class BisectLog(object):
             return open(self._filename, "w")
         else:
             return sys.stdout
+
+    def _load_bzr_tree(self):
+        if not self._bzrdir:
+            self._bzrdir = bzrlib.bzrdir.BzrDir.open_containing('.')[0]
+            self._bzrbranch = self._bzrdir.open_branch()
+
+    def _find_current_range(self):
+        self._load_bzr_tree()
+        revno = 1
+        for revision in self._bzrbranch.revision_history():
+            matches = [x[1] for x in self._items if x[0] == revision]
+            if not matches:
+                revno = revno + 1
+                continue
+            if len(matches) > 1:
+                raise RuntimeError("multiple entries for revision")
+            if matches[0] == "yes":
+                self._high_revno = revno
+                break
+            elif matches[0] == "no":
+                self._low_revno = revno
+            revno = revno + 1
+
+        spread = self._high_revno - self._low_revno
+        if spread < 0:
+            raise RuntimeError("negative spread")
+        if spread < 3:
+            self._middle_revno = self._low_revno + 1
+        else:
+            self._middle_revno = self._low_revno + (spread / 2)
+
+    def _switch_wc_to_revno(self, revno):
+        pass
 
     def change_file_name(self, filename):
         self._filename = filename
@@ -41,6 +78,14 @@ class BisectLog(object):
         f = self._open_for_write()
         for (revid, status) in self._items:
             f.write("%s %s\n" % (revid, status))
+
+    def set_current(self, status):
+        self._load_bzr_tree()
+        self._items.append((self._bzrdir.get_current_revision(), status))
+
+    def bisect(self):
+        self._find_current_range()
+        self._switch_wc_to_revno(self._middle_revno)
 
 class cmd_bisect(Command):
     """Find an interesting commit using a binary search.
@@ -125,15 +170,25 @@ class cmd_bisect(Command):
         "Reset the bisect state, then prepare for a new bisection."
 
         self.reset()
-        BisectLog().save()
+        bl = BisectLog()
+        bl.set_current("start")
+        bl.save()
 
     def yes(self, revision):
         "Mark that a given revision has the state we're looking for."
-        pass
+
+        bl = BisectLog()
+        bl.set_current("yes")
+        bl.bisect()
+        bl.save()
 
     def no(self, revision):
         "Mark that a given revision does not have the state we're looking for."
-        pass
+
+        bl = BisectLog()
+        bl.set_current("no")
+        bl.bisect()
+        bl.save()
 
     def log(self, filename):
         "Write the current bisect log to a file."
@@ -153,6 +208,8 @@ class cmd_bisect(Command):
         bl = BisectLog(filename)
         bl.change_file_name(bisect_info_path)
         bl.save()
+
+        bl.bisect()
 
 register_command(cmd_bisect)
 
