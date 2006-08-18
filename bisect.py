@@ -64,6 +64,10 @@ class BisectLog(object):
 
     def _find_current_range(self):
         self._load_bzr_tree()
+
+        self._high_revno = None
+        self._low_revno = None
+        self._middle_revno = None
         revno = 1
         for revision in self._bzrbranch.revision_history():
             matches = [x[1] for x in self._items 
@@ -79,6 +83,9 @@ class BisectLog(object):
             elif matches[0] == "no":
                 self._low_revno = revno
             revno = revno + 1
+
+        if not self._high_revno or not self._low_revno:
+            return
 
         spread = self._high_revno - self._low_revno
         if spread < 0:
@@ -114,7 +121,8 @@ class BisectLog(object):
 
     def bisect(self):
         self._find_current_range()
-        self._switch_wc_to_revno(self._middle_revno)
+        if self._middle_revno:
+            self._switch_wc_to_revno(self._middle_revno)
 
 class cmd_bisect(Command):
     """Find an interesting commit using a binary search.
