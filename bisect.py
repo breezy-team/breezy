@@ -88,7 +88,7 @@ class BisectLog(object):
             self._middle_revno = self._low_revno + (spread / 2)
 
     def _switch_wc_to_revno(self, revno):
-        pass
+        self._current.switch(revno)
 
     def change_file_name(self, filename):
         self._filename = filename
@@ -229,7 +229,8 @@ class cmd_bisect(Command):
     def move(self, revision):
         "Move to a different revision manually."
 
-        pass
+        bc = BisectCurrent()
+        bc.switch(revision)
 
     def log(self, filename):
         "Write the current bisect log to a file."
