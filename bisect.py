@@ -255,10 +255,13 @@ register_command(cmd_bisect)
 
 class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
     def assertRevno(self, rev):
-        "Make sure the revision number is as specified."
+        "Make sure we're at the right revision."
 
-        revno = self.capture("revno")
-        if ("%d" % rev) not in revno:
+        rev_contents = { 1: "one", 2: "two", 3: "three",
+                         4: "four", 5: "five" }
+
+        f = open("test_file")
+        if f.read() != rev_contents[rev]:
             raise AssertionError("not at revision %d" % rev)
 
     def setUp(self):
@@ -280,7 +283,6 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
             f.write(content)
             f.close()
             self.tree.commit(message = "make test change")
-
 
 class BisectCurrentUnitTests(BisectTestCase):
     def testSwitchVersions(self):
