@@ -639,22 +639,25 @@ class SFTPTransport(Transport):
         #       set the file mode at create time. If it does, use it.
         #       But for now, we just chmod later anyway.
 
-        fout = None
         def _open_and_write_file():
             """Try to open the target file, raise error on failure"""
+            fout = None
             try:
-                fout = self._sftp.file(abspath, mode='wb')
-                fout.set_pipelined(True)
-                self._pump(f, fout)
-            except (paramiko.SSHException, IOError), e:
-                self._translate_io_exception(e, abspath, ': unable to open')
+                try:
+                    fout = self._sftp.file(abspath, mode='wb')
+                    fout.set_pipelined(True)
+                    self._pump(f, fout)
+                except (paramiko.SSHException, IOError), e:
+                    self._translate_io_exception(e, abspath, ': unable to open')
 
-            # This is designed to chmod() right before we close.
-            # Because we set_pipelined() earlier, theoretically we might 
-            # avoid the round trip for fout.close()
-            if mode is not None:
-                self._sftp.chmod(tmp_abspath, mode)
-            fout.close()
+                # This is designed to chmod() right before we close.
+                # Because we set_pipelined() earlier, theoretically we might 
+                # avoid the round trip for fout.close()
+                if mode is not None:
+                    self._sftp.chmod(abspath, mode)
+            finally:
+                if fout is not None:
+                    fout.close()
 
         if not create_parent_dir:
             _open_and_write_file()
