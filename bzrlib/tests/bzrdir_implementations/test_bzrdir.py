@@ -988,26 +988,29 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        # this has to be tested with local access as we still support creating 
-        # format 6 bzrdirs
-        t = get_transport('.')
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
-        made_tree = made_control.create_workingtree()
+        made_tree = self.createWorkingTreeOrSkip(made_control)
         self.failUnless(isinstance(made_tree, workingtree.WorkingTree))
         self.assertEqual(made_control, made_tree.bzrdir)
         
     def test_create_workingtree_revision(self):
         # a bzrdir can construct a working tree for itself @ a specific revision.
+        t = self.get_transport()
         source = self.make_branch_and_tree('source')
         source.commit('a', rev_id='a', allow_pointless=True)
         source.commit('b', rev_id='b', allow_pointless=True)
         self.build_tree(['new/'])
-        made_control = self.bzrdir_format.initialize('new')
+        t_new = t.clone('new')
+        made_control = self.bzrdir_format.initialize_on_transport(t_new)
         source.branch.repository.clone(made_control)
         source.branch.clone(made_control)
-        made_tree = made_control.create_workingtree(revision_id='a')
+        try:
+            made_tree = made_control.create_workingtree(revision_id='a')
+        except errors.NotLocalUrl:
+            raise TestSkipped("Can't make working tree on transport %r" % t)
         self.assertEqual('a', made_tree.last_revision())
         
     def test_open_workingtree(self):
