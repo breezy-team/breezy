@@ -1985,17 +1985,24 @@ class cmd_selftest(Command):
                 test_suite_factory = benchmarks.test_suite
                 if verbose is None:
                     verbose = True
+                benchfile = open(".perf_history", "at")
             else:
                 test_suite_factory = None
                 if verbose is None:
                     verbose = False
-            result = selftest(verbose=verbose, 
-                              pattern=pattern,
-                              stop_on_failure=one, 
-                              keep_output=keep_output,
-                              transport=transport,
-                              test_suite_factory=test_suite_factory,
-                              lsprof_timed=lsprof_timed)
+                benchfile = None
+            try:
+                result = selftest(verbose=verbose, 
+                                  pattern=pattern,
+                                  stop_on_failure=one, 
+                                  keep_output=keep_output,
+                                  transport=transport,
+                                  test_suite_factory=test_suite_factory,
+                                  lsprof_timed=lsprof_timed,
+                                  bench_history=benchfile)
+            finally:
+                if benchfile is not None:
+                    benchfile.close()
             if result:
                 info('tests passed')
             else:
@@ -2005,54 +2012,12 @@ class cmd_selftest(Command):
             ui.ui_factory = save_ui
 
 
-def _get_bzr_branch():
-    """If bzr is run from a branch, return Branch or None"""
-    from os.path import dirname
-    
-    try:
-        branch = Branch.open(dirname(osutils.abspath(dirname(__file__))))
-        return branch
-    except errors.BzrError:
-        return None
-    
-
-def show_version():
-    import bzrlib
-    print "Bazaar (bzr) %s" % bzrlib.__version__
-    # is bzrlib itself in a branch?
-    branch = _get_bzr_branch()
-    if branch:
-        rh = branch.revision_history()
-        revno = len(rh)
-        print "  bzr checkout, revision %d" % (revno,)
-        print "  nick: %s" % (branch.nick,)
-        if rh:
-            print "  revid: %s" % (rh[-1],)
-    print "Using python interpreter:", sys.executable
-    import site
-    print "Using python standard library:", os.path.dirname(site.__file__)
-    print "Using bzrlib:",
-    if len(bzrlib.__path__) > 1:
-        # print repr, which is a good enough way of making it clear it's
-        # more than one element (eg ['/foo/bar', '/foo/bzr'])
-        print repr(bzrlib.__path__)
-    else:
-        print bzrlib.__path__[0]
-
-    print
-    print bzrlib.__copyright__
-    print "http://bazaar-vcs.org/"
-    print
-    print "bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and"
-    print "you may use, modify and redistribute it under the terms of the GNU"
-    print "General Public License version 2 or later."
-
-
 class cmd_version(Command):
     """Show version of bzr."""
 
     @display_command
     def run(self):
+        from bzrlib.version import show_version
         show_version()
 
 
@@ -2528,7 +2493,8 @@ class cmd_plugins(Command):
 
 class cmd_testament(Command):
     """Show testament (signing-form) of a revision."""
-    takes_options = ['revision', 'long', 
+    takes_options = ['revision', 
+                     Option('long', help='Produce long-format testament'), 
                      Option('strict', help='Produce a strict-format'
                             ' testament')]
     takes_args = ['branch?']
