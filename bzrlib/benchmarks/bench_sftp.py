@@ -37,7 +37,7 @@ class SFTPBenchmark(Benchmark):
         super(SFTPBenchmark, self).setUp()
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
-        test_sftp_transport.set_test_transport_to_sftp(self) 
+        test_sftp_transport.set_test_transport_to_sftp(self)
          
     def test_branch(self):
         os.mkdir("a")
@@ -66,11 +66,11 @@ class SFTPBenchmark(Benchmark):
         os.mkdir("a")
         tree, files = self.create_with_commits(100, 100, "a")
         rbzrdir = bzrdir.BzrDir.open(self.get_url('a'))
-        b2 = rbzrdir.sprout("b") # branch
+        b2 = tree.bzrdir.sprout("b") # branch
         wtree = b2.open_workingtree()
         # change a few files and commit
         self.commit_some_revisions(
-            wtree, ["b/%i" for i in range(100)], 
+            wtree, ["b/%i" for i in range(100)],
             num_commits=num_push_revisions,
             changes_per_commit=20)
         self.time(rbzrdir.open_branch().pull, wtree.branch)
