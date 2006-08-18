@@ -507,6 +507,14 @@ class Transport(object):
                         None means do not set remote permissions.
         """
         # Default implementation just does an atomic put.
+        # TODO: jam 20060818 Frequently, this command will be called
+        #       when the parent directory may not exist. It might be possible
+        #       to optimize by adding another parameter requesting that
+        #       we create the parent dir if it does not exist.
+        #       For now, I will leave the api more simple, since I'm not
+        #       sure what sftp or local transport could do that would
+        #       be better than raising NoSuchFile and having the caller
+        #       call mkdir() and then call us again.
         return self.put(relpath, f, mode=mode)
 
     def put_multi(self, files, mode=None, pb=None):
