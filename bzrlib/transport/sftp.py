@@ -672,11 +672,6 @@ class SFTPTransport(Transport):
         """Create a directory at the given path."""
         path = self._remote_path(relpath)
         try:
-            # In the paramiko documentation, it says that passing a mode flag 
-            # will filtered against the server umask.
-            # StubSFTPServer does not do this, which would be nice, because it is
-            # what we really want :)
-            # However, real servers do use umask, so we really should do it that way
             self._sftp.mkdir(path)
             if mode is not None:
                 self._sftp.chmod(path, mode=mode)
