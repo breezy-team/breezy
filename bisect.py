@@ -6,6 +6,30 @@ from bzrlib.commands import Command, register_command
 from bzrlib.errors import BzrCommandError
 
 bisect_info_path = ".bzr/bisect"
+bisect_rev_path = ".bzr/bisect_revno"
+
+class BisectCurrent(object):
+    "Bisect class for managing the current revision."
+
+    def __init__(self, filename = bisect_rev_path):
+        self._filename = filename
+        self._bzrdir = bzrlib.bzrdir.BzrDir.open_containing(".")[0]
+        if os.path.exists(filename):
+            f = open(filename)
+            self._revid = f.read().strip()
+            f.close()
+        else:
+            self._revid = self._bzrdir.last_revision().revision_id
+
+    def _save(self):
+        f = open(self._filename, "w")
+        f.write(self._revid + "\n")
+        f.close()
+
+    def switch(self, revision):
+        self._bzrdir.revert([], revision, False)
+        self._revid = revision.revision_id
+        self._save()
 
 class BisectLog(object):
     "Bisect log file handler."
@@ -229,34 +253,7 @@ register_command(cmd_bisect)
 
 # Tests.
 
-class BisectLogUnitTests(bzrlib.tests.TestCaseWithTransport):
-    def setUp(self):
-        bzrlib.tests.TestCaseWithTransport.setUp(self)
-        self.tree = self.make_branch_and_tree(".")
-
-    def testCreateBlank(self):
-        bl = BisectLog()
-        bl.save()
-        assert os.path.exists(bisect_info_path)
-
-    def testLoad(self):
-        open(bisect_info_path, "w").write("rev1 yes\nrev2 no\nrev3 yes\n")
-
-        bl = BisectLog()
-        assert len(bl._items) == 3
-        assert bl._items[0] == ("rev1", "yes")
-        assert bl._items[1] == ("rev2", "no")
-        assert bl._items[2] == ("rev3", "yes")
-
-    def testSave(self):
-        bl = BisectLog()
-        bl._items = [("rev1", "yes"), ("rev2", "no"), ("rev3", "yes")]
-        bl.save()
-
-        f = open(bisect_info_path)
-        assert f.read() == "rev1 yes\nrev2 no\nrev3 yes\n"
-
-class BisectFuncTests(bzrlib.tests.TestCaseWithTransport):
+class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
     def assertRevno(self, rev):
         "Make sure the revision number is as specified."
 
@@ -284,6 +281,40 @@ class BisectFuncTests(bzrlib.tests.TestCaseWithTransport):
             f.close()
             self.tree.commit(message = "make test change")
 
+
+class BisectCurrentUnitTests(BisectTestCase):
+    def testSwitchVersions(self):
+        bc = BisectCurrent()
+        self.assertRevno(5)
+
+        bc = BisectCurrent()
+        bc.switch(4)
+        self.assertRevno(4)
+
+class BisectLogUnitTests(BisectTestCase):
+    def testCreateBlank(self):
+        bl = BisectLog()
+        bl.save()
+        assert os.path.exists(bisect_info_path)
+
+    def testLoad(self):
+        open(bisect_info_path, "w").write("rev1 yes\nrev2 no\nrev3 yes\n")
+
+        bl = BisectLog()
+        assert len(bl._items) == 3
+        assert bl._items[0] == ("rev1", "yes")
+        assert bl._items[1] == ("rev2", "no")
+        assert bl._items[2] == ("rev3", "yes")
+
+    def testSave(self):
+        bl = BisectLog()
+        bl._items = [("rev1", "yes"), ("rev2", "no"), ("rev3", "yes")]
+        bl.save()
+
+        f = open(bisect_info_path)
+        assert f.read() == "rev1 yes\nrev2 no\nrev3 yes\n"
+
+class BisectFuncTests(BisectTestCase):
     def testWorkflow(self):
         # Start up the bisection.  When the two ends are set, we should
         # end up in the middle.
@@ -366,5 +397,6 @@ def test_suite():
     from bzrlib.tests.TestUtil import TestLoader, TestSuite
     suite = TestSuite()
     suite.addTest(TestLoader().loadTestsFromTestCase(BisectFuncTests))
+    suite.addTest(TestLoader().loadTestsFromTestCase(BisectCurrentUnitTests))
     suite.addTest(TestLoader().loadTestsFromTestCase(BisectLogUnitTests))
     return suite
