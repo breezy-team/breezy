@@ -14,12 +14,13 @@ class BisectCurrent(object):
     def __init__(self, filename = bisect_rev_path):
         self._filename = filename
         self._bzrdir = bzrlib.bzrdir.BzrDir.open_containing(".")[0]
+        self._bzrbranch = self._bzrdir.open_branch()
         if os.path.exists(filename):
             f = open(filename)
             self._revid = f.read().strip()
             f.close()
         else:
-            self._revid = self._bzrdir.last_revision().revision_id
+            self._revid = self._bzrbranch.get_rev_id(self._bzrbranch.revno())
 
     def _save(self):
         f = open(self._filename, "w")
@@ -36,6 +37,7 @@ class BisectLog(object):
 
     def __init__(self, filename = bisect_info_path):
         self._items = []
+        self._current = BisectCurrent()
         self._bzrdir = None
         self._low_revno = None
         self._middle_revno = None
@@ -288,8 +290,6 @@ class BisectCurrentUnitTests(BisectTestCase):
     def testSwitchVersions(self):
         bc = BisectCurrent()
         self.assertRevno(5)
-
-        bc = BisectCurrent()
         bc.switch(4)
         self.assertRevno(4)
 
