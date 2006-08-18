@@ -653,7 +653,7 @@ class SFTPTransport(Transport):
             # Because we set_pipelined() earlier, theoretically we might 
             # avoid the round trip for fout.close()
             if mode is not None:
-                self._sftp.chmod(tmp_abspath, mode)
+                self._sftp.chmod(abspath, mode)
             fout.close()
 
         if not create_parent_dir:
