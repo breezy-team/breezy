@@ -615,7 +615,8 @@ class BzrDir(object):
                 # XXX FIXME RBC 20060214 need tests for this when the basis
                 # is incomplete
                 result_repo.fetch(basis_repo, revision_id=revision_id)
-            result_repo.fetch(source_repository, revision_id=revision_id)
+            if source_repository is not None:
+                result_repo.fetch(source_repository, revision_id=revision_id)
         if source_branch is not None:
             source_branch.sprout(result, revision_id=revision_id)
         else:
@@ -733,7 +734,7 @@ class BzrDirPreSplitOut(BzrDir):
         self._check_supported(format, unsupported)
         return format.open(self, _found=True)
 
-    def sprout(self, url, revision_id=None, basis=None):
+    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
         """See BzrDir.sprout()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
