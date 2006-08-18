@@ -1044,11 +1044,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
-        try:
-            made_tree = made_control.create_workingtree()
-        except errors.NotLocalUrl:
-            raise TestSkipped("Can't initialize %r on transport %r"
-                              % (self.bzrdir_format, t))
+        made_tree = self.createWorkingTreeOrSkip(made_control)
         self.failUnless(isinstance(made_tree, workingtree.WorkingTree))
         self.assertEqual(made_control, made_tree.bzrdir)
         
