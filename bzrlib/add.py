@@ -74,9 +74,52 @@ class AddAction(object):
         :param path: The FastPath being added
         :param kind: The kind of the object being added.
         """
-        if not self.should_print:
-            return
-        self._to_file.write('added %s\n' % _quote(path.raw_path))
+        if self.should_print:
+            self._to_file.write('added %s\n' % _quote(path.raw_path))
+        return None
+
+
+class AddFromBaseAction(AddAction):
+    """This class will try to extract file ids from another tree."""
+
+    def __init__(self, base_tree, base_path, to_file=None, should_print=None):
+        super(AddFromBaseAction, self).__init__(to_file=to_file,
+                                                should_print=should_print)
+        self.base_tree = base_tree
+        self.base_path = base_path
+
+    def __call__(self, inv, parent_ie, path, kind):
+        # Place the parent call
+        # Now check to see if we can extract an id for this file
+        file_id, base_path = self._get_base_file_id(path, parent_ie)
+        if file_id is not None:
+            if self.should_print:
+                self._to_file.write('added %s w/ file id from %s\n'
+                                    % (path.raw_path, base_path))
+        else:
+            # we aren't doing anything special, so let the default
+            # reporter happen
+            file_id = super(AddFromBaseAction, self).__call__(
+                        inv, parent_ie, path, kind)
+        return file_id
+
+    def _get_base_file_id(self, path, parent_ie):
+        """Look for a file id in the base branch.
+
+        First, if the base tree has the parent directory,
+        we look for a file with the same name in that directory.
+        Else, we look for an entry in the base tree with the same path.
+        """
+
+        if (parent_ie.file_id in self.base_tree):
+            base_parent_ie = self.base_tree.inventory[parent_ie.file_id]
+            base_child_ie = base_parent_ie.children.get(path.base_path)
+            if base_child_ie is not None:
+                return (base_child_ie.file_id,
+                        self.base_tree.id2path(base_child_ie.file_id))
+        full_base_path = bzrlib.osutils.pathjoin(self.base_path, path.raw_path)
+        # This may return None, but it is our last attempt
+        return self.base_tree.path2id(full_base_path), full_base_path
 
 
 # TODO: jam 20050105 These could be used for compatibility
@@ -101,7 +144,7 @@ def smart_add(file_list, recurse=True, action=None, save=True):
     """
     file_list = _prepare_file_list(file_list)
     tree = WorkingTree.open_containing(file_list[0])[0]
-    return smart_add_tree(tree, file_list, recurse, action=action)
+    return smart_add_tree(tree, file_list, recurse, action=action, save=save)
 
 
 class FastPath(object):
@@ -321,9 +364,11 @@ def __add_one(tree, inv, parent_ie, path, kind, action):
     :param inv: Inventory which will receive the new entry.
     :param parent_ie: Parent inventory entry.
     :param kind: Kind of new entry (file, directory, etc)
-    :param action: callback(inv, parent_ie, path, kind); return ignored.
+    :param action: callback(inv, parent_ie, path, kind); return a file_id 
+        or None to generate a new file id
     :returns: None
     """
-    action(inv, parent_ie, path, kind)
-    entry = bzrlib.inventory.make_entry(kind, path.base_path, parent_ie.file_id)
+    file_id = action(inv, parent_ie, path, kind)
+    entry = bzrlib.inventory.make_entry(kind, path.base_path, parent_ie.file_id,
+                                        file_id=file_id)
     inv.add(entry)

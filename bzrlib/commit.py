@@ -66,7 +66,6 @@ import os
 import re
 import sys
 import time
-import warnings
 
 from cStringIO import StringIO
 
@@ -83,23 +82,11 @@ from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
+from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
-        zero_seven,
         DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
-
-
-@deprecated_function(zero_seven)
-def commit(*args, **kwargs):
-    """Commit a new revision to a branch.
-
-    Function-style interface for convenience of old callers.
-
-    New code should use the Commit class instead.
-    """
-    ## XXX: Remove this in favor of WorkingTree.commit?
-    Commit().commit(*args, **kwargs)
 
 
 class NullCommitReporter(object):
@@ -221,7 +208,7 @@ class Commit(object):
         mutter('preparing to commit')
 
         if deprecated_passed(branch):
-            warnings.warn("Commit.commit (branch, ...): The branch parameter is "
+            symbol_versioning.warn("Commit.commit (branch, ...): The branch parameter is "
                  "deprecated as of bzr 0.8. Please use working_tree= instead.",
                  DeprecationWarning, stacklevel=2)
             self.branch = branch
@@ -306,8 +293,11 @@ class Commit(object):
                 raise PointlessCommit()
 
             self._emit_progress_update()
-            # TODO: Now the new inventory is known, check for conflicts and prompt the 
-            # user for a commit message.
+            # TODO: Now the new inventory is known, check for conflicts and
+            # prompt the user for a commit message.
+            # ADHB 2006-08-08: If this is done, populate_new_inv should not add
+            # weave lines, because nothing should be recorded until it is known
+            # that commit will succeed.
             self.builder.finish_inventory()
             self._emit_progress_update()
             self.rev_id = self.builder.commit(self.message)
@@ -500,10 +490,14 @@ class Commit(object):
         # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
         # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
-        # at this point we dont copy the root entry:
         entries = self.work_inv.iter_entries()
-        entries.next()
-        self._emit_progress_update()
+        if not self.builder.record_root_entry:
+            symbol_versioning.warn('CommitBuilders should support recording'
+                ' the root entry as of bzr 0.10.', DeprecationWarning, 
+                stacklevel=1)
+            self.builder.new_inventory.add(self.basis_inv.root.copy())
+            entries.next()
+            self._emit_progress_update()
         for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id
