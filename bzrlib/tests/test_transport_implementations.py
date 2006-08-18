@@ -192,6 +192,29 @@ class TransportTests(TestTransportImplementation):
         t.put('nomode', StringIO('test text\n'), mode=None)
         self.assertTransportMode(t, 'nomode', 0666 & ~umask)
         
+    def test_non_atomic_put_permissions(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            return
+        if not t._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        t.non_atomic_put('mode644', StringIO('test text\n'), mode=0644)
+        self.assertTransportMode(t, 'mode644', 0644)
+        t.non_atomic_put('mode666', StringIO('test text\n'), mode=0666)
+        self.assertTransportMode(t, 'mode666', 0666)
+        t.non_atomic_put('mode600', StringIO('test text\n'), mode=0600)
+        self.assertTransportMode(t, 'mode600', 0600)
+        # Yes, you can non_atomic_put a file such that it becomes readonly
+        t.non_atomic_put('mode400', StringIO('test text\n'), mode=0400)
+        self.assertTransportMode(t, 'mode400', 0400)
+
+        # The default permissions should be based on the current umask
+        umask = osutils.get_umask()
+        t.non_atomic_put('nomode', StringIO('test text\n'), mode=None)
+        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
+        
     def test_mkdir(self):
         t = self.get_transport()
 
