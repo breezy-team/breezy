@@ -16,6 +16,7 @@
 
 """Tree creators for kernel-like trees"""
 
+import errno
 import os
 
 from bzrlib import (
@@ -83,6 +84,11 @@ class KernelLikeTreeCreator(TreeCreator):
                     files.append(prefix)
                     files.extend([prefix + str(foo) for foo in range(20)])
         cwd = osutils.getcwd()
+        try:
+            os.mkdir(root)
+        except OSError, e:
+            if e.errno not in (errno.EEXIST,):
+                raise
         os.chdir(root)
         self._test.build_tree(files)
         os.chdir(cwd)
