@@ -44,23 +44,23 @@ class SFTPBenchmark(Benchmark):
         tree, files = self.create_with_commits(100, 100, "a")
         self.time(bzrdir.BzrDir.open(self.get_url('a')).sprout, "b")
 
+    def create_commit_and_pull(self, num_pull_revisions):
+        os.mkdir("a")
+        tree, files = self.create_with_commits(100, 100, "a")
+        rbzrdir = bzrdir.BzrDir.open(self.get_url('a'))
+        b2 = tree.bzrdir.sprout("b") # branch
+        # change a few files and commit
+        self.commit_some_revisions(tree, files, num_pull_revisions, 20)
+        self.time(b2.open_branch().pull, rbzrdir.open_branch())
+
     def test_pull_1(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(100, 100, "a")
-        rbzrdir = bzrdir.BzrDir.open(self.get_url('a'))
-        b2 = tree.bzrdir.sprout("b") # branch
-        # change a few files and commit
-        self.commit_some_revisions(tree, files, 1, 20)
-        self.time(b2.open_branch().pull, rbzrdir.open_branch())
+        self.create_commit_and_pull(1)
         
+    def test_pull_10(self):
+        self.create_commit_and_pull(10)
+
     def test_pull_100(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(100, 100, "a")
-        rbzrdir = bzrdir.BzrDir.open(self.get_url('a'))
-        b2 = tree.bzrdir.sprout("b") # branch
-        # change a few files and commit
-        self.commit_some_revisions(tree, files, 100, 20)
-        self.time(b2.open_branch().pull, rbzrdir.open_branch())
+        self.create_commit_and_pull(100)
 
     def create_commit_and_push(self, num_push_revisions):
         os.mkdir("a")
@@ -74,6 +74,12 @@ class SFTPBenchmark(Benchmark):
             num_commits=num_push_revisions,
             changes_per_commit=20)
         self.time(rbzrdir.open_branch().pull, wtree.branch)
+
+    def test_initial_push(self):
+        os.mkdir('a')
+        tree, files = self.create_with_commits(100, 100, "a")
+        self.time(tree.bzrdir.clone, self.get_url('b'),
+                  revision_id=tree.last_revision())
 
     def test_push_1(self):
         self.create_commit_and_push(1)
