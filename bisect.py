@@ -66,7 +66,8 @@ class BisectLog(object):
         self._load_bzr_tree()
         revno = 1
         for revision in self._bzrbranch.revision_history():
-            matches = [x[1] for x in self._items if x[0] == revision]
+            matches = [x[1] for x in self._items 
+                       if x[0] == revision and x[1] in ('yes', 'no')]
             if not matches:
                 revno = revno + 1
                 continue
