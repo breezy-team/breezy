@@ -1144,6 +1144,8 @@ class RepositoryFormat(object):
 class PreSplitOutRepositoryFormat(RepositoryFormat):
     """Base class for the pre split out repository formats."""
 
+    rich_root_data = False
+
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository.
         
@@ -1340,6 +1342,8 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
 class MetaDirRepositoryFormat(RepositoryFormat):
     """Common base class for the new repositories using the metadir layout."""
+
+    rich_root_data = False
 
     def __init__(self):
         super(MetaDirRepositoryFormat, self).__init__()
@@ -1611,6 +1615,9 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
      - Support for recording full info about the tree root
 
     """
+    
+    rich_root_data = True
+
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar Knit Repository Format 2"
@@ -1620,7 +1627,7 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
         return "Knit repository format 2"
 
     def check_conversion_target(self, target_format):
-        if not getattr(target_format, 'rich_root_data', False):
+        if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
                 'Does not support rich root data.', target_format)
 
@@ -1651,6 +1658,13 @@ class InterRepository(InterObject):
 
     _optimisers = set()
     """The available optimised InterRepository types."""
+
+    @staticmethod
+    def is_compatible(source, target):
+        if source._format.rich_root_data == target._format.rich_root_data:
+            return True
+        else:
+            return False
 
     @needs_write_lock
     def copy_content(self, revision_id=None, basis=None):

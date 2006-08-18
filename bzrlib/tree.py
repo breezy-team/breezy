@@ -408,3 +408,7 @@ class InterTree(InterObject):
             return delta.TreeDelta()
         return delta._compare_trees(self.source, self.target, want_unchanged,
             specific_file_ids)
+
+    @staticmethod
+    def is_compatible(source, target):
+        return True

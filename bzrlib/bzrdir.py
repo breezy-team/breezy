@@ -1057,6 +1057,10 @@ class BzrDirFormat(object):
         """
         return True
 
+    def same_model(self, target_format):
+        return (self.repository_format.rich_root_data == 
+            target_format.rich_root_data)
+
     @classmethod
     def known_formats(klass):
         """Return all the known formats.

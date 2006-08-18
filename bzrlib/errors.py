@@ -1110,3 +1110,12 @@ class UnsupportedEOLMarker(BadBundle):
 
     def __init__(self):
         BzrNewError.__init__(self)    
+
+
+class NoInterWorker(BzrNewError):
+    """No interworker compatible with %(source)s and %(target)s was found."""
+
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target
+        BzrNewError.__init__(self)
