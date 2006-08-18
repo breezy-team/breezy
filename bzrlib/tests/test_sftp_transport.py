@@ -24,6 +24,7 @@ import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin, lexists
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
 import bzrlib.transport
+import bzrlib.transport.http
 from bzrlib.workingtree import WorkingTree
 
 try:
