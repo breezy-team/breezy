@@ -958,7 +958,7 @@ class _KnitComponentFile(object):
         self._transport = transport
         self._filename = filename
         self._mode = mode
-        self._file_mode=file_mode
+        self._file_mode = file_mode
         self._create_parent_dir = create_parent_dir
         self._need_to_create = False
 
@@ -1323,6 +1323,7 @@ class _KnitData(_KnitComponentFile):
     def __init__(self, transport, filename, mode, create=False, file_mode=None,
                  create_parent_dir=False, delay_create=False):
         _KnitComponentFile.__init__(self, transport, filename, mode,
+                                    file_mode=file_mode,
                                     create_parent_dir=create_parent_dir)
         self._checked = False
         # TODO: jam 20060713 conceptually, this could spill to disk
@@ -1335,7 +1336,8 @@ class _KnitData(_KnitComponentFile):
             if delay_create:
                 self._need_to_create = create
             else:
-                self._transport.non_atomic_put(self._filename, StringIO(''))
+                self._transport.non_atomic_put(self._filename, StringIO(''),
+                                               mode=self._file_mode)
 
     def enable_cache(self):
         """Enable caching of reads."""
