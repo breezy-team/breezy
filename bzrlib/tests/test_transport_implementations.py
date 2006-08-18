@@ -144,6 +144,29 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises(NoSuchFile,
                           t.put, 'path/doesnt/exist/c', 'contents')
 
+    def test_non_atomic_put(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            self.assertRaises(TransportNotPossible,
+                    t.non_atomic_put, 'a', StringIO('some text for a\n'))
+            return
+
+        self.failIf(t.has('a'))
+        t.non_atomic_put('a', StringIO('some text for a\n'))
+        self.failUnless(t.has('a'))
+        self.check_transport_contents('some text for a\n', t, 'a')
+        # Put also replaces contents
+        t.non_atomic_put('a', StringIO('new\ncontents for\na\n'))
+        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
+
+        # Make sure we can create another file
+        t.non_atomic_put('d', StringIO('contents for\nd\n'))
+        # And overwrite 'a' with empty contents
+        t.non_atomic_put('a', StringIO(''))
+        self.check_transport_contents('contents for\nd\n', t, 'd')
+        self.check_transport_contents('', t, 'a')
+
     def test_put_permissions(self):
         t = self.get_transport()
 

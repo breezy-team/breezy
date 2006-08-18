@@ -484,14 +484,30 @@ class Transport(object):
             count += 1
 
     def put(self, relpath, f, mode=None):
-        """Copy the file-like or string object into the location.
+        """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
         :param mode: The mode for the newly created file, 
                      None means just use the default
         """
         raise NotImplementedError(self.put)
+
+    def non_atomic_put(self, relpath, f, mode=None):
+        """Copy the file-like object into the target location.
+
+        This function is not strictly safe to use. It is only meant to
+        be used when you already know that the target does not exist.
+        It is not safe, because it will open and truncate the remote
+        file. So there may be a time when the file has invalid contents.
+
+        :param relpath: The remote location to put the contents.
+        :param f:       File-like object.
+        :param mode:    Possible access permissions for new file.
+                        None means do not set remote permissions.
+        """
+        # Default implementation just does an atomic put.
+        return self.put(relpath, f, mode=mode)
 
     def put_multi(self, files, mode=None, pb=None):
         """Put a set of files into the location.
