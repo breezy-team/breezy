@@ -20,7 +20,7 @@
 import difflib
 
 
-from bzrlib.errors import KnitError, RevisionAlreadyPresent
+from bzrlib.errors import KnitError, RevisionAlreadyPresent, NoSuchFile
 from bzrlib.knit import (
     KnitVersionedFile,
     KnitPlainFactory,
@@ -357,6 +357,30 @@ class BasicKnitTests(KnitTests):
             "\n"
             "revid fulltext 0 84 .a_ghost :",
             'test.kndx')
+
+    def test_create_parent_dir(self):
+        """create_parent_dir can create knits in nonexistant dirs"""
+        # Has no effect if we don't set 'delay_create'
+        trans = get_transport('.')
+        self.assertRaises(NoSuchFile, KnitVersionedFile, 'dir/test',
+                          trans, access_mode='w', factory=None,
+                          create=True, create_parent_dir=True)
+        # Nothing should have changed yet
+        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
+                                 factory=None, create=True,
+                                 create_parent_dir=True,
+                                 delay_create=True)
+        self.failIfExists('dir/test.knit')
+        self.failIfExists('dir/test.kndx')
+        self.failIfExists('dir')
+        knit.add_lines('revid', [], ['a\n'])
+        self.failUnlessExists('dir')
+        self.failUnlessExists('dir/test.knit')
+        self.assertFileEqual(
+            "# bzr knit index 8\n"
+            "\n"
+            "revid fulltext 0 84  :",
+            'dir/test.kndx')
 
     def test_plan_merge(self):
         my_knit = self.make_test_knit(annotate=True)
