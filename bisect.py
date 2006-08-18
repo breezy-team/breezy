@@ -108,7 +108,8 @@ class BisectLog(object):
 
     def set_current(self, status):
         self._load_bzr_tree()
-        self._items.append((self._bzrdir.get_current_revision(), status))
+        revid = self._bzrbranch.get_rev_id(self._bzrbranch.revno())
+        self._items.append((revid, status))
 
     def bisect(self):
         self._find_current_range()
