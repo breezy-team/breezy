@@ -113,6 +113,11 @@ class cmd_bisect(Command):
         The specified revision (or the current revision, if not given)
         does not have the charactistic we're looking for,
 
+    bzr bisect move -r rev
+        Switch to a different revision manually.  Use if the bisect
+        algorithm chooses a revision that is not suitable.  Try to
+        move as little as possible.
+
     bzr bisect reset
         Clear out a bisection in progress.
 
@@ -138,10 +143,12 @@ class cmd_bisect(Command):
         # Handle subcommand parameters.
 
         log_fn = None
-        if subcommand in ('yes', 'no') and revision:
+        if subcommand in ('yes', 'no', 'move') and revision:
             pass
         elif subcommand in ('replay',) and args_list and len(args_list) == 1:
             log_fn = args_list[0]
+        elif subcommand in ('move',) and not revision:
+            raise BzrCommandError("The 'bisect move' command requires a revision.")
         elif args_list or revision:
             raise BzrCommandError("Improper arguments to bisect " + subcommand)
 
@@ -153,6 +160,8 @@ class cmd_bisect(Command):
             self.yes(revision)
         elif subcommand == "no":
             self.no(revision)
+        elif subcommand == "move":
+            self.move(revision)
         elif subcommand == "reset":
             self.reset()
         elif subcommand == "log":
@@ -189,6 +198,11 @@ class cmd_bisect(Command):
         bl.set_current("no")
         bl.bisect()
         bl.save()
+
+    def move(self, revision):
+        "Move to a different revision manually."
+
+        pass
 
     def log(self, filename):
         "Write the current bisect log to a file."
@@ -292,6 +306,18 @@ class BisectFuncTests(bzrlib.tests.TestCaseWithTransport):
 
         self.run_bzr('bisect', 'no')
         self.assertRevno(3)
+
+    def testMove(self):
+        # Set up a bisection in progress.
+
+        self.run_bzr('bisect', 'start')
+        self.run_bzr('bisect', 'yes')
+        self.run_bzr('bisect', 'no', '-r', '1')
+
+        # Move.
+
+        self.run_bzr('bisect', 'move', '-r', '2')
+        self.assertRevno(2)
 
     def testReset(self):
         # Set up a bisection in progress.
