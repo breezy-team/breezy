@@ -1490,7 +1490,9 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
             prefixed=False,
             precious=True,
             versionedfile_class=KnitVersionedFile,
-            versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory()},
+            versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory(),
+                                  'create_parent_dir':True
+                                 },
             escaped=True,
             )
         return KnitRevisionStore(versioned_file_store)

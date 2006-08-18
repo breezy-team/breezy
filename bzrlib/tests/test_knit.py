@@ -36,12 +36,14 @@ from bzrlib.weave import Weave
 class KnitTests(TestCaseWithTransport):
     """Class containing knit test helper routines."""
 
-    def make_test_knit(self, annotate=False):
+    def make_test_knit(self, annotate=False, delay_create=False):
         if not annotate:
             factory = KnitPlainFactory()
         else:
             factory = None
-        return KnitVersionedFile('test', get_transport('.'), access_mode='w', factory=factory, create=True)
+        return KnitVersionedFile('test', get_transport('.'), access_mode='w',
+                                 factory=factory, create=True,
+                                 delay_create=delay_create)
 
 
 class BasicKnitTests(KnitTests):
@@ -312,6 +314,7 @@ class BasicKnitTests(KnitTests):
         # this tests that a new knit index file has the expected content
         # and that is writes the data we expect as records are added.
         knit = self.make_test_knit(True)
+        # Now knit files are not created until we first add data to them
         self.assertFileEqual("# bzr knit index 8\n", 'test.kndx')
         knit.add_lines_with_ghosts('revid', ['a_ghost'], ['a\n'])
         self.assertFileEqual(
@@ -341,6 +344,19 @@ class BasicKnitTests(KnitTests):
         knit = KnitVersionedFile('test', get_transport('.'), access_mode='r')
         self.assertEqual(['revid', 'revid2', 'revid3'], knit.versions())
         self.assertEqual(['revid2'], knit.get_parents('revid3'))
+
+    def test_delay_create(self):
+        """Test that passing delay_create=True creates files late"""
+        knit = self.make_test_knit(annotate=True, delay_create=True)
+        self.failIfExists('test.knit')
+        self.failIfExists('test.kndx')
+        knit.add_lines_with_ghosts('revid', ['a_ghost'], ['a\n'])
+        self.failUnlessExists('test.knit')
+        self.assertFileEqual(
+            "# bzr knit index 8\n"
+            "\n"
+            "revid fulltext 0 84 .a_ghost :",
+            'test.kndx')
 
     def test_plan_merge(self):
         my_knit = self.make_test_knit(annotate=True)
