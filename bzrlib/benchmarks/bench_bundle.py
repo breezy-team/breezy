@@ -19,6 +19,8 @@ import os
 import shutil
 from cStringIO import StringIO
 
+from bzrlib.add import smart_add
+from bzrlib import bzrdir
 from bzrlib.benchmarks import Benchmark
 from bzrlib.branch import Branch
 from bzrlib.bundle import read_bundle
@@ -33,14 +35,14 @@ class BundleBenchmark(Benchmark):
     """
    
     def make_kernel_like_tree_committed(self):
-        self.make_kernel_like_tree_added()
+        self.make_kernel_like_added_tree()
         self.run_bzr('commit', '-m', 'initial import')
 
     def test_create_bundle_known_kernel_like_tree(self):
         """Create a bundle for a kernel sized tree with no ignored, unknowns,
         or added and one commit.
         """ 
-        self.make_kernel_like_tree_committed()
+        self.make_kernel_like_committed_tree()
         self.time(self.run_bzr, 'bundle', '--revision', '..-1')
 
     def test_create_bundle_many_commit_tree (self):
@@ -70,50 +72,8 @@ class BundleBenchmark(Benchmark):
  
 class BundleLibraryLevelBenchmark(Benchmark):
 
-    def make_parametrized_tree(self, num_files, num_revisions,
-                               num_files_in_bundle):
-        """Create a tree with given parameters. Always creates 2 levels of
-        directories with the given number of files. Then the given number of
-        revisions are created, changing some lines in one files in each
-        revision. Only num_files_in_bundle files are changed in these
-        revisions.
-
-        :param num_files: number of files in tree
-        :param num_revisions: number of revisions
-        :param num_files_in_bundle: number of files changed in the revisions
-        """
-        directories = []
-        files = []
-        count = 0
-        for outer in range(num_files // 64 + 1):
-            directories.append("%s/" % outer)
-            for middle in range(8):
-                prefix = "%s/%s/" % (outer, middle)
-                directories.append(prefix)
-                for filename in range(min(8, num_files - count)):
-                    count += 1
-                    files.append(prefix + str(filename))
-        self.run_bzr('init')
-        self.build_tree(directories + files)
-        for d in directories:
-            self.run_bzr('add', d)
-        self.run_bzr('commit', '-m', 'initial repo layout')
-        # create revisions
-        affected_files = files[:num_files_in_bundle]
-        count = 0
-        for changes_file in range(num_revisions // num_files_in_bundle + 1):
-            for f in affected_files:
-                count += 1
-                if count >= num_revisions:
-                    break
-                content = "\n".join([str(i) for i in range(changes_file)] +
-                                    [str(changes_file)] * 5) + "\n"
-                self.build_tree_contents([(f, content)])
-                self.run_bzr("commit", '-m', 'some changes')
-        assert count >= num_revisions
-
     def _time_read_write(self):
-        branch, relpath = Branch.open_containing(".")
+        branch, relpath = Branch.open_containing("a")
         revision_history = branch.revision_history()
         bundle_text = StringIO()
         self.time(write_bundle, branch.repository, revision_history[-1],
@@ -122,75 +82,111 @@ class BundleLibraryLevelBenchmark(Benchmark):
         self.time(read_bundle, bundle_text)
 
     def test_few_files_small_tree_1_revision(self):
-        self.make_parametrized_tree(5, 1, 5)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(5, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:5], 1, 1)
         self._time_read_write()
 
     def test_few_files_small_tree_500_revision(self):
-        self.make_parametrized_tree(5, 500, 5)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(5, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:5], 500, 1)
         self._time_read_write()
 
     def test_few_files_small_tree_1000_revision(self):
-        self.make_parametrized_tree(5, 1000, 5)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(5, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:5], 1000, 1)
         self._time_read_write()
 
     def test_few_files_moderate_tree_1_revision(self):
-        self.make_parametrized_tree(100, 1, 5)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(100, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:5], 1, 1)
         self._time_read_write()
 
     def test_few_files_moderate_tree_500_revision(self):
-        self.make_parametrized_tree(100, 500, 5)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(100, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:5], 500, 1)
         self._time_read_write()
 
     def test_few_files_moderate_tree_1000_revision(self):
-        self.make_parametrized_tree(100, 1000, 5)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(100, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:5], 1000, 1)
         self._time_read_write()
 
     def test_some_files_moderate_tree_1_revision(self):
-        self.make_parametrized_tree(100, 1, 100)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(100, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:100], 1, 1)
         self._time_read_write()
 
     def test_some_files_moderate_tree_500_revision(self):
-        self.make_parametrized_tree(100, 500, 100)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(100, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:100], 500, 1)
         self._time_read_write()
 
     def test_some_files_moderate_tree_1000_revision(self):
-        self.make_parametrized_tree(100, 1000, 100)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(100, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:100], 1000, 1)
         self._time_read_write()
 
     def test_few_files_big_tree_1_revision(self):
-        self.make_parametrized_tree(1000, 1, 5)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(1000, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:5], 1, 1)
         self._time_read_write()
 
     def test_few_files_big_tree_500_revision(self):
-        self.make_parametrized_tree(1000, 500, 5)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(1000, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:5], 500, 1)
         self._time_read_write()
 
     def test_few_files_big_tree_1000_revision(self):
-        self.make_parametrized_tree(1000, 1000, 5)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(1000, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:5], 1000, 1)
         self._time_read_write()
 
     def test_some_files_big_tree_1_revision(self):
-        self.make_parametrized_tree(1000, 1, 100)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(1000, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:100], 1, 1)
         self._time_read_write()
 
     def test_some_files_big_tree_500_revision(self):
-        self.make_parametrized_tree(1000, 500, 100)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(1000, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:100], 500, 1)
         self._time_read_write()
 
     def test_some_files_big_tree_1000_revision(self):
-        self.make_parametrized_tree(1000, 1000, 100)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(1000, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:100], 1000, 1)
         self._time_read_write()
 
     def test_many_files_big_tree_1_revision(self):
-        self.make_parametrized_tree(1000, 1, 1000)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(1000, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:1000], 1, 1)
         self._time_read_write()
 
     def test_many_files_big_tree_500_revision(self):
-        self.make_parametrized_tree(1000, 500, 1000)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(1000, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:1000], 500, 1)
         self._time_read_write()
 
     def test_many_files_big_tree_1000_revision(self):
-        self.make_parametrized_tree(1000, 1000, 1000)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(1000, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:1000], 1000, 1)
         self._time_read_write()
 
 
@@ -205,9 +201,12 @@ if __name__ == '__main__':
             for num_revisions in [1, 500, 1000]:
                 code = """\
     def test_%s_files_%s_tree_%s_revision(self):
-        self.make_parametrized_tree(%s, %s, %s)
+        os.mkdir("a")
+        tree, files = self.create_with_commits(%s, 1, directory_name="a")
+        self.commit_some_revisions(tree, files[:%s], %s, 1)
         self._time_read_write()
 """ % (bundlefiles_h, treesize_h, num_revisions,
-       treesize, num_revisions, bundlefiles)
+       treesize, bundlefiles, num_revisions)
                 print code
+
 
