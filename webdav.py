@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,21 @@ partially the WebDAV protocol to push files.
 This should enable remote push operations.
 """
 
-from cStringIO import StringIO # CLEANING: For debug only
+# TODO: Share the curl object between the various transactions or
+# at a  minimum between the transactions implemented  here (if we
+# can't find a way to solve the pollution of the GET transactions
+# curl object).
+
+# TODO:   Cache  files   to   improve  performance   (a  bit   at
+# least). Files  should be kept  in a temporary directory  (or an
+# hash-based hierarchy to limit  local file systems problems) and
+# indexed on  their full URL  to allow sharing  between transport
+# instances.
+
+# TODO: Find  a way to check for  bzr version so that  we can tie
+# this plugin tightly to the bzr versions.
+
+from cStringIO import StringIO
 
 from bzrlib.errors import (
     TransportError,
@@ -36,10 +50,8 @@ from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     )
 
-# FIXME: I just have no idea why the following works 8-/
-from bzrlib.transport.http import _pycurl_errors
-
-# FIXME: importing from a file prefixed by an underscore looks wrong
+# FIXME: importing  from a file  prefixed by an  underscore looks
+# wrong
 from bzrlib.transport.http._pycurl import PyCurlTransport
 
 # We  want  https because  user  and  passwords  are required  to
@@ -47,24 +59,20 @@ from bzrlib.transport.http._pycurl import PyCurlTransport
 # passwords in clear text, so  we need https. We depend on pycurl
 # to implement https.
 
-# The       following       was       just      copied       from
+# FIXME:     The    following     was     just    copied     from
 # brzlib/transport/http/_pycurl.py  because   we  have  the  same
-# dependancy, but there should be a better way to express it.
+# dependancy, but there should be a better way to express it (the
+# dependancy is on http/_pycurl, not pycurl itself).
 try:
     import pycurl
 except ImportError, e:
     mutter("failed to import pycurl: %s", e)
     raise DependencyNotPresent('pycurl', e)
 
-class WebDavError(TransportError):
-    pass
-
-# CLEANING: Why is this needed  ? Try to comment it out sometimes
-# to understand.
 register_urlparse_netloc_protocol('https+webdav')
 register_urlparse_netloc_protocol('http+webdav')
 
-class WebDavTransport(PyCurlTransport):
+class HttpDavTransport(PyCurlTransport):
     """This defines the ability to put files using http on a DAV enabled server.
 
     We don't try to implement the whole WebDAV protocol. Just the minimum
@@ -72,57 +80,64 @@ class WebDavTransport(PyCurlTransport):
     """
     def __init__(self, base):
         assert base.startswith('http')
-        super(WebDavTransport, self).__init__(base)
+        super(HttpDavTransport, self).__init__(base)
+        mutter("HttpDavTransport [%s]",base)
 
-    # FIXME: when doing an initial  push, mkdir is called even if
-    # is_readonly have not been overriden to say False...
+    def _set_curl_options(self, curl):
+        super(HttpDavTransport, self)._set_curl_options(curl)
+
+    # TODO: when doing  an initial push, mkdir is  called even if
+    # is_readonly have  not been overriden to say  False... A bug
+    # is lying somewhere. Find it and kill it :)
     def is_readonly(self):
         """See Transport.is_readonly."""
         return False
-
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
 
         # FIXME: We should handle mode, but how ? 
-        # I'm afraid you can't do that DAV... (pun intented (couldn't resist))
-
+        # I'm afraid you can't do that DAV...
         abspath = self._real_abspath(relpath)
 
         # We use a dedicated curl to avoid polluting other request
         curl = pycurl.Curl()
-        curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
         curl.setopt(pycurl.CUSTOMREQUEST , 'MKCOL')
+        curl.setopt(pycurl.URL, abspath)
+
+        # No noise please
+        curl.setopt(pycurl.WRITEFUNCTION, StringIO().write)
 
         self._curl_perform(curl)
         code = curl.getinfo(pycurl.HTTP_CODE)
 
-        # From RFC2518, page 28 (comments added between parenthesis)
-        # 403: Forbidden
         if code == 403:
+            # Forbidden  (generally server  misconfigured  ot not
+            # configured for DAV)
             raise self._raise_curl_http_error(curl,'mkdir failed')
-        # 405: Not allowed (generally already exists)
         if code == 405:
+            # Not allowed (generally already exists)
             raise FileExists(abspath)
-        # 409: Conflict (intermediate directories do not exist)
         if code == 409:
+            # Conflict (intermediate directories do not exist)
             raise NoSuchFile(abspath)
         if code != 201: # Created
             raise self._raise_curl_http_error(curl,'mkdir failed')
-
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""
         self.delete(relpath) # That was easy thanks DAV
 
-    # FIXME: hhtp  define append  without the mode  parameter, we
+    # FIXME: hhtp  defines append without the  mode parameter, we
     # don't but  we can't do  anything with it. That  looks wrong
     # anyway
     def append(self, relpath, f, mode=None):
         """
         Append the text in the file-like object into the final
         location.
+
+        Returns the pos in the file current *BEFORE* the append takes place.
         """
         # Unfortunately, you  can't do that either  DAV (but here
         # that's less funny).
@@ -134,17 +149,20 @@ class WebDavTransport(PyCurlTransport):
         # www.ietf.org/internet-drafts/draft-suma-append-patch-00.txt
         # becomes a  real RFC  and gets implemented.   Don't hold
         # your breath.
-
+        full_data = StringIO() ;
         try:
             data = self.get(relpath)
-            full_data = data + f.read() # FIXME: a bit naive
+            # FIXME: a bit naive
+            full_data.write(data.read())
         except NoSuchFile:
             # Good, just do the put then
-            full_data = f.read()
             pass
+        before = full_data.tell()
+        full_data.write(f.read())
 
-        self.put(relpath, StringIO(full_data))
-
+        full_data.seek(0)
+        self.put(relpath, full_data)
+        return before
 
     def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
@@ -155,34 +173,46 @@ class WebDavTransport(PyCurlTransport):
         abspath = self._real_abspath(relpath)
         curl = self._base_curl
         curl.setopt(pycurl.URL, abspath)
-        curl.setopt(pycurl.UPLOAD , True)
-        curl.setopt(pycurl.READFUNCTION, f.read)
+        curl.setopt(pycurl.UPLOAD, True)
+
+        # FIXME: It's  a bit painful to call  isinstance here and
+        # there instead of forcing  the interface to be file-like
+        # only. No ?
+        if isinstance(f,basestring):
+            reader = StringIO(f).read
+        else:
+            reader = f.read
+        curl.setopt(pycurl.READFUNCTION, reader)
 
         curl.perform()
-
         code = curl.getinfo(pycurl.HTTP_CODE)
 
+        if code == 409:
+            raise NoSuchFile(abspath) # Intermediate directories missing
         if code not in  (200, 201, 204):
             self._raise_curl_http_error(curl, 'expected 200, 201 or 404.')
-           
+          
     def rename(self, rel_from, rel_to):
         """Rename without special overwriting"""
         self.move(rel_from, rel_to)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
+
         abs_from = self._real_abspath(rel_from)
         abs_to = self._real_abspath(rel_to)
         # We use a dedicated curl to avoid polluting other request
         curl = pycurl.Curl()
         curl.setopt(pycurl.CUSTOMREQUEST , 'MOVE')
         curl.setopt(pycurl.URL, abs_from)
-        headers = ['Destination: %s' % abs_to ]
-        curl.setopt(pycurl.HTTPHEADER, headers)
+        curl.setopt(pycurl.HTTPHEADER, ['Destination: %s' % abs_to ])
+
+        # No noise please
+        curl.setopt(pycurl.WRITEFUNCTION, StringIO().write)
 
         curl.perform()
-        
         code = curl.getinfo(pycurl.HTTP_CODE)
+
         if code != 201:
             self._raise_curl_http_error(curl, 
                                         'unable to rename to %r' % (abs_to))
@@ -195,14 +225,17 @@ class WebDavTransport(PyCurlTransport):
         curl.setopt(pycurl.CUSTOMREQUEST , 'DELETE')
         curl.setopt(pycurl.URL, abs_path)
 
-        curl.perform()
-        
+        # No noise please
+        curl.setopt(pycurl.WRITEFUNCTION, StringIO().write)
+
+        curl.perform()        
         code = curl.getinfo(pycurl.HTTP_CODE)
+
         if code == 404:
             raise NoSuchFile(abs_path)
         if code != 204:
             self._raise_curl_http_error(curl, 'unable to delete')
 
-register_transport('https+webdav://', WebDavTransport)
-register_transport('http+webdav://', WebDavTransport)
+register_transport('https+webdav://', HttpDavTransport)
+register_transport('http+webdav://', HttpDavTransport)
 mutter("webdav plugin transport registered")

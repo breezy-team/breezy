@@ -1,0 +1,36 @@
+2006-08-20  Vincent LADEUIL  <vila@imac-blanc.local>
+	First succesful  bzr.dev push.  Requires that bzr.dev  allows dirs
+	for http.
+
+	* webdav.py:
+	(HttpDavTransport):  Renamed from  WebDavTransport,  but there  is
+	HttpTransport_urllib and PyCurlTransport so it may change again...
+	(HttpDavTransport._set_curl_options): New func, not yet used.
+	(HttpDavTransport.mkdir):  Absorbs  data  otherwise  displayed  on
+	stdout by libcurl.
+	(HttpDavTransport.append): Documents that the position returned is
+	the  one *before* the  append takes  place. The  implementation is
+	still naive, but at least correct :-)
+	(HttpDavTransport.put): Can be called  with a file-like object *or
+	a  string* !  Handles the  string case.  Can also  be  called when
+	intermediate directories are missing.
+	(HttpDavTransport.move): Absorbs  data  otherwise  displayed  on
+	stdout by libcurl.
+	(HttpDavTransport.delete): Absorbs  data  otherwise  displayed  on
+	stdout by libcurl.
+
+ 	* NOTES: 
+	New file.
+	
+	* TODO: 
+	New file.
+
+2006-08-17  Vincent LADEUIL
+	First version accepting an initial push.
+
+	* __init__.py: 
+	New file.
+
+	* webdav.py:
+	New file.
+

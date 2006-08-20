@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,3 +22,6 @@ handling of WebDAV to allow pushing on an http server.
 
 # Try to import the transport (which will register itself)
 import webdav
+
+# Import the tests too
+#import test_webdav
