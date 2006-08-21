@@ -323,3 +323,34 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         self.tree.branch.repository.fetch(self.tree2.branch.repository,
                                           revision_id='alt_r3')
         self.assertInHistoryIs(None, 'alt_r3', 'revid:alt_r3')
+
+
+class TestRevisionSpec_last(TestRevisionSpec):
+
+    def test_positive(self):
+        self.assertInHistoryIs(2, 'r2', 'last:1')
+        self.assertInHistoryIs(1, 'r1', 'last:2')
+        self.assertInHistoryIs(0, None, 'last:3')
+
+    def test_empty(self):
+        self.assertInHistoryIs(2, 'r2', 'last:')
+
+    def test_negative(self):
+        self.assertInvalid('last:-1',
+                           extra='; you must supply a positive value')
+
+    def test_missing(self):
+        self.assertInvalid('last:4')
+
+    def test_no_history(self):
+        tree = self.make_branch_and_tree('tree3')
+
+        self.assertRaises(errors.NoCommits,
+                          RevisionSpec('last:').in_history, tree.branch)
+
+    def test_not_a_number(self):
+        try:
+            int('Y')
+        except ValueError, e:
+            pass
+        self.assertInvalid('last:Y', extra='; ' + str(e))

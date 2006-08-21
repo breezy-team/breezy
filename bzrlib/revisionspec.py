@@ -265,14 +265,25 @@ class RevisionSpec_last(RevisionSpec):
     prefix = 'last:'
 
     def _match_on(self, branch, revs):
+        if self.spec == '':
+            if not revs:
+                raise NoCommits(branch)
+            return RevisionInfo(branch, len(revs), revs[-1])
+
         try:
             offset = int(self.spec)
-        except ValueError:
-            return RevisionInfo(branch, None)
-        else:
-            if offset <= 0:
-                raise BzrError('You must supply a positive value for --revision last:XXX')
-            return RevisionInfo(branch, len(revs) - offset + 1)
+        except ValueError, e:
+            raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch, e)
+
+        if offset <= 0:
+            raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch,
+                                             'you must supply a positive value')
+        revno = len(revs) - offset + 1
+        try:
+            revision_id = branch.get_rev_id(revno, revs)
+        except errors.NoSuchRevision:
+            raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch)
+        return RevisionInfo(branch, revno, revision_id)
 
 SPEC_TYPES.append(RevisionSpec_last)
 
