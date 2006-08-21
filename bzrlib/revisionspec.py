@@ -294,9 +294,29 @@ class RevisionSpec_before(RevisionSpec):
     
     def _match_on(self, branch, revs):
         r = RevisionSpec(self.spec)._match_on(branch, revs)
-        if (r.revno is None) or (r.revno == 0):
-            return r
-        return RevisionInfo(branch, r.revno - 1)
+        if r.revno == 0:
+            raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch,
+                                         'cannot go before the null: revision')
+        if r.revno is None:
+            # We need to use the repository history here
+            rev = branch.repository.get_revision(r.rev_id)
+            if not rev.parent_ids:
+                revno = 0
+                revision_id = None
+            else:
+                revision_id = rev.parent_ids[0]
+                try:
+                    revno = revs.index(revision_id) + 1
+                except ValueError:
+                    revno = None
+        else:
+            revno = r.revno - 1
+            try:
+                revision_id = branch.get_rev_id(revno, revs)
+            except NoSuchRevision:
+                raise errors.InvalidRevisionSpec(self.prefix + self.spec,
+                                                 branch)
+        return RevisionInfo(branch, revno, revision_id)
 
 SPEC_TYPES.append(RevisionSpec_before)
 

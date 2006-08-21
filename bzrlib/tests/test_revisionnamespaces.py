@@ -358,8 +358,8 @@ class TestRevisionSpec_before(TestRevisionSpec):
         self.assertInHistoryIs(0, None, 'before:1')
 
     def test_before_none(self):
-        # before: will stop at None
-        self.assertInHistoryIs(0, None, 'before:0')
+        self.assertInvalid('before:0',
+                           extra='; cannot go before the null: revision')
 
     def test_revid(self):
         self.assertInHistoryIs(1, 'r1', 'before:revid:r2')
@@ -368,9 +368,8 @@ class TestRevisionSpec_before(TestRevisionSpec):
         self.assertInHistoryIs(1, 'r1', 'before:last:1')
 
     def test_alt_revid(self):
-        # XXX: before will return entries from other histories, but not
-        # the entry previous to them. Is this intentional, it seems like a bug?
-        self.assertInHistoryIs(None, 'alt_r2', 'before:revid:alt_r2')
+        # This will grab the left-most ancestor for alternate histories
+        self.assertInHistoryIs(1, 'r1', 'before:revid:alt_r2')
 
 
 class TestRevisionSpec_tag(TestRevisionSpec):
