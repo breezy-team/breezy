@@ -148,9 +148,9 @@ class RevisionSpec(object):
             # special case - the empty tree
             return info
         elif self.prefix:
-            raise NoSuchRevision(branch, self.prefix + str(self.spec))
+            raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch)
         else:
-            raise NoSuchRevision(branch, str(self.spec))
+            raise errors.InvalidRevisionSpec(self.spec, branch)
 
     def in_history(self, branch):
         if branch:
@@ -251,9 +251,10 @@ class RevisionSpec_revid(RevisionSpec):
 
     def _match_on(self, branch, revs):
         try:
-            return RevisionInfo(branch, revs.index(self.spec) + 1, self.spec)
+            revno = revs.index(self.spec) + 1
         except ValueError:
-            return RevisionInfo(branch, None, self.spec)
+            revno = None
+        return RevisionInfo(branch, revno, self.spec)
 
 SPEC_TYPES.append(RevisionSpec_revid)
 

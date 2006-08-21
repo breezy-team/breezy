@@ -76,13 +76,13 @@ class TestRevisionNamespaces(TestCaseWithTransport):
                           (1, 'a@r-0-1'))
         self.assertEquals(RevisionSpec('revid:a@r-0-1').in_history(b),
                           (1, 'a@r-0-1'))
-        self.assertRaises(errors.NoSuchRevision,
+        self.assertRaises(errors.InvalidRevisionSpec,
                           RevisionSpec('revid:a@r-0-0').in_history, b)
         self.assertRaises(TypeError, RevisionSpec, object)
 
         self.assertEquals(RevisionSpec('date:today').in_history(b),
                           (2, 'a@r-0-2'))
-        self.assertRaises(errors.NoSuchRevision,
+        self.assertRaises(errors.InvalidRevisionSpec,
                           RevisionSpec('date:tomorrow').in_history, b)
         self.assertEquals(RevisionSpec('date:yesterday').in_history(b),
                           (1, 'a@r-0-1'))
