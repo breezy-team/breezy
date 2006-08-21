@@ -144,7 +144,7 @@ def smart_add(file_list, recurse=True, action=None, save=True):
     """
     file_list = _prepare_file_list(file_list)
     tree = WorkingTree.open_containing(file_list[0])[0]
-    return smart_add_tree(tree, file_list, recurse, action=action)
+    return smart_add_tree(tree, file_list, recurse, action=action, save=save)
 
 
 class FastPath(object):

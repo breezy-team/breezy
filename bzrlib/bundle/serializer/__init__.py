@@ -91,10 +91,23 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
         raise errors.BundleNotSupported(version, 'unknown bundle format')
 
     serializer = _serializers[version](version)
-    return serializer.write(source, revision_ids, forced_bases, f) 
+    source.lock_read()
+    try:
+        return serializer.write(source, revision_ids, forced_bases, f)
+    finally:
+        source.unlock()
 
 
 def write_bundle(repository, revision_id, base_revision_id, out):
+    """"""
+    repository.lock_read()
+    try:
+        return _write_bundle(repository, revision_id, base_revision_id, out)
+    finally:
+        repository.unlock()
+
+
+def _write_bundle(repository, revision_id, base_revision_id, out):
     """Write a bundle of revisions.
 
     :param repository: Repository containing revisions to serialize.
