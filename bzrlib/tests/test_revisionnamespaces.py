@@ -255,3 +255,42 @@ class TestRevisionSpec_revno(TestRevisionSpec):
     def test_missing_number_and_branch(self):
         self.assertInvalid('revno::',
                            extra='; cannot have an empty revno and no branch')
+
+    def test_invalid_number_with_branch(self):
+        try:
+            int('X')
+        except ValueError, e:
+            pass
+        self.assertInvalid('revno:X:tree2', extra='; ' + str(e))
+
+    def test_with_branch(self):
+        # Passing a URL overrides the supplied branch path
+        revinfo = self.get_in_history('revno:2:tree2')
+        self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
+        self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
+        self.assertEqual(2, revinfo.revno)
+        self.assertEqual('alt_r2', revinfo.rev_id)
+
+    def test_with_url(self):
+        url = self.get_url() + '/tree2'
+        revinfo = self.get_in_history('revno:2:%s' % (url,))
+        self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
+        self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
+        self.assertEqual(2, revinfo.revno)
+        self.assertEqual('alt_r2', revinfo.rev_id)
+
+    def test_negative_with_url(self):
+        url = self.get_url() + '/tree2'
+        revinfo = self.get_in_history('revno:-1:%s' % (url,))
+        self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
+        self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
+        self.assertEqual(2, revinfo.revno)
+        self.assertEqual('alt_r2', revinfo.rev_id)
+
+    def test_invalid_branch(self):
+        self.assertRaises(errors.NotBranchError,
+                          self.get_in_history, 'revno:-1:tree3')
+
+    def test_invalid_revno_in_branch(self):
+        self.tree.commit('three', rev_id='r3')
+        self.assertInvalid('revno:3:tree2')
