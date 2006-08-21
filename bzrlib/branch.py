@@ -363,7 +363,7 @@ class Branch(object):
             return None
         if history is None:
             history = self.revision_history()
-        elif revno <= 0 or revno > len(history):
+        if revno <= 0 or revno > len(history):
             raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 

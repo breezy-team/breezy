@@ -494,7 +494,6 @@ class UpToDateFormat(BzrNewError):
         self.format = format
 
 
-
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
@@ -505,8 +504,23 @@ class NoSuchRevision(BzrNewError):
     is_user_error = False
 
     def __init__(self, branch, revision):
-        self.branch = branch
-        self.revision = revision
+        BzrNewError.__init__(self, branch=branch, revision=revision)
+
+
+# Inheriting from NoSuchRevision to maintain API compatibility
+# technically, this could be a completely different exception
+class InvalidRevisionSpec(NoSuchRevision):
+    """Requested revision: %(spec)s does not exist in branch: %(branch)s%(extra)s"""
+
+    is_user_error = True
+
+    def __init__(self, spec, branch, extra=None):
+        NoSuchRevision.__init__(self, branch=branch, revision=spec)
+        self.spec = spec
+        if extra:
+            self.extra = '; ' + str(extra)
+        else:
+            self.extra = ''
 
 
 class HistoryMissing(BzrError):

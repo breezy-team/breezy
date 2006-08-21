@@ -17,11 +17,13 @@
 import os
 import time
 
+from bzrlib import (
+    errors,
+    )
 from bzrlib.builtins import merge
 from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.errors import NoCommonAncestor, NoCommits
-from bzrlib.errors import NoSuchRevision
 from bzrlib.revisionspec import RevisionSpec
 
 
@@ -74,13 +76,13 @@ class TestRevisionNamespaces(TestCaseWithTransport):
                           (1, 'a@r-0-1'))
         self.assertEquals(RevisionSpec('revid:a@r-0-1').in_history(b),
                           (1, 'a@r-0-1'))
-        self.assertRaises(NoSuchRevision,
+        self.assertRaises(errors.NoSuchRevision,
                           RevisionSpec('revid:a@r-0-0').in_history, b)
         self.assertRaises(TypeError, RevisionSpec, object)
 
         self.assertEquals(RevisionSpec('date:today').in_history(b),
                           (2, 'a@r-0-2'))
-        self.assertRaises(NoSuchRevision,
+        self.assertRaises(errors.NoSuchRevision,
                           RevisionSpec('date:tomorrow').in_history, b)
         self.assertEquals(RevisionSpec('date:yesterday').in_history(b),
                           (1, 'a@r-0-1'))
@@ -133,3 +135,23 @@ class TestRevisionNamespaces(TestCaseWithTransport):
         rev_info = spec.in_history(branch)
         self.assertEqual(rev_info, (None, 'A'))
 
+    def test_invalid_revno(self):
+        self.build_tree(['branch1/', 'branch1/file'])
+        wt = self.make_branch_and_tree('branch1')
+        wt.add('file')
+        wt.commit('first commit', rev_id='r1')
+        wt.commit('second commit', rev_id='r2')
+
+        # In the future -20 will probably just fall back to 0
+        # but for now, we want to make sure it raises the right error
+        self.assertRaises(errors.InvalidRevisionSpec,
+                          RevisionSpec('-20').in_history, wt.branch)
+        self.assertRaises(errors.InvalidRevisionSpec,
+                          RevisionSpec('10').in_history, wt.branch)
+
+        self.assertRaises(errors.InvalidRevisionSpec,
+                          RevisionSpec('revno:-20').in_history, wt.branch)
+        self.assertRaises(errors.InvalidRevisionSpec,
+                          RevisionSpec('revno:10').in_history, wt.branch)
+        self.assertRaises(errors.InvalidRevisionSpec,
+                          RevisionSpec('revno:a').in_history, wt.branch)

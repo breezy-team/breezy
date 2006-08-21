@@ -15,9 +15,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+import bisect
 import datetime
 import re
-import bisect
+
+from bzrlib import (
+    errors,
+    )
 from bzrlib.errors import BzrError, NoSuchRevision, NoCommits
 
 _marker = []
@@ -182,6 +186,7 @@ class RevisionSpec(object):
 
 class RevisionSpec_int(RevisionSpec):
     """Spec is a number.  Special case."""
+
     def __init__(self, spec):
         self.spec = int(spec)
 
@@ -190,7 +195,10 @@ class RevisionSpec_int(RevisionSpec):
             revno = len(revs) + self.spec + 1
         else:
             revno = self.spec
-        rev_id = branch.get_rev_id(revno, revs)
+        try:
+            rev_id = branch.get_rev_id(revno, revs)
+        except NoSuchRevision:
+            raise errors.InvalidRevisionSpec(self.spec, branch)
         return RevisionInfo(branch, revno, rev_id)
 
 
@@ -199,21 +207,38 @@ class RevisionSpec_revno(RevisionSpec):
 
     def _match_on(self, branch, revs):
         """Lookup a revision by revision number"""
-        if self.spec.find(':') == -1:
-            try:
-                return RevisionInfo(branch, int(self.spec))
-            except ValueError:
-                return RevisionInfo(branch, None)
+        loc = self.spec.find(':')
+        if loc == -1:
+            revno_spec = self.spec
+            branch_spec = None
         else:
-            from branch import Branch
-            revname = self.spec[self.spec.find(':')+1:]
-            other_branch = Branch.open_containing(revname)[0]
+            revno_spec = self.spec[:loc]
+            branch_spec = self.spec[loc+1:]
+
+        if revno_spec == '':
+            if branch_spec is None:
+                raise errors.InvalidRevisionSpec(branch, self.spec,
+                        'cannot have an empty revno and no branch')
+            revno = None
+        else:
             try:
-                revno = int(self.spec[:self.spec.find(':')])
-            except ValueError:
-                return RevisionInfo(other_branch, None)
-            revid = other_branch.get_rev_id(revno)
-            return RevisionInfo(other_branch, revno)
+                revno = int(revno_spec)
+            except ValueError, e:
+                raise errors.InvalidRevisionSpec(branch, self.spec, e)
+
+            if revno < 0:
+                revno = len(revs) + revno + 1
+
+        if branch_spec is not None:
+            from bzrlib.branch import Branch
+            branch = Branch.open(branch_spec)
+
+        try:
+            revid = branch.get_rev_id(revno)
+        except NoSuchRevision:
+            raise errors.InvalidRevisionSpec(branch, self.spec)
+
+        return RevisionInfo(branch, revno)
         
     def needs_branch(self):
         return self.spec.find(':') == -1

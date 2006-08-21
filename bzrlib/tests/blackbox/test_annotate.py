@@ -89,7 +89,7 @@ class TestAnnotate(TestCaseWithTransport):
         out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r 10'],
                                          retcode=3)
         self.assertEquals(out, '')
-        self.assertContainsRe(err, 'has no revision 10')
+        self.assertContainsRe(err, 'Requested revision: 10 does not exist')
 
     def test_annotate_cmd_two_revisions(self):
         out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r 1..2'],
