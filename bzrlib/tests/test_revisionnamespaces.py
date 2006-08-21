@@ -197,6 +197,9 @@ class TestRevisionSpec(TestCaseWithTransport):
         except errors.InvalidRevisionSpec, e:
             self.assertEqual(real_spec, e.spec)
             self.assertEqual(extra, e.extra)
+        else:
+            self.fail('Expected InvalidRevisionSpec to be raised for %s'
+                      % (revision_spec,))
 
 
 class TestRevisionSpec_int(TestRevisionSpec):
@@ -212,6 +215,31 @@ class TestRevisionSpec_int(TestRevisionSpec):
         self.assertInHistoryIs(2, 'r2', '-1')
         self.assertInHistoryIs(1, 'r1', '-2')
 
+        # XXX: This is probably bogus, and will change to Invalid in the future
+        self.assertInHistoryIs(0, None, '-3')
+
+
         # TODO: In the future, a negative number that is too large
         # may be translated into the first revision
-        self.assertInvalid('-3', real_spec=-3)
+        self.assertInvalid('-4', real_spec=-4)
+
+
+class TestRevisionSpec_revno(TestRevisionSpec):
+
+    def test_positive(self):
+        self.assertInHistoryIs(0, None, 'revno:0')
+        self.assertInHistoryIs(1, 'r1', 'revno:1')
+        self.assertInHistoryIs(2, 'r2', 'revno:2')
+
+        self.assertInvalid('revno:3')
+
+    def test_negative(self):
+        self.assertInHistoryIs(2, 'r2', 'revno:-1')
+        self.assertInHistoryIs(1, 'r1', 'revno:-2')
+
+        # XXX: This is probably bogus, and will change to Invalid in the future
+        self.assertInHistoryIs(0, None, 'revno:-3')
+
+        # TODO: In the future, a negative number that is too large
+        # may be translated into the first revision
+        self.assertInvalid('revno:-4')

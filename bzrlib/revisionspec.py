@@ -217,14 +217,15 @@ class RevisionSpec_revno(RevisionSpec):
 
         if revno_spec == '':
             if branch_spec is None:
-                raise errors.InvalidRevisionSpec(branch, self.spec,
-                        'cannot have an empty revno and no branch')
+                raise errors.InvalidRevisionSpec(self.prefix + self.spec,
+                        branch, 'cannot have an empty revno and no branch')
             revno = None
         else:
             try:
                 revno = int(revno_spec)
             except ValueError, e:
-                raise errors.InvalidRevisionSpec(branch, self.spec, e)
+                raise errors.InvalidRevisionSpec(self.prefix + self.spec,
+                                                 branch, e)
 
             if revno < 0:
                 revno = len(revs) + revno + 1
@@ -236,7 +237,7 @@ class RevisionSpec_revno(RevisionSpec):
         try:
             revid = branch.get_rev_id(revno)
         except NoSuchRevision:
-            raise errors.InvalidRevisionSpec(branch, self.spec)
+            raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch)
 
         return RevisionInfo(branch, revno)
         
