@@ -155,3 +155,56 @@ class TestRevisionNamespaces(TestCaseWithTransport):
                           RevisionSpec('revno:10').in_history, wt.branch)
         self.assertRaises(errors.InvalidRevisionSpec,
                           RevisionSpec('revno:a').in_history, wt.branch)
+
+
+# Basic class, which just creates a really basic set of revisions
+class TestRevisionSpec(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestRevisionSpec, self).setUp()
+
+        self.tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        self.tree.add(['a'])
+        self.tree.commit('a', rev_id='r1')
+        self.tree.commit('second', rev_id='r2')
+
+    def get_in_history(self, revision_spec):
+        return RevisionSpec(revision_spec).in_history(self.tree.branch)
+
+    def assertInHistoryIs(self, exp_revno, exp_revision_id, revision_spec):
+        rev_info = self.get_in_history(revision_spec)
+        self.assertEqual(exp_revno, rev_info.revno,
+                         'Revision spec: %s returned wrong revno: %s != %s'
+                         % (revision_spec, exp_revno, rev_info.revno))
+        self.assertEqual(exp_revision_id, rev_info.rev_id,
+                         'Revision spec: %s returned wrong revision id:'
+                         ' %s != %s'
+                         % (revision_spec, exp_revision_id, rev_info.rev_id))
+
+    def assertInvalid(self, revision_spec, extra='', real_spec=None):
+        if real_spec is None:
+            real_spec = revision_spec
+        try:
+            self.get_in_history(revision_spec)
+        except errors.InvalidRevisionSpec, e:
+            self.assertEqual(real_spec, e.spec)
+            self.assertEqual(extra, e.extra)
+
+
+class TestRevisionSpec_int(TestRevisionSpec):
+    
+    def test_positive(self):
+        self.assertInHistoryIs(0, None, '0')
+        self.assertInHistoryIs(1, 'r1', '1')
+        self.assertInHistoryIs(2, 'r2', '2')
+
+        self.assertInvalid('3', real_spec=3)
+
+    def test_negative(self):
+        self.assertInHistoryIs(2, 'r2', '-1')
+        self.assertInHistoryIs(1, 'r1', '-2')
+
+        # TODO: In the future, a negative number that is too large
+        # may be translated into the first revision
+        self.assertInvalid('-3', real_spec=-3)
