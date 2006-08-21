@@ -170,12 +170,12 @@ class HttpTransportBase(Transport):
             # TODO: Don't call this with an array - no magic interfaces
             relpath_parts = relpath[:]
         if len(relpath_parts) > 1:
-	    # TODO: Check  that the  "within branch" part  of the
-	    # error messages below is relevant in all contexts
+            # TODO: Check  that the  "within branch" part  of the
+            # error messages below is relevant in all contexts
             if relpath_parts[0] == '':
                 raise ValueError("path %r within branch %r seems to be absolute"
                                  % (relpath, self._path))
-	    # read only transports never manipulate directories
+            # read only transports never manipulate directories
             if self.is_readonly() and relpath_parts[-1] == '':
                 raise ValueError("path %r within branch %r seems to be a directory"
                                  % (relpath, self._path))
@@ -499,7 +499,7 @@ class HttpServer(Server):
 
     # Subclasses can provide a specific request handler
     def __init__(self, request_handler=TestingHTTPRequestHandler):
-	self.request_handler = request_handler
+        self.request_handler = request_handler
 
     def _http_start(self):
         httpd = None
