@@ -6,6 +6,9 @@ Run it with
  './setup.py --help' for more options
 """
 
+import os
+import sys
+
 import bzrlib
 
 ##
@@ -20,38 +23,9 @@ META_INFO = {'name':         'bzr',
              'license':      'GNU GPL v2',
             }
 
-BZRLIB = {'packages': ['bzrlib',
-                       'bzrlib.benchmarks',
-                       'bzrlib.bundle',
-                       'bzrlib.bundle.serializer',
-                       'bzrlib.doc',
-                       'bzrlib.doc.api',
-                       'bzrlib.export',
-                       'bzrlib.plugins',
-                       'bzrlib.plugins.launchpad',
-                       'bzrlib.store',
-                       'bzrlib.store.revision',
-                       'bzrlib.store.versioned',
-                       'bzrlib.tests',
-                       'bzrlib.tests.blackbox',
-                       'bzrlib.tests.branch_implementations',
-                       'bzrlib.tests.bzrdir_implementations',
-                       'bzrlib.tests.interrepository_implementations',
-                       'bzrlib.tests.intertree_implementations',
-                       'bzrlib.tests.interversionedfile_implementations',
-                       'bzrlib.tests.repository_implementations',
-                       'bzrlib.tests.revisionstore_implementations',
-                       'bzrlib.tests.tree_implementations',
-                       'bzrlib.tests.workingtree_implementations',
-                       'bzrlib.transport',
-                       'bzrlib.transport.http',
-                       'bzrlib.ui',
-                       'bzrlib.util',
-                       'bzrlib.util.configobj',
-                       'bzrlib.util.effbot.org',
-                       'bzrlib.util.elementtree',
-                      ],
-         }
+# The list of packages is automatically generated later. Add other things
+# that are part of BZRLIB here.
+BZRLIB = {}
 
 PKG_DATA = {# install files from selftest suite
             'package_data': {'bzrlib': ['doc/api/*.txt',
@@ -62,9 +36,6 @@ PKG_DATA = {# install files from selftest suite
 ######################################################################
 # Reinvocation stolen from bzr, we need python2.4 by virtue of bzr_man
 # including bzrlib.help
-
-import os
-import sys
 
 try:
     version_info = sys.version_info
@@ -89,6 +60,30 @@ if version_info < NEED_VERS:
     sys.exit(1)
 if hasattr(os, "unsetenv"):
     os.unsetenv(REINVOKE)
+
+
+def get_bzrlib_packages():
+    """Recurse through the bzrlib directory, and extract the package names"""
+
+    packages = []
+    base_path = os.path.dirname(os.path.abspath(bzrlib.__file__))
+    for root, dirs, files in os.walk(base_path):
+        if '__init__.py' in files:
+            assert root.startswith(base_path)
+            # Get just the path below bzrlib
+            package_path = root[len(base_path):]
+            # Remove leading and trailing slashes
+            package_path = package_path.strip('\\/')
+            if not package_path:
+                package_name = 'bzrlib'
+            else:
+                package_name = ('bzrlib.' +
+                            package_path.replace('/', '.').replace('\\', '.'))
+            packages.append(package_name)
+    return sorted(packages)
+
+
+BZRLIB['packages'] = get_bzrlib_packages()
 
 
 from distutils.core import setup

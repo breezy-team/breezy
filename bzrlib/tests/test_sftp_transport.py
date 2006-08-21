@@ -17,12 +17,14 @@
 import os
 import socket
 import threading
+import time
 
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin, lexists
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
 import bzrlib.transport
+import bzrlib.transport.http
 from bzrlib.workingtree import WorkingTree
 
 try:
@@ -32,21 +34,26 @@ except ImportError:
     paramiko_loaded = False
 
 
+def set_test_transport_to_sftp(testcase):
+    """A helper to set transports on test case instances."""
+    from bzrlib.transport.sftp import SFTPAbsoluteServer, SFTPHomeDirServer
+    if getattr(testcase, '_get_remote_is_absolute', None) is None:
+        testcase._get_remote_is_absolute = True
+    if testcase._get_remote_is_absolute:
+        testcase.transport_server = SFTPAbsoluteServer
+    else:
+        testcase.transport_server = SFTPHomeDirServer
+    testcase.transport_readonly_server = bzrlib.transport.http.HttpServer
+
+
 class TestCaseWithSFTPServer(TestCaseWithTransport):
     """A test case base class that provides a sftp server on localhost."""
 
     def setUp(self):
+        super(TestCaseWithSFTPServer, self).setUp()
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
-        super(TestCaseWithSFTPServer, self).setUp()
-        from bzrlib.transport.sftp import SFTPAbsoluteServer, SFTPHomeDirServer
-        if getattr(self, '_get_remote_is_absolute', None) is None:
-            self._get_remote_is_absolute = True
-        if self._get_remote_is_absolute:
-            self.transport_server = SFTPAbsoluteServer
-        else:
-            self.transport_server = SFTPHomeDirServer
-        self.transport_readonly_server = bzrlib.transport.http.HttpServer
+        set_test_transport_to_sftp(self) 
 
     def get_transport(self, path=None):
         """Return a transport relative to self._test_root."""
@@ -345,4 +352,100 @@ class SSHVendorBadConnection(TestCaseWithTransport):
             # fail the test
             raise TestSkipped('Known NameError bug with paramiko-1.6.1')
         self.assertContainsRe(err, 'Connection error')
+
+
+class SFTPLatencyKnob(TestCaseWithSFTPServer):
+    """Test that the testing SFTPServer's latency knob works."""
+
+    def test_latency_knob_slows_transport(self):
+        # change the latency knob to 500ms. We take about 40ms for a 
+        # loopback connection ordinarily.
+        start_time = time.time()
+        self.get_server().add_latency = 0.5
+        transport = self.get_transport()
+        with_latency_knob_time = time.time() - start_time
+        print with_latency_knob_time
+        self.assertTrue(with_latency_knob_time > 0.4)
+
+    def test_default(self):
+        # This test is potentially brittle: under extremely high machine load
+        # it could fail, but that is quite unlikely
+        start_time = time.time()
+        transport = self.get_transport()
+        regular_time = time.time() - start_time
+        self.assertTrue(regular_time < 0.5)
+
+
+class FakeSocket(object):
+    """Fake socket object used to test the SocketDelay wrapper without
+    using a real socket.
+    """
+
+    def __init__(self):
+        self._data = ""
+
+    def send(self, data, flags=0):
+        self._data += data
+        return len(data)
+
+    def sendall(self, data, flags=0):
+        self._data += data
+        return len(data)
+
+    def recv(self, size, flags=0):
+        if size < len(self._data):
+            result = self._data[:size]
+            self._data = self._data[size:]
+            return result
+        else:
+            result = self._data
+            self._data = ""
+            return result
+
+
+class TestSocketDelay(TestCase):
+
+    def setUp(self):
+        TestCase.setUp(self)
+
+    def test_delay(self):
+        from bzrlib.transport.sftp import SocketDelay
+        sending = FakeSocket()
+        receiving = SocketDelay(sending, 0.1, bandwidth=1000000,
+                                really_sleep=False)
+        # check that simulated time is charged only per round-trip:
+        t1 = SocketDelay.simulated_time
+        receiving.send("connect1")
+        self.assertEqual(sending.recv(1024), "connect1")
+        t2 = SocketDelay.simulated_time
+        self.assertAlmostEqual(t2 - t1, 0.1)
+        receiving.send("connect2")
+        self.assertEqual(sending.recv(1024), "connect2")
+        sending.send("hello")
+        self.assertEqual(receiving.recv(1024), "hello")
+        t3 = SocketDelay.simulated_time
+        self.assertAlmostEqual(t3 - t2, 0.1)
+        sending.send("hello")
+        self.assertEqual(receiving.recv(1024), "hello")
+        sending.send("hello")
+        self.assertEqual(receiving.recv(1024), "hello")
+        sending.send("hello")
+        self.assertEqual(receiving.recv(1024), "hello")
+        t4 = SocketDelay.simulated_time
+        self.assertAlmostEqual(t4, t3)
+
+    def test_bandwidth(self):
+        from bzrlib.transport.sftp import SocketDelay
+        sending = FakeSocket()
+        receiving = SocketDelay(sending, 0, bandwidth=8.0/(1024*1024),
+                                really_sleep=False)
+        # check that simulated time is charged only per round-trip:
+        t1 = SocketDelay.simulated_time
+        receiving.send("connect")
+        self.assertEqual(sending.recv(1024), "connect")
+        sending.send("a" * 100)
+        self.assertEqual(receiving.recv(1024), "a" * 100)
+        t2 = SocketDelay.simulated_time
+        self.assertAlmostEqual(t2 - t1, 100 + 7)
+
 

@@ -20,7 +20,6 @@ from cStringIO import StringIO
 import re
 import time
 from unittest import TestSuite
-from warnings import warn
 
 from bzrlib import bzrdir, check, delta, gpg, errors, xml5, ui, transactions, osutils
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -37,6 +36,7 @@ from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore, WeaveStore
 from bzrlib.store.text import TextStore
+from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_method,
         zero_nine, 
         )
@@ -2040,8 +2040,8 @@ class CommitBuilder(object):
     def finish_inventory(self):
         """Tell the builder that the inventory is finished."""
         if self.new_inventory.root is None:
-            warn('Root entry should be supplied to record_entry_contents, as'
-                 ' of bzr 0.10.',
+            symbol_versioning.warn('Root entry should be supplied to'
+                ' record_entry_contents, as of bzr 0.10.',
                  DeprecationWarning, stacklevel=2)
             self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
         self.new_inventory.revision_id = self._new_revision_id
@@ -2082,6 +2082,12 @@ class CommitBuilder(object):
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
         """
+        if self.new_inventory.root is None and ie.parent_id is not None:
+            symbol_versioning.warn('Root entry should be supplied to'
+                ' record_entry_contents, as of bzr 0.10.',
+                 DeprecationWarning, stacklevel=2)
+            self.record_entry_contents(tree.inventory.root.copy(), parent_invs,
+                                       '', tree)
         self.new_inventory.add(ie)
 
         # ie.revision is always None if the InventoryEntry is considered
