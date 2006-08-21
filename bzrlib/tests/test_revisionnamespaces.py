@@ -371,6 +371,13 @@ class TestRevisionSpec_before(TestRevisionSpec):
         # This will grab the left-most ancestor for alternate histories
         self.assertInHistoryIs(1, 'r1', 'before:revid:alt_r2')
 
+    def test_alt_no_parents(self):
+        new_tree = self.make_branch_and_tree('new_tree')
+        new_tree.commit('first', rev_id='new_r1')
+        self.tree.branch.repository.fetch(new_tree.branch.repository,
+                                          revision_id='new_r1')
+        self.assertInHistoryIs(0, None, 'before:revid:new_r1')
+
 
 class TestRevisionSpec_tag(TestRevisionSpec):
     
