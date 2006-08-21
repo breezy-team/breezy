@@ -18,14 +18,16 @@
 
 """Tests for trace library"""
 
+from cStringIO import StringIO
 import errno
 import os
 import sys
-from StringIO import StringIO
 
+from bzrlib import (
+    errors,
+    )
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.trace import mutter, report_exception
-from bzrlib.errors import NotBranchError
 
 
 def _format_exception():
@@ -66,12 +68,18 @@ class TestTrace(TestCase):
         msg = _format_exception()
         self.assertContainsRe(msg, r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
 
+    def test_format_unicode_error(self):
+        try:
+            raise errors.BzrCommandError(u'argument foo\xb5 does not exist')
+        except errors.BzrCommandError:
+            pass
+        msg = _format_exception()
 
     def test_format_exception(self):
         """Short formatting of bzr exceptions"""
         try:
-            raise NotBranchError, 'wibble'
-        except NotBranchError:
+            raise errors.NotBranchError, 'wibble'
+        except errors.NotBranchError:
             pass
         msg = _format_exception()
         self.assertTrue(len(msg) > 0)
