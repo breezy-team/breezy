@@ -305,7 +305,9 @@ class RevisionSpec_tag(RevisionSpec):
     prefix = 'tag:'
 
     def _match_on(self, branch, revs):
-        raise BzrError('tag: namespace registered, but not implemented.')
+        raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch,
+                                         'tag: namespace registered,'
+                                         ' but not implemented')
 
 SPEC_TYPES.append(RevisionSpec_tag)
 

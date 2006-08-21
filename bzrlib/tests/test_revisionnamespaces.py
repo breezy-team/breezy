@@ -379,3 +379,10 @@ class TestRevisionSpec_before(TestRevisionSpec):
         # XXX: before will return entries from other histories, but not
         # the entry previous to them. Is this intentional, it seems like a bug?
         self.assertInHistoryIs(None, 'alt_r2', 'before:revid:alt_r2')
+
+
+class TestRevisionSpec_tag(TestRevisionSpec):
+    
+    def test_invalid(self):
+        self.assertInvalid('tag:foo', extra='; tag: namespace registered,'
+                                            ' but not implemented')
