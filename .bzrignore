@@ -29,3 +29,5 @@ build
 ./py2exe.log
 ./tools/win32/bzr.iss
 ./dist
+# performance history data file
+./.perf_history
