@@ -216,7 +216,7 @@ class RevisionSpec_revno(RevisionSpec):
             branch_spec = self.spec[loc+1:]
 
         if revno_spec == '':
-            if branch_spec is None:
+            if not branch_spec:
                 raise errors.InvalidRevisionSpec(self.prefix + self.spec,
                         branch, 'cannot have an empty revno and no branch')
             revno = None
@@ -230,7 +230,7 @@ class RevisionSpec_revno(RevisionSpec):
             if revno < 0:
                 revno = len(revs) + revno + 1
 
-        if branch_spec is not None:
+        if branch_spec:
             from bzrlib.branch import Branch
             branch = Branch.open(branch_spec)
 

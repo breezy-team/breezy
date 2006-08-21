@@ -243,3 +243,15 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         # TODO: In the future, a negative number that is too large
         # may be translated into the first revision
         self.assertInvalid('revno:-4')
+
+    def test_invalid_number(self):
+        # Get the right exception text
+        try:
+            int('X')
+        except ValueError, e:
+            pass
+        self.assertInvalid('revno:X', extra='; ' + str(e))
+
+    def test_missing_number_and_branch(self):
+        self.assertInvalid('revno::',
+                           extra='; cannot have an empty revno and no branch')
