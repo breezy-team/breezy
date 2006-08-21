@@ -167,6 +167,13 @@ class TestRevisionSpec(TestCaseWithTransport):
         self.build_tree(['tree/a'])
         self.tree.add(['a'])
         self.tree.commit('a', rev_id='r1')
+
+        self.tree2 = self.tree.bzrdir.sprout('tree2').open_workingtree()
+        self.tree2.commit('alt', rev_id='alt_r2')
+
+        self.tree.branch.repository.fetch(self.tree2.branch.repository,
+                                          revision_id='alt_r2')
+        self.tree.set_pending_merges(['alt_r2'])
         self.tree.commit('second', rev_id='r2')
 
     def get_in_history(self, revision_spec):
