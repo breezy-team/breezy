@@ -510,7 +510,8 @@ class NoSuchRevision(BzrNewError):
 # Inheriting from NoSuchRevision to maintain API compatibility
 # technically, this could be a completely different exception
 class InvalidRevisionSpec(NoSuchRevision):
-    """Requested revision: %(spec)s does not exist in branch: %(branch)s%(extra)s"""
+    """Requested revision: '%(spec)s' does not exist in branch:
+%(branch)s%(extra)s"""
 
     is_user_error = True
 
@@ -518,7 +519,7 @@ class InvalidRevisionSpec(NoSuchRevision):
         NoSuchRevision.__init__(self, branch=branch, revision=spec)
         self.spec = spec
         if extra:
-            self.extra = '; ' + str(extra)
+            self.extra = '\n' + str(extra)
         else:
             self.extra = ''
 

@@ -242,18 +242,18 @@ class TestRevisionSpec_revno(TestRevisionSpec):
             int('X')
         except ValueError, e:
             pass
-        self.assertInvalid('revno:X', extra='; ' + str(e))
+        self.assertInvalid('revno:X', extra='\n' + str(e))
 
     def test_missing_number_and_branch(self):
         self.assertInvalid('revno::',
-                           extra='; cannot have an empty revno and no branch')
+                           extra='\ncannot have an empty revno and no branch')
 
     def test_invalid_number_with_branch(self):
         try:
             int('X')
         except ValueError, e:
             pass
-        self.assertInvalid('revno:X:tree2', extra='; ' + str(e))
+        self.assertInvalid('revno:X:tree2', extra='\n' + str(e))
 
     def test_with_branch(self):
         # Passing a URL overrides the supplied branch path
@@ -329,7 +329,7 @@ class TestRevisionSpec_last(TestRevisionSpec):
 
     def test_negative(self):
         self.assertInvalid('last:-1',
-                           extra='; you must supply a positive value')
+                           extra='\nyou must supply a positive value')
 
     def test_missing(self):
         self.assertInvalid('last:4')
@@ -345,7 +345,7 @@ class TestRevisionSpec_last(TestRevisionSpec):
             int('Y')
         except ValueError, e:
             pass
-        self.assertInvalid('last:Y', extra='; ' + str(e))
+        self.assertInvalid('last:Y', extra='\n' + str(e))
 
 
 class TestRevisionSpec_before(TestRevisionSpec):
@@ -359,7 +359,7 @@ class TestRevisionSpec_before(TestRevisionSpec):
 
     def test_before_none(self):
         self.assertInvalid('before:0',
-                           extra='; cannot go before the null: revision')
+                           extra='\ncannot go before the null: revision')
 
     def test_revid(self):
         self.assertInHistoryIs(1, 'r1', 'before:revid:r2')
@@ -382,7 +382,7 @@ class TestRevisionSpec_before(TestRevisionSpec):
 class TestRevisionSpec_tag(TestRevisionSpec):
     
     def test_invalid(self):
-        self.assertInvalid('tag:foo', extra='; tag: namespace registered,'
+        self.assertInvalid('tag:foo', extra='\ntag: namespace registered,'
                                             ' but not implemented')
 
 
@@ -410,11 +410,11 @@ class TestRevisionSpec_date(TestRevisionSpec):
         self.assertInHistoryIs(1, 'new_r1', 'date:yesterday')
 
     def test_invalid(self):
-        self.assertInvalid('date:foobar', extra='; invalid date')
+        self.assertInvalid('date:foobar', extra='\ninvalid date')
         # You must have '-' between year/month/day
-        self.assertInvalid('date:20040404', extra='; invalid date')
+        self.assertInvalid('date:20040404', extra='\ninvalid date')
         # Need 2 digits for each date piece
-        self.assertInvalid('date:2004-4-4', extra='; invalid date')
+        self.assertInvalid('date:2004-4-4', extra='\ninvalid date')
 
     def test_day(self):
         now = datetime.datetime.now()
