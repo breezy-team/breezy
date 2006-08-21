@@ -126,7 +126,12 @@ class BzrNewError(BzrError):
 
     def __str__(self):
         try:
-            return self.__doc__ % self.__dict__
+            # __str__() should always return a 'str' object
+            # never a 'unicode' object.
+            s = self.__doc__ % self.__dict__
+            if isinstance(s, unicode):
+                return s.encode('utf8')
+            return s
         except (NameError, ValueError, KeyError), e:
             return 'Unprintable exception %s: %s' \
                 % (self.__class__.__name__, str(e))
