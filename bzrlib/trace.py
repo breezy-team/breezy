@@ -99,7 +99,13 @@ def mutter(fmt, *args):
         # It seems that if we do ascii % (unicode, ascii) we can
         # get a unicode cannot encode ascii error, so make sure that "fmt"
         # is a unicode string
-        out = unicode(fmt) % args
+        try:
+            out = unicode(fmt) % args
+        except UnicodeError, e:
+            warning('UnicodeError: %s', e)
+            out_list = [fmt]
+            out_list.extend(args)
+            out = repr(out_list)
     else:
         out = fmt
     out += '\n'

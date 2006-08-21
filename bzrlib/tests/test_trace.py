@@ -89,6 +89,13 @@ class TestTrace(TestCase):
         self._log_file.flush()
         self.assertContainsRe(self._get_log(), 'the unicode character')
 
+    def test_trace_argument_utf8(self):
+        """Write a Unicode argument to the trace log"""
+        mutter(u'the unicode character for benzene is %s',
+               u'\N{BENZENE RING}'.encode('utf-8'))
+        self._log_file.flush()
+        self.assertContainsRe(self._get_log(), 'the unicode character')
+
     def test_report_broken_pipe(self):
         try:
             raise IOError(errno.EPIPE, 'broken pipe foofofo')
