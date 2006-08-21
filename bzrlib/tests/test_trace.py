@@ -110,12 +110,13 @@ class TestTrace(TestCase):
         # raise an exception
         mutter(u'Writing a greek mu (\xb5) works in a unicode string')
         mutter('But fails in an ascii string \xb5')
+        mutter('and in an ascii argument: %s', '\xb5')
         # TODO: jam 20051227 mutter() doesn't flush the log file, and
         #       self._get_log() opens the file directly and reads it.
         #       So we need to manually flush the log file
-        import bzrlib.trace
-        bzrlib.trace._trace_file.flush()
+        self._log_file.flush()
         log = self._get_log()
         self.assertContainsRe(log, 'Writing a greek mu')
         self.assertContainsRe(log, 'UnicodeError')
         self.assertContainsRe(log, "'But fails in an ascii string")
+        self.assertContainsRe(log, ": %s', '\\\\xb5'")
