@@ -924,6 +924,13 @@ class BzrBadParameterContainsNewline(BzrBadParameter):
     """Parameter %(param)s contains a newline."""
 
 
+class UnicodeCommand(BzrNewError):
+    """Requested command %(command)r is not a valid ascii command name"""
+
+    def __init__(self, command):
+        BzrNewError.__init__(self, command=command)
+
+
 class DependencyNotPresent(BzrNewError):
     """Unable to import library "%(library)s": %(error)s"""
 

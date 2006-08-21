@@ -549,7 +549,11 @@ def run_bzr(argv):
             alias_argv = [a.decode(bzrlib.user_encoding) for a in alias_argv]
             argv[0] = alias_argv.pop(0)
 
-    cmd = str(argv.pop(0))
+    cmd = argv.pop(0)
+    try:
+        cmd = cmd.encode('ascii')
+    except UnicodeError:
+        raise errors.UnicodeCommand(cmd)
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
     if not getattr(cmd_obj.run_argv, 'is_deprecated', False):
