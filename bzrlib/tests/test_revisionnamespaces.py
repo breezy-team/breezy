@@ -294,3 +294,32 @@ class TestRevisionSpec_revno(TestRevisionSpec):
     def test_invalid_revno_in_branch(self):
         self.tree.commit('three', rev_id='r3')
         self.assertInvalid('revno:3:tree2')
+
+
+class TestRevisionSpec_revid(TestRevisionSpec):
+    
+    def test_in_history(self):
+        # We should be able to access revisions that are directly
+        # in the history.
+        self.assertInHistoryIs(1, 'r1', 'revid:r1')
+        self.assertInHistoryIs(2, 'r2', 'revid:r2')
+        
+    def test_missing(self):
+        self.assertInvalid('revid:r3')
+
+    def test_merged(self):
+        """We can reach revisions in the ancestry"""
+        self.assertInHistoryIs(None, 'alt_r2', 'revid:alt_r2')
+
+    def test_not_here(self):
+        self.tree2.commit('alt third', rev_id='alt_r3')
+        # It exists in tree2, but not in tree
+        self.assertInvalid('revid:alt_r3')
+
+    def test_in_repository(self):
+        """We can get any revision id in the repository"""
+        # XXX: This may change in the future, but for now, it is true
+        self.tree2.commit('alt third', rev_id='alt_r3')
+        self.tree.branch.repository.fetch(self.tree2.branch.repository,
+                                          revision_id='alt_r3')
+        self.assertInHistoryIs(None, 'alt_r3', 'revid:alt_r3')
