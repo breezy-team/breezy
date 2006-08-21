@@ -79,9 +79,15 @@ class TestTrace(TestCase):
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
-        self.log(u'the unicode character for benzene is \N{BENZENE RING}')
-        self.assertContainsRe('the unicode character',
-                self._get_log())
+        mutter(u'the unicode character for benzene is \N{BENZENE RING}')
+        self._log_file.flush()
+        self.assertContainsRe(self._get_log(), 'the unicode character',)
+    
+    def test_trace_argument_unicode(self):
+        """Write a Unicode argument to the trace log"""
+        mutter(u'the unicode character for benzene is %s', u'\N{BENZENE RING}')
+        self._log_file.flush()
+        self.assertContainsRe(self._get_log(), 'the unicode character')
 
     def test_report_broken_pipe(self):
         try:
