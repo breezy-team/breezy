@@ -142,8 +142,12 @@ class cmd_bundle_revisions(Command):
             fileobj = file(output, 'wb')
         else:
             fileobj = sys.stdout
-        write_bundle(target_branch.repository, target_revision, base_revision,
-                     fileobj)
+        target_branch.repository.lock_read()
+        try:
+            write_bundle(target_branch.repository, target_revision,
+                         base_revision, fileobj)
+        finally:
+            target_branch.repository.unlock()
 
 
 class cmd_verify_changeset(Command):
