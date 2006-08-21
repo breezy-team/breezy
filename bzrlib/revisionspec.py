@@ -312,14 +312,21 @@ class RevisionSpec_tag(RevisionSpec):
 SPEC_TYPES.append(RevisionSpec_tag)
 
 
-class RevisionSpec_revs:
+class _RevListToTimestamps(object):
+    """This takes a list of revisions, and allows you to bisect by date"""
+
+    __slots__ = ['revs', 'branch']
+
     def __init__(self, revs, branch):
         self.revs = revs
         self.branch = branch
+
     def __getitem__(self, index):
+        """Get the date of the index'd item"""
         r = self.branch.repository.get_revision(self.revs[index])
         # TODO: Handle timezone.
         return datetime.datetime.fromtimestamp(r.timestamp)
+
     def __len__(self):
         return len(self.revs)
 
@@ -353,27 +360,37 @@ class RevisionSpec_date(RevisionSpec):
         else:
             m = self._date_re.match(self.spec)
             if not m or (not m.group('date') and not m.group('time')):
-                raise BzrError('Invalid revision date %r' % self.spec)
+                raise errors.InvalidRevisionSpec(self.prefix + self.spec,
+                                                 branch, 'invalid date')
 
-            if m.group('date'):
-                year, month, day = int(m.group('year')), int(m.group('month')), int(m.group('day'))
-            else:
-                year, month, day = today.year, today.month, today.day
-            if m.group('time'):
-                hour = int(m.group('hour'))
-                minute = int(m.group('minute'))
-                if m.group('second'):
-                    second = int(m.group('second'))
+            try:
+                if m.group('date'):
+                    year = int(m.group('year'))
+                    month = int(m.group('month'))
+                    day = int(m.group('day'))
                 else:
-                    second = 0
-            else:
-                hour, minute, second = 0,0,0
+                    year = today.year
+                    month = today.month
+                    day = today.day
+
+                if m.group('time'):
+                    hour = int(m.group('hour'))
+                    minute = int(m.group('minute'))
+                    if m.group('second'):
+                        second = int(m.group('second'))
+                    else:
+                        second = 0
+                else:
+                    hour, minute, second = 0,0,0
+            except ValueError:
+                raise errors.InvalidRevisionSpec(self.prefix + self.spec,
+                                                 branch, 'invalid date')
 
             dt = datetime.datetime(year=year, month=month, day=day,
                     hour=hour, minute=minute, second=second)
         branch.lock_read()
         try:
-            rev = bisect.bisect(RevisionSpec_revs(revs, branch), dt)
+            rev = bisect.bisect(_RevListToTimestamps(revs, branch), dt)
         finally:
             branch.unlock()
         if rev == len(revs):

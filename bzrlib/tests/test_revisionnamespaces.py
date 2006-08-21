@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import datetime
 import os
 import time
 
@@ -79,15 +80,6 @@ class TestRevisionNamespaces(TestCaseWithTransport):
         self.assertRaises(errors.InvalidRevisionSpec,
                           RevisionSpec('revid:a@r-0-0').in_history, b)
         self.assertRaises(TypeError, RevisionSpec, object)
-
-        self.assertEquals(RevisionSpec('date:today').in_history(b),
-                          (2, 'a@r-0-2'))
-        self.assertRaises(errors.InvalidRevisionSpec,
-                          RevisionSpec('date:tomorrow').in_history, b)
-        self.assertEquals(RevisionSpec('date:yesterday').in_history(b),
-                          (1, 'a@r-0-1'))
-        self.assertEquals(RevisionSpec('before:date:today').in_history(b),
-                          (1, 'a@r-0-1'))
 
         self.assertEquals(RevisionSpec('last:1').in_history(b),
                           (3, 'a@r-0-3'))
@@ -386,3 +378,39 @@ class TestRevisionSpec_tag(TestRevisionSpec):
     def test_invalid(self):
         self.assertInvalid('tag:foo', extra='; tag: namespace registered,'
                                             ' but not implemented')
+
+
+class TestRevisionSpec_date(TestRevisionSpec):
+
+    def setUp(self):
+        super(TestRevisionSpec, self).setUp()
+
+        new_tree = self.make_branch_and_tree('new_tree')
+        new_tree.commit('Commit one', rev_id='new_r1',
+                        timestamp=time.time() - 60*60*24)
+        new_tree.commit('Commit two', rev_id='new_r2')
+        new_tree.commit('Commit three', rev_id='new_r3')
+
+        self.tree = new_tree
+
+    def test_tomorrow(self):
+        self.assertInvalid('date:tomorrow')
+
+    def test_today(self):
+        self.assertInHistoryIs(2, 'new_r2', 'date:today')
+        self.assertInHistoryIs(1, 'new_r1', 'before:date:today')
+
+    def test_yesterday(self):
+        self.assertInHistoryIs(1, 'new_r1', 'date:yesterday')
+
+    def test_invalid(self):
+        self.assertInvalid('date:foobar', extra='; invalid date')
+        # You must have '-' between year/month/day
+        self.assertInvalid('date:20040404', extra='; invalid date')
+        # Need 2 digits for each date piece
+        self.assertInvalid('date:2004-4-4', extra='; invalid date')
+
+    def test_day(self):
+        now = datetime.datetime.now()
+        self.assertInHistoryIs(2, 'new_r2',
+            'date:%04d-%02d-%02d' % (now.year, now.month, now.day))
