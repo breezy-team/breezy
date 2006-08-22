@@ -394,7 +394,11 @@ class WorkingTree(bzrlib.tree.Tree):
         return pathjoin(self.basedir, filename)
     
     def basis_tree(self):
-        """Return RevisionTree for the current last revision."""
+        """Return RevisionTree for the current last revision.
+        
+        If the left most parent is a ghost then the returned tree will be an
+        empty tree - one obtained by calling repository.revision_tree(None).
+        """
         revision_id = self.last_revision()
         if revision_id is not None:
             try:
@@ -415,7 +419,7 @@ class WorkingTree(bzrlib.tree.Tree):
             # its a ghost.
             if self.branch.repository.has_revision(revision_id):
                 raise
-            # the basis tree is a ghost
+            # the basis tree is a ghost so return an empty tree.
             return self.branch.repository.revision_tree(None)
 
     @staticmethod
@@ -661,7 +665,9 @@ class WorkingTree(bzrlib.tree.Tree):
         and setting the list to its value plus revision_id.
 
         :param revision_id: The revision id to add to the parent list. It may
-        be a ghost revision.
+        be a ghost revision as long as its not the first parent to be added,
+        or the allow_leftmost_as_ghost parameter is set True.
+        :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
         self.set_parent_ids(self.get_parent_ids() + [revision_id],
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
@@ -676,7 +682,9 @@ class WorkingTree(bzrlib.tree.Tree):
         simpler to use that api. If you have the parent already available, using
         this api is preferred.
 
-        :param parent_tuple: The (revision id, tree) to add to the parent list.             If the revision_id is a ghost, pass None for the tree.
+        :param parent_tuple: The (revision id, tree) to add to the parent list.
+            If the revision_id is a ghost, pass None for the tree.
+        :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
         self.set_parent_ids(self.get_parent_ids() + [parent_tuple[0]],
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
@@ -734,7 +742,6 @@ class WorkingTree(bzrlib.tree.Tree):
                     (rev_id, self.branch.repository.revision_tree(rev_id)))
             except errors.RevisionNotPresent:
                 trees.append((rev_id, None))
-                pass
         self.set_parent_trees(trees,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
@@ -746,12 +753,12 @@ class WorkingTree(bzrlib.tree.Tree):
             If tree is None, then that element is treated as an unreachable
             parent tree - i.e. a ghost.
         """
-        parent = parents_list[:1]
-        if len(parent):
+        if len(parents_list) > 0:
+            leftmost_id = parents_list[0][0]
             if (not allow_leftmost_as_ghost and not
-                self.branch.repository.has_revision(parent[0][0])):
-                raise errors.GhostRevision(parent[0][0])
-            self.set_last_revision(parent[0][0])
+                self.branch.repository.has_revision(leftmost_id)):
+                raise errors.GhostRevisionUnusableHere(leftmost_id)
+            self.set_last_revision(leftmost_id)
         else:
             self.set_last_revision(None)
         merges = parents_list[1:]
@@ -1504,50 +1511,66 @@ class WorkingTree(bzrlib.tree.Tree):
         Do a 'normal' merge of the old branch basis if it is relevant.
         """
         old_tip = self.branch.update()
-        try:
-            result = 0
-            if self.last_revision() != self.branch.last_revision():
-                # merge tree state up to new branch tip.
-                basis = self.basis_tree()
-                to_tree = self.branch.basis_tree()
-                result += merge_inner(self.branch,
-                                      to_tree,
-                                      basis,
-                                      this_tree=self)
-                self.set_last_revision(self.branch.last_revision())
-                # TODO - dedup parents list with things merged by pull ?
-                # reuse the tree we've updated to to set the basis:
-                parent_trees = [(self.branch.last_revision(), to_tree)]
-                merges = self.get_parent_ids()[1:]
-                # pull the other trees out of the repository. This could be
-                # better expressed - for instance by inserting a parent, and
-                # that would remove duplication.
-                parent_trees.extend([
-                    (parent, self.branch.repository.revision_tree(parent)) for
-                     parent in merges])
-                self.set_parent_trees(parent_trees)
-            if old_tip and old_tip != self.last_revision():
-                # our last revision was not the prior branch last revision
-                # and we have converted that last revision to a pending merge.
-                # base is somewhere between the branch tip now
-                # and the now pending merge
-                from bzrlib.revision import common_ancestor
-                try:
-                    base_rev_id = common_ancestor(self.branch.last_revision(),
-                                                  old_tip,
-                                                  self.branch.repository)
-                except errors.NoCommonAncestor:
-                    base_rev_id = None
-                base_tree = self.branch.repository.revision_tree(base_rev_id)
-                other_tree = self.branch.repository.revision_tree(old_tip)
-                result += merge_inner(self.branch,
-                                      other_tree,
-                                      base_tree,
-                                      this_tree=self)
-            return result
-        finally:
+        # here if old_tip is not None, it is the old tip of the branch before
+        # it was updated from the master branch. This should become a pending
+        # merge in the working tree to preserve the user existing work.  we
+        # cant set that until we update the working trees last revision to be
+        # one from the new branch, because it will just get absorbed by the
+        # parent de-duplication logic.
+        # 
+        # We MUST save it even if an error occurs, because otherwise the users
+        # local work is unreferenced and will appear to have been lost.
+        # 
+        result = 0
+        if self.last_revision() != self.branch.last_revision():
+            # merge tree state up to new branch tip.
+            basis = self.basis_tree()
+            to_tree = self.branch.basis_tree()
+            result += merge_inner(self.branch,
+                                  to_tree,
+                                  basis,
+                                  this_tree=self)
+            # TODO - dedup parents list with things merged by pull ?
+            # reuse the tree we've updated to to set the basis:
+            parent_trees = [(self.branch.last_revision(), to_tree)]
+            merges = self.get_parent_ids()[1:]
+            # Ideally we ask the tree for the trees here, that way the working
+            # tree can decide whether to give us teh entire tree or give us a
+            # lazy initialised tree. dirstate for instance will have the trees
+            # in ram already, whereas a last-revision + basis-inventory tree
+            # will not, but also does not need them when setting parents.
+            for parent in merges:
+                parent_trees.append(
+                    (parent, self.branch.repository.revision_tree(parent)))
+            if old_tip is not None:
+                parent_trees.append(
+                    (old_tip, self.branch.repository.revision_tree(old_tip)))
+            self.set_parent_trees(parent_trees)
+        else:
+            # the working tree had the same last-revision as the master
+            # branch did. We may still have pivot local work from the local
+            # branch into old_tip:
             if old_tip is not None:
                 self.add_pending_merge(old_tip)
+        if old_tip and old_tip != self.last_revision():
+            # our last revision was not the prior branch last revision
+            # and we have converted that last revision to a pending merge.
+            # base is somewhere between the branch tip now
+            # and the now pending merge
+            from bzrlib.revision import common_ancestor
+            try:
+                base_rev_id = common_ancestor(self.branch.last_revision(),
+                                              old_tip,
+                                              self.branch.repository)
+            except errors.NoCommonAncestor:
+                base_rev_id = None
+            base_tree = self.branch.repository.revision_tree(base_rev_id)
+            other_tree = self.branch.repository.revision_tree(old_tip)
+            result += merge_inner(self.branch,
+                                  other_tree,
+                                  base_tree,
+                                  this_tree=self)
+        return result
 
     @needs_write_lock
     def _write_inventory(self, inv):

@@ -47,7 +47,7 @@ class TestSetParents(TestParents):
 
     def test_set_one_ghost_parent_rejects(self):
         t = self.make_branch_and_tree('.')
-        self.assertRaises(errors.GhostRevision,
+        self.assertRaises(errors.GhostRevisionUnusableHere,
             t.set_parent_trees, [('missing-revision-id', None)])
 
     def test_set_one_ghost_parent_force(self):
@@ -94,7 +94,7 @@ class TestSetParents(TestParents):
 
     def test_set_one_ghost_parent_ids_rejects(self):
         t = self.make_branch_and_tree('.')
-        self.assertRaises(errors.GhostRevision,
+        self.assertRaises(errors.GhostRevisionUnusableHere,
             t.set_parent_ids, ['missing-revision-id'])
 
     def test_set_one_ghost_parent_ids_force(self):
@@ -141,7 +141,7 @@ class TestAddParent(TestParents):
     def test_add_first_parent_id_ghost_rejects(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
-        self.assertRaises(errors.GhostRevision,
+        self.assertRaises(errors.GhostRevisionUnusableHere,
             tree.add_parent_tree_id, 'first-revision')
         
     def test_add_first_parent_id_ghost_force(self):
@@ -178,7 +178,7 @@ class TestAddParent(TestParents):
     def test_add_first_parent_tree_ghost_rejects(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
-        self.assertRaises(errors.GhostRevision,
+        self.assertRaises(errors.GhostRevisionUnusableHere,
             tree.add_parent_tree, ('first-revision', None))
         
     def test_add_first_parent_tree_ghost_force(self):

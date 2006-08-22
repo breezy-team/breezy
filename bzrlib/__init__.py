@@ -60,23 +60,6 @@ DEFAULT_IGNORE = deprecated_list(zero_nine, 'DEFAULT_IGNORE', [],
                     'Consider using bzrlib.ignores.add_unique_user_ignores'
                     ' or bzrlib.ignores.add_runtime_ignores')
 
-
-@deprecated_function(zero_seven)
-def get_bzr_revision():
-    """If bzr is run from a branch, return (revno,revid) or None."""
-    import bzrlib.errors
-    from bzrlib.branch import Branch
-    
-    try:
-        branch = Branch.open(os.path.dirname(__path__[0]))
-        rh = branch.revision_history()
-        if rh:
-            return len(rh), rh[-1]
-        else:
-            return None
-    except bzrlib.errors.BzrError:
-        return None
-    
 def test_suite():
     import tests
     return tests.test_suite()

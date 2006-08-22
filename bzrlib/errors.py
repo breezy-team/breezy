@@ -1105,8 +1105,8 @@ class UnsupportedEOLMarker(BadBundle):
         BzrNewError.__init__(self)
 
 
-class GhostRevision(BzrNewError):
-    """Revision {%(revision_id)s} is a ghost."""
+class GhostRevisionUnusableHere(BzrNewError):
+    """Ghost revision {%(revision_id)s} cannot be used here."""
 
     def __init__(self, revision_id):
         BzrNewError.__init__(self)
