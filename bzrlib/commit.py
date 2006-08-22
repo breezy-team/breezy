@@ -85,21 +85,8 @@ from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
-        zero_seven,
         DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
-
-
-@deprecated_function(zero_seven)
-def commit(*args, **kwargs):
-    """Commit a new revision to a branch.
-
-    Function-style interface for convenience of old callers.
-
-    New code should use the Commit class instead.
-    """
-    ## XXX: Remove this in favor of WorkingTree.commit?
-    Commit().commit(*args, **kwargs)
 
 
 class NullCommitReporter(object):

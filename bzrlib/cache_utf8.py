@@ -31,6 +31,14 @@ def encode(unicode_str,
            _uni_to_utf8=_unicode_to_utf8_map,
            _utf8_to_uni=_utf8_to_unicode_map):
     """Take this unicode revision id, and get a unicode version"""
+    # If the key is in the cache try/KeyError is 50% faster than
+    # val = dict.get(key), if val is None:
+    # On jam's machine the difference is 
+    # try/KeyError:  900ms 
+    #      if None: 1250ms 
+    # Since these are primarily used when iterating over a knit entry
+    # *most* of the time the key will already be in the cache, so use the
+    # fast path
     try:
         return _uni_to_utf8[unicode_str]
     except KeyError:
