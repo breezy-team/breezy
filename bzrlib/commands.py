@@ -61,6 +61,7 @@ def register_command(cmd, decorate=False):
     """
     global plugin_cmds
     k = cmd.__name__
+
     if k.startswith("cmd_"):
         k_unsquished = _unsquish_command_name(k)
     else:
@@ -130,7 +131,14 @@ def get_cmd_object(cmd_name, plugins_override=True):
     """
     from bzrlib.externalcommand import ExternalCommand
 
-    cmd_name = str(cmd_name)            # not unicode
+    try:
+        cmd_name = str(cmd_name)
+    except UnicodeError:
+        pass 
+        # We want only 'ascii' command names, but the user may have typed
+        # in a Unicode name. In that case, they should just get a
+        # 'command not found' error later.
+        # In the future, we may actually support Unicode command names.
 
     # first look up this command under the specified name
     cmds = _get_cmd_dict(plugins_override=plugins_override)
@@ -553,7 +561,10 @@ def run_bzr(argv):
     try:
         cmd = cmd.encode('ascii')
     except UnicodeError:
-        raise errors.UnicodeCommand(cmd)
+        pass 
+        # We want only 'ascii' command names, but the user may have typed
+        # in a Unicode name. In that case, they should just get a
+        # 'command not found' error later.
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
     if not getattr(cmd_obj.run_argv, 'is_deprecated', False):

@@ -41,5 +41,14 @@ class TestCommands(TestCase):
         self.assertRaises(IOError, other_thrower)
 
     def test_unicode_command(self):
-        self.assertRaises(errors.UnicodeCommand,
+        # This error is thrown when we can't find the command in the
+        # list of available commands
+        self.assertRaises(errors.BzrCommandError,
                           commands.run_bzr, [u'cmd\xb5'])
+
+    def test_unicode_option(self):
+        # This error is actually thrown by optparse, when it
+        # can't find the given option
+        self.assertRaises(errors.BzrCommandError,
+                          commands.run_bzr, ['log', u'--option\xb5'])
+
