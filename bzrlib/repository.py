@@ -1938,9 +1938,39 @@ class InterKnitRepo(InterSameDataRepository):
             # that against the revision records.
             return self.source._eliminate_revisions_not_present(required_topo_revisions)
 
+
+class InterKnit1and2(InterKnitRepo):
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with Knit1 source and Knit2 target"""
+        try:
+            return (isinstance(source._format, (RepositoryFormatKnit1)) and
+                    isinstance(target._format, (RepositoryFormatKnit2)))
+        except AttributeError:
+            return False
+    
+    def copy_content(self, revision_id=None, basis=None):
+        raise NotImplementedError(self.copy_content)
+
+    @needs_write_lock
+    def fetch(self, revision_id=None, pb=None):
+        """See InterRepository.fetch()."""
+        from bzrlib.fetch import Knit1to2Fetcher
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.source, self.source._format, self.target, 
+               self.target._format)
+        f = Knit1to2Fetcher(to_repository=self.target,
+                            from_repository=self.source,
+                            last_revision=revision_id,
+                            pb=pb)
+        return f.count_copied, f.failed_revisions
+
+
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
+InterRepository.register_optimiser(InterKnit1and2)
 
 
 class RepositoryTestProviderAdapter(object):

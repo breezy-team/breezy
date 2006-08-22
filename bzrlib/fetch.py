@@ -281,6 +281,12 @@ class KnitRepoFetcher(RepoFetcher):
         to_rf.join(from_rf, version_ids=revs)
 
 
+class Knit1to2Fetcher(KnitRepoFetcher):
+    """Fetch from a Knit1 repository into a Knit2 repository"""
+
+    pass
+
+
 class Fetcher(object):
     """Backwards compatibility glue for branch.fetch()."""
 

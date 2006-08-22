@@ -166,6 +166,27 @@ class TestRepository(TestCaseWithRepository):
                    revision_id=None,
                    pb=bzrlib.progress.DummyProgress())
 
+    def test_fetch_knit2(self):
+        # smoke test fetch to ensure that the convenience function works.
+        # it is defined as a convenience function with the underlying 
+        # functionality provided by an InterRepository
+        tree_a = self.make_branch_and_tree('a')
+        if not isinstance(tree_a.branch.repository._format, 
+                          repository.RepositoryFormatKnit1):
+            raise TestSkipped('Only knit1 so far')
+        self.build_tree(['a/foo'])
+        tree_a.add('foo', 'file1')
+        tree_a.commit('rev1', rev_id='rev1')
+        # fetch with a default limit (grab everything)
+        f = bzrdir.BzrDirMetaFormat1()
+        f._repository_format = repository.RepositoryFormatKnit2()
+        os.mkdir('b')
+        b_bzrdir = f.initialize(self.get_url('b'))
+        repo = b_bzrdir.create_repository()
+        repo.fetch(tree_a.branch.repository,
+                   revision_id=None,
+                   pb=bzrlib.progress.DummyProgress())
+
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
