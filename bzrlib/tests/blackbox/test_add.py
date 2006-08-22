@@ -178,3 +178,12 @@ class TestAdd(ExternalBase):
         new_tree.read_working_inventory()
         self.assertEqual(base_tree.path2id('b/c'), new_tree.path2id('c'))
         self.assertEqual(base_tree.path2id('b/d'), new_tree.path2id('d'))
+
+    def test_add_dry_run(self):
+        # ensure that --dry-run actually don't add anything
+        base_tree = self.make_branch_and_tree('.')
+        self.build_tree(['spam'])
+        out = self.run_bzr_captured(['add', '--dry-run'], retcode=0)[0]
+        self.assertEquals('added spam\n', out)
+        out = self.run_bzr_captured(['added'], retcode=0)[0]
+        self.assertEquals('', out)

@@ -66,7 +66,6 @@ import os
 import re
 import sys
 import time
-import warnings
 
 from cStringIO import StringIO
 
@@ -83,23 +82,11 @@ from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
+from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
-        zero_seven,
         DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
-
-
-@deprecated_function(zero_seven)
-def commit(*args, **kwargs):
-    """Commit a new revision to a branch.
-
-    Function-style interface for convenience of old callers.
-
-    New code should use the Commit class instead.
-    """
-    ## XXX: Remove this in favor of WorkingTree.commit?
-    Commit().commit(*args, **kwargs)
 
 
 class NullCommitReporter(object):
@@ -221,7 +208,7 @@ class Commit(object):
         mutter('preparing to commit')
 
         if deprecated_passed(branch):
-            warnings.warn("Commit.commit (branch, ...): The branch parameter is "
+            symbol_versioning.warn("Commit.commit (branch, ...): The branch parameter is "
                  "deprecated as of bzr 0.8. Please use working_tree= instead.",
                  DeprecationWarning, stacklevel=2)
             self.branch = branch
@@ -501,8 +488,9 @@ class Commit(object):
         mutter("Selecting files for commit with filter %s", self.specific_files)
         entries = self.work_inv.iter_entries()
         if not self.builder.record_root_entry:
-            warnings.warn('CommitBuilders should support recording the root'
-                ' entry as of bzr 0.10.', DeprecationWarning, stacklevel=1)
+            symbol_versioning.warn('CommitBuilders should support recording'
+                ' the root entry as of bzr 0.10.', DeprecationWarning, 
+                stacklevel=1)
             self.builder.new_inventory.add(self.basis_inv.root.copy())
             entries.next()
             self._emit_progress_update()
