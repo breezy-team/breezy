@@ -171,6 +171,7 @@ class TestRepository(TestCaseWithRepository):
         # it is defined as a convenience function with the underlying 
         # functionality provided by an InterRepository
         tree_a = self.make_branch_and_tree('a')
+        tree_a.set_root_id('ANOTHER_TREE_ROOT')
         if not isinstance(tree_a.branch.repository._format, 
                           repository.RepositoryFormatKnit1):
             raise TestSkipped('Only knit1 so far')
@@ -186,6 +187,8 @@ class TestRepository(TestCaseWithRepository):
         repo.fetch(tree_a.branch.repository,
                    revision_id=None,
                    pb=bzrlib.progress.DummyProgress())
+        rev1_tree = repo.revision_tree('rev1')
+        rev1_tree.get_file_lines(rev1_tree.inventory.root.file_id)
 
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')

@@ -284,7 +284,21 @@ class KnitRepoFetcher(RepoFetcher):
 class Knit1to2Fetcher(KnitRepoFetcher):
     """Fetch from a Knit1 repository into a Knit2 repository"""
 
-    pass
+    def _fetch_weave_texts(self, revs):
+        KnitRepoFetcher._fetch_weave_texts(self, revs)
+        # Now generate a weave for the tree root
+        revision_trees = self.from_repository.revision_trees(revs)
+        inventory_weave = self.from_repository.get_inventory_weave()
+        for tree in revision_trees:
+            parent_texts = {}
+            revision_id = tree.inventory.root.revision
+            parents = inventory_weave.get_parents(revision_id)
+            versionedfile = self.to_repository.weave_store.get_weave_or_empty(
+                tree.inventory.root.file_id, 
+                self.to_repository.get_transaction())
+            parent_texts = versionedfile.add_lines(revision_id, parents, [], 
+                                                   parent_texts)
+        versionedfile.clear_cache()
 
 
 class Fetcher(object):
