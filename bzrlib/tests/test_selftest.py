@@ -706,18 +706,19 @@ class TestRunner(TestCase):
 
     def test_bench_history(self):
         import bzrlib.branch
-        import bzrlib.revisionspec
+        try:
+            branch = bzrlib.branch.Branch.open_containing(__file__)[0]
+        except errors.NotBranchError:
+            raise TestSkipped(
+                'Test must be run in a bzr.dev tree, not an installed copy.')
         test = TestRunner('dummy_test')
         output = StringIO()
         runner = TextTestRunner(stream=self._log_file, bench_history=output)
         result = self.run_test_runner(runner, test)
         output_string = output.getvalue()
-        # does anyone know a good regexp for revision ids?
-        # here we are using \S instead and checking the revision id afterwards
         self.assertContainsRe(output_string, "--date [0-9.]+ \S")
-        branch = bzrlib.branch.Branch.open_containing('.')[0]
-        revision_id = bzrlib.revisionspec.RevisionSpec(branch.revno()).in_history(branch).rev_id
-        self.assert_(output_string.rstrip().endswith(revision_id))
+        revision_id = branch.last_revision()
+        self.assertEndsWith(output_string.rstrip(), revision_id)
 
 
 class TestTestCase(TestCase):
