@@ -1833,22 +1833,11 @@ class WorkingTreeFormat3(WorkingTreeFormat):
     def __str__(self):
         return self.get_format_string()
 
-class WorkingTreeFormat4(WorkingTreeFormat3):
-    
-    def get_format_string(self):
-        """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar Working Tree format 4"
-
-    def get_format_description(self):
-        """See WorkingTreeFormat.get_format_description()."""
-        return "Working tree format 4"
-
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 __default_format = WorkingTreeFormat3()
 WorkingTreeFormat.register_format(__default_format)
-WorkingTreeFormat.register_format(WorkingTreeFormat4())
 WorkingTreeFormat.set_default_format(__default_format)
 _legacy_formats = [WorkingTreeFormat2(),
                    ]
