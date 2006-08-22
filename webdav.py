@@ -103,7 +103,9 @@ class HttpDavTransport(PyCurlTransport):
 
     def _set_curl_options(self, curl):
         super(self.__class__, self)._set_curl_options(curl)
-        # No noise please: libcurl displays request body on stdout otherwise
+        # No  noise  please:  libcurl  displays request  body  on
+        # stdout  otherwise.   Which  means that  commenting  the
+        # following line will be great for debug.
         curl.setopt(pycurl.WRITEFUNCTION,StringIO().write)
 
     # TODO: when doing  an initial push, mkdir is  called even if
@@ -126,9 +128,6 @@ class HttpDavTransport(PyCurlTransport):
         self._set_curl_options(curl)
         curl.setopt(pycurl.CUSTOMREQUEST , 'MKCOL')
         curl.setopt(pycurl.URL, abspath)
-
-        # No noise please
-        curl.setopt(pycurl.WRITEFUNCTION, StringIO().write)
 
         self._curl_perform(curl)
         code = curl.getinfo(pycurl.HTTP_CODE)
@@ -191,12 +190,10 @@ class HttpDavTransport(PyCurlTransport):
         abs_to = self._real_abspath(rel_to)
         # We use a dedicated curl to avoid polluting other request
         curl = pycurl.Curl()
+        self._set_curl_options(curl)
         curl.setopt(pycurl.CUSTOMREQUEST , 'COPY')
         curl.setopt(pycurl.URL, abs_from)
         curl.setopt(pycurl.HTTPHEADER, ['Destination: %s' % abs_to ])
-
-        # No noise please
-        curl.setopt(pycurl.WRITEFUNCTION, StringIO().write)
 
         curl.perform()
         code = curl.getinfo(pycurl.HTTP_CODE)
@@ -219,7 +216,7 @@ class HttpDavTransport(PyCurlTransport):
         # to  understand  why  to  be  able  to  share.
         #curl  = self._base_curl
         curl = pycurl.Curl()
-
+        self._set_curl_options(curl)
         curl.setopt(pycurl.URL, abspath)
         curl.setopt(pycurl.UPLOAD, True)
 
@@ -235,7 +232,7 @@ class HttpDavTransport(PyCurlTransport):
         curl.perform()
         code = curl.getinfo(pycurl.HTTP_CODE)
 
-        if code == 409:
+        if code in (403, 409):
             raise NoSuchFile(abspath) # Intermediate directories missing
         if code not in  (200, 201, 204):
             self._raise_curl_http_error(curl, 'expected 200, 201 or 204.')
@@ -251,12 +248,10 @@ class HttpDavTransport(PyCurlTransport):
         abs_to = self._real_abspath(rel_to)
         # We use a dedicated curl to avoid polluting other request
         curl = pycurl.Curl()
+        self._set_curl_options(curl)
         curl.setopt(pycurl.CUSTOMREQUEST , 'MOVE')
         curl.setopt(pycurl.URL, abs_from)
         curl.setopt(pycurl.HTTPHEADER, ['Destination: %s' % abs_to ])
-
-        # No noise please
-        curl.setopt(pycurl.WRITEFUNCTION, StringIO().write)
 
         curl.perform()
         code = curl.getinfo(pycurl.HTTP_CODE)
@@ -280,11 +275,9 @@ class HttpDavTransport(PyCurlTransport):
         abs_path = self._real_abspath(rel_path)
         # We use a dedicated curl to avoid polluting other requests
         curl = pycurl.Curl()
+        self._set_curl_options(curl)
         curl.setopt(pycurl.CUSTOMREQUEST , 'DELETE')
         curl.setopt(pycurl.URL, abs_path)
-
-        # No noise please
-        curl.setopt(pycurl.WRITEFUNCTION, StringIO().write)
 
         curl.perform()        
         code = curl.getinfo(pycurl.HTTP_CODE)

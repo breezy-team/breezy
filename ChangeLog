@@ -1,9 +1,17 @@
 2006-08-22  Vincent LADEUIL  <v.ladeuil@alplog.fr>
 
 	* webdav.py:
-	Add more TODOs and FIXMEs :-) Put at least this version passes bzr
-	selftest (except for lock_write  and copy_to for which need and.or
-	intent is not clear.
+	(HttpDavTransport.mkdir,                     HttpDavTransport.copy,
+	HttpDavTransport.move,        HttpDavTransport.delete):        Use
+	_set_curl_options to unify the use of curl.
+	(HttpDavTransport.put): Use _set_curl_options  to unify the use of
+	curl. Translate 403 as NoSuchFile too.
+
+2006-08-22-1  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+
+	*  webdav.py: Add  more TODOs  and FIXMEs  :-) Put  at  least this
+	version passes bzr selftest (except for lock_write and copy_to for
+	which need and.or intent is not clear.
 	(HttpDavTransport.__init__,         _set_curl_options):        Use
 	self.__class__.   We don't want  to change  the super()  call each
 	time the class is renamed.
