@@ -40,18 +40,25 @@ This should enable remote push operations.
 # TODO:   Cache  files   to   improve  performance   (a  bit   at
 # least). Files  should be kept  in a temporary directory  (or an
 # hash-based hierarchy to limit  local file systems problems) and
-# indexed on  their full URL  to allow sharing  between transport
-# instances.
+# indexed  on  their  full  URL  to  allow  sharing  between  DAV
+# transport instances.
 
 # TODO: Handle  the user and  password cleanly: do not  force the
-# user to provide them in the url (at least for the password).
+# user  to   provide  them   in  the  url   (at  least   for  the
+# password). Have a look at the password_manager classes. Tip: it
+# may be  possible to  share the password_manager  between across
+# all  transports by  prefixing  the relm  by  the protocol  used
+# (especially if other protocols do not use realms).
 
 # TODO: Find  a way to check for  bzr version so that  we can tie
 # this plugin tightly to the bzr versions.
 
 # TODO:  Try to  use Transport.translate_error  if it  becomes an
 # accessible function. Otherwise  duplicate it here (bad). Anyway
-# all translations of IOError should be factored.
+# all translations of IOError and OSError should be factored.
+
+# TODO: Review all hhtp^W http codes used here and by various DAV
+# servers implementations, I feel bugs lying around...
 
 from cStringIO import StringIO
 
@@ -232,7 +239,7 @@ class HttpDavTransport(PyCurlTransport):
         curl.perform()
         code = curl.getinfo(pycurl.HTTP_CODE)
 
-        if code in (403, 404, 409):
+        if code in (403, 409): # FIXME: 404, ?
             raise NoSuchFile(abspath) # Intermediate directories missing
         if code not in  (200, 201, 204):
             self._raise_curl_http_error(curl, 'expected 200, 201 or 204.')
@@ -307,7 +314,10 @@ mutter("webdav plugin transport registered")
 import errno
 import os
 import os.path
+import socket
 import string
+import sys
+import time
 
 from shutil import (
     copyfile
@@ -333,11 +343,31 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
 
     This is not a full implementation of a DAV server, only the parts
     really used by the plugin are.
-
-    It uses a local transport to forward the requests as
-    quick-and-dirty-first-shot implementation. Intuition tells
-    that it could comes haunt us later, but we'll see.
     """
+
+    # On   Mac  OS   X,  we   get  EAGAIN   (ressource  temporary
+    # unavailable)... permanently :) when reading the client socket
+    def _retry_if_not_available(self,func,*args):
+        if sys.platform != 'darwin':
+            return func(*args)
+        else:
+            for i in range(1,10):
+                try:
+                    return func(*args)
+                except socket.error, e:
+                    if e.args[0] == errno.EAGAIN:
+                        time.sleep(0.05)
+                        continue
+                    mutter("Hmm, that's worse than I thought")
+                    raise
+
+    def _read(self, length):
+        """Read the client socket"""
+        return self._retry_if_not_available(self.rfile.read,length)
+
+    def _readline(self):
+        """Read a full line on the client socket"""
+        return self._retry_if_not_available(self.rfile.readline)
 
     def _read_chunk(self):
         """
@@ -350,12 +380,12 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
 
         An empty chunk specifies a length of zero
         """
-        length = string.atoi(self.rfile.readline(),base=16)
+        length = string.atoi(self._readline(),base=16)
         data = None
         if length != 0:
-            data = self.rfile.read(length)
+            data = self._read(length)
             # Eats the newline following the chunk
-            self.rfile.readline()
+            self._readline()
             
         return length, data
 
@@ -370,7 +400,7 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
             # Always write in binary mode.
             mutter("do_PUT will try to open: [%s]" % path)
             f = open(path, 'wb')
-        except IOError,e :
+        except (IOError, OSError), e :
             self.send_error(409, "Conflict")
             return
         try:
@@ -380,7 +410,7 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
                 if length == 0:
                     break
                 f.write(data)
-        except IOError:
+        except (IOError, OSError):
             # FIXME: We leave a partially written file here
             self.send_error(409, "Conflict")
             f.close()
