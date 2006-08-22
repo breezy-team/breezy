@@ -232,7 +232,7 @@ class HttpDavTransport(PyCurlTransport):
         curl.perform()
         code = curl.getinfo(pycurl.HTTP_CODE)
 
-        if code in (403, 409):
+        if code in (403, 404, 409):
             raise NoSuchFile(abspath) # Intermediate directories missing
         if code not in  (200, 201, 204):
             self._raise_curl_http_error(curl, 'expected 200, 201 or 204.')

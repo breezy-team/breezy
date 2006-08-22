@@ -25,4 +25,3 @@ The plugin pass the bzr selftest except for:
   delegate the copy to the server).
 
 - test_rmdir_not_empty: We have cheated there. That's bad.
-
