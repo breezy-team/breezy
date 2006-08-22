@@ -811,12 +811,15 @@ class TestExtraAssertions(TestCase):
         self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
 
     def test_assertDeprecated(self):
-        def testfunc(be_deprecated):
+        def testfunc(be_deprecated, result=None):
             if be_deprecated is True:
                 symbol_versioning.warn('i am deprecated', DeprecationWarning, 
                                        stacklevel=1)
-        self.assertDeprecated(['i am deprecated'], testfunc, True)
-        self.assertDeprecated([], testfunc, False)
+            return result
+        result = self.assertDeprecated(['i am deprecated'], testfunc, True)
+        self.assertIs(None, result)
+        result = self.assertDeprecated([], testfunc, False, 'result')
+        self.assertEqual('result', result)
         self.assertDeprecated(['i am deprecated'], testfunc, 
                               be_deprecated=True)
         self.assertDeprecated([], testfunc, be_deprecated=False)

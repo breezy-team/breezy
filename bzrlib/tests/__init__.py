@@ -592,9 +592,9 @@ class TestCase(unittest.TestCase):
         method = symbol_versioning.warn
         symbol_versioning.set_warning_method(capture_warnings)
         try:
-            callable(*args, **kwargs)
+            result = callable(*args, **kwargs)
         finally:
-            result = symbol_versioning.set_warning_method(method)
+            symbol_versioning.set_warning_method(method)
         self.assertEqual(expected, local_warnings)
         return result
 
