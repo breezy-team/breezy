@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""An http transport, using webdav to allow PUT.
+"""An http transport, using webdav to allow pushing.
 
 This defines the HttpWebDAV transport, which implement the necessary
 handling of WebDAV to allow pushing on an http server.
@@ -22,6 +22,3 @@ handling of WebDAV to allow pushing on an http server.
 
 # Try to import the transport (which will register itself)
 import webdav
-
-# Import the tests too
-#import test_webdav

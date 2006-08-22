@@ -1,4 +1,22 @@
-2006-08-20  Vincent LADEUIL  <vila@imac-blanc.local>
+2006-08-22  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+
+	* webdav.py:
+	Add more TODOs and FIXMEs :-) Put at least this version passes bzr
+	selftest (except for lock_write  and copy_to for which need and.or
+	intent is not clear.
+	(HttpDavTransport.__init__,         _set_curl_options):        Use
+	self.__class__.   We don't want  to change  the super()  call each
+	time the class is renamed.
+	(mkdir): Quotes should be right. Even in comment, even in jokes:-)
+	(HttpDavTransport.copy): New method.
+	(HttpDavTransport.put): 204! We expect 204 not 404.
+	(HttpDavTransport.move): Raise exceptions on errors.
+	(HttpDavTransport.delete):  Horrrrrrible workaround.   Try  to get
+	devs advice asap.
+	(TestingDAVRequestHandler,  HttpServer_Dav):  First implementation
+	of a test server.
+
+2006-08-20  Vincent LADEUIL
 	First succesful  bzr.dev push.  Requires that bzr.dev  allows dirs
 	for http.
 

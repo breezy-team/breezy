@@ -1,9 +1,28 @@
-- When doing an initial push with:
-  
-  bzr push http+webdav://u:p@localhost/pub/web.dav
+Performances:
 
-  bzr fails reporting: 
+- Without any optimizations:
 
-  bzr: ERROR: File exists: 'http://u:p@localhost/pub/web.dav'
+time bzr push http+webdav://<user>:<pass>@<host>/pub/bzr.dev
 
-  why trying to create an already existent directory ?
+1948 revision(s) pushed.
+
+real	9m54.487s
+user	1m15.280s
+sys	0m20.060s
+
+
+Tests:
+
+The plugin pass the bzr selftest except for:
+
+- lock_write: We  can implement  that, but it  seems it  has been
+  abandoned in the existing code already in favor of a global lock
+  valid for all transports.
+
+- copy_to: We  can implement that,  but a special care  should be
+  taken  with aliases  (i.e.  how sure  can  we be  that the  two
+  transports are really  on the same server and  that we can really
+  delegate the copy to the server).
+
+- test_rmdir_not_empty: We have cheated there. That's bad.
+
