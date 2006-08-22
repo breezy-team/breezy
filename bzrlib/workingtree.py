@@ -664,7 +664,9 @@ class WorkingTree(bzrlib.tree.Tree):
         and setting the list to its value plus revision_id.
 
         :param revision_id: The revision id to add to the parent list. It may
-        be a ghost revision.
+        be a ghost revision as long as its not the first parent to be added,
+        or the allow_leftmost_as_ghost parameter is set True.
+        :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
         self.set_parent_ids(self.get_parent_ids() + [revision_id],
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
@@ -679,7 +681,9 @@ class WorkingTree(bzrlib.tree.Tree):
         simpler to use that api. If you have the parent already available, using
         this api is preferred.
 
-        :param parent_tuple: The (revision id, tree) to add to the parent list.             If the revision_id is a ghost, pass None for the tree.
+        :param parent_tuple: The (revision id, tree) to add to the parent list.
+            If the revision_id is a ghost, pass None for the tree.
+        :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
         self.set_parent_ids(self.get_parent_ids() + [parent_tuple[0]],
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
@@ -737,7 +741,6 @@ class WorkingTree(bzrlib.tree.Tree):
                     (rev_id, self.branch.repository.revision_tree(rev_id)))
             except errors.RevisionNotPresent:
                 trees.append((rev_id, None))
-                pass
         self.set_parent_trees(trees,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
@@ -749,12 +752,12 @@ class WorkingTree(bzrlib.tree.Tree):
             If tree is None, then that element is treated as an unreachable
             parent tree - i.e. a ghost.
         """
-        parent = parents_list[:1]
-        if len(parent):
+        if len(parents_list) > 0:
+            leftmost_id = parents_list[0][0]
             if (not allow_leftmost_as_ghost and not
-                self.branch.repository.has_revision(parent[0][0])):
-                raise errors.GhostRevision(parent[0][0])
-            self.set_last_revision(parent[0][0])
+                self.branch.repository.has_revision(leftmost_id)):
+                raise errors.GhostRevisionUnusableHere(leftmost_id)
+            self.set_last_revision(leftmost_id)
         else:
             self.set_last_revision(None)
         merges = parents_list[1:]
