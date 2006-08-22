@@ -67,6 +67,19 @@ class TestCommitBuilder(TestCaseWithRepository):
         # but thats all the current contract guarantees anyway.
         self.assertEqual('foo', tree.branch.repository.get_inventory('foo').revision_id)
 
+    def test_commit_without_root(self):
+        """This should cause a deprecation warning, not an assertion failure"""
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(['foo'])
+        tree.add('foo', 'foo-id')
+        entry = tree.inventory['foo-id']
+        builder = tree.branch.get_commit_builder([])
+        self.assertDeprecated(['Root entry should be supplied to'
+            ' record_entry_contents, as of bzr 0.10.'], 
+            builder.record_entry_contents, entry, [], 'foo', tree)
+        builder.finish_inventory()
+        rev_id = builder.commit('foo bar')
+
     def test_commit(self):
         tree = self.make_branch_and_tree(".")
         builder = tree.branch.get_commit_builder([])

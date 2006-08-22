@@ -1,6 +1,8 @@
 IN DEVELOPMENT
   
   IMPROVEMENTS:
+    * 'merge' now takes --uncommitted, to apply uncommitted changes from a
+      tree.  (Aaron Bentley)
   
     * 'bzr add --file-ids-from' can be used to specify another path to use
       for creating file ids, rather than generating all new ones. Internally,
@@ -12,10 +14,27 @@ IN DEVELOPMENT
       This will cache some of the intermediate trees, and decrease the
       setup time for benchmark tests. (John Arbash Meinel)
 
+    * Inverse forms are provided for all boolean options.  For example,
+      --strict has --no-strict, --no-recurse has --recurse (Aaron Bentley)
+
+    * Serialize out Inventories directly, rather than using ElementTree.
+      Writing out a kernel sized inventory drops from 2s down to ~350ms.
+      (Robert Collins, John Arbash Meinel)
+
   BUG FIXES:
+
+    * Handle TZ=UTC properly when reading/writing revisions.
+      (John Arbash Meinel, #55783, #56290)
 
     * Use GPG_TTY to allow gpg --cl to work with gpg-agent in a pipeline,
       (passing text to sign in on stdin). (John Arbash Meinel, #54468)
+
+    * External diff does the right thing for binaries even in foreign 
+      languages. (John Arbash Meinel, #56307)
+
+    * Testament handles more cases when content is unicode. Specific bug was
+      in handling of revision properties. (John Arbash Meinel, Holger Krekel,
+      #54723)
 
   INTERNALS:
 
@@ -24,6 +43,10 @@ IN DEVELOPMENT
       Especially helpful for some of the knit annotation code, which has to
       convert revision ids to utf8 to annotate lines in storage.
       (John Arbash Meinel)
+
+    * ``setup.py`` now searches the filesystem to find all packages which
+      need to be installed. This should help make the life of packagers
+      easier. (John Arbash Meinel)
 
 bzr 0.9.0  2006-08-11
 
