@@ -1,13 +1,41 @@
 #! /usr/bin/env python
 
-# This is an installation script for bzr.  Run it with
-# './setup.py install', or
-# './setup.py --help' for more options
+"""Installation script for bzr.
+Run it with
+ './setup.py install', or
+ './setup.py --help' for more options
+"""
 
+import os
+import sys
+
+import bzrlib
+
+##
+# META INFORMATION FOR SETUP
+
+META_INFO = {'name':         'bzr',
+             'version':      bzrlib.__version__,
+             'author':       'Canonical Ltd',
+             'author_email': 'bazaar-ng@lists.ubuntu.com',
+             'url':          'http://www.bazaar-vcs.org/',
+             'description':  'Friendly distributed version control system',
+             'license':      'GNU GPL v2',
+            }
+
+# The list of packages is automatically generated later. Add other things
+# that are part of BZRLIB here.
+BZRLIB = {}
+
+PKG_DATA = {# install files from selftest suite
+            'package_data': {'bzrlib': ['doc/api/*.txt',
+                                        'tests/test_patches_data/*',
+                                       ]},
+           }
+
+######################################################################
 # Reinvocation stolen from bzr, we need python2.4 by virtue of bzr_man
 # including bzrlib.help
-
-import os, sys
 
 try:
     version_info = sys.version_info
@@ -34,6 +62,30 @@ if hasattr(os, "unsetenv"):
     os.unsetenv(REINVOKE)
 
 
+def get_bzrlib_packages():
+    """Recurse through the bzrlib directory, and extract the package names"""
+
+    packages = []
+    base_path = os.path.dirname(os.path.abspath(bzrlib.__file__))
+    for root, dirs, files in os.walk(base_path):
+        if '__init__.py' in files:
+            assert root.startswith(base_path)
+            # Get just the path below bzrlib
+            package_path = root[len(base_path):]
+            # Remove leading and trailing slashes
+            package_path = package_path.strip('\\/')
+            if not package_path:
+                package_name = 'bzrlib'
+            else:
+                package_name = ('bzrlib.' +
+                            package_path.replace('/', '.').replace('\\', '.'))
+            packages.append(package_name)
+    return sorted(packages)
+
+
+BZRLIB['packages'] = get_bzrlib_packages()
+
+
 from distutils.core import setup
 from distutils.command.install_scripts import install_scripts
 from distutils.command.build import build
@@ -55,8 +107,11 @@ class my_install_scripts(install_scripts):
         if sys.platform == "win32":
             try:
                 scripts_dir = self.install_dir
-                script_path = os.path.join(scripts_dir, "bzr")
-                batch_str = "@%s %s %%*\n" % (sys.executable, script_path)
+                script_path = self._quoted_path(os.path.join(scripts_dir,
+                                                             "bzr"))
+                python_exe = self._quoted_path(sys.executable)
+                args = self._win_batch_args()
+                batch_str = "@%s %s %s" % (python_exe, script_path, args)
                 batch_path = script_path + ".bat"
                 f = file(batch_path, "w")
                 f.write(batch_str)
@@ -64,6 +119,19 @@ class my_install_scripts(install_scripts):
                 print "Created:", batch_path
             except Exception, e:
                 print "ERROR: Unable to create %s: %s" % (batch_path, e)
+
+    def _quoted_path(self, path):
+        if ' ' in path:
+            return '"' + path + '"'
+        else:
+            return path
+
+    def _win_batch_args(self):
+        if os.name == 'nt':
+            return '%*'
+        else:
+            return '%1 %2 %3 %4 %5 %6 %7 %8 %9'
+#/class my_install_scripts
 
 
 class bzr_build(build):
@@ -76,48 +144,77 @@ class bzr_build(build):
         import generate_docs
         generate_docs.main(argv=["bzr", "man"])
 
+
 ########################
 ## Setup
 ########################
 
-setup(name='bzr',
-      version='0.9pre',
-      author='Canonical Ltd',
-      author_email='bazaar-ng@lists.ubuntu.com',
-      url='http://bazaar-vcs.org/',
-      description='Friendly distributed version control system',
-      license='GNU GPL v2',
-      packages=['bzrlib',
-                'bzrlib.benchmarks',
-                'bzrlib.doc',
-                'bzrlib.doc.api',
-                'bzrlib.export',
-                'bzrlib.plugins',
-                'bzrlib.plugins.launchpad',
-                'bzrlib.store',
-                'bzrlib.store.revision',
-                'bzrlib.store.versioned',
-                'bzrlib.tests',
-                'bzrlib.tests.blackbox',
-                'bzrlib.tests.branch_implementations',
-                'bzrlib.tests.bzrdir_implementations',
-                'bzrlib.tests.interrepository_implementations',
-                'bzrlib.tests.interversionedfile_implementations',
-                'bzrlib.tests.repository_implementations',
-                'bzrlib.tests.revisionstore_implementations',
-                'bzrlib.tests.workingtree_implementations',
-                'bzrlib.transport',
-                'bzrlib.transport.http',
-                'bzrlib.ui',
-                'bzrlib.util',
-                'bzrlib.util.elementtree',
-                'bzrlib.util.effbot.org',
-                'bzrlib.util.configobj',
-                'bzrlib.bundle',
-                'bzrlib.bundle.serializer'
-                ],
-      scripts=['bzr'],
-      cmdclass={'install_scripts': my_install_scripts, 'build': bzr_build},
-      data_files=[('man/man1', ['bzr.1'])],
-    #   todo: install the txt files from bzrlib.doc.api.
-     )
+if 'bdist_wininst' in sys.argv:
+    import glob
+    # doc files
+    docs = glob.glob('doc/*.htm') + ['doc/default.css']
+    # python's distutils-based win32 installer
+    ARGS = {'scripts': ['bzr', 'tools/win32/bzr-win32-bdist-postinstall.py'],
+            # help pages
+            'data_files': [('Doc/Bazaar', docs)],
+           }
+
+    ARGS.update(META_INFO)
+    ARGS.update(BZRLIB)
+    ARGS.update(PKG_DATA)
+    
+    setup(**ARGS)
+
+elif 'py2exe' in sys.argv:
+    # py2exe setup
+    import py2exe
+
+    # pick real bzr version
+    import bzrlib
+
+    version_number = []
+    for i in bzrlib.version_info[:4]:
+        try:
+            i = int(i)
+        except ValueError:
+            i = 0
+        version_number.append(str(i))
+    version_str = '.'.join(version_number)
+
+    target = py2exe.build_exe.Target(script = "bzr",
+                                     dest_base = "bzr",
+                                     icon_resources = [(0,'bzr.ico')],
+                                     name = META_INFO['name'],
+                                     version = version_str,
+                                     description = META_INFO['description'],
+                                     author = META_INFO['author'],
+                                     copyright = "(c) Canonical Ltd, 2005-2006",
+                                     company_name = "Canonical Ltd.",
+                                     comments = META_INFO['description'],
+                                    )
+    options_list = {"py2exe": {"packages": BZRLIB['packages'] +
+                                           ['elementtree'],
+                               "excludes": ["Tkinter", "medusa"],
+                               "dist_dir": "win32_bzr.exe",
+                              },
+                   }
+    setup(options=options_list,
+          console=[target,
+                   'tools/win32/bzr_postinstall.py',
+                  ],
+          zipfile='lib/library.zip')
+
+else:
+    # std setup
+    ARGS = {'scripts': ['bzr'],
+            'data_files': [('man/man1', ['bzr.1'])],
+            'cmdclass': {'build': bzr_build,
+                         'install_scripts': my_install_scripts,
+                        },
+           }
+    
+    ARGS.update(META_INFO)
+    ARGS.update(BZRLIB)
+    ARGS.update(PKG_DATA)
+
+    setup(**ARGS)

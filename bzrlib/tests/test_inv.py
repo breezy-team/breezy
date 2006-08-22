@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -86,6 +86,7 @@ class TestInventory(TestCase):
             inv.add_path(*args)
 
         self.assertEqual([
+            ('', ROOT_ID),
             ('Makefile', 'makefile-id'),
             ('doc', 'doc-id'),
             ('src', 'src-id'),
@@ -108,6 +109,7 @@ class TestInventory(TestCase):
             inv.add_path(*args)
 
         self.assertEqual([
+            ('', ROOT_ID),
             ('Makefile', 'makefile-id'),
             ('doc', 'doc-id'),
             ('src', 'src-id'),

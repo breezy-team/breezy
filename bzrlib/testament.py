@@ -70,11 +70,10 @@ Testament format 1
 # revisions can be serialized.
 
 from copy import copy
-from cStringIO import StringIO
-import string
 from sha import sha
 
 from bzrlib.osutils import contains_whitespace, contains_linebreaks
+
 
 class Testament(object):
     """Reduced summary of a revision.
@@ -132,7 +131,9 @@ class Testament(object):
         for l in self.message.splitlines():
             a('  %s\n' % l)
         a('inventory:\n')
-        for path, ie in self.inventory.iter_entries():
+        entries = self.inventory.iter_entries()
+        entries.next()
+        for path, ie in entries:
             a(self._entry_to_line(path, ie))
         r.extend(self._revprops_to_lines())
         if __debug__:
@@ -143,23 +144,28 @@ class Testament(object):
 
     def _escape_path(self, path):
         assert not contains_linebreaks(path)
-        return unicode(path.replace('\\', '/').replace(' ', '\ ')).encode('utf-8')
+        return unicode(path.replace('\\', '/').replace(' ', '\ '))
 
     def _entry_to_line(self, path, ie):
         """Turn an inventory entry into a testament line"""
-        l = '  ' + str(ie.kind)
-        l += ' ' + self._escape_path(path)
         assert not contains_whitespace(ie.file_id)
-        l += ' ' + unicode(ie.file_id).encode('utf-8')
+
+        content = ''
+        content_spacer=''
         if ie.kind == 'file':
             # TODO: avoid switching on kind
             assert ie.text_sha1
-            l += ' ' + ie.text_sha1
+            content = ie.text_sha1
+            content_spacer = ' '
         elif ie.kind == 'symlink':
             assert ie.symlink_target
-            l += ' ' + self._escape_path(ie.symlink_target)
-        l += '\n'
-        return l.decode('utf-8')
+            content = self._escape_path(ie.symlink_target)
+            content_spacer = ' '
+
+        l = u'  %s %s %s%s%s\n' % (ie.kind, self._escape_path(path),
+                                   unicode(ie.file_id),
+                                   content_spacer, content)
+        return l
 
     def as_text(self):
         return ''.join(self.as_text_lines())
@@ -181,9 +187,7 @@ class Testament(object):
             assert not contains_whitespace(name)
             r.append('  %s:\n' % name)
             for line in value.splitlines():
-                if not isinstance(line, str):
-                    line = line.encode('utf-8')
-                r.append('    %s\n' % line)
+                r.append(u'    %s\n' % line)
         return r
 
     def as_sha1(self):
@@ -199,6 +203,6 @@ class StrictTestament(Testament):
     short_header = 'bazaar-ng testament short form 2.1\n'
     def _entry_to_line(self, path, ie):
         l = Testament._entry_to_line(self, path, ie)[:-1]
-        l += ' ' + ie.revision.decode('utf-8')
+        l += ' ' + ie.revision
         l += {True: ' yes\n', False: ' no\n'}[ie.executable]
         return l

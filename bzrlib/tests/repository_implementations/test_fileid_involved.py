@@ -20,7 +20,6 @@ import sys
 from bzrlib.add import smart_add
 from bzrlib.builtins import merge
 from bzrlib.errors import IllegalPath
-from bzrlib.delta import compare_trees
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.transform import TreeTransform
@@ -37,7 +36,7 @@ class FileIdInvolvedBase(TestCaseWithRepository):
     def compare_tree_fileids(self, branch, old_rev, new_rev):
         old_tree = self.branch.repository.revision_tree(old_rev)
         new_tree = self.branch.repository.revision_tree(new_rev)
-        delta = compare_trees(old_tree, new_tree)
+        delta = new_tree.changes_from(old_tree)
 
         l2 = [id for path, id, kind in delta.added] + \
              [id for oldpath, newpath, id, kind, text_modified, \

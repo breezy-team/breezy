@@ -131,6 +131,25 @@ class TestOSUtils(TestCaseInTempDir):
             finally:
                 os.remove('socket')
 
+    def test_get_umask(self):
+        if sys.platform == 'win32':
+            # umask always returns '0', no way to set it
+            self.assertEqual(0, osutils.get_umask())
+            return
+
+        orig_umask = osutils.get_umask()
+        try:
+            os.umask(0222)
+            self.assertEqual(0222, osutils.get_umask())
+            os.umask(0022)
+            self.assertEqual(0022, osutils.get_umask())
+            os.umask(0002)
+            self.assertEqual(0002, osutils.get_umask())
+            os.umask(0027)
+            self.assertEqual(0027, osutils.get_umask())
+        finally:
+            os.umask(orig_umask)
+
 
 class TestSafeUnicode(TestCase):
 
@@ -307,36 +326,40 @@ class TestWalkDirs(TestCaseInTempDir):
             ]
         self.build_tree(tree)
         expected_dirblocks = [
-                [
-                    ('0file', '0file', 'file'),
-                    ('1dir', '1dir', 'directory'),
-                    ('2file', '2file', 'file'),
-                ],
-                [
-                    ('1dir/0file', '0file', 'file'),
-                    ('1dir/1dir', '1dir', 'directory'),
-                ],
-                [
-                ],
+                (('', '.'),
+                 [('0file', '0file', 'file'),
+                  ('1dir', '1dir', 'directory'),
+                  ('2file', '2file', 'file'),
+                 ]
+                ),
+                (('1dir', './1dir'),
+                 [('1dir/0file', '0file', 'file'),
+                  ('1dir/1dir', '1dir', 'directory'),
+                 ]
+                ),
+                (('1dir/1dir', './1dir/1dir'),
+                 [
+                 ]
+                ),
             ]
         result = []
         found_bzrdir = False
-        for dirblock in osutils.walkdirs('.'):
+        for dirdetail, dirblock in osutils.walkdirs('.'):
             if len(dirblock) and dirblock[0][1] == '.bzr':
                 # this tests the filtering of selected paths
                 found_bzrdir = True
                 del dirblock[0]
-            result.append(dirblock)
+            result.append((dirdetail, dirblock))
 
         self.assertTrue(found_bzrdir)
         self.assertEqual(expected_dirblocks,
-            [[line[0:3] for line in block] for block in result])
+            [(dirinfo, [line[0:3] for line in block]) for dirinfo, block in result])
         # you can search a subdir only, with a supplied prefix.
         result = []
-        for dirblock in osutils.walkdirs('1dir', '1dir'):
+        for dirblock in osutils.walkdirs('./1dir', '1dir'):
             result.append(dirblock)
         self.assertEqual(expected_dirblocks[1:],
-            [[line[0:3] for line in block] for block in result])
+            [(dirinfo, [line[0:3] for line in block]) for dirinfo, block in result])
 
     def assertPathCompare(self, path_less, path_greater):
         """check that path_less and path_greater compare correctly."""
@@ -414,6 +437,59 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertEqual(
             dir_sorted_paths,
             sorted(original_paths, cmp=osutils.compare_paths_prefix_order))
+
+
+class TestCopyTree(TestCaseInTempDir):
+    
+    def test_copy_basic_tree(self):
+        self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
+        osutils.copy_tree('source', 'target')
+        self.assertEqual(['a', 'b'], os.listdir('target'))
+        self.assertEqual(['c'], os.listdir('target/b'))
+
+    def test_copy_tree_target_exists(self):
+        self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c',
+                         'target/'])
+        osutils.copy_tree('source', 'target')
+        self.assertEqual(['a', 'b'], os.listdir('target'))
+        self.assertEqual(['c'], os.listdir('target/b'))
+
+    def test_copy_tree_symlinks(self):
+        if not osutils.has_symlinks():
+            return
+        self.build_tree(['source/'])
+        os.symlink('a/generic/path', 'source/lnk')
+        osutils.copy_tree('source', 'target')
+        self.assertEqual(['lnk'], os.listdir('target'))
+        self.assertEqual('a/generic/path', os.readlink('target/lnk'))
+
+    def test_copy_tree_handlers(self):
+        processed_files = []
+        processed_links = []
+        def file_handler(from_path, to_path):
+            processed_files.append(('f', from_path, to_path))
+        def dir_handler(from_path, to_path):
+            processed_files.append(('d', from_path, to_path))
+        def link_handler(from_path, to_path):
+            processed_links.append((from_path, to_path))
+        handlers = {'file':file_handler,
+                    'directory':dir_handler,
+                    'symlink':link_handler,
+                   }
+
+        self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
+        if osutils.has_symlinks():
+            os.symlink('a/generic/path', 'source/lnk')
+        osutils.copy_tree('source', 'target', handlers=handlers)
+
+        self.assertEqual([('d', 'source', 'target'),
+                          ('f', 'source/a', 'target/a'),
+                          ('d', 'source/b', 'target/b'),
+                          ('f', 'source/b/c', 'target/b/c'),
+                         ], processed_files)
+        self.failIfExists('target')
+        if osutils.has_symlinks():
+            self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
 
 
 class TestTerminalEncoding(TestCase):

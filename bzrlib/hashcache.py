@@ -203,16 +203,14 @@ class HashCache(object):
         """Write contents of cache to file."""
         outf = AtomicFile(self.cache_file_name(), 'wb', new_mode=self._mode)
         try:
-            print >>outf, CACHE_HEADER,
+            outf.write(CACHE_HEADER)
 
             for path, c  in self._cache.iteritems():
                 assert '//' not in path, path
-                outf.write(path.encode('utf-8'))
-                outf.write('// ')
-                print >>outf, c[0],     # hex sha1
-                for fld in c[1]:
-                    print >>outf, "%d" % fld,
-                print >>outf
+                line_info = [path.encode('utf-8'), '// ', c[0], ' ']
+                line_info.append(' '.join([str(fld) for fld in c[1]]))
+                line_info.append('\n')
+                outf.write(''.join(line_info))
             outf.commit()
             self.needs_write = False
             ## mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
@@ -220,8 +218,7 @@ class HashCache(object):
             ##        self.stat_count,
             ##        self.danger_count, self.update_count)
         finally:
-            if not outf.closed:
-                outf.abort()
+            outf.close()
 
     def read(self):
         """Reinstate cache from file.

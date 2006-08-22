@@ -18,6 +18,7 @@
 
 import os
 
+from bzrlib.inventory import InventoryFile
 from bzrlib.transform import TreeTransform
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
@@ -40,8 +41,10 @@ class TestExecutable(TestCaseWithWorkingTree):
 
     def check_exist(self, tree):
         """Just check that both files have the right executable bits set"""
-        measured = [(cn,ie.executable) 
-                    for cn,ie in tree.inventory.iter_entries()]
+        measured = []
+        for cn, ie in tree.inventory.iter_entries():
+            if isinstance(ie, InventoryFile):
+                measured.append((cn, ie.executable))
         self.assertEqual([('a', True), ('b', False)], measured)
         self.failUnless(tree.is_executable(self.a_id),
                         "'a' lost the execute bit")
@@ -55,7 +58,9 @@ class TestExecutable(TestCaseWithWorkingTree):
                 the inventory is empty, just that the tree doesn't have them
         """
         if not ignore_inv:
-            self.assertEqual([], list(tree.inventory.iter_entries()))
+            self.assertEqual(
+                [('', tree.inventory.root)],
+                list(tree.inventory.iter_entries()))
         self.failIf(tree.has_id(self.a_id))
         self.failIf(tree.has_filename('a'))
         self.failIf(tree.has_id(self.b_id))

@@ -494,6 +494,7 @@ class TestCommit(TestCaseWithTransport):
         reporter = CapturingReporter()
         this_tree.commit('do the commit', reporter=reporter)
         self.assertEqual([
+            ('change', 'unchanged', ''),
             ('change', 'unchanged', 'dirtoleave'),
             ('change', 'unchanged', 'filetoleave'),
             ('change', 'modified', 'filetomodify'),
@@ -515,8 +516,7 @@ class TestCommit(TestCaseWithTransport):
         tree.add(['a', 'b'])
         tree.commit('added a, b')
         tree.remove(['a', 'b'])
-        Commit().commit(message='removed a', working_tree=tree, 
-                        specific_files='a')
+        tree.commit('removed a', specific_files='a')
         basis = tree.basis_tree().inventory
         self.assertIs(None, basis.path2id('a'))
         self.assertFalse(basis.path2id('b') is None)

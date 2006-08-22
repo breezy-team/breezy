@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Bazaar-NG -- a free distributed version-control tool"""
+"""Bazaar -- a free distributed version-control tool"""
 
 import os
 import sys
@@ -70,7 +70,7 @@ except ImportError, e:
                      "\n")
     raise
 
-if bzrlib.version_info[:3] != (0, 9, 0):
+if bzrlib.version_info[:3] != (0, 10, 0):
     sys.stderr.write("bzr: WARNING: bzrlib version doesn't match the bzr program.\n"
             "This may indicate an installation problem.\n"
             "bzrlib from %s is version %r\n"

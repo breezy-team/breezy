@@ -19,6 +19,7 @@ import os
 import sys
 import tempfile
 
+from bzrlib import inventory
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
@@ -26,8 +27,8 @@ from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
-from bzrlib.delta import compare_trees
-from bzrlib.errors import BzrError, TestamentMismatch, NotABundle, BadBundle
+from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle, 
+                           NoSuchFile,)
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
 from bzrlib.tests import (TestCaseInTempDir, TestCaseWithTransport,
@@ -38,12 +39,12 @@ from bzrlib.workingtree import WorkingTree
 
 class MockTree(object):
     def __init__(self):
-        from bzrlib.inventory import RootEntry, ROOT_ID
+        from bzrlib.inventory import InventoryDirectory, ROOT_ID
         object.__init__(self)
         self.paths = {ROOT_ID: ""}
         self.ids = {"": ROOT_ID}
         self.contents = {}
-        self.root = RootEntry(ROOT_ID)
+        self.root = InventoryDirectory(ROOT_ID, '', None)
 
     inventory = property(lambda x:x)
 
@@ -290,12 +291,14 @@ class BTreeTester(TestCase):
     def test_iteration(self):
         """Ensure that iteration through ids works properly"""
         btree = self.make_tree_1()[0]
-        self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'c', 'd'])
+        self.assertEqual(self.sorted_ids(btree),
+            [inventory.ROOT_ID, 'a', 'b', 'c', 'd'])
         btree.note_deletion("grandparent/parent/file")
         btree.note_id("e", "grandparent/alt_parent/fool", kind="directory")
         btree.note_last_changed("grandparent/alt_parent/fool", 
                                 "revisionidiguess")
-        self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'd', 'e'])
+        self.assertEqual(self.sorted_ids(btree),
+            [inventory.ROOT_ID, 'a', 'b', 'd', 'e'])
 
 
 class BundleTester(TestCaseWithTransport):
@@ -400,7 +403,7 @@ class BundleTester(TestCaseWithTransport):
             new = tree.branch.repository.revision_tree(ancestor)
 
             # Check that there aren't any inventory level changes
-            delta = compare_trees(old, new)
+            delta = new.changes_from(old)
             self.assertFalse(delta.has_changed(),
                              'Revision %s not copied correctly.'
                              % (ancestor,))
@@ -409,7 +412,7 @@ class BundleTester(TestCaseWithTransport):
             for inventory_id in old:
                 try:
                     old_file = old.get_file(inventory_id)
-                except:
+                except NoSuchFile:
                     continue
                 if old_file is None:
                     continue
@@ -419,8 +422,7 @@ class BundleTester(TestCaseWithTransport):
             rh = self.b1.revision_history()
             tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
             tree.update()
-            delta = compare_trees(self.b1.repository.revision_tree(rev_id),
-                                  tree)
+            delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
             self.assertFalse(delta.has_changed(),
                              'Working tree has modifications')
         return tree
@@ -797,6 +799,14 @@ class BundleTester(TestCaseWithTransport):
         self.assertEqual('Mon 2006-07-10 20:51:26.000000000 +0530', rev.date)
         self.assertEqual(19800, rev.timezone)
         self.assertEqual(1152544886.0, rev.timestamp)
+
+    def test_bundle_root_id(self):
+        self.tree1 = self.make_branch_and_tree('b1')
+        self.b1 = self.tree1.branch
+        self.tree1.commit('message', rev_id='revid1')
+        bundle = self.get_valid_bundle(None, 'revid1')
+        tree = bundle.revision_tree(self.b1.repository, 'revid1')
+        self.assertEqual('revid1', tree.inventory.root.revision)
 
 
 class MungedBundleTester(TestCaseWithTransport):

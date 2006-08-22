@@ -460,7 +460,7 @@ class BzrDir(object):
         _unsupported is a private parameter to the BzrDir class.
         """
         t = get_transport(base)
-        mutter("trying to open %r with transport %r", base, t)
+        # mutter("trying to open %r with transport %r", base, t)
         format = BzrDirFormat.find_format(t)
         BzrDir._check_supported(format, _unsupported)
         return format.open(t, _found=True)
@@ -615,7 +615,8 @@ class BzrDir(object):
                 # XXX FIXME RBC 20060214 need tests for this when the basis
                 # is incomplete
                 result_repo.fetch(basis_repo, revision_id=revision_id)
-            result_repo.fetch(source_repository, revision_id=revision_id)
+            if source_repository is not None:
+                result_repo.fetch(source_repository, revision_id=revision_id)
         if source_branch is not None:
             source_branch.sprout(result, revision_id=revision_id)
         else:
@@ -733,7 +734,7 @@ class BzrDirPreSplitOut(BzrDir):
         self._check_supported(format, unsupported)
         return format.open(self, _found=True)
 
-    def sprout(self, url, revision_id=None, basis=None):
+    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
         """See BzrDir.sprout()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
@@ -1217,8 +1218,13 @@ class BzrDirFormat5(BzrDirFormat):
         result = (super(BzrDirFormat5, self).initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
         if not _cloning:
-            BzrBranchFormat4().initialize(result)
-            WorkingTreeFormat2().initialize(result)
+            branch = BzrBranchFormat4().initialize(result)
+            try:
+                WorkingTreeFormat2().initialize(result)
+            except errors.NotLocalUrl:
+                # Even though we can't access the working tree, we need to
+                # create its control files.
+                WorkingTreeFormat2().stub_initialize_remote(branch.control_files)
         return result
 
     def _open(self, transport):
@@ -1271,13 +1277,13 @@ class BzrDirFormat6(BzrDirFormat):
         result = super(BzrDirFormat6, self).initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
         if not _cloning:
-            BzrBranchFormat4().initialize(result)
+            branch = BzrBranchFormat4().initialize(result)
             try:
                 WorkingTreeFormat2().initialize(result)
             except errors.NotLocalUrl:
-                # emulate pre-check behaviour for working tree and silently 
-                # fail.
-                pass
+                # Even though we can't access the working tree, we need to
+                # create its control files.
+                WorkingTreeFormat2().stub_initialize_remote(branch.control_files)
         return result
 
     def _open(self, transport):
@@ -1557,10 +1563,9 @@ class ConvertBzrDir4To5(Converter):
     def _store_new_weave(self, rev, inv, present_parents):
         # the XML is now updated with text versions
         if __debug__:
-            for file_id in inv:
-                ie = inv[file_id]
-                if ie.kind == 'root_directory':
-                    continue
+            entries = inv.iter_entries()
+            entries.next()
+            for path, ie in entries:
                 assert hasattr(ie, 'revision'), \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
@@ -1579,8 +1584,9 @@ class ConvertBzrDir4To5(Converter):
         mutter('converting texts of revision {%s}',
                rev_id)
         parent_invs = map(self._load_updated_inventory, present_parents)
-        for file_id in inv:
-            ie = inv[file_id]
+        entries = inv.iter_entries()
+        entries.next()
+        for path, ie in entries:
             self._convert_file_version(rev, ie, parent_invs)
 
     def _convert_file_version(self, rev, ie, parent_invs):
@@ -1589,8 +1595,6 @@ class ConvertBzrDir4To5(Converter):
         The file needs to be added into the weave if it is a merge
         of >=2 parents or if it's changed from its parent.
         """
-        if ie.kind == 'root_directory':
-            return
         file_id = ie.file_id
         rev_id = rev.revision_id
         w = self.text_weaves.get(file_id)

@@ -63,7 +63,9 @@ import bzrlib.osutils as osutils
 import bzrlib.plugin
 import bzrlib.progress as progress
 from bzrlib.revision import common_ancestor
+from bzrlib.revisionspec import RevisionSpec
 import bzrlib.store
+from bzrlib import symbol_versioning
 import bzrlib.trace
 from bzrlib.transport import get_transport
 import bzrlib.transport
@@ -109,8 +111,10 @@ def packages_to_test():
     import bzrlib.tests.bzrdir_implementations
     import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.interversionedfile_implementations
+    import bzrlib.tests.intertree_implementations
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.revisionstore_implementations
+    import bzrlib.tests.tree_implementations
     import bzrlib.tests.workingtree_implementations
     return [
             bzrlib.doc,
@@ -119,8 +123,10 @@ def packages_to_test():
             bzrlib.tests.bzrdir_implementations,
             bzrlib.tests.interrepository_implementations,
             bzrlib.tests.interversionedfile_implementations,
+            bzrlib.tests.intertree_implementations,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.revisionstore_implementations,
+            bzrlib.tests.tree_implementations,
             bzrlib.tests.workingtree_implementations,
             ]
 
@@ -132,9 +138,25 @@ class _MyResult(unittest._TextTestResult):
     """
     stop_early = False
     
-    def __init__(self, stream, descriptions, verbosity, pb=None):
+    def __init__(self, stream, descriptions, verbosity, pb=None,
+                 bench_history=None):
+        """Construct new TestResult.
+
+        :param bench_history: Optionally, a writable file object to accumulate
+            benchmark results.
+        """
         unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
         self.pb = pb
+        if bench_history is not None:
+            from bzrlib.version import _get_bzr_source_tree
+            src_tree = _get_bzr_source_tree()
+            if src_tree:
+                revision_id = src_tree.last_revision()
+            else:
+                # XXX: If there's no branch, what should we do?
+                revision_id = ''
+            bench_history.write("--date %s %s\n" % (time.time(), revision_id))
+        self._bench_history = bench_history
     
     def extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -244,6 +266,11 @@ class _MyResult(unittest._TextTestResult):
 
     def addSuccess(self, test):
         self.extractBenchmarkTime(test)
+        if self._bench_history is not None:
+            if self._benchmarkTime is not None:
+                self._bench_history.write("%s %s\n" % (
+                    self._formatTime(self._benchmarkTime),
+                    test.id()))
         if self.showAll:
             self.stream.writeln('   OK %s' % self._testTimeString())
             for bench_called, stats in getattr(test, '_benchcalls', []):
@@ -300,18 +327,21 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  keep_output=False,
-                 pb=None):
+                 pb=None,
+                 bench_history=None):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
         self.keep_output = keep_output
         self.pb = pb
+        self._bench_history = bench_history
 
     def _makeResult(self):
         result = _MyResult(self.stream,
                            self.descriptions,
                            self.verbosity,
-                           pb=self.pb)
+                           pb=self.pb,
+                           bench_history=self._bench_history)
         result.stop_early = self.stop_on_failure
         return result
 
@@ -391,7 +421,6 @@ def iter_suite_tests(suite):
 
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
-    # XXX: Not used yet
 
 
 class CommandFailed(Exception):
@@ -548,6 +577,27 @@ class TestCase(unittest.TestCase):
             self.fail("%r is an instance of %s rather than %s" % (
                 obj, obj.__class__, kls))
 
+    def assertDeprecated(self, expected, callable, *args, **kwargs):
+        """Assert that a callable is deprecated in a particular way.
+
+        :param expected: a list of the deprecation warnings expected, in order
+        :param callable: The callable to call
+        :param args: The positional arguments for the callable
+        :param kwargs: The keyword arguments for the callable
+        """
+        local_warnings = []
+        def capture_warnings(msg, cls, stacklevel=None):
+            self.assertEqual(cls, DeprecationWarning)
+            local_warnings.append(msg)
+        method = symbol_versioning.warn
+        symbol_versioning.set_warning_method(capture_warnings)
+        try:
+            callable(*args, **kwargs)
+        finally:
+            result = symbol_versioning.set_warning_method(method)
+        self.assertEqual(expected, local_warnings)
+        return result
+
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
 
@@ -589,7 +639,8 @@ class TestCase(unittest.TestCase):
         new_env = {
             'HOME': os.getcwd(),
             'APPDATA': os.getcwd(),
-            'BZREMAIL': None,
+            'BZR_EMAIL': None,
+            'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
         }
         self.__old_env = {}
@@ -960,6 +1011,8 @@ class TestCaseInTempDir(TestCase):
         shape is a sequence of file specifications.  If the final
         character is '/', a directory is created.
 
+        This assumes that all the elements in the tree being built are new.
+
         This doesn't add anything to a branch.
         :param line_endings: Either 'binary' or 'native'
                              in binary mode, exact contents are written
@@ -970,7 +1023,7 @@ class TestCaseInTempDir(TestCase):
                           VFS's. If the transport is readonly or None,
                           "." is opened automatically.
         """
-        # XXX: It's OK to just create them using forward slashes on windows?
+        # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
             transport = get_transport(".")
         for name in shape:
@@ -985,7 +1038,14 @@ class TestCaseInTempDir(TestCase):
                 else:
                     raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
-                transport.put(urlutils.escape(name), StringIO(content))
+                # Technically 'put()' is the right command. However, put
+                # uses an AtomicFile, which requires an extra rename into place
+                # As long as the files didn't exist in the past, append() will
+                # do the same thing as put()
+                # On jam's machine, make_kernel_like_tree is:
+                #   put:    4.5-7.5s (averaging 6s)
+                #   append: 2.9-4.5s
+                transport.append(urlutils.escape(name), StringIO(content))
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
@@ -1195,7 +1255,7 @@ def filter_suite_by_re(suite, pattern):
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
-              transport=None, lsprof_timed=None):
+              transport=None, lsprof_timed=None, bench_history=None):
     TestCaseInTempDir._TEST_NAME = name
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
@@ -1208,7 +1268,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             descriptions=0,
                             verbosity=verbosity,
                             keep_output=keep_output,
-                            pb=pb)
+                            pb=pb,
+                            bench_history=bench_history)
     runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
         suite = filter_suite_by_re(suite, pattern)
@@ -1220,8 +1281,15 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              keep_output=False,
              transport=None,
              test_suite_factory=None,
-             lsprof_timed=None):
+             lsprof_timed=None,
+             bench_history=None):
     """Run the whole test suite under the enhanced runner"""
+    # XXX: Very ugly way to do this...
+    # Disable warning about old formats because we don't want it to disturb
+    # any blackbox tests.
+    from bzrlib import repository
+    repository._deprecation_warning_done = True
+
     global default_transport
     if transport is None:
         transport = default_transport
@@ -1235,7 +1303,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
                      stop_on_failure=stop_on_failure, keep_output=keep_output,
                      transport=transport,
-                     lsprof_timed=lsprof_timed)
+                     lsprof_timed=lsprof_timed,
+                     bench_history=bench_history)
     finally:
         default_transport = old_transport
 
@@ -1249,16 +1318,17 @@ def test_suite():
     testmod_names = [
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_api',
+                   'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
+                   'bzrlib.tests.test_cache_utf8',
                    'bzrlib.tests.test_command',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
@@ -1294,7 +1364,6 @@ def test_suite():
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
-                   'bzrlib.tests.test_revprops',
                    'bzrlib.tests.test_revisiontree',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
@@ -1313,12 +1382,14 @@ def test_suite():
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
+                   'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
                    'bzrlib.tests.test_upgrade',
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
+                   'bzrlib.tests.test_version',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',

@@ -20,20 +20,17 @@
 
 import os
 from sha import sha
-import sys
 
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.branch import Branch
 from bzrlib.testament import Testament, StrictTestament
-from bzrlib.trace import mutter
 from bzrlib.transform import TreeTransform
 from bzrlib.osutils import has_symlinks
 
 
-class TestamentTests(TestCaseWithTransport):
+class TestamentSetup(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestamentTests, self).setUp()
+        super(TestamentSetup, self).setUp()
         self.wt = self.make_branch_and_tree('.')
         b = self.b = self.wt.branch
         b.nick = "test branch"
@@ -56,6 +53,9 @@ class TestamentTests(TestCaseWithTransport):
                  timezone=36000,
                  rev_id='test@user-2',
                  committer='test@user')
+
+
+class TestamentTests(TestamentSetup):
 
     def test_null_testament(self):
         """Testament for a revision with no contents."""
@@ -100,24 +100,6 @@ class TestamentTests(TestCaseWithTransport):
         actual_short = t.as_short_text()
         self.assertEqualDiff(actual_short, REV_2_SHORT_STRICT)
 
-    def test_testament_command(self):
-        """Testament containing a file and a directory."""
-        out, err = self.run_bzr_captured(['testament', '--long'])
-        self.assertEqualDiff(err, '')
-        self.assertEqualDiff(out, REV_2_TESTAMENT)
-
-    def test_testament_command_2(self):
-        """Command getting short testament of previous version."""
-        out, err = self.run_bzr_captured(['testament', '-r1'])
-        self.assertEqualDiff(err, '')
-        self.assertEqualDiff(out, REV_1_SHORT)
-
-    def test_testament_command_3(self):
-        """Command getting short testament of previous version."""
-        out, err = self.run_bzr_captured(['testament', '-r1', '--strict'])
-        self.assertEqualDiff(err, '')
-        self.assertEqualDiff(out, REV_1_SHORT_STRICT)
-
     def test_testament_symlinks(self):
         """Testament containing symlink (where possible)"""
         if not has_symlinks():
@@ -135,7 +117,9 @@ class TestamentTests(TestCaseWithTransport):
     def test_testament_revprops(self):
         """Testament to revision with extra properties"""
         props = dict(flavor='sour cherry\ncream cheese',
-                     size='medium')
+                     size='medium',
+                     empty='',
+                    )
         self.wt.commit(message='revision with properties',
                       timestamp=1129025493,
                       timezone=36000,
@@ -151,7 +135,9 @@ class TestamentTests(TestCaseWithTransport):
             timestamp=1129025493,
             timezone=36000,
             rev_id='test@user-3',
-            committer='test@user')
+            committer='Erik B\xe5gfors <test@user>',
+            revprops={'uni':u'\xb5'}
+            )
         t = Testament.from_revision(self.b.repository, 'test@user-3')
         self.assertEqualDiff(
             SAMPLE_UNICODE_TESTAMENT.encode('utf-8'), t.as_text())
@@ -281,6 +267,7 @@ inventory:
 properties:
   branch-nick:
     test branch
+  empty:
   flavor:
     sour cherry
     cream cheese
@@ -313,7 +300,7 @@ properties:
 SAMPLE_UNICODE_TESTAMENT = u"""\
 bazaar-ng testament version 1
 revision-id: test@user-3
-committer: test@user
+committer: Erik B\xe5gfors <test@user>
 timestamp: 1129025493
 timezone: 36000
 parents:
@@ -327,4 +314,6 @@ inventory:
 properties:
   branch-nick:
     test branch
+  uni:
+    \xb5
 """

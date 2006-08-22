@@ -17,6 +17,7 @@
 import os
 from cStringIO import StringIO
 import errno
+import subprocess
 from tempfile import TemporaryFile
 
 from bzrlib.diff import internal_diff, external_diff, show_diff_trees
@@ -99,6 +100,7 @@ class TestDiff(TestCase):
     def test_external_diff(self):
         lines = external_udiff_lines(['boo\n'], ['goo\n'])
         self.check_patch(lines)
+        self.assertEqual('\n', lines[-1])
 
     def test_external_diff_no_fileno(self):
         # Make sure that we can handle not having a fileno, even
@@ -107,6 +109,30 @@ class TestDiff(TestCase):
                                      ['goo\n']*10000,
                                      use_stringio=True)
         self.check_patch(lines)
+
+    def test_external_diff_binary_lang_c(self):
+        orig_lang = os.environ.get('LANG')
+        try:
+            os.environ['LANG'] = 'C'
+            lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
+            self.assertEqual(['Binary files old and new differ\n', '\n'], lines)
+        finally:
+            if orig_lang is None:
+                del os.environ['LANG']
+            else:
+                os.environ['LANG'] = orig_lang
+
+    def test_no_external_diff(self):
+        """Check that NoDiff is raised when diff is not available"""
+        # Use os.environ['PATH'] to make sure no 'diff' command is available
+        orig_path = os.environ['PATH']
+        try:
+            os.environ['PATH'] = ''
+            self.assertRaises(NoDiff, external_diff,
+                              'old', ['boo\n'], 'new', ['goo\n'],
+                              StringIO(), diff_opts=['-u'])
+        finally:
+            os.environ['PATH'] = orig_path
         
     def test_internal_diff_default(self):
         # Default internal diff encoding is utf8
@@ -163,6 +189,25 @@ class TestDiff(TestCase):
                     u'new_\xe5', ['new_text\n'], output)
         self.failUnless(isinstance(output.getvalue(), str),
             'internal_diff should return bytestrings')
+
+
+class TestDiffFiles(TestCaseInTempDir):
+
+    def test_external_diff_binary(self):
+        """The output when using external diff should use diff's i18n error"""
+        # Make sure external_diff doesn't fail in the current LANG
+        lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
+
+        cmd = ['diff', '-u', 'old', 'new']
+        open('old', 'wb').write('\x00foobar\n')
+        open('new', 'wb').write('foo\x00bar\n')
+        pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                     stdin=subprocess.PIPE)
+        out, err = pipe.communicate()
+        # Diff returns '2' on Binary files.
+        self.assertEqual(2, pipe.returncode)
+        # We should output whatever diff tells us, plus a trailing newline
+        self.assertEqual(out.splitlines(True) + ['\n'], lines)
 
 
 class TestDiffDates(TestCaseWithTransport):
@@ -303,6 +348,7 @@ class TestDiffDates(TestCaseWithTransport):
         out = self.get_diff(old_tree, new_tree, specific_files=['dir2'], 
                             working_tree=self.wt)
         self.assertNotContainsRe(out, 'file1\t')
+
 
 class TestPatienceDiffLib(TestCase):
 

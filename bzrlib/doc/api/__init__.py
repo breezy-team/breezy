@@ -28,7 +28,11 @@ import doctest
 import os
     
 def test_suite():
-    candidates = os.listdir(os.path.dirname(__file__))
+    dir_ = os.path.dirname(__file__)
+    if os.path.isdir(dir_):
+        candidates = os.listdir(dir_)
+    else:
+        candidates = []
     scripts = [candidate for candidate in candidates
                if candidate.endswith('.txt')]
     return doctest.DocFileSuite(*scripts)

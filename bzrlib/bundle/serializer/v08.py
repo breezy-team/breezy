@@ -27,7 +27,6 @@ from bzrlib.bundle.serializer import (BundleSerializer,
                                      )
 from bzrlib.bundle.serializer import binary_diff
 from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
-from bzrlib.delta import compare_trees
 from bzrlib.diff import internal_diff
 from bzrlib.osutils import pathjoin
 from bzrlib.progress import DummyProgress
@@ -159,8 +158,7 @@ class BundleSerializerV08(BundleSerializer):
             if rev_id == last_rev_id:
                 rev_tree = last_rev_tree
             else:
-                base_tree = self.source.revision_tree(rev_id)
-            rev_tree = self.source.revision_tree(rev_id)
+                rev_tree = self.source.revision_tree(rev_id)
             if rev_id in self.forced_bases:
                 explicit_base = True
                 base_id = self.forced_bases[rev_id]
@@ -269,7 +267,7 @@ class BundleSerializerV08(BundleSerializer):
             else:
                 action.write(self.to_file)
 
-        delta = compare_trees(old_tree, new_tree, want_unchanged=True)
+        delta = new_tree.changes_from(old_tree, want_unchanged=True)
         for path, file_id, kind in delta.removed:
             action = Action('removed', [kind, path]).write(self.to_file)
 
@@ -318,7 +316,7 @@ class BundleReader(object):
         self.from_file = iter(from_file)
         self._next_line = None
         
-        self.info = BundleInfo()
+        self.info = BundleInfo08()
         # We put the actual inventory ids in the footer, so that the patch
         # is easier to read for humans.
         # Unfortunately, that means we need to read everything before we
@@ -501,3 +499,9 @@ class BundleReader(object):
                 # Consume the trailing \n and stop processing
                 self._next().next()
                 break
+
+
+class BundleInfo08(BundleInfo):
+    def _update_tree(self, bundle_tree, revision_id):
+        bundle_tree.note_last_changed('', revision_id)
+        BundleInfo._update_tree(self, bundle_tree, revision_id)
