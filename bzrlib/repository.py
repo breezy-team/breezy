@@ -1656,11 +1656,54 @@ class InterRepository(InterObject):
     InterRepository.get(other).method_name(parameters).
     """
 
-    _optimisers = set()
+    _optimisers = []
     """The available optimised InterRepository types."""
+
+    def copy_content(self, revision_id=None, basis=None):
+        raise NotImplementedError(self.copy_content)
+
+    def fetch(self, revision_id=None, pb=None):
+        raise NotImplementedError(self.fetch)
+   
+    @needs_read_lock
+    def missing_revision_ids(self, revision_id=None):
+        """Return the revision ids that source has that target does not.
+        
+        These are returned in topological order.
+
+        :param revision_id: only return revision ids included by this
+                            revision_id.
+        """
+        # generic, possibly worst case, slow code path.
+        target_ids = set(self.target.all_revision_ids())
+        if revision_id is not None:
+            source_ids = self.source.get_ancestry(revision_id)
+            assert source_ids[0] == None
+            source_ids.pop(0)
+        else:
+            source_ids = self.source.all_revision_ids()
+        result_set = set(source_ids).difference(target_ids)
+        # this may look like a no-op: its not. It preserves the ordering
+        # other_ids had while only returning the members from other_ids
+        # that we've decided we need.
+        return [rev_id for rev_id in source_ids if rev_id in result_set]
+
+
+class InterSameDataRepository(InterRepository):
+    """Code for converting between repositories that represent the same data.
+    
+    Data format and model must match for this to work.
+    """
+
+    _matching_repo_format = RepositoryFormat4()
+    """Repository format for testing with."""
 
     @staticmethod
     def is_compatible(source, target):
+        if not isinstance(source, Repository):
+            return False
+        if not isinstance(target, Repository):
+            return False
         if source._format.rich_root_data == target._format.rich_root_data:
             return True
         else:
@@ -1706,38 +1749,16 @@ class InterRepository(InterObject):
         """
         from bzrlib.fetch import GenericRepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target, self.target._format)
+               self.source, self.source._format, self.target, 
+               self.target._format)
         f = GenericRepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
                                pb=pb)
         return f.count_copied, f.failed_revisions
 
-    @needs_read_lock
-    def missing_revision_ids(self, revision_id=None):
-        """Return the revision ids that source has that target does not.
-        
-        These are returned in topological order.
 
-        :param revision_id: only return revision ids included by this
-                            revision_id.
-        """
-        # generic, possibly worst case, slow code path.
-        target_ids = set(self.target.all_revision_ids())
-        if revision_id is not None:
-            source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] == None
-            source_ids.pop(0)
-        else:
-            source_ids = self.source.all_revision_ids()
-        result_set = set(source_ids).difference(target_ids)
-        # this may look like a no-op: its not. It preserves the ordering
-        # other_ids had while only returning the members from other_ids
-        # that we've decided we need.
-        return [rev_id for rev_id in source_ids if rev_id in result_set]
-
-
-class InterWeaveRepo(InterRepository):
+class InterWeaveRepo(InterSameDataRepository):
     """Optimised code paths between Weave based repositories."""
 
     _matching_repo_format = RepositoryFormat7()
@@ -1855,7 +1876,7 @@ class InterWeaveRepo(InterRepository):
             return self.source._eliminate_revisions_not_present(required_topo_revisions)
 
 
-class InterKnitRepo(InterRepository):
+class InterKnitRepo(InterSameDataRepository):
     """Optimised code paths between Knit based repositories."""
 
     _matching_repo_format = RepositoryFormatKnit1()
@@ -1917,6 +1938,7 @@ class InterKnitRepo(InterRepository):
             # that against the revision records.
             return self.source._eliminate_revisions_not_present(required_topo_revisions)
 
+InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
 

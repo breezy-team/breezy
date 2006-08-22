@@ -375,7 +375,7 @@ class InterTree(InterObject):
     will pass through to InterTree as appropriate.
     """
 
-    _optimisers = set()
+    _optimisers = []
 
     @needs_read_lock
     def compare(self, want_unchanged=False, specific_files=None,
@@ -408,7 +408,3 @@ class InterTree(InterObject):
             return delta.TreeDelta()
         return delta._compare_trees(self.source, self.target, want_unchanged,
             specific_file_ids)
-
-    @staticmethod
-    def is_compatible(source, target):
-        return True

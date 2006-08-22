@@ -558,13 +558,9 @@ class InterVersionedFile(InterObject):
     InterVersionedFile.get(other).method_name(parameters).
     """
 
-    _optimisers = set()
+    _optimisers = []
     """The available optimised InterVersionedFile types."""
 
-    @staticmethod
-    def is_compatible(source, target):
-        return True
-    
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """Integrate versions from self.source into self.target.
 

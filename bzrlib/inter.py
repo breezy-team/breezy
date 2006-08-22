@@ -18,9 +18,6 @@
 """Inter-object utility class."""
 
 
-from bzrlib import errors
-
-
 class InterObject(object):
     """This class represents operations taking place between two objects.
 
@@ -39,8 +36,8 @@ class InterObject(object):
     the needs_read_lock and needs_write_lock decorators.)
     """
 
-    # _optimisers = set()
-    # Each concrete InterObject type should have its own optimisers set.
+    # _optimisers = list()
+    # Each concrete InterObject type should have its own optimisers list.
 
     def __init__(self, source, target):
         """Construct a default InterObject instance. Please use 'get'.
@@ -77,10 +74,10 @@ class InterObject(object):
         If an optimised worker exists it will be used otherwise
         a default Inter worker instance will be created.
         """
-        for provider in list(klass._optimisers) + [klass]:
+        for provider in reversed(klass._optimisers):
             if provider.is_compatible(source, target):
                 return provider(source, target)
-        raise errors.NoInterWorker(source, target)
+        return klass(source, target)
 
     def lock_read(self):
         """Take out a logical read lock.
@@ -101,7 +98,7 @@ class InterObject(object):
     @classmethod
     def register_optimiser(klass, optimiser):
         """Register an InterObject optimiser."""
-        klass._optimisers.add(optimiser)
+        klass._optimisers.append(optimiser)
 
     def unlock(self):
         """Release the locks on source and target."""
