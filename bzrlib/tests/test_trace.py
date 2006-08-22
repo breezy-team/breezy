@@ -125,6 +125,5 @@ class TestTrace(TestCase):
         self._log_file.flush()
         log = self._get_log()
         self.assertContainsRe(log, 'Writing a greek mu')
-        self.assertContainsRe(log, 'UnicodeError')
-        self.assertContainsRe(log, "'But fails in an ascii string")
-        self.assertContainsRe(log, ": %s', '\\\\xb5'")
+        self.assertContainsRe(log, "But fails in an ascii string")
+        self.assertContainsRe(log, u"ascii argument: \xb5")
