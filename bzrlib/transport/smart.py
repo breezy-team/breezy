@@ -516,14 +516,10 @@ class SmartTransport(sftp.SFTPUrlHandling):
     type: SmartTCPTransport, etc.
     """
 
-    def __init__(self, server_url, clone_from=None):
+    def __init__(self, server_url):
         super(SmartTransport, self).__init__(server_url)
+        self._client = None
         ## print 'init transport url=%r' % server_url
-        if clone_from is not None:
-            # reuse same connection
-            self._client = clone_from._client
-        else:
-            self._client = None
 
     def _ensure_connection(self):
         if self._client is None:
@@ -542,7 +538,10 @@ class SmartTransport(sftp.SFTPUrlHandling):
         if self._port is not None:
             netloc = '%s:%d' % (netloc, self._port)
         new_url = self._scheme + '://' + netloc + new_path
-        return SmartTransport(new_url, clone_from=self)
+        clone = self.__class__(new_url)
+        # reuse same connection
+        clone._client = self._client
+        return clone
 
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
