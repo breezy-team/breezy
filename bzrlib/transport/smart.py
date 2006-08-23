@@ -522,6 +522,11 @@ class SmartTransport(sftp.SFTPUrlHandling):
         ## print 'init transport url=%r' % server_url
 
     def _ensure_connection(self):
+        # XXX: it would be nicer to move this lazy-connect functionality into
+        # SmartStreamClient, so we don't have to scatter _ensure_connection
+        # calls throughout this class.  It would also mean that "t =
+        # get_transport('bzr...'); t2 = t.clone('.'); t2.list_dir('.');
+        # t.list_dir('.')" would share the connection.
         if self._client is None:
             readfile, writefile = self._connect_to_server()
             self._client = SmartStreamClient(readfile, writefile)
