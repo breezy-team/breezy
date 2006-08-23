@@ -23,7 +23,7 @@ from bzrlib import (
     errors,
     revision,
     )
-from bzrlib.errors import BzrError, NoSuchRevision, NoCommits
+from bzrlib.errors import NoSuchRevision, NoCommits
 
 
 _marker = []
@@ -132,8 +132,7 @@ class RevisionSpec(object):
                 if spec.startswith(spectype.prefix):
                     return object.__new__(spectype, spec)
             else:
-                raise BzrError('No namespace registered for string: %r' %
-                               spec)
+                raise errors.NoSuchRevisionSpec(spec)
         else:
             raise TypeError('Unhandled revision type %s' % spec)
 

@@ -507,6 +507,13 @@ class NoSuchRevision(BzrNewError):
         BzrNewError.__init__(self, branch=branch, revision=revision)
 
 
+class NoSuchRevisionSpec(BzrNewError):
+    """No namespace registered for string: %(spec)r"""
+
+    def __init__(self, spec):
+        BzrNewError.__init__(self, spec=spec)
+
+
 class InvalidRevisionSpec(BzrNewError):
     """Requested revision: '%(spec)s' does not exist in branch:
 %(branch)s%(extra)s"""

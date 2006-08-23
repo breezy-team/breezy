@@ -79,6 +79,9 @@ class TestOddRevisionSpec(TestRevisionSpec):
     def test_object(self):
         self.assertRaises(TypeError, RevisionSpec, object())
 
+    def test_unregistered_spec(self):
+        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec, 'foo')
+
 
 class TestRevisionSpec_int(TestRevisionSpec):
     
