@@ -22,43 +22,12 @@ from bzrlib import (
     errors,
     )
 from bzrlib.builtins import merge
-from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.errors import NoCommonAncestor, NoCommits
 from bzrlib.revisionspec import RevisionSpec
 
 
 class TestRevisionNamespaces(TestCaseWithTransport):
-
-    def test_revno_n_path(self):
-        """Test revision specifiers.
-
-        These identify revisions by date, etc."""
-        wta = self.make_branch_and_tree('a')
-        ba = wta.branch
-        
-        wta.commit('Commit one', rev_id='a@r-0-1')
-        wta.commit('Commit two', rev_id='a@r-0-2')
-        wta.commit('Commit three', rev_id='a@r-0-3')
-
-        wtb = self.make_branch_and_tree('b')
-        bb = wtb.branch
-
-        wtb.commit('Commit one', rev_id='b@r-0-1')
-        wtb.commit('Commit two', rev_id='b@r-0-2')
-        wtb.commit('Commit three', rev_id='b@r-0-3')
-
-        self.assertEquals(RevisionSpec('revno:1:a/').in_history(ba),
-                          (1, 'a@r-0-1'))
-        # The argument of in_history should be ignored since it is
-        # redundant with the path in the spec.
-        self.assertEquals(RevisionSpec('revno:1:a/').in_history(None),
-                          (1, 'a@r-0-1'))
-        self.assertEquals(RevisionSpec('revno:1:a/').in_history(bb),
-                          (1, 'a@r-0-1'))
-        self.assertEquals(RevisionSpec('revno:2:b/').in_history(None),
-                          (2, 'b@r-0-2'))
-
 
     def test_revision_namespaces(self):
         """Test revision specifiers.
@@ -127,27 +96,6 @@ class TestRevisionNamespaces(TestCaseWithTransport):
         rev_info = spec.in_history(branch)
         self.assertEqual(rev_info, (None, 'A'))
 
-    def test_invalid_revno(self):
-        self.build_tree(['branch1/', 'branch1/file'])
-        wt = self.make_branch_and_tree('branch1')
-        wt.add('file')
-        wt.commit('first commit', rev_id='r1')
-        wt.commit('second commit', rev_id='r2')
-
-        # In the future -20 will probably just fall back to 0
-        # but for now, we want to make sure it raises the right error
-        self.assertRaises(errors.InvalidRevisionSpec,
-                          RevisionSpec('-20').in_history, wt.branch)
-        self.assertRaises(errors.InvalidRevisionSpec,
-                          RevisionSpec('10').in_history, wt.branch)
-
-        self.assertRaises(errors.InvalidRevisionSpec,
-                          RevisionSpec('revno:-20').in_history, wt.branch)
-        self.assertRaises(errors.InvalidRevisionSpec,
-                          RevisionSpec('revno:10').in_history, wt.branch)
-        self.assertRaises(errors.InvalidRevisionSpec,
-                          RevisionSpec('revno:a').in_history, wt.branch)
-
 
 # Basic class, which just creates a really basic set of revisions
 class TestRevisionSpec(TestCaseWithTransport):
@@ -207,7 +155,8 @@ class TestRevisionSpec_int(TestRevisionSpec):
         self.assertInHistoryIs(2, 'r2', '-1')
         self.assertInHistoryIs(1, 'r1', '-2')
 
-        # XXX: This is probably bogus, and will change to Invalid in the future
+        # XXX: This is probably bogus, and may change to 
+        # either being restricted to '1' or Invalid in the future
         self.assertInHistoryIs(0, None, '-3')
 
 
@@ -229,7 +178,8 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertInHistoryIs(2, 'r2', 'revno:-1')
         self.assertInHistoryIs(1, 'r1', 'revno:-2')
 
-        # XXX: This is probably bogus, and will change to Invalid in the future
+        # XXX: This is probably bogus, and may change to 
+        # either being restricted to '1' or Invalid in the future
         self.assertInHistoryIs(0, None, 'revno:-3')
 
         # TODO: In the future, a negative number that is too large
@@ -254,6 +204,13 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         except ValueError, e:
             pass
         self.assertInvalid('revno:X:tree2', extra='\n' + str(e))
+
+    def test_non_exact_branch(self):
+        # It seems better to require an exact path to the branch
+        # Branch.open() rather than using Branch.open_containing()
+        self.assertRaises(errors.NotBranchError,
+                          RevisionSpec('revno:2:tree2/a').in_history,
+                          self.tree.branch)
 
     def test_with_branch(self):
         # Passing a URL overrides the supplied branch path
@@ -286,6 +243,34 @@ class TestRevisionSpec_revno(TestRevisionSpec):
     def test_invalid_revno_in_branch(self):
         self.tree.commit('three', rev_id='r3')
         self.assertInvalid('revno:3:tree2')
+
+    def test_revno_n_path(self):
+        """Old revno:N:path tests"""
+        wta = self.make_branch_and_tree('a')
+        ba = wta.branch
+        
+        wta.commit('Commit one', rev_id='a@r-0-1')
+        wta.commit('Commit two', rev_id='a@r-0-2')
+        wta.commit('Commit three', rev_id='a@r-0-3')
+
+        wtb = self.make_branch_and_tree('b')
+        bb = wtb.branch
+
+        wtb.commit('Commit one', rev_id='b@r-0-1')
+        wtb.commit('Commit two', rev_id='b@r-0-2')
+        wtb.commit('Commit three', rev_id='b@r-0-3')
+
+        self.assertEquals(RevisionSpec('revno:1:a/').in_history(ba),
+                          (1, 'a@r-0-1'))
+        # The argument of in_history should be ignored since it is
+        # redundant with the path in the spec.
+        self.assertEquals(RevisionSpec('revno:1:a/').in_history(None),
+                          (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('revno:1:a/').in_history(bb),
+                          (1, 'a@r-0-1'))
+        self.assertEquals(RevisionSpec('revno:2:b/').in_history(None),
+                          (2, 'b@r-0-2'))
+
 
 
 class TestRevisionSpec_revid(TestRevisionSpec):

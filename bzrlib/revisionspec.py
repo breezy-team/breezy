@@ -24,7 +24,9 @@ from bzrlib import (
     )
 from bzrlib.errors import BzrError, NoSuchRevision, NoCommits
 
+
 _marker = []
+
 
 class RevisionInfo(object):
     """The results of applying a revision specification to a branch.
@@ -86,9 +88,11 @@ class RevisionInfo(object):
         return '<bzrlib.revisionspec.RevisionInfo object %s, %s for %r>' % (
             self.revno, self.rev_id, self.branch)
 
+
 # classes in this list should have a "prefix" attribute, against which
 # string specs are matched
 SPEC_TYPES = []
+
 
 class RevisionSpec(object):
     """A parsed revision specification.
@@ -425,8 +429,8 @@ class RevisionSpec_ancestor(RevisionSpec):
     prefix = 'ancestor:'
 
     def _match_on(self, branch, revs):
-        from branch import Branch
-        from revision import common_ancestor, MultipleRevisionSources
+        from bzrlib.branch import Branch
+        from bzrlib.revision import common_ancestor, MultipleRevisionSources
         other_branch = Branch.open_containing(self.spec)[0]
         revision_a = branch.last_revision()
         revision_b = other_branch.last_revision()
@@ -443,6 +447,7 @@ class RevisionSpec_ancestor(RevisionSpec):
         return RevisionInfo(branch, revno, rev_id)
         
 SPEC_TYPES.append(RevisionSpec_ancestor)
+
 
 class RevisionSpec_branch(RevisionSpec):
     """A branch: revision specifier.
