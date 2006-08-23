@@ -281,33 +281,57 @@ class KnitRepoFetcher(RepoFetcher):
         to_rf.join(from_rf, version_ids=revs)
 
 
+class Inter1and2Helper(object):
+
+    def generate_root_texts(self, fetcher, revs):
+        revision_trees = fetcher.from_repository.revision_trees(revs)
+        inventory_weave = fetcher.from_repository.get_inventory_weave()
+        for tree in revision_trees:
+            parent_texts = {}
+            revision_id = tree.inventory.root.revision
+            parents = inventory_weave.get_parents(revision_id)
+            to_store = fetcher.to_repository.weave_store
+            versionedfile = to_store.get_weave_or_empty(
+                tree.inventory.root.file_id, 
+                fetcher.to_repository.get_transaction())
+            parent_texts = versionedfile.add_lines(revision_id, parents, [], 
+                                                   parent_texts)
+        versionedfile.clear_cache()
+
+
+    def regenerate_inventory(self, fetcher, revs):
+        revision_trees = fetcher.from_repository.revision_trees(revs)
+        inventory_weave = fetcher.from_repository.get_inventory_weave()
+        for tree in revision_trees:
+            parents = inventory_weave.get_parents(tree.get_revision_id())
+            fetcher.to_repository.add_inventory(tree.get_revision_id(),
+                                                tree.inventory, parents)
+
+
+class Model1toKnit2Fetcher(GenericRepoFetcher):
+    """Fetch from a Model1 repository into a Knit2 repository
+    """
+
+    def _fetch_weave_texts(self, revs):
+        GenericRepoFetcher._fetch_weave_texts(self, revs)
+        # Now generate a weave for the tree root
+        Inter1and2Helper().generate_root_texts(self, revs)
+
+    def _fetch_inventory_weave(self, revs):
+        Inter1and2Helper().regenerate_inventory(self, revs)
+ 
+
 class Knit1to2Fetcher(KnitRepoFetcher):
     """Fetch from a Knit1 repository into a Knit2 repository"""
 
     def _fetch_weave_texts(self, revs):
         KnitRepoFetcher._fetch_weave_texts(self, revs)
         # Now generate a weave for the tree root
-        revision_trees = self.from_repository.revision_trees(revs)
-        inventory_weave = self.from_repository.get_inventory_weave()
-        for tree in revision_trees:
-            parent_texts = {}
-            revision_id = tree.inventory.root.revision
-            parents = inventory_weave.get_parents(revision_id)
-            versionedfile = self.to_repository.weave_store.get_weave_or_empty(
-                tree.inventory.root.file_id, 
-                self.to_repository.get_transaction())
-            parent_texts = versionedfile.add_lines(revision_id, parents, [], 
-                                                   parent_texts)
-        versionedfile.clear_cache()
+        Inter1and2Helper().generate_root_texts(self, revs)
 
     def _fetch_inventory_weave(self, revs):
-        revision_trees = self.from_repository.revision_trees(revs)
-        inventory_weave = self.from_repository.get_inventory_weave()
-        for tree in revision_trees:
-            parents = inventory_weave.get_parents(tree.get_revision_id())
-            self.to_repository.add_inventory(tree.get_revision_id(),
-                                             tree.inventory, parents)
-
+        Inter1and2Helper().regenerate_inventory(self, revs)
+        
 
 class Fetcher(object):
     """Backwards compatibility glue for branch.fetch()."""

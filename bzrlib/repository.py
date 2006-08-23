@@ -2019,7 +2019,35 @@ class InterKnitRepo(InterSameDataRepository):
             return self.source._eliminate_revisions_not_present(required_topo_revisions)
 
 
+class InterModel1and2(InterRepository):
+
+    _matching_repo_format = None
+
+    @staticmethod
+    def is_compatible(source, target):
+        if not isinstance(source, Repository):
+            return False
+        if not isinstance(target, Repository):
+            return False
+        if not source._format.rich_root_data and target._format.rich_root_data:
+            return True
+        else:
+            return False
+
+    @needs_write_lock
+    def fetch(self, revision_id=None, pb=None):
+        """See InterRepository.fetch()."""
+        from bzrlib.fetch import Model1toKnit2Fetcher
+        f = Model1toKnit2Fetcher(to_repository=self.target,
+                                 from_repository=self.source,
+                                 last_revision=revision_id,
+                                 pb=pb)
+        return f.count_copied, f.failed_revisions
+
+
 class InterKnit1and2(InterKnitRepo):
+
+    _matching_repo_format = None
 
     @staticmethod
     def is_compatible(source, target):
@@ -2050,6 +2078,7 @@ class InterKnit1and2(InterKnitRepo):
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
+InterRepository.register_optimiser(InterModel1and2)
 InterRepository.register_optimiser(InterKnit1and2)
 
 
@@ -2121,16 +2150,21 @@ class InterRepositoryTestProviderAdapter(object):
         # default format.
         # XXX: robertc 20060220 reinstate this when there are two supported
         # formats which do not have an optimal code path between them.
-        result.append((InterRepository,
-                       RepositoryFormat6(),
-                       RepositoryFormatKnit1()))
+        #result.append((InterRepository,
+        #               RepositoryFormat6(),
+        #               RepositoryFormatKnit1()))
         for optimiser in InterRepository._optimisers:
-            result.append((optimiser,
-                           optimiser._matching_repo_format,
-                           optimiser._matching_repo_format
-                           ))
+            if optimiser._matching_repo_format is not None:
+                result.append((optimiser,
+                               optimiser._matching_repo_format,
+                               optimiser._matching_repo_format
+                               ))
         # if there are specific combinations we want to use, we can add them 
         # here.
+        result.append((InterModel1and2, RepositoryFormat5(),
+                       RepositoryFormatKnit2()))
+        result.append((InterKnit1and2, RepositoryFormatKnit1(),
+                       RepositoryFormatKnit2()))
         return result
 
 

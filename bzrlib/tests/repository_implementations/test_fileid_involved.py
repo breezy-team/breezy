@@ -173,13 +173,21 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             self.branch.repository.fileids_altered_by_revision_ids(
                 ['rev-G', 'rev-F', 'rev-C', 'rev-B', 'rev-<D>', 'rev-K', 'rev-J']))
 
+    def fileids_altered_by_revision_ids(self, revision_ids):
+        """This is a wrapper to strip TREE_ROOT if it occurs"""
+        repo = self.branch.repository
+        result = repo.fileids_altered_by_revision_ids(revision_ids)
+        if 'TREE_ROOT' in result:
+            del result['TREE_ROOT']
+        return result
+
     def test_fileids_altered_by_revision_ids(self):
         self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-A']),
              'b-file-id-2006-01-01-defg': set(['rev-A']),
              'c-funky<file-id> quiji%bo': set(['rev-A']),
              }, 
-            self.branch.repository.fileids_altered_by_revision_ids(["rev-A"]))
+            self.fileids_altered_by_revision_ids(["rev-A"]))
         self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-B'])
              }, 
