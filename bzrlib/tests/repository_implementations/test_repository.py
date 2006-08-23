@@ -466,7 +466,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         # a inventory with no parents and the revision has parents..
         # i.e. a ghost.
         repo = self.make_repository('inventory_with_unnecessary_ghost')
-        inv = Inventory()
+        inv = Inventory(revision_id = 'ghost')
+        inv.root.revision = 'ghost'
         sha1 = repo.add_inventory('ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
@@ -477,6 +478,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         rev.parent_ids = ['the_ghost']
         repo.add_revision('ghost', rev)
          
+        inv = Inventory(revision_id = 'the_ghost')
+        inv.root.revision = 'the_ghost'
         sha1 = repo.add_inventory('the_ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,

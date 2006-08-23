@@ -1019,6 +1019,7 @@ class KnitRepository2(KnitRepository):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
+        assert inv.revision_id is not None
         assert inv.root.revision is not None
         return xml6.serializer_v6.write_inventory_to_string(inv)
 

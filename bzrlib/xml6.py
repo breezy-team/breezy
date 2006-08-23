@@ -7,8 +7,9 @@ class Serializer_v6(xml5.Serializer_v5):
         """Append the inventory root to output."""
         append('<inventory')
         append(' format="6"')
-        append(' revision_id="')
-        append(xml5._encode_and_escape(inv.revision_id))
+        if inv.revision_id is not None:
+            append(' revision_id="')
+            append(xml5._encode_and_escape(inv.revision_id))
         append('>\n')
         self._append_entry(append, inv.root)
 
