@@ -23,6 +23,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Give nicer error messages when a user supplies an invalid --revision
+      parameter. (John Arbash Meinel, #55420)
+
     * Handle TZ=UTC properly when reading/writing revisions.
       (John Arbash Meinel, #55783, #56290)
 
