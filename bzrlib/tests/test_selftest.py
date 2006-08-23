@@ -605,7 +605,8 @@ class TestTestResult(TestCase):
         output_string = output.getvalue()
         # if you are wondering about the regexp please read the comment in
         # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
-        self.assertContainsRe(output_string, "--date [0-9.]+ \S")
+        # XXX: what comment?  -- Andrew Bennetts
+        self.assertContainsRe(output_string, "--date [0-9.]+")
 
     def test_benchhistory_records_test_times(self):
         result_stream = StringIO()
