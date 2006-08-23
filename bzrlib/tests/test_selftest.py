@@ -809,19 +809,19 @@ class TestExtraAssertions(TestCase):
         self.assertEndsWith('foo', 'oo')
         self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
 
-    def test_assertDeprecated(self):
+    def test_callDeprecated(self):
         def testfunc(be_deprecated, result=None):
             if be_deprecated is True:
                 symbol_versioning.warn('i am deprecated', DeprecationWarning, 
                                        stacklevel=1)
             return result
-        result = self.assertDeprecated(['i am deprecated'], testfunc, True)
+        result = self.callDeprecated(['i am deprecated'], testfunc, True)
         self.assertIs(None, result)
-        result = self.assertDeprecated([], testfunc, False, 'result')
+        result = self.callDeprecated([], testfunc, False, 'result')
         self.assertEqual('result', result)
-        self.assertDeprecated(['i am deprecated'], testfunc, 
+        self.callDeprecated(['i am deprecated'], testfunc, 
                               be_deprecated=True)
-        self.assertDeprecated([], testfunc, be_deprecated=False)
+        self.callDeprecated([], testfunc, be_deprecated=False)
 
 
 class TestConvenienceMakers(TestCaseWithTransport):
