@@ -23,7 +23,6 @@ from bzrlib import (
     errors,
     revision,
     )
-from bzrlib.errors import NoSuchRevision, NoCommits
 
 
 _marker = []
@@ -206,7 +205,7 @@ def _get_int_revno_helper(branch, revs, revno, spec):
             revno = len(revs) + revno + 1
     try:
         revision_id = branch.get_rev_id(revno, revs)
-    except NoSuchRevision:
+    except errors.NoSuchRevision:
         raise errors.InvalidRevisionSpec(spec, branch)
     return RevisionInfo(branch, revno, revision_id)
 
@@ -282,7 +281,7 @@ class RevisionSpec_last(RevisionSpec):
     def _match_on(self, branch, revs):
         if self.spec == '':
             if not revs:
-                raise NoCommits(branch)
+                raise errors.NoCommits(branch)
             return RevisionInfo(branch, len(revs), revs[-1])
 
         try:
@@ -328,7 +327,7 @@ class RevisionSpec_before(RevisionSpec):
             revno = r.revno - 1
             try:
                 revision_id = branch.get_rev_id(revno, revs)
-            except NoSuchRevision:
+            except errors.NoSuchRevision:
                 raise errors.InvalidRevisionSpec(self.prefix + self.spec,
                                                  branch)
         return RevisionInfo(branch, revno, revision_id)
@@ -447,14 +446,14 @@ class RevisionSpec_ancestor(RevisionSpec):
         revision_b = other_branch.last_revision()
         for r, b in ((revision_a, branch), (revision_b, other_branch)):
             if r in (None, revision.NULL_REVISION):
-                raise NoCommits(b)
+                raise errors.NoCommits(b)
         revision_source = revision.MultipleRevisionSources(
                 branch.repository, other_branch.repository)
         rev_id = revision.common_ancestor(revision_a, revision_b,
                                           revision_source)
         try:
             revno = branch.revision_id_to_revno(rev_id)
-        except NoSuchRevision:
+        except errors.NoSuchRevision:
             revno = None
         return RevisionInfo(branch, revno, rev_id)
         
@@ -473,12 +472,12 @@ class RevisionSpec_branch(RevisionSpec):
         other_branch = Branch.open(self.spec)
         revision_b = other_branch.last_revision()
         if revision_b in (None, revision.NULL_REVISION):
-            raise NoCommits(other_branch)
+            raise errors.NoCommits(other_branch)
         # pull in the remote revisions so we can diff
         branch.fetch(other_branch, revision_b)
         try:
             revno = branch.revision_id_to_revno(revision_b)
-        except NoSuchRevision:
+        except errors.NoSuchRevision:
             revno = None
         return RevisionInfo(branch, revno, revision_b)
         
