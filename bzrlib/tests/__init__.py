@@ -577,7 +577,7 @@ class TestCase(unittest.TestCase):
             self.fail("%r is an instance of %s rather than %s" % (
                 obj, obj.__class__, kls))
 
-    def assertDeprecated(self, expected, callable, *args, **kwargs):
+    def callDeprecated(self, expected, callable, *args, **kwargs):
         """Assert that a callable is deprecated in a particular way.
 
         :param expected: a list of the deprecation warnings expected, in order
@@ -592,9 +592,9 @@ class TestCase(unittest.TestCase):
         method = symbol_versioning.warn
         symbol_versioning.set_warning_method(capture_warnings)
         try:
-            callable(*args, **kwargs)
+            result = callable(*args, **kwargs)
         finally:
-            result = symbol_versioning.set_warning_method(method)
+            symbol_versioning.set_warning_method(method)
         self.assertEqual(expected, local_warnings)
         return result
 
