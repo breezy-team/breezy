@@ -23,8 +23,7 @@ from bzrlib import (
     )
 from bzrlib.builtins import merge
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.errors import NoCommonAncestor, NoCommits
-from bzrlib.revisionspec import RevisionSpec
+from bzrlib.revisionspec import get_revision_spec
 
 
 # Basic class, which just creates a really basic set of revisions
@@ -47,7 +46,7 @@ class TestRevisionSpec(TestCaseWithTransport):
         self.tree.commit('second', rev_id='r2')
 
     def get_in_history(self, revision_spec):
-        return RevisionSpec(revision_spec).in_history(self.tree.branch)
+        return get_revision_spec(revision_spec).in_history(self.tree.branch)
 
     def assertInHistoryIs(self, exp_revno, exp_revision_id, revision_spec):
         rev_info = self.get_in_history(revision_spec)
@@ -77,10 +76,10 @@ class TestOddRevisionSpec(TestRevisionSpec):
         self.assertInHistoryIs(0, None, None)
 
     def test_object(self):
-        self.assertRaises(TypeError, RevisionSpec, object())
+        self.assertRaises(TypeError, get_revision_spec, object())
 
     def test_unregistered_spec(self):
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec, 'foo')
+        self.assertRaises(errors.NoSuchRevisionSpec, get_revision_spec, 'foo')
 
 
 class TestRevisionSpec_int(TestRevisionSpec):
@@ -140,7 +139,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         # It seems better to require an exact path to the branch
         # Branch.open() rather than using Branch.open_containing()
         self.assertRaises(errors.NotBranchError,
-                          RevisionSpec('revno:2:tree2/a').in_history,
+                          get_revision_spec('revno:2:tree2/a').in_history,
                           self.tree.branch)
 
     def test_with_branch(self):
@@ -198,15 +197,15 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         wtb.commit('Commit two', rev_id='b@r-0-2')
         wtb.commit('Commit three', rev_id='b@r-0-3')
 
-        self.assertEqual(RevisionSpec('revno:1:a/').in_history(ba),
+        self.assertEqual(get_revision_spec('revno:1:a/').in_history(ba),
                          (1, 'a@r-0-1'))
         # The argument of in_history should be ignored since it is
         # redundant with the path in the spec.
-        self.assertEqual(RevisionSpec('revno:1:a/').in_history(None),
+        self.assertEqual(get_revision_spec('revno:1:a/').in_history(None),
                          (1, 'a@r-0-1'))
-        self.assertEqual(RevisionSpec('revno:1:a/').in_history(bb),
+        self.assertEqual(get_revision_spec('revno:1:a/').in_history(bb),
                          (1, 'a@r-0-1'))
-        self.assertEqual(RevisionSpec('revno:2:b/').in_history(None),
+        self.assertEqual(get_revision_spec('revno:2:b/').in_history(None),
                          (2, 'b@r-0-2'))
 
 
@@ -261,7 +260,7 @@ class TestRevisionSpec_last(TestRevisionSpec):
         tree = self.make_branch_and_tree('tree3')
 
         self.assertRaises(errors.NoCommits,
-                          RevisionSpec('last:').in_history, tree.branch)
+                          get_revision_spec('last:').in_history, tree.branch)
 
     def test_not_a_number(self):
         try:
@@ -351,7 +350,7 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
         # It seems better to require an exact path to the branch
         # Branch.open() rather than using Branch.open_containing()
         self.assertRaises(errors.NotBranchError,
-                          RevisionSpec('ancestor:tree2/a').in_history,
+                          get_revision_spec('ancestor:tree2/a').in_history,
                           self.tree.branch)
 
     def test_simple(self):
@@ -376,17 +375,17 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
 
         # With no common ancestor, we should raise another user error
         self.assertRaises(errors.NoCommonAncestor,
-                          RevisionSpec('ancestor:new_tree').in_history,
+                          get_revision_spec('ancestor:new_tree').in_history,
                           self.tree.branch)
 
     def test_no_commits(self):
         new_tree = self.make_branch_and_tree('new_tree')
         self.assertRaises(errors.NoCommits,
-                          RevisionSpec('ancestor:new_tree').in_history,
+                          get_revision_spec('ancestor:new_tree').in_history,
                           self.tree.branch)
                         
         self.assertRaises(errors.NoCommits,
-                          RevisionSpec('ancestor:tree').in_history,
+                          get_revision_spec('ancestor:tree').in_history,
                           new_tree.branch)
 
 
@@ -396,7 +395,7 @@ class TestRevisionSpec_branch(TestRevisionSpec):
         # It seems better to require an exact path to the branch
         # Branch.open() rather than using Branch.open_containing()
         self.assertRaises(errors.NotBranchError,
-                          RevisionSpec('branch:tree2/a').in_history,
+                          get_revision_spec('branch:tree2/a').in_history,
                           self.tree.branch)
 
     def test_simple(self):
@@ -422,5 +421,5 @@ class TestRevisionSpec_branch(TestRevisionSpec):
     def test_no_commits(self):
         new_tree = self.make_branch_and_tree('new_tree')
         self.assertRaises(errors.NoCommits,
-                          RevisionSpec('branch:new_tree').in_history,
+                          get_revision_spec('branch:new_tree').in_history,
                           self.tree.branch)

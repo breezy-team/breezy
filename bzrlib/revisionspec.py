@@ -22,6 +22,8 @@ import re
 from bzrlib import (
     errors,
     revision,
+    symbol_versioning,
+    trace,
     )
 
 
@@ -113,34 +115,38 @@ class RevisionSpec(object):
 
     prefix = None
 
-    def __new__(cls, spec, foo=_marker):
-        """Parse a revision specifier.
+    def __new__(cls, spec, _internal=False):
+        if _internal:
+            return object.__new__(cls, spec, _internal=_internal)
+
+        symbol_versioning.warn('Creating a RevisionSpec directly has'
+                               ' been deprecated in version 0.11. Use'
+                               ' bzrlib.revisionspec.get_revision_spec()'
+                               ' instead.',
+                               DeprecationWarning, stacklevel=2)
+        return get_revision_spec(spec)
+
+    def __init__(self, spec, _internal=False):
+        """Create a RevisionSpec referring to the Null revision.
+
+        :param spec: The original spec supplied by the user
+        :param _internal: Used to ensure that RevisionSpec is not being
+            called directly. Only from get_revision_spec()
         """
-        if spec is None:
-            return object.__new__(RevisionSpec, spec)
-
-        try:
-            spec = int(spec)
-        except ValueError:
-            pass
-
-        if isinstance(spec, int):
-            return object.__new__(RevisionSpec_int, spec)
-        elif isinstance(spec, basestring):
-            for spectype in SPEC_TYPES:
-                if spec.startswith(spectype.prefix):
-                    return object.__new__(spectype, spec)
-            else:
-                raise errors.NoSuchRevisionSpec(spec)
-        else:
-            raise TypeError('Unhandled revision type %s' % spec)
-
-    def __init__(self, spec):
+        if not _internal:
+            # XXX: Update this after 0.10 is released
+            symbol_versioning.warn('Creating a RevisionSpec directly has'
+                                   ' been deprecated in version 0.11. Use'
+                                   ' bzrlib.revisionspec.get_revision_spec()'
+                                   ' instead.',
+                                   DeprecationWarning, stacklevel=2)
+        self.user_spec = spec
         if self.prefix and spec.startswith(self.prefix):
             spec = spec[len(self.prefix):]
         self.spec = spec
 
     def _match_on(self, branch, revs):
+        trace.mutter('Returning RevisionSpec._match_on: None')
         return RevisionInfo(branch, 0, None)
 
     def _match_on_and_check(self, branch, revs):
@@ -151,7 +157,7 @@ class RevisionSpec(object):
             # special case - the empty tree
             return info
         elif self.prefix:
-            raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch)
+            raise errors.InvalidRevisionSpec(self.user_spec, branch)
         else:
             raise errors.InvalidRevisionSpec(self.spec, branch)
 
@@ -186,38 +192,42 @@ class RevisionSpec(object):
         return True
 
 
-# private API
+_revno_regex = None
 
-def _get_int_revno_helper(branch, revs, revno, spec):
-    """Just a helper for the common functionality between int and revno specs.
+def get_revision_spec(spec):
+    """Parse a revision spec into a RevisionSpec object.
 
-    :param branch: The branch to lookup the revno in
-    :param revno: In integer revision number
-    :param revs: The list of revisions we are looking through
-    :param spec: The revision spec being tested. This is only used
-        to pass through to a potential exception
-    :return: A RevisionInfo object (or an exception)
+    :param spec: A string specified by the user
+    :return: A RevisionSpec object that understands how to parse the
+        supplied notation.
     """
-    if revno < 0:
-        if (-revno) >= len(revs):
-            revno = 1
-        else:
-            revno = len(revs) + revno + 1
-    try:
-        revision_id = branch.get_rev_id(revno, revs)
-    except errors.NoSuchRevision:
-        raise errors.InvalidRevisionSpec(spec, branch)
-    return RevisionInfo(branch, revno, revision_id)
+    if not isinstance(spec, (type(None), basestring)):
+        raise TypeError('error')
 
+    if spec is None:
+        return RevisionSpec(None, _internal=True)
 
-class RevisionSpec_int(RevisionSpec):
-    """Spec is a number.  Special case."""
+    assert isinstance(spec, basestring), \
+        "You should only supply strings not %s" % (type(spec),)
 
-    def __init__(self, spec):
-        self.spec = int(spec)
+    for spectype in SPEC_TYPES:
+        if spec.startswith(spectype.prefix):
+            trace.mutter('Returning RevisionSpec %s for %s',
+                         spectype.__name__, spec)
+            return spectype(spec, _internal=True)
+    else:
+        # RevisionSpec_revno is special cased, because it is the only
+        # one that directly handles plain integers
+        global _revno_regex
+        if _revno_regex is None:
+            _revno_regex = re.compile(r'-?\d+(:.*)?')
+        if _revno_regex.match(spec) is not None:
+            return RevisionSpec_revno(spec, _internal=True)
 
-    def _match_on(self, branch, revs):
-        return _get_int_revno_helper(branch, revs, self.spec, str(self.spec))
+        raise errors.NoSuchRevisionSpec(spec)
+        
+        
+# private API
 
 
 class RevisionSpec_revno(RevisionSpec):
@@ -235,14 +245,14 @@ class RevisionSpec_revno(RevisionSpec):
 
         if revno_spec == '':
             if not branch_spec:
-                raise errors.InvalidRevisionSpec(self.prefix + self.spec,
+                raise errors.InvalidRevisionSpec(self.user_spec,
                         branch, 'cannot have an empty revno and no branch')
             revno = None
         else:
             try:
                 revno = int(revno_spec)
             except ValueError, e:
-                raise errors.InvalidRevisionSpec(self.prefix + self.spec,
+                raise errors.InvalidRevisionSpec(self.user_spec,
                                                  branch, e)
 
         if branch_spec:
@@ -252,11 +262,22 @@ class RevisionSpec_revno(RevisionSpec):
             # because we are using a specific branch
             revs = branch.revision_history()
 
-        return _get_int_revno_helper(branch, revs, revno,
-                                     self.prefix + self.spec)
+        if revno < 0:
+            if (-revno) >= len(revs):
+                revno = 1
+            else:
+                revno = len(revs) + revno + 1
+        try:
+            revision_id = branch.get_rev_id(revno, revs)
+        except errors.NoSuchRevision:
+            raise errors.InvalidRevisionSpec(self.user_spec, branch)
+        return RevisionInfo(branch, revno, revision_id)
         
     def needs_branch(self):
         return self.spec.find(':') == -1
+
+# Old compatibility 
+RevisionSpec_int = RevisionSpec_revno
 
 SPEC_TYPES.append(RevisionSpec_revno)
 
@@ -287,16 +308,16 @@ class RevisionSpec_last(RevisionSpec):
         try:
             offset = int(self.spec)
         except ValueError, e:
-            raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch, e)
+            raise errors.InvalidRevisionSpec(self.user_spec, branch, e)
 
         if offset <= 0:
-            raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch,
+            raise errors.InvalidRevisionSpec(self.user_spec, branch,
                                              'you must supply a positive value')
         revno = len(revs) - offset + 1
         try:
             revision_id = branch.get_rev_id(revno, revs)
         except errors.NoSuchRevision:
-            raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch)
+            raise errors.InvalidRevisionSpec(self.user_spec, branch)
         return RevisionInfo(branch, revno, revision_id)
 
 SPEC_TYPES.append(RevisionSpec_last)
@@ -309,7 +330,7 @@ class RevisionSpec_before(RevisionSpec):
     def _match_on(self, branch, revs):
         r = RevisionSpec(self.spec)._match_on(branch, revs)
         if r.revno == 0:
-            raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch,
+            raise errors.InvalidRevisionSpec(self.user_spec, branch,
                                          'cannot go before the null: revision')
         if r.revno is None:
             # We need to use the repository history here
@@ -328,7 +349,7 @@ class RevisionSpec_before(RevisionSpec):
             try:
                 revision_id = branch.get_rev_id(revno, revs)
             except errors.NoSuchRevision:
-                raise errors.InvalidRevisionSpec(self.prefix + self.spec,
+                raise errors.InvalidRevisionSpec(self.user_spec,
                                                  branch)
         return RevisionInfo(branch, revno, revision_id)
 
@@ -339,7 +360,7 @@ class RevisionSpec_tag(RevisionSpec):
     prefix = 'tag:'
 
     def _match_on(self, branch, revs):
-        raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch,
+        raise errors.InvalidRevisionSpec(self.user_spec, branch,
                                          'tag: namespace registered,'
                                          ' but not implemented')
 
@@ -394,7 +415,7 @@ class RevisionSpec_date(RevisionSpec):
         else:
             m = self._date_re.match(self.spec)
             if not m or (not m.group('date') and not m.group('time')):
-                raise errors.InvalidRevisionSpec(self.prefix + self.spec,
+                raise errors.InvalidRevisionSpec(self.user_spec,
                                                  branch, 'invalid date')
 
             try:
@@ -417,7 +438,7 @@ class RevisionSpec_date(RevisionSpec):
                 else:
                     hour, minute, second = 0,0,0
             except ValueError:
-                raise errors.InvalidRevisionSpec(self.prefix + self.spec,
+                raise errors.InvalidRevisionSpec(self.user_spec,
                                                  branch, 'invalid date')
 
             dt = datetime.datetime(year=year, month=month, day=day,
@@ -441,6 +462,7 @@ class RevisionSpec_ancestor(RevisionSpec):
     def _match_on(self, branch, revs):
         from bzrlib.branch import Branch
 
+        trace.mutter('matching ancestor: on: %s, %s', self.spec, branch)
         other_branch = Branch.open(self.spec)
         revision_a = branch.last_revision()
         revision_b = other_branch.last_revision()
