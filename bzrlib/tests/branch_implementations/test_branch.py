@@ -233,7 +233,8 @@ class TestBranch(TestCaseWithBranch):
     def test_record_initial_ghost(self):
         """Branches should support having ghosts."""
         wt = self.make_branch_and_tree('.')
-        wt.add_pending_merge('non:existent@rev--ision--0--2')
+        wt.set_parent_ids(['non:existent@rev--ision--0--2'],
+            allow_leftmost_as_ghost=True)
         rev_id = wt.commit('commit against a ghost first parent.')
         rev = wt.branch.repository.get_revision(rev_id)
         self.assertEqual(rev.parent_ids, ['non:existent@rev--ision--0--2'])
@@ -243,8 +244,11 @@ class TestBranch(TestCaseWithBranch):
     def test_record_two_ghosts(self):
         """Recording with all ghosts works."""
         wt = self.make_branch_and_tree('.')
-        wt.add_pending_merge('foo@azkhazan-123123-abcabc')
-        wt.add_pending_merge('wibble@fofof--20050401--1928390812')
+        wt.set_parent_ids([
+                'foo@azkhazan-123123-abcabc',
+                'wibble@fofof--20050401--1928390812',
+            ],
+            allow_leftmost_as_ghost=True)
         rev_id = wt.commit("commit from ghost base with one merge")
         # the revision should have been committed with two parents
         rev = wt.branch.repository.get_revision(rev_id)

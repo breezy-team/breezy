@@ -693,18 +693,15 @@ class WorkingTree(bzrlib.tree.Tree):
     def add_pending_merge(self, *revision_ids):
         # TODO: Perhaps should check at this point that the
         # history of the revision is actually present?
-        p = self.pending_merges()
-        existing_parents = self.get_parent_ids()
+        parents = self.get_parent_ids()
         updated = False
         for rev_id in revision_ids:
-            if rev_id in p:
+            if rev_id in parents:
                 continue
-            if rev_id in existing_parents:
-                continue
-            p.append(rev_id)
+            parents.append(rev_id)
             updated = True
         if updated:
-            self.set_pending_merges(p)
+            self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
     @needs_read_lock
     def pending_merges(self):
@@ -735,15 +732,16 @@ class WorkingTree(bzrlib.tree.Tree):
         :param revision_ids: The revision_ids to set as the parent ids of this
             working tree. Any of these may be ghosts.
         """
-        trees = []
-        for rev_id in revision_ids:
-            try:
-                trees.append(
-                    (rev_id, self.branch.repository.revision_tree(rev_id)))
-            except errors.RevisionNotPresent:
-                trees.append((rev_id, None))
-        self.set_parent_trees(trees,
-            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+        if len(revision_ids) > 0:
+            leftmost_id = revision_ids[0]
+            if (not allow_leftmost_as_ghost and not
+                self.branch.repository.has_revision(leftmost_id)):
+                raise errors.GhostRevisionUnusableHere(leftmost_id)
+            self.set_last_revision(leftmost_id)
+        else:
+            self.set_last_revision(None)
+        merges = revision_ids[1:]
+        self._control_files.put_utf8('pending-merges', '\n'.join(merges))
 
     @needs_write_lock
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
@@ -753,25 +751,17 @@ class WorkingTree(bzrlib.tree.Tree):
             If tree is None, then that element is treated as an unreachable
             parent tree - i.e. a ghost.
         """
-        if len(parents_list) > 0:
-            leftmost_id = parents_list[0][0]
-            if (not allow_leftmost_as_ghost and not
-                self.branch.repository.has_revision(leftmost_id)):
-                raise errors.GhostRevisionUnusableHere(leftmost_id)
-            self.set_last_revision(leftmost_id)
-        else:
-            self.set_last_revision(None)
-        merges = parents_list[1:]
-        self.set_pending_merges([revid for revid, tree in merges])
+        # parent trees are not used in current format trees, delegate to
+        # set_parent_ids
+        self.set_parent_ids([rev for (rev, tree) in parents_list],
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
     @needs_write_lock
     def set_pending_merges(self, rev_list):
-        if self.last_revision() is None:
-            new_last_list = rev_list[:1]
-            rev_list = rev_list[1:]
-            if new_last_list:
-                self.set_last_revision(new_last_list[0])
-        self._control_files.put_utf8('pending-merges', '\n'.join(rev_list))
+        parents = self.get_parent_ids()
+        leftmost = parents[:1]
+        new_parents = leftmost + rev_list
+        self.set_parent_ids(new_parents)
 
     @needs_write_lock
     def set_merge_modified(self, modified_hashes):
@@ -1434,7 +1424,7 @@ class WorkingTree(bzrlib.tree.Tree):
             old_tree = self.basis_tree()
         conflicts = revert(self, old_tree, filenames, backups, pb)
         if not len(filenames):
-            self.set_pending_merges([])
+            self.set_parent_ids(self.get_parent_ids()[:1])
             resolve(self)
         else:
             resolve(self, filenames, ignore_misses=True)
@@ -1551,7 +1541,7 @@ class WorkingTree(bzrlib.tree.Tree):
             # branch did. We may still have pivot local work from the local
             # branch into old_tip:
             if old_tip is not None:
-                self.add_pending_merge(old_tip)
+                self.add_parent_tree_id(old_tip)
         if old_tip and old_tip != self.last_revision():
             # our last revision was not the prior branch last revision
             # and we have converted that last revision to a pending merge.

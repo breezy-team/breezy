@@ -131,8 +131,7 @@ class TestUncommit(TestCaseWithTransport):
         tree2.commit('unchanged', rev_id='b3')
         tree2.commit('unchanged', rev_id='b4')
 
-        wt.branch.fetch(tree2.branch)
-        wt.set_pending_merges(['b4'])
+        self.merge(tree2.branch, wt)
         wt.commit('merge b4', rev_id='a3')
 
         self.assertEqual('a3', wt.last_revision())
@@ -150,13 +149,13 @@ class TestUncommit(TestCaseWithTransport):
         tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
 
         tree2.commit('unchanged', rev_id='b3')
-        wt.branch.fetch(tree2.branch)
-        wt.set_pending_merges(['b3'])
+
+        self.merge(tree2.branch, wt)
         wt.commit('merge b3', rev_id='a3')
 
         tree2.commit('unchanged', rev_id='b4')
-        wt.branch.fetch(tree2.branch)
-        wt.set_pending_merges(['b4'])
+
+        self.merge(tree2.branch, wt)
         wt.commit('merge b4', rev_id='a4')
 
         self.assertEqual('a4', wt.last_revision())
@@ -177,16 +176,16 @@ class TestUncommit(TestCaseWithTransport):
 
         tree2.commit('unchanged', rev_id='b3')
         tree3.commit('unchanged', rev_id='c3')
-        wt.branch.fetch(tree2.branch)
-        wt.branch.fetch(tree3.branch)
-        wt.set_pending_merges(['b3', 'c3'])
+        
+        self.merge(tree2.branch, wt)
+        self.merge(tree3.branch, wt)
         wt.commit('merge b3, c3', rev_id='a3')
 
         tree2.commit('unchanged', rev_id='b4')
         tree3.commit('unchanged', rev_id='c4')
-        wt.branch.fetch(tree2.branch)
-        wt.branch.fetch(tree3.branch)
-        wt.set_pending_merges(['c4', 'b4'])
+
+        self.merge(tree3.branch, wt)
+        self.merge(tree2.branch, wt)
         wt.commit('merge b4, c4', rev_id='a4')
 
         self.assertEqual('a4', wt.last_revision())

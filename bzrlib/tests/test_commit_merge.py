@@ -47,7 +47,7 @@ class TestCommitMerge(TestCaseWithTransport):
                           wty.commit,
                           'no changes yet', rev_id='y@u-0-2',
                           allow_pointless=False)
-        wty.add_pending_merge('x@u-0-1')
+        self.merge(bx, wty)
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
 
         self.assertEquals(by.revno(), 2)
@@ -72,11 +72,7 @@ class TestCommitMerge(TestCaseWithTransport):
         wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
         wty.commit('commit two', rev_id='y@u-0-1', allow_pointless=True)
 
-        by.fetch(bx)
-        # we haven't merged the texts, but let's fake it
-        shutil.copyfile('x/ecks', 'y/ecks')
-        wty.add(['ecks'], ['ecks-id'])
-        wty.add_pending_merge('x@u-0-1')
+        self.merge(bx, wty)
 
         # partial commit of merges is currently not allowed, because
         # it would give different merge graphs for each file which

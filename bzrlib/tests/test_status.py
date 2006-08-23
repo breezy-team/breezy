@@ -27,10 +27,12 @@ class TestStatus(TestCaseWithTransport):
     def test_pending_none(self):
         # Test whether show_pending_merges works in a tree with no commits
         tree = self.make_branch_and_tree('a')
-        rev_id = tree.commit('empty commit')
+        tree.commit('empty commit')
         tree2 = self.make_branch_and_tree('b')
-        tree2.branch.fetch(tree.branch)
-        tree2.set_pending_merges(['some-ghost', rev_id])
+        # set a left most parent
+        tree2.add_parent_id('some-ghost')
+        # do a merge
+        self.merge(tree.branch, tree2)
         output = StringIO()
         show_pending_merges(tree2, output)
         self.assertContainsRe(output.getvalue(), 'empty commit')

@@ -81,7 +81,7 @@ class BranchStatus(TestCaseWithTransport):
         # add a commit to allow showing pending merges.
         wt.commit('create a parent to allow testing merge output')
 
-        wt.add_pending_merge('pending@pending-0-0')
+        wt.add_parent_tree_id('pending@pending-0-0')
         self.assertStatus([
                 'unknown:\n',
                 '  bye.c\n',
