@@ -405,3 +405,48 @@ class TestRevisionSpec_date(TestRevisionSpec):
         now = datetime.datetime.now()
         self.assertInHistoryIs(2, 'new_r2',
             'date:%04d-%02d-%02d' % (now.year, now.month, now.day))
+
+
+class TestRevisionSpec_ancestor(TestRevisionSpec):
+    
+    def test_non_exact_branch(self):
+        # It seems better to require an exact path to the branch
+        # Branch.open() rather than using Branch.open_containing()
+        self.assertRaises(errors.NotBranchError,
+                          RevisionSpec('ancestor:tree2/a').in_history,
+                          self.tree.branch)
+
+    def test_simple(self):
+        # Common ancestor of trees is 'alt_r2'
+        self.assertInHistoryIs(None, 'alt_r2', 'ancestor:tree2')
+
+        # Going the other way, we get a valid revno
+        tmp = self.tree
+        self.tree = self.tree2
+        self.tree2 = tmp
+        self.assertInHistoryIs(2, 'alt_r2', 'ancestor:tree')
+
+    def test_self(self):
+        self.assertInHistoryIs(2, 'r2', 'ancestor:tree')
+
+    def test_unrelated(self):
+        new_tree = self.make_branch_and_tree('new_tree')
+
+        new_tree.commit('Commit one', rev_id='new_r1')
+        new_tree.commit('Commit two', rev_id='new_r2')
+        new_tree.commit('Commit three', rev_id='new_r3')
+
+        # With no common ancestor, we should raise another user error
+        self.assertRaises(errors.NoCommonAncestor,
+                          RevisionSpec('ancestor:new_tree').in_history,
+                          self.tree.branch)
+
+    def test_no_commits(self):
+        new_tree = self.make_branch_and_tree('new_tree')
+        self.assertRaises(errors.NoCommits,
+                          RevisionSpec('ancestor:new_tree').in_history,
+                          self.tree.branch)
+                        
+        self.assertRaises(errors.NoCommits,
+                          RevisionSpec('ancestor:tree').in_history,
+                          new_tree.branch)

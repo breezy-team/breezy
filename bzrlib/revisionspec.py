@@ -431,7 +431,7 @@ class RevisionSpec_ancestor(RevisionSpec):
     def _match_on(self, branch, revs):
         from bzrlib.branch import Branch
         from bzrlib.revision import common_ancestor, MultipleRevisionSources
-        other_branch = Branch.open_containing(self.spec)[0]
+        other_branch = Branch.open(self.spec)
         revision_a = branch.last_revision()
         revision_b = other_branch.last_revision()
         for r, b in ((revision_a, branch), (revision_b, other_branch)):
