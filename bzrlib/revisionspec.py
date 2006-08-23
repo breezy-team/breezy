@@ -187,7 +187,27 @@ class RevisionSpec(object):
         """
         return True
 
+
 # private API
+
+def _get_int_revno_helper(branch, revs, revno, spec):
+    """Just a helper for the common functionality between int and revno specs.
+
+    :param branch: The branch to lookup the revno in
+    :param revno: In integer revision number
+    :param revs: The list of revisions we are looking through
+    :param spec: The revision spec being tested. This is only used
+        to pass through to a potential exception
+    :return: A RevisionInfo object (or an exception)
+    """
+    if revno < 0:
+        revno = len(revs) + revno + 1
+    try:
+        revision_id = branch.get_rev_id(revno, revs)
+    except NoSuchRevision:
+        raise errors.InvalidRevisionSpec(spec, branch)
+    return RevisionInfo(branch, revno, revision_id)
+
 
 class RevisionSpec_int(RevisionSpec):
     """Spec is a number.  Special case."""
@@ -196,15 +216,7 @@ class RevisionSpec_int(RevisionSpec):
         self.spec = int(spec)
 
     def _match_on(self, branch, revs):
-        if self.spec < 0:
-            revno = len(revs) + self.spec + 1
-        else:
-            revno = self.spec
-        try:
-            rev_id = branch.get_rev_id(revno, revs)
-        except NoSuchRevision:
-            raise errors.InvalidRevisionSpec(self.spec, branch)
-        return RevisionInfo(branch, revno, rev_id)
+        return _get_int_revno_helper(branch, revs, self.spec, self.spec)
 
 
 class RevisionSpec_revno(RevisionSpec):
@@ -232,19 +244,15 @@ class RevisionSpec_revno(RevisionSpec):
                 raise errors.InvalidRevisionSpec(self.prefix + self.spec,
                                                  branch, e)
 
-            if revno < 0:
-                revno = len(revs) + revno + 1
-
         if branch_spec:
             from bzrlib.branch import Branch
             branch = Branch.open(branch_spec)
+            # Need to use a new revision history
+            # because we are using a specific branch
+            revs = branch.revision_history()
 
-        try:
-            revid = branch.get_rev_id(revno)
-        except NoSuchRevision:
-            raise errors.InvalidRevisionSpec(self.prefix + self.spec, branch)
-
-        return RevisionInfo(branch, revno)
+        return _get_int_revno_helper(branch, revs, revno,
+                                     self.prefix + self.spec)
         
     def needs_branch(self):
         return self.spec.find(':') == -1

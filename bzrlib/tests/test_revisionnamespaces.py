@@ -176,6 +176,13 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertEqual(2, revinfo.revno)
         self.assertEqual('alt_r2', revinfo.rev_id)
 
+    def test_different_history_lengths(self):
+        # Make sure we use the revisions and offsets in the supplied branch
+        # not the ones in the original branch.
+        self.tree2.commit('three', rev_id='r3')
+        self.assertInHistoryIs(3, 'r3', 'revno:3:tree2')
+        self.assertInHistoryIs(3, 'r3', 'revno:-1:tree2')
+
     def test_invalid_branch(self):
         self.assertRaises(errors.NotBranchError,
                           self.get_in_history, 'revno:-1:tree3')
@@ -200,16 +207,16 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         wtb.commit('Commit two', rev_id='b@r-0-2')
         wtb.commit('Commit three', rev_id='b@r-0-3')
 
-        self.assertEquals(RevisionSpec('revno:1:a/').in_history(ba),
-                          (1, 'a@r-0-1'))
+        self.assertEqual(RevisionSpec('revno:1:a/').in_history(ba),
+                         (1, 'a@r-0-1'))
         # The argument of in_history should be ignored since it is
         # redundant with the path in the spec.
-        self.assertEquals(RevisionSpec('revno:1:a/').in_history(None),
-                          (1, 'a@r-0-1'))
-        self.assertEquals(RevisionSpec('revno:1:a/').in_history(bb),
-                          (1, 'a@r-0-1'))
-        self.assertEquals(RevisionSpec('revno:2:b/').in_history(None),
-                          (2, 'b@r-0-2'))
+        self.assertEqual(RevisionSpec('revno:1:a/').in_history(None),
+                         (1, 'a@r-0-1'))
+        self.assertEqual(RevisionSpec('revno:1:a/').in_history(bb),
+                         (1, 'a@r-0-1'))
+        self.assertEqual(RevisionSpec('revno:2:b/').in_history(None),
+                         (2, 'b@r-0-2'))
 
 
 
