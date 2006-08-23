@@ -21,7 +21,7 @@ import optparse
 import re
 
 from bzrlib.trace import warning
-from bzrlib.revisionspec import RevisionSpec
+from bzrlib.revisionspec import get_revision_spec
 from bzrlib.errors import BzrCommandError
 
 
@@ -79,21 +79,10 @@ def _parse_revision_str(revstr):
     [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_int 23>]
     """
     # TODO: Maybe move this into revisionspec.py
-    old_format_re = re.compile('\d*:\d*')
-    m = old_format_re.match(revstr)
     revs = []
-    if m:
-        warning('Colon separator for revision numbers is deprecated.'
-                ' Use .. instead')
-        for rev in revstr.split(':'):
-            if rev:
-                revs.append(RevisionSpec(int(rev)))
-            else:
-                revs.append(RevisionSpec(None))
-    else:
-        sep = re.compile("\\.\\.(?!/)")
-        for x in sep.split(revstr):
-            revs.append(RevisionSpec(x or None))
+    sep = re.compile("\\.\\.(?!/)")
+    for x in sep.split(revstr):
+        revs.append(get_revision_spec(x or None))
     return revs
 
 

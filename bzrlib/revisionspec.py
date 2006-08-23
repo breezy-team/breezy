@@ -328,7 +328,7 @@ class RevisionSpec_before(RevisionSpec):
     prefix = 'before:'
     
     def _match_on(self, branch, revs):
-        r = RevisionSpec(self.spec)._match_on(branch, revs)
+        r = get_revision_spec(self.spec)._match_on(branch, revs)
         if r.revno == 0:
             raise errors.InvalidRevisionSpec(self.user_spec, branch,
                                          'cannot go before the null: revision')

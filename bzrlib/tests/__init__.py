@@ -63,7 +63,6 @@ import bzrlib.osutils as osutils
 import bzrlib.plugin
 import bzrlib.progress as progress
 from bzrlib.revision import common_ancestor
-from bzrlib.revisionspec import RevisionSpec
 import bzrlib.store
 from bzrlib import symbol_versioning
 import bzrlib.trace
