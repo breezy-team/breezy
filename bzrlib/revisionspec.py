@@ -201,7 +201,10 @@ def _get_int_revno_helper(branch, revs, revno, spec):
     :return: A RevisionInfo object (or an exception)
     """
     if revno < 0:
-        revno = len(revs) + revno + 1
+        if (-revno) >= len(revs):
+            revno = 1
+        else:
+            revno = len(revs) + revno + 1
     try:
         revision_id = branch.get_rev_id(revno, revs)
     except NoSuchRevision:
@@ -216,7 +219,7 @@ class RevisionSpec_int(RevisionSpec):
         self.spec = int(spec)
 
     def _match_on(self, branch, revs):
-        return _get_int_revno_helper(branch, revs, self.spec, self.spec)
+        return _get_int_revno_helper(branch, revs, self.spec, str(self.spec))
 
 
 class RevisionSpec_revno(RevisionSpec):

@@ -59,13 +59,11 @@ class TestRevisionSpec(TestCaseWithTransport):
                          ' %s != %s'
                          % (revision_spec, exp_revision_id, rev_info.rev_id))
 
-    def assertInvalid(self, revision_spec, extra='', real_spec=None):
-        if real_spec is None:
-            real_spec = revision_spec
+    def assertInvalid(self, revision_spec, extra=''):
         try:
             self.get_in_history(revision_spec)
         except errors.InvalidRevisionSpec, e:
-            self.assertEqual(real_spec, e.spec)
+            self.assertEqual(revision_spec, e.spec)
             self.assertEqual(extra, e.extra)
         else:
             self.fail('Expected InvalidRevisionSpec to be raised for %s'
@@ -89,20 +87,15 @@ class TestRevisionSpec_int(TestRevisionSpec):
         self.assertInHistoryIs(1, 'r1', '1')
         self.assertInHistoryIs(2, 'r2', '2')
 
-        self.assertInvalid('3', real_spec=3)
+        self.assertInvalid('3')
 
     def test_negative(self):
         self.assertInHistoryIs(2, 'r2', '-1')
         self.assertInHistoryIs(1, 'r1', '-2')
 
-        # XXX: This is probably bogus, and may change to 
-        # either being restricted to '1' or Invalid in the future
-        self.assertInHistoryIs(0, None, '-3')
-
-
-        # TODO: In the future, a negative number that is too large
-        # may be translated into the first revision
-        self.assertInvalid('-4', real_spec=-4)
+        self.assertInHistoryIs(1, 'r1', '-3')
+        self.assertInHistoryIs(1, 'r1', '-4')
+        self.assertInHistoryIs(1, 'r1', '-100')
 
 
 class TestRevisionSpec_revno(TestRevisionSpec):
@@ -118,13 +111,8 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertInHistoryIs(2, 'r2', 'revno:-1')
         self.assertInHistoryIs(1, 'r1', 'revno:-2')
 
-        # XXX: This is probably bogus, and may change to 
-        # either being restricted to '1' or Invalid in the future
-        self.assertInHistoryIs(0, None, 'revno:-3')
-
-        # TODO: In the future, a negative number that is too large
-        # may be translated into the first revision
-        self.assertInvalid('revno:-4')
+        self.assertInHistoryIs(1, 'r1', 'revno:-3')
+        self.assertInHistoryIs(1, 'r1', 'revno:-4')
 
     def test_invalid_number(self):
         # Get the right exception text
