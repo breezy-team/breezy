@@ -2044,6 +2044,30 @@ class InterModel1and2(InterRepository):
                                  pb=pb)
         return f.count_copied, f.failed_revisions
 
+    @needs_write_lock
+    def copy_content(self, revision_id=None, basis=None):
+        """Make a complete copy of the content in self into destination.
+        
+        This is a destructive operation! Do not use it on existing 
+        repositories.
+
+        :param revision_id: Only copy the content needed to construct
+                            revision_id and its parents.
+        :param basis: Copy the needed data preferentially from basis.
+        """
+        try:
+            self.target.set_make_working_trees(self.source.make_working_trees())
+        except NotImplementedError:
+            pass
+        # grab the basis available data
+        if basis is not None:
+            self.target.fetch(basis, revision_id=revision_id)
+        # but don't bother fetching if we have the needed data now.
+        if (revision_id not in (None, NULL_REVISION) and 
+            self.target.has_revision(revision_id)):
+            return
+        self.target.fetch(self.source, revision_id=revision_id)
+
 
 class InterKnit1and2(InterKnitRepo):
 
@@ -2057,9 +2081,6 @@ class InterKnit1and2(InterKnitRepo):
                     isinstance(target._format, (RepositoryFormatKnit2)))
         except AttributeError:
             return False
-    
-    def copy_content(self, revision_id=None, basis=None):
-        raise NotImplementedError(self.copy_content)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):

@@ -162,6 +162,9 @@ class TestRepository(TestCaseWithRepository):
         tree_a.commit('rev1', rev_id='rev1')
         # fetch with a default limit (grab everything)
         repo = bzrdir.BzrDir.create_repository(self.get_url('b'))
+        if (tree_a.branch.repository._format.rich_root_data and not
+            repo._format.rich_root_data):
+            raise TestSkipped('Cannot fetch from model2 to model1')
         repo.fetch(tree_a.branch.repository,
                    revision_id=None,
                    pb=bzrlib.progress.DummyProgress())

@@ -248,7 +248,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         # repository.
 
         # 'ghost' is a ghost in missing_ghost and not in with_ghost_rev
-        inv = Inventory()
+        inv = Inventory(revision_id='ghost')
+        inv.root.revision = 'ghost'
         repo = self.make_repository('with_ghost_rev')
         sha1 = repo.add_inventory('ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
@@ -261,6 +262,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         repo.add_revision('ghost', rev)
          
         repo = self.make_to_repository('missing_ghost')
+        inv = Inventory(revision_id='with_ghost')
+        inv.root.revision = 'with_ghost'
         sha1 = repo.add_inventory('with_ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
