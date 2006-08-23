@@ -1,3 +1,32 @@
+2006-08-23  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+
+	* __init__.py: 
+	Lazily register the  transports so that the module  is loaded when
+	needed.
+
+	* webdav.py: 
+	Check the  bzr version and requires  a dev one. We  are not mature
+	enough.
+	Check pycurl availability before importing transport.http._pycurl.  
+	Transports registration is now done in __init__.py (jam hint).
+	(HttpDavTransport.__init__): Use the class name when calling super
+	or it will create a loop if called by the daughter class :( Assert
+	we can handle the protocol.
+	(HttpDavTransport.put): Mentions that put  is atomic (by virtue of
+	RFC2068). Don't handle string object anymore.
+	(HttpDavTransport.rename):   Rename  should   not   overwrite  the
+	destination URI.
+	(get_test_permutations): import test_webdav when required only.
+
+	* test_webdav.py: New file, extracted from webdav.py.
+	(TestingDAVRequestHandler.do_COPY):  RFC2518  not  RFC2519!   Damn
+	hhtp!
+	(TestingDAVRequestHandler.do_MOVE):  Handles the  Overwrite header
+	to conform  to bzr expectations concerning the  POSIX semantics of
+	move and rename (thanks jam for the explanation).
+	(HttpServer_Dav.__init__): Use  the class name  when calling super
+	or it will create a loop if called by the daughter class :(
+
 2006-08-22  Vincent LADEUIL  <v.ladeuil@alplog.fr>
 
 	* webdav.py:

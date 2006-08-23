@@ -20,5 +20,11 @@ This defines the HttpWebDAV transport, which implement the necessary
 handling of WebDAV to allow pushing on an http server.
 """
 
-# Try to import the transport (which will register itself)
-import webdav
+from bzrlib.transport import (
+    register_lazy_transport
+    )
+
+register_lazy_transport('https+webdav://',
+                        'bzrlib.plugins.webdav.webdav','HttpDavTransport')
+register_lazy_transport('http+webdav://',
+                        'bzrlib.plugins.webdav.webdav','HttpDavTransport')
