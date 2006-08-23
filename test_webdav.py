@@ -69,7 +69,7 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
 
         An empty chunk specifies a length of zero
         """
-        length = string.atoi(self._readline(),base=16)
+        length = int(self._readline(),16)
         data = None
         if length != 0:
             data = self._read(length)

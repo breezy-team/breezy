@@ -1,5 +1,13 @@
 2006-08-23  Vincent LADEUIL  <v.ladeuil@alplog.fr>
 
+	* test_webdav.py:
+	(TestingDAVRequestHandler._read_chunk): Don't use string.atoi.
+
+2006-08-23-1  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+
+	* test_webdav.py:
+	(TestingDAVRequestHandler._read_chunk): Don't use string.atoi.
+
 	* __init__.py: 
 	Lazily register the  transports so that the module  is loaded when
 	needed.
