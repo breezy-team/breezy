@@ -163,10 +163,18 @@ def _get_ssh_vendor():
     return _ssh_vendor
 
 
-class SFTPSubprocess:
+class SSHSubprocess:
     """A socket-like object that talks to an ssh subprocess via pipes."""
-    def __init__(self, hostname, vendor, port=None, user=None):
+    # TODO: this class probably belongs in bzrlib/transport/ssh.py
+
+    def __init__(self, hostname, vendor, port=None, user=None, subsystem=None,
+                 command=None):
         assert vendor in ['openssh', 'ssh']
+        assert subsystem is not None or command is not None, (
+            'Must specify a command or subsystem')
+        if subsystem is not None:
+            assert command is None, (
+                'subsystem and command are mutually exclusive')
         if vendor == 'openssh':
             args = ['ssh',
                     '-oForwardX11=no', '-oForwardAgent=no',
@@ -176,14 +184,20 @@ class SFTPSubprocess:
                 args.extend(['-p', str(port)])
             if user is not None:
                 args.extend(['-l', user])
-            args.extend(['-s', hostname, 'sftp'])
+            if subsystem is not None:
+                args.extend(['-s', hostname, subsystem])
+            else:
+                args.extend([hostname] + command)
         elif vendor == 'ssh':
             args = ['ssh', '-x']
             if port is not None:
                 args.extend(['-p', str(port)])
             if user is not None:
                 args.extend(['-l', user])
-            args.extend(['-s', 'sftp', hostname])
+            if subsystem is not None:
+                args.extend(['-s', subsystem, hostname])
+            else:
+                args.extend([hostname] + command)
 
         self.proc = subprocess.Popen(args,
                                      stdin=subprocess.PIPE,
@@ -207,6 +221,19 @@ class SFTPSubprocess:
         self.proc.stdin.close()
         self.proc.stdout.close()
         self.proc.wait()
+
+    def get_filelike_channels(self):
+        """Returns a tuple of (read, write) file-like objects.
+
+        If you close these objects the underlying pipes will close.
+        """
+        return self.proc.stdout, self.proc.stdin
+        
+
+class SFTPSubprocess(SSHSubprocess):
+    def __init__(self, hostname, vendor, port=None, user=None):
+        SSHSubprocess.__init__(self, hostname, vendor, port=port, user=user,
+                               subsystem='sftp')
 
 
 class LoopbackSFTP(object):

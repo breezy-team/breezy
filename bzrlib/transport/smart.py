@@ -150,7 +150,7 @@ from bzrlib.bundle.serializer import write_bundle
 from bzrlib.trace import mutter
 
 # must do this otherwise urllib can't parse the urls properly :(
-for scheme in ['ssh', 'bzr', 'bzr+loopback']:
+for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
 
@@ -519,11 +519,16 @@ class SmartTransport(sftp.SFTPUrlHandling):
     def __init__(self, server_url, clone_from=None):
         super(SmartTransport, self).__init__(server_url)
         ## print 'init transport url=%r' % server_url
-        if clone_from is None:
-            self._connect_to_server()
-        else:
+        if clone_from is not None:
             # reuse same connection
             self._client = clone_from._client
+        else:
+            self._client = None
+
+    def _ensure_connection(self):
+        if self._client is None:
+            readfile, writefile = self._connect_to_server()
+            self._client = SmartStreamClient(readfile, writefile)
 
     def clone(self, relative_url):
         """Make a new SmartTransport related to me, sharing the same connection.
@@ -544,6 +549,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
         return False
                                                    
     def get_smart_client(self):
+        self._ensure_connection()
         return self._client
                                                    
     def _unparse_url(self, path):
@@ -571,6 +577,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
 
         :see: Transport.has()
         """
+        self._ensure_connection()
         resp = self._client._call('has', self._remote_path(relpath))
         if resp == ('yes', ):
             return True
@@ -584,6 +591,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
         
         :see: Transport.get()
         """
+        self._ensure_connection()
         ## mutter("%s.get %s", self, relpath)
         remote = self._remote_path(relpath)
         ## mutter("  remote path: %s", remote)
@@ -599,6 +607,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
             return '%d' % mode
 
     def mkdir(self, relpath, mode=None):
+        self._ensure_connection()
         resp = self._client._call('mkdir', 
                                   self._remote_path(relpath), 
                                   self._optional_mode(mode))
@@ -610,6 +619,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
         # strings?
         # XXX: wrap strings in a StringIO.  There should be a better way of
         # handling this.
+        self._ensure_connection()
         if isinstance(upload_file, str):
             upload_file = StringIO(upload_file)
         resp = self._client._call_with_upload('put', 
@@ -619,6 +629,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
         self._translate_error(resp)
 
     def append(self, relpath, from_file, mode=None):
+        self._ensure_connection()
         resp = self._client._call_with_upload('append',
                                               (self._remote_path(relpath), 
                                                self._optional_mode(mode)),
@@ -628,20 +639,24 @@ class SmartTransport(sftp.SFTPUrlHandling):
         self._translate_error(resp)
 
     def delete(self, relpath):
+        self._ensure_connection()
         resp = self._client._call('delete', self._remote_path(relpath))
         self._translate_error(resp)
 
     def rename(self, rel_from, rel_to):
+        self._ensure_connection()
         self._call('rename', 
                    self._remote_path(rel_from),
                    self._remote_path(rel_to))
 
     def move(self, rel_from, rel_to):
+        self._ensure_connection()
         self._call('move', 
                    self._remote_path(rel_from),
                    self._remote_path(rel_to))
 
     def rmdir(self, relpath):
+        self._ensure_connection()
         resp = self._call('rmdir', self._remote_path(relpath))
 
     def _call(self, method, *args):
@@ -671,12 +686,16 @@ class SmartTransport(sftp.SFTPUrlHandling):
         return self._client._recv_tuple()
 
     def disconnect(self):
+        # XXX a bit weird to need to connect just to stop disconnect from
+        # breaking...
+        self._ensure_connection()
         self._client.disconnect()
 
     def delete_tree(self, relpath):
         raise errors.TransportNotPossible('readonly transport')
 
     def stat(self, relpath):
+        self._ensure_connection()
         resp = self._client._call('stat', self._remote_path(relpath))
         if resp[0] == 'stat':
             return SmartStat(int(resp[1]), int(resp[2], 8))
@@ -700,6 +719,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
         return True
 
     def list_dir(self, relpath):
+        self._ensure_connection()
         resp = self._client._call('list_dir',
                                   self._remote_path(relpath))
         if resp[0] == 'names':
@@ -708,6 +728,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
             self._translate_error(resp)
 
     def iter_files_recursive(self):
+        self._ensure_connection()
         resp = self._client._call('iter_files_recursive',
                                   self._remote_path(''))
         if resp[0] == 'names':
@@ -786,13 +807,42 @@ class SmartTCPTransport(SmartTransport):
         # throughout?  But what about pipes to ssh?...
         to_server = self._socket.makefile('w')
         from_server = self._socket.makefile('r')
-        self._client = SmartStreamClient(from_server, to_server)
+        return from_server, to_server
 
     def disconnect(self):
         super(SmartTCPTransport, self).disconnect()
         # XXX: Is closing the socket as well as closing the files really
         # necessary?
         self._socket.close()
+
+
+class SmartSSHTransport(SmartTransport):
+    """Connection to smart server over SSH."""
+
+    def __init__(self, url):
+        # TODO: all this probably belongs in the parent class.
+        super(SmartSSHTransport, self).__init__(url)
+        self._scheme, self._username, self._password, self._host, self._port, self._path = \
+                transport.split_url(url)
+        try:
+            if self._port is not None:
+                self._port = int(self._port)
+        except (ValueError, TypeError), e:
+            raise errors.InvalidURL(path=url, extra="invalid port %s" % self._port)
+
+    def _connect_to_server(self):
+        # XXX: don't hardcode vendor
+        # XXX: cannot pass password to SSHSubprocess yet
+        if self._password is not None:
+            raise errors.InvalidURL("SSH smart transport doesn't handle passwords")
+        self._ssh_connection = sftp.SSHSubprocess(self._host, 'openssh',
+                port=self._port, user=self._username,
+                command=['bzr', 'serve', '--inet'])
+        return self._ssh_connection.get_filelike_channels()
+
+    def disconnect(self):
+        super(SmartSSHTransport, self).disconnect()
+        self._ssh_connection.close()
 
 
 def get_test_permutations():

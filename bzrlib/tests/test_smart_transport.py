@@ -224,6 +224,15 @@ class SmartServerTests(tests.TestCaseWithTransport):
                      "doesn't look like a bundle: %r" % response.body)
         bundle = serializer.read_bundle(StringIO(response.body))
 
+
+class SmartTransportRegistration(tests.TestCase):
+
+    def test_registration(self):
+        t = get_transport('bzr+ssh://example.com/path')
+        self.assertIsInstance(t, smart.SmartSSHTransport)
+        self.assertEqual('example.com', t._host)
+
+
 # TODO: Client feature that does get_bundle and then installs that into a
 # branch; this can be used in place of the regular pull/fetch operation when
 # coming from a smart server.
