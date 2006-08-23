@@ -45,6 +45,8 @@ class RemoteBzrDirFormat(bzrdir.BzrDirMetaFormat1):
         return RemoteBzrDir(transport)
 
     def __eq__(self, other):
+        if not isinstance(other, RemoteBzrDirFormat):
+            return False
         return self.get_format_description() == other.get_format_description()
 
 
