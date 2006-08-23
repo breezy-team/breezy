@@ -23,6 +23,17 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Really fix mutter() so that it won't ever raise a UnicodeError.
+      It means it is possible for ~/.bzr.log to contain non UTF-8 characters.
+      But it is a debugging log, not a real user file.
+      (John Arbash Meinel, #56947, #53880)
+
+    * Change Command handle to allow Unicode command and options.
+      At present we cannot register Unicode command names, so we will get
+      BzrCommandError('unknown command'), or BzrCommandError('unknown option')
+      But that is better than a UnicodeError + a traceback.
+      (John Arbash Meinel, #57123)
+
     * Handle TZ=UTC properly when reading/writing revisions.
       (John Arbash Meinel, #55783, #56290)
 
