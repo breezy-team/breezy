@@ -23,6 +23,8 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Active FTP transport now works as intended. (ghozzy, #56472)
+
     * Handle TZ=UTC properly when reading/writing revisions.
       (John Arbash Meinel, #55783, #56290)
 

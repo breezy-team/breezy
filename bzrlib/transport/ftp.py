@@ -122,7 +122,10 @@ class FtpTransport(Transport):
             netloc = '%s@%s' % (urllib.quote(self._username), netloc)
         if self._port is not None:
             netloc = '%s:%d' % (netloc, self._port)
-        return urlparse.urlunparse(('ftp', netloc, path, '', '', ''))
+        proto = 'ftp'
+        if self.is_active:
+            proto = 'aftp'
+        return urlparse.urlunparse((proto, netloc, path, '', '', ''))
 
     def _get_FTP(self):
         """Return the ftplib.FTP instance for this object."""
