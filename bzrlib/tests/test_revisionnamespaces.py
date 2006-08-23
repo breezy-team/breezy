@@ -450,3 +450,39 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
         self.assertRaises(errors.NoCommits,
                           RevisionSpec('ancestor:tree').in_history,
                           new_tree.branch)
+
+
+class TestRevisionSpec_branch(TestRevisionSpec):
+    
+    def test_non_exact_branch(self):
+        # It seems better to require an exact path to the branch
+        # Branch.open() rather than using Branch.open_containing()
+        self.assertRaises(errors.NotBranchError,
+                          RevisionSpec('branch:tree2/a').in_history,
+                          self.tree.branch)
+
+    def test_simple(self):
+        self.assertInHistoryIs(None, 'alt_r2', 'branch:tree2')
+
+    def test_self(self):
+        self.assertInHistoryIs(2, 'r2', 'branch:tree')
+
+    def test_unrelated(self):
+        new_tree = self.make_branch_and_tree('new_tree')
+
+        new_tree.commit('Commit one', rev_id='new_r1')
+        new_tree.commit('Commit two', rev_id='new_r2')
+        new_tree.commit('Commit three', rev_id='new_r3')
+
+        self.assertInHistoryIs(None, 'new_r3', 'branch:new_tree')
+
+        # XXX: Right now, we use fetch() to make sure the remote revisions
+        # have been pulled into the local branch. We may change that
+        # behavior in the future.
+        self.failUnless(self.tree.branch.repository.has_revision('new_r3'))
+
+    def test_no_commits(self):
+        new_tree = self.make_branch_and_tree('new_tree')
+        self.assertRaises(errors.NoCommits,
+                          RevisionSpec('branch:new_tree').in_history,
+                          self.tree.branch)

@@ -21,6 +21,7 @@ import re
 
 from bzrlib import (
     errors,
+    revision,
     )
 from bzrlib.errors import BzrError, NoSuchRevision, NoCommits
 
@@ -430,16 +431,17 @@ class RevisionSpec_ancestor(RevisionSpec):
 
     def _match_on(self, branch, revs):
         from bzrlib.branch import Branch
-        from bzrlib.revision import common_ancestor, MultipleRevisionSources
+
         other_branch = Branch.open(self.spec)
         revision_a = branch.last_revision()
         revision_b = other_branch.last_revision()
         for r, b in ((revision_a, branch), (revision_b, other_branch)):
-            if r is None:
+            if r in (None, revision.NULL_REVISION):
                 raise NoCommits(b)
-        revision_source = MultipleRevisionSources(branch.repository,
-                                                  other_branch.repository)
-        rev_id = common_ancestor(revision_a, revision_b, revision_source)
+        revision_source = revision.MultipleRevisionSources(
+                branch.repository, other_branch.repository)
+        rev_id = revision.common_ancestor(revision_a, revision_b,
+                                          revision_source)
         try:
             revno = branch.revision_id_to_revno(rev_id)
         except NoSuchRevision:
@@ -457,10 +459,10 @@ class RevisionSpec_branch(RevisionSpec):
     prefix = 'branch:'
 
     def _match_on(self, branch, revs):
-        from branch import Branch
-        other_branch = Branch.open_containing(self.spec)[0]
+        from bzrlib.branch import Branch
+        other_branch = Branch.open(self.spec)
         revision_b = other_branch.last_revision()
-        if revision_b is None:
+        if revision_b in (None, revision.NULL_REVISION):
             raise NoCommits(other_branch)
         # pull in the remote revisions so we can diff
         branch.fetch(other_branch, revision_b)
