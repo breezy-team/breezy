@@ -27,76 +27,6 @@ from bzrlib.errors import NoCommonAncestor, NoCommits
 from bzrlib.revisionspec import RevisionSpec
 
 
-class TestRevisionNamespaces(TestCaseWithTransport):
-
-    def test_revision_namespaces(self):
-        """Test revision specifiers.
-
-        These identify revisions by date, etc."""
-        wt = self.make_branch_and_tree('.')
-        b = wt.branch
-
-        wt.commit('Commit one', rev_id='a@r-0-1', timestamp=time.time() - 60*60*24)
-        wt.commit('Commit two', rev_id='a@r-0-2')
-        wt.commit('Commit three', rev_id='a@r-0-3')
-
-        self.assertEquals(RevisionSpec(None).in_history(b), (0, None))
-        self.assertEquals(RevisionSpec(1).in_history(b), (1, 'a@r-0-1'))
-        self.assertEquals(RevisionSpec('revno:1').in_history(b),
-                          (1, 'a@r-0-1'))
-        self.assertEquals(RevisionSpec('revid:a@r-0-1').in_history(b),
-                          (1, 'a@r-0-1'))
-        self.assertRaises(errors.InvalidRevisionSpec,
-                          RevisionSpec('revid:a@r-0-0').in_history, b)
-        self.assertRaises(TypeError, RevisionSpec, object)
-
-        self.assertEquals(RevisionSpec('last:1').in_history(b),
-                          (3, 'a@r-0-3'))
-        self.assertEquals(RevisionSpec('-1').in_history(b), (3, 'a@r-0-3'))
-#        self.assertEquals(b.get_revision_info('last:1'), (3, 'a@r-0-3'))
-#        self.assertEquals(b.get_revision_info('-1'), (3, 'a@r-0-3'))
-
-        self.assertEquals(RevisionSpec('ancestor:.').in_history(b).rev_id,
-                          'a@r-0-3')
-
-        os.mkdir('newbranch')
-        wt2 = self.make_branch_and_tree('newbranch')
-        b2 = wt2.branch
-        self.assertRaises(NoCommits, RevisionSpec('ancestor:.').in_history, b2)
-
-        d3 = b.bzrdir.sprout('copy')
-        b3 = d3.open_branch()
-        wt3 = d3.open_workingtree()
-        wt3.commit('Commit four', rev_id='b@r-0-4')
-        self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
-                          'a@r-0-3')
-        merge(['copy', -1], [None, None])
-        wt.commit('Commit five', rev_id='a@r-0-4')
-        self.assertEquals(RevisionSpec('ancestor:copy').in_history(b).rev_id,
-                          'b@r-0-4')
-        self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
-                          'b@r-0-4')
-
-        # This should be in the revision store, but not in revision-history
-        self.assertEquals((None, 'b@r-0-4'),
-                RevisionSpec('revid:b@r-0-4').in_history(b))
-
-    def test_branch_namespace(self):
-        """Ensure that the branch namespace pulls in the requisite content."""
-        self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
-        wt = self.make_branch_and_tree('branch1')
-        branch = wt.branch
-        wt.add(['file'])
-        wt.commit('add file')
-        d2 = branch.bzrdir.sprout('branch2')
-        print >> open('branch2/file', 'w'), 'new content'
-        branch2 = d2.open_branch()
-        d2.open_workingtree().commit('update file', rev_id='A')
-        spec = RevisionSpec('branch:./branch2/.bzr/../')
-        rev_info = spec.in_history(branch)
-        self.assertEqual(rev_info, (None, 'A'))
-
-
 # Basic class, which just creates a really basic set of revisions
 class TestRevisionSpec(TestCaseWithTransport):
 
@@ -140,6 +70,16 @@ class TestRevisionSpec(TestCaseWithTransport):
         else:
             self.fail('Expected InvalidRevisionSpec to be raised for %s'
                       % (revision_spec,))
+
+
+class TestOddRevisionSpec(TestRevisionSpec):
+    """Test things that aren't normally thought of as revision specs"""
+
+    def test_none(self):
+        self.assertInHistoryIs(0, None, None)
+
+    def test_object(self):
+        self.assertRaises(TypeError, RevisionSpec, object())
 
 
 class TestRevisionSpec_int(TestRevisionSpec):
