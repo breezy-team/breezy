@@ -590,10 +590,11 @@ class AmbiguousBase(BzrError):
         self.bases = bases
 
 
-class NoCommits(BzrError):
+class NoCommits(BzrNewError):
+    """Branch %(branch)s has no commits."""
+
     def __init__(self, branch):
-        msg = "Branch %s has no commits." % branch
-        BzrError.__init__(self, msg)
+        BzrNewError.__init__(self, branch=branch)
 
 
 class UnlistableStore(BzrError):
