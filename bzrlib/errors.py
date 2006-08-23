@@ -1097,12 +1097,12 @@ class MalformedFooter(BadBundle):
         BzrNewError.__init__(self)
         self.text = text
 
+
 class UnsupportedEOLMarker(BadBundle):
     """End of line marker was not \\n in bzr revision-bundle"""    
 
     def __init__(self):
         BzrNewError.__init__(self)    
-        self.text = text
 
 
 class NoSmartServer(NotBranchError):
