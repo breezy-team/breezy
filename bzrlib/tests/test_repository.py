@@ -38,7 +38,7 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
-from bzrlib import upgrade
+from bzrlib import upgrade, workingtree
 
 
 class TestDefaultFormat(TestCase):
@@ -450,5 +450,9 @@ class TestRepositoryFormatKnit2(TestCaseWithTransport):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = repository.RepositoryFormatKnit2()
         upgrade.Convert('.', format)
+        tree = workingtree.WorkingTree.open('.')
         revision_tree = tree.branch.repository.revision_tree('dull')
         revision_tree.get_file_lines(revision_tree.inventory.root.file_id)
+        tree.commit("Another dull commit", rev_id='dull2')
+        revision_tree = tree.branch.repository.revision_tree('dull2')
+        self.assertEqual('dull', revision_tree.inventory.root.revision)
