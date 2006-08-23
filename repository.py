@@ -191,6 +191,10 @@ class SvnRepository(Repository):
 
         self.fileid_map = SimpleFileIdMap(self._log, self.create_cache_dir())
 
+    def _warn_if_deprecated(self):
+        # This class isn't deprecated
+        pass
+
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, 
                            self.base)

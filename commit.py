@@ -32,6 +32,9 @@ import os
 
 class SvnCommitBuilder(CommitBuilder):
     """Commit Builder implementation wrapped around svn_delta_editor. """
+
+    record_root_entry = True 
+
     def __init__(self, repository, branch, parents, config, revprops):
         """Instantiate a new SvnCommitBuilder.
 
@@ -106,7 +109,6 @@ class SvnCommitBuilder(CommitBuilder):
         new_lines = get_content_byte_lines()
         self.modified_files[file_id] = "".join(new_lines)
         return osutils.sha_strings(new_lines), sum(map(len, new_lines))
-
 
     def modified_link(self, file_id, file_parents, link_target):
         mutter('modifying link %s' % file_id)
