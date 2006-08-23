@@ -1250,7 +1250,9 @@ class WorkingTree(bzrlib.tree.Tree):
             # root node id can legitimately look like 'revision_id' but cannot
             # contain a '"'.
             xml = self.branch.repository.get_inventory_xml(new_revision)
-            if not 'revision_id="' in xml.split('\n', 1)[0]:
+            firstline = xml.split('\n', 1)[0]
+            if (not 'revision_id="' in firstline or 
+                'format="5"' not in firstline):
                 inv = self.branch.repository.deserialise_inventory(
                     new_revision, xml)
                 inv.revision_id = new_revision

@@ -193,7 +193,8 @@ class TestRepository(TestCaseWithRepository):
         b_branch.pull(tree_a.branch)
         tree_b = b_bzrdir.create_workingtree()
         tree_b.commit('no change', rev_id='rev2')
-        self.assertEqual('rev1', tree_b.basis_tree().inventory.root.revision)
+        rev2_tree = repo.revision_tree('rev2')
+        self.assertEqual('rev1', rev2_tree.inventory.root.revision)
 
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')

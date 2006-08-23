@@ -21,7 +21,18 @@ import re
 import time
 from unittest import TestSuite
 
-from bzrlib import bzrdir, check, delta, gpg, errors, xml5, ui, transactions, osutils
+from bzrlib import (
+    bzrdir, 
+    check, 
+    delta, 
+    gpg, 
+    errors, 
+    osutils,
+    transactions,
+    ui, 
+    xml5, 
+    xml6,
+    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.graph import Graph
@@ -75,7 +86,7 @@ class Repository(object):
             "Mismatch between inventory revision" \
             " id and insertion revid (%r, %r)" % (inv.revision_id, revid)
         assert inv.root is not None
-        inv_text = xml5.serializer_v5.write_inventory_to_string(inv)
+        inv_text = self.serialise_inventory(inv)
         inv_sha1 = osutils.sha_string(inv_text)
         inv_vf = self.control_weaves.get_weave('inventory',
                                                self.get_transaction())
@@ -450,6 +461,9 @@ class Repository(object):
         result = xml5.serializer_v5.read_inventory_from_string(xml)
         result.root.revision = revision_id
         return result
+
+    def serialise_inventory(self, inv):
+        return xml5.serializer_v5.write_inventory_to_string(inv)
 
     @needs_read_lock
     def get_inventory_xml(self, revision_id):
@@ -985,6 +999,45 @@ class KnitRepository(MetaDirRepository):
     def revision_parents(self, revision_id):
         return self._get_revision_vf().get_parents(revision_id)
 
+
+class KnitRepository2(KnitRepository):
+    """"""
+
+    def deserialise_inventory(self, revision_id, xml):
+        """Transform the xml into an inventory object. 
+
+        :param revision_id: The expected revision id of the inventory.
+        :param xml: A serialised inventory.
+        """
+        result = xml6.serializer_v6.read_inventory_from_string(xml)
+        assert result.root.revision is not None
+        return result
+
+    def serialise_inventory(self, inv):
+        """Transform the inventory object into XML text.
+
+        :param revision_id: The expected revision id of the inventory.
+        :param xml: A serialised inventory.
+        """
+        assert inv.root.revision is not None
+        return xml6.serializer_v6.write_inventory_to_string(inv)
+
+    def get_commit_builder(self, branch, parents, config, timestamp=None, 
+                           timezone=None, committer=None, revprops=None, 
+                           revision_id=None):
+        """Obtain a CommitBuilder for this repository.
+        
+        :param branch: Branch to commit to.
+        :param parents: Revision ids of the parents of the new revision.
+        :param config: Configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.
+        """
+        return RootCommitBuilder(self, parents, config, timestamp, timezone,
+                                 committer, revprops, revision_id)
 
 class RepositoryFormat(object):
     """A repository format.
@@ -1630,6 +1683,32 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
                 'Does not support rich root data.', target_format)
+
+    def open(self, a_bzrdir, _found=False, _override_transport=None):
+        """See RepositoryFormat.open().
+        
+        :param _override_transport: INTERNAL USE ONLY. Allows opening the
+                                    repository at a slightly different url
+                                    than normal. I.e. during 'upgrade'.
+        """
+        if not _found:
+            format = RepositoryFormat.find_format(a_bzrdir)
+            assert format.__class__ ==  self.__class__
+        if _override_transport is not None:
+            repo_transport = _override_transport
+        else:
+            repo_transport = a_bzrdir.get_repository_transport(None)
+        control_files = LockableFiles(repo_transport, 'lock', LockDir)
+        text_store = self._get_text_store(repo_transport, control_files)
+        control_store = self._get_control_store(repo_transport, control_files)
+        _revision_store = self._get_revision_store(repo_transport, control_files)
+        return KnitRepository2(_format=self,
+                               a_bzrdir=a_bzrdir,
+                               control_files=control_files,
+                               _revision_store=_revision_store,
+                               control_store=control_store,
+                               text_store=text_store)
+
 
 
 # formats which have no format string are not discoverable
@@ -2312,6 +2391,41 @@ class _CommitBuilder(CommitBuilder):
     """
 
     record_root_entry = True
+
+
+class RootCommitBuilder(CommitBuilder):
+    """This commitbuilder actually records the root id"""
+    
+    record_root_entry = True
+
+    def record_entry_contents(self, ie, parent_invs, path, tree):
+        """Record the content of ie from tree into the commit if needed.
+
+        Side effect: sets ie.revision when unchanged
+
+        :param ie: An inventory entry present in the commit.
+        :param parent_invs: The inventories of the parent revisions of the
+            commit.
+        :param path: The path the entry is at in the tree.
+        :param tree: The tree which contains this entry and should be used to 
+        obtain content.
+        """
+        assert self.new_inventory.root is not None or ie.parent_id is None
+        self.new_inventory.add(ie)
+
+        # ie.revision is always None if the InventoryEntry is considered
+        # for committing. ie.snapshot will record the correct revision 
+        # which may be the sole parent if it is untouched.
+        if ie.revision is not None:
+            return
+
+        previous_entries = ie.find_previous_heads(
+            parent_invs,
+            self.repository.weave_store,
+            self.repository.get_transaction())
+        # we are creating a new revision for ie in the history store
+        # and inventory.
+        ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
 
 
 _unescape_map = {

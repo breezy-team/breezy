@@ -300,6 +300,14 @@ class Knit1to2Fetcher(KnitRepoFetcher):
                                                    parent_texts)
         versionedfile.clear_cache()
 
+    def _fetch_inventory_weave(self, revs):
+        revision_trees = self.from_repository.revision_trees(revs)
+        inventory_weave = self.from_repository.get_inventory_weave()
+        for tree in revision_trees:
+            parents = inventory_weave.get_parents(tree.get_revision_id())
+            self.to_repository.add_inventory(tree.get_revision_id(),
+                                             tree.inventory, parents)
+
 
 class Fetcher(object):
     """Backwards compatibility glue for branch.fetch()."""
