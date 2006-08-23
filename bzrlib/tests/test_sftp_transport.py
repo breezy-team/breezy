@@ -360,7 +360,6 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
         self.get_server().add_latency = 0.5
         transport = self.get_transport()
         with_latency_knob_time = time.time() - start_time
-        print with_latency_knob_time
         self.assertTrue(with_latency_knob_time > 0.4)
 
     def test_default(self):
