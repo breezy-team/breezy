@@ -246,7 +246,14 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
                                   ' support file ids with <> on win32')
             # This is not a known error condition
             raise
-
+        # Ensure we get the right repo format for metadirs
+        target_format = main_branch.repository._format
+        try:
+            main_branch.bzrdir._format.repository_format = target_format
+        except AttributeError:
+            # AttributError can only mean readonly attribute
+            # Which means it wasn't a metadir.
+            pass
         branch2_bzrdir = main_branch.bzrdir.sprout("branch2")
         branch2_branch = branch2_bzrdir.open_branch()
         branch2_wt = branch2_bzrdir.open_workingtree()
