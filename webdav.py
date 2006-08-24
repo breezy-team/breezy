@@ -20,6 +20,7 @@ A Transport which complement http transport by implementing
 partially the WebDAV protocol to push files.
 This should enable remote push operations.
 """
+
 # FIXME: A DAV web server can't handle mode on files because:
 # - there is nothing in the protocol for that,
 # - the  server  itself  generally  uses  the mode  for  its  own
@@ -57,7 +58,17 @@ This should enable remote push operations.
 # TODO: Review all hhtp^W http codes used here and by various DAV
 # servers implementations, I feel bugs lying around...
 
+# TODO:    Try    to     anticipate    the    implemenation    of
+# www.ietf.org/internet-drafts/draft-suma-append-patch-00.txt   by
+# implementing APPEND  in a  test server. And  then have  the webdav
+# plugin try  to use APPEND, and  if it isn't  available, it will
+# permanently  switch back  to  get +  put  for the  life of  the
+# Transport.
+
 from cStringIO import StringIO
+import os
+import random
+import time
 
 import bzrlib
 from bzrlib.errors import (
@@ -72,14 +83,6 @@ from bzrlib.trace import mutter
 from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     )
-
-# Don't go further if we are not compatible
-major, minor, micro, releaselevel = bzrlib.version_info[:4]
-
-if major != 0 or minor != 10 or releaselevel != 'dev':
-    # Until  the  plugin  is  considered  mature  enough,  better
-    # restrict its use to devs
-    raise BzrCheckError('We need a recent bzr >= 0.10.0dev')
 
 # We  want  https because  user  and  passwords  are required  to
 # authenticate  against the  DAV server.  We don't  want  to send
@@ -217,17 +220,33 @@ class HttpDavTransport(PyCurlTransport):
     def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
 
+        Tests revealed that contrary to what is said in
+        http://www.rfc.net/rfc2068.html, the put is atomic. When
+        putting a file, if the client died, a partial file may
+        still exists on the server.
+
+        So we first put a temp file and then move it.
+        
         This operation is atomic (see http://www.rfc.net/rfc2068.html).
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like object.
         """
         abspath = self._real_abspath(relpath)
+
+        stamp = '.tmp.%.9f.%d.%d' % (time.time(),
+                                     os.getpid(),
+                                     random.randint(0,0x7FFFFFFF))
+        # A temporary file to hold  all the data to guard against
+        # client death
+        tmp_relpath = relpath + stamp
+        tmp_abspath = abspath + stamp
+
         # FIXME: We  can't share the curl with  get requests. Try
         # to  understand  why  to  be  able  to  share.
         #curl  = self._base_curl
         curl = pycurl.Curl()
         self._set_curl_options(curl)
-        curl.setopt(pycurl.URL, abspath)
+        curl.setopt(pycurl.URL, tmp_abspath)
         curl.setopt(pycurl.UPLOAD, True)
 
         curl.setopt(pycurl.READFUNCTION, f.read)
@@ -239,7 +258,22 @@ class HttpDavTransport(PyCurlTransport):
             raise NoSuchFile(abspath) # Intermediate directories missing
         if code not in  (200, 201, 204):
             self._raise_curl_http_error(curl, 'expected 200, 201 or 204.')
-          
+
+        # Now move the temp file
+        try:
+            self.move(tmp_relpath, relpath)
+        except Exception, e:
+            # If  we fail,  try to  clean up  the  temporary file
+            # before we throw the exception but don't let another
+            # exception mess  things up Write  out the traceback,
+            # because otherwise  the catch and  throw destroys it
+            # If we can't, delete the temp file before throwing
+            try:
+                self.delete(tmp_relpath)
+            except:
+                raise e # raise the saved except
+            raise # raise the original with its traceback if we can.
+       
     def rename(self, rel_from, rel_to):
         """Rename without special overwriting"""
         abs_from = self._real_abspath(rel_from)

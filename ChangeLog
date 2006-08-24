@@ -1,4 +1,16 @@
+2006-08-24  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+        Ensures that put is atomic.
+	
+	* webdav.py:
+	(HttpDavTransport.put):  Makes  sure the  put  is  atomic even  on
+	non-nocforming servers.
+
+	* __init__.py: 
+	Check  the  bzr version  here,  no need  to  import  just to  say:
+	"Finally, I can't work".
+
 2006-08-23  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+        Another fix recommanded by jam
 
 	* test_webdav.py:
 	(TestingDAVRequestHandler._read_chunk): Don't use string.atoi.

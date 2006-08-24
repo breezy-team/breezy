@@ -20,6 +20,15 @@ This defines the HttpWebDAV transport, which implement the necessary
 handling of WebDAV to allow pushing on an http server.
 """
 
+# Don't go further if we are not compatible
+import bzrlib
+major, minor, micro, releaselevel = bzrlib.version_info[:4]
+
+if major != 0 or minor != 10 or releaselevel != 'dev':
+    # Until  the  plugin  is  considered  mature  enough,  better
+    # restrict its use to devs
+    raise BzrCheckError('We need a recent bzr >= 0.10.0dev')
+
 from bzrlib.transport import (
     register_lazy_transport
     )
