@@ -337,37 +337,25 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
 
         if t.is_readonly():
-            open('a', 'wb').write('diff\ncontents for\na\n')
-            open('b', 'wb').write('contents\nfor b\n')
-        else:
-            t.put_multi([
-                    ('a', StringIO('diff\ncontents for\na\n')),
-                    ('b', StringIO('contents\nfor b\n'))
-                    ])
-
-        if t.is_readonly():
             self.assertRaises(TransportNotPossible,
                     t.append, 'a', 'add\nsome\nmore\ncontents\n')
-            _append('a', StringIO('add\nsome\nmore\ncontents\n'))
-        else:
-            self.assertEqual(20,
-                t.append('a', StringIO('add\nsome\nmore\ncontents\n')))
+            return
+        t.put_multi([
+                ('a', StringIO('diff\ncontents for\na\n')),
+                ('b', StringIO('contents\nfor b\n'))
+                ])
+
+        self.assertEqual(20,
+            t.append('a', StringIO('add\nsome\nmore\ncontents\n')))
 
         self.check_transport_contents(
             'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
             t, 'a')
 
-        if t.is_readonly():
-            self.assertRaises(TransportNotPossible,
-                    t.append_multi,
-                        [('a', 'and\nthen\nsome\nmore\n'),
-                         ('b', 'some\nmore\nfor\nb\n')])
-            _append('a', StringIO('and\nthen\nsome\nmore\n'))
-            _append('b', StringIO('some\nmore\nfor\nb\n'))
-        else:
-            self.assertEqual((43, 15), 
-                t.append_multi([('a', StringIO('and\nthen\nsome\nmore\n')),
-                                ('b', StringIO('some\nmore\nfor\nb\n'))]))
+        self.assertEqual((43, 15),
+            t.append_multi([('a', StringIO('and\nthen\nsome\nmore\n')),
+                            ('b', StringIO('some\nmore\nfor\nb\n'))]))
+
         self.check_transport_contents(
             'diff\ncontents for\na\n'
             'add\nsome\nmore\ncontents\n'
@@ -378,13 +366,9 @@ class TransportTests(TestTransportImplementation):
                 'some\nmore\nfor\nb\n',
                 t, 'b')
 
-        if t.is_readonly():
-            _append('a', StringIO('a little bit more\n'))
-            _append('b', StringIO('from an iterator\n'))
-        else:
-            self.assertEqual((62, 31),
-                t.append_multi(iter([('a', StringIO('a little bit more\n')),
-                                     ('b', StringIO('from an iterator\n'))])))
+        self.assertEqual((62, 31),
+            t.append_multi(iter([('a', StringIO('a little bit more\n')),
+                                 ('b', StringIO('from an iterator\n'))])))
         self.check_transport_contents(
             'diff\ncontents for\na\n'
             'add\nsome\nmore\ncontents\n'
@@ -397,16 +381,12 @@ class TransportTests(TestTransportImplementation):
                 'from an iterator\n',
                 t, 'b')
 
-        if t.is_readonly():
-            _append('c', StringIO('some text\nfor a missing file\n'))
-            _append('a', StringIO('some text in a\n'))
-            _append('d', StringIO('missing file r\n'))
-        else:
-            self.assertEqual(0,
-                t.append('c', StringIO('some text\nfor a missing file\n')))
-            self.assertEqual((80, 0),
-                t.append_multi([('a', StringIO('some text in a\n')),
-                                ('d', StringIO('missing file r\n'))]))
+        self.assertEqual(0,
+            t.append('c', StringIO('some text\nfor a missing file\n')))
+        self.assertEqual((80, 0),
+            t.append_multi([('a', StringIO('some text in a\n')),
+                            ('d', StringIO('missing file r\n'))]))
+
         self.check_transport_contents(
             'diff\ncontents for\na\n'
             'add\nsome\nmore\ncontents\n'
@@ -419,114 +399,41 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('missing file r\n', t, 'd')
         
         # a file with no parent should fail..
-        if not t.is_readonly():
-            self.assertRaises(NoSuchFile,
-                              t.append, 'missing/path', 
-                              StringIO('content'))
+        self.assertRaises(NoSuchFile,
+                          t.append, 'missing/path',
+                          StringIO('content'))
 
-    def test_append_file(self):
+    def test_append_bytes(self):
         t = self.get_transport()
 
-        contents = [
-            ('f1', StringIO('this is a string\nand some more stuff\n')),
-            ('f2', StringIO('here is some text\nand a bit more\n')),
-            ('f3', StringIO('some text for the\nthird file created\n')),
-            ('f4', StringIO('this is a string\nand some more stuff\n')),
-            ('f5', StringIO('here is some text\nand a bit more\n')),
-            ('f6', StringIO('some text for the\nthird file created\n'))
-        ]
-        
         if t.is_readonly():
-            for f, val in contents:
-                open(f, 'wb').write(val.read())
-        else:
-            t.put_multi(contents)
+            self.assertRaises(TransportNotPossible,
+                    t.append, 'a', 'add\nsome\nmore\ncontents\n')
+            return
 
-        a1 = StringIO('appending to\none\n')
-        if t.is_readonly():
-            _append('f1', a1)
-        else:
-            t.append('f1', a1)
+        self.assertEqual(0, t.append_bytes('a', 'diff\ncontents for\na\n'))
+        self.assertEqual(0, t.append_bytes('b', 'contents\nfor b\n'))
 
-        del a1
+        self.assertEqual(20,
+            t.append_bytes('a', 'add\nsome\nmore\ncontents\n'))
 
         self.check_transport_contents(
-                'this is a string\nand some more stuff\n'
-                'appending to\none\n',
-                t, 'f1')
+            'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
+            t, 'a')
 
-        a2 = StringIO('adding more\ntext to two\n')
-        a3 = StringIO('some garbage\nto put in three\n')
-
-        if t.is_readonly():
-            _append('f2', a2)
-            _append('f3', a3)
-        else:
-            t.append_multi([('f2', a2), ('f3', a3)])
-
-        del a2, a3
-
-        self.check_transport_contents(
-                'here is some text\nand a bit more\n'
-                'adding more\ntext to two\n',
-                t, 'f2')
-        self.check_transport_contents( 
-                'some text for the\nthird file created\n'
-                'some garbage\nto put in three\n',
-                t, 'f3')
-
-        # Test that an actual file object can be used with put
-        a4 = t.get('f1')
-        if t.is_readonly():
-            _append('f4', a4)
-        else:
-            t.append('f4', a4)
-
-        del a4
-
-        self.check_transport_contents(
-                'this is a string\nand some more stuff\n'
-                'this is a string\nand some more stuff\n'
-                'appending to\none\n',
-                t, 'f4')
-
-        a5 = t.get('f2')
-        a6 = t.get('f3')
-        if t.is_readonly():
-            _append('f5', a5)
-            _append('f6', a6)
-        else:
-            t.append_multi([('f5', a5), ('f6', a6)])
-
-        del a5, a6
-
-        self.check_transport_contents(
-                'here is some text\nand a bit more\n'
-                'here is some text\nand a bit more\n'
-                'adding more\ntext to two\n',
-                t, 'f5')
-        self.check_transport_contents(
-                'some text for the\nthird file created\n'
-                'some text for the\nthird file created\n'
-                'some garbage\nto put in three\n',
-                t, 'f6')
-
-        a5 = t.get('f2')
-        a6 = t.get('f2')
-        a7 = t.get('f3')
-        if t.is_readonly():
-            _append('c', a5)
-            _append('a', a6)
-            _append('d', a7)
-        else:
-            t.append('c', a5)
-            t.append_multi([('a', a6), ('d', a7)])
-        del a5, a6, a7
-        self.check_transport_contents(t.get('f2').read(), t, 'c')
-        self.check_transport_contents(t.get('f3').read(), t, 'd')
+        # a file with no parent should fail..
+        self.assertRaises(NoSuchFile,
+                          t.append_bytes, 'missing/path', 'content')
 
     def test_append_mode(self):
         # check append accepts a mode
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        t.append('f', StringIO('f'), mode=None)
+        
+    def test_append_bytes_mode(self):
+        # check append_bytes accepts a mode
         t = self.get_transport()
         if t.is_readonly():
             return

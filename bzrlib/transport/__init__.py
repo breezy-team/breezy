@@ -530,14 +530,24 @@ class Transport(object):
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
     def append(self, relpath, f, mode=None):
-        """Append the text in the file-like or string object to 
-        the supplied location.
+        """Append the text in the file-like object to the supplied location.
 
-        returns the length of f before the content was written to it.
+        returns the length of relpath before the content was written to it.
         
         If the file does not exist, it is created with the supplied mode.
         """
         raise NotImplementedError(self.append)
+
+    def append_bytes(self, relpath, bytes, mode=None):
+        """Append the text in the string object to the supplied location.
+
+        returns the length of relpath before the content was written to it.
+        
+        If the file does not exist, it is created with the supplied mode.
+        """
+        assert isinstance(bytes, str), \
+            'bytes must be a plain string, not %s' % type(bytes)
+        return self.append(relpath, StringIO(bytes), mode=mode)
 
     def append_multi(self, files, pb=None):
         """Append the text in each file-like or string object to
