@@ -379,6 +379,20 @@ class TestRepository(TestCaseWithRepository):
 
         self.assertEquals(store_inv._byid, basis_inv._byid)
 
+    def test_upgrade_from_format4(self):
+        from bzrlib.tests.test_upgrade import _upgrade_dir_template
+        if self.repository_format.__class__ == repository.RepositoryFormat4:
+            raise TestSkipped('Cannot convert format-4 to itself')
+        self.build_tree_contents(_upgrade_dir_template)
+        old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
+        old_repo_format = old_repodir.open_repository()._format
+        format = self.repository_format._matchingbzrdir
+        try:
+            format.repository_format = self.repository_format
+        except AttributeError:
+            pass
+        upgrade('.', format)
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 

@@ -1548,6 +1548,7 @@ class ConvertBzrDir4To5(Converter):
         assert rev_id not in self.converted_revs
         old_inv_xml = self.branch.repository.inventory_store.get(rev_id).read()
         inv = serializer_v4.read_inventory_from_string(old_inv_xml)
+        inv.revision_id = rev_id
         rev = self.revisions[rev_id]
         if rev.inventory_sha1:
             assert rev.inventory_sha1 == sha_string(old_inv_xml), \
