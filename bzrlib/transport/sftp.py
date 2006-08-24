@@ -18,11 +18,8 @@
 """Implementation of Transport over SFTP, using paramiko."""
 
 import errno
-import getpass
-import itertools
 import os
 import random
-import re
 import select
 import socket
 import stat
@@ -31,19 +28,17 @@ import sys
 import time
 import urllib
 import urlparse
-import weakref
 
-from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (ConnectionError,
                            FileExists, 
-                           TransportNotPossible, NoSuchFile, PathNotChild,
+                           NoSuchFile, PathNotChild,
                            TransportError,
                            LockError, 
                            PathError,
                            ParamikoNotPresent,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
-from bzrlib.trace import mutter, warning, error
+from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     Server,
@@ -778,7 +773,6 @@ class SFTPTransport(Transport):
 
 
 # ------------- server test implementation --------------
-import socket
 import threading
 
 from bzrlib.tests.stub_sftp import StubServer, StubSFTPServer
