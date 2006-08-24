@@ -17,9 +17,11 @@
 
 """Foundation SSH support for SFTP and smart server."""
 
+import errno
 import getpass
 import os
 import socket
+import subprocess
 import sys
 import weakref
 
@@ -58,6 +60,15 @@ _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # so we get an AttributeError exception. So we will not try to
 # connect to an agent if we are on win32 and using Paramiko older than 1.6
 _use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
+
+
+def _ignore_sigint():
+    # TODO: This should possibly ignore SIGHUP as well, but bzr currently
+    # doesn't handle it itself.
+    # <https://launchpad.net/products/bzr/+bug/41433/+index>
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    
 
 
 class LoopbackSFTP(object):
@@ -149,15 +160,73 @@ class ParamikoVendor(SSHVendor):
 
 
 class SubprocessVendor(SSHVendor):
-    pass
+    def connect_sftp(self, username, password, host, port):
+        try:
+            args = self.get_args(username, host, port, subsystem='sftp')
+            proc = subprocess.Popen(args,
+                                    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE,
+                                    **os_specific_subprocess_params())
+            sock = SSHSubprocess(proc)
+            return SFTPClient(sock)
+        except (EOFError, paramiko.SSHException), e:
+            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                  % (host, port, e))
+        except (OSError, IOError), e:
+            # If the machine is fast enough, ssh can actually exit
+            # before we try and send it the sftp request, which
+            # raises a Broken Pipe
+            if e.errno not in (errno.EPIPE,):
+                raise
+            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                  % (host, port, e))
+
+    def get_args(self, username, host, port, subsystem=None, command=None):
+        raise NotImplementedError(self.get_args)
 
 
 class OpenSSHSubprocessVendor(SubprocessVendor):
-    pass
+    
+    def get_args(self, username, host, port, subsystem=None, command=None):
+        assert subsystem is not None or command is not None, (
+            'Must specify a command or subsystem')
+        if subsystem is not None:
+            assert command is None, (
+                'subsystem and command are mutually exclusive')
+        args = ['ssh',
+                '-oForwardX11=no', '-oForwardAgent=no',
+                '-oClearAllForwardings=yes', '-oProtocol=2',
+                '-oNoHostAuthenticationForLocalhost=yes']
+        if port is not None:
+            args.extend(['-p', str(port)])
+        if username is not None:
+            args.extend(['-l', username])
+        if subsystem is not None:
+            args.extend(['-s', host, subsystem])
+        else:
+            args.extend([host] + command)
+        return args
 
 
 class SSHCorpSubprocessVendor(SubprocessVendor):
-    pass
+
+    def get_args(self, username, host, port, subsystem=None, command=None):
+        assert subsystem is not None or command is not None, (
+            'Must specify a command or subsystem')
+        if subsystem is not None:
+            assert command is None, (
+                'subsystem and command are mutually exclusive')
+        args = ['ssh', '-x']
+        if port is not None:
+            args.extend(['-p', str(port)])
+        if username is not None:
+            args.extend(['-l', username])
+        if subsystem is not None:
+            args.extend(['-s', subsystem, host])
+        else:
+            args.extend([host] + command)
+        return args
+
     
 
 def _paramiko_auth(username, password, host, paramiko_transport):
@@ -261,5 +330,56 @@ def save_host_keys():
         f.close()
     except IOError, e:
         mutter('failed to save bzr host keys: ' + str(e))
+
+
+def os_specific_subprocess_params():
+    """Get O/S specific subprocess parameters."""
+    if sys.platform == 'win32':
+        # setting the process group and closing fds is not supported on 
+        # win32
+        return {}
+    else:
+        # We close fds other than the pipes as the child process does not need 
+        # them to be open.
+        #
+        # We also set the child process to ignore SIGINT.  Normally the signal
+        # would be sent to every process in the foreground process group, but
+        # this causes it to be seen only by bzr and not by ssh.  Python will
+        # generate a KeyboardInterrupt in bzr, and we will then have a chance
+        # to release locks or do other cleanup over ssh before the connection
+        # goes away.  
+        # <https://launchpad.net/products/bzr/+bug/5987>
+        #
+        # Running it in a separate process group is not good because then it
+        # can't get non-echoed input of a password or passphrase.
+        # <https://launchpad.net/products/bzr/+bug/40508>
+        return {'preexec_fn': _ignore_sigint,
+                'close_fds': True,
+                }
+
+class SSHSubprocess(object):
+    """A socket-like object that talks to an ssh subprocess via pipes."""
+    # TODO: this class probably belongs in bzrlib/transport/ssh.py
+
+    def __init__(self, proc):
+        self.proc = proc
+
+    def send(self, data):
+        return os.write(self.proc.stdin.fileno(), data)
+
+    def recv_ready(self):
+        # TODO: jam 20051215 this function is necessary to support the
+        # pipelined() function. In reality, it probably should use
+        # poll() or select() to actually return if there is data
+        # available, otherwise we probably don't get any benefit
+        return True
+
+    def recv(self, count):
+        return os.read(self.proc.stdout.fileno(), count)
+
+    def close(self):
+        self.proc.stdin.close()
+        self.proc.stdout.close()
+        self.proc.wait()
 
 

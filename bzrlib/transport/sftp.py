@@ -29,8 +29,7 @@ import time
 import urllib
 import urlparse
 
-from bzrlib.errors import (ConnectionError,
-                           FileExists, 
+from bzrlib.errors import (FileExists, 
                            NoSuchFile, PathNotChild,
                            TransportError,
                            LockError, 
@@ -46,7 +45,6 @@ from bzrlib.transport import (
     ssh,
     Transport,
     )
-import bzrlib.ui
 import bzrlib.urlutils as urlutils
 
 try:
@@ -59,44 +57,9 @@ else:
                                CMD_HANDLE, CMD_OPEN)
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
-    from paramiko.sftp_client import SFTPClient
 
 
 register_urlparse_netloc_protocol('sftp')
-
-
-def _ignore_sigint():
-    # TODO: This should possibly ignore SIGHUP as well, but bzr currently
-    # doesn't handle it itself.
-    # <https://launchpad.net/products/bzr/+bug/41433/+index>
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-    
-
-def os_specific_subprocess_params():
-    """Get O/S specific subprocess parameters."""
-    if sys.platform == 'win32':
-        # setting the process group and closing fds is not supported on 
-        # win32
-        return {}
-    else:
-        # We close fds other than the pipes as the child process does not need 
-        # them to be open.
-        #
-        # We also set the child process to ignore SIGINT.  Normally the signal
-        # would be sent to every process in the foreground process group, but
-        # this causes it to be seen only by bzr and not by ssh.  Python will
-        # generate a KeyboardInterrupt in bzr, and we will then have a chance
-        # to release locks or do other cleanup over ssh before the connection
-        # goes away.  
-        # <https://launchpad.net/products/bzr/+bug/5987>
-        #
-        # Running it in a separate process group is not good because then it
-        # can't get non-echoed input of a password or passphrase.
-        # <https://launchpad.net/products/bzr/+bug/40508>
-        return {'preexec_fn': _ignore_sigint,
-                'close_fds': True,
-                }
 
 
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
@@ -124,7 +87,7 @@ def _get_ssh_vendor():
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
-                             **os_specific_subprocess_params())
+                             **ssh.os_specific_subprocess_params())
         returncode = p.returncode
         stdout, stderr = p.communicate()
     except OSError:
@@ -145,52 +108,6 @@ def _get_ssh_vendor():
 
     mutter('falling back to paramiko implementation')
     return _ssh_vendor
-
-
-class SFTPSubprocess:
-    """A socket-like object that talks to an ssh subprocess via pipes."""
-    def __init__(self, hostname, vendor, port=None, user=None):
-        assert vendor in ['openssh', 'ssh']
-        if vendor == 'openssh':
-            args = ['ssh',
-                    '-oForwardX11=no', '-oForwardAgent=no',
-                    '-oClearAllForwardings=yes', '-oProtocol=2',
-                    '-oNoHostAuthenticationForLocalhost=yes']
-            if port is not None:
-                args.extend(['-p', str(port)])
-            if user is not None:
-                args.extend(['-l', user])
-            args.extend(['-s', hostname, 'sftp'])
-        elif vendor == 'ssh':
-            args = ['ssh', '-x']
-            if port is not None:
-                args.extend(['-p', str(port)])
-            if user is not None:
-                args.extend(['-l', user])
-            args.extend(['-s', 'sftp', hostname])
-
-        self.proc = subprocess.Popen(args,
-                                     stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE,
-                                     **os_specific_subprocess_params())
-
-    def send(self, data):
-        return os.write(self.proc.stdin.fileno(), data)
-
-    def recv_ready(self):
-        # TODO: jam 20051215 this function is necessary to support the
-        # pipelined() function. In reality, it probably should use
-        # poll() or select() to actually return if there is data
-        # available, otherwise we probably don't get any benefit
-        return True
-
-    def recv(self, count):
-        return os.read(self.proc.stdout.fileno(), count)
-
-    def close(self):
-        self.proc.stdin.close()
-        self.proc.stdout.close()
-        self.proc.wait()
 
 
 def clear_connection_cache():
@@ -1075,7 +992,7 @@ def _sftp_connect(host, port, username, password):
 
     :raises: a TransportError 'could not connect'.
 
-    :returns: an SFTPClient
+    :returns: an paramiko.sftp_client.SFTPClient
 
     TODO: Raise a more reasonable ConnectionFailed exception
     """
@@ -1090,33 +1007,20 @@ def _sftp_connect(host, port, username, password):
     return sftp
 
 def _sftp_connect_uncached(host, port, username, password):
+    # TODO: use a registration dictionary rather than a big if/elif chain.
     vendor = _get_ssh_vendor()
     if vendor == 'loopback':
-        sftp = ssh.LoopbackVendor().connect_sftp(username, password, host, port)
+        vendorImpl = ssh.LoopbackVendor()
     elif vendor == 'none':
-        sftp = ssh.ParamikoVendor().connect_sftp(username, password, host, port)
+        vendorImpl = ssh.ParamikoVendor()
+    elif vendor == 'openssh':
+        vendorImpl = ssh.OpenSSHSubprocessVendor()
+    elif vendor == 'ssh':
+        vendorImpl = ssh.SSHCorpSubprocessVendor()
     else:
-        sftp = _subprocess_connect_sftp(username, password, host, port, vendor)
+        assert False, "Unknown SSH vendor: %r" % (vendor,)
+    sftp = vendorImpl.connect_sftp(username, password, host, port)
     return sftp
-
-def _subprocess_connect_sftp(username, password, host, port, vendor):
-    try:
-        sock = SFTPSubprocess(host, vendor, port, username)
-        sftp = SFTPClient(sock)
-    except (EOFError, paramiko.SSHException), e:
-        raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                              % (host, port, e))
-    except (OSError, IOError), e:
-        # If the machine is fast enough, ssh can actually exit
-        # before we try and send it the sftp request, which
-        # raises a Broken Pipe
-        if e.errno not in (errno.EPIPE,):
-            raise
-        raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                              % (host, port, e))
-    return sftp
-
-
 
 
 def get_test_permutations():
