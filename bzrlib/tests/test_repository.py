@@ -44,8 +44,9 @@ from bzrlib import upgrade, workingtree
 class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
+        private_default = repository._default_format.__class__
         old_format = repository.RepositoryFormat.get_default_format()
-        self.assertTrue(isinstance(old_format, repository.RepositoryFormatKnit1))
+        self.assertTrue(isinstance(old_format, private_default))
         repository.RepositoryFormat.set_default_format(SampleRepositoryFormat())
         # creating a repository should now create an instrumented dir.
         try:
