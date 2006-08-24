@@ -34,9 +34,9 @@ from bzrlib.transport import local, memory, smart, get_transport
 class SmartClientTests(tests.TestCase):
 
     def test_construct_smart_stream_client(self):
-        # make a new client; this really wants two fifos or sockets
-        # but the constructor should not do any IO
-        client = smart.SmartStreamClient(None, None)
+        # make a new client; this really wants a connector function that returns
+        # two fifos or sockets but the constructor should not do any IO
+        client = smart.SmartStreamClient(None)
 
 
 class TCPClientTests(tests.TestCaseWithTransport):
@@ -113,7 +113,7 @@ class BasicSmartTests(tests.TestCase):
         args = [sys.executable, sys.argv[0], 'serve', '--inet']
         child = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                  close_fds=True)
-        conn = smart.SmartStreamClient(to_server=child.stdin, from_server=child.stdout)
+        conn = smart.SmartStreamClient(lambda: (child.stdout, child.stdin))
         conn.query_version()
         conn.query_version()
         conn.disconnect()
