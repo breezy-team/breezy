@@ -1110,3 +1110,14 @@ class UnsupportedEOLMarker(BadBundle):
 
     def __init__(self):
         BzrNewError.__init__(self)    
+
+
+class BadInventoryFormat(BzrNewError):
+    """Root class for inventory serialization errors"""
+
+
+class UnexpectedInventoryFormat(BadInventoryFormat):
+    """The inventory was not in the expected format:\n %(msg)s"""
+
+    def __init__(self, msg):
+        BadInventoryFormat.__init__(self, msg=msg)

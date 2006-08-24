@@ -349,6 +349,36 @@ class TestRepository(TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
         self.assertEqual('rev_id', rev_tree.inventory.root.revision)
 
+    def test_create_basis_inventory(self):
+        # Needs testing here because differences between repo and working tree
+        # basis inventory formats can lead to bugs.
+        t = self.make_branch_and_tree('.')
+        b = t.branch
+        open('a', 'wb').write('a\n')
+        t.add('a')
+        t.commit('a', rev_id='r1')
+
+        t._control_files.get_utf8('basis-inventory-cache')
+
+        basis_inv = t.basis_tree().inventory
+        self.assertEquals('r1', basis_inv.revision_id)
+        
+        store_inv = b.repository.get_inventory('r1')
+        self.assertEquals(store_inv._byid, basis_inv._byid)
+
+        open('b', 'wb').write('b\n')
+        t.add('b')
+        t.commit('b', rev_id='r2')
+
+        t._control_files.get_utf8('basis-inventory-cache')
+
+        basis_inv_txt = t.read_basis_inventory()
+        basis_inv = bzrlib.xml6.serializer_v6.read_inventory_from_string(basis_inv_txt)
+        self.assertEquals('r2', basis_inv.revision_id)
+        store_inv = b.repository.get_inventory('r2')
+
+        self.assertEquals(store_inv._byid, basis_inv._byid)
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 

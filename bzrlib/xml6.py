@@ -18,12 +18,12 @@ class Serializer_v6(xml5.Serializer_v5):
 
     def _unpack_inventory(self, elt):
         """Construct from XML Element"""
-        assert elt.tag == 'inventory'
+        if elt.tag != 'inventory':
+            raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
         format = elt.get('format')
-        if format is not None:
-            if format != '6':
-                raise errors.BzrError("invalid format version %r on inventory"
-                                      % format)
+        if format != '6':
+            raise errors.UnexpectedInventoryFormat('Invalid format version %r'
+                                                   % format)
         revision_id = elt.get('revision_id')
         if revision_id is not None:
             revision_id = cache_utf8.get_cached_unicode(revision_id)
