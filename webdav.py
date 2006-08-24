@@ -294,8 +294,14 @@ class HttpDavTransport(PyCurlTransport):
         if code == 412:
             raise FileExists(abs_to)
         if code == 409:
-            raise DirectoryNotEmpty(abs_to)
+            # More precisely some intermediate directories are missing
+            raise NoSuchFile(abs_to)
         if code != 201:
+            # As we don't want  to accept overwriting abs_to, 204
+            # (meaning  abs_to  was   existing  (but  empty,  the
+            # non-empty case is 412))  will be an error, a server
+            # bug  even,  since  we  require explicitely  to  not
+            # overwrite.
             self._raise_curl_http_error(curl, 
                                         'unable to rename to %r' % (abs_to))
 
@@ -318,7 +324,9 @@ class HttpDavTransport(PyCurlTransport):
             raise NoSuchFile(abs_from)
         if code == 409:
             raise DirectoryNotEmpty(abs_to)
-        if code != 201:
+        # Overwriting  allowed, 201 means  abs_to did  not exist,
+        # 204 means it did exist.
+        if code not in (201, 204):
             self._raise_curl_http_error(curl, 
                                         'unable to move to %r' % (abs_to))
 

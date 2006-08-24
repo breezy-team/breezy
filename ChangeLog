@@ -1,4 +1,12 @@
 2006-08-24  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+        Accept 204 as a valid put result.
+	
+	* webdav.py:
+	(HttpDavTransport.rename): Add some explanations.
+	(HttpDavTransport.move):  204 is  also a  valid  code representing
+	successful completion.
+
+2006-08-24-1  Vincent LADEUIL  <v.ladeuil@alplog.fr>
         Ensures that put is atomic.
 	
 	* webdav.py:
