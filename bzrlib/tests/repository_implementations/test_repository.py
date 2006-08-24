@@ -393,6 +393,12 @@ class TestRepository(TestCaseWithRepository):
             pass
         upgrade('.', format)
 
+    def test_pointless_commit(self):
+        tree = self.make_branch_and_tree('.')
+        self.assertRaises(errors.PointlessCommit, tree.commit, 'pointless',
+                          allow_pointless=False)
+        tree.commit('pointless', allow_pointless=True)
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 

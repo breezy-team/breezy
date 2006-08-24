@@ -287,10 +287,7 @@ class Commit(object):
             self._populate_new_inv()
             self._report_deletes()
 
-            if not (self.allow_pointless
-                    or len(self.parents) > 1
-                    or self.builder.new_inventory != self.basis_inv):
-                raise PointlessCommit()
+            self._check_pointless()
 
             self._emit_progress_update()
             # TODO: Now the new inventory is known, check for conflicts and
@@ -334,6 +331,21 @@ class Commit(object):
         finally:
             self._cleanup()
         return self.rev_id
+
+    def _check_pointless(self):
+        if self.allow_pointless:
+            return
+        # A merge with no effect on files
+        if len(self.parents) > 1:
+            return
+        # work around the fact that a newly-initted tree does differ from its
+        # basis
+        if len(self.builder.new_inventory) != len(self.basis_inv):
+            return
+        if (len(self.builder.new_inventory) != 1 and
+            self.builder.new_inventory != self.basis_inv):
+            return
+        raise PointlessCommit()
 
     def _check_bound_branch(self):
         """Check to see if the local branch is bound.

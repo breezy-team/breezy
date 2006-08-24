@@ -52,7 +52,8 @@ class TrivialTest(TestCaseWithTransport):
         t = bzrdir.BzrDir.create_standalone_workingtree('.')
         # an empty inventory with no revision will trigger reconciliation.
         repo = t.branch.repository
-        inv = Inventory()
+        inv = Inventory(revision_id='missing')
+        inv.root.revision='missing'
         repo.add_inventory('missing', inv, [])
         (out, err) = self.run_bzr_captured(['reconcile'])
         self.assertEqualDiff(out, "Reconciling repository %s\n"
