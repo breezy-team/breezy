@@ -43,7 +43,6 @@ from bzrlib.errors import (BzrError,
 from bzrlib import option
 from bzrlib.option import Option
 import bzrlib.osutils
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, be_quiet

@@ -51,7 +51,7 @@ from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor
-from bzrlib.revisionspec import RevisionSpec
+from bzrlib.revisionspec import get_revision_spec
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree
@@ -235,7 +235,7 @@ class cmd_revision_info(Command):
             revs.extend(revision)
         if revision_info_list is not None:
             for rev in revision_info_list:
-                revs.append(RevisionSpec(rev))
+                revs.append(get_revision_spec(rev))
         if len(revs) == 0:
             raise BzrCommandError('You must supply a revision identifier')
 
