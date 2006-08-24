@@ -32,25 +32,25 @@ def _parse_revision_str(revstr):
     each revision specifier supplied.
 
     >>> _parse_revision_str('234')
-    [<RevisionSpec_int 234>]
+    [<RevisionSpec_revno 234>]
     >>> _parse_revision_str('234..567')
-    [<RevisionSpec_int 234>, <RevisionSpec_int 567>]
+    [<RevisionSpec_revno 234>, <RevisionSpec_revno 567>]
     >>> _parse_revision_str('..')
     [<RevisionSpec None>, <RevisionSpec None>]
     >>> _parse_revision_str('..234')
-    [<RevisionSpec None>, <RevisionSpec_int 234>]
+    [<RevisionSpec None>, <RevisionSpec_revno 234>]
     >>> _parse_revision_str('234..')
-    [<RevisionSpec_int 234>, <RevisionSpec None>]
+    [<RevisionSpec_revno 234>, <RevisionSpec None>]
     >>> _parse_revision_str('234..456..789') # Maybe this should be an error
-    [<RevisionSpec_int 234>, <RevisionSpec_int 456>, <RevisionSpec_int 789>]
+    [<RevisionSpec_revno 234>, <RevisionSpec_revno 456>, <RevisionSpec_revno 789>]
     >>> _parse_revision_str('234....789') #Error ?
-    [<RevisionSpec_int 234>, <RevisionSpec None>, <RevisionSpec_int 789>]
+    [<RevisionSpec_revno 234>, <RevisionSpec None>, <RevisionSpec_revno 789>]
     >>> _parse_revision_str('revid:test@other.com-234234')
     [<RevisionSpec_revid revid:test@other.com-234234>]
     >>> _parse_revision_str('revid:test@other.com-234234..revid:test@other.com-234235')
     [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revid revid:test@other.com-234235>]
     >>> _parse_revision_str('revid:test@other.com-234234..23')
-    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_int 23>]
+    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revno 23>]
     >>> _parse_revision_str('date:2005-04-12')
     [<RevisionSpec_date date:2005-04-12>]
     >>> _parse_revision_str('date:2005-04-12 12:24:33')
@@ -60,9 +60,9 @@ def _parse_revision_str(revstr):
     >>> _parse_revision_str('date:2005-04-12,12:24:33')
     [<RevisionSpec_date date:2005-04-12,12:24:33>]
     >>> _parse_revision_str('-5..23')
-    [<RevisionSpec_int -5>, <RevisionSpec_int 23>]
+    [<RevisionSpec_revno -5>, <RevisionSpec_revno 23>]
     >>> _parse_revision_str('-5')
-    [<RevisionSpec_int -5>]
+    [<RevisionSpec_revno -5>]
     >>> _parse_revision_str('123a')
     Traceback (most recent call last):
       ...
@@ -76,7 +76,7 @@ def _parse_revision_str(revstr):
     >>> _parse_revision_str('branch:../../branch2')
     [<RevisionSpec_branch branch:../../branch2>]
     >>> _parse_revision_str('branch:../../branch2..23')
-    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_int 23>]
+    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_revno 23>]
     """
     # TODO: Maybe move this into revisionspec.py
     revs = []
