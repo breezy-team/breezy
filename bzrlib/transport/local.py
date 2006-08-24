@@ -344,22 +344,6 @@ class LocalTransport(Transport):
             return True
 
 
-class LocalRelpathServer(Server):
-    """A pretend server for local transports, using relpaths."""
-
-    def get_url(self):
-        """See Transport.Server.get_url."""
-        return "."
-
-
-class LocalAbspathServer(Server):
-    """A pretend server for local transports, using absolute paths."""
-
-    def get_url(self):
-        """See Transport.Server.get_url."""
-        return os.path.abspath("")
-
-
 class LocalURLServer(Server):
     """A pretend server for local transports, using file:// urls.
     
