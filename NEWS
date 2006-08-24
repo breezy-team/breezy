@@ -23,6 +23,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Handle when LANG is not recognized by python. Emit a warning, but
+      just revert to using 'ascii'. (John Arbash Meinel, 35392)
+
     * Active FTP transport now works as intended. (ghozzy, #56472)
 
     * Really fix mutter() so that it won't ever raise a UnicodeError.

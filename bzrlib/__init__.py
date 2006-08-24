@@ -21,16 +21,34 @@ IGNORE_FILENAME = ".bzrignore"
 
 import os
 import sys
-if sys.platform == 'darwin':
-    # work around egregious python 2.4 bug
-    sys.platform = 'posix'
-    import locale
-    sys.platform = 'darwin'
-else:
-    import locale
-# XXX: This probably belongs in osutils instead
-user_encoding = locale.getpreferredencoding() or 'ascii'
-del locale
+
+
+def get_user_encoding():
+    if sys.platform == 'darwin':
+        # work around egregious python 2.4 bug
+        sys.platform = 'posix'
+        import locale
+        sys.platform = 'darwin'
+    else:
+        import locale
+    # XXX: This probably belongs in osutils instead
+    user_encoding = None
+    try:
+        user_encoding = locale.getpreferredencoding()
+    except locale.Error, e:
+        sys.stderr.write('WARNING: %s\n'
+                         '  Could not determine your preferred encoding.\n'
+                         '  Usually, this is because python does not support'
+                         ' your LANG (%r)\n'
+                         "  Using 'ascii' encoding.\n"
+                         % (e, os.environ.get('LANG')))
+
+    if user_encoding is None:
+        return 'ascii'
+    return user_encoding
+
+user_encoding = get_user_encoding()
+
 
 __copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
 
