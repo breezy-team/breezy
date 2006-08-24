@@ -613,6 +613,7 @@ class BzrDir(object):
             # we don't clone the repo because that preserves attributes
             # like is_shared(), and we have not yet implemented a 
             # repository sprout().
+            result._format.repository_format = source_repository._format
             result_repo = result.create_repository()
         if result_repo is not None:
             # fetch needed content into target.
