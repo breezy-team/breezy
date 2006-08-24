@@ -443,7 +443,12 @@ class TestRepositoryFormatKnit2(TestCaseWithTransport):
 
     def test_convert(self):
         """Ensure the upgrade adds weaves for roots"""
+        
+        old_format = repository.RepositoryFormat.get_default_format()
+        repository.RepositoryFormat.set_default_format(
+            repository.RepositoryFormatKnit1())
         tree = self.make_branch_and_tree('.')
+        repository.RepositoryFormat.set_default_format(old_format)
         tree.commit("Dull commit", rev_id="dull")
         revision_tree = tree.branch.repository.revision_tree('dull')
         self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
