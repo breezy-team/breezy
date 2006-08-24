@@ -374,6 +374,13 @@ class Transport(object):
         """
         raise NotImplementedError(self.get)
 
+    def get_bytes(self, relpath):
+        """Get a raw string of the bytes for a file at the given location.
+
+        :param relpath: The relative path to the file
+        """
+        return self.get(relpath).read()
+
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 

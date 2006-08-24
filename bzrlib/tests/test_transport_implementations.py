@@ -111,6 +111,23 @@ class TransportTests(TestTransportImplementation):
         self.assertListRaises(NoSuchFile, t.get_multi, ['a', 'b', 'c'])
         self.assertListRaises(NoSuchFile, t.get_multi, iter(['a', 'b', 'c']))
 
+    def test_get_bytes(self):
+        t = self.get_transport()
+
+        files = ['a', 'b', 'e', 'g']
+        contents = ['contents of a\n',
+                    'contents of b\n',
+                    'contents of e\n',
+                    'contents of g\n',
+                    ]
+        self.build_tree(files, transport=t, line_endings='binary')
+        self.check_transport_contents('contents of a\n', t, 'a')
+
+        for content, fname in zip(contents, files):
+            self.assertEqual(content, t.get_bytes(fname))
+
+        self.assertRaises(NoSuchFile, t.get_bytes, 'c')
+
     def test_put(self):
         t = self.get_transport()
 
