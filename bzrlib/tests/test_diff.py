@@ -111,7 +111,11 @@ class TestDiff(TestCase):
 
     def test_external_diff_binary(self):
         lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
-        self.assertEqual(['Binary files old and new differ\n', '\n'], lines)
+        # Older versions of diffutils say "Binary files", newer
+        # versions just say "files".
+        self.assertContainsRe(lines[0],
+                              '(Binary f|F)iles old and new differ\n')
+        self.assertEquals(lines[1:], ['\n'])
 
     def test_no_external_diff(self):
         """Check that NoDiff is raised when diff is not available"""
