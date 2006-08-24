@@ -80,27 +80,25 @@ class TestOddRevisionSpec(TestRevisionSpec):
 
     def test_unregistered_spec(self):
         self.assertRaises(errors.NoSuchRevisionSpec, get_revision_spec, 'foo')
+        self.assertRaises(errors.NoSuchRevisionSpec, get_revision_spec, '123a')
 
 
-class TestRevisionSpec_int(TestRevisionSpec):
-    
-    def test_positive(self):
+class TestRevisionSpec_revno(TestRevisionSpec):
+
+    def test_positive_int(self):
         self.assertInHistoryIs(0, None, '0')
         self.assertInHistoryIs(1, 'r1', '1')
         self.assertInHistoryIs(2, 'r2', '2')
 
         self.assertInvalid('3')
 
-    def test_negative(self):
+    def test_negative_int(self):
         self.assertInHistoryIs(2, 'r2', '-1')
         self.assertInHistoryIs(1, 'r1', '-2')
 
         self.assertInHistoryIs(1, 'r1', '-3')
         self.assertInHistoryIs(1, 'r1', '-4')
         self.assertInHistoryIs(1, 'r1', '-100')
-
-
-class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_positive(self):
         self.assertInHistoryIs(0, None, 'revno:0')
@@ -145,6 +143,13 @@ class TestRevisionSpec_revno(TestRevisionSpec):
     def test_with_branch(self):
         # Passing a URL overrides the supplied branch path
         revinfo = self.get_in_history('revno:2:tree2')
+        self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
+        self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
+        self.assertEqual(2, revinfo.revno)
+        self.assertEqual('alt_r2', revinfo.rev_id)
+
+    def test_int_with_branch(self):
+        revinfo = self.get_in_history('2:tree2')
         self.assertNotEqual(self.tree.branch.base, revinfo.branch.base)
         self.assertEqual(self.tree2.branch.base, revinfo.branch.base)
         self.assertEqual(2, revinfo.revno)

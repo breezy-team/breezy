@@ -180,9 +180,8 @@ class RevisionSpec(object):
         
     def __repr__(self):
         # this is mostly for helping with testing
-        return '<%s %s%s>' % (self.__class__.__name__,
-                              self.prefix or '',
-                              self.spec)
+        return '<%s %s>' % (self.__class__.__name__,
+                              self.user_spec)
     
     def needs_branch(self):
         """Whether this revision spec needs a branch.
@@ -220,7 +219,7 @@ def get_revision_spec(spec):
         # one that directly handles plain integers
         global _revno_regex
         if _revno_regex is None:
-            _revno_regex = re.compile(r'-?\d+(:.*)?')
+            _revno_regex = re.compile(r'-?\d+(:.*)?$')
         if _revno_regex.match(spec) is not None:
             return RevisionSpec_revno(spec, _internal=True)
 

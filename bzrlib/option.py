@@ -66,11 +66,11 @@ def _parse_revision_str(revstr):
     >>> _parse_revision_str('123a')
     Traceback (most recent call last):
       ...
-    BzrError: No namespace registered for string: '123a'
+    NoSuchRevisionSpec: No namespace registered for string: '123a'
     >>> _parse_revision_str('abc')
     Traceback (most recent call last):
       ...
-    BzrError: No namespace registered for string: 'abc'
+    NoSuchRevisionSpec: No namespace registered for string: 'abc'
     >>> _parse_revision_str('branch:../branch2')
     [<RevisionSpec_branch branch:../branch2>]
     >>> _parse_revision_str('branch:../../branch2')
