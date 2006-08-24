@@ -166,8 +166,9 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             # 'diff' gives retcode == 2 for all sorts of errors
             # one of those is 'Binary files differ'.
             # Bad options could also be the problem.
-            # 'Binary files' is not a real error, so we suppress that error
-            m = re.match('^binary files.*differ$', first_line, re.I)
+            # 'Binary files' is not a real error, so we suppress that error.
+            # Starting with diffutils 2.8.4 the word "binary" was dropped.
+            m = re.match('^(binary )?files.*differ$', first_line, re.I)
             if not m:
                 raise BzrError('external diff failed with exit code 2;'
                                ' command: %r' % (diffcmd,))
