@@ -17,6 +17,7 @@
 
 """Foundation SSH support for SFTP and smart server."""
 
+import getpass
 import os
 import socket
 import sys
@@ -28,8 +29,9 @@ from bzrlib.errors import (ConnectionError,
                            TransportError,
                            )
 
-from bzrlib.osutils import pathjoin, fancy_rename, getcwd
+from bzrlib.osutils import pathjoin
 from bzrlib.trace import mutter, warning
+import bzrlib.ui
 
 try:
     import paramiko
@@ -48,6 +50,8 @@ BZR_HOSTKEYS = {}
 # sort of expiration policy, such as disconnect if inactive for
 # X seconds. But that requires a lot more fanciness.
 _connected_hosts = weakref.WeakValueDictionary()
+
+_paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 
 # Paramiko 1.5 tries to open a socket.AF_UNIX in order to connect
 # to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
