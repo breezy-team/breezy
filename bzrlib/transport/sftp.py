@@ -812,156 +812,8 @@ class SFTPTransport(Transport):
 
         TODO: Raise a more reasonable ConnectionFailed exception
         """
-        global _connected_hosts
-
-        idx = (self._host, self._port, self._username)
-        try:
-            self._sftp = _connected_hosts[idx]
-            return
-        except KeyError:
-            pass
-        
-        vendor = _get_ssh_vendor()
-        if vendor == 'loopback':
-            sock = socket.socket()
-            try:
-                sock.connect((self._host, self._port))
-            except socket.error, e:
-                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                      % (self._host, self._port, e))
-            self._sftp = SFTPClient(LoopbackSFTP(sock))
-        elif vendor != 'none':
-            try:
-                sock = SFTPSubprocess(self._host, vendor, self._port,
-                                      self._username)
-                self._sftp = SFTPClient(sock)
-            except (EOFError, paramiko.SSHException), e:
-                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                      % (self._host, self._port, e))
-            except (OSError, IOError), e:
-                # If the machine is fast enough, ssh can actually exit
-                # before we try and send it the sftp request, which
-                # raises a Broken Pipe
-                if e.errno not in (errno.EPIPE,):
-                    raise
-                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                      % (self._host, self._port, e))
-        else:
-            self._paramiko_connect()
-
-        _connected_hosts[idx] = self._sftp
-
-    def _paramiko_connect(self):
-        global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
-        
-        load_host_keys()
-
-        try:
-            t = paramiko.Transport((self._host, self._port or 22))
-            t.set_log_channel('bzr.paramiko')
-            t.start_client()
-        except (paramiko.SSHException, socket.error), e:
-            raise ConnectionError('Unable to reach SSH host %s:%s: %s' 
-                                  % (self._host, self._port, e))
-            
-        server_key = t.get_remote_server_key()
-        server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
-        keytype = server_key.get_name()
-        if SYSTEM_HOSTKEYS.has_key(self._host) and SYSTEM_HOSTKEYS[self._host].has_key(keytype):
-            our_server_key = SYSTEM_HOSTKEYS[self._host][keytype]
-            our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
-        elif BZR_HOSTKEYS.has_key(self._host) and BZR_HOSTKEYS[self._host].has_key(keytype):
-            our_server_key = BZR_HOSTKEYS[self._host][keytype]
-            our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
-        else:
-            warning('Adding %s host key for %s: %s' % (keytype, self._host, server_key_hex))
-            if not BZR_HOSTKEYS.has_key(self._host):
-                BZR_HOSTKEYS[self._host] = {}
-            BZR_HOSTKEYS[self._host][keytype] = server_key
-            our_server_key = server_key
-            our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
-            save_host_keys()
-        if server_key != our_server_key:
-            filename1 = os.path.expanduser('~/.ssh/known_hosts')
-            filename2 = pathjoin(config_dir(), 'ssh_host_keys')
-            raise TransportError('Host keys for %s do not match!  %s != %s' % \
-                (self._host, our_server_key_hex, server_key_hex),
-                ['Try editing %s or %s' % (filename1, filename2)])
-
-        self._sftp_auth(t)
-        
-        try:
-            self._sftp = t.open_sftp_client()
-        except paramiko.SSHException, e:
-            raise ConnectionError('Unable to start sftp client %s:%d' %
-                                  (self._host, self._port), e)
-
-    def _sftp_auth(self, transport):
-        # paramiko requires a username, but it might be none if nothing was supplied
-        # use the local username, just in case.
-        # We don't override self._username, because if we aren't using paramiko,
-        # the username might be specified in ~/.ssh/config and we don't want to
-        # force it to something else
-        # Also, it would mess up the self.relpath() functionality
-        username = self._username or getpass.getuser()
-
-        if _use_ssh_agent:
-            agent = paramiko.Agent()
-            for key in agent.get_keys():
-                mutter('Trying SSH agent key %s' % paramiko.util.hexify(key.get_fingerprint()))
-                try:
-                    transport.auth_publickey(username, key)
-                    return
-                except paramiko.SSHException, e:
-                    pass
-        
-        # okay, try finding id_rsa or id_dss?  (posix only)
-        if self._try_pkey_auth(transport, paramiko.RSAKey, username, 'id_rsa'):
-            return
-        if self._try_pkey_auth(transport, paramiko.DSSKey, username, 'id_dsa'):
-            return
-
-        if self._password:
-            try:
-                transport.auth_password(username, self._password)
-                return
-            except paramiko.SSHException, e:
-                pass
-
-            # FIXME: Don't keep a password held in memory if you can help it
-            #self._password = None
-
-        # give up and ask for a password
-        password = bzrlib.ui.ui_factory.get_password(
-                prompt='SSH %(user)s@%(host)s password',
-                user=username, host=self._host)
-        try:
-            transport.auth_password(username, password)
-        except paramiko.SSHException, e:
-            raise ConnectionError('Unable to authenticate to SSH host as %s@%s' %
-                                  (username, self._host), e)
-
-    def _try_pkey_auth(self, transport, pkey_class, username, filename):
-        filename = os.path.expanduser('~/.ssh/' + filename)
-        try:
-            key = pkey_class.from_private_key_file(filename)
-            transport.auth_publickey(username, key)
-            return True
-        except paramiko.PasswordRequiredException:
-            password = bzrlib.ui.ui_factory.get_password(
-                    prompt='SSH %(filename)s password',
-                    filename=filename)
-            try:
-                key = pkey_class.from_private_key_file(filename, password)
-                transport.auth_publickey(username, key)
-                return True
-            except paramiko.SSHException:
-                mutter('SSH authentication via %s key failed.' % (os.path.basename(filename),))
-        except paramiko.SSHException:
-            mutter('SSH authentication via %s key failed.' % (os.path.basename(filename),))
-        except IOError:
-            pass
-        return False
+        self._sftp = _sftp_connect(self._host, self._port, self._username,
+                self._password)
 
     def _sftp_open_exclusive(self, abspath, mode=None):
         """Open a remote path exclusively.
@@ -1292,6 +1144,166 @@ class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
     def setUp(self):
         self._server_homedir = '/dev/noone/runs/tests/here'
         super(SFTPSiblingAbsoluteServer, self).setUp()
+
+
+def _sftp_connect(host, port, username, password):
+    """Connect to the remote sftp server.
+
+    :raises: a TransportError 'could not connect'.
+
+    :returns: an SFTPClient
+
+    TODO: Raise a more reasonable ConnectionFailed exception
+    """
+    global _connected_hosts
+
+    idx = (host, port, username)
+    try:
+        return _connected_hosts[idx]
+    except KeyError:
+        pass
+    
+    vendor = _get_ssh_vendor()
+    if vendor == 'loopback':
+        sock = socket.socket()
+        try:
+            sock.connect((host, port))
+        except socket.error, e:
+            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                  % (host, port, e))
+        sftp = SFTPClient(LoopbackSFTP(sock))
+    elif vendor == 'none':
+        sftp = _paramiko_connect(username, password, host, port)
+    else:
+        try:
+            sock = SFTPSubprocess(host, vendor, port, username)
+            sftp = SFTPClient(sock)
+        except (EOFError, paramiko.SSHException), e:
+            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                  % (host, port, e))
+        except (OSError, IOError), e:
+            # If the machine is fast enough, ssh can actually exit
+            # before we try and send it the sftp request, which
+            # raises a Broken Pipe
+            if e.errno not in (errno.EPIPE,):
+                raise
+            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                  % (host, port, e))
+
+    _connected_hosts[idx] = sftp
+    return sftp
+
+
+def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
+    filename = os.path.expanduser('~/.ssh/' + filename)
+    try:
+        key = pkey_class.from_private_key_file(filename)
+        paramiko_transport.auth_publickey(username, key)
+        return True
+    except paramiko.PasswordRequiredException:
+        password = bzrlib.ui.ui_factory.get_password(
+                prompt='SSH %(filename)s password',
+                filename=filename)
+        try:
+            key = pkey_class.from_private_key_file(filename, password)
+            paramiko_transport.auth_publickey(username, key)
+            return True
+        except paramiko.SSHException:
+            mutter('SSH authentication via %s key failed.' % (os.path.basename(filename),))
+    except paramiko.SSHException:
+        mutter('SSH authentication via %s key failed.' % (os.path.basename(filename),))
+    except IOError:
+        pass
+    return False
+
+def _paramiko_auth(username, password, host, paramiko_transport):
+    # paramiko requires a username, but it might be none if nothing was supplied
+    # use the local username, just in case.
+    # We don't override username, because if we aren't using paramiko,
+    # the username might be specified in ~/.ssh/config and we don't want to
+    # force it to something else
+    # Also, it would mess up the self.relpath() functionality
+    username = username or getpass.getuser()
+
+    if _use_ssh_agent:
+        agent = paramiko.Agent()
+        for key in agent.get_keys():
+            mutter('Trying SSH agent key %s' % paramiko.util.hexify(key.get_fingerprint()))
+            try:
+                paramiko_transport.auth_publickey(username, key)
+                return
+            except paramiko.SSHException, e:
+                pass
+    
+    # okay, try finding id_rsa or id_dss?  (posix only)
+    if _try_pkey_auth(paramiko_transport, paramiko.RSAKey, username, 'id_rsa'):
+        return
+    if _try_pkey_auth(paramiko_transport, paramiko.DSSKey, username, 'id_dsa'):
+        return
+
+    if password:
+        try:
+            paramiko_transport.auth_password(username, password)
+            return
+        except paramiko.SSHException, e:
+            pass
+
+    # give up and ask for a password
+    password = bzrlib.ui.ui_factory.get_password(
+            prompt='SSH %(user)s@%(host)s password',
+            user=username, host=host)
+    try:
+        paramiko_transport.auth_password(username, password)
+    except paramiko.SSHException, e:
+        raise ConnectionError('Unable to authenticate to SSH host as %s@%s' %
+                              (username, host), e)
+
+
+def _paramiko_connect(username, password, host, port):
+    global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
+    
+    load_host_keys()
+
+    try:
+        t = paramiko.Transport((host, port or 22))
+        t.set_log_channel('bzr.paramiko')
+        t.start_client()
+    except (paramiko.SSHException, socket.error), e:
+        raise ConnectionError('Unable to reach SSH host %s:%s: %s' 
+                              % (host, port, e))
+        
+    server_key = t.get_remote_server_key()
+    server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
+    keytype = server_key.get_name()
+    if SYSTEM_HOSTKEYS.has_key(host) and SYSTEM_HOSTKEYS[host].has_key(keytype):
+        our_server_key = SYSTEM_HOSTKEYS[host][keytype]
+        our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
+    elif BZR_HOSTKEYS.has_key(host) and BZR_HOSTKEYS[host].has_key(keytype):
+        our_server_key = BZR_HOSTKEYS[host][keytype]
+        our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
+    else:
+        warning('Adding %s host key for %s: %s' % (keytype, host, server_key_hex))
+        if not BZR_HOSTKEYS.has_key(host):
+            BZR_HOSTKEYS[host] = {}
+        BZR_HOSTKEYS[host][keytype] = server_key
+        our_server_key = server_key
+        our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
+        save_host_keys()
+    if server_key != our_server_key:
+        filename1 = os.path.expanduser('~/.ssh/known_hosts')
+        filename2 = pathjoin(config_dir(), 'ssh_host_keys')
+        raise TransportError('Host keys for %s do not match!  %s != %s' % \
+            (host, our_server_key_hex, server_key_hex),
+            ['Try editing %s or %s' % (filename1, filename2)])
+
+    _paramiko_auth(username, password, host, t)
+    
+    try:
+        sftp = t.open_sftp_client()
+    except paramiko.SSHException, e:
+        raise ConnectionError('Unable to start sftp client %s:%d' %
+                              (host, port), e)
+    return sftp
 
 
 def get_test_permutations():
