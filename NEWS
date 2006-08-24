@@ -23,6 +23,8 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Active FTP transport now works as intended. (ghozzy, #56472)
+
     * Really fix mutter() so that it won't ever raise a UnicodeError.
       It means it is possible for ~/.bzr.log to contain non UTF-8 characters.
       But it is a debugging log, not a real user file.
