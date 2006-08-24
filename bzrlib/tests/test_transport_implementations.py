@@ -116,7 +116,7 @@ class TransportTests(TestTransportImplementation):
 
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                    t.put, 'a', 'some text for a\n')
+                    t.put, 'a', StringIO('some text for a\n'))
             return
 
         t.put('a', StringIO('some text for a\n'))
@@ -142,7 +142,26 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('another contents\nfor d\n', t, 'd')
 
         self.assertRaises(NoSuchFile,
-                          t.put, 'path/doesnt/exist/c', 'contents')
+                          t.put, 'path/doesnt/exist/c', StringIO('contents'))
+
+    def test_put_bytes(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            self.assertRaises(TransportNotPossible,
+                    t.put_bytes, 'a', 'some text for a\n')
+            return
+
+        t.put_bytes('a', 'some text for a\n')
+        self.failUnless(t.has('a'))
+        self.check_transport_contents('some text for a\n', t, 'a')
+
+        # The contents should be overwritten
+        t.put_bytes('a', 'new text for a\n')
+        self.check_transport_contents('new text for a\n', t, 'a')
+
+        self.assertRaises(NoSuchFile,
+                          t.put_bytes, 'path/doesnt/exist/c', 'contents')
 
     def test_put_permissions(self):
         t = self.get_transport()
@@ -167,6 +186,29 @@ class TransportTests(TestTransportImplementation):
         # The default permissions should be based on the current umask
         umask = osutils.get_umask()
         t.put('nomode', StringIO('test text\n'), mode=None)
+        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
+        
+    def test_put_bytes_permissions(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            return
+        if not t._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        t.put_bytes('mode644', 'test text\n', mode=0644)
+        self.assertTransportMode(t, 'mode644', 0644)
+        t.put_bytes('mode666', 'test text\n', mode=0666)
+        self.assertTransportMode(t, 'mode666', 0666)
+        t.put_bytes('mode600', 'test text\n', mode=0600)
+        self.assertTransportMode(t, 'mode600', 0600)
+        # Yes, you can put_bytes a file such that it becomes readonly
+        t.put_bytes('mode400', 'test text\n', mode=0400)
+        self.assertTransportMode(t, 'mode400', 0400)
+
+        # The default permissions should be based on the current umask
+        umask = osutils.get_umask()
+        t.put_bytes('nomode', 'test text\n', mode=None)
         self.assertTransportMode(t, 'nomode', 0666 & ~umask)
         
     def test_mkdir(self):

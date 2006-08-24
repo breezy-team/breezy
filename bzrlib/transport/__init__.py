@@ -29,6 +29,7 @@ it.
 import errno
 from collections import deque
 from copy import deepcopy
+from cStringIO import StringIO
 import re
 from stat import S_ISDIR
 import sys
@@ -484,7 +485,7 @@ class Transport(object):
             count += 1
 
     def put(self, relpath, f, mode=None):
-        """Copy the file-like or string object into the location.
+        """Copy the file-like into the location.
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
@@ -492,6 +493,19 @@ class Transport(object):
                      None means just use the default
         """
         raise NotImplementedError(self.put)
+
+    def put_bytes(self, relpath, bytes, mode=None):
+        """Atomically put the supplied bytes into the given location.
+
+        :param relpath: The location to put the contents, relative to the
+            transport base.
+        :param bytes: A bytestring of data.
+        :param mode: Create the file with the given mode.
+        :return: None
+        """
+        assert isinstance(bytes, str), \
+            'bytes must be a plain string, not %s' % type(bytes)
+        return self.put(relpath, StringIO(bytes), mode=mode)
 
     def put_multi(self, files, mode=None, pb=None):
         """Put a set of files into the location.
