@@ -54,6 +54,59 @@ _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # connect to an agent if we are on win32 and using Paramiko older than 1.6
 _use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
 
+_ssh_vendors = {}
+
+def register_ssh_vendor(name, vendor_class):
+    """Register lazy-loaded SSH vendor class.""" 
+    _ssh_vendors[name] = vendor_class
+
+    
+_ssh_vendor = None
+def _get_ssh_vendor():
+    """Find out what version of SSH is on the system."""
+    global _ssh_vendor
+    if _ssh_vendor is not None:
+        return _ssh_vendor
+
+    if 'BZR_SSH' in os.environ:
+        vendor_name = os.environ['BZR_SSH']
+        try:
+            klass = _ssh_vendors[vendor_name]
+        except KeyError:
+            raise UnknownSSH(vendor_name)
+        else:
+            _ssh_vendor = klass()
+        return _ssh_vendor
+
+    try:
+        p = subprocess.Popen(['ssh', '-V'],
+                             stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             **os_specific_subprocess_params())
+        returncode = p.returncode
+        stdout, stderr = p.communicate()
+    except OSError:
+        returncode = -1
+        stdout = stderr = ''
+    if 'OpenSSH' in stderr:
+        mutter('ssh implementation is OpenSSH')
+        _ssh_vendor = OpenSSHSubprocessVendor()
+    elif 'SSH Secure Shell' in stderr:
+        mutter('ssh implementation is SSH Corp.')
+        _ssh_vendor = SSHCorpSubprocessVendor()
+
+    if _ssh_vendor is not None:
+        return _ssh_vendor
+
+    # XXX: 20051123 jamesh
+    # A check for putty's plink or lsh would go here.
+
+    mutter('falling back to paramiko implementation')
+    _ssh_vendor = ssh.ParamikoVendor()
+    return _ssh_vendor
+
+
 
 def _ignore_sigint():
     # TODO: This should possibly ignore SIGHUP as well, but bzr currently
@@ -118,6 +171,8 @@ class LoopbackVendor(SSHVendor):
                                   % (host, port, e))
         return SFTPClient(LoopbackSFTP(sock))
 
+register_ssh_vendor('loopback', LoopbackVendor)
+
 
 class ParamikoVendor(SSHVendor):
     """Vendor that uses paramiko."""
@@ -168,6 +223,8 @@ class ParamikoVendor(SSHVendor):
                                   (host, port), e)
         return sftp
 
+register_ssh_vendor('paramiko', ParamikoVendor)
+
 
 class SubprocessVendor(SSHVendor):
     """Abstract base class for vendors that use pipes to a subprocess."""
@@ -202,6 +259,8 @@ class SubprocessVendor(SSHVendor):
         """
         raise NotImplementedError(self._get_vendor_specific_argv)
 
+register_ssh_vendor('none', ParamikoVendor)
+
 
 class OpenSSHSubprocessVendor(SubprocessVendor):
     """SSH vendor that uses the 'ssh' executable from OpenSSH."""
@@ -227,6 +286,8 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
             args.extend([host] + command)
         return args
 
+register_ssh_vendor('openssh', OpenSSHSubprocessVendor)
+
 
 class SSHCorpSubprocessVendor(SubprocessVendor):
     """SSH vendor that uses the 'ssh' executable from SSH Corporation."""
@@ -249,6 +310,8 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
             args.extend([host] + command)
         return args
     
+register_ssh_vendor('ssh', SSHCorpSubprocessVendor)
+
 
 def _paramiko_auth(username, password, host, paramiko_transport):
     # paramiko requires a username, but it might be none if nothing was supplied

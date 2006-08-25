@@ -76,64 +76,6 @@ _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
 
 
-_ssh_vendors = {}
-
-def register_ssh_vendor(name, vendor_class):
-    """Register lazy-loaded SSH vendor class.""" 
-    _ssh_vendors[name] = vendor_class
-
-register_ssh_vendor('loopback', ssh.LoopbackVendor)
-register_ssh_vendor('paramiko', ssh.ParamikoVendor)
-register_ssh_vendor('none', ssh.ParamikoVendor)
-register_ssh_vendor('openssh', ssh.OpenSSHSubprocessVendor)
-register_ssh_vendor('ssh', ssh.SSHCorpSubprocessVendor)
-    
-_ssh_vendor = None
-def _get_ssh_vendor():
-    """Find out what version of SSH is on the system."""
-    global _ssh_vendor
-    if _ssh_vendor is not None:
-        return _ssh_vendor
-
-    if 'BZR_SSH' in os.environ:
-        vendor_name = os.environ['BZR_SSH']
-        try:
-            klass = _ssh_vendors[vendor_name]
-        except KeyError:
-            raise UnknownSSH(vendor_name)
-        else:
-            _ssh_vendor = klass()
-        return _ssh_vendor
-
-    try:
-        p = subprocess.Popen(['ssh', '-V'],
-                             stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             **ssh.os_specific_subprocess_params())
-        returncode = p.returncode
-        stdout, stderr = p.communicate()
-    except OSError:
-        returncode = -1
-        stdout = stderr = ''
-    if 'OpenSSH' in stderr:
-        mutter('ssh implementation is OpenSSH')
-        _ssh_vendor = ssh.OpenSSHSubprocessVendor()
-    elif 'SSH Secure Shell' in stderr:
-        mutter('ssh implementation is SSH Corp.')
-        _ssh_vendor = ssh.SSHCorpSubprocessVendor()
-
-    if _ssh_vendor is not None:
-        return _ssh_vendor
-
-    # XXX: 20051123 jamesh
-    # A check for putty's plink or lsh would go here.
-
-    mutter('falling back to paramiko implementation')
-    _ssh_vendor = ssh.ParamikoVendor()
-    return _ssh_vendor
-
-
 def clear_connection_cache():
     """Remove all hosts from the SFTP connection cache.
 
@@ -906,9 +848,8 @@ class SFTPServer(Server):
         event.wait(5.0)
     
     def setUp(self):
-        global _ssh_vendor
-        self._original_vendor = _ssh_vendor
-        _ssh_vendor = self._vendor
+        self._original_vendor = ssh._ssh_vendor
+        ssh._ssh_vendor = self._vendor
         if sys.platform == 'win32':
             # Win32 needs to use the UNICODE api
             self._homedir = getcwd()
@@ -926,9 +867,8 @@ class SFTPServer(Server):
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        global _ssh_vendor
         self._listener.stop()
-        _ssh_vendor = self._original_vendor
+        ssh._ssh_vendor = self._original_vendor
 
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
@@ -956,6 +896,10 @@ class SFTPServerWithoutSSH(SFTPServer):
         self._vendor = ssh.LoopbackVendor()
 
     def _run_server(self, sock):
+        # Re-import these as locals, so that they're still accessible during
+        # interpreter shutdown (when all module globals get set to None, leading
+        # to confusing errors like "'NoneType' object has no attribute 'error'".
+        import socket, errno
         class FakeChannel(object):
             def get_transport(self):
                 return self
@@ -1031,7 +975,7 @@ def _sftp_connect(host, port, username, password):
     return sftp
 
 def _sftp_connect_uncached(host, port, username, password):
-    vendor = _get_ssh_vendor()
+    vendor = ssh._get_ssh_vendor()
     sftp = vendor.connect_sftp(username, password, host, port)
     return sftp
 
