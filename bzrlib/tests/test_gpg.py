@@ -69,11 +69,10 @@ class TestCommandLine(TestCase):
     def test_clears_progress(self):
         content = "some content\nwith newlines\n"
         old_clear_term = ui.ui_factory.clear_term
-        clear_term_called = [False] 
+        clear_term_called = [] 
         def clear_term():
             old_clear_term()
-            clear_term_called == [False]
-            clear_term_called[0] = True
+            clear_term_called.append(True)
         ui.ui_factory.clear_term = clear_term
         try:
             self.assertProduces(content)
