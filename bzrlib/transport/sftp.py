@@ -28,6 +28,7 @@ import sys
 import time
 import urllib
 import urlparse
+import weakref
 
 from bzrlib.errors import (FileExists, 
                            NoSuchFile, PathNotChild,
@@ -61,6 +62,13 @@ else:
 
 
 register_urlparse_netloc_protocol('sftp')
+
+
+# This is a weakref dictionary, so that we can reuse connections
+# that are still active. Long term, it might be nice to have some
+# sort of expiration policy, such as disconnect if inactive for
+# X seconds. But that requires a lot more fanciness.
+_connected_hosts = weakref.WeakValueDictionary()
 
 
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
@@ -131,7 +139,7 @@ def clear_connection_cache():
 
     Primarily useful for test cases wanting to force garbage collection.
     """
-    ssh._connected_hosts.clear()
+    _connected_hosts.clear()
 
 
 class SFTPLock(object):
@@ -1014,12 +1022,12 @@ def _sftp_connect(host, port, username, password):
     """
     idx = (host, port, username)
     try:
-        return ssh._connected_hosts[idx]
+        return _connected_hosts[idx]
     except KeyError:
         pass
     
     sftp = _sftp_connect_uncached(host, port, username, password)
-    ssh._connected_hosts[idx] = sftp
+    _connected_hosts[idx] = sftp
     return sftp
 
 def _sftp_connect_uncached(host, port, username, password):
