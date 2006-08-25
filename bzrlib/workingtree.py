@@ -491,8 +491,14 @@ class WorkingTree(bzrlib.tree.Tree):
             parents = []
         else:
             parents = [last_rev]
-        other_parents = self.pending_merges()
-        return parents + other_parents
+        try:
+            merges_file = self._control_files.get_utf8('pending-merges')
+        except NoSuchFile:
+            pass
+        else:
+            for l in merges_file.readlines():
+                parents.append(l.rstrip('\n'))
+        return parents
 
     def get_root_id(self):
         """Return the id of this trees root"""
@@ -711,14 +717,7 @@ class WorkingTree(bzrlib.tree.Tree):
         These are revisions that have been merged into the working
         directory but not yet committed.
         """
-        try:
-            merges_file = self._control_files.get_utf8('pending-merges')
-        except NoSuchFile:
-            return []
-        p = []
-        for l in merges_file.readlines():
-            p.append(l.rstrip('\n'))
-        return p
+        return self.get_parent_ids()[1:]
 
     @needs_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
