@@ -80,10 +80,11 @@ message:
         # XXX: This depends on the exact formatting of a locale.Error
         # as the first part of the string. It may be a little tempermental
         self.assertEqualDiff("""\
-WARNING: unsupported locale setting
-  Could not determine your preferred encoding.
-  Usually, this is because python does not support your LANG ('BOGUS')
-  Using 'ascii' encoding.
+bzr: warning: unsupported locale setting
+  Could not what text encoding to use.
+  This error usually means your Python interpreter
+  doesn't support the locale set by $LANG (BOGUS)
+  Continuing with ascii encoding.
 """, err)
         self.assertEqualDiff("""\
 ------------------------------------------------------------

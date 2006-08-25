@@ -1031,11 +1031,11 @@ def get_user_encoding():
     try:
         _cached_user_encoding = locale.getpreferredencoding()
     except locale.Error, e:
-        sys.stderr.write('WARNING: %s\n'
-                         '  Could not determine your preferred encoding.\n'
-                         '  Usually, this is because python does not support'
-                         ' your LANG (%r)\n'
-                         "  Using 'ascii' encoding.\n"
+        sys.stderr.write('bzr: warning: %s\n'
+                         '  Could not what text encoding to use.\n'
+                         '  This error usually means your Python interpreter\n'
+                         '  doesn\'t support the locale set by $LANG (%s)\n'
+                         "  Continuing with ascii encoding.\n"
                          % (e, os.environ.get('LANG')))
 
     if _cached_user_encoding is None:
