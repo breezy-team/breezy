@@ -149,6 +149,13 @@ class TestAddParent(TestParents):
         tree = self.make_branch_and_tree('.')
         tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
         self.assertConsistentParents(['first-revision'], tree)
+
+    def test_add_second_parent_id_with_ghost_first(self):
+        """Test adding the second parent when the first is a ghost."""
+        tree = self.make_branch_and_tree('.')
+        tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
+        tree.add_parent_tree_id('second')
+        self.assertConsistentParents(['first-revision', 'second'], tree)
         
     def test_add_second_parent_id(self):
         """Test adding the second parent id"""
