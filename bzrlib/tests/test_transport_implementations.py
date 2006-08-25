@@ -755,12 +755,9 @@ class TransportTests(TestTransportImplementation):
         else:
             self.build_tree(['wd/' + name for name in tree_names])
 
-        # XXX: If that intends to check that list_dir gives a list of unicode,
-        # it's buggy because ['a'] == [u'a']. If that's not the intention, then
-        # it's just confusing. -- David Allouche 2006-08-11
         self.assertEqual(
-            [u'a', u'a%2525b', u'b', u'c', u'c2'], sorted_list(u'.'))
-        self.assertEqual([u'd', u'e'], sorted_list(u'c'))
+            ['a', 'a%2525b', 'b', 'c', 'c2'], sorted_list('.'))
+        self.assertEqual(['d', 'e'], sorted_list('c'))
 
         if not t.is_readonly():
             t.delete('c/d')
@@ -769,8 +766,8 @@ class TransportTests(TestTransportImplementation):
             os.unlink('wd/c/d')
             os.unlink('wd/b')
             
-        self.assertEqual([u'a', u'a%2525b', u'c', u'c2'], sorted_list('.'))
-        self.assertEqual([u'e'], sorted_list(u'c'))
+        self.assertEqual(['a', 'a%2525b', 'c', 'c2'], sorted_list('.'))
+        self.assertEqual(['e'], sorted_list('c'))
 
         self.assertListRaises(PathError, t.list_dir, 'q')
         self.assertListRaises(PathError, t.list_dir, 'c/f')
