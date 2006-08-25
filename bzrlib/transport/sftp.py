@@ -730,7 +730,7 @@ class SFTPTransport(Transport):
             entries = self._sftp.listdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
-        return [urllib.quote(entry) for entry in entries]
+        return [urlutils.escape(entry) for entry in entries]
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""

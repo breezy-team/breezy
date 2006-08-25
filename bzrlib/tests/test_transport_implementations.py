@@ -745,7 +745,7 @@ class TransportTests(TestTransportImplementation):
             os.mkdir('wd')
         t = t.clone('wd')
 
-        self.assertEqual([], sorted_list(u'.'))
+        self.assertEqual([], sorted_list('.'))
         # c2 is precisely one letter longer than c here to test that
         # suffixing is not confused.
         # a%25b checks that quoting is done consistently across transports
