@@ -23,6 +23,8 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr uncommit`` preserves pending merges. (John Arbash Meinel, #57660)
+
     * Active FTP transport now works as intended. (ghozzy, #56472)
 
     * Really fix mutter() so that it won't ever raise a UnicodeError.
