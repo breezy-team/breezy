@@ -304,6 +304,8 @@ class Inter1and2Helper(object):
         inventory_weave = fetcher.from_repository.get_inventory_weave()
         for tree in revision_trees:
             parents = inventory_weave.get_parents(tree.get_revision_id())
+            if tree.inventory.revision_id is None:
+                tree.inventory.revision_id = tree.get_revision_id()
             fetcher.to_repository.add_inventory(tree.get_revision_id(),
                                                 tree.inventory, parents)
 

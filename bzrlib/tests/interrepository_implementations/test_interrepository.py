@@ -188,6 +188,21 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository('to')
         to_repo.fetch(from_tree.branch.repository, from_tree.last_revision())
 
+    def test_fetch_no_inventory_revision(self):
+        """Old inventories lack revision_ids, so simulate this"""
+        from_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/filename'])
+        from_tree.add('filename', 'funky-chars<>%&;"\'')
+        from_tree.commit('commit filename')
+        old_deserialise = from_tree.branch.repository.deserialise_inventory
+        def deserialise(revision_id, text):
+            inventory = old_deserialise(revision_id, text)
+            inventory.revision_id = None
+            return inventory
+        from_tree.branch.repository.deserialise_inventory = deserialise
+        to_repo = self.make_to_repository('to')
+        to_repo.fetch(from_tree.branch.repository, from_tree.last_revision())
+
 
 class TestCaseWithComplexRepository(TestCaseWithInterRepository):
 
