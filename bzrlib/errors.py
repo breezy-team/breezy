@@ -1111,3 +1111,11 @@ class NoSmartServer(NotBranchError):
     def __init__(self, url):
         self.url = url
 
+
+class UnknownSSH(BzrNewError):
+    """Unrecognised value for BZR_SSH environment variable: %(vendor)s"""
+
+    def __init__(self, vendor):
+        BzrNewError.__init__(self)
+        self.vendor = vendor
+
