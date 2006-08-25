@@ -465,9 +465,9 @@ class FtpTransport(Transport):
 
     def list_dir(self, relpath):
         """See Transport.list_dir."""
-        mutter("FTP nlst: %s", self._abspath(relpath))
-        f = self._get_FTP()
         basepath = self._abspath(relpath)
+        mutter("FTP nlst: %s", basepath)
+        f = self._get_FTP()
         try:
             paths = f.nlst(basepath)
         except ftplib.error_perm, e:
@@ -478,8 +478,8 @@ class FtpTransport(Transport):
         else:
             entries = paths
         # Remove . and .. if present
-        entries = [entry for entry in entries if entry not in (".", "..")]
-        return [urllib.quote(entry) for entry in entries]
+        return [urlutils.escape(entry) for entry in entries
+                if entry not in ('.', '..')]
 
     def iter_files_recursive(self):
         """See Transport.iter_files_recursive.
