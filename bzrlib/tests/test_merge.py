@@ -77,7 +77,7 @@ class TestMerge(TestCaseWithTransport):
         self.failIfExists('bar')
         wt2 = WorkingTree.open_containing('branch2')[0]
         self.assertEqual(wt2.pending_merges(), [])
-
+        
     def test_pending_with_null(self):
         """When base is forced to revno 0, pending_merges is set"""
         wt2 = self.test_unrelated()

@@ -663,5 +663,3 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 tree.add, [u'a\u030a'])
         finally:
             osutils.normalized_filename = orig
-
-

@@ -669,8 +669,9 @@ class WorkingTree(bzrlib.tree.Tree):
         or the allow_leftmost_as_ghost parameter is set True.
         :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
-        self.set_parent_ids(self.get_parent_ids() + [revision_id],
-            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+        parents = self.get_parent_ids() + [revision_id]
+        self.set_parent_ids(parents,
+            allow_leftmost_as_ghost=len(parents) > 1 or allow_leftmost_as_ghost)
 
     @needs_write_lock
     def add_parent_tree(self, parent_tuple, allow_leftmost_as_ghost=False):

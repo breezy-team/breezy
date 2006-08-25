@@ -151,17 +151,20 @@ def show_tree_status(wt, show_unchanged=None,
 
 def show_pending_merges(new, to_file):
     """Write out a display of pending merges in a working tree."""
-    pending = new.pending_merges()
-    branch = new.branch
-    if len(pending) == 0:
+    parents = new.get_parent_ids()
+    if len(parents) < 2:
         return
+    pending = parents[1:]
+    branch = new.branch
+    last_revision = parents[0]
     print >>to_file, 'pending merges:'
-    last_revision = branch.last_revision()
     if last_revision is not None:
         ignore = set(branch.repository.get_ancestry(last_revision))
     else:
         ignore = set([None])
-    for merge in new.pending_merges():
+    # TODO: this could be improved using merge_sorted - we'd get the same 
+    # output rather than one level of indent.
+    for merge in pending:
         ignore.add(merge)
         try:
             from bzrlib.osutils import terminal_width
