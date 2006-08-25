@@ -23,6 +23,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Change LockDir so that if the lock directory doesn't exist when
+      lock_write() is called, an attempt will be made to create it.
+      (John Arbash Meinel, #56974)
+
     * ``bzr uncommit`` preserves pending merges. (John Arbash Meinel, #57660)
 
     * Active FTP transport now works as intended. (ghozzy, #56472)
