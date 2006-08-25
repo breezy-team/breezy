@@ -283,10 +283,17 @@ class KnitRepoFetcher(RepoFetcher):
 
 class Inter1and2Helper(object):
 
+    def iter_rev_trees(self, revs, source):
+        while len(revs):
+            for tree in source.revision_trees(revs[:500]):
+                if tree.inventory.revision_id is None:
+                    tree.inventory.revision_id = tree.get_revision_id()
+                yield tree
+            revs = revs[500:]
+
     def generate_root_texts(self, fetcher, revs):
-        revision_trees = fetcher.from_repository.revision_trees(revs)
         inventory_weave = fetcher.from_repository.get_inventory_weave()
-        for tree in revision_trees:
+        for tree in self.iter_rev_trees(revs, fetcher.from_repository):
             parent_texts = {}
             revision_id = tree.inventory.root.revision
             parents = inventory_weave.get_parents(revision_id)
@@ -300,9 +307,8 @@ class Inter1and2Helper(object):
 
 
     def regenerate_inventory(self, fetcher, revs):
-        revision_trees = fetcher.from_repository.revision_trees(revs)
         inventory_weave = fetcher.from_repository.get_inventory_weave()
-        for tree in revision_trees:
+        for tree in self.iter_rev_trees(revs, fetcher.from_repository):
             parents = inventory_weave.get_parents(tree.get_revision_id())
             if tree.inventory.revision_id is None:
                 tree.inventory.revision_id = tree.get_revision_id()
