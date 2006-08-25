@@ -14,18 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Test that bzr handles LANG in a reasonable way"""
+"""Test that bzr handles locales in a reasonable way"""
 
 import os
+import sys
 
 from bzrlib.tests import TestCaseWithTransport
 
 
-class TestLANG(TestCaseWithTransport):
+class TestLocale(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestLANG, self).setUp()
+        super(TestLocale, self).setUp()
 
+        if sys.platform in ('win32',):
+            raise TestSkipped('Windows does not respond to the LANG'
+                              ' env variable')
         orig_progress = os.environ.get('BZR_PROGRESS_BAR')
         orig_lang = os.environ.get('LANG')
 

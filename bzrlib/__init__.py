@@ -16,37 +16,13 @@
 
 """bzr library"""
 
+from bzrlib.osutils import get_user_encoding
+
 
 IGNORE_FILENAME = ".bzrignore"
 
-import os
-import sys
 
-
-def get_user_encoding():
-    if sys.platform == 'darwin':
-        # work around egregious python 2.4 bug
-        sys.platform = 'posix'
-        import locale
-        sys.platform = 'darwin'
-    else:
-        import locale
-    # XXX: This probably belongs in osutils instead
-    user_encoding = None
-    try:
-        user_encoding = locale.getpreferredencoding()
-    except locale.Error, e:
-        sys.stderr.write('WARNING: %s\n'
-                         '  Could not determine your preferred encoding.\n'
-                         '  Usually, this is because python does not support'
-                         ' your LANG (%r)\n'
-                         "  Using 'ascii' encoding.\n"
-                         % (e, os.environ.get('LANG')))
-
-    if user_encoding is None:
-        return 'ascii'
-    return user_encoding
-
+# XXX: Compatibility. This should probably be deprecated
 user_encoding = get_user_encoding()
 
 

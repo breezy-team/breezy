@@ -60,7 +60,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_ignored',
                      'bzrlib.tests.blackbox.test_info',
                      'bzrlib.tests.blackbox.test_init',
-                     'bzrlib.tests.blackbox.test_lang',
+                     'bzrlib.tests.blackbox.test_locale',
                      'bzrlib.tests.blackbox.test_log',
                      'bzrlib.tests.blackbox.test_logformats',
                      'bzrlib.tests.blackbox.test_ls',
