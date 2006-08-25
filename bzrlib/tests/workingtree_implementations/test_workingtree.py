@@ -518,7 +518,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # which should have pivoted the local tip into a merge
         self.assertEqual(master_tip, tree.last_revision())
         self.assertEqual([master_tip], tree.branch.revision_history())
-        self.assertEqual(['bar'], tree.pending_merges())
         self.assertEqual([master_tip, 'bar'], tree.get_parent_ids())
 
     def test_merge_modified(self):

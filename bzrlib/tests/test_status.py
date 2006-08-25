@@ -30,7 +30,7 @@ class TestStatus(TestCaseWithTransport):
         tree.commit('empty commit')
         tree2 = self.make_branch_and_tree('b')
         # set a left most parent
-        tree2.add_parent_id('some-ghost', allow_leftmost_as_ghost=True)
+        tree2.add_parent_tree_id('some-ghost', allow_leftmost_as_ghost=True)
         # do a merge
         self.merge(tree.branch, tree2)
         output = StringIO()
