@@ -1715,9 +1715,9 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 RepositoryFormat.register_format(RepositoryFormat7())
-_default_format = RepositoryFormatKnit2()
+_default_format = RepositoryFormatKnit1()
 RepositoryFormat.register_format(_default_format)
-RepositoryFormat.register_format(RepositoryFormatKnit1())
+RepositoryFormat.register_format(RepositoryFormatKnit2())
 RepositoryFormat.set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
