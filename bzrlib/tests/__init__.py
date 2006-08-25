@@ -604,8 +604,7 @@ class TestCase(unittest.TestCase):
         The file is removed as the test is torn down.
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
-        encoder, decoder, stream_reader, stream_writer = codecs.lookup('UTF-8')
-        self._log_file = stream_writer(os.fdopen(fileno, 'w+'))
+        self._log_file = os.fdopen(fileno, 'w+')
         self._log_nonce = bzrlib.trace.enable_test_log(self._log_file)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
@@ -1370,6 +1369,7 @@ def test_suite():
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
+                   'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_status',

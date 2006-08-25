@@ -17,7 +17,24 @@ IN DEVELOPMENT
     * Inverse forms are provided for all boolean options.  For example,
       --strict has --no-strict, --no-recurse has --recurse (Aaron Bentley)
 
+    * Serialize out Inventories directly, rather than using ElementTree.
+      Writing out a kernel sized inventory drops from 2s down to ~350ms.
+      (Robert Collins, John Arbash Meinel)
+
   BUG FIXES:
+
+    * Active FTP transport now works as intended. (ghozzy, #56472)
+
+    * Really fix mutter() so that it won't ever raise a UnicodeError.
+      It means it is possible for ~/.bzr.log to contain non UTF-8 characters.
+      But it is a debugging log, not a real user file.
+      (John Arbash Meinel, #56947, #53880)
+
+    * Change Command handle to allow Unicode command and options.
+      At present we cannot register Unicode command names, so we will get
+      BzrCommandError('unknown command'), or BzrCommandError('unknown option')
+      But that is better than a UnicodeError + a traceback.
+      (John Arbash Meinel, #57123)
 
     * Handle TZ=UTC properly when reading/writing revisions.
       (John Arbash Meinel, #55783, #56290)
@@ -28,6 +45,10 @@ IN DEVELOPMENT
     * External diff does the right thing for binaries even in foreign 
       languages. (John Arbash Meinel, #56307)
 
+    * Testament handles more cases when content is unicode. Specific bug was
+      in handling of revision properties. (John Arbash Meinel, Holger Krekel,
+      #54723)
+
   INTERNALS:
 
     * ``bzrlib.cache_utf8`` contains ``encode()`` and ``decode()`` functions
@@ -35,6 +56,10 @@ IN DEVELOPMENT
       Especially helpful for some of the knit annotation code, which has to
       convert revision ids to utf8 to annotate lines in storage.
       (John Arbash Meinel)
+
+    * ``setup.py`` now searches the filesystem to find all packages which
+      need to be installed. This should help make the life of packagers
+      easier. (John Arbash Meinel)
 
 bzr 0.9.0  2006-08-11
 
