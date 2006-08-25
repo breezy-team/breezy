@@ -130,7 +130,7 @@ from bzrlib.rio import RioWriter, read_stanza, Stanza
 # TODO: Make sure to pass the right file and directory mode bits to all
 # files/dirs created.
 
-_DEFAULT_TIMEOUT_SECONDS = 300
+_DEFAULT_TIMEOUT_SECONDS = 60
 _DEFAULT_POLL_SECONDS = 0.5
 
 class LockDir(object):
@@ -378,7 +378,7 @@ class LockDir(object):
 
     def lock_write(self):
         """Wait for and acquire the lock."""
-        self.attempt_lock()
+        self.wait_lock()
 
     def lock_read(self):
         """Compatibility-mode shared lock.

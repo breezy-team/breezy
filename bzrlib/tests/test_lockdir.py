@@ -26,7 +26,7 @@ from bzrlib.errors import (
         LockContention, LockError, UnlockableTransport,
         LockNotHeld, LockBroken
         )
-from bzrlib.lockdir import LockDir
+from bzrlib.lockdir import LockDir, _DEFAULT_TIMEOUT_SECONDS
 from bzrlib.tests import TestCaseWithTransport
 
 # These tests sometimes use threads to test the behaviour of lock files with
@@ -259,6 +259,38 @@ class TestLockDir(TestCaseWithTransport):
             self.assertTrue(after - before <= 1.0)
         finally:
             unlocker.join()
+
+    def test_34_lock_write_waits(self):
+        """LockDir.lock_write() will wait for the lock.""" 
+        t = self.get_transport()
+        lf1 = LockDir(t, 'test_lock')
+        lf1.create()
+        lf1.attempt_lock()
+
+        def wait_and_unlock():
+            time.sleep(0.1)
+            lf1.unlock()
+        unlocker = Thread(target=wait_and_unlock)
+        unlocker.start()
+        try:
+            lf2 = LockDir(t, 'test_lock')
+            self.setup_log_reporter(lf2)
+            before = time.time()
+            # wait and then lock
+            lf2.lock_write()
+            after = time.time()
+            self.assertTrue(after - before <= 1.0)
+        finally:
+            unlocker.join()
+
+        # There should be only 1 report, even though it should have to
+        # wait for a while
+        lock_base = lf2.transport.abspath(lf2.path)
+        self.assertEqual([('Unable to obtain lock on %s\n'
+                           'Will continue to try for %s seconds\n',
+                           (lock_base, _DEFAULT_TIMEOUT_SECONDS)),
+                         ], self._logged_reports)
+
 
     def test_40_confirm_easy(self):
         """Confirm a lock that's already held"""
