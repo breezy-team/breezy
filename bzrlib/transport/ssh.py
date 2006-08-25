@@ -56,9 +56,9 @@ _use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
 
 _ssh_vendors = {}
 
-def register_ssh_vendor(name, vendor_class):
-    """Register lazy-loaded SSH vendor class.""" 
-    _ssh_vendors[name] = vendor_class
+def register_ssh_vendor(name, vendor):
+    """Register SSH vendor."""
+    _ssh_vendors[name] = vendor
 
     
 _ssh_vendor = None
@@ -71,11 +71,9 @@ def _get_ssh_vendor():
     if 'BZR_SSH' in os.environ:
         vendor_name = os.environ['BZR_SSH']
         try:
-            klass = _ssh_vendors[vendor_name]
+            _ssh_vendor = _ssh_vendors[vendor_name]
         except KeyError:
             raise UnknownSSH(vendor_name)
-        else:
-            _ssh_vendor = klass()
         return _ssh_vendor
 
     try:
@@ -171,7 +169,7 @@ class LoopbackVendor(SSHVendor):
                                   % (host, port, e))
         return SFTPClient(LoopbackSFTP(sock))
 
-register_ssh_vendor('loopback', LoopbackVendor)
+register_ssh_vendor('loopback', LoopbackVendor())
 
 
 class ParamikoVendor(SSHVendor):
@@ -223,7 +221,7 @@ class ParamikoVendor(SSHVendor):
                                   (host, port), e)
         return sftp
 
-register_ssh_vendor('paramiko', ParamikoVendor)
+register_ssh_vendor('paramiko', ParamikoVendor())
 
 
 class SubprocessVendor(SSHVendor):
@@ -259,7 +257,7 @@ class SubprocessVendor(SSHVendor):
         """
         raise NotImplementedError(self._get_vendor_specific_argv)
 
-register_ssh_vendor('none', ParamikoVendor)
+register_ssh_vendor('none', ParamikoVendor())
 
 
 class OpenSSHSubprocessVendor(SubprocessVendor):
@@ -286,7 +284,7 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
             args.extend([host] + command)
         return args
 
-register_ssh_vendor('openssh', OpenSSHSubprocessVendor)
+register_ssh_vendor('openssh', OpenSSHSubprocessVendor())
 
 
 class SSHCorpSubprocessVendor(SubprocessVendor):
@@ -310,7 +308,7 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
             args.extend([host] + command)
         return args
     
-register_ssh_vendor('ssh', SSHCorpSubprocessVendor)
+register_ssh_vendor('ssh', SSHCorpSubprocessVendor())
 
 
 def _paramiko_auth(username, password, host, paramiko_transport):
