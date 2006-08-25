@@ -1040,6 +1040,7 @@ class KnitRepository2(KnitRepository):
         return RootCommitBuilder(self, parents, config, timestamp, timezone,
                                  committer, revprops, revision_id)
 
+
 class RepositoryFormat(object):
     """A repository format.
 
