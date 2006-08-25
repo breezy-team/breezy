@@ -608,7 +608,7 @@ class SFTPTransport(Transport):
         """Walk the relative paths of all files in this transport."""
         queue = list(self.list_dir('.'))
         while queue:
-            relpath = urllib.quote(queue.pop(0))
+            relpath = queue.pop(0)
             st = self.stat(relpath)
             if stat.S_ISDIR(st.st_mode):
                 for i, basename in enumerate(self.list_dir(relpath)):
@@ -722,11 +722,15 @@ class SFTPTransport(Transport):
         Return a list of all files at the given location.
         """
         # does anything actually use this?
+        # -- Unknown
+        # This is at least used by copy_tree for remote upgrades.
+        # -- David Allouche 2006-08-11
         path = self._remote_path(relpath)
         try:
-            return self._sftp.listdir(path)
+            entries = self._sftp.listdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
+        return [urllib.quote(entry) for entry in entries]
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""
