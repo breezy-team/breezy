@@ -1101,3 +1101,12 @@ class UnsupportedEOLMarker(BadBundle):
 
     def __init__(self):
         BzrNewError.__init__(self)    
+
+
+class UnknownSSH(BzrNewError):
+    """Unrecognised value for BZR_SSH environment variable: %(vendor)s"""
+
+    def __init__(self, vendor):
+        BzrNewError.__init__(self)
+        self.vendor = vendor
+

@@ -271,7 +271,8 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
         self._test_vendor = vendor
 
     def test_connection_paramiko(self):
-        self.set_vendor('none')
+        from bzrlib.transport import ssh
+        self.set_vendor(ssh.ParamikoVendor())
         t = self.get_transport()
         self.assertEqual('foobar\n', t.get('a_file').read())
 
@@ -317,7 +318,8 @@ class SSHVendorBadConnection(TestCaseWithTransport):
 
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error"""
-        self.set_vendor('none')
+        from bzrlib.transport import ssh
+        self.set_vendor(ssh.ParamikoVendor())
         self.assertRaises(errors.ConnectionError,
                           bzrlib.transport.get_transport, self.bogus_url)
 
