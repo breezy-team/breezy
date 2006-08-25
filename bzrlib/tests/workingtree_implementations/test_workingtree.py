@@ -501,20 +501,24 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # alter 'revert' to revert to the master always. But for now, its
         # good.
         master_tree = self.make_branch_and_tree('master')
+        master_tip = master_tree.commit('first master commit')
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master_tree.branch)
         except errors.UpgradeRequired:
             # legacy branches cannot bind
             return
+        # sync with master
+        tree.update()
+        # work locally
         tree.commit('foo', rev_id='foo', allow_pointless=True, local=True)
         tree.commit('bar', rev_id='bar', allow_pointless=True, local=True)
-        # put a new commit on the master tree to update to.
-        master_rev = master_tree.commit('first master commit')
+        # sync with master prepatory to committing
         tree.update()
-        self.assertEqual(master_rev, tree.last_revision())
-        self.assertEqual([master_rev], tree.branch.revision_history())
-        self.assertEqual(['bar'], tree.pending_merges())
+        # which should have pivoted the local tip into a merge
+        self.assertEqual(master_tip, tree.last_revision())
+        self.assertEqual([master_tip], tree.branch.revision_history())
+        self.assertEqual([master_tip, 'bar'], tree.get_parent_ids())
 
     def test_merge_modified(self):
         tree = self.make_branch_and_tree('master')
@@ -639,7 +643,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         osutils.normalized_filename = osutils._accessible_normalized_filename
         try:
             tree.add([u'a\u030a'])
-            self.assertEqual([('', 'root_directory'), (u'\xe5', 'file')],
+            self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in 
                                 tree.inventory.iter_entries()])
         finally:
@@ -658,5 +662,3 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 tree.add, [u'a\u030a'])
         finally:
             osutils.normalized_filename = orig
-
-

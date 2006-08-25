@@ -36,7 +36,9 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
+from bzrlib import symbol_versioning
 from bzrlib.trace import note
+from bzrlib.version import _get_bzr_source_tree
 
 
 class SelftestTests(TestCase):
@@ -576,6 +578,39 @@ class TestTestResult(TestCase):
         # cheat. Yes, wash thy mouth out with soap.
         self._benchtime = None
 
+    def test_assigned_benchmark_file_stores_date(self):
+        output = StringIO()
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1,
+                                        bench_history=output
+                                        )
+        output_string = output.getvalue()
+        # if you are wondering about the regexp please read the comment in
+        # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
+        # XXX: what comment?  -- Andrew Bennetts
+        self.assertContainsRe(output_string, "--date [0-9.]+")
+
+    def test_benchhistory_records_test_times(self):
+        result_stream = StringIO()
+        result = bzrlib.tests._MyResult(
+            self._log_file,
+            descriptions=0,
+            verbosity=1,
+            bench_history=result_stream
+            )
+
+        # we want profile a call and check that its test duration is recorded
+        # make a new test instance that when run will generate a benchmark
+        example_test_case = TestTestResult("_time_hello_world_encoding")
+        # execute the test, which should succeed and record times
+        example_test_case.run(result)
+        lines = result_stream.getvalue().splitlines()
+        self.assertEqual(2, len(lines))
+        self.assertContainsRe(lines[1],
+            " *[0-9]+ms bzrlib.tests.test_selftest.TestTestResult"
+            "._time_hello_world_encoding")
+ 
     def _time_hello_world_encoding(self):
         """Profile two sleep calls
         
@@ -671,6 +706,21 @@ class TestRunner(TestCase):
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
 
+    def test_bench_history(self):
+        # tests that the running the benchmark produces a history file
+        # containing a timestamp and the revision id of the bzrlib source which
+        # was tested.
+        workingtree = _get_bzr_source_tree()
+        test = TestRunner('dummy_test')
+        output = StringIO()
+        runner = TextTestRunner(stream=self._log_file, bench_history=output)
+        result = self.run_test_runner(runner, test)
+        output_string = output.getvalue()
+        self.assertContainsRe(output_string, "--date [0-9.]+")
+        if workingtree is not None:
+            revision_id = workingtree.last_revision()
+            self.assertEndsWith(output_string.rstrip(), revision_id)
+
 
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
@@ -760,6 +810,20 @@ class TestExtraAssertions(TestCase):
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
         self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
+
+    def test_callDeprecated(self):
+        def testfunc(be_deprecated, result=None):
+            if be_deprecated is True:
+                symbol_versioning.warn('i am deprecated', DeprecationWarning, 
+                                       stacklevel=1)
+            return result
+        result = self.callDeprecated(['i am deprecated'], testfunc, True)
+        self.assertIs(None, result)
+        result = self.callDeprecated([], testfunc, False, 'result')
+        self.assertEqual('result', result)
+        self.callDeprecated(['i am deprecated'], testfunc, 
+                              be_deprecated=True)
+        self.callDeprecated([], testfunc, be_deprecated=False)
 
 
 class TestConvenienceMakers(TestCaseWithTransport):

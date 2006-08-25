@@ -16,7 +16,7 @@
 
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter
-from bzrlib.symbol_versioning import deprecated_function, zero_ten
+from bzrlib.symbol_versioning import deprecated_function, zero_nine
 
 
 class TreeDelta(object):
@@ -143,7 +143,7 @@ class TreeDelta(object):
             show_list(self.unchanged)
 
 
-@deprecated_function(zero_ten)
+@deprecated_function(zero_nine)
 def compare_trees(old_tree, new_tree, want_unchanged=False,
                   specific_files=None, extra_trees=None,
                   require_versioned=False):
@@ -162,7 +162,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
     old_inv = old_tree.inventory
     new_inv = new_tree.inventory
     delta = TreeDelta()
-    mutter('start compare_trees')
+    # mutter('start compare_trees')
 
     # TODO: Rather than iterating over the whole tree and then filtering, we
     # could diff just the specified files (if any) and their subtrees.  
@@ -188,9 +188,6 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
     def check_matching(old_path, old_entry, new_path, new_entry):
         """We have matched up 2 file_ids, check for changes."""
         assert old_entry.kind == new_entry.kind
-
-        if old_entry.kind == 'root_directory':
-            return
 
         if specific_file_ids:
             if (old_entry.file_id not in specific_file_ids and 

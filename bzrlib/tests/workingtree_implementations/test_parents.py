@@ -18,11 +18,9 @@
 
 import os
 
+from bzrlib import errors
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
-from bzrlib.branch import Branch
-from bzrlib.revision import Revision
 from bzrlib.uncommit import uncommit
-import bzrlib.xml5
 
 
 class TestParents(TestCaseWithWorkingTree):
@@ -47,9 +45,15 @@ class TestSetParents(TestParents):
         t.set_parent_trees([])
         self.assertConsistentParents([], t)
 
-    def test_set_one_ghost_parent(self):
+    def test_set_one_ghost_parent_rejects(self):
         t = self.make_branch_and_tree('.')
-        t.set_parent_trees([('missing-revision-id', None)])
+        self.assertRaises(errors.GhostRevisionUnusableHere,
+            t.set_parent_trees, [('missing-revision-id', None)])
+
+    def test_set_one_ghost_parent_force(self):
+        t = self.make_branch_and_tree('.')
+        t.set_parent_trees([('missing-revision-id', None)],
+            allow_leftmost_as_ghost=True)
         self.assertConsistentParents(['missing-revision-id'], t)
 
     def test_set_two_parents_one_ghost(self):
@@ -88,9 +92,15 @@ class TestSetParents(TestParents):
         t.set_parent_ids([])
         self.assertConsistentParents([], t)
 
-    def test_set_one_ghost_parent_ids(self):
+    def test_set_one_ghost_parent_ids_rejects(self):
         t = self.make_branch_and_tree('.')
-        t.set_parent_ids(['missing-revision-id'])
+        self.assertRaises(errors.GhostRevisionUnusableHere,
+            t.set_parent_ids, ['missing-revision-id'])
+
+    def test_set_one_ghost_parent_ids_force(self):
+        t = self.make_branch_and_tree('.')
+        t.set_parent_ids(['missing-revision-id'],
+            allow_leftmost_as_ghost=True)
         self.assertConsistentParents(['missing-revision-id'], t)
 
     def test_set_two_parents_one_ghost_ids(self):
@@ -128,11 +138,24 @@ class TestAddParent(TestParents):
         tree.add_parent_tree_id(first_revision)
         self.assertConsistentParents([first_revision], tree)
         
-    def test_add_first_parent_id_ghost(self):
+    def test_add_first_parent_id_ghost_rejects(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
-        tree.add_parent_tree_id('first-revision')
+        self.assertRaises(errors.GhostRevisionUnusableHere,
+            tree.add_parent_tree_id, 'first-revision')
+        
+    def test_add_first_parent_id_ghost_force(self):
+        """Test adding the first parent id - as a ghost"""
+        tree = self.make_branch_and_tree('.')
+        tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
         self.assertConsistentParents(['first-revision'], tree)
+
+    def test_add_second_parent_id_with_ghost_first(self):
+        """Test adding the second parent when the first is a ghost."""
+        tree = self.make_branch_and_tree('.')
+        tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
+        tree.add_parent_tree_id('second')
+        self.assertConsistentParents(['first-revision', 'second'], tree)
         
     def test_add_second_parent_id(self):
         """Test adding the second parent id"""
@@ -159,10 +182,17 @@ class TestAddParent(TestParents):
             tree.branch.repository.revision_tree(first_revision)))
         self.assertConsistentParents([first_revision], tree)
         
-    def test_add_first_parent_tree_ghost(self):
+    def test_add_first_parent_tree_ghost_rejects(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
-        tree.add_parent_tree(('first-revision', None))
+        self.assertRaises(errors.GhostRevisionUnusableHere,
+            tree.add_parent_tree, ('first-revision', None))
+        
+    def test_add_first_parent_tree_ghost_force(self):
+        """Test adding the first parent id - as a ghost"""
+        tree = self.make_branch_and_tree('.')
+        tree.add_parent_tree(('first-revision', None),
+            allow_leftmost_as_ghost=True)
         self.assertConsistentParents(['first-revision'], tree)
         
     def test_add_second_parent_tree(self):
