@@ -42,6 +42,13 @@ from bzrlib.tests import TestCaseWithTransport
 class TestLockDir(TestCaseWithTransport):
     """Test LockDir operations"""
 
+    def logging_report_function(self, fmt, *args):
+        self._logged_reports.append((fmt, args))
+
+    def setup_log_reporter(self, lock_dir):
+        self._logged_reports = []
+        lock_dir._report_function = self.logging_report_function
+
     def test_00_lock_creation(self):
         """Creation of lock file on a transport"""
         t = self.get_transport()
@@ -156,6 +163,7 @@ class TestLockDir(TestCaseWithTransport):
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
         lf2 = LockDir(t, 'test_lock')
+        self.setup_log_reporter(lf2)
         lf1.attempt_lock()
         try:
             before = time.time()
@@ -168,6 +176,11 @@ class TestLockDir(TestCaseWithTransport):
                     "took %f seconds to detect lock contention" % (after - before))
         finally:
             lf1.unlock()
+        lock_base = lf2.transport.abspath(lf2.path)
+        self.assertEqual([('Unable to obtain lock on %s\n'
+                           'Will continue to try for %s seconds\n',
+                           (lock_base, 0.4)),
+                         ], self._logged_reports)
 
     def test_31_lock_wait_easy(self):
         """Succeed when waiting on a lock with no contention.
@@ -175,6 +188,7 @@ class TestLockDir(TestCaseWithTransport):
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
+        self.setup_log_reporter(lf1)
         try:
             before = time.time()
             lf1.wait_lock(timeout=0.4, poll=0.1)
@@ -182,6 +196,7 @@ class TestLockDir(TestCaseWithTransport):
             self.assertTrue(after - before <= 1.0)
         finally:
             lf1.unlock()
+        self.assertEqual([], self._logged_reports)
 
     def test_32_lock_wait_succeed(self):
         """Succeed when trying to acquire a lock that gets released
@@ -201,6 +216,7 @@ class TestLockDir(TestCaseWithTransport):
         unlocker.start()
         try:
             lf2 = LockDir(t, 'test_lock')
+            self.setup_log_reporter(lf2)
             before = time.time()
             # wait and then lock
             lf2.wait_lock(timeout=0.4, poll=0.1)
@@ -208,6 +224,14 @@ class TestLockDir(TestCaseWithTransport):
             self.assertTrue(after - before <= 1.0)
         finally:
             unlocker.join()
+
+        # There should be only 1 report, even though it should have to
+        # wait for a while
+        lock_base = lf2.transport.abspath(lf2.path)
+        self.assertEqual([('Unable to obtain lock on %s\n'
+                           'Will continue to try for %s seconds\n',
+                           (lock_base, 0.4)),
+                         ], self._logged_reports)
 
     def test_33_wait(self):
         """Succeed when waiting on a lock that gets released

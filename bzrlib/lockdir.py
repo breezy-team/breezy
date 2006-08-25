@@ -96,7 +96,7 @@ Example usage:
 
 import os
 import time
-from StringIO import StringIO
+from cStringIO import StringIO
 
 import bzrlib.config
 from bzrlib.errors import (
@@ -111,7 +111,7 @@ from bzrlib.errors import (
         ResourceBusy,
         UnlockableTransport,
         )
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, note
 from bzrlib.transport import Transport
 from bzrlib.osutils import rand_chars
 from bzrlib.rio import RioWriter, read_stanza, Stanza
@@ -159,6 +159,8 @@ class LockDir(object):
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
         self.nonce = rand_chars(20)
+
+        self._report_function = note
 
     def __repr__(self):
         return '%s(%s%s)' % (self.__class__.__name__,
@@ -355,12 +357,20 @@ class LockDir(object):
         # XXX: the transport interface doesn't let us guard 
         # against operations there taking a long time.
         deadline = time.time() + timeout
+        commented = False
         while True:
             try:
                 self.attempt_lock()
                 return
             except LockContention:
                 pass
+            if not commented:
+                commented = True
+                self._report_function('Unable to obtain lock on %s\n'
+                                      'Will continue to try for %s seconds\n',
+                                      self.transport.abspath(self.path),
+                                      timeout)
+
             if time.time() + poll < deadline:
                 time.sleep(poll)
             else:
