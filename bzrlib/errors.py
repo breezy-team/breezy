@@ -126,7 +126,12 @@ class BzrNewError(BzrError):
 
     def __str__(self):
         try:
-            return self.__doc__ % self.__dict__
+            # __str__() should always return a 'str' object
+            # never a 'unicode' object.
+            s = self.__doc__ % self.__dict__
+            if isinstance(s, unicode):
+                return s.encode('utf8')
+            return s
         except (NameError, ValueError, KeyError), e:
             return 'Unprintable exception %s: %s' \
                 % (self.__class__.__name__, str(e))
@@ -198,7 +203,12 @@ class BzrCommandError(BzrNewError):
     # BzrCommandError, and non-UI code should not throw a subclass of
     # BzrCommandError.  ADHB 20051211
     def __init__(self, msg):
-        self.msg = msg
+        # Object.__str__() must return a real string
+        # returning a Unicode string is a python error.
+        if isinstance(msg, unicode):
+            self.msg = msg.encode('utf8')
+        else:
+            self.msg = msg
 
     def __str__(self):
         return self.msg
