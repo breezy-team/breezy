@@ -23,6 +23,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr upgrade sftp://`` shouldn't fail to upgrade v6 branches if there 
+      isn't a working tree. (David Allouche, #40679)
+
     * Change LockDir so that if the lock directory doesn't exist when
       lock_write() is called, an attempt will be made to create it.
       (John Arbash Meinel, #56974)
