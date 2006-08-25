@@ -568,6 +568,28 @@ class BzrDir(object):
         except errors.NoWorkingTree:
             return False
 
+    def cloning_metadir(self, basis=None):
+        """Produce a metadir suitable for cloning with"""
+        def related_repository(bzrdir):
+            try:
+                branch = bzrdir.open_branch()
+                return branch.repository
+            except errors.NotBranchError:
+                source_branch = None
+                return bzrdir.open_repository()
+        result_format = self._format.__class__()
+        try:
+            try:
+                source_repository = related_repository(self)
+            except errors.NoRepositoryPresent:
+                if basis is None:
+                    raise
+                source_repository = related_repository(self)
+            result_format.repository_format = source_repository._format
+        except errors.NoRepositoryPresent:
+            pass
+        return result_format
+
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
@@ -583,7 +605,8 @@ class BzrDir(object):
             itself to download less data.
         """
         self._make_tail(url)
-        result = self._format.initialize(url)
+        cloning_format = self.cloning_metadir(basis)
+        result = cloning_format.initialize(url)
         basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
         try:
             source_branch = self.open_branch()
@@ -613,8 +636,6 @@ class BzrDir(object):
             # we don't clone the repo because that preserves attributes
             # like is_shared(), and we have not yet implemented a 
             # repository sprout().
-            result._format = result._format.__class__()
-            result._format.repository_format = source_repository._format
             result_repo = result.create_repository()
         if result_repo is not None:
             # fetch needed content into target.

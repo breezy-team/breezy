@@ -589,8 +589,7 @@ class Branch(object):
             format = bzrdir.BzrDirMetaFormat1()
             format.repository_format = repository.RepositoryFormat7()
         else:
-            format = self.repository._format._matchingbzrdir.__class__()
-            format.repository_format = self.repository._format
+            format = self.repository.bzrdir.cloning_metadir()
         return format
 
     def create_checkout(self, to_location, revision_id=None, 
