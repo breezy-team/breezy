@@ -35,6 +35,7 @@ from bzrlib.errors import (FileExists,
                            LockError, 
                            PathError,
                            ParamikoNotPresent,
+                           UnknownSSH,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.trace import mutter, warning
@@ -67,6 +68,18 @@ _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
 
 
+_ssh_vendors = {}
+
+def register_ssh_vendor(name, vendor_class):
+    """Register lazy-loaded SSH vendor class.""" 
+    _ssh_vendors[name] = vendor_class
+
+register_ssh_vendor('loopback', ssh.LoopbackVendor)
+register_ssh_vendor('paramiko', ssh.ParamikoVendor)
+register_ssh_vendor('none', ssh.ParamikoVendor)
+register_ssh_vendor('openssh', ssh.OpenSSHSubprocessVendor)
+register_ssh_vendor('ssh', ssh.SSHCorpSubprocessVendor)
+    
 _ssh_vendor = None
 def _get_ssh_vendor():
     """Find out what version of SSH is on the system."""
@@ -74,12 +87,14 @@ def _get_ssh_vendor():
     if _ssh_vendor is not None:
         return _ssh_vendor
 
-    _ssh_vendor = 'none'
-
     if 'BZR_SSH' in os.environ:
-        _ssh_vendor = os.environ['BZR_SSH']
-        if _ssh_vendor == 'paramiko':
-            _ssh_vendor = 'none'
+        vendor_name = os.environ['BZR_SSH']
+        try:
+            klass = _ssh_vendors[vendor_name]
+        except KeyError:
+            raise UnknownSSH(vendor_name)
+        else:
+            _ssh_vendor = klass()
         return _ssh_vendor
 
     try:
@@ -95,18 +110,19 @@ def _get_ssh_vendor():
         stdout = stderr = ''
     if 'OpenSSH' in stderr:
         mutter('ssh implementation is OpenSSH')
-        _ssh_vendor = 'openssh'
+        _ssh_vendor = ssh.OpenSSHSubprocessVendor()
     elif 'SSH Secure Shell' in stderr:
         mutter('ssh implementation is SSH Corp.')
-        _ssh_vendor = 'ssh'
+        _ssh_vendor = ssh.SSHCorpSubprocessVendor()
 
-    if _ssh_vendor != 'none':
+    if _ssh_vendor is not None:
         return _ssh_vendor
 
     # XXX: 20051123 jamesh
     # A check for putty's plink or lsh would go here.
 
     mutter('falling back to paramiko implementation')
+    _ssh_vendor = ssh.ParamikoVendor()
     return _ssh_vendor
 
 
@@ -842,7 +858,7 @@ class SFTPServer(Server):
         self._server_homedir = None
         self._listener = None
         self._root = None
-        self._vendor = 'none'
+        self._vendor = ssh.ParamikoVendor()
         # sftp server logs
         self.logs = []
         self.add_latency = 0
@@ -929,7 +945,7 @@ class SFTPServerWithoutSSH(SFTPServer):
 
     def __init__(self):
         super(SFTPServerWithoutSSH, self).__init__()
-        self._vendor = 'loopback'
+        self._vendor = ssh.LoopbackVendor()
 
     def _run_server(self, sock):
         class FakeChannel(object):
@@ -1007,19 +1023,8 @@ def _sftp_connect(host, port, username, password):
     return sftp
 
 def _sftp_connect_uncached(host, port, username, password):
-    # TODO: use a registration dictionary rather than a big if/elif chain.
     vendor = _get_ssh_vendor()
-    if vendor == 'loopback':
-        vendorImpl = ssh.LoopbackVendor()
-    elif vendor == 'none':
-        vendorImpl = ssh.ParamikoVendor()
-    elif vendor == 'openssh':
-        vendorImpl = ssh.OpenSSHSubprocessVendor()
-    elif vendor == 'ssh':
-        vendorImpl = ssh.SSHCorpSubprocessVendor()
-    else:
-        assert False, "Unknown SSH vendor: %r" % (vendor,)
-    sftp = vendorImpl.connect_sftp(username, password, host, port)
+    sftp = vendor.connect_sftp(username, password, host, port)
     return sftp
 
 
