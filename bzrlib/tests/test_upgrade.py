@@ -46,9 +46,7 @@ class TestUpgrade(TestCaseInTempDir):
         self.failUnlessExists('.bzr/README')
 
     def test_upgrade_simple(self):
-        """Upgrade simple v0.0.4 format to v6"""
-        # XXX: Lying docstring, that upgrades to the default format, which is
-        # currently knits version 1. -- David Allouche 2006-08-11
+        """Upgrade simple v0.0.4 format to latest format"""
         eq = self.assertEquals
         self.build_tree_contents(_upgrade1_template)
         upgrade(u'.')
