@@ -23,6 +23,8 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Help diffutils 2.8.4 get along with binary tests (Marien Zwart: #57614)
+
     * Change LockDir so that if the lock directory doesn't exist when
       lock_write() is called, an attempt will be made to create it.
       (John Arbash Meinel, #56974)
