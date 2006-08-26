@@ -1,4 +1,15 @@
-2006-08-24  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+2006-08-26  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
+	Add classes to allow testing of APPEND command on future web servers.
+	
+	* webdav.py:
+	(get_test_permutations):   Require   the   testing  of   the   new
+	HttpServer_Dav_append server.
+
+	* test_webdav.py:
+	(TestingDAVAppendRequestHandler): New class.
+	(HttpServer_Dav_append): New class.
+
+2006-08-24  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
         Ensures that put is atomic.
 	
 	* webdav.py:
@@ -9,13 +20,13 @@
 	Check  the  bzr version  here,  no need  to  import  just to  say:
 	"Finally, I can't work".
 
-2006-08-23  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+2006-08-23  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
         Another fix recommanded by jam
 
 	* test_webdav.py:
 	(TestingDAVRequestHandler._read_chunk): Don't use string.atoi.
 
-2006-08-23-1  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+2006-08-23-1  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
 
 	* test_webdav.py:
 	(TestingDAVRequestHandler._read_chunk): Don't use string.atoi.
@@ -47,7 +58,17 @@
 	(HttpServer_Dav.__init__): Use  the class name  when calling super
 	or it will create a loop if called by the daughter class :(
 
-2006-08-22  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+2006-08-23  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
+
+	* webdav.py:
+	(HttpDavTransport.put): Should we really recognize 404 there ?
+	(TestingDAVRequestHandler._retry_if_not_available):  Tries to work
+	around Mac OS X strange socket behavior.
+	(TestingDAVRequestHandler._read,
+	TestingDAVRequestHandler._readline): New methods.
+	(TestingDAVRequestHandler.do_PUT): Catches more exceptions.
+
+2006-08-22  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
 
 	* webdav.py:
 	(HttpDavTransport.mkdir,                     HttpDavTransport.copy,
@@ -56,7 +77,7 @@
 	(HttpDavTransport.put): Use _set_curl_options  to unify the use of
 	curl. Translate 403 as NoSuchFile too.
 
-2006-08-22-1  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+2006-08-22-1  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
 
 	*  webdav.py: Add  more TODOs  and FIXMEs  :-) Put  at  least this
 	version passes bzr selftest (except for lock_write and copy_to for

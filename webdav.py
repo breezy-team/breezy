@@ -357,4 +357,4 @@ def get_test_permutations():
     """Return the permutations to be used in testing."""
     import test_webdav
     return [(HttpDavTransport, test_webdav.HttpServer_Dav),
-            ]
+            (HttpDavTransport, test_webdav.HttpServer_Dav_append),]
