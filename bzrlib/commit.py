@@ -70,7 +70,7 @@ import time
 from cStringIO import StringIO
 
 import bzrlib.config
-import bzrlib.errors as errors
+from bzrlib import errors, inventory
 from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
@@ -501,6 +501,10 @@ class Commit(object):
         for path, new_ie in entries:
             self._emit_progress_update()
             file_id = new_ie.file_id
+            kind = self.work_tree.kind(file_id)
+            if kind != new_ie.kind:
+                new_ie = inventory.make_entry(kind, new_ie.name, 
+                                              new_ie.parent_id, file_id)
             # mutter('check %s {%s}', path, file_id)
             if (not self.specific_files or 
                 is_inside_or_parent_of_any(self.specific_files, path)):

@@ -376,6 +376,8 @@ class InventoryEntry(object):
             return 'added'
         elif new_entry is None:
             return 'removed'
+        if old_entry.kind != new_entry.kind:
+            return 'modified'
         text_modified, meta_modified = new_entry.detect_changes(old_entry)
         if text_modified or meta_modified:
             modified = True
