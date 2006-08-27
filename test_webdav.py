@@ -107,8 +107,8 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
         self.send_response(100,"Continue")
         self.end_headers()
         try:
-            # Always write in binary mode.
             mutter("do_PUT will try to open: [%s]" % path)
+            # Always write in binary mode.
             f = open(path, 'wb')
         except (IOError, OSError), e :
             self.send_error(409, "Conflict")

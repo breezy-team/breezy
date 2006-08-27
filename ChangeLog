@@ -1,3 +1,26 @@
+2006-08-27  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
+	Implements https://features.launchpad.net/products/bzr.webdav/+spec/curl-persistence.
+	
+	* webdav.py:
+	(HttpDavTransport.__init__):  Copy  the  shared curl  object  when
+	cloning.
+	(HttpDavTransport._set_curl_common_options):      New      method.
+	Initialize the shared curl object.
+	(HttpDavTransport._set_curl_options):  New   method.   Reset  used
+	options to facilitate sharing of the curl object.
+	(HttpDavTransport._add_header): New method.
+	(HttpDavTransport._perform): New method.
+	(HttpDavTransport.has, HttpDavTransport._get_full,
+	HttpDavTransport._get_ranged):    New    methods,   copied    from
+	PyCurlTransport but using the shared curl object.
+	(HttpDavTransport.mkdir, HttpDavTransport.copy,
+	HttpDavTransport.put, HttpDavTransport.rename,
+	HttpDavTransport.move, HttpDavTransport.delete): Modified  to use
+	the shared curl objects.
+
+	* test_webdav.py:
+	(TestingDAVRequestHandler.do_PUT): Cosmetic change.
+
 2006-08-26  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
 	Add classes to allow testing of APPEND command on future web servers.
 	
@@ -14,7 +37,7 @@
 	
 	* webdav.py:
 	(HttpDavTransport.put):  Makes  sure the  put  is  atomic even  on
-	non-nocforming servers.
+	non-conforming servers.
 
 	* __init__.py: 
 	Check  the  bzr version  here,  no need  to  import  just to  say:
