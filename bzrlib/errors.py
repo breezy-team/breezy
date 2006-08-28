@@ -126,7 +126,12 @@ class BzrNewError(BzrError):
 
     def __str__(self):
         try:
-            return self.__doc__ % self.__dict__
+            # __str__() should always return a 'str' object
+            # never a 'unicode' object.
+            s = self.__doc__ % self.__dict__
+            if isinstance(s, unicode):
+                return s.encode('utf8')
+            return s
         except (NameError, ValueError, KeyError), e:
             return 'Unprintable exception %s: %s' \
                 % (self.__class__.__name__, str(e))
@@ -197,7 +202,12 @@ class BzrCommandError(BzrNewError):
     # BzrCommandError, and non-UI code should not throw a subclass of
     # BzrCommandError.  ADHB 20051211
     def __init__(self, msg):
-        self.msg = msg
+        # Object.__str__() must return a real string
+        # returning a Unicode string is a python error.
+        if isinstance(msg, unicode):
+            self.msg = msg.encode('utf8')
+        else:
+            self.msg = msg
 
     def __str__(self):
         return self.msg
@@ -302,6 +312,22 @@ class AlreadyBranchError(PathError):
 class BranchExistsWithoutWorkingTree(PathError):
     """Directory contains a branch, but no working tree \
 (use bzr checkout if you wish to build a working tree): %(path)s"""
+
+
+class AtomicFileAlreadyClosed(PathError):
+    """'%(function)s' called on an AtomicFile after it was closed: %(path)s"""
+
+    def __init__(self, path, function):
+        PathError.__init__(self, path=path, extra=None)
+        self.function = function
+
+
+class InaccessibleParent(PathError):
+    """Parent not accessible given base %(base)s and relative path %(path)s"""
+
+    def __init__(self, path, base):
+        PathError.__init__(self, path)
+        self.base = base
 
 
 class NoRepositoryPresent(BzrNewError):
@@ -1045,16 +1071,43 @@ class NotABundle(BzrNewError):
     """Not a bzr revision-bundle: %(text)r"""
 
     def __init__(self, text):
+        BzrNewError.__init__(self)
         self.text = text
 
 
-class BadBundle(Exception): pass
+class BadBundle(BzrNewError): 
+    """Bad bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        BzrNewError.__init__(self)
+        self.text = text
 
 
-class MalformedHeader(BadBundle): pass
+class MalformedHeader(BadBundle): 
+    """Malformed bzr revision-bundle header: %(text)r"""
+
+    def __init__(self, text):
+        BzrNewError.__init__(self)
+        self.text = text
 
 
-class MalformedPatches(BadBundle): pass
+class MalformedPatches(BadBundle): 
+    """Malformed patches in bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        BzrNewError.__init__(self)
+        self.text = text
 
 
-class MalformedFooter(BadBundle): pass
+class MalformedFooter(BadBundle): 
+    """Malformed footer in bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        BzrNewError.__init__(self)
+        self.text = text
+
+class UnsupportedEOLMarker(BadBundle):
+    """End of line marker was not \\n in bzr revision-bundle"""    
+
+    def __init__(self):
+        BzrNewError.__init__(self)    

@@ -27,7 +27,8 @@ from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
-from bzrlib.errors import BzrError, TestamentMismatch, NotABundle, BadBundle
+from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle, 
+                           NoSuchFile,)
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
 from bzrlib.tests import (TestCaseInTempDir, TestCaseWithTransport,
@@ -38,12 +39,12 @@ from bzrlib.workingtree import WorkingTree
 
 class MockTree(object):
     def __init__(self):
-        from bzrlib.inventory import RootEntry, ROOT_ID
+        from bzrlib.inventory import InventoryDirectory, ROOT_ID
         object.__init__(self)
         self.paths = {ROOT_ID: ""}
         self.ids = {"": ROOT_ID}
         self.contents = {}
-        self.root = RootEntry(ROOT_ID)
+        self.root = InventoryDirectory(ROOT_ID, '', None)
 
     inventory = property(lambda x:x)
 
@@ -411,7 +412,7 @@ class BundleTester(TestCaseWithTransport):
             for inventory_id in old:
                 try:
                     old_file = old.get_file(inventory_id)
-                except:
+                except NoSuchFile:
                     continue
                 if old_file is None:
                     continue
@@ -798,6 +799,14 @@ class BundleTester(TestCaseWithTransport):
         self.assertEqual('Mon 2006-07-10 20:51:26.000000000 +0530', rev.date)
         self.assertEqual(19800, rev.timezone)
         self.assertEqual(1152544886.0, rev.timestamp)
+
+    def test_bundle_root_id(self):
+        self.tree1 = self.make_branch_and_tree('b1')
+        self.b1 = self.tree1.branch
+        self.tree1.commit('message', rev_id='revid1')
+        bundle = self.get_valid_bundle(None, 'revid1')
+        tree = bundle.revision_tree(self.b1.repository, 'revid1')
+        self.assertEqual('revid1', tree.inventory.root.revision)
 
 
 class MungedBundleTester(TestCaseWithTransport):

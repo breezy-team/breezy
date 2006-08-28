@@ -43,13 +43,13 @@ class LogBenchmark(Benchmark):
 
     def test_log(self):
         """Run log in a many-commit tree.""" 
-        tree = self.make_many_commit_tree()
+        tree = self.make_many_commit_tree(hardlink=True)
         lf = log_formatter('long', to_file=StringIO())
         self.time(show_log, tree.branch, lf, direction='reverse')
 
     def test_merge_log(self):
         """Run log in a tree with many merges"""
-        tree = self.make_heavily_merged_tree()
+        tree = self.make_heavily_merged_tree(hardlink=True)
         lf = log_formatter('short', to_file=StringIO())
         self.time(show_log, tree.branch, lf, direction='reverse')
 
@@ -67,7 +67,7 @@ class LogBenchmark(Benchmark):
 
     def screenful_tester(self, formatter):
         """Run show_log, but stop after 25 lines are generated"""
-        tree = self.make_many_commit_tree()
+        tree = self.make_many_commit_tree(hardlink=True)
         def log_screenful():
             lf = log_formatter(formatter, to_file=LineConsumer(25))
             try:
@@ -80,16 +80,16 @@ class LogBenchmark(Benchmark):
 
     def test_cmd_log(self):
         """Test execution of the log command.""" 
-        tree = self.make_many_commit_tree()
+        tree = self.make_many_commit_tree(hardlink=True)
         self.time(self.run_bzr, 'log', '-r', '-4..')
 
     def test_cmd_log_subprocess(self):
         """Text startup and execution of the log command.""" 
-        tree = self.make_many_commit_tree()
+        tree = self.make_many_commit_tree(hardlink=True)
         self.time(self.run_bzr_subprocess, 'log', '-r', '-4..')
 
     def test_log_verbose(self):
         """'verbose' log -- shows file changes"""
-        tree = self.make_many_commit_tree()
+        tree = self.make_many_commit_tree(hardlink=True)
         lf = log_formatter('long', to_file=StringIO())
         self.time(show_log, tree.branch, lf, direction='reverse', verbose=True)

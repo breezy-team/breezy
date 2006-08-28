@@ -53,6 +53,14 @@ from bzrlib.symbol_versioning import (deprecated_function,
 from bzrlib.trace import mutter
 
 
+# On win32, O_BINARY is used to indicate the file should
+# be opened in binary mode, rather than text mode.
+# On other platforms, O_BINARY doesn't exist, because
+# they always open in binary mode, so it is okay to
+# OR with 0 on those platforms
+O_BINARY = getattr(os, 'O_BINARY', 0)
+
+
 def make_readonly(filename):
     """Make a filename read-only."""
     mod = os.stat(filename).st_mode
@@ -116,6 +124,16 @@ def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
         if getattr(e, 'errno', None) == errno.ENOENT:
             raise bzrlib.errors.NoSuchFile(f)
         raise
+
+
+def get_umask():
+    """Return the current umask"""
+    # Assume that people aren't messing with the umask while running
+    # XXX: This is not thread safe, but there is no way to get the
+    #      umask without setting it
+    umask = os.umask(0)
+    os.umask(umask)
+    return umask
 
 
 def kind_marker(kind):
@@ -925,6 +943,48 @@ def walkdirs(top, prefix=""):
         for dir in reversed(dirblock):
             if dir[2] == _directory:
                 pending.append(dir)
+
+
+def copy_tree(from_path, to_path, handlers={}):
+    """Copy all of the entries in from_path into to_path.
+
+    :param from_path: The base directory to copy. 
+    :param to_path: The target directory. If it does not exist, it will
+        be created.
+    :param handlers: A dictionary of functions, which takes a source and
+        destinations for files, directories, etc.
+        It is keyed on the file kind, such as 'directory', 'symlink', or 'file'
+        'file', 'directory', and 'symlink' should always exist.
+        If they are missing, they will be replaced with 'os.mkdir()',
+        'os.readlink() + os.symlink()', and 'shutil.copy2()', respectively.
+    """
+    # Now, just copy the existing cached tree to the new location
+    # We use a cheap trick here.
+    # Absolute paths are prefixed with the first parameter
+    # relative paths are prefixed with the second.
+    # So we can get both the source and target returned
+    # without any extra work.
+
+    def copy_dir(source, dest):
+        os.mkdir(dest)
+
+    def copy_link(source, dest):
+        """Copy the contents of a symlink"""
+        link_to = os.readlink(source)
+        os.symlink(link_to, dest)
+
+    real_handlers = {'file':shutil.copy2,
+                     'symlink':copy_link,
+                     'directory':copy_dir,
+                    }
+    real_handlers.update(handlers)
+
+    if not os.path.exists(to_path):
+        real_handlers['directory'](from_path, to_path)
+
+    for dir_info, entries in walkdirs(from_path, prefix=to_path):
+        for relpath, name, kind, st, abspath in entries:
+            real_handlers[kind](abspath, relpath)
 
 
 def path_prefix_key(path):

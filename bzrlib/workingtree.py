@@ -322,6 +322,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self.branch.break_lock()
 
     def _set_inventory(self, inv):
+        assert inv.root is not None
         self._inventory = inv
         self.path2id = self._inventory.path2id
 
@@ -399,6 +400,7 @@ class WorkingTree(bzrlib.tree.Tree):
             try:
                 xml = self.read_basis_inventory()
                 inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+                inv.root.revision = revision_id
             except NoSuchFile:
                 inv = None
             if inv is not None and inv.revision_id == revision_id:
@@ -857,7 +859,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if to_dir_id == None and to_name != '':
             raise BzrError("destination %r is not a versioned directory" % to_name)
         to_dir_ie = inv[to_dir_id]
-        if to_dir_ie.kind not in ('directory', 'root_directory'):
+        if to_dir_ie.kind != 'directory':
             raise BzrError("destination %r is not a directory" % to_abs)
 
         to_idpath = inv.get_idpath(to_dir_id)
@@ -1224,13 +1226,11 @@ class WorkingTree(bzrlib.tree.Tree):
         if new_revision is None:
             self.branch.set_revision_history([])
             return False
-        # current format is locked in with the branch
-        revision_history = self.branch.revision_history()
         try:
-            position = revision_history.index(new_revision)
-        except ValueError:
-            raise errors.NoSuchRevision(self.branch, new_revision)
-        self.branch.set_revision_history(revision_history[:position + 1])
+            self.branch.generate_revision_history(new_revision)
+        except errors.NoSuchRevision:
+            # not present in the repo - dont try to set it deeper than the tip
+            self.branch.set_revision_history([new_revision])
         return True
 
     def _cache_basis_inventory(self, new_revision):
@@ -1259,7 +1259,7 @@ class WorkingTree(bzrlib.tree.Tree):
             path = self._basis_inventory_name()
             sio = StringIO(xml)
             self._control_files.put(path, sio)
-        except WeaveRevisionNotPresent:
+        except (errors.NoSuchRevision, errors.RevisionNotPresent):
             pass
 
     def read_basis_inventory(self):
@@ -1537,10 +1537,6 @@ class WorkingTree3(WorkingTree):
                 pass
             return False
         else:
-            try:
-                self.branch.revision_history().index(revision_id)
-            except ValueError:
-                raise errors.NoSuchRevision(self.branch, revision_id)
             self._control_files.put_utf8('last-revision', revision_id)
             return True
 
