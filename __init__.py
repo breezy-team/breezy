@@ -194,13 +194,13 @@ class cmd_statistics(bzrlib.commands.Command):
             a_branch = wt.branch
             last_rev = wt.last_revision()
 
+        if revision is not None:
+            last_rev = revision[0].in_history(a_branch).rev_id
+            if len(revision) > 1:
+                alternate_rev = revision[1].in_history(a_branch).rev_id
+
         a_branch.lock_read()
         try:
-            if revision is not None:
-                last_rev = revision[0].in_history(a_branch).rev_id
-                if len(revision) > 1:
-                    alternate_rev = revision[1].in_history(a_branch).rev_id
-
             if alternate_rev:
                 info = get_diff_info(a_branch.repository, last_rev,
                                      alternate_rev)
