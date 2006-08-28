@@ -170,7 +170,7 @@ class HttpTransportBase(Transport):
             # TODO: Don't call this with an array - no magic interfaces
             relpath_parts = relpath[:]
         if len(relpath_parts) > 1:
-            # TODO: Check  that the  "within branch" part  of the
+            # TODO: Check that the "within branch" part of the
             # error messages below is relevant in all contexts
             if relpath_parts[0] == '':
                 raise ValueError("path %r within branch %r seems to be absolute"
