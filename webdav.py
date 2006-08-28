@@ -33,11 +33,6 @@ This should enable remote push operations.
 # implies a mean to  store file properties, apply them, detecting
 # their changes, etc.
 
-# TODO: Share the curl object between the various transactions or
-# at a  minimum between the transactions implemented  here (if we
-# can't find a way to solve the pollution of the GET transactions
-# curl object).
-
 # TODO:   Cache  files   to   improve  performance   (a  bit   at
 # least). Files  should be kept  in a temporary directory  (or an
 # hash-based hierarchy to limit  local file systems problems) and
@@ -90,6 +85,10 @@ from bzrlib.trace import mutter
 from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     )
+from bzrlib.transport.http import (
+    _extract_headers,
+    response,
+    )
 
 # We  want  https because  user  and  passwords  are required  to
 # authenticate  against the  DAV server.  We don't  want  to send
@@ -116,24 +115,147 @@ class HttpDavTransport(PyCurlTransport):
     We don't try to implement the whole WebDAV protocol. Just the minimum
     needed for bzr.
     """
-    def __init__(self, base):
+
+    # Note that we  override methods from Pycurltransport, partly
+    # to implement new functionalities and partly to correct some
+    # problems  with  its implementation  (full  sharing of  curl
+    # objects for example).
+    def __init__(self, base, from_transport=None):
         assert base.startswith('https+webdav') or base.startswith('http+webdav')
         super(HttpDavTransport, self).__init__(base)
+        if from_transport is not None:
+            self._curl = from_transport._curl
+        else:
+            mutter('using pycurl %s' % pycurl.version)
+            self._curl = pycurl.Curl()
+            self._set_curl_common_options()
         mutter("HttpDavTransport [%s]",base)
 
-    def _set_curl_options(self, curl):
-        super(HttpDavTransport, self)._set_curl_options(curl)
-        # No  noise  please:  libcurl  displays request  body  on
-        # stdout  otherwise.   Which  means that  commenting  the
-        # following line will be great for debug.
-        curl.setopt(pycurl.WRITEFUNCTION,StringIO().write)
-
-    # TODO: when doing  an initial push, mkdir is  called even if
-    # is_readonly have  not been overriden to say  False... A bug
-    # is lying somewhere. Find it and kill it :)
     def is_readonly(self):
         """See Transport.is_readonly."""
         return False
+
+    def _set_curl_common_options(self):
+        # Set options common to all requests. Once.
+        curl = self._curl
+        # TODO: maybe include a summary of the pycurl and plugin version
+        ua_str = 'bzr/%s (pycurl)(webdav plugin)' % (bzrlib.__version__,)
+        curl.setopt(pycurl.USERAGENT, ua_str)
+        curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
+        ## curl.setopt(pycurl.VERBOSE, 1)
+
+    # Each request will call _set_curl_options before setting its
+    # own specific  options.  This  allows sharing the  same curl
+    # object (enabling  connection sharing) while  paying a small
+    # price: all used options should be reset here. Note that the
+    # CURLOPT_RANGE option should not  be used as pycurl does not
+    # allow  unsetopt  for it.  Adding  the corresponding  header
+    # provides the same service.
+    def _set_curl_options(self):
+        """Reset all used options.
+
+        To  allow the  sharing of  culr object  between different
+        requests, without requiring each  request to rest its own
+        options,  reset all  used options  here. Request  code is
+        simplified.
+        """
+        curl = self._curl
+        # We don't reset URL because every request set it.
+        curl.unsetopt(pycurl.CUSTOMREQUEST)
+        curl.setopt(pycurl.HTTPGET, 0)
+        curl.setopt(pycurl.NOBODY, 0)
+        curl.setopt(pycurl.UPLOAD, 0)
+        # There  is  no  way  to  reset  the  functions  thru  pycurl
+        # interface, so we just redirect them to instances variables,
+        # request methods can then acess values or reset functions at
+        # will. Displaying _data_written is great for debug
+        self._data_read = StringIO()
+        curl.setopt(pycurl.READFUNCTION, self._data_read.read)
+        self._header_received = StringIO()
+        curl.setopt(pycurl.HEADERFUNCTION, self._header_received.write)
+        self._data_written = StringIO()
+        curl.setopt(pycurl.WRITEFUNCTION, self._data_written.write)
+        # Http header  is a special case, some  values are common
+        # to  all  requests,  some  are specific.   When  needed,
+        # requests should  use the _add_header  method to append
+        # to common  values.  The _curl_perform  method will then
+        # set the HTTPHEADER option.
+        self._headers_sent = ['Cache-control: max-age=0',
+                              'Pragma: no-cache',
+                              'Connection: Keep-Alive']
+        return self._curl
+
+    def _add_header(self, header):
+        """Append the header (a string) to already set headers"""
+        self._headers_sent.append(header)
+
+    def _perform(self):
+        curl = self._curl
+        curl.setopt(pycurl.HTTPHEADER,self._headers_sent)
+        super(HttpDavTransport,self)._curl_perform(curl)
+
+    def has(self, relpath):
+        """See Transport.has()"""
+
+        abspath = self._real_abspath(relpath)
+
+        curl = self._set_curl_options()
+        curl.setopt(pycurl.URL, abspath)
+        # don't want the body - ie just do a HEAD request
+        # This means "NO BODY" not 'nobody'
+        curl.setopt(pycurl.NOBODY, 1)
+        self._perform()
+        code = curl.getinfo(pycurl.HTTP_CODE)
+        if code == 404: # not found
+            return False
+        elif code in (200, 302): # "ok", "found"
+            return True
+        else:
+            self._raise_curl_http_error(curl)
+
+    def _get_full(self, relpath):
+        """Make a request for the entire file"""
+        abspath = self._real_abspath(relpath)
+
+        curl = self._set_curl_options()
+        curl.setopt(pycurl.URL, abspath)
+        curl.setopt(pycurl.HTTPGET, 1)
+        data = StringIO()
+        curl.setopt(pycurl.WRITEFUNCTION, data.write)
+        self._perform()
+
+        code = curl.getinfo(pycurl.HTTP_CODE)
+
+        if code == 404:
+            raise NoSuchFile(abspath)
+        if code != 200:
+            self._raise_curl_http_error(curl,
+                                        'expected 200 or 404 for _get_full.')
+
+        data.seek(0)
+        return code, data
+
+    def _get_ranged(self, relpath, ranges, tail_amount):
+        """Make a request for just part of the file."""
+
+        abspath = self._real_abspath(relpath)
+
+        curl = self._set_curl_options()
+        curl.setopt(pycurl.URL, abspath)
+        curl.setopt(pycurl.HTTPGET, 1)
+        data = StringIO()
+        curl.setopt(pycurl.WRITEFUNCTION, data.write)
+        self._add_header('Range: bytes=%s'
+                         % self.range_header(ranges, tail_amount))
+
+        self._perform()
+
+        code = curl.getinfo(pycurl.HTTP_CODE)
+        headers = _extract_headers(self._header_received.getvalue(), abspath)
+
+        data.seek(0)
+        # handle_response will raise NoSuchFile, etc based on the response code
+        return code, response.handle_response(abspath, code, headers, data)
 
     # FIXME: We  should handle mode,  but how ?  I'm  sorry DAVe,
     # I'm afraid I can't do that.
@@ -143,13 +265,11 @@ class HttpDavTransport(PyCurlTransport):
 
         abspath = self._real_abspath(relpath)
 
-        # We use a dedicated curl to avoid polluting other request
-        curl = pycurl.Curl()
-        self._set_curl_options(curl)
+        curl = self._set_curl_options()
         curl.setopt(pycurl.CUSTOMREQUEST , 'MKCOL')
         curl.setopt(pycurl.URL, abspath)
 
-        self._curl_perform(curl)
+        self._perform()
         code = curl.getinfo(pycurl.HTTP_CODE)
 
         if code == 403:
@@ -202,14 +322,13 @@ class HttpDavTransport(PyCurlTransport):
         """Copy the item at rel_from to the location at rel_to."""
         abs_from = self._real_abspath(rel_from)
         abs_to = self._real_abspath(rel_to)
-        # We use a dedicated curl to avoid polluting other request
-        curl = pycurl.Curl()
-        self._set_curl_options(curl)
+
+        curl = self._set_curl_options()
         curl.setopt(pycurl.CUSTOMREQUEST , 'COPY')
         curl.setopt(pycurl.URL, abs_from)
-        curl.setopt(pycurl.HTTPHEADER, ['Destination: %s' % abs_to ])
+        self._add_header('Destination: %s' % abs_to)
 
-        curl.perform()
+        self._perform()
         code = curl.getinfo(pycurl.HTTP_CODE)
 
         if code in (404, 409):
@@ -246,17 +365,13 @@ class HttpDavTransport(PyCurlTransport):
         tmp_relpath = relpath + stamp
         tmp_abspath = abspath + stamp
 
-        # FIXME: We  can't share the curl with  get requests. Try
-        # to  understand  why  to  be  able  to  share.
-        #curl  = self._base_curl
-        curl = pycurl.Curl()
-        self._set_curl_options(curl)
+        curl = self._set_curl_options()
         curl.setopt(pycurl.URL, tmp_abspath)
         curl.setopt(pycurl.UPLOAD, True)
 
         curl.setopt(pycurl.READFUNCTION, f.read)
 
-        curl.perform()
+        self._perform()
         code = curl.getinfo(pycurl.HTTP_CODE)
 
         if code in (403, 409): # FIXME: 404, ?
@@ -270,9 +385,12 @@ class HttpDavTransport(PyCurlTransport):
         except Exception, e:
             # If  we fail,  try to  clean up  the  temporary file
             # before we throw the exception but don't let another
-            # exception mess  things up Write  out the traceback,
-            # because otherwise  the catch and  throw destroys it
-            # If we can't, delete the temp file before throwing
+            # exception mess  things up. Write  out the traceback
+            # (the one  where the  move have failed,  causing the
+            # exception),  because otherwise the  following catch
+            # and throw destroys it.
+            import traceback
+            mutter(traceback.format_exc())
             try:
                 self.delete(tmp_relpath)
             except:
@@ -283,15 +401,14 @@ class HttpDavTransport(PyCurlTransport):
         """Rename without special overwriting"""
         abs_from = self._real_abspath(rel_from)
         abs_to = self._real_abspath(rel_to)
-        # We use a dedicated curl to avoid polluting other request
-        curl = pycurl.Curl()
-        self._set_curl_options(curl)
+
+        curl = self._set_curl_options()
         curl.setopt(pycurl.CUSTOMREQUEST , 'MOVE')
         curl.setopt(pycurl.URL, abs_from)
-        curl.setopt(pycurl.HTTPHEADER, ['Destination: %s' % abs_to,
-                                        'Overwrite: F'])
+        self._add_header('Destination: %s' % abs_to)
+        self._add_header('Overwrite: F')
 
-        curl.perform()
+        self._perform()
         code = curl.getinfo(pycurl.HTTP_CODE)
 
         if code == 404:
@@ -311,18 +428,20 @@ class HttpDavTransport(PyCurlTransport):
                                         'unable to rename to %r' % (abs_to))
 
     def move(self, rel_from, rel_to):
-        """Move the item at rel_from to the location at rel_to"""
+        """Move the item at rel_from to the location at rel_to.
+
+        Overwrites rel_to if it exists.
+        """
 
         abs_from = self._real_abspath(rel_from)
         abs_to = self._real_abspath(rel_to)
-        # We use a dedicated curl to avoid polluting other request
-        curl = pycurl.Curl()
-        self._set_curl_options(curl)
+
+        curl = self._set_curl_options()
         curl.setopt(pycurl.CUSTOMREQUEST , 'MOVE')
         curl.setopt(pycurl.URL, abs_from)
-        curl.setopt(pycurl.HTTPHEADER, ['Destination: %s' % abs_to ])
+        self._add_header('Destination: %s' % abs_to )
 
-        curl.perform()
+        self._perform()
         code = curl.getinfo(pycurl.HTTP_CODE)
 
         if code == 404:
@@ -344,13 +463,12 @@ class HttpDavTransport(PyCurlTransport):
         not normally append in bzr.
         """
         abs_path = self._real_abspath(rel_path)
-        # We use a dedicated curl to avoid polluting other requests
-        curl = pycurl.Curl()
-        self._set_curl_options(curl)
+
+        curl = self._set_curl_options()
         curl.setopt(pycurl.CUSTOMREQUEST , 'DELETE')
         curl.setopt(pycurl.URL, abs_path)
 
-        curl.perform()        
+        self._perform()        
         code = curl.getinfo(pycurl.HTTP_CODE)
 
         if code == 404:
@@ -370,4 +488,5 @@ def get_test_permutations():
     """Return the permutations to be used in testing."""
     import test_webdav
     return [(HttpDavTransport, test_webdav.HttpServer_Dav),
+#            (HttpDavTransport, test_webdav.HttpServer_Dav_append),
             ]
