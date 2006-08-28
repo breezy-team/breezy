@@ -4,6 +4,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr upgrade sftp://`` shouldn't fail to upgrade v6 branches if there 
+      isn't a working tree. (David Allouche, #40679)
+
     * Handle when LANG is not recognized by python. Emit a warning, but
       just revert to using 'ascii'. (John Arbash Meinel, #35392)
 
