@@ -32,7 +32,7 @@ from bzrlib import bzrdir, errors, ignores
 import bzrlib.branch
 from bzrlib.builtins import merge
 from bzrlib.osutils import pathjoin
-from bzrlib.revisionspec import get_revision_spec
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib.status import show_tree_status
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.workingtree import WorkingTree
@@ -80,7 +80,7 @@ class BranchStatus(TestCaseWithTransport):
 
         tof = StringIO()
         revs =[]
-        revs.append(get_revision_spec('0'))
+        revs.append(RevisionSpec.from_string('0'))
         
         show_tree_status(wt, to_file=tof, revision=revs)
         
@@ -95,7 +95,7 @@ class BranchStatus(TestCaseWithTransport):
         wt.commit('Another test message')
         
         tof = StringIO()
-        revs.append(get_revision_spec('1'))
+        revs.append(RevisionSpec.from_string('1'))
         
         show_tree_status(wt, to_file=tof, revision=revs)
         

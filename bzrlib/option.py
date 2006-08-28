@@ -21,7 +21,7 @@ import optparse
 import re
 
 from bzrlib.trace import warning
-from bzrlib.revisionspec import get_revision_spec
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib.errors import BzrCommandError
 
 
@@ -82,7 +82,7 @@ def _parse_revision_str(revstr):
     revs = []
     sep = re.compile("\\.\\.(?!/)")
     for x in sep.split(revstr):
-        revs.append(get_revision_spec(x or None))
+        revs.append(RevisionSpec.from_string(x or None))
     return revs
 
 

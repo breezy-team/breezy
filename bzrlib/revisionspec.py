@@ -121,23 +121,56 @@ class RevisionSpec(object):
 
         symbol_versioning.warn('Creating a RevisionSpec directly has'
                                ' been deprecated in version 0.11. Use'
-                               ' bzrlib.revisionspec.get_revision_spec()'
+                               ' RevisionSpec.from_string()'
                                ' instead.',
                                DeprecationWarning, stacklevel=2)
-        return get_revision_spec(spec)
+        return RevisionSpec.from_string(spec)
+
+    @staticmethod
+    def from_string(spec):
+        """Parse a revision spec string into a RevisionSpec object.
+
+        :param spec: A string specified by the user
+        :return: A RevisionSpec object that understands how to parse the
+            supplied notation.
+        """
+        if not isinstance(spec, (type(None), basestring)):
+            raise TypeError('error')
+
+        if spec is None:
+            return RevisionSpec(None, _internal=True)
+
+        assert isinstance(spec, basestring), \
+            "You should only supply strings not %s" % (type(spec),)
+
+        for spectype in SPEC_TYPES:
+            if spec.startswith(spectype.prefix):
+                trace.mutter('Returning RevisionSpec %s for %s',
+                             spectype.__name__, spec)
+                return spectype(spec, _internal=True)
+        else:
+            # RevisionSpec_revno is special cased, because it is the only
+            # one that directly handles plain integers
+            global _revno_regex
+            if _revno_regex is None:
+                _revno_regex = re.compile(r'-?\d+(:.*)?$')
+            if _revno_regex.match(spec) is not None:
+                return RevisionSpec_revno(spec, _internal=True)
+
+            raise errors.NoSuchRevisionSpec(spec)
 
     def __init__(self, spec, _internal=False):
         """Create a RevisionSpec referring to the Null revision.
 
         :param spec: The original spec supplied by the user
         :param _internal: Used to ensure that RevisionSpec is not being
-            called directly. Only from get_revision_spec()
+            called directly. Only from RevisionSpec.from_string()
         """
         if not _internal:
             # XXX: Update this after 0.10 is released
             symbol_versioning.warn('Creating a RevisionSpec directly has'
                                    ' been deprecated in version 0.11. Use'
-                                   ' bzrlib.revisionspec.get_revision_spec()'
+                                   ' RevisionSpec.from_string()'
                                    ' instead.',
                                    DeprecationWarning, stacklevel=2)
         self.user_spec = spec
@@ -193,39 +226,6 @@ class RevisionSpec(object):
 
 _revno_regex = None
 
-def get_revision_spec(spec):
-    """Parse a revision spec into a RevisionSpec object.
-
-    :param spec: A string specified by the user
-    :return: A RevisionSpec object that understands how to parse the
-        supplied notation.
-    """
-    if not isinstance(spec, (type(None), basestring)):
-        raise TypeError('error')
-
-    if spec is None:
-        return RevisionSpec(None, _internal=True)
-
-    assert isinstance(spec, basestring), \
-        "You should only supply strings not %s" % (type(spec),)
-
-    for spectype in SPEC_TYPES:
-        if spec.startswith(spectype.prefix):
-            trace.mutter('Returning RevisionSpec %s for %s',
-                         spectype.__name__, spec)
-            return spectype(spec, _internal=True)
-    else:
-        # RevisionSpec_revno is special cased, because it is the only
-        # one that directly handles plain integers
-        global _revno_regex
-        if _revno_regex is None:
-            _revno_regex = re.compile(r'-?\d+(:.*)?$')
-        if _revno_regex.match(spec) is not None:
-            return RevisionSpec_revno(spec, _internal=True)
-
-        raise errors.NoSuchRevisionSpec(spec)
-        
-        
 # private API
 
 
@@ -327,7 +327,7 @@ class RevisionSpec_before(RevisionSpec):
     prefix = 'before:'
     
     def _match_on(self, branch, revs):
-        r = get_revision_spec(self.spec)._match_on(branch, revs)
+        r = RevisionSpec.from_string(self.spec)._match_on(branch, revs)
         if r.revno == 0:
             raise errors.InvalidRevisionSpec(self.user_spec, branch,
                                          'cannot go before the null: revision')

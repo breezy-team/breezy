@@ -17,7 +17,7 @@
 
 from StringIO import StringIO
 
-from bzrlib.revisionspec import get_revision_spec
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib.status import show_pending_merges, show_tree_status
 from bzrlib.tests import TestCaseWithTransport
 
@@ -43,6 +43,6 @@ class TestStatus(TestCaseWithTransport):
         r2_tree = tree.branch.repository.revision_tree(r2_id)
         output = StringIO()
         show_tree_status(tree, to_file=output,
-                         revision=[get_revision_spec("revid:%s" % r1_id),
-                                   get_revision_spec("revid:%s" % r2_id)])
+                     revision=[RevisionSpec.from_string("revid:%s" % r1_id),
+                               RevisionSpec.from_string("revid:%s" % r2_id)])
         # return does not matter as long as it did not raise.
