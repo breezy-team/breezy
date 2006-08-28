@@ -111,6 +111,37 @@ def get_info(a_repo, revision):
     return info
 
 
+def get_diff_info(a_repo, start_rev, end_rev):
+    """Get only the info for new revisions between the two revisions
+    
+    This lets us figure out what has actually changed between 2 revisions.
+    """
+    pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    committers = {}
+    a_repo.lock_read()
+    try:
+        pb.note('getting ancestry 1')
+        start_ancestry = set(a_repo.get_ancestry(start_rev))
+        pb.note('getting ancestry 2')
+        ancestry = a_repo.get_ancestry(end_rev)[1:]
+        ancestry = [rev for rev in ancestry if rev not in start_ancestry]
+        pb.note('getting revisions')
+        revisions = a_repo.get_revisions(ancestry)
+
+        for count, rev in enumerate(revisions):
+            pb.update('checking', count, len(ancestry))
+            try:
+                email = extract_email_address(rev.committer)
+            except errors.BzrError:
+                email = rev.committer
+            committers.setdefault(email, []).append(rev)
+    finally:
+        a_repo.unlock()
+        pb.finished()
+
+    info = collapse_by_author(committers)
+    return info
+
 def display_info(info, to_file):
     """Write out the information"""
 
@@ -162,12 +193,21 @@ class cmd_statistics(bzrlib.commands.Command):
         else:
             a_branch = wt.branch
             last_rev = wt.last_revision()
-        if revision is not None:
-            last_rev = revision[0].in_history(a_branch).rev_id
-            if len(revision) > 1:
-                alternate_rev = revision[1].in_history(a_branch).rev_id
 
-        info = get_info(a_branch.repository, last_rev)
+        a_branch.lock_read()
+        try:
+            if revision is not None:
+                last_rev = revision[0].in_history(a_branch).rev_id
+                if len(revision) > 1:
+                    alternate_rev = revision[1].in_history(a_branch).rev_id
+
+            if alternate_rev:
+                info = get_diff_info(a_branch.repository, last_rev,
+                                     alternate_rev)
+            else:
+                info = get_info(a_branch.repository, last_rev)
+        finally:
+            a_branch.unlock()
         display_info(info, self.outf)
 
 
