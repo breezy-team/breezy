@@ -6,6 +6,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Transport.list_dir() and Transport.iter_files_recursive() should always
+      return urlescaped paths. This is now tested (there were bugs in a few
+      of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
+
 bzr 0.10.0RC1  2006-08-28
   
   IMPROVEMENTS:
@@ -66,10 +70,6 @@ bzr 0.10.0RC1  2006-08-28
       #54723)
 
   INTERNALS:
-
-    * Transport.list_dir() and Transport.iter_files_recursive() should always
-      return urlescaped paths. This is now tested (there were bugs in a few
-      of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
 
     * ``bzrlib.cache_utf8`` contains ``encode()`` and ``decode()`` functions
       which can be used to cache the conversion between utf8 and Unicode.
