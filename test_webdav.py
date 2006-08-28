@@ -20,7 +20,7 @@ This defines the TestingDAVRequestHandler and the HttpServer_Dav
 classes which implements the DAV specification parts used by the
 webdav plugin.
 """
-    
+
 import errno
 import os
 import os.path

@@ -25,3 +25,9 @@ The plugin pass the bzr selftest except for:
   delegate the copy to the server).
 
 - test_rmdir_not_empty: We have cheated there. That's bad.
+
+Extensions:
+
+- Looking  at Apache  sources  it appears  that  PATCH have  been
+  introduced  in  Apache 1.3.4,  but  only  the  request name  is
+  reserved, there is no code to implement it.

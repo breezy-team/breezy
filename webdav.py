@@ -65,6 +65,13 @@ This should enable remote push operations.
 # permanently  switch back  to  get +  put  for the  life of  the
 # Transport.
 
+# TODO:  It looks  like  Apache  1.x and  2.x  reserve the  PATCH
+# request name without implementing it,  bzr does not use it now,
+# but providing it may allow experiments.
+
+# TODO: Do an urllib based implemenation.
+
+
 from cStringIO import StringIO
 import os
 import random
@@ -166,12 +173,7 @@ class HttpDavTransport(PyCurlTransport):
     # don't but  we can't do  anything with it. That  looks wrong
     # anyway
     def append(self, relpath, f, mode=None):
-        """
-        Append the text in the file-like object into the final
-        location.
-
-        Returns the pos in the file current *BEFORE* the append takes place.
-        """
+        """See Transport.append"""
         # Unfortunately, you  can't do that either  DAV (but here
         # that's less funny).
 
@@ -233,6 +235,9 @@ class HttpDavTransport(PyCurlTransport):
         """
         abspath = self._real_abspath(relpath)
 
+        # We generate a sufficiently random name to *assume* that
+        # no collisions will occur  and don't worry about it (nor
+        # handle it).
         stamp = '.tmp.%.9f.%d.%d' % (time.time(),
                                      os.getpid(),
                                      random.randint(0,0x7FFFFFFF))
