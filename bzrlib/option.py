@@ -17,6 +17,7 @@
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
+import optparse
 import re
 
 from bzrlib.trace import warning
@@ -152,6 +153,68 @@ class Option(object):
         for short, option in Option.SHORT_OPTIONS.iteritems():
             if option is self:
                 return short
+
+    def get_negation_name(self):
+        if self.name.startswith('no-'):
+            return self.name[3:]
+        else:
+            return 'no-' + self.name
+
+    def add_option(self, parser, short_name):
+        """Add this option to an Optparse parser"""
+        option_strings = ['--%s' % self.name]
+        if short_name is not None:
+            option_strings.append('-%s' % short_name)
+        optargfn = self.type
+        if optargfn is None:
+            parser.add_option(action='store_true', dest=self.name, 
+                              help=self.help,
+                              default=OptionParser.DEFAULT_VALUE,
+                              *option_strings)
+            negation_strings = ['--%s' % self.get_negation_name()]
+            parser.add_option(action='store_false', dest=self.name, 
+                              help=optparse.SUPPRESS_HELP, *negation_strings)
+        else:
+            parser.add_option(action='callback', 
+                              callback=self._optparse_callback, 
+                              type='string', metavar=self.argname.upper(),
+                              help=self.help,
+                              default=OptionParser.DEFAULT_VALUE, 
+                              *option_strings)
+
+    def _optparse_callback(self, option, opt, value, parser):
+        setattr(parser.values, self.name, self.type(value))
+
+    def iter_switches(self):
+        """Iterate through the list of switches provided by the option
+        
+        :return: an iterator of (name, short_name, argname, help)
+        """
+        argname =  self.argname
+        if argname is not None:
+            argname = argname.upper()
+        yield self.name, self.short_name(), argname, self.help
+
+
+class OptionParser(optparse.OptionParser):
+    """OptionParser that raises exceptions instead of exiting"""
+
+    DEFAULT_VALUE = object()
+
+    def error(self, message):
+        raise BzrCommandError(message)
+
+
+def get_optparser(options):
+    """Generate an optparse parser for bzrlib-style options"""
+
+    parser = OptionParser()
+    parser.remove_option('--help')
+    short_options = dict((k.name, v) for v, k in 
+                         Option.SHORT_OPTIONS.iteritems())
+    for option in options.itervalues():
+        option.add_option(parser, short_options.get(option.name))
+    return parser
 
 
 def _global_option(name, **kwargs):

@@ -21,10 +21,18 @@ from unittest import TestSuite
 from warnings import warn
 
 import bzrlib
-from bzrlib import bzrdir, errors, lockdir, osutils, revision, \
-        tree, \
-        ui, \
-        urlutils
+from bzrlib import (
+        bzrdir,
+        cache_utf8,
+        errors,
+        lockdir,
+        osutils,
+        revision,
+        transport,
+        tree,
+        ui,
+        urlutils,
+        )
 from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
@@ -150,23 +158,23 @@ class Branch(object):
     nick = property(_get_nick, _set_nick)
 
     def is_locked(self):
-        raise NotImplementedError('is_locked is abstract')
+        raise NotImplementedError(self.is_locked)
 
     def lock_write(self):
-        raise NotImplementedError('lock_write is abstract')
+        raise NotImplementedError(self.lock_write)
 
     def lock_read(self):
-        raise NotImplementedError('lock_read is abstract')
+        raise NotImplementedError(self.lock_read)
 
     def unlock(self):
-        raise NotImplementedError('unlock is abstract')
+        raise NotImplementedError(self.unlock)
 
     def peek_lock_mode(self):
         """Return lock mode for the Branch: 'r', 'w' or None"""
         raise NotImplementedError(self.peek_lock_mode)
 
     def get_physical_lock_status(self):
-        raise NotImplementedError('get_physical_lock_status is abstract')
+        raise NotImplementedError(self.get_physical_lock_status)
 
     def abspath(self, name):
         """Return absolute filename for something in the branch
@@ -174,7 +182,7 @@ class Branch(object):
         XXX: Robert Collins 20051017 what is this used for? why is it a branch
         method and not a tree method.
         """
-        raise NotImplementedError('abspath is abstract')
+        raise NotImplementedError(self.abspath)
 
     def bind(self, other):
         """Bind the local branch the other branch.
@@ -271,17 +279,17 @@ class Branch(object):
 
     def get_root_id(self):
         """Return the id of this branches root"""
-        raise NotImplementedError('get_root_id is abstract')
+        raise NotImplementedError(self.get_root_id)
 
     def print_file(self, file, revision_id):
         """Print `file` to stdout."""
-        raise NotImplementedError('print_file is abstract')
+        raise NotImplementedError(self.print_file)
 
     def append_revision(self, *revision_ids):
-        raise NotImplementedError('append_revision is abstract')
+        raise NotImplementedError(self.append_revision)
 
     def set_revision_history(self, rev_history):
-        raise NotImplementedError('set_revision_history is abstract')
+        raise NotImplementedError(self.set_revision_history)
 
     def revision_history(self):
         """Return sequence of revision hashes on to this branch."""
@@ -300,7 +308,7 @@ class Branch(object):
         raise errors.UpgradeRequired(self.base)
 
     def last_revision(self):
-        """Return last patch hash, or None if no history."""
+        """Return last revision id, or None"""
         ph = self.revision_history()
         if ph:
             return ph[-1]
@@ -337,7 +345,7 @@ class Branch(object):
         :param stop_revision: Updated until the given revision
         :return: None
         """
-        raise NotImplementedError('update_revisions is abstract')
+        raise NotImplementedError(self.update_revisions)
 
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
@@ -360,7 +368,7 @@ class Branch(object):
         return history[revno - 1]
 
     def pull(self, source, overwrite=False, stop_revision=None):
-        raise NotImplementedError('pull is abstract')
+        raise NotImplementedError(self.pull)
 
     def basis_tree(self):
         """Return `Tree` object for last revision."""
@@ -371,7 +379,7 @@ class Branch(object):
 
         This can change the directory or the filename or both.
         """
-        raise NotImplementedError('rename_one is abstract')
+        raise NotImplementedError(self.rename_one)
 
     def move(self, from_paths, to_name):
         """Rename files.
@@ -387,7 +395,7 @@ class Branch(object):
         This returns a list of (from_path, to_path) pairs for each
         entry that is moved.
         """
-        raise NotImplementedError('move is abstract')
+        raise NotImplementedError(self.move)
 
     def get_parent(self):
         """Return the parent location of the branch.
@@ -396,7 +404,7 @@ class Branch(object):
         pattern is that the user can override it by specifying a
         location.
         """
-        raise NotImplementedError('get_parent is abstract')
+        raise NotImplementedError(self.get_parent)
 
     def get_submit_branch(self):
         """Return the submit location of the branch.
@@ -418,14 +426,14 @@ class Branch(object):
 
     def get_push_location(self):
         """Return the None or the location to push this branch to."""
-        raise NotImplementedError('get_push_location is abstract')
+        raise NotImplementedError(self.get_push_location)
 
     def set_push_location(self, location):
         """Set a new push location for this branch."""
-        raise NotImplementedError('set_push_location is abstract')
+        raise NotImplementedError(self.set_push_location)
 
     def set_parent(self, url):
-        raise NotImplementedError('set_parent is abstract')
+        raise NotImplementedError(self.set_parent)
 
     @needs_write_lock
     def update(self):
@@ -534,9 +542,13 @@ class Branch(object):
                 rev = self.repository.get_revision(revision_id)
                 new_history = rev.get_history(self.repository)[1:]
         destination.set_revision_history(new_history)
-        parent = self.get_parent()
-        if parent:
-            destination.set_parent(parent)
+        try:
+            parent = self.get_parent()
+        except errors.InaccessibleParent, e:
+            mutter('parent was not accessible to copy: %s', e)
+        else:
+            if parent:
+                destination.set_parent(parent)
 
     @needs_read_lock
     def check(self):
@@ -567,6 +579,35 @@ class Branch(object):
                                         % (mainline_parent_id, revision_id))
             mainline_parent_id = revision_id
         return BranchCheckResult(self)
+
+    def create_checkout(self, to_location, revision_id=None, 
+                        lightweight=False):
+        """Create a checkout of a branch.
+        
+        :param to_location: The url to produce the checkout at
+        :param revision_id: The revision to check out
+        :param lightweight: If True, produce a lightweight checkout, otherwise,
+        produce a bound branch (heavyweight checkout)
+        :return: The tree of the created checkout
+        """
+        if lightweight:
+            t = transport.get_transport(to_location)
+            try:
+                t.mkdir('.')
+            except errors.FileExists:
+                pass
+            checkout = bzrdir.BzrDirMetaFormat1().initialize_on_transport(t)
+            BranchReferenceFormat().initialize(checkout, self)
+        else:
+            checkout_branch = bzrdir.BzrDir.create_branch_convenience(
+                to_location, force_new_tree=False)
+            checkout = checkout_branch.bzrdir
+            checkout_branch.bind(self)
+            if revision_id is not None:
+                rh = checkout_branch.revision_history()
+                new_rh = rh[:rh.index(revision_id) + 1]
+                checkout_branch.set_revision_history(new_rh)
+        return checkout.create_workingtree(revision_id)
 
 
 class BranchFormat(object):
@@ -1060,10 +1101,11 @@ class BzrBranch(Branch):
         transaction = self.get_transaction()
         history = transaction.map.find_revision_history()
         if history is not None:
-            mutter("cache hit for revision-history in %s", self)
+            # mutter("cache hit for revision-history in %s", self)
             return list(history)
-        history = [l.rstrip('\r\n') for l in
-                self.control_files.get_utf8('revision-history').readlines()]
+        decode_utf8 = cache_utf8.decode
+        history = [decode_utf8(l.rstrip('\r\n')) for l in
+                self.control_files.get('revision-history').readlines()]
         transaction.map.add_revision_history(history)
         # this call is disabled because revision_history is 
         # not really an object yet, and the transaction is for objects.
@@ -1170,7 +1212,10 @@ class BzrBranch(Branch):
             # turn it into a url
             if parent.startswith('/'):
                 parent = urlutils.local_path_to_url(parent.decode('utf8'))
-            return urlutils.join(self.base[:-1], parent)
+            try:
+                return urlutils.join(self.base[:-1], parent)
+            except errors.InvalidURLJoin, e:
+                raise errors.InaccessibleParent(parent, self.base)
         return None
 
     def get_push_location(self):
