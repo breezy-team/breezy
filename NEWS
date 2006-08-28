@@ -1,4 +1,12 @@
 IN DEVELOPMENT
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+  INTERNALS:
+
+bzr 0.10.0RC1  2006-08-28
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
@@ -22,6 +30,14 @@ IN DEVELOPMENT
       (Robert Collins, John Arbash Meinel)
 
   BUG FIXES:
+
+    * Help diffutils 2.8.4 get along with binary tests (Marien Zwart: #57614)
+
+    * Change LockDir so that if the lock directory doesn't exist when
+      lock_write() is called, an attempt will be made to create it.
+      (John Arbash Meinel, #56974)
+
+    * ``bzr uncommit`` preserves pending merges. (John Arbash Meinel, #57660)
 
     * Active FTP transport now works as intended. (ghozzy, #56472)
 

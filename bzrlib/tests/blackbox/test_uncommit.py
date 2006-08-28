@@ -25,6 +25,7 @@ from bzrlib.tests import TestCaseWithTransport
 
 
 class TestUncommit(TestCaseWithTransport):
+
     def create_simple_tree(self):
         wt = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/c'])
@@ -143,6 +144,19 @@ class TestUncommit(TestCaseWithTransport):
         self.assertEqual('a2', wt.last_revision())
         self.assertEqual(['b4'], wt.pending_merges())
 
+    def test_uncommit_pending_merge(self):
+        wt = self.create_simple_tree()
+        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
+        tree2.commit('unchanged', rev_id='b3')
+
+        wt.branch.fetch(tree2.branch)
+        wt.set_pending_merges(['b3'])
+
+        os.chdir('tree')
+        out, err = self.run_bzr('uncommit', '--force')
+        self.assertEqual('a1', wt.last_revision())
+        self.assertEqual(['b3'], wt.pending_merges())
+
     def test_uncommit_multiple_merge(self):
         wt = self.create_simple_tree()
 
@@ -160,6 +174,29 @@ class TestUncommit(TestCaseWithTransport):
 
         self.assertEqual('a4', wt.last_revision())
         self.assertEqual([], wt.pending_merges())
+
+        os.chdir('tree')
+        out, err = self.run_bzr('uncommit', '--force', '-r', '2')
+
+        self.assertEqual('a2', wt.last_revision())
+        self.assertEqual(['b3', 'b4'], wt.pending_merges())
+
+    def test_uncommit_merge_plus_pending(self):
+        wt = self.create_simple_tree()
+
+        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
+
+        tree2.commit('unchanged', rev_id='b3')
+        wt.branch.fetch(tree2.branch)
+        wt.set_pending_merges(['b3'])
+        wt.commit('merge b3', rev_id='a3')
+
+        tree2.commit('unchanged', rev_id='b4')
+        wt.branch.fetch(tree2.branch)
+        wt.set_pending_merges(['b4'])
+
+        self.assertEqual('a3', wt.last_revision())
+        self.assertEqual(['b4'], wt.pending_merges())
 
         os.chdir('tree')
         out, err = self.run_bzr('uncommit', '--force', '-r', '2')
