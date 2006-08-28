@@ -81,8 +81,66 @@ def collapse_by_author(committers):
                     name_to_counter[fullname] = counter
             fname_map = dict((fullname, count) for count, fullname in fullnames)
             counter_to_info[counter] = [revs, {email:len(revs)}, fname_map]
-    return sorted(((len(revs), revs, email, fname) 
+    return sorted(((len(revs), revs, email, fname)
             for revs, email, fname in counter_to_info.values()), reverse=True)
+
+
+def get_info(a_repo, revision):
+    """Get all of the information for a particular revision"""
+    pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    committers = {}
+    a_repo.lock_read()
+    try:
+        pb.note('getting ancestry')
+        ancestry = a_repo.get_ancestry(revision)[1:]
+        pb.note('getting revisions')
+        revisions = a_repo.get_revisions(ancestry)
+
+        for count, rev in enumerate(revisions):
+            pb.update('checking', count, len(ancestry))
+            try:
+                email = extract_email_address(rev.committer)
+            except errors.BzrError:
+                email = rev.committer
+            committers.setdefault(email, []).append(rev)
+    finally:
+        a_repo.unlock()
+        pb.finished()
+
+    info = collapse_by_author(committers)
+    return info
+
+
+def display_info(info, to_file):
+    """Write out the information"""
+
+    for count, revs, emails, fullnames in info:
+        # Get the most common email name
+        sorted_emails = sorted(((count, email)
+                               for email,count in emails.iteritems()),
+                               reverse=True)
+        sorted_fullnames = sorted(((count, fullname)
+                                  for fullname,count in fullnames.iteritems()),
+                                  reverse=True)
+        to_file.write('%4d %s <%s>\n'
+                      % (count, sorted_fullnames[0][1],
+                         sorted_emails[0][1]))
+        if len(sorted_fullnames) > 1:
+            print '     Other names:'
+            for count, fname in sorted_fullnames[1:]:
+                to_file.write('     %4d ' % (count,))
+                if fname == '':
+                    to_file.write("''\n")
+                else:
+                    to_file.write("%s\n" % (fname,))
+        if len(sorted_emails) > 1:
+            print '     Other email addresses:'
+            for count, email in sorted_emails:
+                to_file.write('     %4d ' % (count,))
+                if email == '':
+                    to_file.write("''\n")
+                else:
+                    to_file.write("%s\n" % (email,))
 
 
 class cmd_statistics(bzrlib.commands.Command):
@@ -95,65 +153,22 @@ class cmd_statistics(bzrlib.commands.Command):
     encoding_type = 'replace'
 
     def run(self, location='.', revision=None):
+        alternate_rev = None
         try:
             wt = WorkingTree.open_containing(location)[0]
         except errors.NoWorkingTree:
-            b = Branch.open(location)
-            last_rev = b.last_revision()
+            a_branch = Branch.open(location)
+            last_rev = a_branch.last_revision()
         else:
-            b = wt.branch
+            a_branch = wt.branch
             last_rev = wt.last_revision()
         if revision is not None:
-            last_rev = revision[0].in_history(b).rev_id
+            last_rev = revision[0].in_history(a_branch).rev_id
+            if len(revision) > 1:
+                alternate_rev = revision[1].in_history(a_branch).rev_id
 
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        committers = {}
-        b.lock_read()
-        try:
-            pb.note('getting ancestry')
-            ancestry = b.repository.get_ancestry(last_rev)[1:]
-            pb.note('getting revisions')
-            revisions = b.repository.get_revisions(ancestry)
-
-            for count, rev in enumerate(revisions):
-                pb.update('checking', count, len(ancestry))
-                try:
-                    email = extract_email_address(rev.committer)
-                except errors.BzrError:
-                    email = rev.committer
-                committers.setdefault(email, []).append(rev)
-        finally:
-            b.unlock()
-        pb.clear()
-
-        info = collapse_by_author(committers)
-        for count, revs, emails, fullnames in info:
-            # Get the most common email name
-            sorted_emails = sorted(((count, email) 
-                                   for email,count in emails.iteritems()),
-                                   reverse=True)
-            sorted_fullnames = sorted(((count, fullname) 
-                                      for fullname,count in fullnames.iteritems()),
-                                      reverse=True)
-            self.outf.write('%4d %s <%s>\n' 
-                            % (count, sorted_fullnames[0][1],
-                               sorted_emails[0][1]))
-            if len(sorted_fullnames) > 1:
-                print '     Other names:'
-                for count, fname in sorted_fullnames[1:]:
-                    self.outf.write('     %4d ' % (count,))
-                    if fname == '':
-                        self.outf.write("''\n")
-                    else:
-                        self.outf.write("%s\n" % (fname,))
-            if len(sorted_emails) > 1:
-                print '     Other email addresses:'
-                for count, email in sorted_emails:
-                    self.outf.write('     %4d ' % (count,))
-                    if email == '':
-                        self.outf.write("''\n")
-                    else:
-                        self.outf.write("%s\n" % (email,))
+        info = get_info(a_branch.repository, last_rev)
+        display_info(info, self.outf)
 
 
 bzrlib.commands.register_command(cmd_statistics)
@@ -170,17 +185,17 @@ class cmd_ancestor_growth(bzrlib.commands.Command):
         try:
             wt = WorkingTree.open_containing(location)[0]
         except errors.NoWorkingTree:
-            b = Branch.open(location)
-            last_rev = b.last_revision()
+            a_branch = Branch.open(location)
+            last_rev = a_branch.last_revision()
         else:
-            b = wt.branch
+            a_branch = wt.branch
             last_rev = wt.last_revision()
 
-        b.lock_read()
+        a_branch.lock_read()
         try:
-            graph = b.repository.get_revision_graph(last_rev)
+            graph = a_branch.repository.get_revision_graph(last_rev)
         finally:
-            b.unlock()
+            a_branch.unlock()
 
         revno = 0
         cur_parents = 0
