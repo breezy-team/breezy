@@ -3,6 +3,7 @@ IN DEVELOPMENT
   IMPROVEMENTS:
 
   BUG FIXES:
+  * revert now removes newly-added directories (Aaron Bentley, #54172)
 
   INTERNALS:
 
