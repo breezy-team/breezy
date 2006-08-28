@@ -18,14 +18,16 @@
 
 """Tests for trace library"""
 
+from cStringIO import StringIO
 import errno
 import os
 import sys
-from StringIO import StringIO
 
+from bzrlib import (
+    errors,
+    )
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.trace import mutter, report_exception
-from bzrlib.errors import NotBranchError
 
 
 def _format_exception():
@@ -66,12 +68,18 @@ class TestTrace(TestCase):
         msg = _format_exception()
         self.assertContainsRe(msg, r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
 
+    def test_format_unicode_error(self):
+        try:
+            raise errors.BzrCommandError(u'argument foo\xb5 does not exist')
+        except errors.BzrCommandError:
+            pass
+        msg = _format_exception()
 
     def test_format_exception(self):
         """Short formatting of bzr exceptions"""
         try:
-            raise NotBranchError, 'wibble'
-        except NotBranchError:
+            raise errors.NotBranchError, 'wibble'
+        except errors.NotBranchError:
             pass
         msg = _format_exception()
         self.assertTrue(len(msg) > 0)
@@ -79,9 +87,22 @@ class TestTrace(TestCase):
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
-        self.log(u'the unicode character for benzene is \N{BENZENE RING}')
-        self.assertContainsRe('the unicode character',
-                self._get_log())
+        mutter(u'the unicode character for benzene is \N{BENZENE RING}')
+        self._log_file.flush()
+        self.assertContainsRe(self._get_log(), 'the unicode character',)
+    
+    def test_trace_argument_unicode(self):
+        """Write a Unicode argument to the trace log"""
+        mutter(u'the unicode character for benzene is %s', u'\N{BENZENE RING}')
+        self._log_file.flush()
+        self.assertContainsRe(self._get_log(), 'the unicode character')
+
+    def test_trace_argument_utf8(self):
+        """Write a Unicode argument to the trace log"""
+        mutter(u'the unicode character for benzene is %s',
+               u'\N{BENZENE RING}'.encode('utf-8'))
+        self._log_file.flush()
+        self.assertContainsRe(self._get_log(), 'the unicode character')
 
     def test_report_broken_pipe(self):
         try:
@@ -97,12 +118,12 @@ class TestTrace(TestCase):
         # raise an exception
         mutter(u'Writing a greek mu (\xb5) works in a unicode string')
         mutter('But fails in an ascii string \xb5')
+        mutter('and in an ascii argument: %s', '\xb5')
         # TODO: jam 20051227 mutter() doesn't flush the log file, and
         #       self._get_log() opens the file directly and reads it.
         #       So we need to manually flush the log file
-        import bzrlib.trace
-        bzrlib.trace._trace_file.flush()
+        self._log_file.flush()
         log = self._get_log()
         self.assertContainsRe(log, 'Writing a greek mu')
-        self.assertContainsRe(log, 'UnicodeError')
-        self.assertContainsRe(log, "'But fails in an ascii string")
+        self.assertContainsRe(log, "But fails in an ascii string")
+        self.assertContainsRe(log, u"ascii argument: \xb5")
