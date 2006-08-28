@@ -94,6 +94,7 @@ class RevisionInfo(object):
 # classes in this list should have a "prefix" attribute, against which
 # string specs are matched
 SPEC_TYPES = []
+_revno_regex = None
 
 
 class RevisionSpec(object):
@@ -224,10 +225,7 @@ class RevisionSpec(object):
         return True
 
 
-_revno_regex = None
-
 # private API
-
 
 class RevisionSpec_revno(RevisionSpec):
     prefix = 'revno:'
