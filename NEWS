@@ -1,4 +1,22 @@
 IN DEVELOPMENT
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+    * Give nicer error messages when a user supplies an invalid --revision
+      parameter. (John Arbash Meinel, #55420)
+
+    * Handle when LANG is not recognized by python. Emit a warning, but
+      just revert to using 'ascii'. (John Arbash Meinel, #35392)
+
+  INTERNALS:
+
+    * Transport.list_dir() and Transport.iter_files_recursive() should always
+      return urlescaped paths. This is now tested (there were bugs in a few
+      of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
+
+bzr 0.10.0RC1  2006-08-28
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
@@ -23,8 +41,15 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
-    * Give nicer error messages when a user supplies an invalid --revision
-      parameter. (John Arbash Meinel, #55420)
+    * Help diffutils 2.8.4 get along with binary tests (Marien Zwart: #57614)
+
+    * Change LockDir so that if the lock directory doesn't exist when
+      lock_write() is called, an attempt will be made to create it.
+      (John Arbash Meinel, #56974)
+
+    * ``bzr uncommit`` preserves pending merges. (John Arbash Meinel, #57660)
+
+    * Active FTP transport now works as intended. (ghozzy, #56472)
 
     * Really fix mutter() so that it won't ever raise a UnicodeError.
       It means it is possible for ~/.bzr.log to contain non UTF-8 characters.

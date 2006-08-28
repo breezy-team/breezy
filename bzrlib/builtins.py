@@ -822,9 +822,9 @@ class cmd_update(Command):
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_write()
-        existing_pending_merges = tree.pending_merges()
         try:
-            last_rev = tree.last_revision() 
+            existing_pending_merges = tree.pending_merges()
+            last_rev = tree.last_revision()
             if last_rev == tree.branch.last_revision():
                 # may be up to date, check master too.
                 master = tree.branch.get_master_branch()
