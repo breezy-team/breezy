@@ -175,7 +175,7 @@ class HttpTransportBase(Transport):
             if relpath_parts[0] == '':
                 raise ValueError("path %r within branch %r seems to be absolute"
                                  % (relpath, self._path))
-            # read only transports never manipulate directories
+	    # read only transports never manipulate directories
             if self.is_readonly() and relpath_parts[-1] == '':
                 raise ValueError("path %r within branch %r seems to be a directory"
                                  % (relpath, self._path))
@@ -565,7 +565,7 @@ class HttpServer(Server):
         
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
-        # this is chosen to try to prevent trouble with proxies, wierd dns,
+        # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
         return 'http://127.0.0.1:1/'
 
