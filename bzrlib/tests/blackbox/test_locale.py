@@ -30,22 +30,6 @@ class TestLocale(TestCaseWithTransport):
         if sys.platform in ('win32',):
             raise TestSkipped('Windows does not respond to the LANG'
                               ' env variable')
-        orig_progress = os.environ.get('BZR_PROGRESS_BAR')
-        orig_lang = os.environ.get('LANG')
-
-        def restore():
-            if orig_lang is None:
-                del os.environ['LANG']
-            else:
-                os.environ['LANG'] = orig_lang
-            if orig_progress is None:
-                del os.environ['BZR_PROGRESS_BAR']
-            else:
-                os.environ['BZR_PROGRESS_BAR'] = orig_progress
-
-        self.addCleanup(restore)
-        # Don't confuse things with progress bars
-        os.environ['BZR_PROGRESS_BAR'] = 'none'
 
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
@@ -57,10 +41,12 @@ class TestLocale(TestCaseWithTransport):
         self.tree = tree
 
     def test_log_C(self):
-        os.environ['LANG'] = 'C'
         out, err = self.run_bzr_subprocess('--no-aliases', '--no-plugins',
                                            '-q', 'log', '--log-format=long',
-                                           'tree')
+                                           'tree',
+                                           env_changes={'LANG':'C',
+                                                  'BZR_PROGRESS_BAR':'none'}
+                                          )
         self.assertEqual('', err)
         self.assertEqualDiff("""\
 ------------------------------------------------------------
@@ -73,10 +59,12 @@ message:
 """, out)
 
     def test_log_BOGUS(self):
-        os.environ['LANG'] = 'BOGUS'
         out, err = self.run_bzr_subprocess('--no-aliases', '--no-plugins',
                                            '-q', 'log', '--log-format=long',
-                                           'tree')
+                                           'tree',
+                                           env_changes={'LANG':'BOGUS',
+                                                  'BZR_PROGRESS_BAR':'none'}
+                                          )
         # XXX: This depends on the exact formatting of a locale.Error
         # as the first part of the string. It may be a little tempermental
         self.assertEqualDiff("""\

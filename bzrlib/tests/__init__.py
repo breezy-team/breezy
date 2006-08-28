@@ -843,12 +843,28 @@ class TestCase(unittest.TestCase):
         profiled or debugged so easily.
 
         :param retcode: The status code that is expected.  Defaults to 0.  If
-        None is supplied, the status code is not checked.
+            None is supplied, the status code is not checked.
+        :param env_changes: A dictionary which lists changes to environment
+            variables. A value of None will unset the env variable.
+            The values must be strings. The change will only occur in the
+            child, so you don't need to fix the environment after running.
         """
+        env_changes = kwargs.get('env_changes', None)
+        preexec_func = None
+        if env_changes:
+            def cleanup_environment():
+                for env_var, value in env_changes.iteritems():
+                    if value is None:
+                        del os.environ[env_var]
+                    else:
+                        os.environ[env_var] = value
+            preexec_func = cleanup_environment
+
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         args = list(args)
-        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
-                         stderr=PIPE)
+        process = Popen([sys.executable, bzr_path]+args,
+                         stdout=PIPE, stderr=PIPE,
+                         preexec_fn=preexec_func)
         out = process.stdout.read()
         err = process.stderr.read()
         retcode = process.wait()
