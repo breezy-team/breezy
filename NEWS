@@ -1,4 +1,12 @@
 IN DEVELOPMENT
+
+  IMPROVEMENTS:
+
+  BUG FIXES:
+
+  INTERNALS:
+
+bzr 0.10.0RC1  2006-08-28
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
