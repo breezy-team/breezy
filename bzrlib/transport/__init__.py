@@ -248,10 +248,7 @@ class Transport(object):
         object or string to another one.
         This just gives them something easy to call.
         """
-        if isinstance(from_file, basestring):
-            to_file.write(from_file)
-        else:
-            pumpfile(from_file, to_file)
+        pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
         """Try to figure out how many entries are in multi,

@@ -142,7 +142,7 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('another contents\nfor d\n', t, 'd')
 
         self.assertRaises(NoSuchFile,
-                          t.put, 'path/doesnt/exist/c', 'contents')
+                          t.put, 'path/doesnt/exist/c', StringIO('contents'))
 
     def test_put_permissions(self):
         t = self.get_transport()
