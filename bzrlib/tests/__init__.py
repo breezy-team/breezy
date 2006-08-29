@@ -846,8 +846,11 @@ class TestCase(unittest.TestCase):
         None is supplied, the status code is not checked.
         """
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        if not os.path.isfile(bzr_path):
+            # We are probably installed. Assume sys.argv is the right file
+            bzr_path = sys.argv[0]
         args = list(args)
-        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
+        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE,
                          stderr=PIPE)
         out = process.stdout.read()
         err = process.stderr.read()
