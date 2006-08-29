@@ -23,7 +23,6 @@ import os
 import socket
 import subprocess
 import sys
-import weakref
 
 from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (ConnectionError,
@@ -47,12 +46,6 @@ SYSTEM_HOSTKEYS = {}
 BZR_HOSTKEYS = {}
 
 
-# This is a weakref dictionary, so that we can reuse connections
-# that are still active. Long term, it might be nice to have some
-# sort of expiration policy, such as disconnect if inactive for
-# X seconds. But that requires a lot more fanciness.
-_connected_hosts = weakref.WeakValueDictionary()
-
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 
 # Paramiko 1.5 tries to open a socket.AF_UNIX in order to connect
@@ -60,6 +53,57 @@ _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # so we get an AttributeError exception. So we will not try to
 # connect to an agent if we are on win32 and using Paramiko older than 1.6
 _use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
+
+_ssh_vendors = {}
+
+def register_ssh_vendor(name, vendor):
+    """Register SSH vendor."""
+    _ssh_vendors[name] = vendor
+
+    
+_ssh_vendor = None
+def _get_ssh_vendor():
+    """Find out what version of SSH is on the system."""
+    global _ssh_vendor
+    if _ssh_vendor is not None:
+        return _ssh_vendor
+
+    if 'BZR_SSH' in os.environ:
+        vendor_name = os.environ['BZR_SSH']
+        try:
+            _ssh_vendor = _ssh_vendors[vendor_name]
+        except KeyError:
+            raise UnknownSSH(vendor_name)
+        return _ssh_vendor
+
+    try:
+        p = subprocess.Popen(['ssh', '-V'],
+                             stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             **os_specific_subprocess_params())
+        returncode = p.returncode
+        stdout, stderr = p.communicate()
+    except OSError:
+        returncode = -1
+        stdout = stderr = ''
+    if 'OpenSSH' in stderr:
+        mutter('ssh implementation is OpenSSH')
+        _ssh_vendor = OpenSSHSubprocessVendor()
+    elif 'SSH Secure Shell' in stderr:
+        mutter('ssh implementation is SSH Corp.')
+        _ssh_vendor = SSHCorpSubprocessVendor()
+
+    if _ssh_vendor is not None:
+        return _ssh_vendor
+
+    # XXX: 20051123 jamesh
+    # A check for putty's plink or lsh would go here.
+
+    mutter('falling back to paramiko implementation')
+    _ssh_vendor = ssh.ParamikoVendor()
+    return _ssh_vendor
+
 
 
 def _ignore_sigint():
@@ -91,14 +135,34 @@ class LoopbackSFTP(object):
 
 
 class SSHVendor(object):
+    """Abstract base class for SSH vendor implementations."""
+    
     def connect_sftp(self, username, password, host, port):
+        """Make an SSH connection, and return an SFTPClient.
+        
+        :param username: an ascii string
+        :param password: an ascii string
+        :param host: a host name as an ascii string
+        :param port: a port number
+        :type port: int
+
+        :raises: ConnectionError if it cannot connect.
+
+        :rtype: paramiko.sftp_client.SFTPClient
+        """
         raise NotImplementedError(self.connect_sftp)
 
     def connect_ssh(self, username, password, host, port, command):
+        """Make an SSH connection, and return a pipe-like object.
+        
+        (This is currently unused, it's just here to indicate future directions
+        for this code.)
+        """
         raise NotImplementedError(self.connect_ssh)
         
 
 class LoopbackVendor(SSHVendor):
+    """SSH "vendor" that connects over a plain TCP socket, not SSH."""
     
     def connect_sftp(self, username, password, host, port):
         sock = socket.socket()
@@ -109,8 +173,11 @@ class LoopbackVendor(SSHVendor):
                                   % (host, port, e))
         return SFTPClient(LoopbackSFTP(sock))
 
+register_ssh_vendor('loopback', LoopbackVendor())
+
 
 class ParamikoVendor(SSHVendor):
+    """Vendor that uses paramiko."""
 
     def connect_sftp(self, username, password, host, port):
         global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
@@ -158,12 +225,17 @@ class ParamikoVendor(SSHVendor):
                                   (host, port), e)
         return sftp
 
+register_ssh_vendor('paramiko', ParamikoVendor())
+
 
 class SubprocessVendor(SSHVendor):
+    """Abstract base class for vendors that use pipes to a subprocess."""
+    
     def connect_sftp(self, username, password, host, port):
         try:
-            args = self.get_args(username, host, port, subsystem='sftp')
-            proc = subprocess.Popen(args,
+            argv = self._get_vendor_specific_argv(username, host, port,
+                                                  subsystem='sftp')
+            proc = subprocess.Popen(argv,
                                     stdin=subprocess.PIPE,
                                     stdout=subprocess.PIPE,
                                     **os_specific_subprocess_params())
@@ -181,13 +253,22 @@ class SubprocessVendor(SSHVendor):
             raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
                                   % (host, port, e))
 
-    def get_args(self, username, host, port, subsystem=None, command=None):
-        raise NotImplementedError(self.get_args)
+    def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
+                                  command=None):
+        """Returns the argument list to run the subprocess with.
+        
+        Exactly one of 'subsystem' and 'command' must be specified.
+        """
+        raise NotImplementedError(self._get_vendor_specific_argv)
+
+register_ssh_vendor('none', ParamikoVendor())
 
 
 class OpenSSHSubprocessVendor(SubprocessVendor):
+    """SSH vendor that uses the 'ssh' executable from OpenSSH."""
     
-    def get_args(self, username, host, port, subsystem=None, command=None):
+    def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
+                                  command=None):
         assert subsystem is not None or command is not None, (
             'Must specify a command or subsystem')
         if subsystem is not None:
@@ -207,10 +288,14 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
             args.extend([host] + command)
         return args
 
+register_ssh_vendor('openssh', OpenSSHSubprocessVendor())
+
 
 class SSHCorpSubprocessVendor(SubprocessVendor):
+    """SSH vendor that uses the 'ssh' executable from SSH Corporation."""
 
-    def get_args(self, username, host, port, subsystem=None, command=None):
+    def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
+                                  command=None):
         assert subsystem is not None or command is not None, (
             'Must specify a command or subsystem')
         if subsystem is not None:
@@ -226,8 +311,9 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
         else:
             args.extend([host] + command)
         return args
-
     
+register_ssh_vendor('ssh', SSHCorpSubprocessVendor())
+
 
 def _paramiko_auth(username, password, host, paramiko_transport):
     # paramiko requires a username, but it might be none if nothing was supplied
@@ -357,9 +443,9 @@ def os_specific_subprocess_params():
                 'close_fds': True,
                 }
 
+
 class SSHSubprocess(object):
     """A socket-like object that talks to an ssh subprocess via pipes."""
-    # TODO: this class probably belongs in bzrlib/transport/ssh.py
 
     def __init__(self, proc):
         self.proc = proc
