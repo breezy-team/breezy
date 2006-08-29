@@ -28,6 +28,7 @@ import sys
 import time
 import urllib
 import urlparse
+import weakref
 
 from bzrlib.errors import (FileExists, 
                            NoSuchFile, PathNotChild,
@@ -63,67 +64,16 @@ else:
 register_urlparse_netloc_protocol('sftp')
 
 
+# This is a weakref dictionary, so that we can reuse connections
+# that are still active. Long term, it might be nice to have some
+# sort of expiration policy, such as disconnect if inactive for
+# X seconds. But that requires a lot more fanciness.
+_connected_hosts = weakref.WeakValueDictionary()
+
+
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
-
-
-_ssh_vendors = {}
-
-def register_ssh_vendor(name, vendor_class):
-    """Register lazy-loaded SSH vendor class.""" 
-    _ssh_vendors[name] = vendor_class
-
-register_ssh_vendor('loopback', ssh.LoopbackVendor)
-register_ssh_vendor('paramiko', ssh.ParamikoVendor)
-register_ssh_vendor('none', ssh.ParamikoVendor)
-register_ssh_vendor('openssh', ssh.OpenSSHSubprocessVendor)
-register_ssh_vendor('ssh', ssh.SSHCorpSubprocessVendor)
-    
-_ssh_vendor = None
-def _get_ssh_vendor():
-    """Find out what version of SSH is on the system."""
-    global _ssh_vendor
-    if _ssh_vendor is not None:
-        return _ssh_vendor
-
-    if 'BZR_SSH' in os.environ:
-        vendor_name = os.environ['BZR_SSH']
-        try:
-            klass = _ssh_vendors[vendor_name]
-        except KeyError:
-            raise UnknownSSH(vendor_name)
-        else:
-            _ssh_vendor = klass()
-        return _ssh_vendor
-
-    try:
-        p = subprocess.Popen(['ssh', '-V'],
-                             stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             **ssh.os_specific_subprocess_params())
-        returncode = p.returncode
-        stdout, stderr = p.communicate()
-    except OSError:
-        returncode = -1
-        stdout = stderr = ''
-    if 'OpenSSH' in stderr:
-        mutter('ssh implementation is OpenSSH')
-        _ssh_vendor = ssh.OpenSSHSubprocessVendor()
-    elif 'SSH Secure Shell' in stderr:
-        mutter('ssh implementation is SSH Corp.')
-        _ssh_vendor = ssh.SSHCorpSubprocessVendor()
-
-    if _ssh_vendor is not None:
-        return _ssh_vendor
-
-    # XXX: 20051123 jamesh
-    # A check for putty's plink or lsh would go here.
-
-    mutter('falling back to paramiko implementation')
-    _ssh_vendor = ssh.ParamikoVendor()
-    return _ssh_vendor
 
 
 def clear_connection_cache():
@@ -131,7 +81,7 @@ def clear_connection_cache():
 
     Primarily useful for test cases wanting to force garbage collection.
     """
-    ssh._connected_hosts.clear()
+    _connected_hosts.clear()
 
 
 class SFTPLock(object):
@@ -466,7 +416,7 @@ class SFTPTransport(Transport):
         """Walk the relative paths of all files in this transport."""
         queue = list(self.list_dir('.'))
         while queue:
-            relpath = urllib.quote(queue.pop(0))
+            relpath = queue.pop(0)
             st = self.stat(relpath)
             if stat.S_ISDIR(st.st_mode):
                 for i, basename in enumerate(self.list_dir(relpath)):
@@ -580,11 +530,15 @@ class SFTPTransport(Transport):
         Return a list of all files at the given location.
         """
         # does anything actually use this?
+        # -- Unknown
+        # This is at least used by copy_tree for remote upgrades.
+        # -- David Allouche 2006-08-11
         path = self._remote_path(relpath)
         try:
-            return map(urlutils.escape, self._sftp.listdir(path))
+            entries = self._sftp.listdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
+        return [urlutils.escape(entry) for entry in entries]
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""
@@ -898,9 +852,8 @@ class SFTPServer(Server):
         event.wait(5.0)
     
     def setUp(self):
-        global _ssh_vendor
-        self._original_vendor = _ssh_vendor
-        _ssh_vendor = self._vendor
+        self._original_vendor = ssh._ssh_vendor
+        ssh._ssh_vendor = self._vendor
         if sys.platform == 'win32':
             # Win32 needs to use the UNICODE api
             self._homedir = getcwd()
@@ -918,9 +871,8 @@ class SFTPServer(Server):
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        global _ssh_vendor
         self._listener.stop()
-        _ssh_vendor = self._original_vendor
+        ssh._ssh_vendor = self._original_vendor
 
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
@@ -948,6 +900,10 @@ class SFTPServerWithoutSSH(SFTPServer):
         self._vendor = ssh.LoopbackVendor()
 
     def _run_server(self, sock):
+        # Re-import these as locals, so that they're still accessible during
+        # interpreter shutdown (when all module globals get set to None, leading
+        # to confusing errors like "'NoneType' object has no attribute 'error'".
+        import socket, errno
         class FakeChannel(object):
             def get_transport(self):
                 return self
@@ -1014,16 +970,16 @@ def _sftp_connect(host, port, username, password):
     """
     idx = (host, port, username)
     try:
-        return ssh._connected_hosts[idx]
+        return _connected_hosts[idx]
     except KeyError:
         pass
     
     sftp = _sftp_connect_uncached(host, port, username, password)
-    ssh._connected_hosts[idx] = sftp
+    _connected_hosts[idx] = sftp
     return sftp
 
 def _sftp_connect_uncached(host, port, username, password):
-    vendor = _get_ssh_vendor()
+    vendor = ssh._get_ssh_vendor()
     sftp = vendor.connect_sftp(username, password, host, port)
     return sftp
 

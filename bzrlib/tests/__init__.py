@@ -577,7 +577,7 @@ class TestCase(unittest.TestCase):
             self.fail("%r is an instance of %s rather than %s" % (
                 obj, obj.__class__, kls))
 
-    def assertDeprecated(self, expected, callable, *args, **kwargs):
+    def callDeprecated(self, expected, callable, *args, **kwargs):
         """Assert that a callable is deprecated in a particular way.
 
         :param expected: a list of the deprecation warnings expected, in order
@@ -604,8 +604,7 @@ class TestCase(unittest.TestCase):
         The file is removed as the test is torn down.
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
-        encoder, decoder, stream_reader, stream_writer = codecs.lookup('UTF-8')
-        self._log_file = stream_writer(os.fdopen(fileno, 'w+'))
+        self._log_file = os.fdopen(fileno, 'w+')
         self._log_nonce = bzrlib.trace.enable_test_log(self._log_file)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
@@ -1362,6 +1361,7 @@ def test_suite():
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_repository',
+                   'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revisiontree',
@@ -1370,6 +1370,7 @@ def test_suite():
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
+                   'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_status',

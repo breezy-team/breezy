@@ -154,7 +154,7 @@ class MemoryTransport(Transport):
     def iter_files_recursive(self):
         for file in self._files:
             if file.startswith(self._cwd):
-                yield file[len(self._cwd):]
+                yield urlutils.escape(file[len(self._cwd):])
     
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
