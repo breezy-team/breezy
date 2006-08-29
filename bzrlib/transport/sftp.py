@@ -17,6 +17,12 @@
 
 """Implementation of Transport over SFTP, using paramiko."""
 
+# TODO: Remove the transport-based lock_read and lock_write methods.  They'll
+# then raise TransportNotPossible, which will break remote access to any
+# formats which rely on OS-level locks.  That should be fine as those formats
+# are pretty old, but these combinations may have to be removed from the test
+# suite.
+
 import errno
 import os
 import random
@@ -85,8 +91,15 @@ def clear_connection_cache():
 
 
 class SFTPLock(object):
-    """This fakes a lock in a remote location."""
+    """This fakes a lock in a remote location.
+    
+    A present lock is indicated just by the existence of a file.  This
+    doesn't work well on all transports and they are only used in 
+    deprecated storage formats.
+    """
+    
     __slots__ = ['path', 'lock_path', 'lock_file', 'transport']
+
     def __init__(self, path, transport):
         assert isinstance(transport, SFTPTransport)
 

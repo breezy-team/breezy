@@ -189,6 +189,8 @@ class Transport(object):
     implementations can do pipelining.
     In general implementations should support having a generator or a list
     as an argument (ie always iterate, never index)
+
+    :ivar base: Base URL for the transport; should always end in a slash.
     """
 
     # implementations can override this if it is more efficient
@@ -334,6 +336,8 @@ class Transport(object):
         Note that some transports MAY allow querying on directories, but this
         is not part of the protocol.  In other words, the results of 
         t.has("a_directory_name") are undefined.
+
+        :rtype: bool
         """
         raise NotImplementedError(self.has)
 
@@ -516,12 +520,15 @@ class Transport(object):
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
     def append(self, relpath, f, mode=None):
-        """Append the text in the file-like or string object to 
-        the supplied location.
+        """Append bytes to a file.
 
-        returns the length of f before the content was written to it.
-        
-        If the file does not exist, it is created with the supplied mode.
+        The file is created if it does not already exist.
+
+        :param f: a file-like object or string of the bytes to append.
+        :param mode: Unix mode for newly created files.  This is not used for
+            existing files.
+
+        :returns: the length of f before the content was written to it.
         """
         raise NotImplementedError(self.append)
 

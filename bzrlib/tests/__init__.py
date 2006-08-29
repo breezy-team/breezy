@@ -845,6 +845,10 @@ class TestCase(unittest.TestCase):
         :param retcode: The status code that is expected.  Defaults to 0.  If
         None is supplied, the status code is not checked.
         """
+        # TODO: this ought to remove BZR_PDB when running the subprocess- the
+        # user probably doesn't want to debug it, and anyhow since its files
+        # are redirected they can't usefully get at it.  It just makes the
+        # test suite hang.
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         args = list(args)
         process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
@@ -1131,7 +1135,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         return self.__server
 
     def get_url(self, relpath=None):
-        """Get a URL for the readwrite transport.
+        """Get a URL (or maybe a path) for the readwrite transport.
 
         This will either be backed by '.' or to an equivalent non-file based
         facility.
@@ -1193,7 +1197,17 @@ class TestCaseWithTransport(TestCaseInTempDir):
     def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
 
-        Returns the tree.
+        If the transport is not a LocalTransport, the Tree can't be created on
+        the transport.  In that case the working tree is created in the local
+        directory, and the returned tree's branch and repository will also be
+        accessed locally.
+
+        This will fail if the original default transport for this test
+        case wasn't backed by the working directory, as the branch won't
+        be on disk for us to open it.  
+
+        :param format: The BzrDirFormat.
+        :returns: the WorkingTree.
         """
         # TODO: always use the local disk path for the working tree,
         # this obviously requires a format that supports branch references
