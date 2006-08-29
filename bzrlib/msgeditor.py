@@ -41,7 +41,7 @@ def _get_editor():
         yield e
         
     for varname in 'VISUAL', 'EDITOR':
-        if os.environ.has_key(varname):
+        if varname in os.environ:
             yield os.environ[varname]
 
     if sys.platform == 'win32':

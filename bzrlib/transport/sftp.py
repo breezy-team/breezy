@@ -871,15 +871,15 @@ class SFTPTransport(Transport):
         server_key = t.get_remote_server_key()
         server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
         keytype = server_key.get_name()
-        if SYSTEM_HOSTKEYS.has_key(self._host) and SYSTEM_HOSTKEYS[self._host].has_key(keytype):
+        if (self._host in SYSTEM_HOSTKEYS) and (keytype in SYSTEM_HOSTKEYS[self._host]):
             our_server_key = SYSTEM_HOSTKEYS[self._host][keytype]
             our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
-        elif BZR_HOSTKEYS.has_key(self._host) and BZR_HOSTKEYS[self._host].has_key(keytype):
+        elif (self._host in BZR_HOSTKEYS) and (keytype in BZR_HOSTKEYS[self._host]):
             our_server_key = BZR_HOSTKEYS[self._host][keytype]
             our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
         else:
             warning('Adding %s host key for %s: %s' % (keytype, self._host, server_key_hex))
-            if not BZR_HOSTKEYS.has_key(self._host):
+            if self._host not in BZR_HOSTKEYS:
                 BZR_HOSTKEYS[self._host] = {}
             BZR_HOSTKEYS[self._host][keytype] = server_key
             our_server_key = server_key

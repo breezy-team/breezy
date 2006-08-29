@@ -139,7 +139,7 @@ class MergeBuilder(object):
             return orig_inventory_by_path[parent_dir]
         
         def new_path(file_id):
-            if inventory_change.has_key(file_id):
+            if fild_id in inventory_change:
                 return inventory_change[file_id]
             else:
                 parent = parent_id(file_id)
@@ -156,7 +156,7 @@ class MergeBuilder(object):
             new_inventory[file_id] = path
 
         for file_id, path in inventory_change.iteritems():
-            if orig_inventory.has_key(file_id):
+            if file_id in orig_inventory:
                 continue
             new_inventory[file_id] = path
         return new_inventory

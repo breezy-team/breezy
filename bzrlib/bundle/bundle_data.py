@@ -284,7 +284,7 @@ class BundleInfo(object):
         sha1 = StrictTestament(rev, inventory).as_sha1()
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
-        if rev_to_sha1.has_key(rev.revision_id):
+        if rev.revision_id in rev_to_sha1:
             raise BzrError('Revision {%s} given twice in the list'
                     % (rev.revision_id))
         rev_to_sha1[rev.revision_id] = sha1
@@ -445,8 +445,8 @@ class BundleTree(Tree):
 
     def note_rename(self, old_path, new_path):
         """A file/directory has been renamed from old_path => new_path"""
-        assert not self._renamed.has_key(new_path)
-        assert not self._renamed_r.has_key(old_path)
+        assert new_path not in self._renamed
+        assert old_path not in self._renamed_r
         self._renamed[new_path] = old_path
         self._renamed_r[old_path] = new_path
 
@@ -457,7 +457,7 @@ class BundleTree(Tree):
         self._kinds[new_id] = kind
 
     def note_last_changed(self, file_id, revision_id):
-        if (self._last_changed.has_key(file_id)
+        if (file_id in self._last_changed
                 and self._last_changed[file_id] != revision_id):
             raise BzrError('Mismatched last-changed revision for file_id {%s}'
                     ': %s != %s' % (file_id,
@@ -500,7 +500,7 @@ class BundleTree(Tree):
             old_path = new_path
         #If the new path wasn't in renamed, the old one shouldn't be in
         #renamed_r
-        if self._renamed_r.has_key(old_path):
+        if old_path in self._renamed_r:
             return None
         return old_path 
 
@@ -512,7 +512,7 @@ class BundleTree(Tree):
         new_path = self._renamed_r.get(old_path)
         if new_path is not None:
             return new_path
-        if self._renamed.has_key(new_path):
+        if new_path in self._renamed:
             return None
         dirname,basename = os.path.split(old_path)
         if dirname != '':
@@ -525,7 +525,7 @@ class BundleTree(Tree):
             new_path = old_path
         #If the old path wasn't in renamed, the new one shouldn't be in
         #renamed_r
-        if self._renamed.has_key(new_path):
+        if new_path in self._renamed:
             return None
         return new_path 
 
