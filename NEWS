@@ -3,8 +3,19 @@ IN DEVELOPMENT
   IMPROVEMENTS:
 
   BUG FIXES:
+    * revert now removes newly-added directories (Aaron Bentley, #54172)
+
+    * ``bzr upgrade sftp://`` shouldn't fail to upgrade v6 branches if there 
+      isn't a working tree. (David Allouche, #40679)
+
+    * Handle when LANG is not recognized by python. Emit a warning, but
+      just revert to using 'ascii'. (John Arbash Meinel, #35392)
 
   INTERNALS:
+
+    * Transport.list_dir() and Transport.iter_files_recursive() should always
+      return urlescaped paths. This is now tested (there were bugs in a few
+      of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
 
 bzr 0.10.0RC1  2006-08-28
   
