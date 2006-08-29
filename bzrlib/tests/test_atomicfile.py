@@ -93,9 +93,6 @@ class TestAtomicFile(TestCaseInTempDir):
         st = os.lstat('test')
         self.assertEqualMode(mode, stat.S_IMODE(st.st_mode))
 
-    def test_mode_02666(self):
-        self._test_mode(02666)
-
     def test_mode_0666(self):
         self._test_mode(0666)
 

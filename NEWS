@@ -3,6 +3,7 @@ IN DEVELOPMENT
   IMPROVEMENTS:
 
   BUG FIXES:
+    * revert now removes newly-added directories (Aaron Bentley, #54172)
 
     * ``bzr upgrade sftp://`` shouldn't fail to upgrade v6 branches if there 
       isn't a working tree. (David Allouche, #40679)
