@@ -13,6 +13,9 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Refactor SFTP vendors to allow easier re-use when ssh is used. 
+      (Andrew Bennetts)
+
     * Transport.list_dir() and Transport.iter_files_recursive() should always
       return urlescaped paths. This is now tested (there were bugs in a few
       of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
