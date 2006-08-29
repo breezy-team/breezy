@@ -153,7 +153,11 @@ class SSHVendor(object):
         raise NotImplementedError(self.connect_sftp)
 
     def connect_ssh(self, username, password, host, port, command):
-        """Make an SSH connection, and return a pipe-like object."""
+        """Make an SSH connection, and return a pipe-like object.
+        
+        (This is currently unused, it's just here to indicate future directions
+        for this code.)
+        """
         raise NotImplementedError(self.connect_ssh)
         
 
@@ -439,9 +443,9 @@ def os_specific_subprocess_params():
                 'close_fds': True,
                 }
 
+
 class SSHSubprocess(object):
     """A socket-like object that talks to an ssh subprocess via pipes."""
-    # TODO: this class probably belongs in bzrlib/transport/ssh.py
 
     def __init__(self, proc):
         self.proc = proc
