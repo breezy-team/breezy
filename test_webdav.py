@@ -21,9 +21,20 @@ classes which implements the DAV specification parts used by the
 webdav plugin.
 """
 
+# TODO: Implement the  handling of the range header  for both GET
+# and PUT requests. The server should be able to refuse the Range
+# headers optionally (or two servers should be available).
+
+# TODO: Apache ignores bad formatted Content-Range headers. So we
+# don't receive a  501 response if he don't  handle them but just
+# trash the  files instead. May  be a small  test can be  done in
+# __init__ to recognize bogus servers:
+# put(tmp,'good');append(tmp,'bad'),get(tmp).startswith('good').
+
 import errno
 import os
 import os.path
+import re
 import socket
 import string
 from shutil import (
@@ -55,8 +66,11 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
     really used by the plugin are.
     """
 
-    # On   Mac  OS   X,  we   get  EAGAIN   (ressource  temporary
-    # unavailable)... permanently :) when reading the client socket
+    # On Mac OS X 10.3 + fink, we get EAGAIN (ressource temporary
+    # unavailable)...   permanently :)  when  reading the  client
+    # socket.  The  following helps,  but still, some  tests fail
+    # with a "Broken  pipe".  I guess it may be  a problem in the
+    # test framework, but more investigations are still neeeded.
     def _retry_if_not_available(self,func,*args):
         if sys.platform != 'darwin':
             return func(*args)
@@ -103,15 +117,40 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
         """Serve a PUT request."""
         path = self.translate_path(self.path)
         mutter("do_PUT rel: [%s], abs: [%s]" % (self.path,path))
+
+        do_append = False
+        # Check the Content-Range header
+        range_header = self.headers.get('Content-Range')
+        if range_header is not None:
+            # FIXME: No need to compile that at every request
+            _RANGE_HEADER_RE = re.compile(
+                'bytes (?P<begin>\d+)-(?P<end>\d+)/(?P<size>\d+|\*)')
+            match = _RANGE_HEADER_RE.match(range_header)
+            if match is None:
+                # FIXME: RFC2616 says to return a 501 if we don't
+                # understand the Content-Range header, but Apache
+                # just ignores them (bad Apache).
+                self.send_error(501, 'Not Implemented')
+                return
+            else:
+                (begin, size) = match.group('begin','size')
+                begin = int(begin)
+                size = int(size)
+                do_append = True
+
         # Tell the client to go ahead, we're ready to get the content
         self.send_response(100,"Continue")
         self.end_headers()
         try:
             mutter("do_PUT will try to open: [%s]" % path)
             # Always write in binary mode.
-            f = open(path, 'wb')
+            if do_append:
+                f = open(path,'ab')
+                f.seek(begin)
+            else:
+                f = open(path, 'wb')
         except (IOError, OSError), e :
-            self.send_error(409, "Conflict")
+            self.send_error(409, 'Conflict')
             return
         try:
             # We receive the content by chunk
@@ -119,6 +158,10 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
                 length, data = self._read_chunk()
                 if length == 0:
                     break
+                if do_append:
+                    # FIXME:  Apache just  write the  whole chunk
+                    # without checking its size (bad Apache)
+                    assert(length == size,'Request %d but send %d long data')
                 f.write(data)
         except (IOError, OSError):
             # FIXME: We leave a partially written file here

@@ -37,7 +37,9 @@ This should enable remote push operations.
 # least). Files  should be kept  in a temporary directory  (or an
 # hash-based hierarchy to limit  local file systems problems) and
 # indexed  on  their  full  URL  to  allow  sharing  between  DAV
-# transport instances.
+# transport  instances. If the  full content  is not  cached, the
+# Content-Length header, if cached,  may avoid a roundtrip to the
+# server when appending.
 
 # TODO: Handle  the user and  password cleanly: do not  force the
 # user  to   provide  them   in  the  url   (at  least   for  the
@@ -66,6 +68,10 @@ This should enable remote push operations.
 
 # TODO: Do an urllib based implemenation.
 
+# TODO:  We can  detect that  the  server do  not accept  "write"
+# operations (it will return 501) and raise InvalidHttpRequest(to
+# be defined as a  daughter of InvalidHttpResponse) but what will
+# the upper layers do ?
 
 from cStringIO import StringIO
 import os
@@ -125,10 +131,12 @@ class HttpDavTransport(PyCurlTransport):
         super(HttpDavTransport, self).__init__(base)
         if from_transport is not None:
             self._curl = from_transport._curl
+            self._accept_ranges = from_transport._accept_ranges
         else:
             mutter('using pycurl %s' % pycurl.version)
             self._curl = pycurl.Curl()
             self._set_curl_common_options()
+            self._accept_ranges = True
         mutter("HttpDavTransport [%s]",base)
 
     def is_readonly(self):
@@ -142,7 +150,7 @@ class HttpDavTransport(PyCurlTransport):
         ua_str = 'bzr/%s (pycurl)(webdav plugin)' % (bzrlib.__version__,)
         curl.setopt(pycurl.USERAGENT, ua_str)
         curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
-        ## curl.setopt(pycurl.VERBOSE, 1)
+        # curl.setopt(pycurl.VERBOSE, 1)
 
     # Each request will call _set_curl_options before setting its
     # own specific  options.  This  allows sharing the  same curl
@@ -168,7 +176,8 @@ class HttpDavTransport(PyCurlTransport):
         # There  is  no  way  to  reset  the  functions  thru  pycurl
         # interface, so we just redirect them to instances variables,
         # request methods can then acess values or reset functions at
-        # will. Displaying _data_written is great for debug
+        # will.
+        # TODO: Create a BitBucket(StringIO) ?
         self._data_read = StringIO()
         curl.setopt(pycurl.READFUNCTION, self._data_read.read)
         self._header_received = StringIO()
@@ -194,17 +203,23 @@ class HttpDavTransport(PyCurlTransport):
         curl.setopt(pycurl.HTTPHEADER,self._headers_sent)
         super(HttpDavTransport,self)._curl_perform(curl)
 
-    def has(self, relpath):
-        """See Transport.has()"""
+    def _head(self, relpath):
+        """Request the HEAD of a file.
 
+        Performs the request and leaves callers handle the results.
+        """
         abspath = self._real_abspath(relpath)
 
         curl = self._set_curl_options()
         curl.setopt(pycurl.URL, abspath)
-        # don't want the body - ie just do a HEAD request
-        # This means "NO BODY" not 'nobody'
-        curl.setopt(pycurl.NOBODY, 1)
-        self._perform()
+        curl.setopt(pycurl.NOBODY, 1) # No BODY
+        self._perform()        
+
+    def has(self, relpath):
+        """See Transport.has()"""
+
+        self._head(relpath)
+        curl = self._curl
         code = curl.getinfo(pycurl.HTTP_CODE)
         if code == 404: # not found
             return False
@@ -236,7 +251,7 @@ class HttpDavTransport(PyCurlTransport):
         return code, data
 
     def _get_ranged(self, relpath, ranges, tail_amount):
-        """Make a request for just part of the file."""
+        """Make a request for just part of the location."""
 
         abspath = self._real_abspath(relpath)
 
@@ -261,7 +276,7 @@ class HttpDavTransport(PyCurlTransport):
     # I'm afraid I can't do that.
     # http://www.imdb.com/title/tt0062622/quotes
     def mkdir(self, relpath, mode=None):
-        """Create a directory at the given path."""
+        """Create a directory at the location."""
 
         abspath = self._real_abspath(relpath)
 
@@ -289,21 +304,50 @@ class HttpDavTransport(PyCurlTransport):
         """See Transport.rmdir."""
         self.delete(relpath) # That was easy thanks DAV
 
-    # FIXME: hhtp  defines append without the  mode parameter, we
-    # don't but  we can't do  anything with it. That  looks wrong
-    # anyway
+    # FIXME:  bzrlib.transport.hhtp  defines  append without  the
+    # mode  parameter, we  don't but  we can't  do  anything with
+    # it. That looks wrong anyway
+
+    # TODO: Before
+    # www.ietf.org/internet-drafts/draft-suma-append-patch-00.txt
+    # becomes  a real  RFC and  gets implemented,  we can  try to
+    # implement   it   in   a   test  server.   Below   are   two
+    # implementations, a third one will correspond to the draft.
     def append(self, relpath, f, mode=None):
         """See Transport.append"""
-        # Unfortunately, you  can't do that either  DAV (but here
-        # that's less funny).
+        if self._accept_ranges:
+            before = self._append_by_head_put(relpath, f)
+        else:
+            before = self._append_by_get_put(relpath, f)
+        return before
 
+    def _append_by_head_put(self, relpath, f):
+        """Append without getting the whole file.
+
+        When the server allows it, a 'Content-Range' header can be specified.
+        """
+
+        self._head(relpath)
+        code = self._curl.getinfo(pycurl.HTTP_CODE)
+        if code == 404:
+            self._put_file(relpath, f)
+            relpath_size = 0
+        else:
+            headers = _extract_headers(self._header_received.getvalue(),
+                                       self._real_abspath(relpath))
+            relpath_size = int(headers['Content-Length'])
+            # Get the size of the data to be appened
+            mark = f.tell()
+            size = len(f.read())
+            f.seek(mark)
+            self._put_ranged(relpath, f, relpath_size, size)
+
+        mutter('_append_by_head_put will returns: [%d]' % relpath_size)
+        return relpath_size
+
+    def _append_by_get_put(self, relpath, f):
         # So  we need to  GET the  file first,  append to  it and
-        # finally PUT  back the  result. If you're  searching for
-        # performance  improvments... You're  at the  wrong place
-        # until
-        # www.ietf.org/internet-drafts/draft-suma-append-patch-00.txt
-        # becomes a  real RFC  and gets implemented.   Don't hold
-        # your breath.
+        # finally PUT  back the  result.
         full_data = StringIO() ;
         try:
             data = self.get(relpath)
@@ -311,11 +355,14 @@ class HttpDavTransport(PyCurlTransport):
         except NoSuchFile:
             # Good, just do the put then
             pass
+
+        # Append the f content
         before = full_data.tell()
         full_data.write(f.read())
-
         full_data.seek(0)
+
         self.put(relpath, full_data)
+
         return before
 
     def copy(self, rel_from, rel_to):
@@ -339,19 +386,19 @@ class HttpDavTransport(PyCurlTransport):
                                         % (abs_from,abs_to))
 
     def put(self, relpath, f, mode=None):
-        """Copy the file-like or string object into the location.
+        """Copy the file-like object into the location.
 
         Tests revealed that contrary to what is said in
-        http://www.rfc.net/rfc2068.html, the put is atomic. When
-        putting a file, if the client died, a partial file may
-        still exists on the server.
+        http://www.rfc.net/rfc2068.html, the put is not
+        atomic. When putting a file, if the client died, a
+        partial file may still exists on the server.
 
         So we first put a temp file and then move it.
-        
-        This operation is atomic (see http://www.rfc.net/rfc2068.html).
+
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like object.
         """
+
         abspath = self._real_abspath(relpath)
 
         # We generate a sufficiently random name to *assume* that
@@ -365,19 +412,7 @@ class HttpDavTransport(PyCurlTransport):
         tmp_relpath = relpath + stamp
         tmp_abspath = abspath + stamp
 
-        curl = self._set_curl_options()
-        curl.setopt(pycurl.URL, tmp_abspath)
-        curl.setopt(pycurl.UPLOAD, True)
-
-        curl.setopt(pycurl.READFUNCTION, f.read)
-
-        self._perform()
-        code = curl.getinfo(pycurl.HTTP_CODE)
-
-        if code in (403, 409): # FIXME: 404, ?
-            raise NoSuchFile(abspath) # Intermediate directories missing
-        if code not in  (200, 201, 204):
-            self._raise_curl_http_error(curl, 'expected 200, 201 or 204.')
+        self._put_file(tmp_relpath,f) # Will raise if something gets wrong
 
         # Now move the temp file
         try:
@@ -396,7 +431,57 @@ class HttpDavTransport(PyCurlTransport):
             except:
                 raise e # raise the saved except
             raise # raise the original with its traceback if we can.
-       
+
+    def _put_file(self, relpath, f):
+        """Copy the file-like object into the location."""
+
+        abspath = self._real_abspath(relpath)
+
+        curl = self._set_curl_options()
+        curl.setopt(pycurl.URL, abspath)
+        curl.setopt(pycurl.UPLOAD, True)
+        curl.setopt(pycurl.READFUNCTION, f.read)
+
+        self._perform()
+        code = curl.getinfo(pycurl.HTTP_CODE)
+
+        if code in (403, 409):
+            raise NoSuchFile(abspath) # Intermediate directories missing
+        if code not in  (200, 201, 204):
+            self._raise_curl_http_error(curl, 'expected 200, 201 or 204.')
+
+    def _put_ranged(self, relpath, f, at, size):
+        """Append the file-like object part to the end of the location.
+
+        :param relpath: Location to put the contents, relative to base.
+        :param f:       File-like object, only size bytes will be read.
+        :param at:      int, where to seek the location at.
+        :param size:    int, how many bytes to write.
+        """
+        # Acquire just the needed data
+        abspath = self._real_abspath(relpath)
+        before = f.tell()
+        data = StringIO(f.read(size))
+        after = f.tell()
+        assert(after - before == size,
+               'Invalid content: %d != %d - %d' % (after, before, size))
+        f.seek(before) # FIXME: May not be necessary
+
+        curl = self._set_curl_options()
+        curl.setopt(pycurl.URL, abspath)
+        curl.setopt(pycurl.UPLOAD, True)
+        curl.setopt(pycurl.READFUNCTION, data.read)
+        self._add_header('Content-Range: bytes %d-%d/%d'
+                         % (at, at+size, size))
+
+        self._perform()
+        code = curl.getinfo(pycurl.HTTP_CODE)
+
+        if code in (403, 409):
+            raise NoSuchFile(abspath) # Intermediate directories missing
+        if code not in  (200, 201, 204):
+            self._raise_curl_http_error(curl, 'expected 200, 201 or 204.')
+   
     def rename(self, rel_from, rel_to):
         """Rename without special overwriting"""
         abs_from = self._real_abspath(rel_from)

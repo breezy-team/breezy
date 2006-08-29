@@ -1,3 +1,28 @@
+2006-08-29  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+
+	* webdav.py:
+	Add and update TODOs.
+	(HttpDavTransport.__init__):  Declare _accept_ranges,  defaults to
+	True.
+	(HttpDavTransport._head): New method.
+	(HttpDavTransport.append):     Select _append_by_head_put or
+	_append_by_get_put depending on _accept_ranges.
+	(HttpDavTransport._append_by_head_put): New method.
+	(HttpDavTransport._append_by_get_put):  New   method  (was  append
+	before).
+	(HttpDavTransport.put): Uses _put_file do provide an atomic PUT.
+	(HttpDavTransport._put_file): New method doing a bare PUT.
+	(HttpDavTransport._put_ranged):   New  method  helping   doing  an
+	appended PUT.
+
+	* test_webdav.py: 
+	Add more TODOs.
+	(TestingDAVRequestHandler.do_PUT):  Handle  Content-Range optional
+	header to do appends.
+
+	* __init__.py: 
+	Requires bzr >= 0.11.0dev.
+
 2006-08-28  Vincent LADEUIL  <v.ladeuil@alplog.fr>
         Prepare merge.
 
