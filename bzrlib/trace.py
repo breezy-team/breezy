@@ -95,19 +95,24 @@ def mutter(fmt, *args):
         return
     if hasattr(_trace_file, 'closed') and _trace_file.closed:
         return
+
+    if isinstance(fmt, unicode):
+        fmt = fmt.encode('utf8')
+
     if len(args) > 0:
         # It seems that if we do ascii % (unicode, ascii) we can
         # get a unicode cannot encode ascii error, so make sure that "fmt"
         # is a unicode string
-        out = unicode(fmt) % args
+        real_args = []
+        for arg in args:
+            if isinstance(arg, unicode):
+                arg = arg.encode('utf8')
+            real_args.append(arg)
+        out = fmt % tuple(real_args)
     else:
         out = fmt
     out += '\n'
-    try:
-        _trace_file.write(out)
-    except UnicodeError, e:
-        warning('UnicodeError: %s', e)
-        _trace_file.write(repr(out))
+    _trace_file.write(out)
     # TODO: jam 20051227 Consider flushing the trace file to help debugging
     #_trace_file.flush()
 debug = mutter
@@ -137,7 +142,8 @@ def open_tracefile(tracefilename='~/.bzr.log'):
     _rollover_trace_maybe(trace_fname)
     try:
         LINE_BUFFERED = 1
-        tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
+        #tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
+        tf = open(trace_fname, 'at', LINE_BUFFERED)
         _bzr_log_file = tf
         if tf.tell() == 0:
             tf.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")

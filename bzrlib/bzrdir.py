@@ -1761,20 +1761,39 @@ class ConvertBzrDir6ToMeta(Converter):
         for entry in branch_files:
             self.move_entry('branch', entry)
 
-        self.step('Upgrading working tree')
-        self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
-        self.make_lock('checkout')
-        self.put_format('checkout', bzrlib.workingtree.WorkingTreeFormat3())
-        self.bzrdir.transport.delete_multi(self.garbage_inventories, self.pb)
         checkout_files = [('pending-merges', True),
                           ('inventory', True),
                           ('stat-cache', False)]
-        for entry in checkout_files:
-            self.move_entry('checkout', entry)
-        if last_revision is not None:
-            self.bzrdir._control_files.put_utf8('checkout/last-revision',
-                                                last_revision)
-        self.bzrdir._control_files.put_utf8('branch-format', BzrDirMetaFormat1().get_format_string())
+        # If a mandatory checkout file is not present, the branch does not have
+        # a functional checkout. Do not create a checkout in the converted
+        # branch.
+        for name, mandatory in checkout_files:
+            if mandatory and name not in bzrcontents:
+                has_checkout = False
+                break
+        else:
+            has_checkout = True
+        if not has_checkout:
+            self.pb.note('No working tree.')
+            # If some checkout files are there, we may as well get rid of them.
+            for name, mandatory in checkout_files:
+                if name in bzrcontents:
+                    self.bzrdir.transport.delete(name)
+        else:
+            self.step('Upgrading working tree')
+            self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
+            self.make_lock('checkout')
+            self.put_format(
+                'checkout', bzrlib.workingtree.WorkingTreeFormat3())
+            self.bzrdir.transport.delete_multi(
+                self.garbage_inventories, self.pb)
+            for entry in checkout_files:
+                self.move_entry('checkout', entry)
+            if last_revision is not None:
+                self.bzrdir._control_files.put_utf8(
+                    'checkout/last-revision', last_revision)
+        self.bzrdir._control_files.put_utf8(
+            'branch-format', BzrDirMetaFormat1().get_format_string())
         return BzrDir.open(self.bzrdir.root_transport.base)
 
     def make_lock(self, name):
