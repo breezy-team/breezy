@@ -16,6 +16,7 @@
 
 import os
 
+from bzrlib import tests
 from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
                               UnversionedParent, ParentLoop)
@@ -713,7 +714,8 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertIs(os.path.lexists(this.wt.abspath('b/h1.OTHER')), False)
         self.assertEqual(this.wt.id2path('i'), pathjoin('b/i1.OTHER'))
 
-class TestBuildTree(TestCaseInTempDir):
+class TestBuildTree(tests.TestCaseWithTransport):
+
     def test_build_tree(self):
         if not has_symlinks():
             raise TestSkipped('Test requires symlink support')
@@ -729,7 +731,82 @@ class TestBuildTree(TestCaseInTempDir):
         self.assertIs(os.path.isdir('b/foo'), True)
         self.assertEqual(file('b/foo/bar', 'rb').read(), "contents")
         self.assertEqual(os.readlink('b/foo/baz'), 'a/foo/bar')
+
+    def test_file_conflict_handling(self):
+        """Ensure that when building trees, conflict handling is done"""
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch_and_tree('target')
+        self.build_tree(['source/file', 'target/file'])
+        source.add('file')
+        source.commit('added file')
+        build_tree(source.basis_tree(), target)
+        self.assertEqual(1, len(target.conflicts()))
+        target2 = self.make_branch_and_tree('target2')
+        target_file = file('target2/file', 'wb')
+        try:
+            target_file.write('contents of source/file\n')
+        finally:
+            target_file.close()
+        build_tree(source.basis_tree(), target2)
+        self.assertEqual(len(target2.conflicts()), 0)
+
+    def test_symlink_conflict_handling(self):
+        """Ensure that when building trees, conflict handling is done"""
+        if not has_symlinks():
+            raise TestSkipped('Test requires symlink support')
+        source = self.make_branch_and_tree('source')
+        os.symlink('foo', 'source/symlink')
+        source.add('symlink')
+        source.commit('added file')
+        target = self.make_branch_and_tree('target')
+        os.symlink('bar', 'target/symlink')
+        build_tree(source.basis_tree(), target)
+        self.assertEqual(1, len(target.conflicts()))
         
+        target = self.make_branch_and_tree('target2')
+        os.symlink('foo', 'target2/symlink')
+        build_tree(source.basis_tree(), target)
+        self.assertEqual(0, len(target.conflicts()))
+        
+    def test_directory_conflict_handling(self):
+        """Ensure that when building trees, conflict handling is done"""
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch_and_tree('target')
+        self.build_tree(['source/dir1/', 'source/dir1/file', 'target/dir1/'])
+        source.add(['dir1', 'dir1/file'])
+        source.commit('added file')
+        build_tree(source.basis_tree(), target)
+        self.assertEqual(0, len(target.conflicts()))
+        self.failUnlessExists('target/dir1/file')
+
+        # Ensure contents are merged
+        target = self.make_branch_and_tree('target2')
+        self.build_tree(['target2/dir1/', 'target2/dir1/file2'])
+        build_tree(source.basis_tree(), target)
+        self.assertEqual(0, len(target.conflicts()))
+        self.failUnlessExists('target2/dir1/file2')
+        self.failUnlessExists('target2/dir1/file')
+
+        # Ensure new contents are suppressed for existing branches
+        target = self.make_branch('target3')
+        target = self.make_branch_and_tree('target3/dir1')
+        self.build_tree(['target3/dir1/file2'])
+        build_tree(source.basis_tree(), target)
+        self.assertEqual(0, len(target.conflicts()))
+        self.failIfExists('target3/dir1/file1')
+        self.failUnlessExists('target3/dir1/file2')
+
+    def test_mixed_conflict_handling(self):
+        """Ensure that when building trees, conflict handling is done"""
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch_and_tree('target')
+        self.build_tree(['source/name', 'target/name/'])
+        source.add('name')
+        source.commit('added file')
+        build_tree(source.basis_tree(), target)
+        self.assertEqual(1, len(target.conflicts()))
+
+
 class MockTransform(object):
 
     def has_named_child(self, by_parent, parent_id, name):
