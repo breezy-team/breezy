@@ -1000,3 +1000,44 @@ def compare_paths_prefix_order(path_a, path_b):
     key_a = path_prefix_key(path_a)
     key_b = path_prefix_key(path_b)
     return cmp(key_a, key_b)
+
+
+_cached_user_encoding = None
+
+
+def get_user_encoding():
+    """Find out what the preferred user encoding is.
+
+    This is generally the encoding that is used for command line parameters
+    and file contents. This may be different from the terminal encoding
+    or the filesystem encoding.
+
+    :return: A string defining the preferred user encoding
+    """
+    global _cached_user_encoding
+    if _cached_user_encoding is not None:
+        return _cached_user_encoding
+
+    if sys.platform == 'darwin':
+        # work around egregious python 2.4 bug
+        sys.platform = 'posix'
+        try:
+            import locale
+        finally:
+            sys.platform = 'darwin'
+    else:
+        import locale
+
+    try:
+        _cached_user_encoding = locale.getpreferredencoding()
+    except locale.Error, e:
+        sys.stderr.write('bzr: warning: %s\n'
+                         '  Could not what text encoding to use.\n'
+                         '  This error usually means your Python interpreter\n'
+                         '  doesn\'t support the locale set by $LANG (%s)\n'
+                         "  Continuing with ascii encoding.\n"
+                         % (e, os.environ.get('LANG')))
+
+    if _cached_user_encoding is None:
+        _cached_user_encoding = 'ascii'
+    return _cached_user_encoding
