@@ -144,7 +144,7 @@ import threading
 import urllib
 import urlparse
 
-from bzrlib import bzrdir, errors, revision, transport, trace
+from bzrlib import bzrdir, errors, revision, transport, trace, urlutils
 from bzrlib.transport import sftp, local
 from bzrlib.bundle.serializer import write_bundle
 from bzrlib.trace import mutter
@@ -485,7 +485,10 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     def get_url(self):
         """Return the url of the server"""
         host, port = self._server_socket.getsockname()
-        return "bzr://%s:%d/%s" % (host, port, self._homedir)
+        # XXX: I think this is likely to break on windows -- self._homedir will
+        # have backslashes (and maybe a drive letter?).
+        #  -- Andrew Bennetts, 2006-08-29
+        return "bzr://%s:%d%s" % (host, port, self._homedir)
 
     def get_bogus_url(self):
         """Return a URL which will fail to connect"""
@@ -563,7 +566,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
         return urlparse.urlunparse((self._scheme, netloc, path, '', '', ''))
 
     def _remote_path(self, relpath):
-        return self._combine_paths(self._path, relpath)
+        return urlutils.escape(self._combine_paths(self._path, relpath))
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.

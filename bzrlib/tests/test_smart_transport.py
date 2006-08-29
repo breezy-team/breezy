@@ -161,9 +161,9 @@ class SmartTCPTests(tests.TestCase):
     def test_get_error_enoent(self):
         """Error reported from server getting nonexistent file."""
         try:
-            self.transport.get('not a file')
+            self.transport.get('not%20a%20file')
         except errors.NoSuchFile, e:
-            self.assertEqual('/not a file', e.path)
+            self.assertEqual('not%20a%20file', e.path)
         else:
             self.fail("get did not raise expected error")
 
