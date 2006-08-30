@@ -70,7 +70,10 @@ class MemoryTransport(Transport):
         if offset is None or offset == '':
             return copy(self)
         segments = offset.split('/')
-        cwdsegments = self._cwd.split('/')[:-1]
+        if offset.startswith('/'):
+            cwdsegments = []
+        else:
+            cwdsegments = self._cwd.split('/')[:-1]
         while len(segments):
             segment = segments.pop(0)
             if segment == '.':

@@ -200,8 +200,10 @@ class SFTPTransport(Transport):
         """
         # FIXME: share the common code across transports
         assert isinstance(relpath, basestring)
-        relpath = urlutils.unescape(relpath).split('/')
         basepath = self._path.split('/')
+        if relpath.startswith('/'):
+            basepath = []
+        relpath = urlutils.unescape(relpath).split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
 
@@ -219,6 +221,8 @@ class SFTPTransport(Transport):
 
         path = '/'.join(basepath)
         # mutter('relpath => remotepath %s => %s', relpath, path)
+        if path == '':
+            path = '/'
         return path
 
     def relpath(self, abspath):
