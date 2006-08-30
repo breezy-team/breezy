@@ -132,9 +132,10 @@ class BzrNewError(BzrError):
             if isinstance(s, unicode):
                 return s.encode('utf8')
             return s
-        except (NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s: %s' \
-                % (self.__class__.__name__, str(e))
+        except (TypeError, NameError, ValueError, KeyError), e:
+            return 'Unprintable exception %s(%r): %s' \
+                % (self.__class__.__name__,
+                   self.__dict__, str(e))
 
 
 class BzrCheckError(BzrNewError):
