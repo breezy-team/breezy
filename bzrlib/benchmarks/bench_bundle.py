@@ -15,29 +15,25 @@
 
 """Tests for bzr bundle performance."""
 
+from cStringIO import StringIO
 import os
 import shutil
-from cStringIO import StringIO
 
-from bzrlib.add import smart_add
 from bzrlib import bzrdir
+from bzrlib.add import smart_add
 from bzrlib.benchmarks import Benchmark
 from bzrlib.branch import Branch
 from bzrlib.bundle import read_bundle
+from bzrlib.bundle.apply_bundle import install_bundle
 from bzrlib.bundle.serializer import write_bundle
+from bzrlib.revision import NULL_REVISION
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.workingtree import WorkingTree
 
 
 class BundleBenchmark(Benchmark):
-    """The bundle tests should (also) be done at a lower level with
-    direct call to the bzrlib.
-    """
+    """Benchmarks for bzr bundle performance and bzr merge with a bundle."""
    
-    def make_kernel_like_tree_committed(self):
-        self.make_kernel_like_added_tree()
-        self.run_bzr('commit', '-m', 'initial import')
-
     def test_create_bundle_known_kernel_like_tree(self):
         """Create a bundle for a kernel sized tree with no ignored, unknowns,
         or added and one commit.
@@ -59,27 +55,37 @@ class BundleBenchmark(Benchmark):
         """Create a bundle for a kernel sized tree with no ignored, unknowns,
         or added and one commit.
         """ 
-        self.make_kernel_like_tree_committed()
-        f = file('../bundle', 'wb')
+        tree = self.make_kernel_like_tree_committed('tree')
+
+        f = open('bundle', 'wb')
         try:
-            f.write(self.run_bzr('bundle', '--revision', '..-1')[0])
+            write_bundle(tree.branch.repository, tree.last_revision(),
+                         NULL_REVISION, f)
         finally:
             f.close()
-        self.run_bzr("init", "../branch_a")
-        os.chdir('../branch_a')
-        self.time(self.run_bzr, 'merge', '../bundle')
 
+        tree2 = self.make_branch_and_tree('branch_a')
+        os.chdir('branch_a')
+        self.time(self.run_bzr, 'merge', '../bundle')
  
-class BundleLibraryLevelBenchmark(Benchmark):
+class BundleLibraryLevelWriteBenchmark(Benchmark):
+    """ Benchmarks for the write_bundle library function. """
 
     def _time_read_write(self):
+        print "timing"
         branch, relpath = Branch.open_containing("a")
         revision_history = branch.revision_history()
         bundle_text = StringIO()
+        print "starting write bundle"
         self.time(write_bundle, branch.repository, revision_history[-1],
-                  None, bundle_text)
+                  NULL_REVISION, bundle_text)
+        print "stopped writing bundle"
         bundle_text.seek(0)
-        self.time(read_bundle, bundle_text)
+        target_tree = self.make_branch_and_tree('b')
+        print "starting reading bundle"
+        bundle = self.time(read_bundle, bundle_text)
+        print "starting installing bundle"
+        self.time(install_bundle, target_tree.branch.repository, bundle)
 
     def test_few_files_small_tree_1_revision(self):
         os.mkdir("a")

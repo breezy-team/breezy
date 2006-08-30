@@ -33,4 +33,4 @@ class InfoBenchmark(Benchmark):
         self.make_kernel_like_committed_tree()
         self.time(self.run_bzr, 'info')
 
- 
+     

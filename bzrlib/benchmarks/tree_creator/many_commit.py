@@ -27,8 +27,10 @@ class ManyCommitTreeCreator(TreeCreator):
     """Create an tree many files and many commits."""
 
     def __init__(self, test, link_bzr=False, num_files=10, num_commits=10):
+        tree_name = 'many_files_many_commit_tree_%d_%d' % (
+            num_files, num_commits)
         super(ManyCommitTreeCreator, self).__init__(test,
-            tree_name='many_files_many_commit_tree',
+            tree_name=tree_name,
             link_bzr=link_bzr,
             link_working=False,
             hot_cache=True)
@@ -39,7 +41,7 @@ class ManyCommitTreeCreator(TreeCreator):
     def _create_tree(self, root, in_cache=False):
         num_files = self.num_files
         num_commits = self.num_commits
-        files = ["%s/%s" % (root, i) for i in range(num_files)]
+        files = ["%s/%s" % (root, fn) for fn in self.files]
         for fn in files:
             f = open(fn, "wb")
             try:
@@ -47,7 +49,7 @@ class ManyCommitTreeCreator(TreeCreator):
             finally:
                 f.close()
         tree = bzrdir.BzrDir.create_standalone_workingtree(root)
-        tree.add([str(i) for i in range(num_files)])
+        tree.add(self.files)
         tree.lock_write()
         try:
             tree.commit('initial commit')
@@ -62,6 +64,5 @@ class ManyCommitTreeCreator(TreeCreator):
                 tree.commit("changing file %s" % fn)
         finally:
             tree.unlock()
-        self.files = ["%s" % (i, ) for i in range(num_files)]
         return tree
 
