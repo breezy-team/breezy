@@ -142,7 +142,7 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('another contents\nfor d\n', t, 'd')
 
         self.assertRaises(NoSuchFile,
-                          t.put, 'path/doesnt/exist/c', 'contents')
+                          t.put, 'path/doesnt/exist/c', StringIO('contents'))
 
     def test_put_permissions(self):
         t = self.get_transport()
@@ -543,9 +543,9 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('adir')
         t.mkdir('adir/bdir')
         t.rmdir('adir/bdir')
-        self.assertRaises(NoSuchFile, t.stat, 'adir/bdir')
+        self.assertFalse(t.has('adir/bdir'))
         t.rmdir('adir')
-        self.assertRaises(NoSuchFile, t.stat, 'adir')
+        self.assertFalse(t.has('adir'))
 
     def test_rmdir_not_empty(self):
         """Deleting a non-empty directory raises an exception
@@ -826,6 +826,21 @@ class TransportTests(TestTransportImplementation):
         self.failUnless(t2.has('d'))
         self.failUnless(t3.has('b/d'))
 
+    def test_clone_to_root(self):
+        orig_transport = self.get_transport()
+        # Repeatedly go up to a parent directory until we're at the root
+        # directory of this transport
+        root_transport = orig_transport
+        while root_transport.clone("..").base != root_transport.base:
+            root_transport = root_transport.clone("..")
+
+        # Cloning to "/" should take us to exactly the same location.
+        self.assertEqual(root_transport.base, orig_transport.clone("/").base)
+
+    def test_base_url(self):
+        t = self.get_transport()
+        self.assertEqual('/', t.base[-1])
+
     def test_relpath(self):
         t = self.get_transport()
         self.assertEqual('', t.relpath(t.base))
@@ -858,6 +873,12 @@ class TransportTests(TestTransportImplementation):
         # the abspath - eg http+pycurl-> just http -- mbp 20060308 
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
+
+        # This should work without raising an error.
+        transport.abspath("/")
+
+        # the abspath of "/" and "/foo/.." should result in the same location
+        self.assertEqual(transport.abspath("/"), transport.abspath("/foo/.."))
 
     def test_local_abspath(self):
         transport = self.get_transport()
@@ -1038,3 +1059,4 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[1], (9, '9'))
         self.assertEqual(d[2], (0, '0'))
         self.assertEqual(d[3], (3, '34'))
+
