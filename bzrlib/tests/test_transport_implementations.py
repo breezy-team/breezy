@@ -543,9 +543,9 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('adir')
         t.mkdir('adir/bdir')
         t.rmdir('adir/bdir')
-        self.assertFalse(t.has('adir/bdir'))
+        self.assertRaises(PathError, t.rmdir, 'adir/bdir')
         t.rmdir('adir')
-        self.assertFalse(t.has('adir'))
+        self.assertRaises(PathError, t.rmdir, 'adir')
 
     def test_rmdir_not_empty(self):
         """Deleting a non-empty directory raises an exception
