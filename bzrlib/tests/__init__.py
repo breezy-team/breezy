@@ -933,10 +933,10 @@ class TestCase(unittest.TestCase):
         base_rev = common_ancestor(branch_from.last_revision(),
                                    wt_to.branch.last_revision(),
                                    wt_to.branch.repository)
-        merge_inner(wt_to.branch, branch_from.basis_tree(), 
+        merge_inner(wt_to.branch, branch_from.basis_tree(),
                     wt_to.branch.repository.revision_tree(base_rev),
                     this_tree=wt_to)
-        wt_to.add_pending_merge(branch_from.last_revision())
+        wt_to.add_parent_tree_id(branch_from.last_revision())
 
 
 BzrTestBase = TestCase
@@ -1374,6 +1374,7 @@ def test_suite():
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_repository',
+                   'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revisiontree',
