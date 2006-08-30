@@ -798,7 +798,7 @@ class TestCase(unittest.TestCase):
         return self.run_bzr_captured(args, retcode=retcode, encoding=encoding, stdin=stdin)
 
     def run_bzr_decode(self, *args, **kwargs):
-        if kwargs.has_key('encoding'):
+        if 'encoding' in kwargs:
             encoding = kwargs['encoding']
         else:
             encoding = bzrlib.user_encoding
