@@ -475,7 +475,7 @@ class TreeTransform(object):
 
     def path_changed(self, trans_id):
         """Return True if a trans_id's path has changed."""
-        return trans_id in self._new_name or trans_id in self._new_parent
+        return (trans_id in self._new_name) or (trans_id in self._new_parent)
 
     def find_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
@@ -1085,7 +1085,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
     """Revert a working tree's contents to those of a target tree."""
     interesting_ids = find_interesting(working_tree, target_tree, filenames)
     def interesting(file_id):
-        return interesting_ids is None or file_id in interesting_ids
+        return interesting_ids is None or (file_id in interesting_ids)
 
     tt = TreeTransform(working_tree, pb)
     try:
