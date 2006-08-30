@@ -16,21 +16,15 @@
 
 """bzr library"""
 
+from bzrlib.osutils import get_user_encoding
+
 
 IGNORE_FILENAME = ".bzrignore"
 
-import os
-import sys
-if sys.platform == 'darwin':
-    # work around egregious python 2.4 bug
-    sys.platform = 'posix'
-    import locale
-    sys.platform = 'darwin'
-else:
-    import locale
-# XXX: This probably belongs in osutils instead
-user_encoding = locale.getpreferredencoding() or 'ascii'
-del locale
+
+# XXX: Compatibility. This should probably be deprecated
+user_encoding = get_user_encoding()
+
 
 __copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
 
