@@ -737,18 +737,24 @@ class TestBuildTree(tests.TestCaseWithTransport):
         source = self.make_branch_and_tree('source')
         target = self.make_branch_and_tree('target')
         self.build_tree(['source/file', 'target/file'])
-        source.add('file')
+        source.add('file', 'new-file')
         source.commit('added file')
         build_tree(source.basis_tree(), target)
-        self.assertEqual(1, len(target.conflicts()))
+        self.assertEqual([DuplicateEntry('Moved existing file to',
+                          'file.moved', 'file', None, 'new-file')],
+                         target.conflicts())
         target2 = self.make_branch_and_tree('target2')
         target_file = file('target2/file', 'wb')
         try:
-            target_file.write('contents of source/file\n')
+            source_file = file('source/file', 'rb')
+            try:
+                target_file.write(source_file.read())
+            finally:
+                source_file.close()
         finally:
             target_file.close()
         build_tree(source.basis_tree(), target2)
-        self.assertEqual(len(target2.conflicts()), 0)
+        self.assertEqual([], target2.conflicts())
 
     def test_symlink_conflict_handling(self):
         """Ensure that when building trees, conflict handling is done"""
@@ -756,55 +762,82 @@ class TestBuildTree(tests.TestCaseWithTransport):
             raise TestSkipped('Test requires symlink support')
         source = self.make_branch_and_tree('source')
         os.symlink('foo', 'source/symlink')
-        source.add('symlink')
+        source.add('symlink', 'new-symlink')
         source.commit('added file')
         target = self.make_branch_and_tree('target')
         os.symlink('bar', 'target/symlink')
         build_tree(source.basis_tree(), target)
-        self.assertEqual(1, len(target.conflicts()))
-        
+        self.assertEqual([DuplicateEntry('Moved existing file to',
+            'symlink.moved', 'symlink', None, 'new-symlink')],
+            target.conflicts())
         target = self.make_branch_and_tree('target2')
         os.symlink('foo', 'target2/symlink')
         build_tree(source.basis_tree(), target)
-        self.assertEqual(0, len(target.conflicts()))
+        self.assertEqual([], target.conflicts())
         
     def test_directory_conflict_handling(self):
         """Ensure that when building trees, conflict handling is done"""
         source = self.make_branch_and_tree('source')
         target = self.make_branch_and_tree('target')
         self.build_tree(['source/dir1/', 'source/dir1/file', 'target/dir1/'])
-        source.add(['dir1', 'dir1/file'])
+        source.add(['dir1', 'dir1/file'], ['new-dir1', 'new-file'])
         source.commit('added file')
         build_tree(source.basis_tree(), target)
-        self.assertEqual(0, len(target.conflicts()))
+        self.assertEqual([], target.conflicts())
         self.failUnlessExists('target/dir1/file')
 
         # Ensure contents are merged
         target = self.make_branch_and_tree('target2')
         self.build_tree(['target2/dir1/', 'target2/dir1/file2'])
         build_tree(source.basis_tree(), target)
-        self.assertEqual(0, len(target.conflicts()))
+        self.assertEqual([], target.conflicts())
         self.failUnlessExists('target2/dir1/file2')
         self.failUnlessExists('target2/dir1/file')
 
         # Ensure new contents are suppressed for existing branches
-        target = self.make_branch('target3')
-        target = self.make_branch_and_tree('target3/dir1')
+        target = self.make_branch_and_tree('target3')
+        self.make_branch('target3/dir1')
         self.build_tree(['target3/dir1/file2'])
         build_tree(source.basis_tree(), target)
-        self.assertEqual(0, len(target.conflicts()))
-        self.failIfExists('target3/dir1/file1')
+        self.failIfExists('target3/dir1/file')
         self.failUnlessExists('target3/dir1/file2')
+        self.failUnlessExists('target3/dir1.diverted/file')
+        self.assertEqual([DuplicateEntry('Diverted to',
+            'dir1.diverted', 'dir1', 'new-dir1', None)],
+            target.conflicts())
+
+        target = self.make_branch_and_tree('target4')
+        self.build_tree(['target4/dir1/'])
+        self.make_branch('target4/dir1/file')
+        build_tree(source.basis_tree(), target)
+        self.failUnlessExists('target4/dir1/file')
+        self.assertEqual('directory', file_kind('target4/dir1/file'))
+        self.failUnlessExists('target4/dir1/file.diverted')
+        self.assertEqual([DuplicateEntry('Diverted to',
+            'dir1/file.diverted', 'dir1/file', 'new-file', None)],
+            target.conflicts())
 
     def test_mixed_conflict_handling(self):
         """Ensure that when building trees, conflict handling is done"""
         source = self.make_branch_and_tree('source')
         target = self.make_branch_and_tree('target')
         self.build_tree(['source/name', 'target/name/'])
-        source.add('name')
+        source.add('name', 'new-name')
         source.commit('added file')
         build_tree(source.basis_tree(), target)
-        self.assertEqual(1, len(target.conflicts()))
+        self.assertEqual([DuplicateEntry('Moved existing file to',
+            'name.moved', 'name', None, 'new-name')], target.conflicts())
+
+    def test_raises_in_populated(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/name'])
+        source.add('name')
+        source.commit('added name')
+        target = self.make_branch_and_tree('target')
+        self.build_tree(['target/name'])
+        target.add('name')
+        self.assertRaises(AssertionError, build_tree, source.basis_tree(),
+                          target)
 
 
 class MockTransform(object):

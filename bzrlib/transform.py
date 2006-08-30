@@ -478,6 +478,9 @@ class TreeTransform(object):
         """Return True if a trans_id's path has changed."""
         return trans_id in self._new_name or trans_id in self._new_parent
 
+    def new_contents(self, trans_id):
+        return (trans_id in self._new_contents)
+
     def find_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
         if self.__done is True:
@@ -940,37 +943,37 @@ def topology_sorted_ids(tree):
 def build_tree(tree, wt):
     """Create working tree for a branch, using a TreeTransform.
     
+    This function should be used on empty trees, having a tree root at most.
+    (see merge and revert functionality for working with existing trees)
+
     Existing files are handled like so:
     
-    - Existing bzrdirs take precedence over creating directories.  New 
-      directory contents are silently dropped.
+    - Existing bzrdirs take precedence over creating new items.  They are
+      created as '%s.diverted' % name.
     - Otherwise, if the content on disk matches the content we are building,
       it is silently replaced.
     - Otherwise, conflict resolution will move the old file to 'oldname.moved'.
     """
+    assert 2 > len(wt.inventory)
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
     tt = TreeTransform(wt)
+    divert = set()
     try:
         pp.next_phase()
         file_trans_id[wt.get_root_id()] = \
             tt.trans_id_tree_file_id(wt.get_root_id())
-        file_ids = topology_sorted_ids(tree)
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        suppress_children = None
         try:
-            for num, file_id in enumerate(file_ids):
-                pb.update("Building tree", num, len(file_ids))
-                entry = tree.inventory[file_id]
+            for num, (tree_path, entry) in \
+                enumerate(tree.inventory.iter_entries_by_dir()):
+                pb.update("Building tree", num, len(tree.inventory))
                 if entry.parent_id is None:
                     continue
                 reparent = False
-                tree_path = tree.id2path(file_id)
-                if (suppress_children is not None and
-                    tree_path.startswith(suppress_children)):
-                    continue
-                target_path = wt.abspath(tree.id2path(file_id)) 
+                file_id = entry.file_id
+                target_path = wt.abspath(tree_path)
                 try:
                     kind = file_kind(target_path)
                 except NoSuchFile:
@@ -982,17 +985,17 @@ def build_tree(tree, wt):
                         except errors.NotBranchError:
                             pass
                         else:
-                            suppress_children = tree_path + '/'
-                            continue
-                    if _content_match(tree, entry, file_id, 
-                                      kind, target_path):
+                            divert.add(file_id)
+                    if (file_id not in divert and
+                        _content_match(tree, entry, file_id, kind,
+                        target_path)):
                         tt.delete_contents(tt.trans_id_tree_path(tree_path))
                         if kind == 'directory':
                             reparent = True
                 if entry.parent_id not in file_trans_id:
                     raise repr(entry.parent_id)
                 parent_id = file_trans_id[entry.parent_id]
-                file_trans_id[file_id] = new_by_entry(tt, entry, parent_id, 
+                file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
                                                       tree)
                 if reparent:
                     new_trans_id = file_trans_id[file_id]
@@ -1001,7 +1004,9 @@ def build_tree(tree, wt):
         finally:
             pb.finished()
         pp.next_phase()
-        raw_conflicts = resolve_conflicts(tt, pass_func=resolve_checkout)
+        divert_trans = set(file_trans_id[f] for f in divert)
+        resolver = lambda t, c: resolve_checkout(t, c, divert_trans)
+        raw_conflicts = resolve_conflicts(tt, pass_func=resolver)
         conflicts = cook_conflicts(raw_conflicts, tt)
         for conflict in conflicts:
             warning(conflict)
@@ -1034,13 +1039,13 @@ def _content_match(tree, entry, file_id, kind, target_path):
     return False
 
 
-def resolve_checkout(tt, conflicts):
+def resolve_checkout(tt, conflicts, divert):
     new_conflicts = set()
     for c_type, conflict in ((c[0], c) for c in conflicts):
         # Anything but a 'duplicate' would indicate programmer error
         assert c_type == 'duplicate', c_type
         # Now figure out which is new and which is old
-        if tt.path_changed(conflict[1]):
+        if tt.new_contents(conflict[1]):
             new_file = conflict[1]
             old_file = conflict[2]
         else:
@@ -1050,10 +1055,16 @@ def resolve_checkout(tt, conflicts):
         # We should only get here if the conflict wasn't completely
         # resolved
         final_parent = tt.final_parent(old_file)
-        new_name = tt.final_name(old_file)+'.moved'
-        tt.adjust_path(new_name, final_parent, old_file)
-        new_conflicts.add((c_type, 'Moved existing file to',
-                           old_file, new_file))
+        if new_file in divert:
+            new_name = tt.final_name(old_file)+'.diverted'
+            tt.adjust_path(new_name, final_parent, new_file)
+            new_conflicts.add((c_type, 'Diverted to',
+                               new_file, old_file))
+        else:
+            new_name = tt.final_name(old_file)+'.moved'
+            tt.adjust_path(new_name, final_parent, old_file)
+            new_conflicts.add((c_type, 'Moved existing file to',
+                               old_file, new_file))
     return new_conflicts
 
 
