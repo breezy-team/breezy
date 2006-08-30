@@ -1017,7 +1017,7 @@ class Inventory(object):
         >>> '456' in inv
         False
         """
-        return file_id in self._byid
+        return (file_id in self._byid)
 
     def __getitem__(self, file_id):
         """Return the entry for given file_id.
