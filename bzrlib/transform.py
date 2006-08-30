@@ -475,7 +475,7 @@ class TreeTransform(object):
 
     def path_changed(self, trans_id):
         """Return True if a trans_id's path has changed."""
-        return trans_id in self._new_name or trans_id in self._new_parent
+        return (trans_id in self._new_name) or (trans_id in self._new_parent)
 
     def find_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
@@ -1085,7 +1085,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
     """Revert a working tree's contents to those of a target tree."""
     interesting_ids = find_interesting(working_tree, target_tree, filenames)
     def interesting(file_id):
-        return interesting_ids is None or file_id in interesting_ids
+        return interesting_ids is None or (file_id in interesting_ids)
 
     tt = TreeTransform(working_tree, pb)
     try:
@@ -1132,8 +1132,25 @@ def revert(working_tree, target_tree, filenames, backups=False,
                 if file_id not in target_tree:
                     trans_id = tt.trans_id_tree_file_id(file_id)
                     tt.unversion_file(trans_id)
-                    if file_id in merge_modified:
+                    try:
+                        file_kind = working_tree.kind(file_id)
+                    except NoSuchFile:
+                        file_kind = None
+                    if file_kind != 'file' and file_kind is not None:
+                        keep_contents = False
+                        delete_merge_modified = False
+                    else:
+                        if (file_id in merge_modified and 
+                            merge_modified[file_id] == 
+                            working_tree.get_file_sha1(file_id)):
+                            keep_contents = False
+                            delete_merge_modified = True
+                        else:
+                            keep_contents = True
+                            delete_merge_modified = False
+                    if not keep_contents:
                         tt.delete_contents(trans_id)
+                    if delete_merge_modified:
                         del merge_modified[file_id]
         finally:
             child_pb.finished()

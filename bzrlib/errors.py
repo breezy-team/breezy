@@ -126,7 +126,12 @@ class BzrNewError(BzrError):
 
     def __str__(self):
         try:
-            return self.__doc__ % self.__dict__
+            # __str__() should always return a 'str' object
+            # never a 'unicode' object.
+            s = self.__doc__ % self.__dict__
+            if isinstance(s, unicode):
+                return s.encode('utf8')
+            return s
         except (NameError, ValueError, KeyError), e:
             return 'Unprintable exception %s: %s' \
                 % (self.__class__.__name__, str(e))
@@ -161,6 +166,7 @@ class InvalidRevisionNumber(BzrNewError):
 
 class InvalidRevisionId(BzrNewError):
     """Invalid revision-id {%(revision_id)s} in %(branch)s"""
+
     def __init__(self, revision_id, branch):
         # branch can be any string or object with __str__ defined
         BzrNewError.__init__(self)
@@ -197,7 +203,12 @@ class BzrCommandError(BzrNewError):
     # BzrCommandError, and non-UI code should not throw a subclass of
     # BzrCommandError.  ADHB 20051211
     def __init__(self, msg):
-        self.msg = msg
+        # Object.__str__() must return a real string
+        # returning a Unicode string is a python error.
+        if isinstance(msg, unicode):
+            self.msg = msg.encode('utf8')
+        else:
+            self.msg = msg
 
     def __str__(self):
         return self.msg
@@ -1096,8 +1107,25 @@ class MalformedFooter(BadBundle):
         BzrNewError.__init__(self)
         self.text = text
 
+
 class UnsupportedEOLMarker(BadBundle):
     """End of line marker was not \\n in bzr revision-bundle"""    
 
     def __init__(self):
-        BzrNewError.__init__(self)    
+        BzrNewError.__init__(self)
+
+
+class UnknownSSH(BzrNewError):
+    """Unrecognised value for BZR_SSH environment variable: %(vendor)s"""
+
+    def __init__(self, vendor):
+        BzrNewError.__init__(self)
+        self.vendor = vendor
+
+
+class GhostRevisionUnusableHere(BzrNewError):
+    """Ghost revision {%(revision_id)s} cannot be used here."""
+
+    def __init__(self, revision_id):
+        BzrNewError.__init__(self)
+        self.revision_id = revision_id

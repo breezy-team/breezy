@@ -316,17 +316,12 @@ added:
         rev_nos = {'1': 1, '2': 2, '3': 3}
         return mainline_revs, rev_nos, wt
 
-    def pseudo_merge(self, source, target):
-        revision_id = source.last_revision()
-        target.branch.fetch(source.branch, revision_id)
-        target.add_pending_merge(revision_id)
-
     def make_tree_with_merges(self):
         """Create a tree with well-known revision ids and a merge"""
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
         tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
         tree2.commit('four-a', rev_id='4a')
-        self.pseudo_merge(tree2, wt)
+        self.merge(tree2.branch, wt)
         wt.commit('four-b', rev_id='4b')
         mainline_revs.append('4b')
         rev_nos['4b'] = 4
@@ -340,12 +335,12 @@ added:
         tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
         tree3 = wt.bzrdir.sprout('tree3').open_workingtree()
         tree3.commit('commit three a', rev_id='3a')
-        self.pseudo_merge(tree3, tree2)
+        self.merge(tree3.branch, tree2)
         tree2.commit('commit three b', rev_id='3b')
-        self.pseudo_merge(tree2, wt)
+        self.merge(tree2.branch, wt)
         wt.commit('commit three c', rev_id='3c')
         tree2.commit('four-a', rev_id='4a')
-        self.pseudo_merge(tree2, wt)
+        self.merge(tree2.branch, wt)
         wt.commit('four-b', rev_id='4b')
         mainline_revs = [None, '1', '2', '3c', '4b']
         rev_nos = {'1': 1, '2': 2, '3c': 3, '4b': 4}

@@ -183,7 +183,7 @@ class Merger(object):
         ancestry = self.this_branch.repository.get_ancestry(self.this_basis)
         if self.other_rev_id in ancestry:
             return
-        self.this_tree.add_pending_merge(self.other_rev_id)
+        self.this_tree.add_parent_tree((self.other_rev_id, self.other_tree))
 
     def set_other(self, other_revision):
         other_branch, self.other_tree = _get_tree(other_revision, 
