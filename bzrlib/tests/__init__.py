@@ -1215,11 +1215,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
         try:
             return b.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            # new formats - catch No tree error and create
-            # a branch reference and a checkout.
-            # old formats at that point - raise TestSkipped.
-            # TODO: rbc 20060208
-            return WorkingTreeFormat2().initialize(bzrdir.BzrDir.open(relpath))
+            # We can only make working trees locally at the moment.  If the
+            # transport can't support them, then reopen the branch on a local
+            # transport, and create the working tree there.  
+            #
+            # Possibly we should instead keep
+            # the non-disk-backed branch and create a local checkout?
+            bd = bzrdir.BzrDir.open(relpath)
+            return bd.create_workingtree()
 
     def assertIsDirectory(self, relpath, transport):
         """Assert that relpath within transport is a directory.
