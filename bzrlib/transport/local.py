@@ -292,9 +292,10 @@ class LocalTransport(Transport):
         """
         path = self._abspath(relpath)
         try:
-            return [urlutils.escape(entry) for entry in os.listdir(path)]
+            entries = os.listdir(path)
         except (IOError, OSError), e:
             self._translate_error(e, path)
+        return [urlutils.escape(entry) for entry in entries]
 
     def stat(self, relpath):
         """Return the stat information for a file.

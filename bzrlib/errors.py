@@ -1115,6 +1115,14 @@ class UnsupportedEOLMarker(BadBundle):
         BzrNewError.__init__(self)
 
 
+class UnknownSSH(BzrNewError):
+    """Unrecognised value for BZR_SSH environment variable: %(vendor)s"""
+
+    def __init__(self, vendor):
+        BzrNewError.__init__(self)
+        self.vendor = vendor
+
+
 class GhostRevisionUnusableHere(BzrNewError):
     """Ghost revision {%(revision_id)s} cannot be used here."""
 
