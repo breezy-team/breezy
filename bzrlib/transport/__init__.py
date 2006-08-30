@@ -722,26 +722,37 @@ class Transport(object):
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
-        raise errors.TransportNotPossible("This transport has not "
+        raise errors.TransportNotPossible("Transport %r has not "
                                           "implemented list_dir "
                                           "(but must claim to be listable "
-                                          "to trigger this error).")
+                                          "to trigger this error)."
+                                          % (self))
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
-        WARNING: many transports do not support this, so trying avoid using it
+
+        WARNING: many transports do not support this, so trying avoid using it.
+        These methods may be removed in the future.
+
+        Transports may raise TransportNotPossible if OS-level locks cannot be
+        taken over this transport.  
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise NotImplementedError(self.lock_read)
+        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
-        WARNING: many transports do not support this, so trying avoid using it
+
+        WARNING: many transports do not support this, so trying avoid using it.
+        These methods may be removed in the future.
+
+        Transports may raise TransportNotPossible if OS-level locks cannot be
+        taken over this transport.
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise NotImplementedError(self.lock_write)
+        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
 
     def is_readonly(self):
         """Return true if this connection cannot be written to."""
