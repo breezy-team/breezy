@@ -433,6 +433,7 @@ class BundleTester(TestCaseWithTransport):
         """
         to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
         repository = to_tree.branch.repository
+        original_parents = to_tree.get_parent_ids()
         self.assertIs(repository.has_revision(base_rev_id), True)
         for rev in info.real_revisions:
             self.assert_(not repository.has_revision(rev.revision_id),
@@ -448,8 +449,8 @@ class BundleTester(TestCaseWithTransport):
         self.assert_(to_tree.branch.repository.has_revision(info.target))
         # Do we also want to verify that all the texts have been added?
 
-        self.assert_(info.target in to_tree.pending_merges())
-
+        self.assertEqual(original_parents + [info.target],
+            to_tree.get_parent_ids())
 
         rev = info.real_revisions[-1]
         base_tree = self.b1.repository.revision_tree(rev.revision_id)
