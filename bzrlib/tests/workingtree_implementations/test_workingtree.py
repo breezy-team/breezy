@@ -351,10 +351,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.commit('A', rev_id='A')
         wt.rename_one('foo', 'bar')
         wt.commit('B', rev_id='B')
-        wt.set_last_revision('B')
+        wt.set_parent_ids(['B'])
         tree = wt.basis_tree()
         self.failUnless(tree.has_filename('bar'))
-        wt.set_last_revision('A')
+        wt.set_parent_ids(['A'])
         tree = wt.basis_tree()
         self.failUnless(tree.has_filename('foo'))
 
@@ -518,7 +518,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # which should have pivoted the local tip into a merge
         self.assertEqual(master_tip, tree.last_revision())
         self.assertEqual([master_tip], tree.branch.revision_history())
-        self.assertEqual(['bar'], tree.pending_merges())
         self.assertEqual([master_tip, 'bar'], tree.get_parent_ids())
 
     def test_merge_modified(self):
@@ -663,5 +662,3 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 tree.add, [u'a\u030a'])
         finally:
             osutils.normalized_filename = orig
-
-

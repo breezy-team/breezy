@@ -432,6 +432,7 @@ class BundleTester(TestCaseWithTransport):
         sure everything matches the builtin branch.
         """
         to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
+        original_parents = to_tree.get_parent_ids()
         repository = to_tree.branch.repository
         original_parents = to_tree.get_parent_ids()
         self.assertIs(repository.has_revision(base_rev_id), True)

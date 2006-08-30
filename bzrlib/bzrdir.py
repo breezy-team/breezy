@@ -686,7 +686,7 @@ class BzrDirPreSplitOut(BzrDir):
         # done on this format anyway. So - acceptable wart.
         result = self.open_workingtree()
         if revision_id is not None:
-            result.set_last_revision(revision_id)
+            result.set_parent_ids([revision_id])
         return result
 
     def get_branch_transport(self, branch_format):

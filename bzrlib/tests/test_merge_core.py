@@ -50,8 +50,9 @@ class MergeBuilder(object):
         self.base_tt.apply()
         self.base.commit('base commit')
         for tt, wt in ((self.this_tt, self.this), (self.other_tt, self.other)):
+            # why does this not do wt.pull() ?
             wt.branch.pull(self.base.branch)
-            wt.set_last_revision(wt.branch.last_revision())
+            wt.set_parent_ids([wt.branch.last_revision()])
             tt.apply()
             wt.commit('branch commit')
             assert len(wt.branch.revision_history()) == 2
@@ -449,11 +450,10 @@ class FunctionalMergeTest(TestCaseWithTransport):
         b = wtb.branch
         file('b/b_file', 'wb').write('contents\n')
         wtb.add('b_file')
-        wtb.commit('b_revision', allow_pointless=False)
+        b_rev = wtb.commit('b_revision', allow_pointless=False)
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.lexists('a/b_file'))
-        self.assertEqual(wta.pending_merges(),
-                         [b.last_revision()]) 
+        self.assertEqual([b_rev], wta.get_parent_ids()[1:])
 
     def test_merge_unrelated_conflicting(self):
         """Sucessfully merges unrelated branches with common names"""
@@ -466,11 +466,11 @@ class FunctionalMergeTest(TestCaseWithTransport):
         b = wtb.branch
         file('b/file', 'wb').write('contents\n')
         wtb.add('file')
-        wtb.commit('b_revision', allow_pointless=False)
+        b_rev = wtb.commit('b_revision', allow_pointless=False)
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.lexists('a/file'))
         self.assert_(os.path.lexists('a/file.moved'))
-        self.assertEqual(wta.pending_merges(), [b.last_revision()])
+        self.assertEqual([b_rev], wta.get_parent_ids()[1:])
 
     def test_merge_deleted_conflicts(self):
         wta = self.make_branch_and_tree('a')
