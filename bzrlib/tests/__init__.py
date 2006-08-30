@@ -849,22 +849,19 @@ class TestCase(unittest.TestCase):
             The values must be strings. The change will only occur in the
             child, so you don't need to fix the environment after running.
         """
-        env_changes = kwargs.get('env_changes', None)
-        preexec_func = None
-        if env_changes:
-            def cleanup_environment():
-                for env_var, value in env_changes.iteritems():
-                    if value is None:
-                        del os.environ[env_var]
-                    else:
-                        os.environ[env_var] = value
-            preexec_func = cleanup_environment
+        env_changes = kwargs.get('env_changes', {})
+        def cleanup_environment():
+            for env_var, value in env_changes.iteritems():
+                if value is None:
+                    del os.environ[env_var]
+                else:
+                    os.environ[env_var] = value
 
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         args = list(args)
         process = Popen([sys.executable, bzr_path]+args,
                          stdout=PIPE, stderr=PIPE,
-                         preexec_fn=preexec_func)
+                         preexec_fn=cleanup_environment)
         out = process.stdout.read()
         err = process.stderr.read()
         retcode = process.wait()

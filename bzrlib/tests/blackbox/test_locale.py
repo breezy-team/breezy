@@ -42,11 +42,8 @@ class TestLocale(TestCaseWithTransport):
 
     def test_log_C(self):
         out, err = self.run_bzr_subprocess('--no-aliases', '--no-plugins',
-                                           '-q', 'log', '--log-format=long',
-                                           'tree',
-                                           env_changes={'LANG':'C',
-                                                  'BZR_PROGRESS_BAR':'none'}
-                                          )
+               '-q', 'log', '--log-format=long', 'tree',
+               env_changes={'LANG':'C', 'BZR_PROGRESS_BAR':'none'})
         self.assertEqual('', err)
         self.assertEqualDiff("""\
 ------------------------------------------------------------
@@ -60,11 +57,8 @@ message:
 
     def test_log_BOGUS(self):
         out, err = self.run_bzr_subprocess('--no-aliases', '--no-plugins',
-                                           '-q', 'log', '--log-format=long',
-                                           'tree',
-                                           env_changes={'LANG':'BOGUS',
-                                                  'BZR_PROGRESS_BAR':'none'}
-                                          )
+               '-q', 'log', '--log-format=long', 'tree',
+               env_changes={'LANG':'BOGUS', 'BZR_PROGRESS_BAR':'none'})
         # XXX: This depends on the exact formatting of a locale.Error
         # as the first part of the string. It may be a little tempermental
         self.assertEqualDiff("""\
