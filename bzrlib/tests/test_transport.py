@@ -168,7 +168,7 @@ class TestMemoryTransport(TestCase):
     def test_clone(self):
         transport = MemoryTransport()
         self.assertTrue(isinstance(transport, MemoryTransport))
-        self.assertEqual("memory:///", transport.clone("/"))
+        self.assertEqual("memory:///", transport.clone("/").base)
 
     def test_abspath(self):
         transport = MemoryTransport()

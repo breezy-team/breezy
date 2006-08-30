@@ -71,7 +71,7 @@ class MemoryTransport(Transport):
             return copy(self)
         segments = offset.split('/')
         if offset.startswith('/'):
-            cwdsegments = []
+            cwdsegments = ['']
         else:
             cwdsegments = self._cwd.split('/')[:-1]
         while len(segments):
@@ -82,7 +82,8 @@ class MemoryTransport(Transport):
                 if len(cwdsegments) > 1:
                     cwdsegments.pop()
                 continue
-            cwdsegments.append(segment)
+            if segment != '':
+                cwdsegments.append(segment)
         url = self.base[:self.base.find(':') + 3] + '/'.join(cwdsegments) + '/'
         result = MemoryTransport(url)
         result._dirs = self._dirs
