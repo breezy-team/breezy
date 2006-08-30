@@ -1172,20 +1172,18 @@ class TestCaseWithTransport(TestCaseInTempDir):
 
     def make_bzrdir(self, relpath, format=None):
         try:
-            url = self.get_url(relpath)
-            mutter('relpath %r => url %r', relpath, url)
-            segments = url.split('/')
+            # might be a relative or absolute path
+            maybe_a_url = self.get_url(relpath)
+            segments = maybe_a_url.split('/')
+            t = get_transport(maybe_a_url)
             if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
                 try:
-                    t.mkdir(segments[-1])
+                    t.mkdir('.')
                 except errors.FileExists:
                     pass
             if format is None:
-                format=bzrlib.bzrdir.BzrDirFormat.get_default_format()
-            # FIXME: make this use a single transport someday. RBC 20060418
-            return format.initialize_on_transport(get_transport(relpath))
+                format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+            return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
 

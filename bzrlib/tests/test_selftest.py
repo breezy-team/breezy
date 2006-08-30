@@ -38,6 +38,7 @@ from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
 from bzrlib import symbol_versioning
 from bzrlib.trace import note
+from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.version import _get_bzr_source_tree
 
 
@@ -461,6 +462,21 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertIsDirectory('a_dir', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'a_file', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'not_here', t)
+
+
+class TestTestCaseTransports(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestTestCaseTransports, self).setUp()
+        self.transport_server = MemoryServer
+
+    def test_make_bzrdir_preserves_transport(self):
+        t = self.get_transport()
+        result_bzrdir = self.make_bzrdir('subdir')
+        self.assertIsInstance(result_bzrdir.transport, 
+                              MemoryTransport)
+        # should not be on disk, should only be in memory
+        self.failIfExists('subdir')
 
 
 class TestChrootedTest(ChrootedTestCase):
