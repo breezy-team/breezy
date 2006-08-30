@@ -18,13 +18,8 @@
 """
 
 import os
-from bzrlib.errors import BoundBranchOutOfDate
 
-def test_remove(filename):
-    if os.path.exists(filename):
-        os.remove(filename)
-    else:
-        print '* file does not exist: %r' % filename
+from bzrlib.errors import BoundBranchOutOfDate
 
 
 def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
@@ -44,6 +39,8 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
         unlockable.append(branch)
 
         pending_merges = []
+        if tree is not None:
+            pending_merges = tree.pending_merges()
 
         master = branch.get_master_branch()
         if master is not None:
