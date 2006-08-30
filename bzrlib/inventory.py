@@ -1215,7 +1215,7 @@ class Inventory(object):
         return bool(self.path2id(names))
 
     def has_id(self, file_id):
-        return self._byid.has_key(file_id)
+        return file_id in self._byid
 
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.

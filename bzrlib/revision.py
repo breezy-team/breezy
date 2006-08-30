@@ -154,7 +154,7 @@ def find_present_ancestors(revision_id, revision_source):
     anc_iter = enumerate(iter_ancestors(revision_id, revision_source,
                          only_present=True))
     for anc_order, (anc_id, anc_distance) in anc_iter:
-        if not found_ancestors.has_key(anc_id):
+        if anc_id not in found_ancestors:
             found_ancestors[anc_id] = (anc_order, anc_distance)
     return found_ancestors
     

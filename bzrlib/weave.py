@@ -265,7 +265,7 @@ class Weave(VersionedFile):
 
     def has_version(self, version_id):
         """See VersionedFile.has_version."""
-        return self._name_map.has_key(version_id)
+        return version_id in self._name_map
 
     __contains__ = has_version
 
