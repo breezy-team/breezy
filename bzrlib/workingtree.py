@@ -657,6 +657,39 @@ class WorkingTree(bzrlib.tree.Tree):
         self._write_inventory(inv)
 
     @needs_write_lock
+    def add_parent_tree_id(self, revision_id, allow_leftmost_as_ghost=False):
+        """Add revision_id as a parent.
+
+        This is equivalent to retrieving the current list of parent ids
+        and setting the list to its value plus revision_id.
+
+        :param revision_id: The revision id to add to the parent list. It may
+        be a ghost revision as long as its not the first parent to be added,
+        or the allow_leftmost_as_ghost parameter is set True.
+        :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
+        """
+        parents = self.get_parent_ids() + [revision_id]
+        self.set_parent_ids(parents,
+            allow_leftmost_as_ghost=len(parents) > 1 or allow_leftmost_as_ghost)
+
+    @needs_write_lock
+    def add_parent_tree(self, parent_tuple, allow_leftmost_as_ghost=False):
+        """Add revision_id, tree tuple as a parent.
+
+        This is equivalent to retrieving the current list of parent trees
+        and setting the list to its value plus parent_tuple. See also
+        add_parent_tree_id - if you only have a parent id available it will be
+        simpler to use that api. If you have the parent already available, using
+        this api is preferred.
+
+        :param parent_tuple: The (revision id, tree) to add to the parent list.
+            If the revision_id is a ghost, pass None for the tree.
+        :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
+        """
+        self.set_parent_ids(self.get_parent_ids() + [parent_tuple[0]],
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
+    @needs_write_lock
     def add_pending_merge(self, *revision_ids):
         # TODO: Perhaps should check at this point that the
         # history of the revision is actually present?
@@ -688,6 +721,48 @@ class WorkingTree(bzrlib.tree.Tree):
         for l in merges_file.readlines():
             p.append(l.rstrip('\n'))
         return p
+
+    @needs_write_lock
+    def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
+        """Set the parent ids to revision_ids.
+        
+        See also set_parent_trees. This api will try to retrieve the tree data
+        for each element of revision_ids from the trees repository. If you have
+        tree data already available, it is more efficient to use
+        set_parent_trees rather than set_parent_ids. set_parent_ids is however
+        an easier API to use.
+
+        :param revision_ids: The revision_ids to set as the parent ids of this
+            working tree. Any of these may be ghosts.
+        """
+        trees = []
+        for rev_id in revision_ids:
+            try:
+                trees.append(
+                    (rev_id, self.branch.repository.revision_tree(rev_id)))
+            except errors.RevisionNotPresent:
+                trees.append((rev_id, None))
+        self.set_parent_trees(trees,
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
+    @needs_write_lock
+    def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
+        """Set the parents of the working tree.
+
+        :param parents_list: A list of (revision_id, tree) tuples. 
+            If tree is None, then that element is treated as an unreachable
+            parent tree - i.e. a ghost.
+        """
+        if len(parents_list) > 0:
+            leftmost_id = parents_list[0][0]
+            if (not allow_leftmost_as_ghost and not
+                self.branch.repository.has_revision(leftmost_id)):
+                raise errors.GhostRevisionUnusableHere(leftmost_id)
+            self.set_last_revision(leftmost_id)
+        else:
+            self.set_last_revision(None)
+        merges = parents_list[1:]
+        self.set_pending_merges([revid for revid, tree in merges])
 
     @needs_write_lock
     def set_pending_merges(self, rev_list):
@@ -1184,8 +1259,8 @@ class WorkingTree(bzrlib.tree.Tree):
         for regex, mapping in rules:
             match = regex.match(filename)
             if match is not None:
-                # one or more of the groups in mapping will have a non-None group 
-                # match.
+                # one or more of the groups in mapping will have a non-None
+                # group match.
                 groups = match.groups()
                 rules = [mapping[group] for group in 
                     mapping if groups[group] is not None]
