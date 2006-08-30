@@ -253,7 +253,6 @@ class Transport(object):
         else:
             pumpfile(from_file, to_file)
 
-
     def _get_total(self, multi):
         """Try to figure out how many entries are in multi,
         but if not possible, return None.

@@ -499,6 +499,7 @@ class HttpServer(Server):
 
     # Subclasses can provide a specific request handler
     def __init__(self, request_handler=TestingHTTPRequestHandler):
+        Server.__init__(self)
         self.request_handler = request_handler
 
     def _http_start(self):
