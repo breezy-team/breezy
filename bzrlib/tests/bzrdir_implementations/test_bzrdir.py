@@ -33,6 +33,7 @@ from bzrlib.errors import (FileExists,
                            NotBranchError,
                            )
 import bzrlib.repository as repository
+import bzrlib.revision
 from bzrlib.tests import (
                           ChrootedTestCase,
                           TestCase,
@@ -141,6 +142,13 @@ class TestBzrDir(TestCaseWithBzrDir):
         except errors.NotLocalUrl:
             raise TestSkipped('Cannot sprout to remote bzrdirs.')
         return target
+
+    def test_create_null_workingtree(self):
+        dir = self.make_bzrdir('dir1')
+        dir.create_repository()
+        dir.create_branch()
+        wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
+        self.assertIs(wt.last_revision(), None)
 
     def test_clone_bzrdir_empty(self):
         dir = self.make_bzrdir('source')
