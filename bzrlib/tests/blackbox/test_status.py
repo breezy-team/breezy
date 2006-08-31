@@ -102,7 +102,7 @@ class BranchStatus(TestCaseWithTransport):
         wt.add('bye.c')
         wt.commit('Test message')
 
-        revs = [RevisionSpec(0)]
+        revs = [RevisionSpec.from_string('0')]
         self.assertStatus([
                 'added:\n',
                 '  bye.c\n',
@@ -115,7 +115,7 @@ class BranchStatus(TestCaseWithTransport):
         wt.add('more.c')
         wt.commit('Another test message')
         
-        revs.append(RevisionSpec(1))
+        revs.append(RevisionSpec.from_string('1'))
         self.assertStatus([
                 'added:\n',
                 '  bye.c\n',
