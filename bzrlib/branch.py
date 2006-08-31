@@ -1248,7 +1248,7 @@ class BzrBranch(Branch):
                         "use bzrlib.urlutils.escape")
                     
             url = urlutils.relative_url(self.base, url)
-            self.control_files.put('parent', url + '\n')
+            self.control_files.put('parent', StringIO(url + '\n'))
 
     @deprecated_function(zero_nine)
     def tree_config(self):
