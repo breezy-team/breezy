@@ -717,7 +717,9 @@ class TestCase(unittest.TestCase):
         mutter(*args)
 
     def _get_log(self, keep_log_file=False):
-        """Return as a string the log for this test"""
+        """Return as a string the log for this test. If the file is still
+        on disk and keep_log_file=False, delete the log file and store the
+        content in self._log_contents."""
         # flush the log file, to get all content
         import bzrlib.trace
         bzrlib.trace._trace_file.flush()
