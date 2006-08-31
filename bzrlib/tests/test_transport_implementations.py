@@ -543,9 +543,11 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('adir')
         t.mkdir('adir/bdir')
         t.rmdir('adir/bdir')
-        self.assertRaises(PathError, t.rmdir, 'adir/bdir')
+        # ftp may not be able to raise NoSuchFile for lack of
+        # details when failing
+        self.assertRaises((NoSuchFile, PathError), t.rmdir, 'adir/bdir')
         t.rmdir('adir')
-        self.assertRaises(PathError, t.rmdir, 'adir')
+        self.assertRaises((NoSuchFile, PathError), t.rmdir, 'adir')
 
     def test_rmdir_not_empty(self):
         """Deleting a non-empty directory raises an exception
