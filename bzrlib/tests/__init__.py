@@ -1147,7 +1147,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
         if relpath is not None and relpath != '.':
             if not base.endswith('/'):
                 base = base + '/'
-            base = base + urlutils.escape(relpath)
+            # XXX: Really base should be a url; we did after all call
+            # get_url()!  But sometimes it's just a path (from
+            # LocalAbspathServer), and it'd be wrong to append urlescaped data
+            # to a non-escaped local path.
+            if base.startswith('./') or base.startswith('/'):
+                base += relpath
+            else:
+                base += urlutils.escape(relpath)
         return base
 
     def get_transport(self):
