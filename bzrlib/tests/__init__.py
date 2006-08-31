@@ -797,7 +797,7 @@ class TestCase(unittest.TestCase):
         return self.run_bzr_captured(args, retcode=retcode, encoding=encoding, stdin=stdin)
 
     def run_bzr_decode(self, *args, **kwargs):
-        if kwargs.has_key('encoding'):
+        if 'encoding' in kwargs:
             encoding = kwargs['encoding']
         else:
             encoding = bzrlib.user_encoding
@@ -842,12 +842,25 @@ class TestCase(unittest.TestCase):
         profiled or debugged so easily.
 
         :param retcode: The status code that is expected.  Defaults to 0.  If
-        None is supplied, the status code is not checked.
+            None is supplied, the status code is not checked.
+        :param env_changes: A dictionary which lists changes to environment
+            variables. A value of None will unset the env variable.
+            The values must be strings. The change will only occur in the
+            child, so you don't need to fix the environment after running.
         """
+        env_changes = kwargs.get('env_changes', {})
+        def cleanup_environment():
+            for env_var, value in env_changes.iteritems():
+                if value is None:
+                    del os.environ[env_var]
+                else:
+                    os.environ[env_var] = value
+
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         args = list(args)
-        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
-                         stderr=PIPE)
+        process = Popen([sys.executable, bzr_path]+args,
+                         stdout=PIPE, stderr=PIPE,
+                         preexec_fn=cleanup_environment)
         out = process.stdout.read()
         err = process.stderr.read()
         retcode = process.wait()
@@ -919,10 +932,10 @@ class TestCase(unittest.TestCase):
         base_rev = common_ancestor(branch_from.last_revision(),
                                    wt_to.branch.last_revision(),
                                    wt_to.branch.repository)
-        merge_inner(wt_to.branch, branch_from.basis_tree(), 
+        merge_inner(wt_to.branch, branch_from.basis_tree(),
                     wt_to.branch.repository.revision_tree(base_rev),
                     this_tree=wt_to)
-        wt_to.add_pending_merge(branch_from.last_revision())
+        wt_to.add_parent_tree_id(branch_from.last_revision())
 
 
 BzrTestBase = TestCase
@@ -1360,6 +1373,7 @@ def test_suite():
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_repository',
+                   'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revisiontree',

@@ -64,7 +64,7 @@ def register_command(cmd, decorate=False):
         k_unsquished = _unsquish_command_name(k)
     else:
         k_unsquished = k
-    if not plugin_cmds.has_key(k_unsquished):
+    if k_unsquished not in plugin_cmds:
         plugin_cmds[k_unsquished] = cmd
         mutter('registered plugin command %s', k_unsquished)
         if decorate and k_unsquished in builtin_command_names():

@@ -271,7 +271,8 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
         self._test_vendor = vendor
 
     def test_connection_paramiko(self):
-        self.set_vendor('none')
+        from bzrlib.transport import ssh
+        self.set_vendor(ssh.ParamikoVendor())
         t = self.get_transport()
         self.assertEqual('foobar\n', t.get('a_file').read())
 
@@ -296,9 +297,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
         super(SSHVendorBadConnection, self).setUp()
-        import bzrlib.transport.sftp
-
-        self._transport_sftp = bzrlib.transport.sftp
+        import bzrlib.transport.ssh
 
         # open a random port, so we know nobody else is using it
         # but don't actually listen on the port.
@@ -306,18 +305,20 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         s.bind(('localhost', 0))
         self.bogus_url = 'sftp://%s:%s/' % s.getsockname()
 
-        orig_vendor = bzrlib.transport.sftp._ssh_vendor
+        orig_vendor = bzrlib.transport.ssh._ssh_vendor
         def reset():
-            bzrlib.transport.sftp._ssh_vendor = orig_vendor
+            bzrlib.transport.ssh._ssh_vendor = orig_vendor
             s.close()
         self.addCleanup(reset)
 
     def set_vendor(self, vendor):
-        self._transport_sftp._ssh_vendor = vendor
+        import bzrlib.transport.ssh
+        bzrlib.transport.ssh._ssh_vendor = vendor
 
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error"""
-        self.set_vendor('none')
+        from bzrlib.transport import ssh
+        self.set_vendor(ssh.ParamikoVendor())
         self.assertRaises(errors.ConnectionError,
                           bzrlib.transport.get_transport, self.bogus_url)
 

@@ -29,8 +29,10 @@ class TestStatus(TestCaseWithTransport):
         tree = self.make_branch_and_tree('a')
         tree.commit('empty commit')
         tree2 = self.make_branch_and_tree('b')
-        tree2.branch.fetch(tree.branch)
-        tree2.set_pending_merges([tree.last_revision()])
+        # set a left most parent
+        tree2.add_parent_tree_id('some-ghost', allow_leftmost_as_ghost=True)
+        # do a merge
+        self.merge(tree.branch, tree2)
         output = StringIO()
         show_pending_merges(tree2, output)
         self.assertContainsRe(output.getvalue(), 'empty commit')
