@@ -117,7 +117,7 @@ class MemoryTransport(Transport):
     def has(self, relpath):
         """See Transport.has()."""
         _abspath = self._abspath(relpath)
-        return _abspath in self._files or _abspath in self._dirs
+        return (_abspath in self._files) or (_abspath in self._dirs)
 
     def delete(self, relpath):
         """See Transport.delete()."""

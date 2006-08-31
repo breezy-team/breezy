@@ -33,6 +33,7 @@ from bzrlib.errors import (FileExists,
                            NotBranchError,
                            )
 import bzrlib.repository as repository
+import bzrlib.revision
 from bzrlib.tests import (
                           ChrootedTestCase,
                           TestCase,
@@ -142,6 +143,13 @@ class TestBzrDir(TestCaseWithBzrDir):
             raise TestSkipped('Cannot sprout to remote bzrdirs.')
         return target
 
+    def test_create_null_workingtree(self):
+        dir = self.make_bzrdir('dir1')
+        dir.create_repository()
+        dir.create_branch()
+        wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
+        self.assertIs(wt.last_revision(), None)
+
     def test_clone_bzrdir_empty(self):
         dir = self.make_bzrdir('source')
         target = dir.clone(self.get_url('target'))
@@ -199,7 +207,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
-        tree.set_last_revision(None)
+        tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         tree.bzrdir.open_repository().copy_content_into(shared_repo)
         dir = self.make_bzrdir('shared/source')
@@ -219,7 +227,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
-        tree.set_last_revision(None)
+        tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         tree.bzrdir.open_repository().copy_content_into(shared_repo)
         shared_repo.set_make_working_trees(False)
@@ -264,7 +272,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
-        tree.set_last_revision(None)
+        tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
         tree.bzrdir.open_repository().copy_content_into(source)
@@ -519,7 +527,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
-        tree.set_last_revision(None)
+        tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
         tree.bzrdir.open_repository().copy_content_into(source)
@@ -542,7 +550,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
-        tree.set_last_revision(None)
+        tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         tree.bzrdir.open_repository().copy_content_into(shared_repo)
         dir = self.make_bzrdir('shared/source')
@@ -562,7 +570,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
-        tree.set_last_revision(None)
+        tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         tree.bzrdir.open_repository().copy_content_into(shared_repo)
         shared_repo.set_make_working_trees(False)
@@ -584,7 +592,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
-        tree.set_last_revision(None)
+        tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
         tree.bzrdir.open_repository().copy_content_into(source)
@@ -608,7 +616,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
         tree.bzrdir.open_branch().set_revision_history([])
-        tree.set_last_revision(None)
+        tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
         tree.bzrdir.open_repository().copy_content_into(source)

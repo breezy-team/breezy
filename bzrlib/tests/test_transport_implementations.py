@@ -775,6 +775,20 @@ class TransportTests(TestTransportImplementation):
         self.assertListRaises(PathError, t.list_dir, 'c/f')
         self.assertListRaises(PathError, t.list_dir, 'a')
 
+    def test_list_dir_result_is_url_escaped(self):
+        t = self.get_transport()
+        if not t.listable():
+            raise TestSkipped("transport not listable")
+
+        if not t.is_readonly():
+            self.build_tree(['a/', 'a/%'], transport=t)
+        else:
+            self.build_tree(['a/', 'a/%'])
+        
+        names = list(t.list_dir('a'))
+        self.assertEqual(['%25'], names)
+        self.assertIsInstance(names[0], str)
+
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem
         t1 = self.get_transport()
