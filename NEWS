@@ -3,6 +3,10 @@ IN DEVELOPMENT
   IMPROVEMENTS:
 
   BUG FIXES:
+
+    * Handle boundary="" lines properly to allow access through a Squid proxy.
+      (John Arbash Meinel, #57723)
+
     * revert now removes newly-added directories (Aaron Bentley, #54172)
 
     * ``bzr upgrade sftp://`` shouldn't fail to upgrade v6 branches if there 
