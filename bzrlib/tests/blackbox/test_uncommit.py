@@ -25,6 +25,7 @@ from bzrlib.tests import TestCaseWithTransport
 
 
 class TestUncommit(TestCaseWithTransport):
+
     def create_simple_tree(self):
         wt = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/c'])
@@ -90,19 +91,20 @@ class TestUncommit(TestCaseWithTransport):
         a = BzrDirMetaFormat1().initialize('a')
         a.create_repository()
         a.create_branch()
-        t = a.create_workingtree()
-        t.commit('commit 1')
-        t.commit('commit 2')
-        t.commit('commit 3')
-        b = t.bzrdir.sprout('b').open_branch()
-        b.bind(t.branch)
+        t_a = a.create_workingtree()
+        t_a.commit('commit 1')
+        t_a.commit('commit 2')
+        t_a.commit('commit 3')
+        b = t_a.bzrdir.sprout('b').open_branch()
+        b.bind(t_a.branch)
         uncommit.uncommit(b)
-        t.set_last_revision(t.branch.last_revision())
         self.assertEqual(len(b.revision_history()), 2)
-        self.assertEqual(len(t.branch.revision_history()), 2)
-        t.commit('commit 3b')
+        self.assertEqual(len(t_a.branch.revision_history()), 2)
+        # update A's tree to not have the uncomitted revision referenced.
+        t_a.update()
+        t_a.commit('commit 3b')
         self.assertRaises(BoundBranchOutOfDate, uncommit.uncommit, b)
-        b.pull(t.branch)
+        b.pull(t_a.branch)
         uncommit.uncommit(b)
 
     def test_uncommit_revision(self):
@@ -130,20 +132,52 @@ class TestUncommit(TestCaseWithTransport):
         tree2.commit('unchanged', rev_id='b3')
         tree2.commit('unchanged', rev_id='b4')
 
-        wt.branch.fetch(tree2.branch)
-        wt.set_pending_merges(['b4'])
+        self.merge(tree2.branch, wt)
         wt.commit('merge b4', rev_id='a3')
 
-        self.assertEqual('a3', wt.last_revision())
-        self.assertEqual([], wt.pending_merges())
+        self.assertEqual(['a3'], wt.get_parent_ids())
 
         os.chdir('tree')
         out, err = self.run_bzr('uncommit', '--force')
 
-        self.assertEqual('a2', wt.last_revision())
-        self.assertEqual(['b4'], wt.pending_merges())
+        self.assertEqual(['a2', 'b4'], wt.get_parent_ids())
+
+    def test_uncommit_pending_merge(self):
+        wt = self.create_simple_tree()
+        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
+        tree2.commit('unchanged', rev_id='b3')
+
+        wt.branch.fetch(tree2.branch)
+        wt.set_pending_merges(['b3'])
+
+        os.chdir('tree')
+        out, err = self.run_bzr('uncommit', '--force')
+        self.assertEqual('a1', wt.last_revision())
+        self.assertEqual(['b3'], wt.pending_merges())
 
     def test_uncommit_multiple_merge(self):
+        wt = self.create_simple_tree()
+
+        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
+
+        tree2.commit('unchanged', rev_id='b3')
+
+        self.merge(tree2.branch, wt)
+        wt.commit('merge b3', rev_id='a3')
+
+        tree2.commit('unchanged', rev_id='b4')
+
+        self.merge(tree2.branch, wt)
+        wt.commit('merge b4', rev_id='a4')
+
+        self.assertEqual(['a4'], wt.get_parent_ids())
+
+        os.chdir('tree')
+        out, err = self.run_bzr('uncommit', '--force', '-r', '2')
+
+        self.assertEqual(['a2', 'b3', 'b4'], wt.get_parent_ids())
+
+    def test_uncommit_merge_plus_pending(self):
         wt = self.create_simple_tree()
 
         tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
@@ -156,10 +190,9 @@ class TestUncommit(TestCaseWithTransport):
         tree2.commit('unchanged', rev_id='b4')
         wt.branch.fetch(tree2.branch)
         wt.set_pending_merges(['b4'])
-        wt.commit('merge b4', rev_id='a4')
 
-        self.assertEqual('a4', wt.last_revision())
-        self.assertEqual([], wt.pending_merges())
+        self.assertEqual('a3', wt.last_revision())
+        self.assertEqual(['b4'], wt.pending_merges())
 
         os.chdir('tree')
         out, err = self.run_bzr('uncommit', '--force', '-r', '2')
@@ -176,23 +209,21 @@ class TestUncommit(TestCaseWithTransport):
 
         tree2.commit('unchanged', rev_id='b3')
         tree3.commit('unchanged', rev_id='c3')
-        wt.branch.fetch(tree2.branch)
-        wt.branch.fetch(tree3.branch)
-        wt.set_pending_merges(['b3', 'c3'])
+        
+        self.merge(tree2.branch, wt)
+        self.merge(tree3.branch, wt)
         wt.commit('merge b3, c3', rev_id='a3')
 
         tree2.commit('unchanged', rev_id='b4')
         tree3.commit('unchanged', rev_id='c4')
-        wt.branch.fetch(tree2.branch)
-        wt.branch.fetch(tree3.branch)
-        wt.set_pending_merges(['c4', 'b4'])
+
+        self.merge(tree3.branch, wt)
+        self.merge(tree2.branch, wt)
         wt.commit('merge b4, c4', rev_id='a4')
 
-        self.assertEqual('a4', wt.last_revision())
-        self.assertEqual([], wt.pending_merges())
+        self.assertEqual(['a4'], wt.get_parent_ids())
 
         os.chdir('tree')
         out, err = self.run_bzr('uncommit', '--force', '-r', '2')
 
-        self.assertEqual('a2', wt.last_revision())
-        self.assertEqual(['b3', 'c3', 'c4', 'b4'], wt.pending_merges())
+        self.assertEqual(['a2', 'b3', 'c3', 'c4', 'b4'], wt.get_parent_ids())

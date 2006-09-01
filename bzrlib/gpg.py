@@ -24,6 +24,7 @@ import subprocess
 from bzrlib import (
     errors,
     trace,
+    ui,
     )
 
 
@@ -70,6 +71,7 @@ class GPGStrategy(object):
         self._config = config
 
     def sign(self, content):
+        ui.ui_factory.clear_term()
         try:
             process = subprocess.Popen(self._command_line(),
                                        stdin=subprocess.PIPE,

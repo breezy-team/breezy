@@ -235,7 +235,7 @@ class cmd_revision_info(Command):
             revs.extend(revision)
         if revision_info_list is not None:
             for rev in revision_info_list:
-                revs.append(RevisionSpec(rev))
+                revs.append(RevisionSpec.from_string(rev))
         if len(revs) == 0:
             raise BzrCommandError('You must supply a revision identifier')
 
@@ -274,18 +274,37 @@ class cmd_add(Command):
 
     --dry-run will show which files would be added, but not actually 
     add them.
+
+    --file-ids-from will try to use the file ids from the supplied path.
+    It looks up ids trying to find a matching parent directory with the
+    same filename, and then by pure path.
     """
     takes_args = ['file*']
-    takes_options = ['no-recurse', 'dry-run', 'verbose']
+    takes_options = ['no-recurse', 'dry-run', 'verbose',
+                     Option('file-ids-from', type=unicode,
+                            help='Lookup file ids from here')]
     encoding_type = 'replace'
 
-    def run(self, file_list, no_recurse=False, dry_run=False, verbose=False):
+    def run(self, file_list, no_recurse=False, dry_run=False, verbose=False,
+            file_ids_from=None):
         import bzrlib.add
 
-        action = bzrlib.add.AddAction(to_file=self.outf,
-            should_print=(not is_quiet()))
+        if file_ids_from is not None:
+            try:
+                base_tree, base_path = WorkingTree.open_containing(
+                                            file_ids_from)
+            except errors.NoWorkingTree:
+                base_branch, base_path = branch.Branch.open_containing(
+                                            file_ids_from)
+                base_tree = base_branch.basis_tree()
 
-        added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
+            action = bzrlib.add.AddFromBaseAction(base_tree, base_path,
+                          to_file=self.outf, should_print=(not is_quiet()))
+        else:
+            action = bzrlib.add.AddAction(to_file=self.outf,
+                should_print=(not is_quiet()))
+
+        added, ignored = bzrlib.add.smart_add(file_list, not no_recurse,
                                               action=action, save=not dry_run)
         if len(ignored) > 0:
             if verbose:
@@ -803,9 +822,9 @@ class cmd_update(Command):
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_write()
-        existing_pending_merges = tree.pending_merges()
         try:
-            last_rev = tree.last_revision() 
+            existing_pending_merges = tree.pending_merges()
+            last_rev = tree.last_revision()
             if last_rev == tree.branch.last_revision():
                 # may be up to date, check master too.
                 master = tree.branch.get_master_branch()
@@ -1966,17 +1985,24 @@ class cmd_selftest(Command):
                 test_suite_factory = benchmarks.test_suite
                 if verbose is None:
                     verbose = True
+                benchfile = open(".perf_history", "at")
             else:
                 test_suite_factory = None
                 if verbose is None:
                     verbose = False
-            result = selftest(verbose=verbose, 
-                              pattern=pattern,
-                              stop_on_failure=one, 
-                              keep_output=keep_output,
-                              transport=transport,
-                              test_suite_factory=test_suite_factory,
-                              lsprof_timed=lsprof_timed)
+                benchfile = None
+            try:
+                result = selftest(verbose=verbose, 
+                                  pattern=pattern,
+                                  stop_on_failure=one, 
+                                  keep_output=keep_output,
+                                  transport=transport,
+                                  test_suite_factory=test_suite_factory,
+                                  lsprof_timed=lsprof_timed,
+                                  bench_history=benchfile)
+            finally:
+                if benchfile is not None:
+                    benchfile.close()
             if result:
                 info('tests passed')
             else:
@@ -1986,54 +2012,12 @@ class cmd_selftest(Command):
             ui.ui_factory = save_ui
 
 
-def _get_bzr_branch():
-    """If bzr is run from a branch, return Branch or None"""
-    from os.path import dirname
-    
-    try:
-        branch = Branch.open(dirname(osutils.abspath(dirname(__file__))))
-        return branch
-    except errors.BzrError:
-        return None
-    
-
-def show_version():
-    import bzrlib
-    print "Bazaar (bzr) %s" % bzrlib.__version__
-    # is bzrlib itself in a branch?
-    branch = _get_bzr_branch()
-    if branch:
-        rh = branch.revision_history()
-        revno = len(rh)
-        print "  bzr checkout, revision %d" % (revno,)
-        print "  nick: %s" % (branch.nick,)
-        if rh:
-            print "  revid: %s" % (rh[-1],)
-    print "Using python interpreter:", sys.executable
-    import site
-    print "Using python standard library:", os.path.dirname(site.__file__)
-    print "Using bzrlib:",
-    if len(bzrlib.__path__) > 1:
-        # print repr, which is a good enough way of making it clear it's
-        # more than one element (eg ['/foo/bar', '/foo/bzr'])
-        print repr(bzrlib.__path__)
-    else:
-        print bzrlib.__path__[0]
-
-    print
-    print bzrlib.__copyright__
-    print "http://bazaar-vcs.org/"
-    print
-    print "bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and"
-    print "you may use, modify and redistribute it under the terms of the GNU"
-    print "General Public License version 2 or later."
-
-
 class cmd_version(Command):
     """Show version of bzr."""
 
     @display_command
     def run(self):
+        from bzrlib.version import show_version
         show_version()
 
 
@@ -2264,16 +2248,16 @@ class cmd_remerge(Command):
         tree, file_list = tree_files(file_list)
         tree.lock_write()
         try:
-            pending_merges = tree.pending_merges() 
-            if len(pending_merges) != 1:
+            parents = tree.get_parent_ids()
+            if len(parents) != 2:
                 raise BzrCommandError("Sorry, remerge only works after normal"
                                       " merges.  Not cherrypicking or"
                                       " multi-merges.")
             repository = tree.branch.repository
-            base_revision = common_ancestor(tree.branch.last_revision(), 
-                                            pending_merges[0], repository)
+            base_revision = common_ancestor(parents[0],
+                                            parents[1], repository)
             base_tree = repository.revision_tree(base_revision)
-            other_tree = repository.revision_tree(pending_merges[0])
+            other_tree = repository.revision_tree(parents[1])
             interesting_ids = None
             new_conflicts = []
             conflicts = tree.conflicts()
@@ -2303,9 +2287,9 @@ class cmd_remerge(Command):
                     pass
             conflicts = merge_inner(tree.branch, other_tree, base_tree,
                                     this_tree=tree,
-                                    interesting_ids=interesting_ids, 
-                                    other_rev_id=pending_merges[0], 
-                                    merge_type=merge_type, 
+                                    interesting_ids=interesting_ids,
+                                    other_rev_id=parents[1],
+                                    merge_type=merge_type,
                                     show_base=show_base,
                                     reprocess=reprocess)
         finally:
@@ -2509,7 +2493,8 @@ class cmd_plugins(Command):
 
 class cmd_testament(Command):
     """Show testament (signing-form) of a revision."""
-    takes_options = ['revision', 'long', 
+    takes_options = ['revision', 
+                     Option('long', help='Produce long-format testament'), 
                      Option('strict', help='Produce a strict-format'
                             ' testament')]
     takes_args = ['branch?']

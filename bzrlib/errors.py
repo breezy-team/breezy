@@ -130,7 +130,12 @@ class BzrNewError(BzrError):
 
     def __str__(self):
         try:
-            return self.__doc__ % self.__dict__
+            # __str__() should always return a 'str' object
+            # never a 'unicode' object.
+            s = self.__doc__ % self.__dict__
+            if isinstance(s, unicode):
+                return s.encode('utf8')
+            return s
         except (NameError, ValueError, KeyError), e:
             return 'Unprintable exception %s: %s' \
                 % (self.__class__.__name__, str(e))
@@ -165,6 +170,7 @@ class InvalidRevisionNumber(BzrNewError):
 
 class InvalidRevisionId(BzrNewError):
     """Invalid revision-id {%(revision_id)s} in %(branch)s"""
+
     def __init__(self, revision_id, branch):
         # branch can be any string or object with __str__ defined
         BzrNewError.__init__(self)
@@ -201,7 +207,12 @@ class BzrCommandError(BzrNewError):
     # BzrCommandError, and non-UI code should not throw a subclass of
     # BzrCommandError.  ADHB 20051211
     def __init__(self, msg):
-        self.msg = msg
+        # Object.__str__() must return a real string
+        # returning a Unicode string is a python error.
+        if isinstance(msg, unicode):
+            self.msg = msg.encode('utf8')
+        else:
+            self.msg = msg
 
     def __str__(self):
         return self.msg
@@ -498,7 +509,6 @@ class UpToDateFormat(BzrNewError):
         self.format = format
 
 
-
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
@@ -509,8 +519,26 @@ class NoSuchRevision(BzrNewError):
     is_user_error = False
 
     def __init__(self, branch, revision):
-        self.branch = branch
-        self.revision = revision
+        BzrNewError.__init__(self, branch=branch, revision=revision)
+
+
+class NoSuchRevisionSpec(BzrNewError):
+    """No namespace registered for string: %(spec)r"""
+
+    def __init__(self, spec):
+        BzrNewError.__init__(self, spec=spec)
+
+
+class InvalidRevisionSpec(BzrNewError):
+    """Requested revision: '%(spec)s' does not exist in branch:
+%(branch)s%(extra)s"""
+
+    def __init__(self, spec, branch, extra=None):
+        BzrNewError.__init__(self, branch=branch, spec=spec)
+        if extra:
+            self.extra = '\n' + str(extra)
+        else:
+            self.extra = ''
 
 
 class HistoryMissing(BzrError):
@@ -579,10 +607,11 @@ class AmbiguousBase(BzrError):
         self.bases = bases
 
 
-class NoCommits(BzrError):
+class NoCommits(BzrNewError):
+    """Branch %(branch)s has no commits."""
+
     def __init__(self, branch):
-        msg = "Branch %s has no commits." % branch
-        BzrError.__init__(self, msg)
+        BzrNewError.__init__(self, branch=branch)
 
 
 class UnlistableStore(BzrError):
@@ -1100,8 +1129,25 @@ class MalformedFooter(BadBundle):
         BzrNewError.__init__(self)
         self.text = text
 
+
 class UnsupportedEOLMarker(BadBundle):
     """End of line marker was not \\n in bzr revision-bundle"""    
 
     def __init__(self):
-        BzrNewError.__init__(self)    
+        BzrNewError.__init__(self)
+
+
+class UnknownSSH(BzrNewError):
+    """Unrecognised value for BZR_SSH environment variable: %(vendor)s"""
+
+    def __init__(self, vendor):
+        BzrNewError.__init__(self)
+        self.vendor = vendor
+
+
+class GhostRevisionUnusableHere(BzrNewError):
+    """Ghost revision {%(revision_id)s} cannot be used here."""
+
+    def __init__(self, revision_id):
+        BzrNewError.__init__(self)
+        self.revision_id = revision_id
