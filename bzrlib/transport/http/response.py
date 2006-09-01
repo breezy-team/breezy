@@ -138,7 +138,7 @@ class HttpRangeResponse(RangeFile):
 
     # TODO: jam 20060706 Consider compiling these regexes on demand
     _CONTENT_RANGE_RE = re.compile(
-        '\s*([^\s]+)\s+([0-9]+)-([0-9]+)/([0-9]+)\s*$')
+        r'\s*([^\s]+)\s+([0-9]+)-([0-9]+)/([0-9]+)\s*$')
 
     def __init__(self, path, content_range, input_file):
         # mutter("parsing 206 non-multipart response for %s", path)
@@ -179,7 +179,7 @@ class HttpMultipartRangeResponse(RangeFile):
     """A multi-range HTTP response."""
     
     _CONTENT_TYPE_RE = re.compile(
-        '^\s*multipart/byteranges\s*;\s*boundary\s*=\s*(.*?)\s*$')
+        r'^\s*multipart/byteranges\s*;\s*boundary\s*=\s*("?)([^"]*?)\1\s*$')
     
     # Start with --<boundary>\r\n
     # and ignore all headers ending in \r\n
@@ -221,10 +221,7 @@ class HttpMultipartRangeResponse(RangeFile):
             raise errors.InvalidHttpContentType(path, ctype,
                     "Expected multipart/byteranges with boundary")
 
-        boundary = match.group(1)
-        # Remove double quotes around the boundary tag
-        if (boundary.startswith('"') and boundary.endswith('"')):
-            boundary = boundary[1:-1]
+        boundary = match.group(2)
         # mutter('multipart boundary is %s', boundary)
         pattern = HttpMultipartRangeResponse._BOUNDARY_PATT
         return re.compile(pattern % re.escape(boundary),

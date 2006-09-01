@@ -146,12 +146,20 @@ class TestRegexes(TestCase):
 
     def test_content_type_re(self):
         self.regex = response.HttpMultipartRangeResponse._CONTENT_TYPE_RE
-        self.assertRegexMatches(('xxyyzz',),
+        self.assertRegexMatches(('', 'xxyyzz'),
                                 'multipart/byteranges; boundary = xxyyzz')
-        self.assertRegexMatches(('xxyyzz',),
+        self.assertRegexMatches(('', 'xxyyzz'),
                                 'multipart/byteranges;boundary=xxyyzz')
-        self.assertRegexMatches(('xx yy zz',),
+        self.assertRegexMatches(('', 'xx yy zz'),
                                 ' multipart/byteranges ; boundary= xx yy zz ')
+        self.assertRegexMatches(('"', 'xx yy zz'),
+                                ' multipart/byteranges ; boundary= "xx yy zz" ')
+        self.assertEqual(None,
+                         self.regex.match(
+                             ' multipart/byteranges ; boundary= "xx yy zz '))
+        self.assertEqual(None,
+                         self.regex.match(
+                             ' multipart/byteranges ; boundary= xx yy zz" '))
         self.assertEqual(None,
                 self.regex.match('multipart byteranges;boundary=xx'))
 
