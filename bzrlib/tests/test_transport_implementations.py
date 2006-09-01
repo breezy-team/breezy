@@ -25,6 +25,10 @@ from cStringIO import StringIO
 import stat
 import sys
 
+from bzrlib import (
+    osutils,
+    urlutils,
+    )
 from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
                            LockError, PathError,
                            TransportNotPossible, ConnectionError,
@@ -34,7 +38,6 @@ from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import memory
 import bzrlib.transport
-import bzrlib.urlutils as urlutils
 
 
 def _append(fn, txt):
@@ -139,7 +142,7 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('another contents\nfor d\n', t, 'd')
 
         self.assertRaises(NoSuchFile,
-                          t.put, 'path/doesnt/exist/c', 'contents')
+                          t.put, 'path/doesnt/exist/c', StringIO('contents'))
 
     def test_put_permissions(self):
         t = self.get_transport()
@@ -160,6 +163,11 @@ class TransportTests(TestTransportImplementation):
         self.assertTransportMode(t, 'mode400', 0400)
         t.put_multi([('mmode644', StringIO('text\n'))], mode=0644)
         self.assertTransportMode(t, 'mmode644', 0644)
+
+        # The default permissions should be based on the current umask
+        umask = osutils.get_umask()
+        t.put('nomode', StringIO('test text\n'), mode=None)
+        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
         
     def test_mkdir(self):
         t = self.get_transport()
@@ -224,9 +232,13 @@ class TransportTests(TestTransportImplementation):
         self.assertTransportMode(t, 'dmode777', 0777)
         t.mkdir('dmode700', mode=0700)
         self.assertTransportMode(t, 'dmode700', 0700)
-        # TODO: jam 20051215 test mkdir_multi with a mode
         t.mkdir_multi(['mdmode755'], mode=0755)
         self.assertTransportMode(t, 'mdmode755', 0755)
+
+        # Default mode should be based on umask
+        umask = osutils.get_umask()
+        t.mkdir('dnomode', mode=None)
+        self.assertTransportMode(t, 'dnomode', 0777 & ~umask)
 
     def test_copy_to(self):
         # FIXME: test:   same server to same server (partly done)
@@ -531,9 +543,11 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('adir')
         t.mkdir('adir/bdir')
         t.rmdir('adir/bdir')
-        self.assertRaises(NoSuchFile, t.stat, 'adir/bdir')
+        # ftp may not be able to raise NoSuchFile for lack of
+        # details when failing
+        self.assertRaises((NoSuchFile, PathError), t.rmdir, 'adir/bdir')
         t.rmdir('adir')
-        self.assertRaises(NoSuchFile, t.stat, 'adir')
+        self.assertRaises((NoSuchFile, PathError), t.rmdir, 'adir')
 
     def test_rmdir_not_empty(self):
         """Deleting a non-empty directory raises an exception
@@ -733,16 +747,19 @@ class TransportTests(TestTransportImplementation):
             os.mkdir('wd')
         t = t.clone('wd')
 
-        self.assertEqual([], sorted_list(u'.'))
+        self.assertEqual([], sorted_list('.'))
         # c2 is precisely one letter longer than c here to test that
         # suffixing is not confused.
+        # a%25b checks that quoting is done consistently across transports
+        tree_names = ['a', 'a%25b', 'b', 'c/', 'c/d', 'c/e', 'c2/']
         if not t.is_readonly():
-            self.build_tree(['a', 'b', 'c/', 'c/d', 'c/e', 'c2/'], transport=t)
+            self.build_tree(tree_names, transport=t)
         else:
-            self.build_tree(['wd/a', 'wd/b', 'wd/c/', 'wd/c/d', 'wd/c/e', 'wd/c2/'])
+            self.build_tree(['wd/' + name for name in tree_names])
 
-        self.assertEqual([u'a', u'b', u'c', u'c2'], sorted_list(u'.'))
-        self.assertEqual([u'd', u'e'], sorted_list(u'c'))
+        self.assertEqual(
+            ['a', 'a%2525b', 'b', 'c', 'c2'], sorted_list('.'))
+        self.assertEqual(['d', 'e'], sorted_list('c'))
 
         if not t.is_readonly():
             t.delete('c/d')
@@ -751,12 +768,26 @@ class TransportTests(TestTransportImplementation):
             os.unlink('wd/c/d')
             os.unlink('wd/b')
             
-        self.assertEqual([u'a', u'c', u'c2'], sorted_list('.'))
-        self.assertEqual([u'e'], sorted_list(u'c'))
+        self.assertEqual(['a', 'a%2525b', 'c', 'c2'], sorted_list('.'))
+        self.assertEqual(['e'], sorted_list('c'))
 
         self.assertListRaises(PathError, t.list_dir, 'q')
         self.assertListRaises(PathError, t.list_dir, 'c/f')
         self.assertListRaises(PathError, t.list_dir, 'a')
+
+    def test_list_dir_result_is_url_escaped(self):
+        t = self.get_transport()
+        if not t.listable():
+            raise TestSkipped("transport not listable")
+
+        if not t.is_readonly():
+            self.build_tree(['a/', 'a/%'], transport=t)
+        else:
+            self.build_tree(['a/', 'a/%'])
+        
+        names = list(t.list_dir('a'))
+        self.assertEqual(['%25'], names)
+        self.assertIsInstance(names[0], str)
 
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem
@@ -860,6 +891,7 @@ class TransportTests(TestTransportImplementation):
                          'isolated/dir/',
                          'isolated/dir/foo',
                          'isolated/dir/bar',
+                         'isolated/dir/b%25z', # make sure quoting is correct
                          'isolated/bar'],
                         transport=transport)
         paths = set(transport.iter_files_recursive())
@@ -867,10 +899,44 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(paths,
                     set(['isolated/dir/foo',
                          'isolated/dir/bar',
+                         'isolated/dir/b%2525z',
                          'isolated/bar']))
         sub_transport = transport.clone('isolated')
         paths = set(sub_transport.iter_files_recursive())
-        self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
+        self.assertEqual(paths,
+            set(['dir/foo', 'dir/bar', 'dir/b%2525z', 'bar']))
+
+    def test_copy_tree(self):
+        # TODO: test file contents and permissions are preserved. This test was
+        # added just to ensure that quoting was handled correctly.
+        # -- David Allouche 2006-08-11
+        transport = self.get_transport()
+        if not transport.listable():
+            self.assertRaises(TransportNotPossible,
+                              transport.iter_files_recursive)
+            return
+        if transport.is_readonly():
+            self.assertRaises(TransportNotPossible,
+                              transport.put, 'a', 'some text for a\n')
+            return
+        self.build_tree(['from/',
+                         'from/dir/',
+                         'from/dir/foo',
+                         'from/dir/bar',
+                         'from/dir/b%25z', # make sure quoting is correct
+                         'from/bar'],
+                        transport=transport)
+        transport.copy_tree('from', 'to')
+        paths = set(transport.iter_files_recursive())
+        self.assertEqual(paths,
+                    set(['from/dir/foo',
+                         'from/dir/bar',
+                         'from/dir/b%2525z',
+                         'from/bar',
+                         'to/dir/foo',
+                         'to/dir/bar',
+                         'to/dir/b%2525z',
+                         'to/bar',]))
 
     def test_unicode_paths(self):
         """Test that we can read/write files with Unicode names."""

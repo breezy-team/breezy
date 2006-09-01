@@ -22,15 +22,21 @@ This is a fairly thin wrapper on regular file IO.
 import os
 import shutil
 import sys
-from stat import ST_MODE, S_ISDIR, ST_SIZE
+from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
 import tempfile
 
-from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename, 
+from bzrlib import (
+    osutils,
+    urlutils,
+    )
+from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename,
                             check_legal_path, rmtree)
 from bzrlib.symbol_versioning import warn
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, Server
-import bzrlib.urlutils as urlutils
+
+
+_append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY
 
 
 class LocalTransport(Transport):
@@ -51,7 +57,6 @@ class LocalTransport(Transport):
             base = base + '/'
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
-        ## mutter("_local_base: %r => %r", base, self._local_base)
 
     def should_cache(self):
         return False
@@ -162,9 +167,16 @@ class LocalTransport(Transport):
         """Create a directory at the given path."""
         path = relpath
         try:
+            if mode is None:
+                # os.mkdir() will filter through umask
+                local_mode = 0777
+            else:
+                local_mode = mode
             path = self._abspath(relpath)
-            os.mkdir(path)
+            os.mkdir(path, local_mode)
             if mode is not None:
+                # It is probably faster to just do the chmod, rather than
+                # doing a stat, and then trying to compare
                 os.chmod(path, mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
@@ -172,23 +184,35 @@ class LocalTransport(Transport):
     def append(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final location."""
         abspath = self._abspath(relpath)
-        fp = None
+        if mode is None:
+            # os.open() will automatically use the umask
+            local_mode = 0666
+        else:
+            local_mode = mode
         try:
-            try:
-                fp = open(abspath, 'ab')
-                # FIXME should we really be chmodding every time ? RBC 20060523
-                if mode is not None:
-                    os.chmod(abspath, mode)
-            except (IOError, OSError),e:
-                self._translate_error(e, relpath)
-            # win32 workaround (tell on an unwritten file returns 0)
-            fp.seek(0, 2)
-            result = fp.tell()
-            self._pump(f, fp)
+            fd = os.open(abspath, _append_flags, local_mode)
+        except (IOError, OSError),e:
+            self._translate_error(e, relpath)
+        try:
+            st = os.fstat(fd)
+            result = st.st_size
+            if mode is not None and mode != S_IMODE(st.st_mode):
+                # Because of umask, we may still need to chmod the file.
+                # But in the general case, we won't have to
+                os.chmod(abspath, mode)
+            self._pump_to_fd(f, fd)
         finally:
-            if fp is not None:
-                fp.close()
+            os.close(fd)
         return result
+
+    def _pump_to_fd(self, fromfile, to_fd):
+        """Copy contents of one file to another."""
+        BUFSIZE = 32768
+        while True:
+            b = fromfile.read(BUFSIZE)
+            if not b:
+                break
+            os.write(to_fd, b)
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
@@ -268,9 +292,10 @@ class LocalTransport(Transport):
         """
         path = self._abspath(relpath)
         try:
-            return [urlutils.escape(entry) for entry in os.listdir(path)]
+            entries = os.listdir(path)
         except (IOError, OSError), e:
             self._translate_error(e, path)
+        return [urlutils.escape(entry) for entry in entries]
 
     def stat(self, relpath):
         """Return the stat information for a file.

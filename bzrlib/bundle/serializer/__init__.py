@@ -27,8 +27,10 @@ from bzrlib.revision import NULL_REVISION
 
 # New bundles should try to use this header format
 BUNDLE_HEADER = '# Bazaar revision bundle v'
-BUNDLE_HEADER_RE = re.compile(r'^# Bazaar revision bundle v(?P<version>\d+[\w.]*)\n$')
-CHANGESET_OLD_HEADER_RE = re.compile(r'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)\n$')
+BUNDLE_HEADER_RE = re.compile(
+    r'^# Bazaar revision bundle v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
+CHANGESET_OLD_HEADER_RE = re.compile(
+    r'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)(?P<lineending>\r?)\n$')
 
 
 _serializers = {}
@@ -50,21 +52,26 @@ def read_bundle(f):
     for line in f:
         m = BUNDLE_HEADER_RE.match(line)
         if m:
+            if m.group('lineending') != '':
+                raise errors.UnsupportedEOLMarker()
             version = m.group('version')
             break
         elif line.startswith(BUNDLE_HEADER):
-            raise errors.MalformedHeader()
+            raise errors.MalformedHeader(
+                'Extra characters after version number')
         m = CHANGESET_OLD_HEADER_RE.match(line)
         if m:
             version = m.group('version')
-            raise errors.BundleNotSupported(version, 'old format bundles not supported')
+            raise errors.BundleNotSupported(version, 
+                'old format bundles not supported')
 
     if version is None:
         raise errors.NotABundle('Did not find an opening header')
 
     # Now we have a version, to figure out how to read the bundle 
-    if not _serializers.has_key(version):
-        raise errors.BundleNotSupported(version, 'version not listed in known versions')
+    if version not in _serializers:
+        raise errors.BundleNotSupported(version, 
+            'version not listed in known versions')
 
     serializer = _serializers[version](version)
 
@@ -80,15 +87,27 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
     :param version: [optional] target serialization version
     """
 
-    if not _serializers.has_key(version):
+    if version not in _serializers:
         raise errors.BundleNotSupported(version, 'unknown bundle format')
 
     serializer = _serializers[version](version)
-    return serializer.write(source, revision_ids, forced_bases, f) 
+    source.lock_read()
+    try:
+        return serializer.write(source, revision_ids, forced_bases, f)
+    finally:
+        source.unlock()
 
 
 def write_bundle(repository, revision_id, base_revision_id, out):
     """"""
+    repository.lock_read()
+    try:
+        return _write_bundle(repository, revision_id, base_revision_id, out)
+    finally:
+        repository.unlock()
+
+
+def _write_bundle(repository, revision_id, base_revision_id, out):
     if base_revision_id is NULL_REVISION:
         base_revision_id = None
     base_ancestry = set(repository.get_ancestry(base_revision_id))
@@ -185,7 +204,8 @@ def unpack_highres_date(date):
     # parse it
     dot_loc = date.find('.')
     if dot_loc == -1:
-        raise ValueError('Date string does not contain high-precision seconds: %r' % date)
+        raise ValueError(
+            'Date string does not contain high-precision seconds: %r' % date)
     base_time = time.strptime(date[:dot_loc], "%a %Y-%m-%d %H:%M:%S")
     fract_seconds, offset = date[dot_loc:].split()
     fract_seconds = float(fract_seconds)
@@ -242,7 +262,7 @@ def register(version, klass, overwrite=False):
         _serializers[version] = klass
         return
 
-    if not _serializers.has_key(version):
+    if version not in _serializers:
         _serializers[version] = klass
 
 

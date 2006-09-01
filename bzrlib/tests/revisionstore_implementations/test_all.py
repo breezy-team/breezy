@@ -46,7 +46,7 @@ class TestAll(TestCaseWithTransport):
 
     def add_sample_rev(self):
         rev = Revision(timestamp=0,
-                       timezone=None,
+                       timezone=0,
                        committer="Foo Bar <foo@example.com>",
                        message="Message",
                        inventory_sha1='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',

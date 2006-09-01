@@ -19,6 +19,8 @@
 import os
 import sys
 
+from bzrlib import bzrdir, repository
+
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.errors import NotBranchError
 
@@ -35,3 +37,19 @@ class TestExceptionReporting(TestCase):
     # register (and unregister) it from tests that want to touch it.
     #
     # TODO: Some kind of test for the feature of invoking pdb
+    
+
+class TestDeprecationWarning(TestCaseInTempDir):
+
+    def test_repository_deprecation_warning(self):
+        """Old formats give a warning"""
+        # the warning's normally off for testing but we reenable it
+        repository._deprecation_warning_done = False
+        try:
+            os.mkdir('foo')
+            bzrdir.BzrDirFormat5().initialize('foo')
+            out, err = self.run_bzr("status", "foo")
+            self.assertContainsRe(self._get_log(), "bzr upgrade")
+        finally:
+            repository._deprecation_warning_done = True
+
