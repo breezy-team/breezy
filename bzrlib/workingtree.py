@@ -1917,7 +1917,10 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             wt._write_inventory(inv)
             wt.set_root_id(inv.root.file_id)
             basis_tree = branch.repository.revision_tree(revision_id)
-            wt.set_parent_trees([(revision_id, basis_tree)])
+            if revision_id == bzrlib.revision.NULL_REVISION:
+                wt.set_parent_trees([])
+            else:
+                wt.set_parent_trees([(revision_id, basis_tree)])
             build_tree(basis_tree, wt)
         finally:
             wt.unlock()

@@ -44,5 +44,7 @@ class TestStatus(TestCaseWithTransport):
         r2_id = tree.commit('two', allow_pointless=True)
         r2_tree = tree.branch.repository.revision_tree(r2_id)
         output = StringIO()
-        show_tree_status(tree, to_file=output, revision=[RevisionSpec("revid:%s" % r1_id), RevisionSpec("revid:%s" % r2_id)])
+        show_tree_status(tree, to_file=output,
+                     revision=[RevisionSpec.from_string("revid:%s" % r1_id),
+                               RevisionSpec.from_string("revid:%s" % r2_id)])
         # return does not matter as long as it did not raise.
