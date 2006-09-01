@@ -175,7 +175,7 @@ class HttpTransportBase(Transport):
             if relpath_parts[0] == '':
                 raise ValueError("path %r within branch %r seems to be absolute"
                                  % (relpath, self._path))
-	    # read only transports never manipulate directories
+            # read only transports never manipulate directories
             if self.is_readonly() and relpath_parts[-1] == '':
                 raise ValueError("path %r within branch %r seems to be a directory"
                                  % (relpath, self._path))
