@@ -14,20 +14,70 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for the LazyFactory class"""
+"""Tests for the Registry classes"""
 
 import os
 import sys
 
 from bzrlib import (
     errors,
-    lazy_factory,
+    registry,
     osutils,
     )
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
-class TestLazyFactory(TestCaseInTempDir):
+class TestRegistry(TestCase):
+    def register_stuff(self, registry):
+        registry.register('one', 1)
+        registry.register('two', 2)
+        registry.register('four', 4)
+        registry.register('five', 5)
+
+    def test_registry(self):
+        registry_ = registry.Registry()
+        self.register_stuff(registry_)
+
+        self.failUnless(registry_.default_key is None)
+
+        # test get() (self.default_key == None)
+        self.assertRaises(KeyError, registry_.get)
+        self.assertRaises(KeyError, registry_.get, None)
+        self.assertEqual(2, registry_.get('two'))
+        self.assertRaises(KeyError, registry_.get, 'three')
+
+        # test _set_default_key
+        registry_.default_key = 'five'
+        self.failUnless(registry_.default_key == 'five')
+        self.assertEqual(5, registry_.get())
+        self.assertEqual(5, registry_.get(None))
+        self.assertEqual(5, registry_.get('six'))
+        self.assertRaises(KeyError, registry_._set_default_key, 'six')
+
+        # test keys()
+        self.assertEqual(['five', 'four', 'one', 'two'], registry_.keys())
+
+    def test_registry_with_first_is_default(self):
+        registry_ = registry.Registry(True)
+        self.register_stuff(registry_)
+
+        self.failUnless(registry_.default_key == 'one')
+
+        # test get() (self.default_key == 'one')
+        self.assertEqual(1, registry_.get())
+        self.assertEqual(1, registry_.get(None))
+        self.assertEqual(2, registry_.get('two'))
+        self.assertEqual(1, registry_.get('three'))
+
+        # test _set_default_key
+        registry_.default_key = 'five'
+        self.failUnless(registry_.default_key == 'five')
+        self.assertEqual(5, registry_.get())
+        self.assertEqual(5, registry_.get(None))
+        self.assertEqual(5, registry_.get('six'))
+        self.assertRaises(KeyError, registry_._set_default_key, 'six')
+
+class TestLazyImportRegistry(TestCaseInTempDir):
 
     def create_plugin_file(self, contents):
         plugin_name = 'bzr_plugin_a_%s' % (osutils.rand_chars(4),)
@@ -47,9 +97,9 @@ class TestLazyFactory(TestCaseInTempDir):
             '\n\n'
         )
 
-    def test_lazy_factory(self):
+    def test_lazy_import_registry(self):
         plugin_name = self.create_simple_plugin()
-        factory = lazy_factory.LazyFactory()
+        factory = registry.LazyImportRegistry()
         factory.register('obj', plugin_name, 'object1')
         factory.register('function', plugin_name, 'function')
         factory.register('klass', plugin_name, 'MyClass')

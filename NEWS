@@ -102,6 +102,12 @@ bzr 0.10.0RC1  2006-08-28
       need to be installed. This should help make the life of packagers
       easier. (John Arbash Meinel)
 
+    * New Registry class to provide name-to-object registry-like support,
+      for example for schemes where plugins can register new classes to
+      do certain tasks (e.g. log formatters). Subclass LazyImportRegistry
+      provides support modules to be loaded on request. (John Arbash
+      Meinel, Adeodato Simó)
+
 bzr 0.9.0  2006-08-11
 
   SURPRISES:
