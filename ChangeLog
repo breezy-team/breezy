@@ -1,4 +1,13 @@
-2006-08-29  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+2006-09-01  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
+	Cosmetic changes.
+
+	* webdav.py: 
+	Do not try to import pycurl to check dependencies, http._pycurl
+	will do that fairly well itself.
+	(HttpDavTransport.put): Delete unused variable.
+
+2006-08-29  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
+        PUT can do append ! Rejoice !
 
 	* webdav.py:
 	Add and update TODOs.
@@ -23,7 +32,7 @@
 	* __init__.py: 
 	Requires bzr >= 0.11.0dev.
 
-2006-08-28  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+2006-08-28  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
         Prepare merge.
 
 	* webdav.py:
@@ -36,7 +45,7 @@
 	* NOTES: 
 	(Extensions): Remark about PATCH in Apache.
 
-2006-08-27  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
+2006-08-27  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
 	Implements https://features.launchpad.net/products/bzr.webdav/+spec/curl-persistence.
 	
 	* webdav.py:
@@ -59,7 +68,7 @@
 	* test_webdav.py:
 	(TestingDAVRequestHandler.do_PUT): Cosmetic change.
 
-2006-08-26  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
+2006-08-26  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
 	Add classes to allow testing of APPEND command on future web servers.
 	
 	* webdav.py:
@@ -70,7 +79,7 @@
 	(TestingDAVAppendRequestHandler): New class.
 	(HttpServer_Dav_append): New class.
 
-2006-08-24  Vincent LADEUIL  <v.ladeuil@alplog.fr>
+2006-08-24  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
         Accept 204 as a valid put result.
 	
 	* webdav.py:
@@ -78,7 +87,7 @@
 	(HttpDavTransport.move):  204 is  also a  valid  code representing
 	successful completion.
 
-2006-08-24  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
+2006-08-24  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
         Ensures that put is atomic.
 	
 	* webdav.py:
@@ -89,13 +98,13 @@
 	Check  the  bzr version  here,  no need  to  import  just to  say:
 	"Finally, I can't work".
 
-2006-08-23  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
+2006-08-23  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
         Another fix recommanded by jam
 
 	* test_webdav.py:
 	(TestingDAVRequestHandler._read_chunk): Don't use string.atoi.
 
-2006-08-23-1  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
+2006-08-23-1  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
 
 	* test_webdav.py:
 	(TestingDAVRequestHandler._read_chunk): Don't use string.atoi.
@@ -127,7 +136,7 @@
 	(HttpServer_Dav.__init__): Use  the class name  when calling super
 	or it will create a loop if called by the daughter class :(
 
-2006-08-23  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
+2006-08-23  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
 
 	* webdav.py:
 	(HttpDavTransport.put): Should we really recognize 404 there ?
@@ -137,7 +146,7 @@
 	TestingDAVRequestHandler._readline): New methods.
 	(TestingDAVRequestHandler.do_PUT): Catches more exceptions.
 
-2006-08-22  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
+2006-08-22  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
 
 	* webdav.py:
 	(HttpDavTransport.mkdir,                     HttpDavTransport.copy,
@@ -146,7 +155,7 @@
 	(HttpDavTransport.put): Use _set_curl_options  to unify the use of
 	curl. Translate 403 as NoSuchFile too.
 
-2006-08-22-1  Vincent LADEUIL  <v.ladeuil+lp@free.fr>
+2006-08-22-1  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
 
 	*  webdav.py: Add  more TODOs  and FIXMEs  :-) Put  at  least this
 	version passes bzr selftest (except for lock_write and copy_to for
@@ -163,7 +172,7 @@
 	(TestingDAVRequestHandler,  HttpServer_Dav):  First implementation
 	of a test server.
 
-2006-08-20  Vincent LADEUIL
+2006-08-20  Vincent Ladeuil
 	First succesful  bzr.dev push.  Requires that bzr.dev  allows dirs
 	for http.
 
@@ -190,7 +199,7 @@
 	* TODO: 
 	New file.
 
-2006-08-17  Vincent LADEUIL
+2006-08-17  Vincent Ladeuil
 	First version accepting an initial push.
 
 	* __init__.py: 

@@ -21,6 +21,10 @@ partially the WebDAV protocol to push files.
 This should enable remote push operations.
 """
 
+# FIXME: Turning directory indexes off may make the server
+# reports that an existing directory does not exist. Reportedly,
+# using multiviews can provoke that too. Investigate and fix.
+
 # FIXME: A DAV web server can't handle mode on files because:
 # - there is nothing in the protocol for that,
 # - the  server  itself  generally  uses  the mode  for  its  own
@@ -96,21 +100,19 @@ from bzrlib.transport.http import (
     response,
     )
 
-# We  want  https because  user  and  passwords  are required  to
-# authenticate  against the  DAV server.  We don't  want  to send
-# passwords in clear text, so  we need https. We depend on pycurl
+# We want https because user and passwords are required to
+# authenticate against the DAV server.  We don't want to send
+# passwords in clear text, so we need https. We depend on pycurl
 # to implement https.
 
-# We    use    bzrlib.transport.http._pycurl    as    our    base
-# implementation, so we have the same dependancies.
-try:
-    import pycurl
-except ImportError, e:
-    mutter("failed to import pycurl: %s", e)
-    raise DependencyNotPresent('pycurl', e)
+# We use bzrlib.transport.http._pycurl as our base
+# implementation, so we have the same dependancies. So we try to
+# import PyCurlTransport and let him fail if any dependancy is
+# not present.
 
 # Now we can import _pycurl
 from bzrlib.transport.http._pycurl import PyCurlTransport
+import pycurl
 
 register_urlparse_netloc_protocol('https+webdav')
 register_urlparse_netloc_protocol('http+webdav')
@@ -213,7 +215,7 @@ class HttpDavTransport(PyCurlTransport):
         curl = self._set_curl_options()
         curl.setopt(pycurl.URL, abspath)
         curl.setopt(pycurl.NOBODY, 1) # No BODY
-        self._perform()        
+        self._perform()
 
     def has(self, relpath):
         """See Transport.has()"""
@@ -250,6 +252,8 @@ class HttpDavTransport(PyCurlTransport):
         data.seek(0)
         return code, data
 
+    # TODO:  Make more real-live  tests of  the Range  header and
+    # implement some test server too.
     def _get_ranged(self, relpath, ranges, tail_amount):
         """Make a request for just part of the location."""
 
@@ -410,7 +414,6 @@ class HttpDavTransport(PyCurlTransport):
         # A temporary file to hold  all the data to guard against
         # client death
         tmp_relpath = relpath + stamp
-        tmp_abspath = abspath + stamp
 
         self._put_file(tmp_relpath,f) # Will raise if something gets wrong
 
@@ -481,7 +484,7 @@ class HttpDavTransport(PyCurlTransport):
             raise NoSuchFile(abspath) # Intermediate directories missing
         if code not in  (200, 201, 204):
             self._raise_curl_http_error(curl, 'expected 200, 201 or 204.')
-   
+
     def rename(self, rel_from, rel_to):
         """Rename without special overwriting"""
         abs_from = self._real_abspath(rel_from)
@@ -509,7 +512,7 @@ class HttpDavTransport(PyCurlTransport):
             # non-empty case is 412))  will be an error, a server
             # bug  even,  since  we  require explicitely  to  not
             # overwrite.
-            self._raise_curl_http_error(curl, 
+            self._raise_curl_http_error(curl,
                                         'unable to rename to %r' % (abs_to))
 
     def move(self, rel_from, rel_to):
@@ -536,7 +539,7 @@ class HttpDavTransport(PyCurlTransport):
         # Overwriting  allowed, 201 means  abs_to did  not exist,
         # 204 means it did exist.
         if code not in (201, 204):
-            self._raise_curl_http_error(curl, 
+            self._raise_curl_http_error(curl,
                                         'unable to move to %r' % (abs_to))
 
     def delete(self, rel_path):
@@ -553,7 +556,7 @@ class HttpDavTransport(PyCurlTransport):
         curl.setopt(pycurl.CUSTOMREQUEST , 'DELETE')
         curl.setopt(pycurl.URL, abs_path)
 
-        self._perform()        
+        self._perform()
         code = curl.getinfo(pycurl.HTTP_CODE)
 
         if code == 404:
