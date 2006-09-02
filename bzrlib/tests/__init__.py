@@ -853,7 +853,8 @@ class TestCase(unittest.TestCase):
         def cleanup_environment():
             for env_var, value in env_changes.iteritems():
                 if value is None:
-                    del os.environ[env_var]
+                    if env_var in os.environ:
+                        del os.environ[env_var]
                 else:
                     os.environ[env_var] = value
 
