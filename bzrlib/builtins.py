@@ -824,7 +824,7 @@ class cmd_update(Command):
         if revision is not None and len(revision) != 1:
             raise BzrCommandError("bzr update --revision takes exactly one revision")
         tree = WorkingTree.open_containing(dir)[0]
-        b = tree.branch
+        branch = tree.branch
         tree.lock_write()
         try:
             existing_pending_merges = tree.pending_merges()
@@ -833,27 +833,27 @@ class cmd_update(Command):
             # in the local branch for a heavyweight checkout.
             if revision is not None:
                 try:
-                    rev = revision[0].in_history(b).rev_id
+                    rev = revision[0].in_history(branch).rev_id
                     # no need to run branch.update()
-                    old_tip=None
+                    old_tip = None
                 except errors.NoSuchRevision:
                     # revision was not there, but is maybe in the master.
-                    old_tip = b.update()
-                    rev = revision[0].in_history(b).rev_id
+                    old_tip = branch.update()
+                    rev = revision[0].in_history(branch).rev_id
             else:
-                old_tip = b.update()
-                rev = b.last_revision()
+                old_tip = branch.update()
+                rev = branch.last_revision()
             if tree.last_revision() == rev:
-                revno = b.revision_id_to_revno(rev)
+                revno = branch.revision_id_to_revno(rev)
                 note("Tree is up to date at revision %d." % (revno,))
                 return 0
             try:
-                conflicts = tree.update(rev,old_tip)
+                conflicts = tree.update(rev, old_tip)
             except errors.NoSuchRevision, e:
                 raise BzrCommandError("branch has no revision %s\n"
                                       "bzr update --revision works only for a revision in the branch history"
                                       % (e.revision))
-            revno = b.revision_id_to_revno(tree.last_revision())
+            revno = branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
             if tree.pending_merges() != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '

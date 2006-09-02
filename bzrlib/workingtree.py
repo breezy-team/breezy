@@ -1382,8 +1382,10 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         raise NotImplementedError(self.unlock)
 
+    _marker = object()
+
     @needs_write_lock
-    def update(self,revision=None,old_tip=0):
+    def update(self, revision=None, old_tip=_marker):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have multiple trees involved:
@@ -1404,9 +1406,9 @@ class WorkingTree(bzrlib.tree.Tree):
 
         :param revision: The target revision to update to. Must be in the revision history.
         :param old_tip: If branch.update() has already been run, the value it returned 
-        (old tip of the branch or nil). Otherwise, the number 0.
+        (old tip of the branch or None). _marker is used otherwise.
         """
-        if old_tip == 0:
+        if old_tip == _marker:
             old_tip = self.branch.update()
         if old_tip is not None:
             self.add_pending_merge(old_tip)
