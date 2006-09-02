@@ -232,6 +232,14 @@ class TestRunBzrCaptured(ExternalBase):
             del os.environ['BZR_EMAIL']
             del os.environ['EMAIL']
 
+    def test_run_bzr_subprocess_env_del_missing(self):
+        """run_bzr_subprocess won't fail if deleting a nonexistant env var"""
+        self.failIf('NON_EXISTANT_ENV_VAR' in os.environ)
+        out, err = self.run_bzr_subprocess('rocks',
+                        env_changes={'NON_EXISTANT_ENV_VAR':None})
+        self.assertEquals('it sure does!\n', out)
+
+
 class TestRunBzrError(ExternalBase):
 
     def test_run_bzr_error(self):
