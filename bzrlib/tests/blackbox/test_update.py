@@ -113,28 +113,32 @@ class TestUpdate(ExternalBase):
     def test_smoke_update_checkout_bound_branch_local_commits(self):
         # smoke test for doing an update of a checkout of a bound
         # branch with local commits.
-        self.make_branch_and_tree('master')
+        master = self.make_branch_and_tree('master')
         # make a bound branch
         self.run_bzr('checkout', 'master', 'child')
+        # get an object form of child
+        child = WorkingTree.open('child')
         # check that out
         self.run_bzr('checkout', '--lightweight', 'child', 'checkout')
+        # get an object form of the checkout to manipulate
+        wt = WorkingTree.open('checkout')
         # change master
         a_file = file('master/file', 'wt')
         a_file.write('Foo')
         a_file.close()
-        self.run_bzr('add', 'master')
-        self.run_bzr('commit', '-m', 'add file', 'master')
+        master.add(['file'])
+        master_tip = master.commit('add file')
         # change child
         a_file = file('child/file_b', 'wt')
         a_file.write('Foo')
         a_file.close()
-        self.run_bzr('add', 'child')
-        self.run_bzr('commit', '--local', '-m', 'add file_b', 'child')
+        child.add(['file_b'])
+        child_tip = child.commit('add file_b', local=True)
         # check checkout
         a_file = file('checkout/file_c', 'wt')
         a_file.write('Foo')
         a_file.close()
-        self.run_bzr('add', 'checkout')
+        wt.add(['file_c'])
 
         # now, update checkout ->
         # get all three files and a pending merge.
@@ -143,8 +147,7 @@ class TestUpdate(ExternalBase):
         self.assertContainsRe(err, 'Updated to revision 1.\n'
                                    'Your local commits will now show as'
                                    ' pending merges')
-        wt = WorkingTree.open('checkout')
-        self.assertNotEqual([], wt.pending_merges())
+        self.assertEqual([master_tip, child_tip], wt.get_parent_ids())
         self.failUnlessExists('checkout/file')
         self.failUnlessExists('checkout/file_b')
         self.failUnlessExists('checkout/file_c')
@@ -179,7 +182,7 @@ class TestUpdate(ExternalBase):
         os.chdir('checkout1')
         self.run_bzr('merge', '../other')
 
-        self.assertEqual(['o2'], checkout1.pending_merges())
+        self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
 
         # At this point, 'commit' should fail, because we are out of date
         self.run_bzr_error(["please run 'bzr update'"],
@@ -193,7 +196,7 @@ class TestUpdate(ExternalBase):
                          'Updated to revision 2.\n', err)
 
         # The pending merges should still be there
-        self.assertEqual(['o2'], checkout1.pending_merges())
+        self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
 
     def test_update_dash_r(self):
         # Test that 'bzr update' works correctly when you have
