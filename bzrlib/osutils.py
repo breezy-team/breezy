@@ -150,7 +150,7 @@ lexists = getattr(os.path, 'lexists', None)
 if lexists is None:
     def lexists(f):
         try:
-            if hasattr(os, 'lstat'):
+            if getattr(os, 'lstat') != None:
                 os.lstat(f)
             else:
                 os.stat(f)
@@ -195,7 +195,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
         if e.errno not in (None, errno.ENOENT, errno.ENOTDIR):
             raise
     except Exception, e:
-        if (not hasattr(e, 'errno') 
+        if (getattr(e, 'errno', None) == None
             or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
             raise
     else:
@@ -370,7 +370,7 @@ def get_terminal_encoding():
 
 
 def normalizepath(f):
-    if hasattr(os.path, 'realpath'):
+    if getattr(os.path, 'realpath', None) != None:
         F = realpath
     else:
         F = abspath
@@ -505,7 +505,7 @@ def file_iterator(input_file, readsize=32768):
 
 
 def sha_file(f):
-    if hasattr(f, 'tell'):
+    if getattr(f, 'tell', None) != None:
         assert f.tell() == 0
     s = sha.new()
     BUFSIZE = 128<<10
@@ -726,7 +726,7 @@ def delete_any(full_path):
 
 
 def has_symlinks():
-    if hasattr(os, 'symlink'):
+    if getattr(os, 'symlink', None) != None:
         return True
     else:
         return False

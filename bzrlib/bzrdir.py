@@ -1566,7 +1566,7 @@ class ConvertBzrDir4To5(Converter):
             entries = inv.iter_entries()
             entries.next()
             for path, ie in entries:
-                assert hasattr(ie, 'revision'), \
+                assert getattr(ie, 'revision', None) != None, \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
         new_inv_xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)

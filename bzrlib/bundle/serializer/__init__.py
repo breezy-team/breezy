@@ -37,9 +37,7 @@ _serializers = {}
 
 
 def _get_filename(f):
-    if hasattr(f, 'name'):
-        return f.name
-    return '<unknown>'
+    return getattr(f, 'name', '<unknown>')
 
 
 def read_bundle(f):

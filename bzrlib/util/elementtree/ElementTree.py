@@ -572,7 +572,7 @@ class ElementTree:
     # @defreturn Element
 
     def parse(self, source, parser=None):
-        if not hasattr(source, "read"):
+        if getattr(source, "read", None) == None:
             source = open(source, "rb")
         if not parser:
             parser = XMLTreeBuilder()
@@ -651,7 +651,7 @@ class ElementTree:
 
     def write(self, file, encoding="us-ascii"):
         assert self._root is not None
-        if not hasattr(file, "write"):
+        if getattr(file, "write", None) == None:
             file = open(file, "wb")
         if not encoding:
             encoding = "us-ascii"
@@ -723,7 +723,7 @@ class ElementTree:
 def iselement(element):
     # FIXME: not sure about this; might be a better idea to look
     # for tag/attrib/text attributes
-    return isinstance(element, _ElementInterface) or hasattr(element, "tag")
+    return isinstance(element, _ElementInterface) or (getattr(element, "tag", None) != None)
 
 ##
 # Writes an element tree or element structure to sys.stdout.  This
@@ -871,7 +871,7 @@ def parse(source, parser=None):
 class iterparse:
 
     def __init__(self, source, events=None):
-        if not hasattr(source, "read"):
+        if getattr(source, "read", None) == None:
             source = open(source, "rb")
         self._file = source
         self._events = []

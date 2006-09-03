@@ -307,7 +307,7 @@ class FtpTransport(Transport):
         abspath = self._abspath(relpath)
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
                         os.getpid(), random.randint(0,0x7FFFFFFF))
-        if not hasattr(fp, 'read'):
+        if getattr(fp, 'read', None) == None:
             fp = StringIO(fp)
         try:
             mutter("FTP put: %s", abspath)

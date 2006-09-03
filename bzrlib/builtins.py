@@ -2479,12 +2479,12 @@ class cmd_plugins(Command):
         import bzrlib.plugin
         from inspect import getdoc
         for name, plugin in bzrlib.plugin.all_plugins().items():
-            if hasattr(plugin, '__path__'):
+            if getattr(plugin, '__path__', None) != None:
                 print plugin.__path__[0]
-            elif hasattr(plugin, '__file__'):
+            elif getattr(plugin, '__file__', None) != None:
                 print plugin.__file__
             else:
-                print `plugin`
+                print repr(plugin)
                 
             d = getdoc(plugin)
             if d:

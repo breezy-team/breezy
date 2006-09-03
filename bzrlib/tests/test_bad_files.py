@@ -58,7 +58,7 @@ class TestBadFiles(TestCaseWithTransport):
         # put some bogus stuff in the tree
 
         # We can only continue if we have mkfifo
-        if not hasattr(os, 'mkfifo'):
+        if getattr(os, 'mkfifo', None) == None:
             # TODO: Ultimately this should be TestSkipped
             # or PlatformDeficiency
             return
