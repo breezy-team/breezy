@@ -63,7 +63,8 @@ class TestMerge(ExternalBase):
         file('hello', 'wt').write('quuux')
         # We can't merge when there are in-tree changes
         self.runbzr('merge ../b', retcode=3)
-        self.runbzr(['commit', '-m', "Like an epidemic of u's"])
+        a = WorkingTree.open('.')
+        a_tip = a.commit("Like an epidemic of u's")
         self.runbzr('merge ../b -r last:1..last:1 --merge-type blooof',
                     retcode=3)
         self.runbzr('merge ../b -r last:1..last:1 --merge-type merge3')
@@ -75,12 +76,10 @@ class TestMerge(ExternalBase):
         self.runbzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
-        a = WorkingTree.open('.')
         b = Branch.open('../b')
-        a.branch.repository.get_revision_xml(b.last_revision())
-        self.log('pending merges: %s', a.pending_merges())
-        self.assertEquals(a.pending_merges(),
-                          [b.last_revision()])
+        b_tip = b.last_revision()
+        self.failUnless(a.branch.repository.has_revision(b_tip))
+        self.assertEqual([a_tip, b_tip], a.get_parent_ids())
         self.runbzr('revert --no-backup')
         # If bzr merge is fixed to work with two revno:N:path with
         # different paths, uncomment this section.        
@@ -92,9 +91,9 @@ class TestMerge(ExternalBase):
         self.runbzr('merge -r revno:%d:../b'%b.revno())
         self.assertEquals(a.pending_merges(),
                           [b.last_revision()])
-        self.runbzr('commit -m merged')
+        a_tip = a.commit('merged')
         self.runbzr('merge ../b -r last:1')
-        self.assertEqual(a.pending_merges(), [])
+        self.assertEqual([a_tip], a.get_parent_ids())
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""

@@ -235,7 +235,7 @@ class cmd_revision_info(Command):
             revs.extend(revision)
         if revision_info_list is not None:
             for rev in revision_info_list:
-                revs.append(RevisionSpec(rev))
+                revs.append(RevisionSpec.from_string(rev))
         if len(revs) == 0:
             raise BzrCommandError('You must supply a revision identifier')
 
@@ -2270,16 +2270,16 @@ class cmd_remerge(Command):
         tree, file_list = tree_files(file_list)
         tree.lock_write()
         try:
-            pending_merges = tree.pending_merges() 
-            if len(pending_merges) != 1:
+            parents = tree.get_parent_ids()
+            if len(parents) != 2:
                 raise BzrCommandError("Sorry, remerge only works after normal"
                                       " merges.  Not cherrypicking or"
                                       " multi-merges.")
             repository = tree.branch.repository
-            base_revision = common_ancestor(tree.branch.last_revision(), 
-                                            pending_merges[0], repository)
+            base_revision = common_ancestor(parents[0],
+                                            parents[1], repository)
             base_tree = repository.revision_tree(base_revision)
-            other_tree = repository.revision_tree(pending_merges[0])
+            other_tree = repository.revision_tree(parents[1])
             interesting_ids = None
             new_conflicts = []
             conflicts = tree.conflicts()
@@ -2309,9 +2309,9 @@ class cmd_remerge(Command):
                     pass
             conflicts = merge_inner(tree.branch, other_tree, base_tree,
                                     this_tree=tree,
-                                    interesting_ids=interesting_ids, 
-                                    other_rev_id=pending_merges[0], 
-                                    merge_type=merge_type, 
+                                    interesting_ids=interesting_ids,
+                                    other_rev_id=parents[1],
+                                    merge_type=merge_type,
                                     show_base=show_base,
                                     reprocess=reprocess)
         finally:

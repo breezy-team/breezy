@@ -351,10 +351,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.commit('A', rev_id='A')
         wt.rename_one('foo', 'bar')
         wt.commit('B', rev_id='B')
-        wt.set_last_revision('B')
+        wt.set_parent_ids(['B'])
         tree = wt.basis_tree()
         self.failUnless(tree.has_filename('bar'))
-        wt.set_last_revision('A')
+        wt.set_parent_ids(['A'])
         tree = wt.basis_tree()
         self.failUnless(tree.has_filename('foo'))
 
@@ -501,18 +501,24 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # alter 'revert' to revert to the master always. But for now, its
         # good.
         master_tree = self.make_branch_and_tree('master')
+        master_tip = master_tree.commit('first master commit')
         tree = self.make_branch_and_tree('tree')
         try:
             tree.branch.bind(master_tree.branch)
         except errors.UpgradeRequired:
             # legacy branches cannot bind
             return
+        # sync with master
+        tree.update()
+        # work locally
         tree.commit('foo', rev_id='foo', allow_pointless=True, local=True)
         tree.commit('bar', rev_id='bar', allow_pointless=True, local=True)
+        # sync with master prepatory to committing
         tree.update()
-        self.assertEqual(None, tree.last_revision())
-        self.assertEqual([], tree.branch.revision_history())
-        self.assertEqual(['bar'], tree.pending_merges())
+        # which should have pivoted the local tip into a merge
+        self.assertEqual(master_tip, tree.last_revision())
+        self.assertEqual([master_tip], tree.branch.revision_history())
+        self.assertEqual([master_tip, 'bar'], tree.get_parent_ids())
 
     def test_merge_modified(self):
         tree = self.make_branch_and_tree('master')
@@ -656,5 +662,3 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 tree.add, [u'a\u030a'])
         finally:
             osutils.normalized_filename = orig
-
-
