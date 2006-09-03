@@ -70,20 +70,18 @@ def make_branches(self):
     tree2.commit("Commit four", rev_id="b@u-0-3")
     tree2.commit("Commit five", rev_id="b@u-0-4")
     revisions_2 = br2.revision_history()
+    self.assertEquals(revisions_2[-1], 'b@u-0-4')
     
-    br1.fetch(br2)
-    tree1.add_pending_merge(revisions_2[4])
-    self.assertEquals(revisions_2[4], 'b@u-0-4')
+    self.merge(br2, tree1)
     tree1.commit("Commit six", rev_id="a@u-0-3")
     tree1.commit("Commit seven", rev_id="a@u-0-4")
     tree2.commit("Commit eight", rev_id="b@u-0-5")
+    self.assertEquals(br2.revision_history()[-1], 'b@u-0-5')
     
-    br1.fetch(br2)
-    tree1.add_pending_merge(br2.revision_history()[5])
+    self.merge(br2, tree1)
     tree1.commit("Commit nine", rev_id="a@u-0-5")
-    # DO NOT FETCH HERE - we WANT a GHOST.
-    # br2.fetch(br1)
-    tree2.add_pending_merge(br1.revision_history()[4])
+    # DO NOT MERGE HERE - we WANT a GHOST.
+    tree2.add_parent_tree_id(br1.revision_history()[4])
     tree2.commit("Commit ten - ghost merge", rev_id="b@u-0-6")
     
     return br1, br2
@@ -158,12 +156,10 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         wt2.commit("Commit twelve", rev_id="b@u-0-8")
         wt2.commit("Commit thirtteen", rev_id="b@u-0-9")
 
-        self.br1.fetch(self.br2)
-        wt1.add_pending_merge(self.br2.revision_history()[6])
+        self.merge(self.br2, wt1)
         wt1.commit("Commit fourtten", rev_id="a@u-0-6")
 
-        self.br2.fetch(self.br1)
-        wt2.add_pending_merge(self.br1.revision_history()[6])
+        self.merge(self.br1, wt2)
         wt2.commit("Commit fifteen", rev_id="b@u-0-10")
 
         from bzrlib.revision import MultipleRevisionSources
@@ -291,7 +287,7 @@ class TestMultipleRevisionSources(TestCaseWithTransport):
         # in repo 2, which has A, the revision_graph()
         # should return A and B both.
         tree_1 = self.make_branch_and_tree('1')
-        tree_1.add_pending_merge('A')
+        tree_1.set_parent_ids(['A'], allow_leftmost_as_ghost=True)
         tree_1.commit('foo', rev_id='B', allow_pointless=True)
         tree_2 = self.make_branch_and_tree('2')
         tree_2.commit('bar', rev_id='A', allow_pointless=True)

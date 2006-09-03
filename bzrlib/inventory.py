@@ -325,7 +325,7 @@ class InventoryEntry(object):
 
     @staticmethod
     def versionable_kind(kind):
-        return kind in ('file', 'directory', 'symlink')
+        return (kind in ('file', 'directory', 'symlink'))
 
     def check(self, checker, rev_id, inv, tree):
         """Check this inventory entry is intact.
@@ -1215,7 +1215,7 @@ class Inventory(object):
         return bool(self.path2id(names))
 
     def has_id(self, file_id):
-        return file_id in self._byid
+        return (file_id in self._byid)
 
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.

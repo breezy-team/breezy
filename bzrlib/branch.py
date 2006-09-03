@@ -364,7 +364,7 @@ class Branch(object):
             return None
         if history is None:
             history = self.revision_history()
-        elif revno <= 0 or revno > len(history):
+        if revno <= 0 or revno > len(history):
             raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
@@ -1234,7 +1234,7 @@ class BzrBranch(Branch):
                         "use bzrlib.urlutils.escape")
                     
             url = urlutils.relative_url(self.base, url)
-            self.control_files.put('parent', url + '\n')
+            self.control_files.put('parent', StringIO(url + '\n'))
 
     @deprecated_function(zero_nine)
     def tree_config(self):
