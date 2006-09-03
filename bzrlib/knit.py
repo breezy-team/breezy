@@ -1255,7 +1255,7 @@ class _KnitIndex(_KnitComponentFile):
         
     def has_version(self, version_id):
         """True if the version is in the index."""
-        return self._cache.has_key(version_id)
+        return (version_id in self._cache)
 
     def get_position(self, version_id):
         """Return data position and size of specified version."""

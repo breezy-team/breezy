@@ -63,5 +63,5 @@ def _get_bzr_source_tree():
     try:
         from bzrlib.workingtree import WorkingTree
         return WorkingTree.open_containing(__file__)[0]
-    except errors.NotBranchError:
+    except (errors.NotBranchError, errors.UnknownFormatError):
         return None

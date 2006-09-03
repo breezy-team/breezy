@@ -210,7 +210,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         control.create_branch()
         tree = workingtree.WorkingTreeFormat3().initialize(control)
         tree._control_files._transport.delete("pending-merges")
-        self.assertEqual([], tree.pending_merges())
+        self.assertEqual([], tree.get_parent_ids())
 
 
 class TestFormat2WorkingTree(TestCaseWithTransport):

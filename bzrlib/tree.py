@@ -221,7 +221,7 @@ class EmptyTree(Tree):
         return iter([])
     
     def __contains__(self, file_id):
-        return file_id in self._inventory
+        return (file_id in self._inventory)
 
     def get_file_sha1(self, file_id, path=None):
         return None

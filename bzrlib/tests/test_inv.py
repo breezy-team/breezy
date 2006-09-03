@@ -434,7 +434,7 @@ class TestPreviousHeads(TestCaseWithTransport):
         self.assertEqual(self.branch.revision_history(), ['A'])
         self.wt.commit('another add of file', rev_id='C')
         self.inv_C = self.branch.repository.get_inventory('C')
-        self.wt.add_pending_merge('B')
+        self.wt.add_parent_tree_id('B')
         self.wt.commit('merge in B', rev_id='D')
         self.inv_D = self.branch.repository.get_inventory('D')
         self.file_active = self.wt.inventory['fileid']

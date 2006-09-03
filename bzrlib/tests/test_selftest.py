@@ -36,7 +36,9 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
+from bzrlib import symbol_versioning
 from bzrlib.trace import note
+from bzrlib.version import _get_bzr_source_tree
 
 
 class SelftestTests(TestCase):
@@ -586,7 +588,8 @@ class TestTestResult(TestCase):
         output_string = output.getvalue()
         # if you are wondering about the regexp please read the comment in
         # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
-        self.assertContainsRe(output_string, "--date [0-9.]+ \S")
+        # XXX: what comment?  -- Andrew Bennetts
+        self.assertContainsRe(output_string, "--date [0-9.]+")
 
     def test_benchhistory_records_test_times(self):
         result_stream = StringIO()
@@ -704,19 +707,19 @@ class TestRunner(TestCase):
         self.assertTrue(result.wasSuccessful())
 
     def test_bench_history(self):
-        import bzrlib.branch
-        import bzrlib.revisionspec
+        # tests that the running the benchmark produces a history file
+        # containing a timestamp and the revision id of the bzrlib source which
+        # was tested.
+        workingtree = _get_bzr_source_tree()
         test = TestRunner('dummy_test')
         output = StringIO()
         runner = TextTestRunner(stream=self._log_file, bench_history=output)
         result = self.run_test_runner(runner, test)
         output_string = output.getvalue()
-        # does anyone know a good regexp for revision ids?
-        # here we are using \S instead and checking the revision id afterwards
-        self.assertContainsRe(output_string, "--date [0-9.]+ \S")
-        branch = bzrlib.branch.Branch.open_containing('.')[0]
-        revision_id = bzrlib.revisionspec.RevisionSpec(branch.revno()).in_history(branch).rev_id
-        self.assert_(output_string.rstrip().endswith(revision_id))
+        self.assertContainsRe(output_string, "--date [0-9.]+")
+        if workingtree is not None:
+            revision_id = workingtree.last_revision()
+            self.assertEndsWith(output_string.rstrip(), revision_id)
 
 
 class TestTestCase(TestCase):
@@ -807,6 +810,20 @@ class TestExtraAssertions(TestCase):
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
         self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
+
+    def test_callDeprecated(self):
+        def testfunc(be_deprecated, result=None):
+            if be_deprecated is True:
+                symbol_versioning.warn('i am deprecated', DeprecationWarning, 
+                                       stacklevel=1)
+            return result
+        result = self.callDeprecated(['i am deprecated'], testfunc, True)
+        self.assertIs(None, result)
+        result = self.callDeprecated([], testfunc, False, 'result')
+        self.assertEqual('result', result)
+        self.callDeprecated(['i am deprecated'], testfunc, 
+                              be_deprecated=True)
+        self.callDeprecated([], testfunc, be_deprecated=False)
 
 
 class TestConvenienceMakers(TestCaseWithTransport):

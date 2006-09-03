@@ -66,7 +66,6 @@ import os
 import re
 import sys
 import time
-import warnings
 
 from cStringIO import StringIO
 
@@ -83,23 +82,11 @@ from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, InventoryEntry
+from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
-        zero_seven,
         DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
-
-
-@deprecated_function(zero_seven)
-def commit(*args, **kwargs):
-    """Commit a new revision to a branch.
-
-    Function-style interface for convenience of old callers.
-
-    New code should use the Commit class instead.
-    """
-    ## XXX: Remove this in favor of WorkingTree.commit?
-    Commit().commit(*args, **kwargs)
 
 
 class NullCommitReporter(object):
@@ -223,7 +210,7 @@ class Commit(object):
         mutter('preparing to commit')
 
         if deprecated_passed(branch):
-            warnings.warn("Commit.commit (branch, ...): The branch parameter is "
+            symbol_versioning.warn("Commit.commit (branch, ...): The branch parameter is "
                  "deprecated as of bzr 0.8. Please use working_tree= instead.",
                  DeprecationWarning, stacklevel=2)
             self.branch = branch
@@ -262,7 +249,9 @@ class Commit(object):
             # check for out of date working trees
             # if we are bound, then self.branch is the master branch and this
             # test is thus all we need.
-            if self.work_tree.last_revision() != self.master_branch.last_revision():
+            master_last = self.master_branch.last_revision()
+            if (master_last is not None and 
+                master_last != self.work_tree.last_revision()):
                 raise errors.OutOfDateTree(self.work_tree)
     
             if strict:
@@ -294,7 +283,7 @@ class Commit(object):
             if len(self.parents) > 1 and self.specific_files:
                 raise NotImplementedError('selected-file commit of merges is not supported yet: files %r',
                         self.specific_files)
-            self._check_parents_present()
+            
             self.builder = self.branch.get_commit_builder(self.parents, 
                 self.config, timestamp, timezone, committer, revprops, rev_id)
             
@@ -334,8 +323,11 @@ class Commit(object):
             # and now do the commit locally.
             self.branch.append_revision(self.rev_id)
 
-            self.work_tree.set_pending_merges([])
-            self.work_tree.set_last_revision(self.rev_id)
+            # if the builder gave us the revisiontree it created back, we
+            # could use it straight away here.
+            # TODO: implement this.
+            self.work_tree.set_parent_trees([(self.rev_id,
+                self.branch.repository.revision_tree(self.rev_id))])
             # now the work tree is up to date with the branch
             
             self.reporter.completed(self.branch.revno(), self.rev_id)
@@ -455,18 +447,12 @@ class Commit(object):
         self.parent_invs = []
         for revision in self.parents:
             if self.branch.repository.has_revision(revision):
+                mutter('commit parent revision {%s}', revision)
                 inventory = self.branch.repository.get_inventory(revision)
                 self.parent_invs.append(inventory)
+            else:
+                mutter('commit parent ghost revision {%s}', revision)
 
-    def _check_parents_present(self):
-        for parent_id in self.parents:
-            mutter('commit parent revision {%s}', parent_id)
-            if not self.branch.repository.has_revision(parent_id):
-                if parent_id == self.branch.last_revision():
-                    warning("parent is missing %r", parent_id)
-                    raise BzrCheckError("branch %s is missing revision {%s}"
-                            % (self.branch, parent_id))
-            
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.
 
@@ -509,8 +495,9 @@ class Commit(object):
         mutter("Selecting files for commit with filter %s", self.specific_files)
         entries = self.work_inv.iter_entries()
         if not self.builder.record_root_entry:
-            warnings.warn('CommitBuilders should support recording the root'
-                ' entry as of bzr 0.10.', DeprecationWarning, stacklevel=1)
+            symbol_versioning.warn('CommitBuilders should support recording'
+                ' the root entry as of bzr 0.10.', DeprecationWarning, 
+                stacklevel=1)
             self.builder.new_inventory.add(self.basis_inv.root.copy())
             entries.next()
             self._emit_progress_update()

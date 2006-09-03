@@ -158,8 +158,7 @@ class BundleSerializerV08(BundleSerializer):
             if rev_id == last_rev_id:
                 rev_tree = last_rev_tree
             else:
-                base_tree = self.source.revision_tree(rev_id)
-            rev_tree = self.source.revision_tree(rev_id)
+                rev_tree = self.source.revision_tree(rev_id)
             if rev_id in self.forced_bases:
                 explicit_base = True
                 base_id = self.forced_bases[rev_id]

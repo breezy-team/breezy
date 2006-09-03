@@ -63,8 +63,8 @@ import bzrlib.osutils as osutils
 import bzrlib.plugin
 import bzrlib.progress as progress
 from bzrlib.revision import common_ancestor
-from bzrlib.revisionspec import RevisionSpec
 import bzrlib.store
+from bzrlib import symbol_versioning
 import bzrlib.trace
 from bzrlib.transport import get_transport
 import bzrlib.transport
@@ -576,14 +576,34 @@ class TestCase(unittest.TestCase):
             self.fail("%r is an instance of %s rather than %s" % (
                 obj, obj.__class__, kls))
 
+    def callDeprecated(self, expected, callable, *args, **kwargs):
+        """Assert that a callable is deprecated in a particular way.
+
+        :param expected: a list of the deprecation warnings expected, in order
+        :param callable: The callable to call
+        :param args: The positional arguments for the callable
+        :param kwargs: The keyword arguments for the callable
+        """
+        local_warnings = []
+        def capture_warnings(msg, cls, stacklevel=None):
+            self.assertEqual(cls, DeprecationWarning)
+            local_warnings.append(msg)
+        method = symbol_versioning.warn
+        symbol_versioning.set_warning_method(capture_warnings)
+        try:
+            result = callable(*args, **kwargs)
+        finally:
+            symbol_versioning.set_warning_method(method)
+        self.assertEqual(expected, local_warnings)
+        return result
+
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
 
         The file is removed as the test is torn down.
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
-        encoder, decoder, stream_reader, stream_writer = codecs.lookup('UTF-8')
-        self._log_file = stream_writer(os.fdopen(fileno, 'w+'))
+        self._log_file = os.fdopen(fileno, 'w+')
         self._log_nonce = bzrlib.trace.enable_test_log(self._log_file)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
@@ -777,7 +797,7 @@ class TestCase(unittest.TestCase):
         return self.run_bzr_captured(args, retcode=retcode, encoding=encoding, stdin=stdin)
 
     def run_bzr_decode(self, *args, **kwargs):
-        if kwargs.has_key('encoding'):
+        if 'encoding' in kwargs:
             encoding = kwargs['encoding']
         else:
             encoding = bzrlib.user_encoding
@@ -822,12 +842,25 @@ class TestCase(unittest.TestCase):
         profiled or debugged so easily.
 
         :param retcode: The status code that is expected.  Defaults to 0.  If
-        None is supplied, the status code is not checked.
+            None is supplied, the status code is not checked.
+        :param env_changes: A dictionary which lists changes to environment
+            variables. A value of None will unset the env variable.
+            The values must be strings. The change will only occur in the
+            child, so you don't need to fix the environment after running.
         """
+        env_changes = kwargs.get('env_changes', {})
+        def cleanup_environment():
+            for env_var, value in env_changes.iteritems():
+                if value is None:
+                    del os.environ[env_var]
+                else:
+                    os.environ[env_var] = value
+
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         args = list(args)
-        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
-                         stderr=PIPE)
+        process = Popen([sys.executable, bzr_path]+args,
+                         stdout=PIPE, stderr=PIPE,
+                         preexec_fn=cleanup_environment)
         out = process.stdout.read()
         err = process.stderr.read()
         retcode = process.wait()
@@ -899,10 +932,10 @@ class TestCase(unittest.TestCase):
         base_rev = common_ancestor(branch_from.last_revision(),
                                    wt_to.branch.last_revision(),
                                    wt_to.branch.repository)
-        merge_inner(wt_to.branch, branch_from.basis_tree(), 
+        merge_inner(wt_to.branch, branch_from.basis_tree(),
                     wt_to.branch.repository.revision_tree(base_rev),
                     this_tree=wt_to)
-        wt_to.add_pending_merge(branch_from.last_revision())
+        wt_to.add_parent_tree_id(branch_from.last_revision())
 
 
 BzrTestBase = TestCase
@@ -1340,6 +1373,7 @@ def test_suite():
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_repository',
+                   'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revisiontree',
@@ -1348,6 +1382,7 @@ def test_suite():
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
+                   'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_status',
