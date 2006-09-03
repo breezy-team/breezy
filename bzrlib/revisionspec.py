@@ -231,6 +231,7 @@ class RevisionSpec(object):
         """
         return None
 
+
 # private API
 
 class RevisionSpec_revno(RevisionSpec):
