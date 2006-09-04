@@ -40,7 +40,8 @@ class BisectCurrent(object):
         last_rev = wt.branch.last_revision()
         rev_tree = wt.branch.repository.revision_tree(last_rev)
         wt.revert([], rev_tree, False)
-        os.unlink(bisect_rev_path)
+        if os.path.exists(bisect_rev_path):
+            os.unlink(bisect_rev_path)
 
 class BisectLog(object):
     "Bisect log file handler."
