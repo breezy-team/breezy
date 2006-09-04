@@ -1,4 +1,4 @@
-bzr 0.10rc2  2006-08-29
+bzr 0.10  2006-08-29
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
