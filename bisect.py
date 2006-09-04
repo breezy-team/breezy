@@ -27,11 +27,20 @@ class BisectCurrent(object):
         f.write(self._revid + "\n")
         f.close()
 
-    def switch(self, revision):
+    def switch(self, revid):
         wt = self._bzrdir.open_workingtree()
-        wt.revert([], revision, False)
-        self._revid = revision.revision_id
+        if isinstance(revid, int):
+            revid = self._bzrbranch.get_rev_id(revid)
+        wt.revert([], wt.branch.repository.revision_tree(revid), False)
+        self._revid = revid
         self._save()
+
+    def reset(self):
+        wt = self._bzrdir.open_workingtree()
+        last_rev = wt.branch.last_revision()
+        rev_tree = wt.branch.repository.revision_tree(last_rev)
+        wt.revert([], rev_tree, False)
+        os.unlink(bisect_rev_path)
 
 class BisectLog(object):
     "Bisect log file handler."
@@ -209,6 +218,7 @@ class cmd_bisect(Command):
     def reset(self):
         "Reset the bisect state to no state."
 
+        BisectCurrent().reset()
         if os.path.exists(bisect_info_path):
             os.unlink(bisect_info_path)
 
@@ -304,6 +314,12 @@ class BisectCurrentUnitTests(BisectTestCase):
         self.assertRevno(5)
         bc.switch(4)
         self.assertRevno(4)
+
+    def testReset(self):
+        bc = BisectCurrent()
+        bc.switch(4)
+        bc.reset()
+        self.assertRevno(5)
 
 class BisectLogUnitTests(BisectTestCase):
     def testCreateBlank(self):
