@@ -6,7 +6,7 @@ from bzrlib.commands import Command, register_command
 from bzrlib.errors import BzrCommandError
 
 bisect_info_path = ".bzr/bisect"
-bisect_rev_path = ".bzr/bisect_revno"
+bisect_rev_path = ".bzr/bisect_revid"
 
 class BisectCurrent(object):
     "Bisect class for managing the current revision."
