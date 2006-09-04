@@ -967,6 +967,10 @@ class ParamikoNotPresent(DependencyNotPresent):
         DependencyNotPresent.__init__(self, 'paramiko', error)
 
 
+class PointlessMerge(BzrNewError):
+    """Nothing to merge."""
+
+
 class UninitializableFormat(BzrNewError):
     """Format %(format)s cannot be initialised by this version of bzr."""
 

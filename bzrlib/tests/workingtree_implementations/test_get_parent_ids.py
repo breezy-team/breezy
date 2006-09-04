@@ -30,7 +30,7 @@ class TestGetParentIds(TestCaseWithWorkingTree):
         t2 = t.bzrdir.sprout('t2').open_workingtree()
         rev2_id = t2.commit('foo', allow_pointless=True)
         self.assertEqual([rev2_id], t2.get_parent_ids())
-        self.merge(t2.branch, t)
+        t.merge_from_branch(t2.branch)
         self.assertEqual([rev1_id, rev2_id], t.get_parent_ids())
 
     def test_pending_merges(self):
