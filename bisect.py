@@ -86,7 +86,8 @@ class BisectLog(object):
                 revno = revno + 1
                 continue
             if len(matches) > 1:
-                raise RuntimeError("multiple entries for revision")
+                raise RuntimeError("revision %s (revno %d) duplicated"
+                                   % (revision, revno))
             if matches[0] == "yes":
                 self._high_revno = revno
                 break
