@@ -321,7 +321,7 @@ added:
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
         tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
         tree2.commit('four-a', rev_id='4a')
-        self.merge(tree2.branch, wt)
+        wt.merge_from_branch(tree2.branch)
         wt.commit('four-b', rev_id='4b')
         mainline_revs.append('4b')
         rev_nos['4b'] = 4
@@ -335,12 +335,12 @@ added:
         tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
         tree3 = wt.bzrdir.sprout('tree3').open_workingtree()
         tree3.commit('commit three a', rev_id='3a')
-        self.merge(tree3.branch, tree2)
+        tree2.merge_from_branch(tree3.branch)
         tree2.commit('commit three b', rev_id='3b')
-        self.merge(tree2.branch, wt)
+        wt.merge_from_branch(tree2.branch)
         wt.commit('commit three c', rev_id='3c')
         tree2.commit('four-a', rev_id='4a')
-        self.merge(tree2.branch, wt)
+        wt.merge_from_branch(tree2.branch)
         wt.commit('four-b', rev_id='4b')
         mainline_revs = [None, '1', '2', '3c', '4b']
         rev_nos = {'1': 1, '2': 2, '3c': 3, '4b': 4}
