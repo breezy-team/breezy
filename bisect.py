@@ -320,6 +320,7 @@ class BisectCurrentUnitTests(BisectTestCase):
         bc.switch(4)
         bc.reset()
         self.assertRevno(5)
+        assert not os.path.exists(bisect_rev_path)
 
 class BisectLogUnitTests(BisectTestCase):
     def testCreateBlank(self):
