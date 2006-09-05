@@ -522,7 +522,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_merge_modified(self):
         tree = self.make_branch_and_tree('master')
-        tree._control_files.put_bytes('merge-hashes', 'asdfasdf')
+        tree._control_files.put('merge-hashes', StringIO('asdfasdf'))
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
 
     def test_conflicts(self):
@@ -535,10 +535,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             
         tree2 = WorkingTree.open('master')
         self.assertEqual(tree2.conflicts(), example_conflicts)
-        tree2._control_files.put_bytes('conflicts', '')
-        self.assertRaises(errors.ConflictFormatError, tree2.conflicts)
-        tree2._control_files.put_bytes('conflicts', 'a')
-        self.assertRaises(errors.ConflictFormatError, tree2.conflicts)
+        tree2._control_files.put('conflicts', StringIO(''))
+        self.assertRaises(errors.ConflictFormatError, 
+                          tree2.conflicts)
+        tree2._control_files.put('conflicts', StringIO('a'))
+        self.assertRaises(errors.ConflictFormatError, 
+                          tree2.conflicts)
 
     def make_merge_conflicts(self):
         from bzrlib.merge import merge_inner 
