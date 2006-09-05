@@ -66,6 +66,8 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
     really used by the plugin are.
     """
 
+    _RANGE_HEADER_RE = re.compile(
+        r'bytes (?P<begin>\d+)-(?P<end>\d+)/(?P<size>\d+|\*)')
     # On Mac OS X 10.3 + fink, we get EAGAIN (ressource temporary
     # unavailable)...   permanently :)  when  reading the  client
     # socket.  The  following helps,  but still, some  tests fail
@@ -122,10 +124,7 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
         # Check the Content-Range header
         range_header = self.headers.get('Content-Range')
         if range_header is not None:
-            # FIXME: No need to compile that at every request
-            _RANGE_HEADER_RE = re.compile(
-                'bytes (?P<begin>\d+)-(?P<end>\d+)/(?P<size>\d+|\*)')
-            match = _RANGE_HEADER_RE.match(range_header)
+            match = self._RANGE_HEADER_RE.match(range_header)
             if match is None:
                 # FIXME: RFC2616 says to return a 501 if we don't
                 # understand the Content-Range header, but Apache

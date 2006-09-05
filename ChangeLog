@@ -1,3 +1,10 @@
+2006-09-05  Vincent Ladeuil  <v.ladeuil@alplog.fr>
+	Small cleanup.
+
+	* test_webdav.py:
+	(TestingDAVRequestHandler): Makes _RANGE_HEADER_RE a static
+	attribute.
+
 2006-09-01  Vincent Ladeuil  <v.ladeuil+lp@free.fr>
 	Cosmetic changes.
 
