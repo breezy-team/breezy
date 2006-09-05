@@ -27,6 +27,7 @@ import sys
 
 from bzrlib import (
     osutils,
+    symbol_versioning,
     urlutils,
     )
 from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
@@ -134,9 +135,8 @@ class TransportTests(TestTransportImplementation):
         if t.is_readonly():
             return
 
-        deprecation_msg = '%s.%s.%s was deprecated in version 0.11.' % (
-            t.put.im_class.__module__, t.put.im_class.__name__,
-            t.put.__name__)
+        deprecation_msg = symbol_versioning.deprecation_string(
+            t.put, symbol_versioning.zero_eleven)
         self.callDeprecated([deprecation_msg],
                             t.put, 'a', 'string\ncontents\n')
         self.check_transport_contents('string\ncontents\n', t, 'a')
@@ -150,9 +150,8 @@ class TransportTests(TestTransportImplementation):
 
         if t.is_readonly():
             return
-        deprecation_msg = '%s.%s.%s was deprecated in version 0.11.' % (
-            t.put_multi.im_class.__module__, t.put_multi.im_class.__name__,
-            t.put_multi.__name__)
+        deprecation_msg = symbol_versioning.deprecation_string(
+            t.put_multi, symbol_versioning.zero_eleven)
         self.assertEqual(2, self.callDeprecated([deprecation_msg],
             t.put_multi, [('a', StringIO('new\ncontents for\na\n')),
                           ('d', StringIO('contents\nfor d\n'))]
@@ -302,9 +301,8 @@ class TransportTests(TestTransportImplementation):
         self.assertTransportMode(t, 'mode400', 0400)
 
         # XXX: put_multi is deprecated, so do we really care anymore?
-        deprecation_msg = '%s.%s.%s was deprecated in version 0.11.' % (
-            t.put_multi.im_class.__module__, t.put_multi.im_class.__name__,
-            t.put_multi.__name__)
+        deprecation_msg = symbol_versioning.deprecation_string(
+            t.put_multi, symbol_versioning.zero_eleven)
         self.callDeprecated([deprecation_msg],
             t.put_multi, [('mmode644', StringIO('text\n'))], mode=0644)
         self.assertTransportMode(t, 'mmode644', 0644)
@@ -511,9 +509,8 @@ class TransportTests(TestTransportImplementation):
         t.put_bytes('a', 'diff\ncontents for\na\n')
         t.put_bytes('b', 'contents\nfor b\n')
 
-        deprecation_msg = '%s.%s.%s was deprecated in version 0.11.' % (
-            t.append.im_class.__module__, t.append.im_class.__name__,
-            t.append.__name__)
+        deprecation_msg = symbol_versioning.deprecation_string(
+            t.append, symbol_versioning.zero_eleven)
         self.assertEqual(20, self.callDeprecated([deprecation_msg],
             t.append, 'a', StringIO('add\nsome\nmore\ncontents\n')))
 
