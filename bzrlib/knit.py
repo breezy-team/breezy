@@ -955,7 +955,7 @@ class _KnitComponentFile(object):
         self._file_mode=file_mode
 
     def write_header(self):
-        if self._transport.append(self._filename, StringIO(self.HEADER),
+        if self._transport.append_bytes(self._filename, self.HEADER,
             mode=self._file_mode):
             raise KnitCorrupt(self._filename, 'misaligned after writing header')
 
@@ -1247,7 +1247,7 @@ class _KnitIndex(_KnitComponentFile):
             assert isinstance(line, str), \
                 'content must be utf-8 encoded: %r' % (line,)
             lines.append(line)
-        self._transport.append(self._filename, StringIO(''.join(lines)))
+        self._transport.append_bytes(self._filename, ''.join(lines))
         # cache after writing, so that a failed write leads to missing cache
         # entries not extra ones. XXX TODO: RBC 20060502 in the event of a 
         # failure, reload the index or flush it or some such, to prevent
@@ -1355,14 +1355,14 @@ class _KnitData(_KnitComponentFile):
         :return: the offset in the data file raw_data was written.
         """
         assert isinstance(raw_data, str), 'data must be plain bytes'
-        return self._transport.append(self._filename, StringIO(raw_data))
+        return self._transport.append_bytes(self._filename, raw_data)
         
     def add_record(self, version_id, digest, lines):
         """Write new text record to disk.  Returns the position in the
         file where it was written."""
         size, sio = self._record_to_data(version_id, digest, lines)
         # write to disk
-        start_pos = self._transport.append(self._filename, sio)
+        start_pos = self._transport.append_file(self._filename, sio)
         if self._do_cache:
             self._cache[version_id] = sio.getvalue()
         return start_pos, size

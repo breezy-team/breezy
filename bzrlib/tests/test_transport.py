@@ -178,9 +178,9 @@ class TestMemoryTransport(TestCase):
 
     def test_append_and_get(self):
         transport = MemoryTransport()
-        transport.append('path', StringIO('content'))
+        transport.append_bytes('path', 'content')
         self.assertEqual(transport.get('path').read(), 'content')
-        transport.append('path', StringIO('content'))
+        transport.append_file('path', StringIO('content'))
         self.assertEqual(transport.get('path').read(), 'contentcontent')
 
     def test_put_and_get(self):
@@ -193,7 +193,7 @@ class TestMemoryTransport(TestCase):
     def test_append_without_dir_fails(self):
         transport = MemoryTransport()
         self.assertRaises(NoSuchFile,
-                          transport.append, 'dir/path', StringIO('content'))
+                          transport.append_bytes, 'dir/path', 'content')
 
     def test_put_without_dir_fails(self):
         transport = MemoryTransport()
@@ -210,13 +210,13 @@ class TestMemoryTransport(TestCase):
 
     def test_has_present(self):
         transport = MemoryTransport()
-        transport.append('foo', StringIO('content'))
+        transport.append_bytes('foo', 'content')
         self.assertEquals(True, transport.has('foo'))
 
     def test_mkdir(self):
         transport = MemoryTransport()
         transport.mkdir('dir')
-        transport.append('dir/path', StringIO('content'))
+        transport.append_bytes('dir/path', 'content')
         self.assertEqual(transport.get('dir/path').read(), 'content')
 
     def test_mkdir_missing_parent(self):
