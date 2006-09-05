@@ -425,22 +425,8 @@ class SFTPTransport(Transport):
             # raise the original with its traceback if we can.
             raise
 
-    def non_atomic_put(self, relpath, f, mode=None, create_parent_dir=False):
-        """Copy the file-like object into the target location.
-
-        This function is not strictly safe to use. It is only meant to
-        be used when you already know that the target does not exist.
-        It is not safe, because it will open and truncate the remote
-        file. So there may be a time when the file has invalid contents.
-
-        :param relpath: The remote location to put the contents.
-        :param f:       File-like object.
-        :param mode:    Possible access permissions for new file.
-                        None means do not set remote permissions.
-        :param create_parent_dir: If we cannot create the target file because
-                        the parent directory does not exist, go ahead and
-                        create it, and then try again.
-        """
+    def _non_atomic_put_helper(self, relpath, writer, mode=None,
+                               create_parent_dir=False):
         abspath = self._remote_path(relpath)
 
         # TODO: jam 20060816 paramiko doesn't publicly expose a way to
@@ -454,9 +440,10 @@ class SFTPTransport(Transport):
                 try:
                     fout = self._sftp.file(abspath, mode='wb')
                     fout.set_pipelined(True)
-                    self._pump(f, fout)
+                    writer(fout)
                 except (paramiko.SSHException, IOError), e:
-                    self._translate_io_exception(e, abspath, ': unable to open')
+                    self._translate_io_exception(e, abspath,
+                                                 ': unable to open')
 
                 # This is designed to chmod() right before we close.
                 # Because we set_pipelined() earlier, theoretically we might 
@@ -483,6 +470,35 @@ class SFTPTransport(Transport):
             except (paramiko.SSHException, IOError), e:
                 self._translate_io_exception(e, abspath, ': unable to open')
             _open_and_write_file()
+
+    def non_atomic_put_file(self, relpath, f, mode=None,
+                            create_parent_dir=False):
+        """Copy the file-like object into the target location.
+
+        This function is not strictly safe to use. It is only meant to
+        be used when you already know that the target does not exist.
+        It is not safe, because it will open and truncate the remote
+        file. So there may be a time when the file has invalid contents.
+
+        :param relpath: The remote location to put the contents.
+        :param f:       File-like object.
+        :param mode:    Possible access permissions for new file.
+                        None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
+        """
+        def writer(fout):
+            self._pump(f, fout)
+        self._non_atomic_put_helper(relpath, writer, mode=mode,
+                                    create_parent_dir=create_parent_dir)
+
+    def non_atomic_put_bytes(self, relpath, bytes, mode=None,
+                             create_parent_dir=False):
+        def writer(fout):
+            fout.write(bytes)
+        self._non_atomic_put_helper(relpath, writer, mode=mode,
+                                    create_parent_dir=create_parent_dir)
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""

@@ -175,21 +175,19 @@ class LocalTransport(Transport):
         finally:
             fp.close()
 
-    def non_atomic_put(self, relpath, f, mode=None, create_parent_dir=False):
-        """Copy the file-like object into the target location.
+    def _non_atomic_put_helper(self, relpath, writer,
+                               mode=None,
+                               create_parent_dir=False):
+        """Common functionality information for the non_atomic_put_*.
 
-        This function is not strictly safe to use. It is only meant to
-        be used when you already know that the target does not exist.
-        It is not safe, because it will open and truncate the remote
-        file. So there may be a time when the file has invalid contents.
+        This tracks all the create_parent_dir stuff.
 
-        :param relpath: The remote location to put the contents.
-        :param f:       File-like object.
-        :param mode:    Possible access permissions for new file.
-                        None means do not set remote permissions.
-        :param create_parent_dir: If we cannot create the target file because
-                        the parent directory does not exist, go ahead and
-                        create it, and then try again.
+        :param relpath: the path we are putting to.
+        :param writer: A function that takes an os level file descriptor
+            and writes whatever data it needs to write there.
+        :param mode: The final file mode.
+        :param create_parent_dir: Should we be creating the parent directory
+            if it doesn't exist?
         """
         abspath = self._abspath(relpath)
         if mode is None:
@@ -224,9 +222,38 @@ class LocalTransport(Transport):
                 # Because of umask, we may still need to chmod the file.
                 # But in the general case, we won't have to
                 os.chmod(abspath, mode)
-            self._pump_to_fd(f, fd)
+            writer(fd)
         finally:
             os.close(fd)
+
+    def non_atomic_put_file(self, relpath, f, mode=None,
+                            create_parent_dir=False):
+        """Copy the file-like object into the target location.
+
+        This function is not strictly safe to use. It is only meant to
+        be used when you already know that the target does not exist.
+        It is not safe, because it will open and truncate the remote
+        file. So there may be a time when the file has invalid contents.
+
+        :param relpath: The remote location to put the contents.
+        :param f:       File-like object.
+        :param mode:    Possible access permissions for new file.
+                        None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
+        """
+        def writer(fd):
+            self._pump_to_fd(f, fd)
+        self._non_atomic_put_helper(relpath, writer, mode=mode,
+                                    create_parent_dir=create_parent_dir)
+
+    def non_atomic_put_bytes(self, relpath, bytes, mode=None,
+                             create_parent_dir=False):
+        def writer(fd):
+            os.write(fd, bytes)
+        self._non_atomic_put_helper(relpath, writer, mode=mode,
+                                    create_parent_dir=create_parent_dir)
 
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree."""
