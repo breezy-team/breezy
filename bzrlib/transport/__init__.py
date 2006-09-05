@@ -571,6 +571,27 @@ class Transport(object):
                 self.mkdir(parent_dir)
                 return self.put_file(relpath, f, mode=mode)
 
+    def non_atomic_put_bytes(self, relpath, bytes, mode=None,
+                             create_parent_dir=False):
+        """Copy the string into the target location.
+
+        This function is not strictly safe to use. See 
+        Transport.non_atomic_put_bytes for more information.
+
+        :param relpath: The remote location to put the contents.
+        :param bytes:   A string object containing the raw bytes to write into
+                        the target file.
+        :param mode:    Possible access permissions for new file.
+                        None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
+        """
+        assert isinstance(bytes, str), \
+            'bytes must be a plain string, not %s' % type(bytes)
+        self.non_atomic_put_file(relpath, StringIO(bytes), mode=mode,
+                                 create_parent_dir=create_parent_dir)
+
     @deprecated_method(zero_eleven)
     def put_multi(self, files, mode=None, pb=None):
         """Put a set of files into the location.
