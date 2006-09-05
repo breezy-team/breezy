@@ -112,6 +112,9 @@ class BisectLog(object):
     def _switch_wc_to_revno(self, revno):
         self._current.switch(revno)
 
+    def _set_status(self, revid, status):
+        self._items.append((revid, status))
+
     def change_file_name(self, filename):
         self._filename = filename
 
@@ -128,11 +131,13 @@ class BisectLog(object):
         for (revid, status) in self._items:
             f.write("%s %s\n" % (revid, status))
 
-    def set_status(self, revid, status):
-        self._items.append((revid, status))
+    def set_status_from_revspec(self, revspec, status):
+        self._load_bzr_tree()
+        revid = revspec[0].in_history(self._bzrbranch).rev_id
+        self._set_status(revid, status)
 
     def set_current(self, status):
-        self.set_status(self._current.get_current_revid(), status)
+        self._set_status(self._current.get_current_revid(), status)
 
     def bisect(self):
         self._find_current_range()
@@ -194,7 +199,7 @@ class cmd_bisect(Command):
     def _set_state(self, revspec, state):
         bl = BisectLog()
         if revspec:
-            bl.set_status(revspec[1], state)
+            bl.set_status_from_revspec(revspec, state)
         else:
             bl.set_current(state)
         bl.bisect()
