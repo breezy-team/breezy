@@ -257,10 +257,9 @@ class Transport(object):
         object or string to another one.
         This just gives them something easy to call.
         """
-        if isinstance(from_file, basestring):
-            to_file.write(from_file)
-        else:
-            pumpfile(from_file, to_file)
+        assert not isinstance(from_file, basestring), \
+            '_pump should only be called on files not %s' % (type(from_file,))
+        pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
         """Try to figure out how many entries are in multi,
@@ -553,12 +552,12 @@ class Transport(object):
         :param mode: The mode for the newly created files
         :return: The number of files copied.
         """
-        def put(path, f):
+        def _put(path, f):
             if isinstance(f, str):
                 self.put_bytes(path, f, mode=mode)
             else:
                 self.put_file(path, f, mode=mode)
-        return len(self._iterate_over(files, put, pb, 'put', expand=True))
+        return len(self._iterate_over(files, _put, pb, 'put', expand=True))
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
@@ -605,7 +604,7 @@ class Transport(object):
         Override this for efficiency if a specific transport can do it 
         faster than this default implementation.
         """
-        self.put(rel_to, self.get(rel_from))
+        self.put_file(rel_to, self.get(rel_from))
 
     def copy_multi(self, relpaths, pb=None):
         """Copy a bunch of entries.
@@ -626,7 +625,7 @@ class Transport(object):
         """
         # The dummy implementation just does a simple get + put
         def copy_entry(path):
-            other.put(path, self.get(path), mode=mode)
+            other.put_file(path, self.get(path), mode=mode)
 
         return len(self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False))
 

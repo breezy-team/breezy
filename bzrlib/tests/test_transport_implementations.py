@@ -298,9 +298,8 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises(FileExists, t.mkdir, 'dir_g')
 
         # Test get/put in sub-directories
-        self.assertEqual(2, 
-            t.put_multi([('dir_a/a', StringIO('contents of dir_a/a')),
-                         ('dir_b/b', StringIO('contents of dir_b/b'))]))
+        t.put_bytes('dir_a/a', 'contents of dir_a/a')
+        t.put_file('dir_b/b', StringIO('contents of dir_b/b'))
         self.check_transport_contents('contents of dir_a/a', t, 'dir_a/a')
         self.check_transport_contents('contents of dir_b/b', t, 'dir_b/b')
 
@@ -361,7 +360,7 @@ class TransportTests(TestTransportImplementation):
             self.build_tree(['e/', 'e/f'])
         else:
             t.mkdir('e')
-            t.put('e/f', StringIO('contents of e'))
+            t.put_bytes('e/f', 'contents of e')
         self.assertRaises(NoSuchFile, t.copy_to, ['e/f'], temp_transport)
         temp_transport.mkdir('e')
         t.copy_to(['e/f'], temp_transport)
@@ -510,16 +509,16 @@ class TransportTests(TestTransportImplementation):
             self.assertRaises(TransportNotPossible, t.delete, 'missing')
             return
 
-        t.put('a', StringIO('a little bit of text\n'))
+        t.put_bytes('a', 'a little bit of text\n')
         self.failUnless(t.has('a'))
         t.delete('a')
         self.failIf(t.has('a'))
 
         self.assertRaises(NoSuchFile, t.delete, 'a')
 
-        t.put('a', StringIO('a text\n'))
-        t.put('b', StringIO('b text\n'))
-        t.put('c', StringIO('c text\n'))
+        t.put_bytes('a', 'a text\n')
+        t.put_bytes('b', 'b text\n')
+        t.put_bytes('c', 'c text\n')
         self.assertEqual([True, True, True],
                 list(t.has_multi(['a', 'b', 'c'])))
         t.delete_multi(['a', 'c'])
@@ -535,8 +534,8 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises(NoSuchFile,
                 t.delete_multi, iter(['a', 'b', 'c']))
 
-        t.put('a', StringIO('another a text\n'))
-        t.put('c', StringIO('another c text\n'))
+        t.put_bytes('a', 'another a text\n')
+        t.put_bytes('c', 'another c text\n')
         t.delete_multi(iter(['a', 'b', 'c']))
 
         # We should have deleted everything
@@ -640,7 +639,7 @@ class TransportTests(TestTransportImplementation):
         # creates control files in the working directory
         # perhaps all of this could be done in a subdirectory
 
-        t.put('a', StringIO('a first file\n'))
+        t.put_bytes('a', 'a first file\n')
         self.assertEquals([True, False], list(t.has_multi(['a', 'b'])))
 
         t.move('a', 'b')
@@ -651,7 +650,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEquals([False, True], list(t.has_multi(['a', 'b'])))
 
         # Overwrite a file
-        t.put('c', StringIO('c this file\n'))
+        t.put_bytes('c', 'c this file\n')
         t.move('c', 'b')
         self.failIf(t.has('c'))
         self.check_transport_contents('c this file\n', t, 'b')
@@ -666,7 +665,7 @@ class TransportTests(TestTransportImplementation):
         if t.is_readonly():
             return
 
-        t.put('a', StringIO('a file\n'))
+        t.put_bytes('a', 'a file\n')
         t.copy('a', 'b')
         self.check_transport_contents('a file\n', t, 'b')
 
@@ -675,7 +674,7 @@ class TransportTests(TestTransportImplementation):
         # What should the assert be if you try to copy a
         # file over a directory?
         #self.assertRaises(Something, t.copy, 'a', 'c')
-        t.put('d', StringIO('text in d\n'))
+        t.put_bytes('d', 'text in d\n')
         t.copy('d', 'b')
         self.check_transport_contents('text in d\n', t, 'b')
 
@@ -827,7 +826,7 @@ class TransportTests(TestTransportImplementation):
         if t1.is_readonly():
             open('b/d', 'wb').write('newfile\n')
         else:
-            t2.put('d', StringIO('newfile\n'))
+            t2.put_bytes('d', 'newfile\n')
 
         self.failUnless(t1.has('b/d'))
         self.failUnless(t2.has('d'))
@@ -927,8 +926,6 @@ class TransportTests(TestTransportImplementation):
                               transport.iter_files_recursive)
             return
         if transport.is_readonly():
-            self.assertRaises(TransportNotPossible,
-                              transport.put, 'a', 'some text for a\n')
             return
         self.build_tree(['from/',
                          'from/dir/',
@@ -985,7 +982,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         if transport.is_readonly():
             return
-        transport.put('foo', StringIO('bar'))
+        transport.put_bytes('foo', 'bar')
         transport2 = self.get_transport()
         self.check_transport_contents('bar', transport2, 'foo')
         # its base should be usable.
@@ -1003,7 +1000,7 @@ class TransportTests(TestTransportImplementation):
         if transport.is_readonly():
             self.assertRaises(TransportNotPossible, transport.lock_write, 'foo')
             return
-        transport.put('lock', StringIO())
+        transport.put_bytes('lock', '')
         lock = transport.lock_write('lock')
         # TODO make this consistent on all platforms:
         # self.assertRaises(LockError, transport.lock_write, 'lock')
@@ -1014,7 +1011,7 @@ class TransportTests(TestTransportImplementation):
         if transport.is_readonly():
             file('lock', 'w').close()
         else:
-            transport.put('lock', StringIO())
+            transport.put_bytes('lock', '')
         lock = transport.lock_read('lock')
         # TODO make this consistent on all platforms:
         # self.assertRaises(LockError, transport.lock_read, 'lock')
@@ -1025,7 +1022,7 @@ class TransportTests(TestTransportImplementation):
         if transport.is_readonly():
             file('a', 'w').write('0123456789')
         else:
-            transport.put('a', StringIO('0123456789'))
+            transport.put_bytes('a', '0123456789')
 
         d = list(transport.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
         self.assertEqual(d[0], (0, '0'))
@@ -1038,7 +1035,7 @@ class TransportTests(TestTransportImplementation):
         if transport.is_readonly():
             file('a', 'w').write('0123456789')
         else:
-            transport.put('a', StringIO('01234567890'))
+            transport.put_bytes('a', '01234567890')
 
         d = list(transport.readv('a', ((1, 1), (9, 1), (0, 1), (3, 2))))
         self.assertEqual(d[0], (1, '1'))
