@@ -837,15 +837,30 @@ class TestCase(unittest.TestCase):
             child, so you don't need to fix the environment after running.
         """
         env_changes = kwargs.get('env_changes', {})
+
+        old_env = {}
+
         def cleanup_environment():
             for env_var, value in env_changes.iteritems():
-                old_val = osutils.set_or_unset_env(env_var, value)
+                old_env[env_var] = osutils.set_or_unset_env(env_var, value)
+
+        def restore_environment():
+            for env_var, value in old_env.iteritems():
+                osutils.set_or_unset_env(env_var, value)
 
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         args = list(args)
-        process = Popen([sys.executable, bzr_path]+args,
-                         stdout=PIPE, stderr=PIPE,
-                         preexec_fn=cleanup_environment)
+
+        try:
+            # win32 subprocess doesn't support preexec_fn
+            # so we will avoid using it on all platforms, just to
+            # make sure the code path is used, and we don't break on win32
+            cleanup_environment()
+            process = Popen([sys.executable, bzr_path]+args,
+                             stdout=PIPE, stderr=PIPE)
+        finally:
+            restore_environment()
+            
         out = process.stdout.read()
         err = process.stderr.read()
         retcode = process.wait()
