@@ -500,10 +500,10 @@ class Transport(object):
 
     @deprecated_method(zero_eleven)
     def put(self, relpath, f, mode=None):
-        """Copy the file-like or string object into the location.
+        """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
         :param mode: The mode for the newly created file, 
                      None means just use the default
         """
@@ -542,6 +542,33 @@ class Transport(object):
         assert isinstance(bytes, str), \
             'bytes must be a plain string, not %s' % type(bytes)
         return self.put_file(relpath, StringIO(bytes), mode=mode)
+
+    def non_atomic_put(self, relpath, f, mode=None, create_parent_dir=False):
+        """Copy the file-like object into the target location.
+
+        This function is not strictly safe to use. It is only meant to
+        be used when you already know that the target does not exist.
+        It is not safe, because it will open and truncate the remote
+        file. So there may be a time when the file has invalid contents.
+
+        :param relpath: The remote location to put the contents.
+        :param f:       File-like object.
+        :param mode:    Possible access permissions for new file.
+                        None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
+        """
+        # Default implementation just does an atomic put.
+        try:
+            return self.put(relpath, f, mode=mode)
+        except errors.NoSuchFile:
+            if not create_parent_dir:
+                raise
+            parent_dir = osutils.dirname(relpath)
+            if parent_dir:
+                self.mkdir(parent_dir)
+                return self.put(relpath, f, mode=mode)
 
     @deprecated_method(zero_eleven)
     def put_multi(self, files, mode=None, pb=None):

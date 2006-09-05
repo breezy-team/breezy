@@ -19,6 +19,7 @@
 This is a fairly thin wrapper on regular file IO.
 """
 
+import errno
 import os
 import shutil
 import sys
@@ -38,6 +39,7 @@ from bzrlib.transport import Transport, Server
 
 
 _append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY
+_non_atomic_put_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY
 
 
 class LocalTransport(Transport):
@@ -135,7 +137,9 @@ class LocalTransport(Transport):
         """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
+        :param mode: The mode for the newly created file, 
+                     None means just use the default
         """
 
         path = relpath
@@ -170,6 +174,59 @@ class LocalTransport(Transport):
             fp.commit()
         finally:
             fp.close()
+
+    def non_atomic_put(self, relpath, f, mode=None, create_parent_dir=False):
+        """Copy the file-like object into the target location.
+
+        This function is not strictly safe to use. It is only meant to
+        be used when you already know that the target does not exist.
+        It is not safe, because it will open and truncate the remote
+        file. So there may be a time when the file has invalid contents.
+
+        :param relpath: The remote location to put the contents.
+        :param f:       File-like object.
+        :param mode:    Possible access permissions for new file.
+                        None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
+        """
+        abspath = self._abspath(relpath)
+        if mode is None:
+            # os.open() will automatically use the umask
+            local_mode = 0666
+        else:
+            local_mode = mode
+        try:
+            fd = os.open(abspath, _non_atomic_put_flags, local_mode)
+        except (IOError, OSError),e:
+            # We couldn't create the file, maybe we need to create
+            # the parent directory, and try again
+            if (not create_parent_dir
+                or e.errno not in (errno.ENOENT,errno.ENOTDIR)):
+                self._translate_error(e, relpath)
+            parent_dir = os.path.dirname(abspath)
+            if not parent_dir:
+                self._translate_error(e, relpath)
+            try:
+                os.mkdir(parent_dir)
+            except (IOError, OSError), e:
+                self._translate_error(e, relpath)
+            # We created the parent directory, lets try to open the
+            # file again
+            try:
+                fd = os.open(abspath, _non_atomic_put_flags, local_mode)
+            except (IOError, OSError), e:
+                self._translate_error(e, relpath)
+        try:
+            st = os.fstat(fd)
+            if mode is not None and mode != S_IMODE(st.st_mode):
+                # Because of umask, we may still need to chmod the file.
+                # But in the general case, we won't have to
+                os.chmod(abspath, mode)
+            self._pump_to_fd(f, fd)
+        finally:
+            os.close(fd)
 
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree."""
