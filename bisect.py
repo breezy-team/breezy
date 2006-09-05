@@ -191,7 +191,7 @@ class cmd_bisect(Command):
         if not os.path.exists(bisect_info_path):
             raise BzrCommandError("No bisect info found")
 
-    def _set_state(self, revspec, state)
+    def _set_state(self, revspec, state):
         bl = BisectLog()
         if revspec:
             bl.set_status(revspec[1], state)
