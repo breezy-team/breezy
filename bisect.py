@@ -191,6 +191,15 @@ class cmd_bisect(Command):
         if not os.path.exists(bisect_info_path):
             raise BzrCommandError("No bisect info found")
 
+    def _set_state(self, revspec, state)
+        bl = BisectLog()
+        if revspec:
+            bl.set_status(revspec[1], state)
+        else:
+            bl.set_current(state)
+        bl.bisect()
+        bl.save()
+
     def run(self, subcommand, args_list, revision=None):
         # Handle subcommand parameters.
 
@@ -236,27 +245,15 @@ class cmd_bisect(Command):
         bl.set_current("start")
         bl.save()
 
-    def yes(self, revision):
+    def yes(self, revspec):
         "Mark that a given revision has the state we're looking for."
 
-        bl = BisectLog()
-        if revision:
-            bl.set_status(revision, "yes")
-        else:
-            bl.set_current("yes")
-        bl.bisect()
-        bl.save()
+        self._set_state(revspec, "yes")
 
-    def no(self, revision):
+    def no(self, revspec):
         "Mark that a given revision does not have the state we're looking for."
 
-        bl = BisectLog()
-        if revision:
-            bl.set_status(revision, "no")
-        else:
-            bl.set_current("no")
-        bl.bisect()
-        bl.save()
+        self._set_state(revspec, "no")
 
     def move(self, revision):
         "Move to a different revision manually."
