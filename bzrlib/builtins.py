@@ -235,7 +235,7 @@ class cmd_revision_info(Command):
             revs.extend(revision)
         if revision_info_list is not None:
             for rev in revision_info_list:
-                revs.append(RevisionSpec(rev))
+                revs.append(RevisionSpec.from_string(rev))
         if len(revs) == 0:
             raise BzrCommandError('You must supply a revision identifier')
 

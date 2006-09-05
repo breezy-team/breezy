@@ -132,7 +132,7 @@ class TestUncommit(TestCaseWithTransport):
         tree2.commit('unchanged', rev_id='b3')
         tree2.commit('unchanged', rev_id='b4')
 
-        self.merge(tree2.branch, wt)
+        wt.merge_from_branch(tree2.branch)
         wt.commit('merge b4', rev_id='a3')
 
         self.assertEqual(['a3'], wt.get_parent_ids())
@@ -162,12 +162,12 @@ class TestUncommit(TestCaseWithTransport):
 
         tree2.commit('unchanged', rev_id='b3')
 
-        self.merge(tree2.branch, wt)
+        wt.merge_from_branch(tree2.branch)
         wt.commit('merge b3', rev_id='a3')
 
         tree2.commit('unchanged', rev_id='b4')
 
-        self.merge(tree2.branch, wt)
+        wt.merge_from_branch(tree2.branch)
         wt.commit('merge b4', rev_id='a4')
 
         self.assertEqual(['a4'], wt.get_parent_ids())
@@ -210,15 +210,15 @@ class TestUncommit(TestCaseWithTransport):
         tree2.commit('unchanged', rev_id='b3')
         tree3.commit('unchanged', rev_id='c3')
         
-        self.merge(tree2.branch, wt)
-        self.merge(tree3.branch, wt)
+        wt.merge_from_branch(tree2.branch)
+        wt.merge_from_branch(tree3.branch)
         wt.commit('merge b3, c3', rev_id='a3')
 
         tree2.commit('unchanged', rev_id='b4')
         tree3.commit('unchanged', rev_id='c4')
 
-        self.merge(tree3.branch, wt)
-        self.merge(tree2.branch, wt)
+        wt.merge_from_branch(tree3.branch)
+        wt.merge_from_branch(tree2.branch)
         wt.commit('merge b4, c4', rev_id='a4')
 
         self.assertEqual(['a4'], wt.get_parent_ids())

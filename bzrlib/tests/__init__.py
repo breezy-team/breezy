@@ -63,7 +63,6 @@ import bzrlib.osutils as osutils
 import bzrlib.plugin
 import bzrlib.progress as progress
 from bzrlib.revision import common_ancestor
-from bzrlib.revisionspec import RevisionSpec
 import bzrlib.store
 from bzrlib import symbol_versioning
 import bzrlib.trace
@@ -853,7 +852,8 @@ class TestCase(unittest.TestCase):
         def cleanup_environment():
             for env_var, value in env_changes.iteritems():
                 if value is None:
-                    del os.environ[env_var]
+                    if env_var in os.environ:
+                        del os.environ[env_var]
                 else:
                     os.environ[env_var] = value
 
@@ -922,6 +922,7 @@ class TestCase(unittest.TestCase):
             sys.stderr = real_stderr
             sys.stdin = real_stdin
 
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_eleven)
     def merge(self, branch_from, wt_to):
         """A helper for tests to do a ui-less merge.
 
