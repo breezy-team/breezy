@@ -48,7 +48,7 @@ class TestCommitMerge(TestCaseWithTransport):
                           wty.commit,
                           'no changes yet', rev_id='y@u-0-2',
                           allow_pointless=False)
-        self.merge(bx, wty)
+        wty.merge_from_branch(bx)
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
 
         self.assertEquals(by.revno(), 3)
@@ -74,7 +74,7 @@ class TestCommitMerge(TestCaseWithTransport):
         wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
         wty.commit('commit two', rev_id='y@u-0-1', allow_pointless=True)
 
-        self.merge(bx, wty)
+        wty.merge_from_branch(bx)
 
         # partial commit of merges is currently not allowed, because
         # it would give different merge graphs for each file which

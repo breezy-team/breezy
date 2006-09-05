@@ -60,6 +60,7 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_is_control_filename',
         'bzrlib.tests.workingtree_implementations.test_is_ignored',
         'bzrlib.tests.workingtree_implementations.test_locking',
+        'bzrlib.tests.workingtree_implementations.test_merge_from_branch',
         'bzrlib.tests.workingtree_implementations.test_parents',
         'bzrlib.tests.workingtree_implementations.test_pull',
         'bzrlib.tests.workingtree_implementations.test_workingtree',

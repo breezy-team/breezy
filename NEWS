@@ -3,15 +3,26 @@ IN DEVELOPMENT
   IMPROVEMENTS:
 
   BUG FIXES:
+
+    * Handle boundary="" lines properly to allow access through a Squid proxy.
+      (John Arbash Meinel, #57723)
+
     * revert now removes newly-added directories (Aaron Bentley, #54172)
 
     * ``bzr upgrade sftp://`` shouldn't fail to upgrade v6 branches if there 
       isn't a working tree. (David Allouche, #40679)
 
+    * Give nicer error messages when a user supplies an invalid --revision
+      parameter. (John Arbash Meinel, #55420)
+
     * Handle when LANG is not recognized by python. Emit a warning, but
       just revert to using 'ascii'. (John Arbash Meinel, #35392)
 
   INTERNALS:
+
+    * run_bzr_subprocess() can take an optional 'env_changes={}' parameter,
+      which will update os.environ inside the spawned child.
+      (John Arbash Meinel)
 
     * Refactor SFTP vendors to allow easier re-use when ssh is used. 
       (Andrew Bennetts)

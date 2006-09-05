@@ -693,7 +693,12 @@ class WorkingTree(bzrlib.tree.Tree):
             If the revision_id is a ghost, pass None for the tree.
         :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
-        self.set_parent_ids(self.get_parent_ids() + [parent_tuple[0]],
+        parent_ids = self.get_parent_ids() + [parent_tuple[0]]
+        if len(parent_ids) > 1:
+            # the leftmost may have already been a ghost, preserve that if it
+            # was.
+            allow_leftmost_as_ghost = True
+        self.set_parent_ids(parent_ids,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
     @needs_write_lock
@@ -774,6 +779,49 @@ class WorkingTree(bzrlib.tree.Tree):
     def _put_rio(self, filename, stanzas, header):
         my_file = rio_file(stanzas, header)
         self._control_files.put(filename, my_file)
+
+    @needs_write_lock
+    def merge_from_branch(self, branch, to_revision=None):
+        """Merge from a branch into this working tree.
+
+        :param branch: The branch to merge from.
+        :param to_revision: If non-None, the merge will merge to to_revision, but 
+            not beyond it. to_revision does not need to be in the history of
+            the branch when it is supplied. If None, to_revision defaults to
+            branch.last_revision().
+        """
+        from bzrlib.merge import Merger, Merge3Merger
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            merger = Merger(self.branch, this_tree=self, pb=pb)
+            merger.pp = ProgressPhase("Merge phase", 5, pb)
+            merger.pp.next_phase()
+            # check that there are no
+            # local alterations
+            merger.check_basis(check_clean=True, require_commits=False)
+            if to_revision is None:
+                to_revision = branch.last_revision()
+            merger.other_rev_id = to_revision
+            if merger.other_rev_id is None:
+                raise error.NoCommits(branch)
+            self.branch.fetch(branch, last_revision=merger.other_rev_id)
+            merger.other_basis = merger.other_rev_id
+            merger.other_tree = self.branch.repository.revision_tree(
+                merger.other_rev_id)
+            merger.pp.next_phase()
+            merger.find_base()
+            if merger.base_rev_id == merger.other_rev_id:
+                raise errors.PointlessMerge
+            merger.backup_files = False
+            merger.merge_type = Merge3Merger
+            merger.set_interesting_files(None)
+            merger.show_base = False
+            merger.reprocess = False
+            conflicts = merger.do_merge()
+            merger.set_pending()
+        finally:
+            pb.finished()
+        return conflicts
 
     @needs_read_lock
     def merge_modified(self):

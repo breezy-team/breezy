@@ -69,7 +69,7 @@ def read_bundle(f):
         raise errors.NotABundle('Did not find an opening header')
 
     # Now we have a version, to figure out how to read the bundle 
-    if not _serializers.has_key(version):
+    if version not in _serializers:
         raise errors.BundleNotSupported(version, 
             'version not listed in known versions')
 
@@ -87,7 +87,7 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
     :param version: [optional] target serialization version
     """
 
-    if not _serializers.has_key(version):
+    if version not in _serializers:
         raise errors.BundleNotSupported(version, 'unknown bundle format')
 
     serializer = _serializers[version](version)
@@ -262,7 +262,7 @@ def register(version, klass, overwrite=False):
         _serializers[version] = klass
         return
 
-    if not _serializers.has_key(version):
+    if version not in _serializers:
         _serializers[version] = klass
 
 

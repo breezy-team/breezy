@@ -63,7 +63,6 @@ import bzrlib.osutils as osutils
 import bzrlib.plugin
 import bzrlib.progress as progress
 from bzrlib.revision import common_ancestor
-from bzrlib.revisionspec import RevisionSpec
 import bzrlib.store
 from bzrlib import symbol_versioning
 import bzrlib.trace
@@ -798,7 +797,7 @@ class TestCase(unittest.TestCase):
         return self.run_bzr_captured(args, retcode=retcode, encoding=encoding, stdin=stdin)
 
     def run_bzr_decode(self, *args, **kwargs):
-        if kwargs.has_key('encoding'):
+        if 'encoding' in kwargs:
             encoding = kwargs['encoding']
         else:
             encoding = bzrlib.user_encoding
@@ -843,12 +842,25 @@ class TestCase(unittest.TestCase):
         profiled or debugged so easily.
 
         :param retcode: The status code that is expected.  Defaults to 0.  If
-        None is supplied, the status code is not checked.
+            None is supplied, the status code is not checked.
+        :param env_changes: A dictionary which lists changes to environment
+            variables. A value of None will unset the env variable.
+            The values must be strings. The change will only occur in the
+            child, so you don't need to fix the environment after running.
         """
+        env_changes = kwargs.get('env_changes', {})
+        def cleanup_environment():
+            for env_var, value in env_changes.iteritems():
+                if value is None:
+                    del os.environ[env_var]
+                else:
+                    os.environ[env_var] = value
+
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         args = list(args)
-        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
-                         stderr=PIPE)
+        process = Popen([sys.executable, bzr_path]+args,
+                         stdout=PIPE, stderr=PIPE,
+                         preexec_fn=cleanup_environment)
         out = process.stdout.read()
         err = process.stderr.read()
         retcode = process.wait()
@@ -909,6 +921,7 @@ class TestCase(unittest.TestCase):
             sys.stderr = real_stderr
             sys.stdin = real_stdin
 
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_eleven)
     def merge(self, branch_from, wt_to):
         """A helper for tests to do a ui-less merge.
 

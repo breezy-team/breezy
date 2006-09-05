@@ -146,12 +146,20 @@ class TestRegexes(TestCase):
 
     def test_content_type_re(self):
         self.regex = response.HttpMultipartRangeResponse._CONTENT_TYPE_RE
-        self.assertRegexMatches(('xxyyzz',),
+        self.assertRegexMatches(('', 'xxyyzz'),
                                 'multipart/byteranges; boundary = xxyyzz')
-        self.assertRegexMatches(('xxyyzz',),
+        self.assertRegexMatches(('', 'xxyyzz'),
                                 'multipart/byteranges;boundary=xxyyzz')
-        self.assertRegexMatches(('xx yy zz',),
+        self.assertRegexMatches(('', 'xx yy zz'),
                                 ' multipart/byteranges ; boundary= xx yy zz ')
+        self.assertRegexMatches(('"', 'xx yy zz'),
+                                ' multipart/byteranges ; boundary= "xx yy zz" ')
+        self.assertEqual(None,
+                         self.regex.match(
+                             ' multipart/byteranges ; boundary= "xx yy zz '))
+        self.assertEqual(None,
+                         self.regex.match(
+                             ' multipart/byteranges ; boundary= xx yy zz" '))
         self.assertEqual(None,
                 self.regex.match('multipart byteranges;boundary=xx'))
 
@@ -389,7 +397,38 @@ mbp@sourcefrog.net-20050314025539-637a636692c055cf
 mbp@sourcefrog.net-20050314025737-55eb441f430ab4ba
 mbp@sourcefrog.net-20050314025901-d74aa93bb7ee8f62
 mbp@source\r
---418470f848b63279b--\r\n'
+--418470f848b63279b--\r
+""")
+
+_multipart_squid_range_response = (206, """HTTP/1.0 206 Partial Content\r
+Date: Thu, 31 Aug 2006 21:16:22 GMT\r
+Server: Apache/2.2.2 (Unix) DAV/2\r
+Last-Modified: Thu, 31 Aug 2006 17:57:06 GMT\r
+Accept-Ranges: bytes\r
+Content-Type: multipart/byteranges; boundary="squid/2.5.STABLE12:C99323425AD4FE26F726261FA6C24196"\r
+Content-Length: 598\r
+X-Cache: MISS from localhost.localdomain\r
+X-Cache-Lookup: HIT from localhost.localdomain:3128\r
+Proxy-Connection: keep-alive\r
+\r
+""",
+"""\r
+--squid/2.5.STABLE12:C99323425AD4FE26F726261FA6C24196\r
+Content-Type: text/plain\r
+Content-Range: bytes 0-99/18672\r
+\r
+# bzr knit index 8
+
+scott@netsplit.com-20050708230047-47c7868f276b939f fulltext 0 863  :
+scott@netsp\r
+--squid/2.5.STABLE12:C99323425AD4FE26F726261FA6C24196\r
+Content-Type: text/plain\r
+Content-Range: bytes 300-499/18672\r
+\r
+com-20050708231537-2b124b835395399a :
+scott@netsplit.com-20050820234126-551311dbb7435b51 line-delta 1803 479 .scott@netsplit.com-20050820232911-dc4322a084eadf7e :
+scott@netsplit.com-20050821213706-c86\r
+--squid/2.5.STABLE12:C99323425AD4FE26F726261FA6C24196--\r
 """)
 
 
@@ -476,6 +515,14 @@ class TestExtractHeader(TestCase):
         self.check_header('Content-Type',
                           'multipart/byteranges; boundary=418470f848b63279b')
 
+    def test_multi_squid_range(self):
+        self.use_response(_multipart_squid_range_response)
+
+        self.check_header('Content-Length', '598')
+        self.check_header('Content-Type',
+                          'multipart/byteranges; '\
+                          'boundary="squid/2.5.STABLE12:C99323425AD4FE26F726261FA6C24196"')
+
     def test_redirect(self):
         """We default to returning the last group of headers in the file."""
         self.use_response(_redirect_response)
@@ -560,6 +607,17 @@ class TestHandleResponse(TestCase):
 
         out.seek(1000)
         out.read(1050)
+
+    def test_multi_squid_range(self):
+        out = self.get_response(_multipart_squid_range_response)
+        self.assertIsInstance(out, response.HttpMultipartRangeResponse)
+
+        # Just make sure we can read the right contents
+        out.seek(0)
+        out.read(100)
+
+        out.seek(300)
+        out.read(200)
 
     def test_invalid_response(self):
         self.assertRaises(errors.InvalidHttpResponse,
