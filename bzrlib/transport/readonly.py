@@ -26,7 +26,7 @@ class ReadonlyTransportDecorator(TransportDecorator):
     This is requested via the 'readonly+' prefix to get_transport().
     """
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """See Transport.append()."""
         raise TransportNotPossible('readonly transport')
     

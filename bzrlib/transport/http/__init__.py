@@ -300,7 +300,7 @@ class HttpTransportBase(Transport):
         """See Transport.rmdir."""
         raise TransportNotPossible('http does not support rmdir()')
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """

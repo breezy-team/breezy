@@ -389,10 +389,8 @@ class TransportTests(TestTransportImplementation):
             self.assertRaises(TransportNotPossible,
                     t.append, 'a', 'add\nsome\nmore\ncontents\n')
             return
-        t.put_multi([
-                ('a', StringIO('diff\ncontents for\na\n')),
-                ('b', StringIO('contents\nfor b\n'))
-                ])
+        t.put_bytes('a', 'diff\ncontents for\na\n')
+        t.put_bytes('b', 'contents\nfor b\n')
 
         self.assertEqual(20,
             t.append('a', StringIO('add\nsome\nmore\ncontents\n')))
@@ -400,6 +398,47 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents(
             'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
             t, 'a')
+
+        # a file with no parent should fail..
+        self.assertRaises(NoSuchFile,
+                          t.append, 'missing/path', StringIO('content'))
+
+        # And we can create new files, too
+        self.assertEqual(0,
+            t.append('c', StringIO('some text\nfor a missing file\n')))
+        self.check_transport_contents('some text\nfor a missing file\n',
+                                      t, 'c')
+
+    def test_append_bytes(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            self.assertRaises(TransportNotPossible,
+                    t.append_bytes, 'a', 'add\nsome\nmore\ncontents\n')
+            return
+
+        self.assertEqual(0, t.append_bytes('a', 'diff\ncontents for\na\n'))
+        self.assertEqual(0, t.append_bytes('b', 'contents\nfor b\n'))
+
+        self.assertEqual(20,
+            t.append_bytes('a', 'add\nsome\nmore\ncontents\n'))
+
+        self.check_transport_contents(
+            'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
+            t, 'a')
+
+        # a file with no parent should fail..
+        self.assertRaises(NoSuchFile,
+                          t.append_bytes, 'missing/path', 'content')
+
+    def test_append_multi(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            return
+        t.put_bytes('a', 'diff\ncontents for\na\n'
+                         'add\nsome\nmore\ncontents\n')
+        t.put_bytes('b', 'contents\nfor b\n')
 
         self.assertEqual((43, 15),
             t.append_multi([('a', StringIO('and\nthen\nsome\nmore\n')),
@@ -430,8 +469,6 @@ class TransportTests(TestTransportImplementation):
                 'from an iterator\n',
                 t, 'b')
 
-        self.assertEqual(0,
-            t.append('c', StringIO('some text\nfor a missing file\n')))
         self.assertEqual((80, 0),
             t.append_multi([('a', StringIO('some text in a\n')),
                             ('d', StringIO('missing file r\n'))]))
@@ -443,41 +480,15 @@ class TransportTests(TestTransportImplementation):
             'a little bit more\n'
             'some text in a\n',
             t, 'a')
-        self.check_transport_contents('some text\nfor a missing file\n',
-                                      t, 'c')
         self.check_transport_contents('missing file r\n', t, 'd')
-        
-        # a file with no parent should fail..
-        self.assertRaises(NoSuchFile,
-                          t.append, 'missing/path',
-                          StringIO('content'))
-
-    def test_append_bytes(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            self.assertRaises(TransportNotPossible,
-                    t.append, 'a', 'add\nsome\nmore\ncontents\n')
-            return
-
-        self.assertEqual(0, t.append_bytes('a', 'diff\ncontents for\na\n'))
-        self.assertEqual(0, t.append_bytes('b', 'contents\nfor b\n'))
-
-        self.assertEqual(20,
-            t.append_bytes('a', 'add\nsome\nmore\ncontents\n'))
-
-        self.check_transport_contents(
-            'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
-            t, 'a')
-
-        # a file with no parent should fail..
-        self.assertRaises(NoSuchFile,
-                          t.append_bytes, 'missing/path', 'content')
 
     def test_append_mode(self):
+        """Check that append accepts a mode parameter"""
         # check append accepts a mode
         t = self.get_transport()
         if t.is_readonly():
+            self.assertRaises(TransportNotPossible,
+                t.append, 'f', StringIO('f'), mode=None)
             return
         t.append('f', StringIO('f'), mode=None)
         
@@ -485,8 +496,10 @@ class TransportTests(TestTransportImplementation):
         # check append_bytes accepts a mode
         t = self.get_transport()
         if t.is_readonly():
+            self.assertRaises(TransportNotPossible,
+                t.append_bytes, 'f', 'f', mode=None)
             return
-        t.append('f', StringIO('f'), mode=None)
+        t.append_bytes('f', 'f', mode=None)
         
     def test_delete(self):
         # TODO: Test Transport.delete
