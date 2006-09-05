@@ -403,18 +403,20 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.copy_to()."""
         # copy the current index to a temp index to avoid racing with local
         # writes
-        transport.put(name + INDEX_SUFFIX + '.tmp', self.transport.get(self._index._filename),)
+        transport.put_file(name + INDEX_SUFFIX + '.tmp',
+                           self.transport.get(self._index._filename))
         # copy the data file
         f = self._data._open_file()
         try:
-            transport.put(name + DATA_SUFFIX, f)
+            transport.put_file(name + DATA_SUFFIX, f)
         finally:
             f.close()
         # move the copied index into place
         transport.move(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
 
     def create_empty(self, name, transport, mode=None):
-        return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta, create=True)
+        return KnitVersionedFile(name, transport, factory=self.factory,
+                                 delta=self.delta, create=True)
     
     def _fix_parents(self, version, new_parents):
         """Fix the parents list for version.
@@ -1308,7 +1310,7 @@ class _KnitData(_KnitComponentFile):
         self._cache = {}
         self._do_cache = False
         if create:
-            self._transport.put(self._filename, StringIO(''), mode=file_mode)
+            self._transport.put_bytes(self._filename, '', mode=file_mode)
 
     def enable_cache(self):
         """Enable caching of reads."""
