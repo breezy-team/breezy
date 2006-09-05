@@ -34,6 +34,8 @@ class BisectCurrent(object):
         wt = self._bzrdir.open_workingtree()
         if isinstance(revid, int):
             revid = self._bzrbranch.get_rev_id(revid)
+        elif isinstance(revid, list):
+            revid = revid[0].in_history(wt.branch).rev_id
         wt.revert([], wt.branch.repository.revision_tree(revid), False)
         self._revid = revid
         self._save()
@@ -260,11 +262,11 @@ class cmd_bisect(Command):
 
         self._set_state(revspec, "no")
 
-    def move(self, revision):
+    def move(self, revspec):
         "Move to a different revision manually."
 
         bc = BisectCurrent()
-        bc.switch(revision)
+        bc.switch(revspec)
 
     def log(self, filename):
         "Write the current bisect log to a file."
