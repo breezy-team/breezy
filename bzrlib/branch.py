@@ -839,9 +839,8 @@ class BranchReferenceFormat(BranchFormat):
             raise errors.UninitializableFormat(self)
         mutter('creating branch reference in %s', a_bzrdir.transport.base)
         branch_transport = a_bzrdir.get_branch_transport(self)
-        # FIXME rbc 20060209 one j-a-ms encoding branch lands this str() cast is not needed.
         branch_transport.put_bytes('location',
-            str(target_branch.bzrdir.root_transport.base))
+            target_branch.bzrdir.root_transport.base)
         branch_transport.put_bytes('format', self.get_format_string())
         return self.open(a_bzrdir, _found=True)
 
