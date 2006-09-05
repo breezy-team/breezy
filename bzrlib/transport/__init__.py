@@ -39,15 +39,23 @@ import urlparse
 import warnings
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    osutils,
+    symbol_versioning,
+    urlutils,
+    )
 from bzrlib.errors import DependencyNotPresent
-import bzrlib.osutils as osutils
 from bzrlib.osutils import pumpfile
-from bzrlib.symbol_versioning import (deprecated_passed, deprecated_method, deprecated_function, 
+from bzrlib.symbol_versioning import (
+        deprecated_passed,
+        deprecated_method,
+        deprecated_function,
         DEPRECATED_PARAMETER,
-        zero_eight)
+        zero_eight,
+        zero_eleven,
+        )
 from bzrlib.trace import mutter, warning
-import bzrlib.urlutils as urlutils
 
 # {prefix: [transport_classes]}
 # Transports are inserted onto the list LIFO and tried in order; as a result
@@ -491,15 +499,37 @@ class Transport(object):
             yield self.get(relpath)
             count += 1
 
+    @deprecated_method(zero_eleven)
     def put(self, relpath, f, mode=None):
-        """Copy the file-like into the location.
+        """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
         :param mode: The mode for the newly created file, 
                      None means just use the default
         """
-        raise NotImplementedError(self.put)
+        if isinstance(f, str):
+            return self.put_bytes(relpath, f, mode=mode)
+        else:
+            return self.put_file(relpath, f, mode=mode)
+
+    def put_file(self, relpath, f, mode=None):
+        """Copy the file-like object into the location.
+
+        :param relpath: Location to put the contents, relative to base.
+        :param f:       File-like object.
+        :param mode: The mode for the newly created file,
+                     None means just use the default.
+        """
+        # We would like to mark this as NotImplemented, but most likely
+        # transports have defined it in terms of the old api.
+        symbol_versioning.warn('Transport %s should implement put_file,'
+                               ' rather than implementing put() as of'
+                               ' version 0.11.'
+                               % (self.__class__.__name__,),
+                               DeprecationWarning)
+        return self.put(relpath, f, mode=mode)
+        #raise NotImplementedError(self.put_file)
 
     def put_bytes(self, relpath, bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
@@ -512,7 +542,7 @@ class Transport(object):
         """
         assert isinstance(bytes, str), \
             'bytes must be a plain string, not %s' % type(bytes)
-        return self.put(relpath, StringIO(bytes), mode=mode)
+        return self.put_file(relpath, StringIO(bytes), mode=mode)
 
     def put_multi(self, files, mode=None, pb=None):
         """Put a set of files into the location.

@@ -366,12 +366,12 @@ class SFTPTransport(Transport):
             # on to the next
             cur_coalesced = cur_coalesced_stack.next()
 
-    def put(self, relpath, f, mode=None):
+    def put_file(self, relpath, f, mode=None):
         """
-        Copy the file-like or string object into the location.
+        Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
         :param mode: The final mode for the file
         """
         final_path = self._remote_path(relpath)

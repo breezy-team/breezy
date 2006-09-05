@@ -96,10 +96,14 @@ class TransportDecorator(Transport):
         """See Transport.mkdir()."""
         return self._decorated.mkdir(relpath, mode)
 
-    def put(self, relpath, f, mode=None):
-        """See Transport.put()."""
-        return self._decorated.put(relpath, f, mode)
+    def put_file(self, relpath, f, mode=None):
+        """See Transport.put_file()."""
+        return self._decorated.put_file(relpath, f, mode)
     
+    def put_bytes(self, relpath, bytes, mode=None):
+        """See Transport.put_bytes()."""
+        return self._decorated.put_bytes(relpath, bytes, mode)
+
     def listable(self):
         """See Transport.listable."""
         return self._decorated.listable()

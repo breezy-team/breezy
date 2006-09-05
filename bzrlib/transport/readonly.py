@@ -43,8 +43,12 @@ class ReadonlyTransportDecorator(TransportDecorator):
         """See Transport.delete_tree()."""
         raise TransportNotPossible('readonly transport')
 
-    def put(self, relpath, f, mode=None):
-        """See Transport.put()."""
+    def put_file(self, relpath, f, mode=None):
+        """See Transport.put_file()."""
+        raise TransportNotPossible('readonly transport')
+
+    def put_bytes(self, relpath, bytes, mode=None):
+        """See Transport.put_bytes()."""
         raise TransportNotPossible('readonly transport')
 
     def mkdir(self, relpath, mode=None):

@@ -26,6 +26,7 @@ from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
 import tempfile
 
 from bzrlib import (
+    atomicfile,
     osutils,
     urlutils,
     )
@@ -130,23 +131,42 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
-    def put(self, relpath, f, mode=None):
-        """Copy the file-like or string object into the location.
+    def put_file(self, relpath, f, mode=None):
+        """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
         """
-        from bzrlib.atomicfile import AtomicFile
 
         path = relpath
         try:
             path = self._abspath(relpath)
             check_legal_path(path)
-            fp = AtomicFile(path, 'wb', new_mode=mode)
+            fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
         try:
             self._pump(f, fp)
+            fp.commit()
+        finally:
+            fp.close()
+
+    def put_bytes(self, relpath, bytes, mode=None):
+        """Copy the string into the location.
+
+        :param relpath: Location to put the contents, relative to base.
+        :param bytes:   String
+        """
+
+        path = relpath
+        try:
+            path = self._abspath(relpath)
+            check_legal_path(path)
+            fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
+        try:
+            fp.write(bytes)
             fp.commit()
         finally:
             fp.close()

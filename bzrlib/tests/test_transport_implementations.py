@@ -132,22 +132,29 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
 
         if t.is_readonly():
-            self.assertRaises(TransportNotPossible,
-                    t.put, 'a', StringIO('some text for a\n'))
             return
 
-        t.put('a', StringIO('some text for a\n'))
-        self.failUnless(t.has('a'))
-        self.check_transport_contents('some text for a\n', t, 'a')
-        # Make sure 'has' is updated
-        self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e'])),
-                [True, False, False, False, False])
-        # Put also replaces contents
+        deprecation_msg = '%s.%s.%s was deprecated in version 0.11.' % (
+            t.put.im_class.__module__, t.put.im_class.__name__,
+            t.put.__name__)
+        self.callDeprecated([deprecation_msg],
+                            t.put, 'a', 'string\ncontents\n')
+        self.check_transport_contents('string\ncontents\n', t, 'a')
+
+        self.callDeprecated([deprecation_msg],
+                            t.put, 'b', StringIO('file-like\ncontents\n'))
+        self.check_transport_contents('file-like\ncontents\n', t, 'b')
+
+    def test_put_multi(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            return
         self.assertEqual(t.put_multi([('a', StringIO('new\ncontents for\na\n')),
                                       ('d', StringIO('contents\nfor d\n'))]),
                          2)
-        self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e'])),
-                [True, False, False, True, False])
+        self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd'])),
+                [True, False, False, True])
         self.check_transport_contents('new\ncontents for\na\n', t, 'a')
         self.check_transport_contents('contents\nfor d\n', t, 'd')
 
@@ -158,6 +165,20 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('diff\ncontents for\na\n', t, 'a')
         self.check_transport_contents('another contents\nfor d\n', t, 'd')
 
+    def test_put_file(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            self.assertRaises(TransportNotPossible,
+                    t.put_file, 'a', StringIO('some text for a\n'))
+            return
+
+        t.put_file('a', StringIO('some text for a\n'))
+        self.failUnless(t.has('a'))
+        self.check_transport_contents('some text for a\n', t, 'a')
+        # Put also replaces contents
+        t.put_file('a', StringIO('new\ncontents for\na\n'))
+        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
         self.assertRaises(NoSuchFile,
                           t.put, 'path/doesnt/exist/c', StringIO('contents'))
 

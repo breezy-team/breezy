@@ -284,11 +284,11 @@ class HttpTransportBase(Transport):
 
         return combined
 
-    def put(self, relpath, f, mode=None):
-        """Copy the file-like or string object into the location.
+    def put_file(self, relpath, f, mode=None):
+        """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
         """
         raise TransportNotPossible('http PUT not supported')
 
