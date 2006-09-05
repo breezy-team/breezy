@@ -641,33 +641,20 @@ class TestCase(unittest.TestCase):
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
+            'BZR_PROGRESS_BAR': None,
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
         for name, value in new_env.iteritems():
             self._captureVar(name, value)
 
-
     def _captureVar(self, name, newvalue):
-        """Set an environment variable, preparing it to be reset when finished."""
-        self.__old_env[name] = os.environ.get(name, None)
-        if newvalue is None:
-            if name in os.environ:
-                del os.environ[name]
-        else:
-            os.environ[name] = newvalue
-
-    @staticmethod
-    def _restoreVar(name, value):
-        if value is None:
-            if name in os.environ:
-                del os.environ[name]
-        else:
-            os.environ[name] = value
+        """Set an environment variable, and reset it when finished."""
+        self.__old_env[name] = osutils.set_or_unset_env(name, newvalue)
 
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
-            self._restoreVar(name, value)
+            osutils.set_or_unset_env(name, value)
 
     def tearDown(self):
         self._runCleanups()
@@ -852,11 +839,7 @@ class TestCase(unittest.TestCase):
         env_changes = kwargs.get('env_changes', {})
         def cleanup_environment():
             for env_var, value in env_changes.iteritems():
-                if value is None:
-                    if env_var in os.environ:
-                        del os.environ[env_var]
-                else:
-                    os.environ[env_var] = value
+                old_val = osutils.set_or_unset_env(env_var, value)
 
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         args = list(args)
