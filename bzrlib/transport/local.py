@@ -203,31 +203,31 @@ class LocalTransport(Transport):
 
     def _get_append_file(self, relpath, mode=None):
         """Call os.open() for the given relpath"""
-        abspath = self._abspath(relpath)
+        file_abspath = self._abspath(relpath)
         if mode is None:
             # os.open() will automatically use the umask
             local_mode = 0666
         else:
             local_mode = mode
         try:
-            return os.open(abspath, _append_flags, local_mode)
+            return file_abspath, os.open(file_abspath, _append_flags, local_mode)
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
 
-    def _check_mode_and_size(self, fd, mode=None):
+    def _check_mode_and_size(self, file_abspath, fd, mode=None):
         """Check the mode of the file, and return the current size"""
         st = os.fstat(fd)
         if mode is not None and mode != S_IMODE(st.st_mode):
             # Because of umask, we may still need to chmod the file.
             # But in the general case, we won't have to
-            os.chmod(abspath, mode)
+            os.chmod(file_abspath, mode)
         return st.st_size
 
     def append_file(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final location."""
-        fd = self._get_append_file(relpath, mode=mode)
+        file_abspath, fd = self._get_append_file(relpath, mode=mode)
         try:
-            result = self._check_mode_and_size(fd, mode=mode)
+            result = self._check_mode_and_size(file_abspath, fd, mode=mode)
             self._pump_to_fd(f, fd)
         finally:
             os.close(fd)
@@ -235,9 +235,9 @@ class LocalTransport(Transport):
 
     def append_bytes(self, relpath, bytes, mode=None):
         """Append the text in the string into the final location."""
-        fd = self._get_append_file(relpath, mode=mode)
+        file_abspath, fd = self._get_append_file(relpath, mode=mode)
         try:
-            result = self._check_mode_and_size(fd, mode=mode)
+            result = self._check_mode_and_size(file_abspath, fd, mode=mode)
             os.write(fd, bytes)
         finally:
             os.close(fd)
