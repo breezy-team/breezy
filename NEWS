@@ -31,6 +31,13 @@ IN DEVELOPMENT
       return urlescaped paths. This is now tested (there were bugs in a few
       of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
 
+    * New utility function symbol_versioning.deprecation_string. Returns the
+      formatted string for a callable, deprecation format pair. (Robert Collins)
+
+    * New TestCase helper applyDeprecated. This allows you to call a callable
+      which is deprecated without it spewing to the screen, just by supplying
+      the deprecation format string issued for it. (Robert Collins)
+
 bzr 0.10.0RC1  2006-08-28
   
   IMPROVEMENTS:

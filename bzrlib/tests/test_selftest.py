@@ -37,6 +37,7 @@ from bzrlib.tests import (
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
 from bzrlib import symbol_versioning
+from bzrlib.symbol_versioning import zero_ten, zero_eleven
 from bzrlib.trace import note
 from bzrlib.version import _get_bzr_source_tree
 
@@ -798,6 +799,32 @@ class TestTestCase(TestCase):
         self.assertIsInstance(self._benchcalls[1][1], bzrlib.lsprof.Stats)
 
 
+@symbol_versioning.deprecated_function(zero_eleven)
+def sample_deprecated_function():
+    """A deprecated function to test applyDeprecated with."""
+    return 2
+
+
+def sample_undeprecated_function(a_param):
+    """A undeprecated function to test applyDeprecated with."""
+
+
+class ApplyDeprecatedHelper(object):
+    """A helper class for ApplyDeprecated tests."""
+
+    @symbol_versioning.deprecated_method(zero_eleven)
+    def sample_deprecated_method(self, param_one):
+        """A deprecated method for testing with."""
+        return param_one
+
+    def sample_normal_method(self):
+        """A undeprecated method."""
+
+    @symbol_versioning.deprecated_method(zero_ten)
+    def sample_nested_deprecation(self):
+        return sample_deprecated_function()
+
+
 class TestExtraAssertions(TestCase):
     """Tests for new test assertions in bzrlib test suite"""
 
@@ -811,6 +838,35 @@ class TestExtraAssertions(TestCase):
         self.assertEndsWith('foo', 'oo')
         self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
 
+    def test_applyDeprecated_not_deprecated(self):
+        sample_object = ApplyDeprecatedHelper()
+        # calling an undeprecated callable raises an assertion
+        self.assertRaises(AssertionError, self.applyDeprecated, zero_eleven,
+            sample_object.sample_normal_method)
+        self.assertRaises(AssertionError, self.applyDeprecated, zero_eleven,
+            sample_undeprecated_function, "a param value")
+        # calling a deprecated callable (function or method) with the wrong
+        # expected deprecation fails.
+        self.assertRaises(AssertionError, self.applyDeprecated, zero_ten,
+            sample_object.sample_deprecated_method, "a param value")
+        self.assertRaises(AssertionError, self.applyDeprecated, zero_ten,
+            sample_deprecated_function)
+        # calling a deprecated callable (function or method) with the right
+        # expected deprecation returns the functions result.
+        self.assertEqual("a param value", self.applyDeprecated(zero_eleven,
+            sample_object.sample_deprecated_method, "a param value"))
+        self.assertEqual(2, self.applyDeprecated(zero_eleven,
+            sample_deprecated_function))
+        # calling a nested deprecation with the wrong deprecation version
+        # fails even if a deeper nested function was deprecated with the 
+        # supplied version.
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            zero_eleven, sample_object.sample_nested_deprecation)
+        # calling a nested deprecation with the right deprecation value
+        # returns the calls result.
+        self.assertEqual(2, self.applyDeprecated(zero_ten,
+            sample_object.sample_nested_deprecation))
+
     def test_callDeprecated(self):
         def testfunc(be_deprecated, result=None):
             if be_deprecated is True:
@@ -821,8 +877,7 @@ class TestExtraAssertions(TestCase):
         self.assertIs(None, result)
         result = self.callDeprecated([], testfunc, False, 'result')
         self.assertEqual('result', result)
-        self.callDeprecated(['i am deprecated'], testfunc, 
-                              be_deprecated=True)
+        self.callDeprecated(['i am deprecated'], testfunc, be_deprecated=True)
         self.callDeprecated([], testfunc, be_deprecated=False)
 
 

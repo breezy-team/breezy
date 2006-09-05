@@ -25,14 +25,6 @@ from bzrlib.uncommit import uncommit
 
 class TestParents(TestCaseWithWorkingTree):
 
-    def generate_deprecation(self, a_callable, version_format):
-        """Generate a deprecation warning string for a_callable."""
-        name = ('%s.%s.%s' %
-            (a_callable.im_class.__module__,
-             a_callable.im_class.__name__,
-             a_callable.__name__))
-        return version_format % name
-
     def assertConsistentParents(self, expected, tree):
         """Check that the parents found are as expected.
 
@@ -40,18 +32,17 @@ class TestParents(TestCaseWithWorkingTree):
         the pre-get_parent_ids() api - which is now deprecated.
         """
         self.assertEqual(expected, tree.get_parent_ids())
-        last_rev_deprecations = [
-            self.generate_deprecation(tree.last_revision, symbol_versioning.zero_eleven)]
-        pending_merge_deprecations = [
-            self.generate_deprecation(tree.pending_merges, symbol_versioning.zero_eleven)]
         if expected == []:
             self.assertEqual(None,
-                self.callDeprecated(last_rev_deprecations, tree.last_revision))
+                self.applyDeprecated(symbol_versioning.zero_eleven,
+                    tree.last_revision))
         else:
             self.assertEqual(expected[0],
-                self.callDeprecated(last_rev_deprecations, tree.last_revision))
+                self.applyDeprecated(symbol_versioning.zero_eleven,
+                    tree.last_revision))
         self.assertEqual(expected[1:],
-            self.callDeprecated(pending_merge_deprecations, tree.pending_merges))
+            self.applyDeprecated(symbol_versioning.zero_eleven,
+                tree.pending_merges))
 
 
 class TestSetParents(TestParents):
