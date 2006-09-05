@@ -18,13 +18,8 @@
 """
 
 import os
-from bzrlib.errors import BoundBranchOutOfDate
 
-def test_remove(filename):
-    if os.path.exists(filename):
-        os.remove(filename)
-    else:
-        print '* file does not exist: %r' % filename
+from bzrlib.errors import BoundBranchOutOfDate
 
 
 def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
@@ -44,6 +39,8 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
         unlockable.append(branch)
 
         pending_merges = []
+        if tree is not None:
+            pending_merges = tree.pending_merges()
 
         master = branch.get_master_branch()
         if master is not None:
@@ -67,7 +64,6 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
             if verbose:
                 print 'Removing revno %d: %s' % (len(rh)+1, rev_id)
 
-
         # Committing before we start removing files, because
         # once we have removed at least one, all the rest are invalid.
         if not dry_run:
@@ -75,9 +71,13 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
                 master.set_revision_history(rh)
             branch.set_revision_history(rh)
             if tree is not None:
-                tree.set_last_revision(branch.last_revision())
-                pending_merges.reverse()
-                tree.set_pending_merges(pending_merges)
+                branch_tip = branch.last_revision()
+                if branch_tip is not None:
+                    parents = [branch.last_revision()]
+                else:
+                    parents = []
+                parents.extend(reversed(pending_merges))
+                tree.set_parent_ids(parents)
     finally:
         for item in reversed(unlockable):
             item.unlock()

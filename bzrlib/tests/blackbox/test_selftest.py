@@ -15,9 +15,13 @@
 
 """UI tests for the test framework."""
 
+import os
 import sys
 
 import bzrlib
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
                           TestCase,
@@ -171,6 +175,69 @@ class TestRunBzrCaptured(ExternalBase):
         err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
                                       retcode=3)[1]
         self.assertContainsRe(err, 'No known merge type magic merge')
+
+    def test_run_bzr_subprocess_env(self):
+        """run_bzr_subprocess can set environment variables in the child only.
+
+        These changes should not change the running process, only the child.
+        """
+        # The test suite should unset this variable
+        self.assertEqual(None, os.environ.get('BZR_EMAIL'))
+        out, err = self.run_bzr_subprocess('whoami', env_changes={
+                                            'BZR_EMAIL':'Joe Foo <joe@foo.com>'
+                                          })
+        self.assertEqual('', err)
+        self.assertEqual('Joe Foo <joe@foo.com>\n', out)
+        # And it should not be modified
+        self.assertEqual(None, os.environ.get('BZR_EMAIL'))
+
+        # Do it again with a different address, just to make sure
+        # it is actually changing
+        out, err = self.run_bzr_subprocess('whoami', env_changes={
+                                            'BZR_EMAIL':'Barry <bar@foo.com>'
+                                          })
+        self.assertEqual('', err)
+        self.assertEqual('Barry <bar@foo.com>\n', out)
+        self.assertEqual(None, os.environ.get('BZR_EMAIL'))
+
+    def test_run_bzr_subprocess_env_del(self):
+        """run_bzr_subprocess can remove environment variables too."""
+        # Create a random email, so we are sure this won't collide
+        rand_bzr_email = 'John Doe <jdoe@%s.com>' % (osutils.rand_chars(20),)
+        rand_email = 'Jane Doe <jdoe@%s.com>' % (osutils.rand_chars(20),)
+        os.environ['BZR_EMAIL'] = rand_bzr_email
+        os.environ['EMAIL'] = rand_email
+        try:
+            # By default, the child will inherit the current env setting
+            out, err = self.run_bzr_subprocess('whoami')
+            self.assertEqual('', err)
+            self.assertEqual(rand_bzr_email + '\n', out)
+
+            # Now that BZR_EMAIL is not set, it should fall back to EMAIL
+            out, err = self.run_bzr_subprocess('whoami',
+                                               env_changes={'BZR_EMAIL':None})
+            self.assertEqual('', err)
+            self.assertEqual(rand_email + '\n', out)
+
+            # This switches back to the default email guessing logic
+            # Which shouldn't match either of the above addresses
+            out, err = self.run_bzr_subprocess('whoami',
+                           env_changes={'BZR_EMAIL':None, 'EMAIL':None})
+
+            self.assertEqual('', err)
+            self.assertNotEqual(rand_bzr_email + '\n', out)
+            self.assertNotEqual(rand_email + '\n', out)
+        finally:
+            # TestCase cleans up BZR_EMAIL, and EMAIL at startup
+            del os.environ['BZR_EMAIL']
+            del os.environ['EMAIL']
+
+    def test_run_bzr_subprocess_env_del_missing(self):
+        """run_bzr_subprocess won't fail if deleting a nonexistant env var"""
+        self.failIf('NON_EXISTANT_ENV_VAR' in os.environ)
+        out, err = self.run_bzr_subprocess('rocks',
+                        env_changes={'NON_EXISTANT_ENV_VAR':None})
+        self.assertEquals('it sure does!\n', out)
 
 
 class TestRunBzrError(ExternalBase):

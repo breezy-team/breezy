@@ -115,7 +115,11 @@ class TestDiff(TestCase):
         try:
             os.environ['LANG'] = 'C'
             lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
-            self.assertEqual(['Binary files old and new differ\n', '\n'], lines)
+            # Older versions of diffutils say "Binary files", newer
+            # versions just say "Files".
+            self.assertContainsRe(lines[0],
+                                  '(Binary f|F)iles old and new differ\n')
+            self.assertEquals(lines[1:], ['\n'])
         finally:
             if orig_lang is None:
                 del os.environ['LANG']

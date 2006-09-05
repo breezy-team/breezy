@@ -410,18 +410,20 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.copy_to()."""
         # copy the current index to a temp index to avoid racing with local
         # writes
-        transport.put(name + INDEX_SUFFIX + '.tmp', self.transport.get(self._index._filename),)
+        transport.non_atomic_put_file(name + INDEX_SUFFIX + '.tmp',
+                self.transport.get(self._index._filename))
         # copy the data file
         f = self._data._open_file()
         try:
-            transport.put(name + DATA_SUFFIX, f)
+            transport.put_file(name + DATA_SUFFIX, f)
         finally:
             f.close()
         # move the copied index into place
         transport.move(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
 
     def create_empty(self, name, transport, mode=None):
-        return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta, create=True)
+        return KnitVersionedFile(name, transport, factory=self.factory,
+                                 delta=self.delta, create=True)
     
     def _fix_parents(self, version, new_parents):
         """Fix the parents list for version.
@@ -1134,9 +1136,8 @@ class _KnitIndex(_KnitComponentFile):
                 if delay_create:
                     self._need_to_create = True
                 else:
-                    self._transport.non_atomic_put(self._filename,
-                                                   StringIO(self.HEADER),
-                                                   mode=self._file_mode)
+                    self._transport.non_atomic_put_bytes(self._filename,
+                        self.HEADER, mode=self._file_mode)
 
         finally:
             pb.update('read knit index', total, total)
@@ -1259,13 +1260,13 @@ class _KnitIndex(_KnitComponentFile):
                 'content must be utf-8 encoded: %r' % (line,)
             lines.append(line)
         if not self._need_to_create:
-            self._transport.append(self._filename, StringIO(''.join(lines)))
+            self._transport.append_bytes(self._filename, ''.join(lines))
         else:
             sio = StringIO()
             sio.write(self.HEADER)
             sio.writelines(lines)
             sio.seek(0)
-            self._transport.non_atomic_put(self._filename, sio,
+            self._transport.non_atomic_put_file(self._filename, sio,
                                 create_parent_dir=self._create_parent_dir,
                                 mode=self._file_mode)
             self._need_to_create = False
@@ -1279,7 +1280,7 @@ class _KnitIndex(_KnitComponentFile):
         
     def has_version(self, version_id):
         """True if the version is in the index."""
-        return self._cache.has_key(version_id)
+        return (version_id in self._cache)
 
     def get_position(self, version_id):
         """Return data position and size of specified version."""
@@ -1336,8 +1337,8 @@ class _KnitData(_KnitComponentFile):
             if delay_create:
                 self._need_to_create = create
             else:
-                self._transport.non_atomic_put(self._filename, StringIO(''),
-                                               mode=self._file_mode)
+                self._transport.non_atomic_put_bytes(self._filename, '',
+                                                     mode=self._file_mode)
 
     def enable_cache(self):
         """Enable caching of reads."""
@@ -1383,9 +1384,9 @@ class _KnitData(_KnitComponentFile):
         """
         assert isinstance(raw_data, str), 'data must be plain bytes'
         if not self._need_to_create:
-            return self._transport.append(self._filename, StringIO(raw_data))
+            return self._transport.append_bytes(self._filename, raw_data)
         else:
-            self._transport.non_atomic_put(self._filename, StringIO(raw_data),
+            self._transport.non_atomic_put_bytes(self._filename, raw_data,
                                    create_parent_dir=self._create_parent_dir,
                                    mode=self._file_mode)
             self._need_to_create = False
@@ -1397,9 +1398,9 @@ class _KnitData(_KnitComponentFile):
         size, sio = self._record_to_data(version_id, digest, lines)
         # write to disk
         if not self._need_to_create:
-            start_pos = self._transport.append(self._filename, sio)
+            start_pos = self._transport.append_file(self._filename, sio)
         else:
-            self._transport.non_atomic_put(self._filename, sio,
+            self._transport.non_atomic_put_file(self._filename, sio,
                                create_parent_dir=self._create_parent_dir,
                                mode=self._file_mode)
             self._need_to_create = False

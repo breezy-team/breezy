@@ -114,7 +114,7 @@ class TestCommit(TestCaseWithWorkingTree):
         except errors.UpgradeRequired:
             # older format.
             return
-        master.bzrdir.transport.put('branch-format', StringIO('garbage'))
+        master.bzrdir.transport.put_bytes('branch-format', 'garbage')
         del master
         # check its corrupted.
         self.assertRaises(errors.UnknownFormatError,
@@ -136,7 +136,32 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.commit('foo', rev_id='foo', local=True)
         self.failIf(master.repository.has_revision('foo'))
         self.assertEqual(None, master.last_revision())
-        
+
+    def test_record_initial_ghost(self):
+        """The working tree needs to record ghosts during commit."""
+        wt = self.make_branch_and_tree('.')
+        wt.set_parent_ids(['non:existent@rev--ision--0--2'],
+            allow_leftmost_as_ghost=True)
+        rev_id = wt.commit('commit against a ghost first parent.')
+        rev = wt.branch.repository.get_revision(rev_id)
+        self.assertEqual(rev.parent_ids, ['non:existent@rev--ision--0--2'])
+        # parent_sha1s is not populated now, WTF. rbc 20051003
+        self.assertEqual(len(rev.parent_sha1s), 0)
+
+    def test_record_two_ghosts(self):
+        """The working tree should preserve all the parents during commit."""
+        wt = self.make_branch_and_tree('.')
+        wt.set_parent_ids([
+                'foo@azkhazan-123123-abcabc',
+                'wibble@fofof--20050401--1928390812',
+            ],
+            allow_leftmost_as_ghost=True)
+        rev_id = wt.commit("commit from ghost base with one merge")
+        # the revision should have been committed with two parents
+        rev = wt.branch.repository.get_revision(rev_id)
+        self.assertEqual(['foo@azkhazan-123123-abcabc',
+            'wibble@fofof--20050401--1928390812'],
+            rev.parent_ids)
 
 class TestCommitProgress(TestCaseWithWorkingTree):
     
