@@ -2,6 +2,12 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Knit files now wait to create their contents until the first data is
+      added. The old code used to create an empty .knit and a .kndx with just
+      the header. However, this caused a lot of extra round trips over sftp.
+      This can change the time for 'bzr push' to create a new remote branch
+      from 160s down to 100s. (John Arbash Meinel, #44692)
+
   BUG FIXES:
 
     * Handle boundary="" lines properly to allow access through a Squid proxy.
