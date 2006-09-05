@@ -403,8 +403,8 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.copy_to()."""
         # copy the current index to a temp index to avoid racing with local
         # writes
-        transport.put_file(name + INDEX_SUFFIX + '.tmp',
-                           self.transport.get(self._index._filename))
+        transport.non_atomic_put_file(name + INDEX_SUFFIX + '.tmp',
+                self.transport.get(self._index._filename))
         # copy the data file
         f = self._data._open_file()
         try:
@@ -955,8 +955,8 @@ class _KnitComponentFile(object):
         self._file_mode=file_mode
 
     def write_header(self):
-        if self._transport.append_bytes(self._filename, self.HEADER,
-            mode=self._file_mode):
+        if self._transport.non_atomic_put_bytes(self._filename, self.HEADER,
+                mode=self._file_mode):
             raise KnitCorrupt(self._filename, 'misaligned after writing header')
 
     def check_header(self, fp):
@@ -1310,7 +1310,8 @@ class _KnitData(_KnitComponentFile):
         self._cache = {}
         self._do_cache = False
         if create:
-            self._transport.put_bytes(self._filename, '', mode=file_mode)
+            self._transport.non_atomic_put_bytes(self._filename, '',
+                                                 mode=file_mode)
 
     def enable_cache(self):
         """Enable caching of reads."""
