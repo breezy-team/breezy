@@ -150,18 +150,22 @@ class TransportTests(TestTransportImplementation):
 
         if t.is_readonly():
             return
-        self.assertEqual(t.put_multi([('a', StringIO('new\ncontents for\na\n')),
-                                      ('d', StringIO('contents\nfor d\n'))]),
-                         2)
+        deprecation_msg = '%s.%s.%s was deprecated in version 0.11.' % (
+            t.put_multi.im_class.__module__, t.put_multi.im_class.__name__,
+            t.put_multi.__name__)
+        self.assertEqual(2, self.callDeprecated([deprecation_msg],
+            t.put_multi, [('a', StringIO('new\ncontents for\na\n')),
+                          ('d', StringIO('contents\nfor d\n'))]
+            ))
         self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd'])),
                 [True, False, False, True])
         self.check_transport_contents('new\ncontents for\na\n', t, 'a')
         self.check_transport_contents('contents\nfor d\n', t, 'd')
 
-        self.assertEqual(
-            t.put_multi(iter([('a', StringIO('diff\ncontents for\na\n')),
-                              ('d', StringIO('another contents\nfor d\n'))])),
-                        2)
+        self.assertEqual(2, self.callDeprecated([deprecation_msg],
+            t.put_multi, iter([('a', StringIO('diff\ncontents for\na\n')),
+                              ('d', StringIO('another contents\nfor d\n'))])
+            ))
         self.check_transport_contents('diff\ncontents for\na\n', t, 'a')
         self.check_transport_contents('another contents\nfor d\n', t, 'd')
 
@@ -180,7 +184,8 @@ class TransportTests(TestTransportImplementation):
         t.put_file('a', StringIO('new\ncontents for\na\n'))
         self.check_transport_contents('new\ncontents for\na\n', t, 'a')
         self.assertRaises(NoSuchFile,
-                          t.put, 'path/doesnt/exist/c', StringIO('contents'))
+                          t.put_file, 'path/doesnt/exist/c',
+                              StringIO('contents'))
 
     def test_put_bytes(self):
         t = self.get_transport()
@@ -201,7 +206,7 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises(NoSuchFile,
                           t.put_bytes, 'path/doesnt/exist/c', 'contents')
 
-    def test_put_permissions(self):
+    def test_put_file_permissions(self):
         t = self.get_transport()
 
         if t.is_readonly():
@@ -209,21 +214,27 @@ class TransportTests(TestTransportImplementation):
         if not t._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        t.put('mode644', StringIO('test text\n'), mode=0644)
+        t.put_file('mode644', StringIO('test text\n'), mode=0644)
         self.assertTransportMode(t, 'mode644', 0644)
-        t.put('mode666', StringIO('test text\n'), mode=0666)
+        t.put_file('mode666', StringIO('test text\n'), mode=0666)
         self.assertTransportMode(t, 'mode666', 0666)
-        t.put('mode600', StringIO('test text\n'), mode=0600)
+        t.put_file('mode600', StringIO('test text\n'), mode=0600)
         self.assertTransportMode(t, 'mode600', 0600)
         # Yes, you can put a file such that it becomes readonly
-        t.put('mode400', StringIO('test text\n'), mode=0400)
+        t.put_file('mode400', StringIO('test text\n'), mode=0400)
         self.assertTransportMode(t, 'mode400', 0400)
-        t.put_multi([('mmode644', StringIO('text\n'))], mode=0644)
+
+        # XXX: put_multi is deprecated, so do we really care anymore?
+        deprecation_msg = '%s.%s.%s was deprecated in version 0.11.' % (
+            t.put_multi.im_class.__module__, t.put_multi.im_class.__name__,
+            t.put_multi.__name__)
+        self.callDeprecated([deprecation_msg],
+            t.put_multi, [('mmode644', StringIO('text\n'))], mode=0644)
         self.assertTransportMode(t, 'mmode644', 0644)
 
         # The default permissions should be based on the current umask
         umask = osutils.get_umask()
-        t.put('nomode', StringIO('test text\n'), mode=None)
+        t.put_file('nomode', StringIO('test text\n'), mode=None)
         self.assertTransportMode(t, 'nomode', 0666 & ~umask)
         
     def test_put_bytes_permissions(self):

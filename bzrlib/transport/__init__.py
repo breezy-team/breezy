@@ -544,6 +544,7 @@ class Transport(object):
             'bytes must be a plain string, not %s' % type(bytes)
         return self.put_file(relpath, StringIO(bytes), mode=mode)
 
+    @deprecated_method(zero_eleven)
     def put_multi(self, files, mode=None, pb=None):
         """Put a set of files into the location.
 
@@ -553,7 +554,10 @@ class Transport(object):
         :return: The number of files copied.
         """
         def put(path, f):
-            self.put(path, f, mode=mode)
+            if isinstance(f, str):
+                self.put_bytes(path, f, mode=mode)
+            else:
+                self.put_file(path, f, mode=mode)
         return len(self._iterate_over(files, put, pb, 'put', expand=True))
 
     def mkdir(self, relpath, mode=None):

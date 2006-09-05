@@ -185,9 +185,9 @@ class TestMemoryTransport(TestCase):
 
     def test_put_and_get(self):
         transport = MemoryTransport()
-        transport.put('path', StringIO('content'))
+        transport.put_file('path', StringIO('content'))
         self.assertEqual(transport.get('path').read(), 'content')
-        transport.put('path', StringIO('content'))
+        transport.put_bytes('path', 'content')
         self.assertEqual(transport.get('path').read(), 'content')
 
     def test_append_without_dir_fails(self):
@@ -198,7 +198,7 @@ class TestMemoryTransport(TestCase):
     def test_put_without_dir_fails(self):
         transport = MemoryTransport()
         self.assertRaises(NoSuchFile,
-                          transport.put, 'dir/path', StringIO('content'))
+                          transport.put_file, 'dir/path', StringIO('content'))
 
     def test_get_missing(self):
         transport = MemoryTransport()
@@ -238,16 +238,16 @@ class TestMemoryTransport(TestCase):
     def test_iter_files_recursive(self):
         transport = MemoryTransport()
         transport.mkdir('dir')
-        transport.put('dir/foo', StringIO('content'))
-        transport.put('dir/bar', StringIO('content'))
-        transport.put('bar', StringIO('content'))
+        transport.put_bytes('dir/foo', 'content')
+        transport.put_bytes('dir/bar', 'content')
+        transport.put_bytes('bar', 'content')
         paths = set(transport.iter_files_recursive())
         self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
 
     def test_stat(self):
         transport = MemoryTransport()
-        transport.put('foo', StringIO('content'))
-        transport.put('bar', StringIO('phowar'))
+        transport.put_bytes('foo', 'content')
+        transport.put_bytes('bar', 'phowar')
         self.assertEqual(7, transport.stat('foo').st_size)
         self.assertEqual(6, transport.stat('bar').st_size)
 
