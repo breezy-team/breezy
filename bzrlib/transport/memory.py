@@ -98,7 +98,7 @@ class MemoryTransport(Transport):
         else:
             return temp_t.base[:-1]
 
-    def append(self, relpath, f, mode=None):
+    def append_file(self, relpath, f, mode=None):
         """See Transport.append()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)

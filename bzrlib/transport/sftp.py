@@ -470,7 +470,7 @@ class SFTPTransport(Transport):
             mutter('Raising exception with errno %s', e.errno)
         raise e
 
-    def append(self, relpath, f, mode=None):
+    def append_file(self, relpath, f, mode=None):
         """
         Append the text in the file-like object into the final
         location.

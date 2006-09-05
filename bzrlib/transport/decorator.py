@@ -57,9 +57,13 @@ class TransportDecorator(Transport):
         """See Transport.abspath()."""
         return self._get_url_prefix() + self._decorated.abspath(relpath)
 
-    def append(self, relpath, f, mode=None):
-        """See Transport.append()."""
-        return self._decorated.append(relpath, f, mode=mode)
+    def append_file(self, relpath, f, mode=None):
+        """See Transport.append_file()."""
+        return self._decorated.append_file(relpath, f, mode=mode)
+
+    def append_bytes(self, relpath, bytes, mode=None):
+        """See Transport.append_bytes()."""
+        return self._decorated.append_bytes(relpath, bytes, mode=mode)
 
     def clone(self, offset=None):
         """See Transport.clone()."""

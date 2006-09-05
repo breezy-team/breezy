@@ -385,14 +385,37 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
 
         if t.is_readonly():
+            return
+        t.put_bytes('a', 'diff\ncontents for\na\n')
+        t.put_bytes('b', 'contents\nfor b\n')
+
+        deprecation_msg = '%s.%s.%s was deprecated in version 0.11.' % (
+            t.append.im_class.__module__, t.append.im_class.__name__,
+            t.append.__name__)
+        self.assertEqual(20, self.callDeprecated([deprecation_msg],
+            t.append, 'a', StringIO('add\nsome\nmore\ncontents\n')))
+
+        self.check_transport_contents(
+            'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
+            t, 'a')
+
+        # And we can create new files, too
+        self.assertEqual(0, self.callDeprecated([deprecation_msg],
+            t.append, 'c', StringIO('some text\nfor a missing file\n')))
+        self.check_transport_contents('some text\nfor a missing file\n',
+                                      t, 'c')
+    def test_append_file(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                    t.append, 'a', 'add\nsome\nmore\ncontents\n')
+                    t.append_file, 'a', 'add\nsome\nmore\ncontents\n')
             return
         t.put_bytes('a', 'diff\ncontents for\na\n')
         t.put_bytes('b', 'contents\nfor b\n')
 
         self.assertEqual(20,
-            t.append('a', StringIO('add\nsome\nmore\ncontents\n')))
+            t.append_file('a', StringIO('add\nsome\nmore\ncontents\n')))
 
         self.check_transport_contents(
             'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
@@ -400,11 +423,11 @@ class TransportTests(TestTransportImplementation):
 
         # a file with no parent should fail..
         self.assertRaises(NoSuchFile,
-                          t.append, 'missing/path', StringIO('content'))
+                          t.append_file, 'missing/path', StringIO('content'))
 
         # And we can create new files, too
         self.assertEqual(0,
-            t.append('c', StringIO('some text\nfor a missing file\n')))
+            t.append_file('c', StringIO('some text\nfor a missing file\n')))
         self.check_transport_contents('some text\nfor a missing file\n',
                                       t, 'c')
 
@@ -481,15 +504,15 @@ class TransportTests(TestTransportImplementation):
             t, 'a')
         self.check_transport_contents('missing file r\n', t, 'd')
 
-    def test_append_mode(self):
+    def test_append_file_mode(self):
         """Check that append accepts a mode parameter"""
         # check append accepts a mode
         t = self.get_transport()
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                t.append, 'f', StringIO('f'), mode=None)
+                t.append_file, 'f', StringIO('f'), mode=None)
             return
-        t.append('f', StringIO('f'), mode=None)
+        t.append_file('f', StringIO('f'), mode=None)
         
     def test_append_bytes_mode(self):
         # check append_bytes accepts a mode

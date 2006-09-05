@@ -569,6 +569,7 @@ class Transport(object):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
+    @deprecated_method(zero_eleven)
     def append(self, relpath, f, mode=None):
         """Append the text in the file-like object to the supplied location.
 
@@ -576,7 +577,21 @@ class Transport(object):
         
         If the file does not exist, it is created with the supplied mode.
         """
-        raise NotImplementedError(self.append)
+        return self.append_file(relpath, f, mode=mode)
+
+    def append_file(self, relpath, f, mode=None):
+        """Append the text in the file-like object to the supplied location.
+
+        returns the length of relpath before the content was written to it.
+        
+        If the file does not exist, it is created with the supplied mode.
+        """
+        symbol_versioning.warn('Transport %s should implement append_file,'
+                               ' rather than implementing append() as of'
+                               ' version 0.11.'
+                               % (self.__class__.__name__,),
+                               DeprecationWarning)
+        return self.append(relpath, f, mode=mode)
 
     def append_bytes(self, relpath, bytes, mode=None):
         """Append the text in the string object to the supplied location.
@@ -587,7 +602,7 @@ class Transport(object):
         """
         assert isinstance(bytes, str), \
             'bytes must be a plain string, not %s' % type(bytes)
-        return self.append(relpath, StringIO(bytes), mode=mode)
+        return self.append_file(relpath, StringIO(bytes), mode=mode)
 
     def append_multi(self, files, pb=None):
         """Append the text in each file-like or string object to
@@ -596,7 +611,7 @@ class Transport(object):
         :param files: A set of (path, f) entries
         :param pb:  An optional ProgressBar for indicating percent done.
         """
-        return self._iterate_over(files, self.append, pb, 'append', expand=True)
+        return self._iterate_over(files, self.append_file, pb, 'append', expand=True)
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to.
