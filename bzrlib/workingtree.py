@@ -731,6 +731,9 @@ class WorkingTree(bzrlib.tree.Tree):
 
         These are revisions that have been merged into the working
         directory but not yet committed.
+
+        As of 0.11 this is deprecated. Please see WorkingTree.get_parent_ids()
+        instead - which is available on all tree objects.
         """
         return self.get_parent_ids()[1:]
 
@@ -1339,7 +1342,7 @@ class WorkingTree(bzrlib.tree.Tree):
         always use tree.last_revision(). This returns the left most parent id,
         or None if there are no parents.
 
-        This was deprecated as of 0.10. Please use get_parent_ids now.
+        This was deprecated as of 0.11. Please use get_parent_ids instead.
         """
         return self._last_revision()
 
