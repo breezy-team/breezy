@@ -543,7 +543,8 @@ class Transport(object):
             'bytes must be a plain string, not %s' % type(bytes)
         return self.put_file(relpath, StringIO(bytes), mode=mode)
 
-    def non_atomic_put(self, relpath, f, mode=None, create_parent_dir=False):
+    def non_atomic_put_file(self, relpath, f, mode=None,
+                            create_parent_dir=False):
         """Copy the file-like object into the target location.
 
         This function is not strictly safe to use. It is only meant to
@@ -561,14 +562,14 @@ class Transport(object):
         """
         # Default implementation just does an atomic put.
         try:
-            return self.put(relpath, f, mode=mode)
+            return self.put_file(relpath, f, mode=mode)
         except errors.NoSuchFile:
             if not create_parent_dir:
                 raise
             parent_dir = osutils.dirname(relpath)
             if parent_dir:
                 self.mkdir(parent_dir)
-                return self.put(relpath, f, mode=mode)
+                return self.put_file(relpath, f, mode=mode)
 
     @deprecated_method(zero_eleven)
     def put_multi(self, files, mode=None, pb=None):
