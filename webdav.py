@@ -385,7 +385,7 @@ class HttpDavTransport(PyCurlTransport):
         if code in (404, 409):
             raise NoSuchFile(abs_from)
         if code != 201:
-            self._raise_curl_http_error(curl, 
+            self._raise_curl_http_error(curl,
                                         'unable to copy from %r to %r'
                                         % (abs_from,abs_to))
 

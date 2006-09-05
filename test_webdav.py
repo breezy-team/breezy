@@ -68,6 +68,7 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
 
     _RANGE_HEADER_RE = re.compile(
         r'bytes (?P<begin>\d+)-(?P<end>\d+)/(?P<size>\d+|\*)')
+
     # On Mac OS X 10.3 + fink, we get EAGAIN (ressource temporary
     # unavailable)...   permanently :)  when  reading the  client
     # socket.  The  following helps,  but still, some  tests fail
@@ -112,7 +113,6 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
             data = self._read(length)
             # Eats the newline following the chunk
             self._readline()
-            
         return length, data
 
     def do_PUT(self):
@@ -193,7 +193,7 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
         else:
             self.send_response(201)
             self.end_headers()
-               
+
     def do_COPY(self):
         """Serve a COPY request."""
 
@@ -351,7 +351,6 @@ class TestingDAVAppendRequestHandler(TestingDAVRequestHandler):
         # FIXME: We should send 204 if the file didn't exist before
         self.send_response(201)
         self.end_headers()
-    
 
 
 class HttpServer_Dav(HttpServer_PyCurl):
@@ -365,7 +364,6 @@ class HttpServer_Dav(HttpServer_PyCurl):
         # We    have   special    requests    to   handle    that
         # HttpServer_PyCurl don't know about
         super(HttpServer_Dav,self).__init__(TestingDAVRequestHandler)
-        
 
     # urls returned by this server should require the webdav client impl
     _url_protocol = 'http+webdav'
@@ -381,7 +379,6 @@ class HttpServer_Dav_append(HttpServer_Dav):
         # We    have   special    requests    to   handle    that
         # HttpServer_PyCurl don't know about
         super(HttpServer_Dav,self).__init__(TestingDAVAppendRequestHandler)
-        
 
     # urls returned by this server should require the webdav client impl
     _url_protocol = 'http+webdav'
