@@ -245,11 +245,17 @@ class Commit(object):
             self._check_bound_branch()
 
             # check for out of date working trees
-            # if we are bound, then self.branch is the master branch and this
-            # test is thus all we need.
+            try:
+                first_tree_parent = self.work_tree.get_parent_ids()[0]
+            except IndexError:
+                # if there are no parents, treat our parent as 'None'
+                # this is so that we still consier the master branch
+                # - in a checkout scenario the tree may have no
+                # parents but the branch may do.
+                first_tree_parent = None
             master_last = self.master_branch.last_revision()
-            if (master_last is not None and 
-                master_last != self.work_tree.last_revision()):
+            if (master_last is not None and
+                master_last != first_tree_parent):
                 raise errors.OutOfDateTree(self.work_tree)
     
             if strict:

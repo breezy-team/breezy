@@ -57,7 +57,7 @@ class TestReadBundleFromURL(TestTransportImplementation):
 
         out = cStringIO.StringIO()
         rev_ids = write_bundle(wt.branch.repository,
-                               wt.last_revision(), None, out)
+                               wt.get_parent_ids()[0], None, out)
         out.seek(0)
         if self._transport.is_readonly():
             f = open('test_bundle', 'wb')
