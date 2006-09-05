@@ -20,12 +20,15 @@ class BisectCurrent(object):
             self._revid = f.read().strip()
             f.close()
         else:
-            self._revid = self._bzrbranch.get_rev_id(self._bzrbranch.revno())
+            self._revid = self._bzrbranch.last_revision()
 
     def _save(self):
         f = open(self._filename, "w")
         f.write(self._revid + "\n")
         f.close()
+
+    def get_current_revid(self):
+        return self._revid
 
     def switch(self, revid):
         wt = self._bzrdir.open_workingtree()
@@ -125,10 +128,11 @@ class BisectLog(object):
         for (revid, status) in self._items:
             f.write("%s %s\n" % (revid, status))
 
-    def set_current(self, status):
-        self._load_bzr_tree()
-        revid = self._bzrbranch.get_rev_id(self._bzrbranch.revno())
+    def set_status(self, revid, status):
         self._items.append((revid, status))
+
+    def set_current(self, status):
+        self.set_status(self._current.get_current_revid(), status)
 
     def bisect(self):
         self._find_current_range()
@@ -236,7 +240,10 @@ class cmd_bisect(Command):
         "Mark that a given revision has the state we're looking for."
 
         bl = BisectLog()
-        bl.set_current("yes")
+        if revision:
+            bl.set_status(revision, "yes")
+        else:
+            bl.set_current("yes")
         bl.bisect()
         bl.save()
 
@@ -244,7 +251,10 @@ class cmd_bisect(Command):
         "Mark that a given revision does not have the state we're looking for."
 
         bl = BisectLog()
-        bl.set_current("no")
+        if revision:
+            bl.set_status(revision, "no")
+        else:
+            bl.set_current("no")
         bl.bisect()
         bl.save()
 
