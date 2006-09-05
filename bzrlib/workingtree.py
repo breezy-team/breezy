@@ -724,6 +724,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if updated:
             self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
+    @deprecated_method(zero_eleven)
     @needs_read_lock
     def pending_merges(self):
         """Return a list of pending merges.
