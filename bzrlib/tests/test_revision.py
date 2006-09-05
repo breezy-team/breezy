@@ -72,13 +72,13 @@ def make_branches(self):
     revisions_2 = br2.revision_history()
     self.assertEquals(revisions_2[-1], 'b@u-0-4')
     
-    self.merge(br2, tree1)
+    tree1.merge_from_branch(br2)
     tree1.commit("Commit six", rev_id="a@u-0-3")
     tree1.commit("Commit seven", rev_id="a@u-0-4")
     tree2.commit("Commit eight", rev_id="b@u-0-5")
     self.assertEquals(br2.revision_history()[-1], 'b@u-0-5')
     
-    self.merge(br2, tree1)
+    tree1.merge_from_branch(br2)
     tree1.commit("Commit nine", rev_id="a@u-0-5")
     # DO NOT MERGE HERE - we WANT a GHOST.
     tree2.add_parent_tree_id(br1.revision_history()[4])
@@ -156,10 +156,10 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         wt2.commit("Commit twelve", rev_id="b@u-0-8")
         wt2.commit("Commit thirtteen", rev_id="b@u-0-9")
 
-        self.merge(self.br2, wt1)
+        wt1.merge_from_branch(self.br2)
         wt1.commit("Commit fourtten", rev_id="a@u-0-6")
 
-        self.merge(self.br1, wt2)
+        wt2.merge_from_branch(self.br1)
         wt2.commit("Commit fifteen", rev_id="b@u-0-10")
 
         from bzrlib.revision import MultipleRevisionSources

@@ -921,6 +921,7 @@ class TestCase(unittest.TestCase):
             sys.stderr = real_stderr
             sys.stdin = real_stdin
 
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_eleven)
     def merge(self, branch_from, wt_to):
         """A helper for tests to do a ui-less merge.
 

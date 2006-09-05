@@ -795,11 +795,13 @@ class ConnectionReset(TransportError):
 
 
 class InvalidRange(TransportError):
-    """Invalid range access."""
+    """Invalid range access in %(path)s at %(offset)s."""
     
     def __init__(self, path, offset):
         TransportError.__init__(self, ("Invalid range access in %s at %d"
                                        % (path, offset)))
+        self.path = path
+        self.offset = offset
 
 
 class InvalidHttpResponse(TransportError):
@@ -965,6 +967,10 @@ class ParamikoNotPresent(DependencyNotPresent):
 
     def __init__(self, error):
         DependencyNotPresent.__init__(self, 'paramiko', error)
+
+
+class PointlessMerge(BzrNewError):
+    """Nothing to merge."""
 
 
 class UninitializableFormat(BzrNewError):
