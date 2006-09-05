@@ -94,7 +94,7 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
         """Create a bzr dir."""
         t = get_transport(url)
         t.mkdir('.bzr')
-        t.put('.bzr/branch-format', StringIO(self.get_format_string()))
+        t.put_bytes('.bzr/branch-format', self.get_format_string())
         return SampleBzrDir(t, self)
 
     def is_supported(self):

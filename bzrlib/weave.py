@@ -1132,7 +1132,7 @@ class WeaveFile(Weave):
         sio = StringIO()
         write_weave_v5(self, sio)
         sio.seek(0)
-        transport.put(name + WeaveFile.WEAVE_SUFFIX, sio, self._filemode)
+        transport.put_file(name + WeaveFile.WEAVE_SUFFIX, sio, self._filemode)
 
     def create_empty(self, name, transport, filemode=None):
         return WeaveFile(name, transport, filemode, create=True)
@@ -1143,9 +1143,9 @@ class WeaveFile(Weave):
         sio = StringIO()
         write_weave_v5(self, sio)
         sio.seek(0)
-        self._transport.put(self._weave_name + WeaveFile.WEAVE_SUFFIX,
-                            sio,
-                            self._filemode)
+        self._transport.put_file(self._weave_name + WeaveFile.WEAVE_SUFFIX,
+                                 sio,
+                                 self._filemode)
 
     @staticmethod
     def get_suffixes():
