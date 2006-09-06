@@ -457,9 +457,8 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertEqual(conflicts_s[3], 'Conflict because munchkincity is not'
                                          ' versioned, but has versioned'
                                          ' children.  Versioned directory.')
-        self.assertEqual(conflicts_s[4], 'Conflict deleting parent directory'
-                                         ' oz because it has children.  '
-                                         'Not deleting.')
+        self.assertEqualDiff(conflicts_s[4], "Conflict: can't delete oz because it"
+                                         " is not empty.  Not deleting.")
         self.assertEqual(conflicts_s[5], 'Conflict because oz is not'
                                          ' versioned, but has versioned'
                                          ' children.  Versioned directory.')

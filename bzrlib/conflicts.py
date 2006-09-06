@@ -456,8 +456,8 @@ class DeletingParent(HandledConflict):
 
     typestring = 'deleting parent'
 
-    format = 'Conflict deleting parent directory %(path)s because it has'\
-             ' children.  %(action)s.'
+    format = "Conflict: can't delete %(path)s because it is not empty.  "\
+             "%(action)s."
 
 
 ctype = {}
