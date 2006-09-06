@@ -72,11 +72,16 @@ class GPGStrategy(object):
 
     def sign(self, content):
         ui.ui_factory.clear_term()
+
+        preexec_fn = _set_gpg_tty
+        if sys.platform == 'win32':
+            # Win32 doesn't support preexec_fn, but wouldn't support TTY anyway.
+            preexec_fn = None
         try:
             process = subprocess.Popen(self._command_line(),
                                        stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE,
-                                       preexec_fn=_set_gpg_tty)
+                                       preexec_fn=preexec_fn)
             try:
                 result = process.communicate(content)[0]
                 if process.returncode is None:
