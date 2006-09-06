@@ -1506,6 +1506,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
                                               versionedfile_kwargs={
                                                   'create_parent_dir':True,
                                                   'delay_create':True,
+                                                  'dir_mode':control_files._dir_mode,
                                               },
                                               escaped=True)
 
