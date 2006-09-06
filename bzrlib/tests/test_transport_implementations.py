@@ -27,7 +27,6 @@ import sys
 
 from bzrlib import (
     osutils,
-    symbol_versioning,
     urlutils,
     )
 from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
@@ -35,6 +34,7 @@ from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
                            TransportNotPossible, ConnectionError,
                            InvalidURL)
 from bzrlib.osutils import getcwd
+from bzrlib.symbol_versioning import zero_eleven
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import memory
@@ -135,14 +135,11 @@ class TransportTests(TestTransportImplementation):
         if t.is_readonly():
             return
 
-        deprecation_msg = symbol_versioning.deprecation_string(
-            t.put, symbol_versioning.zero_eleven)
-        self.callDeprecated([deprecation_msg],
-                            t.put, 'a', 'string\ncontents\n')
+        self.applyDeprecated(zero_eleven, t.put, 'a', 'string\ncontents\n')
         self.check_transport_contents('string\ncontents\n', t, 'a')
 
-        self.callDeprecated([deprecation_msg],
-                            t.put, 'b', StringIO('file-like\ncontents\n'))
+        self.applyDeprecated(zero_eleven,
+                             t.put, 'b', StringIO('file-like\ncontents\n'))
         self.check_transport_contents('file-like\ncontents\n', t, 'b')
 
     def test_put_bytes(self):
@@ -323,10 +320,8 @@ class TransportTests(TestTransportImplementation):
         self.assertTransportMode(t, 'mode400', 0400)
 
         # XXX: put_multi is deprecated, so do we really care anymore?
-        deprecation_msg = symbol_versioning.deprecation_string(
-            t.put_multi, symbol_versioning.zero_eleven)
-        self.callDeprecated([deprecation_msg],
-            t.put_multi, [('mmode644', StringIO('text\n'))], mode=0644)
+        self.applyDeprecated(zero_eleven, t.put_multi,
+                             [('mmode644', StringIO('text\n'))], mode=0644)
         self.assertTransportMode(t, 'mmode644', 0644)
 
         # The default permissions should be based on the current umask
@@ -362,9 +357,7 @@ class TransportTests(TestTransportImplementation):
 
         if t.is_readonly():
             return
-        deprecation_msg = symbol_versioning.deprecation_string(
-            t.put_multi, symbol_versioning.zero_eleven)
-        self.assertEqual(2, self.callDeprecated([deprecation_msg],
+        self.assertEqual(2, self.applyDeprecated(zero_eleven,
             t.put_multi, [('a', StringIO('new\ncontents for\na\n')),
                           ('d', StringIO('contents\nfor d\n'))]
             ))
@@ -373,7 +366,7 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('new\ncontents for\na\n', t, 'a')
         self.check_transport_contents('contents\nfor d\n', t, 'd')
 
-        self.assertEqual(2, self.callDeprecated([deprecation_msg],
+        self.assertEqual(2, self.applyDeprecated(zero_eleven,
             t.put_multi, iter([('a', StringIO('diff\ncontents for\na\n')),
                               ('d', StringIO('another contents\nfor d\n'))])
             ))
@@ -509,9 +502,7 @@ class TransportTests(TestTransportImplementation):
         t.put_bytes('a', 'diff\ncontents for\na\n')
         t.put_bytes('b', 'contents\nfor b\n')
 
-        deprecation_msg = symbol_versioning.deprecation_string(
-            t.append, symbol_versioning.zero_eleven)
-        self.assertEqual(20, self.callDeprecated([deprecation_msg],
+        self.assertEqual(20, self.applyDeprecated(zero_eleven,
             t.append, 'a', StringIO('add\nsome\nmore\ncontents\n')))
 
         self.check_transport_contents(
@@ -519,7 +510,7 @@ class TransportTests(TestTransportImplementation):
             t, 'a')
 
         # And we can create new files, too
-        self.assertEqual(0, self.callDeprecated([deprecation_msg],
+        self.assertEqual(0, self.applyDeprecated(zero_eleven,
             t.append, 'c', StringIO('some text\nfor a missing file\n')))
         self.check_transport_contents('some text\nfor a missing file\n',
                                       t, 'c')
