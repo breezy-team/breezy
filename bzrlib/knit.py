@@ -403,18 +403,20 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.copy_to()."""
         # copy the current index to a temp index to avoid racing with local
         # writes
-        transport.put(name + INDEX_SUFFIX + '.tmp', self.transport.get(self._index._filename),)
+        transport.put_file_non_atomic(name + INDEX_SUFFIX + '.tmp',
+                self.transport.get(self._index._filename))
         # copy the data file
         f = self._data._open_file()
         try:
-            transport.put(name + DATA_SUFFIX, f)
+            transport.put_file(name + DATA_SUFFIX, f)
         finally:
             f.close()
         # move the copied index into place
         transport.move(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
 
     def create_empty(self, name, transport, mode=None):
-        return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta, create=True)
+        return KnitVersionedFile(name, transport, factory=self.factory,
+                                 delta=self.delta, create=True)
     
     def _fix_parents(self, version, new_parents):
         """Fix the parents list for version.
@@ -953,8 +955,8 @@ class _KnitComponentFile(object):
         self._file_mode=file_mode
 
     def write_header(self):
-        if self._transport.append(self._filename, StringIO(self.HEADER),
-            mode=self._file_mode):
+        if self._transport.put_bytes_non_atomic(self._filename, self.HEADER,
+                mode=self._file_mode):
             raise KnitCorrupt(self._filename, 'misaligned after writing header')
 
     def check_header(self, fp):
@@ -1245,7 +1247,7 @@ class _KnitIndex(_KnitComponentFile):
             assert isinstance(line, str), \
                 'content must be utf-8 encoded: %r' % (line,)
             lines.append(line)
-        self._transport.append(self._filename, StringIO(''.join(lines)))
+        self._transport.append_bytes(self._filename, ''.join(lines))
         # cache after writing, so that a failed write leads to missing cache
         # entries not extra ones. XXX TODO: RBC 20060502 in the event of a 
         # failure, reload the index or flush it or some such, to prevent
@@ -1308,7 +1310,8 @@ class _KnitData(_KnitComponentFile):
         self._cache = {}
         self._do_cache = False
         if create:
-            self._transport.put(self._filename, StringIO(''), mode=file_mode)
+            self._transport.put_bytes_non_atomic(self._filename, '',
+                                                 mode=file_mode)
 
     def enable_cache(self):
         """Enable caching of reads."""
@@ -1353,14 +1356,14 @@ class _KnitData(_KnitComponentFile):
         :return: the offset in the data file raw_data was written.
         """
         assert isinstance(raw_data, str), 'data must be plain bytes'
-        return self._transport.append(self._filename, StringIO(raw_data))
+        return self._transport.append_bytes(self._filename, raw_data)
         
     def add_record(self, version_id, digest, lines):
         """Write new text record to disk.  Returns the position in the
         file where it was written."""
         size, sio = self._record_to_data(version_id, digest, lines)
         # write to disk
-        start_pos = self._transport.append(self._filename, sio)
+        start_pos = self._transport.append_file(self._filename, sio)
         if self._do_cache:
             self._cache[version_id] = sio.getvalue()
         return start_pos, size

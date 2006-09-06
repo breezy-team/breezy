@@ -114,7 +114,7 @@ class TestCommit(TestCaseWithWorkingTree):
         except errors.UpgradeRequired:
             # older format.
             return
-        master.bzrdir.transport.put('branch-format', StringIO('garbage'))
+        master.bzrdir.transport.put_bytes('branch-format', 'garbage')
         del master
         # check its corrupted.
         self.assertRaises(errors.UnknownFormatError,
