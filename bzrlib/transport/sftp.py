@@ -466,12 +466,7 @@ class SFTPTransport(Transport):
             # Try to create the parent directory, and then go back to
             # writing the file
             parent_dir = os.path.dirname(abspath)
-            try:
-                self._sftp.mkdir(parent_dir)
-                if dir_mode is not None:
-                    self._sftp.chmod(path, mode=dir_mode)
-            except (paramiko.SSHException, IOError), e:
-                self._translate_io_exception(e, abspath, ': unable to open')
+            self._mkdir(parent_dir, dir_mode)
             _open_and_write_file()
 
     def put_file_non_atomic(self, relpath, f, mode=None,
@@ -519,16 +514,22 @@ class SFTPTransport(Transport):
             else:
                 yield relpath
 
+    def _mkdir(self, abspath, mode=None):
+        if mode is None:
+            local_mode = 0777
+        else:
+            local_mode = mode
+        try:
+            self._sftp.mkdir(abspath, local_mode)
+            if mode is not None:
+                self._sftp.chmod(abspath, mode=mode)
+        except (paramiko.SSHException, IOError), e:
+            self._translate_io_exception(e, abspath, ': unable to mkdir',
+                failure_exc=FileExists)
+
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
-        path = self._remote_path(relpath)
-        try:
-            self._sftp.mkdir(path)
-            if mode is not None:
-                self._sftp.chmod(path, mode=mode)
-        except (paramiko.SSHException, IOError), e:
-            self._translate_io_exception(e, path, ': unable to mkdir',
-                failure_exc=FileExists)
+        self._mkdir(self._remote_path(relpath), mode=mode)
 
     def _translate_io_exception(self, e, path, more_info='', 
                                 failure_exc=PathError):
@@ -752,6 +753,12 @@ class SFTPTransport(Transport):
             self._translate_io_exception(e, abspath, ': unable to open',
                 failure_exc=FileExists)
 
+    def _can_roundtrip_unix_modebits(self):
+        if sys.platform == 'win32':
+            # anyone else?
+            return False
+        else:
+            return True
 
 # ------------- server test implementation --------------
 import threading
