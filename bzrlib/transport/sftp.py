@@ -512,16 +512,22 @@ class SFTPTransport(Transport):
             else:
                 yield relpath
 
+    def _mkdir(self, abspath, mode=None):
+        if mode is None:
+            local_mode = 0777
+        else:
+            local_mode = mode
+        try:
+            self._sftp.mkdir(abspath, local_mode)
+            if mode is not None:
+                self._sftp.chmod(abspath, mode=mode)
+        except (paramiko.SSHException, IOError), e:
+            self._translate_io_exception(e, abspath, ': unable to mkdir',
+                failure_exc=FileExists)
+
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
-        path = self._remote_path(relpath)
-        try:
-            self._sftp.mkdir(path)
-            if mode is not None:
-                self._sftp.chmod(path, mode=mode)
-        except (paramiko.SSHException, IOError), e:
-            self._translate_io_exception(e, path, ': unable to mkdir',
-                failure_exc=FileExists)
+        self._mkdir(self._remote_path(relpath), mode=mode)
 
     def _translate_io_exception(self, e, path, more_info='', 
                                 failure_exc=PathError):
@@ -745,6 +751,12 @@ class SFTPTransport(Transport):
             self._translate_io_exception(e, abspath, ': unable to open',
                 failure_exc=FileExists)
 
+    def _can_roundtrip_unix_modebits(self):
+        if sys.platform == 'win32':
+            # anyone else?
+            return False
+        else:
+            return True
 
 # ------------- server test implementation --------------
 import threading
