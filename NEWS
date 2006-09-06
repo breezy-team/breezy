@@ -3,10 +3,17 @@ IN DEVELOPMENT
   IMPROVEMENTS:
 
   BUG FIXES:
+
+    * Handle boundary="" lines properly to allow access through a Squid proxy.
+      (John Arbash Meinel, #57723)
+
     * revert now removes newly-added directories (Aaron Bentley, #54172)
 
     * ``bzr upgrade sftp://`` shouldn't fail to upgrade v6 branches if there 
       isn't a working tree. (David Allouche, #40679)
+
+    * Give nicer error messages when a user supplies an invalid --revision
+      parameter. (John Arbash Meinel, #55420)
 
     * Handle when LANG is not recognized by python. Emit a warning, but
       just revert to using 'ascii'. (John Arbash Meinel, #35392)
@@ -23,6 +30,13 @@ IN DEVELOPMENT
     * Transport.list_dir() and Transport.iter_files_recursive() should always
       return urlescaped paths. This is now tested (there were bugs in a few
       of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
+
+    * New utility function symbol_versioning.deprecation_string. Returns the
+      formatted string for a callable, deprecation format pair. (Robert Collins)
+
+    * New TestCase helper applyDeprecated. This allows you to call a callable
+      which is deprecated without it spewing to the screen, just by supplying
+      the deprecation format string issued for it. (Robert Collins)
 
 bzr 0.10.0RC1  2006-08-28
   
