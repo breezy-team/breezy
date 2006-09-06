@@ -1329,12 +1329,12 @@ class _KnitData(_KnitComponentFile):
     """Contents of the knit data file"""
 
     def __init__(self, transport, filename, mode, create=False, file_mode=None,
-                 dir_mode=None,
-                 create_parent_dir=False, delay_create=False):
+                 create_parent_dir=False, delay_create=False,
+                 dir_mode=None):
         _KnitComponentFile.__init__(self, transport, filename, mode,
                                     file_mode=file_mode,
-                                    dir_mode=dir_mode,
-                                    create_parent_dir=create_parent_dir)
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
         self._checked = False
         # TODO: jam 20060713 conceptually, this could spill to disk
         #       if the cached size gets larger than a certain amount
