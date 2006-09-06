@@ -16,21 +16,15 @@
 
 """bzr library"""
 
+from bzrlib.osutils import get_user_encoding
+
 
 IGNORE_FILENAME = ".bzrignore"
 
-import os
-import sys
-if sys.platform == 'darwin':
-    # work around egregious python 2.4 bug
-    sys.platform = 'posix'
-    import locale
-    sys.platform = 'darwin'
-else:
-    import locale
-# XXX: This probably belongs in osutils instead
-user_encoding = locale.getpreferredencoding() or 'ascii'
-del locale
+
+# XXX: Compatibility. This should probably be deprecated
+user_encoding = get_user_encoding()
+
 
 __copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
 
@@ -41,7 +35,7 @@ __copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (0, 10, 0, 'dev', 0)
+version_info = (0, 11, 0, 'dev', 0)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]

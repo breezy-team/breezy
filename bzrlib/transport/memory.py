@@ -117,7 +117,7 @@ class MemoryTransport(Transport):
     def has(self, relpath):
         """See Transport.has()."""
         _abspath = self._abspath(relpath)
-        return _abspath in self._files or _abspath in self._dirs
+        return (_abspath in self._files) or (_abspath in self._dirs)
 
     def delete(self, relpath):
         """See Transport.delete()."""
@@ -154,7 +154,7 @@ class MemoryTransport(Transport):
     def iter_files_recursive(self):
         for file in self._files:
             if file.startswith(self._cwd):
-                yield file[len(self._cwd):]
+                yield urlutils.escape(file[len(self._cwd):])
     
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
@@ -173,7 +173,7 @@ class MemoryTransport(Transport):
                 len(path) > len(_abspath) and
                 path[len(_abspath)] == '/'):
                 result.append(path[len(_abspath) + 1:])
-        return result
+        return map(urlutils.escape, result)
 
     def rename(self, rel_from, rel_to):
         """Rename a file or directory; fail if the destination exists"""

@@ -18,11 +18,8 @@
 """Implementation of Transport over SFTP, using paramiko."""
 
 import errno
-import getpass
-import itertools
 import os
 import random
-import re
 import select
 import socket
 import stat
@@ -33,24 +30,23 @@ import urllib
 import urlparse
 import weakref
 
-from bzrlib.config import config_dir, ensure_config_dir_exists
-from bzrlib.errors import (ConnectionError,
-                           FileExists, 
-                           TransportNotPossible, NoSuchFile, PathNotChild,
+from bzrlib.errors import (FileExists, 
+                           NoSuchFile, PathNotChild,
                            TransportError,
                            LockError, 
                            PathError,
                            ParamikoNotPresent,
+                           UnknownSSH,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
-from bzrlib.trace import mutter, warning, error
+from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     Server,
     split_url,
+    ssh,
     Transport,
     )
-import bzrlib.ui
 import bzrlib.urlutils as urlutils
 
 try:
@@ -63,167 +59,10 @@ else:
                                CMD_HANDLE, CMD_OPEN)
     from paramiko.sftp_attr import SFTPAttributes
     from paramiko.sftp_file import SFTPFile
-    from paramiko.sftp_client import SFTPClient
 
 
 register_urlparse_netloc_protocol('sftp')
 
-
-def _ignore_sigint():
-    # TODO: This should possibly ignore SIGHUP as well, but bzr currently
-    # doesn't handle it itself.
-    # <https://launchpad.net/products/bzr/+bug/41433/+index>
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-    
-
-def os_specific_subprocess_params():
-    """Get O/S specific subprocess parameters."""
-    if sys.platform == 'win32':
-        # setting the process group and closing fds is not supported on 
-        # win32
-        return {}
-    else:
-        # We close fds other than the pipes as the child process does not need 
-        # them to be open.
-        #
-        # We also set the child process to ignore SIGINT.  Normally the signal
-        # would be sent to every process in the foreground process group, but
-        # this causes it to be seen only by bzr and not by ssh.  Python will
-        # generate a KeyboardInterrupt in bzr, and we will then have a chance
-        # to release locks or do other cleanup over ssh before the connection
-        # goes away.  
-        # <https://launchpad.net/products/bzr/+bug/5987>
-        #
-        # Running it in a separate process group is not good because then it
-        # can't get non-echoed input of a password or passphrase.
-        # <https://launchpad.net/products/bzr/+bug/40508>
-        return {'preexec_fn': _ignore_sigint,
-                'close_fds': True,
-                }
-
-
-_paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
-# don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
-_default_do_prefetch = (_paramiko_version >= (1, 5, 5))
-
-# Paramiko 1.5 tries to open a socket.AF_UNIX in order to connect
-# to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
-# so we get an AttributeError exception. So we will not try to
-# connect to an agent if we are on win32 and using Paramiko older than 1.6
-_use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
-
-
-_ssh_vendor = None
-def _get_ssh_vendor():
-    """Find out what version of SSH is on the system."""
-    global _ssh_vendor
-    if _ssh_vendor is not None:
-        return _ssh_vendor
-
-    _ssh_vendor = 'none'
-
-    if 'BZR_SSH' in os.environ:
-        _ssh_vendor = os.environ['BZR_SSH']
-        if _ssh_vendor == 'paramiko':
-            _ssh_vendor = 'none'
-        return _ssh_vendor
-
-    try:
-        p = subprocess.Popen(['ssh', '-V'],
-                             stdin=subprocess.PIPE,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             **os_specific_subprocess_params())
-        returncode = p.returncode
-        stdout, stderr = p.communicate()
-    except OSError:
-        returncode = -1
-        stdout = stderr = ''
-    if 'OpenSSH' in stderr:
-        mutter('ssh implementation is OpenSSH')
-        _ssh_vendor = 'openssh'
-    elif 'SSH Secure Shell' in stderr:
-        mutter('ssh implementation is SSH Corp.')
-        _ssh_vendor = 'ssh'
-
-    if _ssh_vendor != 'none':
-        return _ssh_vendor
-
-    # XXX: 20051123 jamesh
-    # A check for putty's plink or lsh would go here.
-
-    mutter('falling back to paramiko implementation')
-    return _ssh_vendor
-
-
-class SFTPSubprocess:
-    """A socket-like object that talks to an ssh subprocess via pipes."""
-    def __init__(self, hostname, vendor, port=None, user=None):
-        assert vendor in ['openssh', 'ssh']
-        if vendor == 'openssh':
-            args = ['ssh',
-                    '-oForwardX11=no', '-oForwardAgent=no',
-                    '-oClearAllForwardings=yes', '-oProtocol=2',
-                    '-oNoHostAuthenticationForLocalhost=yes']
-            if port is not None:
-                args.extend(['-p', str(port)])
-            if user is not None:
-                args.extend(['-l', user])
-            args.extend(['-s', hostname, 'sftp'])
-        elif vendor == 'ssh':
-            args = ['ssh', '-x']
-            if port is not None:
-                args.extend(['-p', str(port)])
-            if user is not None:
-                args.extend(['-l', user])
-            args.extend(['-s', 'sftp', hostname])
-
-        self.proc = subprocess.Popen(args,
-                                     stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE,
-                                     **os_specific_subprocess_params())
-
-    def send(self, data):
-        return os.write(self.proc.stdin.fileno(), data)
-
-    def recv_ready(self):
-        # TODO: jam 20051215 this function is necessary to support the
-        # pipelined() function. In reality, it probably should use
-        # poll() or select() to actually return if there is data
-        # available, otherwise we probably don't get any benefit
-        return True
-
-    def recv(self, count):
-        return os.read(self.proc.stdout.fileno(), count)
-
-    def close(self):
-        self.proc.stdin.close()
-        self.proc.stdout.close()
-        self.proc.wait()
-
-
-class LoopbackSFTP(object):
-    """Simple wrapper for a socket that pretends to be a paramiko Channel."""
-
-    def __init__(self, sock):
-        self.__socket = sock
- 
-    def send(self, data):
-        return self.__socket.send(data)
-
-    def recv(self, n):
-        return self.__socket.recv(n)
-
-    def recv_ready(self):
-        return True
-
-    def close(self):
-        self.__socket.close()
-
-
-SYSTEM_HOSTKEYS = {}
-BZR_HOSTKEYS = {}
 
 # This is a weakref dictionary, so that we can reuse connections
 # that are still active. Long term, it might be nice to have some
@@ -231,49 +70,18 @@ BZR_HOSTKEYS = {}
 # X seconds. But that requires a lot more fanciness.
 _connected_hosts = weakref.WeakValueDictionary()
 
+
+_paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
+# don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
+_default_do_prefetch = (_paramiko_version >= (1, 5, 5))
+
+
 def clear_connection_cache():
     """Remove all hosts from the SFTP connection cache.
 
     Primarily useful for test cases wanting to force garbage collection.
     """
     _connected_hosts.clear()
-
-
-def load_host_keys():
-    """
-    Load system host keys (probably doesn't work on windows) and any
-    "discovered" keys from previous sessions.
-    """
-    global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
-    try:
-        SYSTEM_HOSTKEYS = paramiko.util.load_host_keys(os.path.expanduser('~/.ssh/known_hosts'))
-    except Exception, e:
-        mutter('failed to load system host keys: ' + str(e))
-    bzr_hostkey_path = pathjoin(config_dir(), 'ssh_host_keys')
-    try:
-        BZR_HOSTKEYS = paramiko.util.load_host_keys(bzr_hostkey_path)
-    except Exception, e:
-        mutter('failed to load bzr host keys: ' + str(e))
-        save_host_keys()
-
-
-def save_host_keys():
-    """
-    Save "discovered" host keys in $(config)/ssh_host_keys/.
-    """
-    global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
-    bzr_hostkey_path = pathjoin(config_dir(), 'ssh_host_keys')
-    ensure_config_dir_exists()
-
-    try:
-        f = open(bzr_hostkey_path, 'w')
-        f.write('# SSH host keys collected by bzr\n')
-        for hostname, keys in BZR_HOSTKEYS.iteritems():
-            for keytype, key in keys.iteritems():
-                f.write('%s %s %s\n' % (hostname, keytype, key.get_base64()))
-        f.close()
-    except IOError, e:
-        mutter('failed to save bzr host keys: ' + str(e))
 
 
 class SFTPLock(object):
@@ -608,7 +416,7 @@ class SFTPTransport(Transport):
         """Walk the relative paths of all files in this transport."""
         queue = list(self.list_dir('.'))
         while queue:
-            relpath = urllib.quote(queue.pop(0))
+            relpath = queue.pop(0)
             st = self.stat(relpath)
             if stat.S_ISDIR(st.st_mode):
                 for i, basename in enumerate(self.list_dir(relpath)):
@@ -722,11 +530,15 @@ class SFTPTransport(Transport):
         Return a list of all files at the given location.
         """
         # does anything actually use this?
+        # -- Unknown
+        # This is at least used by copy_tree for remote upgrades.
+        # -- David Allouche 2006-08-11
         path = self._remote_path(relpath)
         try:
-            return self._sftp.listdir(path)
+            entries = self._sftp.listdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
+        return [urlutils.escape(entry) for entry in entries]
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""
@@ -812,156 +624,8 @@ class SFTPTransport(Transport):
 
         TODO: Raise a more reasonable ConnectionFailed exception
         """
-        global _connected_hosts
-
-        idx = (self._host, self._port, self._username)
-        try:
-            self._sftp = _connected_hosts[idx]
-            return
-        except KeyError:
-            pass
-        
-        vendor = _get_ssh_vendor()
-        if vendor == 'loopback':
-            sock = socket.socket()
-            try:
-                sock.connect((self._host, self._port))
-            except socket.error, e:
-                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                      % (self._host, self._port, e))
-            self._sftp = SFTPClient(LoopbackSFTP(sock))
-        elif vendor != 'none':
-            try:
-                sock = SFTPSubprocess(self._host, vendor, self._port,
-                                      self._username)
-                self._sftp = SFTPClient(sock)
-            except (EOFError, paramiko.SSHException), e:
-                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                      % (self._host, self._port, e))
-            except (OSError, IOError), e:
-                # If the machine is fast enough, ssh can actually exit
-                # before we try and send it the sftp request, which
-                # raises a Broken Pipe
-                if e.errno not in (errno.EPIPE,):
-                    raise
-                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                      % (self._host, self._port, e))
-        else:
-            self._paramiko_connect()
-
-        _connected_hosts[idx] = self._sftp
-
-    def _paramiko_connect(self):
-        global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
-        
-        load_host_keys()
-
-        try:
-            t = paramiko.Transport((self._host, self._port or 22))
-            t.set_log_channel('bzr.paramiko')
-            t.start_client()
-        except (paramiko.SSHException, socket.error), e:
-            raise ConnectionError('Unable to reach SSH host %s:%s: %s' 
-                                  % (self._host, self._port, e))
-            
-        server_key = t.get_remote_server_key()
-        server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
-        keytype = server_key.get_name()
-        if SYSTEM_HOSTKEYS.has_key(self._host) and SYSTEM_HOSTKEYS[self._host].has_key(keytype):
-            our_server_key = SYSTEM_HOSTKEYS[self._host][keytype]
-            our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
-        elif BZR_HOSTKEYS.has_key(self._host) and BZR_HOSTKEYS[self._host].has_key(keytype):
-            our_server_key = BZR_HOSTKEYS[self._host][keytype]
-            our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
-        else:
-            warning('Adding %s host key for %s: %s' % (keytype, self._host, server_key_hex))
-            if not BZR_HOSTKEYS.has_key(self._host):
-                BZR_HOSTKEYS[self._host] = {}
-            BZR_HOSTKEYS[self._host][keytype] = server_key
-            our_server_key = server_key
-            our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
-            save_host_keys()
-        if server_key != our_server_key:
-            filename1 = os.path.expanduser('~/.ssh/known_hosts')
-            filename2 = pathjoin(config_dir(), 'ssh_host_keys')
-            raise TransportError('Host keys for %s do not match!  %s != %s' % \
-                (self._host, our_server_key_hex, server_key_hex),
-                ['Try editing %s or %s' % (filename1, filename2)])
-
-        self._sftp_auth(t)
-        
-        try:
-            self._sftp = t.open_sftp_client()
-        except paramiko.SSHException, e:
-            raise ConnectionError('Unable to start sftp client %s:%d' %
-                                  (self._host, self._port), e)
-
-    def _sftp_auth(self, transport):
-        # paramiko requires a username, but it might be none if nothing was supplied
-        # use the local username, just in case.
-        # We don't override self._username, because if we aren't using paramiko,
-        # the username might be specified in ~/.ssh/config and we don't want to
-        # force it to something else
-        # Also, it would mess up the self.relpath() functionality
-        username = self._username or getpass.getuser()
-
-        if _use_ssh_agent:
-            agent = paramiko.Agent()
-            for key in agent.get_keys():
-                mutter('Trying SSH agent key %s' % paramiko.util.hexify(key.get_fingerprint()))
-                try:
-                    transport.auth_publickey(username, key)
-                    return
-                except paramiko.SSHException, e:
-                    pass
-        
-        # okay, try finding id_rsa or id_dss?  (posix only)
-        if self._try_pkey_auth(transport, paramiko.RSAKey, username, 'id_rsa'):
-            return
-        if self._try_pkey_auth(transport, paramiko.DSSKey, username, 'id_dsa'):
-            return
-
-        if self._password:
-            try:
-                transport.auth_password(username, self._password)
-                return
-            except paramiko.SSHException, e:
-                pass
-
-            # FIXME: Don't keep a password held in memory if you can help it
-            #self._password = None
-
-        # give up and ask for a password
-        password = bzrlib.ui.ui_factory.get_password(
-                prompt='SSH %(user)s@%(host)s password',
-                user=username, host=self._host)
-        try:
-            transport.auth_password(username, password)
-        except paramiko.SSHException, e:
-            raise ConnectionError('Unable to authenticate to SSH host as %s@%s' %
-                                  (username, self._host), e)
-
-    def _try_pkey_auth(self, transport, pkey_class, username, filename):
-        filename = os.path.expanduser('~/.ssh/' + filename)
-        try:
-            key = pkey_class.from_private_key_file(filename)
-            transport.auth_publickey(username, key)
-            return True
-        except paramiko.PasswordRequiredException:
-            password = bzrlib.ui.ui_factory.get_password(
-                    prompt='SSH %(filename)s password',
-                    filename=filename)
-            try:
-                key = pkey_class.from_private_key_file(filename, password)
-                transport.auth_publickey(username, key)
-                return True
-            except paramiko.SSHException:
-                mutter('SSH authentication via %s key failed.' % (os.path.basename(filename),))
-        except paramiko.SSHException:
-            mutter('SSH authentication via %s key failed.' % (os.path.basename(filename),))
-        except IOError:
-            pass
-        return False
+        self._sftp = _sftp_connect(self._host, self._port, self._username,
+                self._password)
 
     def _sftp_open_exclusive(self, abspath, mode=None):
         """Open a remote path exclusively.
@@ -996,7 +660,6 @@ class SFTPTransport(Transport):
 
 
 # ------------- server test implementation --------------
-import socket
 import threading
 
 from bzrlib.tests.stub_sftp import StubServer, StubSFTPServer
@@ -1065,6 +728,81 @@ class SocketListener(threading.Thread):
                         x)
 
 
+class SocketDelay(object):
+    """A socket decorator to make TCP appear slower.
+
+    This changes recv, send, and sendall to add a fixed latency to each python
+    call if a new roundtrip is detected. That is, when a recv is called and the
+    flag new_roundtrip is set, latency is charged. Every send and send_all
+    sets this flag.
+
+    In addition every send, sendall and recv sleeps a bit per character send to
+    simulate bandwidth.
+
+    Not all methods are implemented, this is deliberate as this class is not a
+    replacement for the builtin sockets layer. fileno is not implemented to
+    prevent the proxy being bypassed. 
+    """
+
+    simulated_time = 0
+    _proxied_arguments = dict.fromkeys([
+        "close", "getpeername", "getsockname", "getsockopt", "gettimeout",
+        "setblocking", "setsockopt", "settimeout", "shutdown"])
+
+    def __init__(self, sock, latency, bandwidth=1.0, 
+                 really_sleep=True):
+        """ 
+        :param bandwith: simulated bandwith (MegaBit)
+        :param really_sleep: If set to false, the SocketDelay will just
+        increase a counter, instead of calling time.sleep. This is useful for
+        unittesting the SocketDelay.
+        """
+        self.sock = sock
+        self.latency = latency
+        self.really_sleep = really_sleep
+        self.time_per_byte = 1 / (bandwidth / 8.0 * 1024 * 1024) 
+        self.new_roundtrip = False
+
+    def sleep(self, s):
+        if self.really_sleep:
+            time.sleep(s)
+        else:
+            SocketDelay.simulated_time += s
+
+    def __getattr__(self, attr):
+        if attr in SocketDelay._proxied_arguments:
+            return getattr(self.sock, attr)
+        raise AttributeError("'SocketDelay' object has no attribute %r" %
+                             attr)
+
+    def dup(self):
+        return SocketDelay(self.sock.dup(), self.latency, self.time_per_byte,
+                           self._sleep)
+
+    def recv(self, *args):
+        data = self.sock.recv(*args)
+        if data and self.new_roundtrip:
+            self.new_roundtrip = False
+            self.sleep(self.latency)
+        self.sleep(len(data) * self.time_per_byte)
+        return data
+
+    def sendall(self, data, flags=0):
+        if not self.new_roundtrip:
+            self.new_roundtrip = True
+            self.sleep(self.latency)
+        self.sleep(len(data) * self.time_per_byte)
+        return self.sock.sendall(data, flags)
+
+    def send(self, data, flags=0):
+        if not self.new_roundtrip:
+            self.new_roundtrip = True
+            self.sleep(self.latency)
+        bytes_sent = self.sock.send(data, flags)
+        self.sleep(bytes_sent * self.time_per_byte)
+        return bytes_sent
+
+
 class SFTPServer(Server):
     """Common code for SFTP server facilities."""
 
@@ -1074,9 +812,10 @@ class SFTPServer(Server):
         self._server_homedir = None
         self._listener = None
         self._root = None
-        self._vendor = 'none'
+        self._vendor = ssh.ParamikoVendor()
         # sftp server logs
         self.logs = []
+        self.add_latency = 0
 
     def _get_sftp_url(self, path):
         """Calculate an sftp url to this server for path."""
@@ -1085,6 +824,16 @@ class SFTPServer(Server):
     def log(self, message):
         """StubServer uses this to log when a new server is created."""
         self.logs.append(message)
+
+    def _run_server_entry(self, sock):
+        """Entry point for all implementations of _run_server.
+        
+        If self.add_latency is > 0.000001 then sock is given a latency adding
+        decorator.
+        """
+        if self.add_latency > 0.000001:
+            sock = SocketDelay(sock, self.add_latency)
+        return self._run_server(sock)
 
     def _run_server(self, s):
         ssh_server = paramiko.Transport(s)
@@ -1103,9 +852,8 @@ class SFTPServer(Server):
         event.wait(5.0)
     
     def setUp(self):
-        global _ssh_vendor
-        self._original_vendor = _ssh_vendor
-        _ssh_vendor = self._vendor
+        self._original_vendor = ssh._ssh_vendor
+        ssh._ssh_vendor = self._vendor
         if sys.platform == 'win32':
             # Win32 needs to use the UNICODE api
             self._homedir = getcwd()
@@ -1117,15 +865,14 @@ class SFTPServer(Server):
         self._root = '/'
         if sys.platform == 'win32':
             self._root = ''
-        self._listener = SocketListener(self._run_server)
+        self._listener = SocketListener(self._run_server_entry)
         self._listener.setDaemon(True)
         self._listener.start()
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        global _ssh_vendor
         self._listener.stop()
-        _ssh_vendor = self._original_vendor
+        ssh._ssh_vendor = self._original_vendor
 
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
@@ -1150,9 +897,13 @@ class SFTPServerWithoutSSH(SFTPServer):
 
     def __init__(self):
         super(SFTPServerWithoutSSH, self).__init__()
-        self._vendor = 'loopback'
+        self._vendor = ssh.LoopbackVendor()
 
     def _run_server(self, sock):
+        # Re-import these as locals, so that they're still accessible during
+        # interpreter shutdown (when all module globals get set to None, leading
+        # to confusing errors like "'NoneType' object has no attribute 'error'".
+        import socket, errno
         class FakeChannel(object):
             def get_transport(self):
                 return self
@@ -1206,6 +957,31 @@ class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
     def setUp(self):
         self._server_homedir = '/dev/noone/runs/tests/here'
         super(SFTPSiblingAbsoluteServer, self).setUp()
+
+
+def _sftp_connect(host, port, username, password):
+    """Connect to the remote sftp server.
+
+    :raises: a TransportError 'could not connect'.
+
+    :returns: an paramiko.sftp_client.SFTPClient
+
+    TODO: Raise a more reasonable ConnectionFailed exception
+    """
+    idx = (host, port, username)
+    try:
+        return _connected_hosts[idx]
+    except KeyError:
+        pass
+    
+    sftp = _sftp_connect_uncached(host, port, username, password)
+    _connected_hosts[idx] = sftp
+    return sftp
+
+def _sftp_connect_uncached(host, port, username, password):
+    vendor = ssh._get_ssh_vendor()
+    sftp = vendor.connect_sftp(username, password, host, port)
+    return sftp
 
 
 def get_test_permutations():
