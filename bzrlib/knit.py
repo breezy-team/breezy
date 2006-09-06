@@ -279,9 +279,10 @@ class KnitVersionedFile(VersionedFile):
     stored and retrieved.
     """
 
-    def __init__(self, relpath, transport, file_mode=None, access_mode=None, 
+    def __init__(self, relpath, transport, file_mode=None, access_mode=None,
                  factory=None, basis_knit=DEPRECATED_PARAMETER, delta=True,
-                 create=False, create_parent_dir=False, delay_create=False):
+                 create=False, create_parent_dir=False, delay_create=False,
+                 dir_mode=None):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
@@ -307,10 +308,12 @@ class KnitVersionedFile(VersionedFile):
 
         self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
             access_mode, create=create, file_mode=file_mode,
-            create_parent_dir=create_parent_dir, delay_create=delay_create)
+            create_parent_dir=create_parent_dir, delay_create=delay_create,
+            dir_mode=dir_mode)
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
             access_mode, create=create and not len(self), file_mode=file_mode,
-            create_parent_dir=create_parent_dir, delay_create=delay_create)
+            create_parent_dir=create_parent_dir, delay_create=delay_create,
+            dir_mode=dir_mode)
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, 
@@ -956,11 +959,12 @@ class _KnitComponentFile(object):
     """One of the files used to implement a knit database"""
 
     def __init__(self, transport, filename, mode, file_mode=None,
-                 create_parent_dir=False):
+                 create_parent_dir=False, dir_mode=None):
         self._transport = transport
         self._filename = filename
         self._mode = mode
         self._file_mode = file_mode
+        self._dir_mode = dir_mode
         self._create_parent_dir = create_parent_dir
         self._need_to_create = False
 
@@ -1056,9 +1060,11 @@ class _KnitIndex(_KnitComponentFile):
                                    index)
 
     def __init__(self, transport, filename, mode, create=False, file_mode=None,
-                 create_parent_dir=False, delay_create=False):
-        _KnitComponentFile.__init__(self, transport, filename, mode, file_mode,
-                                    create_parent_dir=create_parent_dir)
+                 create_parent_dir=False, delay_create=False, dir_mode=None):
+        _KnitComponentFile.__init__(self, transport, filename, mode,
+                                    file_mode=file_mode,
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
         self._cache = {}
         # position in _history is the 'official' index for a revision
         # but the values may have come from a newer entry.
@@ -1268,7 +1274,8 @@ class _KnitIndex(_KnitComponentFile):
             sio.seek(0)
             self._transport.put_file_non_atomic(self._filename, sio,
                                 create_parent_dir=self._create_parent_dir,
-                                mode=self._file_mode)
+                                mode=self._file_mode,
+                                dir_mode=self._dir_mode)
             self._need_to_create = False
 
         # cache after writing, so that a failed write leads to missing cache
@@ -1322,9 +1329,11 @@ class _KnitData(_KnitComponentFile):
     """Contents of the knit data file"""
 
     def __init__(self, transport, filename, mode, create=False, file_mode=None,
+                 dir_mode=None,
                  create_parent_dir=False, delay_create=False):
         _KnitComponentFile.__init__(self, transport, filename, mode,
                                     file_mode=file_mode,
+                                    dir_mode=dir_mode,
                                     create_parent_dir=create_parent_dir)
         self._checked = False
         # TODO: jam 20060713 conceptually, this could spill to disk
@@ -1388,7 +1397,8 @@ class _KnitData(_KnitComponentFile):
         else:
             self._transport.put_bytes_non_atomic(self._filename, raw_data,
                                    create_parent_dir=self._create_parent_dir,
-                                   mode=self._file_mode)
+                                   mode=self._file_mode,
+                                   dir_mode=self._dir_mode)
             self._need_to_create = False
             return 0
         
@@ -1402,7 +1412,8 @@ class _KnitData(_KnitComponentFile):
         else:
             self._transport.put_file_non_atomic(self._filename, sio,
                                create_parent_dir=self._create_parent_dir,
-                               mode=self._file_mode)
+                               mode=self._file_mode,
+                               dir_mode=self._dir_mode)
             self._need_to_create = False
             start_pos = 0
         if self._do_cache:

@@ -243,6 +243,18 @@ class TransportTests(TestTransportImplementation):
         umask = osutils.get_umask()
         t.put_bytes_non_atomic('nomode', 'test text\n', mode=None)
         self.assertTransportMode(t, 'nomode', 0666 & ~umask)
+
+        # We should also be able to set the mode for a parent directory
+        # when it is created
+        t.put_bytes_non_atomic('dir700/mode664', 'test text\n', mode=0664,
+                               dir_mode=0700, create_parent_dir=True)
+        self.assertTransportMode(t, 'dir700', 0700)
+        t.put_bytes_non_atomic('dir770/mode664', 'test text\n', mode=0664,
+                               dir_mode=0770, create_parent_dir=True)
+        self.assertTransportMode(t, 'dir770', 0770)
+        t.put_bytes_non_atomic('dir777/mode664', 'test text\n', mode=0664,
+                               dir_mode=0777, create_parent_dir=True)
+        self.assertTransportMode(t, 'dir777', 0777)
         
     def test_put_file(self):
         t = self.get_transport()
@@ -352,6 +364,19 @@ class TransportTests(TestTransportImplementation):
         t.put_file_non_atomic('nomode', StringIO('test text\n'), mode=None)
         self.assertTransportMode(t, 'nomode', 0666 & ~umask)
         
+        # We should also be able to set the mode for a parent directory
+        # when it is created
+        sio = StringIO()
+        t.put_file_non_atomic('dir700/mode664', sio, mode=0664,
+                              dir_mode=0700, create_parent_dir=True)
+        self.assertTransportMode(t, 'dir700', 0700)
+        t.put_file_non_atomic('dir770/mode664', sio, mode=0664,
+                              dir_mode=0770, create_parent_dir=True)
+        self.assertTransportMode(t, 'dir770', 0770)
+        t.put_file_non_atomic('dir777/mode664', sio, mode=0664,
+                              dir_mode=0777, create_parent_dir=True)
+        self.assertTransportMode(t, 'dir777', 0777)
+
     def test_put_multi(self):
         t = self.get_transport()
 

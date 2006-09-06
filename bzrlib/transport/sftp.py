@@ -426,7 +426,8 @@ class SFTPTransport(Transport):
             raise
 
     def _put_non_atomic_helper(self, relpath, writer, mode=None,
-                               create_parent_dir=False):
+                               create_parent_dir=False,
+                               dir_mode=None):
         abspath = self._remote_path(relpath)
 
         # TODO: jam 20060816 paramiko doesn't publicly expose a way to
@@ -467,12 +468,15 @@ class SFTPTransport(Transport):
             parent_dir = os.path.dirname(abspath)
             try:
                 self._sftp.mkdir(parent_dir)
+                if dir_mode is not None:
+                    self._sftp.chmod(path, mode=dir_mode)
             except (paramiko.SSHException, IOError), e:
                 self._translate_io_exception(e, abspath, ': unable to open')
             _open_and_write_file()
 
     def put_file_non_atomic(self, relpath, f, mode=None,
-                            create_parent_dir=False):
+                            create_parent_dir=False,
+                            dir_mode=None):
         """Copy the file-like object into the target location.
 
         This function is not strictly safe to use. It is only meant to
@@ -491,14 +495,17 @@ class SFTPTransport(Transport):
         def writer(fout):
             self._pump(f, fout)
         self._put_non_atomic_helper(relpath, writer, mode=mode,
-                                    create_parent_dir=create_parent_dir)
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
-                             create_parent_dir=False):
+                             create_parent_dir=False,
+                             dir_mode=None):
         def writer(fout):
             fout.write(bytes)
         self._put_non_atomic_helper(relpath, writer, mode=mode,
-                                    create_parent_dir=create_parent_dir)
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""

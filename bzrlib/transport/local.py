@@ -177,7 +177,8 @@ class LocalTransport(Transport):
 
     def _put_non_atomic_helper(self, relpath, writer,
                                mode=None,
-                               create_parent_dir=False):
+                               create_parent_dir=False,
+                               dir_mode=None):
         """Common functionality information for the put_*_non_atomic.
 
         This tracks all the create_parent_dir stuff.
@@ -206,10 +207,7 @@ class LocalTransport(Transport):
             parent_dir = os.path.dirname(abspath)
             if not parent_dir:
                 self._translate_error(e, relpath)
-            try:
-                os.mkdir(parent_dir)
-            except (IOError, OSError), e:
-                self._translate_error(e, relpath)
+            self._mkdir(parent_dir, mode=dir_mode)
             # We created the parent directory, lets try to open the
             # file again
             try:
@@ -227,7 +225,8 @@ class LocalTransport(Transport):
             os.close(fd)
 
     def put_file_non_atomic(self, relpath, f, mode=None,
-                            create_parent_dir=False):
+                            create_parent_dir=False,
+                            dir_mode=None):
         """Copy the file-like object into the target location.
 
         This function is not strictly safe to use. It is only meant to
@@ -246,14 +245,16 @@ class LocalTransport(Transport):
         def writer(fd):
             self._pump_to_fd(f, fd)
         self._put_non_atomic_helper(relpath, writer, mode=mode,
-                                    create_parent_dir=create_parent_dir)
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
-                             create_parent_dir=False):
+                             create_parent_dir=False, dir_mode=None):
         def writer(fd):
             os.write(fd, bytes)
         self._put_non_atomic_helper(relpath, writer, mode=mode,
-                                    create_parent_dir=create_parent_dir)
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
 
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree."""
@@ -267,23 +268,25 @@ class LocalTransport(Transport):
             else:
                 yield relpath
 
-    def mkdir(self, relpath, mode=None):
-        """Create a directory at the given path."""
-        path = relpath
+    def _mkdir(self, abspath, mode=None):
+        """Create a real directory, filtering through mode"""
+        if mode is None:
+            # os.mkdir() will filter through umask
+            local_mode = 0777
+        else:
+            local_mode = mode
         try:
-            if mode is None:
-                # os.mkdir() will filter through umask
-                local_mode = 0777
-            else:
-                local_mode = mode
-            path = self._abspath(relpath)
-            os.mkdir(path, local_mode)
+            os.mkdir(abspath, local_mode)
             if mode is not None:
                 # It is probably faster to just do the chmod, rather than
                 # doing a stat, and then trying to compare
-                os.chmod(path, mode)
+                os.chmod(abspath, mode)
         except (IOError, OSError),e:
-            self._translate_error(e, path)
+            self._translate_error(e, abspath)
+
+    def mkdir(self, relpath, mode=None):
+        """Create a directory at the given path."""
+        self._mkdir(self._abspath(relpath), mode=mode)
 
     def _get_append_file(self, relpath, mode=None):
         """Call os.open() for the given relpath"""
