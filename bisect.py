@@ -30,6 +30,13 @@ class BisectCurrent(object):
     def get_current_revid(self):
         return self._revid
 
+    def show_rev_log(self, out = sys.stdout):
+        from bzrlib.log import LongLogFormatter, show_log
+        lf = LongLogFormatter(out)
+        revno = self._bzrbranch.revision_id_to_revno(self._revid)
+        show_log(self._bzrbranch, lf,
+                 start_revision = revno, end_revision = revno)
+
     def switch(self, revid):
         wt = self._bzrdir.open_workingtree()
         if isinstance(revid, int):
@@ -113,6 +120,7 @@ class BisectLog(object):
 
     def _switch_wc_to_revno(self, revno):
         self._current.switch(revno)
+        self._current.show_rev_log()
 
     def _set_status(self, revid, status):
         self._items.append((revid, status))
@@ -267,6 +275,7 @@ class cmd_bisect(Command):
 
         bc = BisectCurrent()
         bc.switch(revspec)
+        bc.show_rev_log()
 
     def log(self, filename):
         "Write the current bisect log to a file."
@@ -325,6 +334,11 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
             self.tree.commit(message = "make test change")
 
 class BisectCurrentUnitTests(BisectTestCase):
+    def testShowLog(self):
+        # Not a very good test; just makes sure the code doesn't fail,
+        # not that the output makes any sense.
+        BisectCurrent().show_rev_log()
+
     def testSwitchVersions(self):
         bc = BisectCurrent()
         self.assertRevno(5)
