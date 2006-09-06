@@ -432,19 +432,32 @@ class UnversionedParent(HandledConflict):
 
     typestring = 'unversioned parent'
 
-    format = 'Conflict adding versioned files to %(path)s.  %(action)s.'
+    format = 'Conflict because %(path)s is not versioned, but has versioned'\
+             ' children.  %(action)s.'
 
 
 class MissingParent(HandledConflict):
     """An attempt to add files to a directory that is not present.
-    Typically, the result of a merge where one tree deleted the directory and
-    the other added a file to it.
+    Typically, the result of a merge where THIS deleted the directory and
+    the OTHER added a file to it.
+    See also: DeletingParent (same situation, reversed THIS and OTHER)
     """
 
     typestring = 'missing parent'
 
     format = 'Conflict adding files to %(path)s.  %(action)s.'
 
+
+class DeletingParent(HandledConflict):
+    """An attempt to add files to a directory that is not present.
+    Typically, the result of a merge where one OTHER deleted the directory and
+    the THIS added a file to it.
+    """
+
+    typestring = 'deleting parent'
+
+    format = 'Conflict deleting parent directory %(path)s because it has'\
+             ' children.  %(action)s.'
 
 
 ctype = {}
@@ -458,4 +471,5 @@ def register_types(*conflict_types):
 
 
 register_types(ContentsConflict, TextConflict, PathConflict, DuplicateID,
-               DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,)
+               DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,
+               DeletingParent,)
