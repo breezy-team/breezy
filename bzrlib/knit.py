@@ -403,7 +403,7 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.copy_to()."""
         # copy the current index to a temp index to avoid racing with local
         # writes
-        transport.put_file_non_atomic_(name + INDEX_SUFFIX + '.tmp',
+        transport.put_file_non_atomic(name + INDEX_SUFFIX + '.tmp',
                 self.transport.get(self._index._filename))
         # copy the data file
         f = self._data._open_file()
