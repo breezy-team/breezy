@@ -382,6 +382,54 @@ class BasicKnitTests(KnitTests):
             "revid fulltext 0 84  :",
             'dir/test.kndx')
 
+    def test_create_mode_700(self):
+        trans = get_transport('.')
+        if not trans._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
+                                 factory=None, create=True,
+                                 create_parent_dir=True,
+                                 delay_create=True,
+                                 file_mode=0600,
+                                 dir_mode=0700)
+        knit.add_lines('revid', [], ['a\n'])
+        self.assertTransportMode(trans, 'dir', 0700)
+        self.assertTransportMode(trans, 'dir/test.knit', 0600)
+        self.assertTransportMode(trans, 'dir/test.kndx', 0600)
+
+    def test_create_mode_770(self):
+        trans = get_transport('.')
+        if not trans._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
+                                 factory=None, create=True,
+                                 create_parent_dir=True,
+                                 delay_create=True,
+                                 file_mode=0660,
+                                 dir_mode=0770)
+        knit.add_lines('revid', [], ['a\n'])
+        self.assertTransportMode(trans, 'dir', 0770)
+        self.assertTransportMode(trans, 'dir/test.knit', 0660)
+        self.assertTransportMode(trans, 'dir/test.kndx', 0660)
+
+    def test_create_mode_777(self):
+        trans = get_transport('.')
+        if not trans._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
+                                 factory=None, create=True,
+                                 create_parent_dir=True,
+                                 delay_create=True,
+                                 file_mode=0666,
+                                 dir_mode=0777)
+        knit.add_lines('revid', [], ['a\n'])
+        self.assertTransportMode(trans, 'dir', 0777)
+        self.assertTransportMode(trans, 'dir/test.knit', 0666)
+        self.assertTransportMode(trans, 'dir/test.kndx', 0666)
+
     def test_plan_merge(self):
         my_knit = self.make_test_knit(annotate=True)
         my_knit.add_lines('text1', [], split_lines(TEXT_1))
