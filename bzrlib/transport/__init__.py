@@ -526,7 +526,8 @@ class Transport(object):
         return self.put_file(relpath, StringIO(bytes), mode=mode)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
-                             create_parent_dir=False):
+                             create_parent_dir=False,
+                             dir_mode=None):
         """Copy the string into the target location.
 
         This function is not strictly safe to use. See 
@@ -540,11 +541,13 @@ class Transport(object):
         :param create_parent_dir: If we cannot create the target file because
                         the parent directory does not exist, go ahead and
                         create it, and then try again.
+        :param dir_mode: Possible access permissions for new directories.
         """
         assert isinstance(bytes, str), \
             'bytes must be a plain string, not %s' % type(bytes)
         self.put_file_non_atomic(relpath, StringIO(bytes), mode=mode,
-                                 create_parent_dir=create_parent_dir)
+                                 create_parent_dir=create_parent_dir,
+                                 dir_mode=dir_mode)
 
     def put_file(self, relpath, f, mode=None):
         """Copy the file-like object into the location.
@@ -565,7 +568,8 @@ class Transport(object):
         #raise NotImplementedError(self.put_file)
 
     def put_file_non_atomic(self, relpath, f, mode=None,
-                            create_parent_dir=False):
+                            create_parent_dir=False,
+                            dir_mode=None):
         """Copy the file-like object into the target location.
 
         This function is not strictly safe to use. It is only meant to
@@ -580,6 +584,7 @@ class Transport(object):
         :param create_parent_dir: If we cannot create the target file because
                         the parent directory does not exist, go ahead and
                         create it, and then try again.
+        :param dir_mode: Possible access permissions for new directories.
         """
         # Default implementation just does an atomic put.
         try:
@@ -589,7 +594,7 @@ class Transport(object):
                 raise
             parent_dir = osutils.dirname(relpath)
             if parent_dir:
-                self.mkdir(parent_dir)
+                self.mkdir(parent_dir, mode=dir_mode)
                 return self.put_file(relpath, f, mode=mode)
 
     @deprecated_method(zero_eleven)
