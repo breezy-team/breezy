@@ -425,7 +425,7 @@ class SFTPTransport(Transport):
             # raise the original with its traceback if we can.
             raise
 
-    def _non_atomic_put_helper(self, relpath, writer, mode=None,
+    def _put_non_atomic_helper(self, relpath, writer, mode=None,
                                create_parent_dir=False):
         abspath = self._remote_path(relpath)
 
@@ -471,7 +471,7 @@ class SFTPTransport(Transport):
                 self._translate_io_exception(e, abspath, ': unable to open')
             _open_and_write_file()
 
-    def non_atomic_put_file(self, relpath, f, mode=None,
+    def put_file_non_atomic(self, relpath, f, mode=None,
                             create_parent_dir=False):
         """Copy the file-like object into the target location.
 
@@ -490,14 +490,14 @@ class SFTPTransport(Transport):
         """
         def writer(fout):
             self._pump(f, fout)
-        self._non_atomic_put_helper(relpath, writer, mode=mode,
+        self._put_non_atomic_helper(relpath, writer, mode=mode,
                                     create_parent_dir=create_parent_dir)
 
-    def non_atomic_put_bytes(self, relpath, bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
                              create_parent_dir=False):
         def writer(fout):
             fout.write(bytes)
-        self._non_atomic_put_helper(relpath, writer, mode=mode,
+        self._put_non_atomic_helper(relpath, writer, mode=mode,
                                     create_parent_dir=create_parent_dir)
 
     def iter_files_recursive(self):

@@ -145,47 +145,6 @@ class TransportTests(TestTransportImplementation):
                             t.put, 'b', StringIO('file-like\ncontents\n'))
         self.check_transport_contents('file-like\ncontents\n', t, 'b')
 
-    def test_put_multi(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            return
-        deprecation_msg = symbol_versioning.deprecation_string(
-            t.put_multi, symbol_versioning.zero_eleven)
-        self.assertEqual(2, self.callDeprecated([deprecation_msg],
-            t.put_multi, [('a', StringIO('new\ncontents for\na\n')),
-                          ('d', StringIO('contents\nfor d\n'))]
-            ))
-        self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd'])),
-                [True, False, False, True])
-        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
-        self.check_transport_contents('contents\nfor d\n', t, 'd')
-
-        self.assertEqual(2, self.callDeprecated([deprecation_msg],
-            t.put_multi, iter([('a', StringIO('diff\ncontents for\na\n')),
-                              ('d', StringIO('another contents\nfor d\n'))])
-            ))
-        self.check_transport_contents('diff\ncontents for\na\n', t, 'a')
-        self.check_transport_contents('another contents\nfor d\n', t, 'd')
-
-    def test_put_file(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            self.assertRaises(TransportNotPossible,
-                    t.put_file, 'a', StringIO('some text for a\n'))
-            return
-
-        t.put_file('a', StringIO('some text for a\n'))
-        self.failUnless(t.has('a'))
-        self.check_transport_contents('some text for a\n', t, 'a')
-        # Put also replaces contents
-        t.put_file('a', StringIO('new\ncontents for\na\n'))
-        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
-        self.assertRaises(NoSuchFile,
-                          t.put_file, 'path/doesnt/exist/c',
-                              StringIO('contents'))
-
     def test_put_bytes(self):
         t = self.get_transport()
 
@@ -205,80 +164,143 @@ class TransportTests(TestTransportImplementation):
         self.assertRaises(NoSuchFile,
                           t.put_bytes, 'path/doesnt/exist/c', 'contents')
 
-    def test_non_atomic_put_file(self):
+    def test_put_bytes_non_atomic(self):
         t = self.get_transport()
 
         if t.is_readonly():
             self.assertRaises(TransportNotPossible,
-                    t.non_atomic_put_file, 'a', StringIO('some text for a\n'))
+                    t.put_bytes_non_atomic, 'a', 'some text for a\n')
             return
 
         self.failIf(t.has('a'))
-        t.non_atomic_put_file('a', StringIO('some text for a\n'))
+        t.put_bytes_non_atomic('a', 'some text for a\n')
         self.failUnless(t.has('a'))
         self.check_transport_contents('some text for a\n', t, 'a')
         # Put also replaces contents
-        t.non_atomic_put_file('a', StringIO('new\ncontents for\na\n'))
+        t.put_bytes_non_atomic('a', 'new\ncontents for\na\n')
         self.check_transport_contents('new\ncontents for\na\n', t, 'a')
 
         # Make sure we can create another file
-        t.non_atomic_put_file('d', StringIO('contents for\nd\n'))
+        t.put_bytes_non_atomic('d', 'contents for\nd\n')
         # And overwrite 'a' with empty contents
-        t.non_atomic_put_file('a', StringIO(''))
+        t.put_bytes_non_atomic('a', '')
         self.check_transport_contents('contents for\nd\n', t, 'd')
         self.check_transport_contents('', t, 'a')
 
-        self.assertRaises(NoSuchFile, t.non_atomic_put_file, 'no/such/path',
-                                       StringIO('contents\n'))
-        # Now test the create_parent flag
-        self.assertRaises(NoSuchFile, t.non_atomic_put_file, 'dir/a',
-                                       StringIO('contents\n'))
-        self.failIf(t.has('dir/a'))
-        t.non_atomic_put_file('dir/a', StringIO('contents for dir/a\n'),
-                              create_parent_dir=True)
-        self.check_transport_contents('contents for dir/a\n', t, 'dir/a')
-        
-        # But we still get NoSuchFile if we can't make the parent dir
-        self.assertRaises(NoSuchFile, t.non_atomic_put_file, 'not/there/a',
-                                       StringIO('contents\n'),
-                                       create_parent_dir=True)
-
-    def test_non_atomic_put_bytes(self):
-        t = self.get_transport()
-
-        if t.is_readonly():
-            self.assertRaises(TransportNotPossible,
-                    t.non_atomic_put_bytes, 'a', 'some text for a\n')
-            return
-
-        self.failIf(t.has('a'))
-        t.non_atomic_put_bytes('a', 'some text for a\n')
-        self.failUnless(t.has('a'))
-        self.check_transport_contents('some text for a\n', t, 'a')
-        # Put also replaces contents
-        t.non_atomic_put_bytes('a', 'new\ncontents for\na\n')
-        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
-
-        # Make sure we can create another file
-        t.non_atomic_put_bytes('d', 'contents for\nd\n')
-        # And overwrite 'a' with empty contents
-        t.non_atomic_put_bytes('a', '')
-        self.check_transport_contents('contents for\nd\n', t, 'd')
-        self.check_transport_contents('', t, 'a')
-
-        self.assertRaises(NoSuchFile, t.non_atomic_put_bytes, 'no/such/path',
+        self.assertRaises(NoSuchFile, t.put_bytes_non_atomic, 'no/such/path',
                                        'contents\n')
         # Now test the create_parent flag
-        self.assertRaises(NoSuchFile, t.non_atomic_put_bytes, 'dir/a',
+        self.assertRaises(NoSuchFile, t.put_bytes_non_atomic, 'dir/a',
                                        'contents\n')
         self.failIf(t.has('dir/a'))
-        t.non_atomic_put_bytes('dir/a', 'contents for dir/a\n',
+        t.put_bytes_non_atomic('dir/a', 'contents for dir/a\n',
                                create_parent_dir=True)
         self.check_transport_contents('contents for dir/a\n', t, 'dir/a')
         
         # But we still get NoSuchFile if we can't make the parent dir
-        self.assertRaises(NoSuchFile, t.non_atomic_put_bytes, 'not/there/a',
+        self.assertRaises(NoSuchFile, t.put_bytes_non_atomic, 'not/there/a',
                                        'contents\n',
+                                       create_parent_dir=True)
+
+    def test_put_bytes_permissions(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            return
+        if not t._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        t.put_bytes('mode644', 'test text\n', mode=0644)
+        self.assertTransportMode(t, 'mode644', 0644)
+        t.put_bytes('mode666', 'test text\n', mode=0666)
+        self.assertTransportMode(t, 'mode666', 0666)
+        t.put_bytes('mode600', 'test text\n', mode=0600)
+        self.assertTransportMode(t, 'mode600', 0600)
+        # Yes, you can put_bytes a file such that it becomes readonly
+        t.put_bytes('mode400', 'test text\n', mode=0400)
+        self.assertTransportMode(t, 'mode400', 0400)
+
+        # The default permissions should be based on the current umask
+        umask = osutils.get_umask()
+        t.put_bytes('nomode', 'test text\n', mode=None)
+        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
+        
+    def test_put_bytes_non_atomic_permissions(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            return
+        if not t._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        t.put_bytes_non_atomic('mode644', 'test text\n', mode=0644)
+        self.assertTransportMode(t, 'mode644', 0644)
+        t.put_bytes_non_atomic('mode666', 'test text\n', mode=0666)
+        self.assertTransportMode(t, 'mode666', 0666)
+        t.put_bytes_non_atomic('mode600', 'test text\n', mode=0600)
+        self.assertTransportMode(t, 'mode600', 0600)
+        t.put_bytes_non_atomic('mode400', 'test text\n', mode=0400)
+        self.assertTransportMode(t, 'mode400', 0400)
+
+        # The default permissions should be based on the current umask
+        umask = osutils.get_umask()
+        t.put_bytes_non_atomic('nomode', 'test text\n', mode=None)
+        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
+        
+    def test_put_file(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            self.assertRaises(TransportNotPossible,
+                    t.put_file, 'a', StringIO('some text for a\n'))
+            return
+
+        t.put_file('a', StringIO('some text for a\n'))
+        self.failUnless(t.has('a'))
+        self.check_transport_contents('some text for a\n', t, 'a')
+        # Put also replaces contents
+        t.put_file('a', StringIO('new\ncontents for\na\n'))
+        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
+        self.assertRaises(NoSuchFile,
+                          t.put_file, 'path/doesnt/exist/c',
+                              StringIO('contents'))
+
+    def test_put_file_non_atomic(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            self.assertRaises(TransportNotPossible,
+                    t.put_file_non_atomic, 'a', StringIO('some text for a\n'))
+            return
+
+        self.failIf(t.has('a'))
+        t.put_file_non_atomic('a', StringIO('some text for a\n'))
+        self.failUnless(t.has('a'))
+        self.check_transport_contents('some text for a\n', t, 'a')
+        # Put also replaces contents
+        t.put_file_non_atomic('a', StringIO('new\ncontents for\na\n'))
+        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
+
+        # Make sure we can create another file
+        t.put_file_non_atomic('d', StringIO('contents for\nd\n'))
+        # And overwrite 'a' with empty contents
+        t.put_file_non_atomic('a', StringIO(''))
+        self.check_transport_contents('contents for\nd\n', t, 'd')
+        self.check_transport_contents('', t, 'a')
+
+        self.assertRaises(NoSuchFile, t.put_file_non_atomic, 'no/such/path',
+                                       StringIO('contents\n'))
+        # Now test the create_parent flag
+        self.assertRaises(NoSuchFile, t.put_file_non_atomic, 'dir/a',
+                                       StringIO('contents\n'))
+        self.failIf(t.has('dir/a'))
+        t.put_file_non_atomic('dir/a', StringIO('contents for dir/a\n'),
+                              create_parent_dir=True)
+        self.check_transport_contents('contents for dir/a\n', t, 'dir/a')
+        
+        # But we still get NoSuchFile if we can't make the parent dir
+        self.assertRaises(NoSuchFile, t.put_file_non_atomic, 'not/there/a',
+                                       StringIO('contents\n'),
                                        create_parent_dir=True)
 
     def test_put_file_permissions(self):
@@ -312,7 +334,7 @@ class TransportTests(TestTransportImplementation):
         t.put_file('nomode', StringIO('test text\n'), mode=None)
         self.assertTransportMode(t, 'nomode', 0666 & ~umask)
         
-    def test_put_bytes_permissions(self):
+    def test_put_file_non_atomic_permissions(self):
         t = self.get_transport()
 
         if t.is_readonly():
@@ -320,66 +342,44 @@ class TransportTests(TestTransportImplementation):
         if not t._can_roundtrip_unix_modebits():
             # Can't roundtrip, so no need to run this test
             return
-        t.put_bytes('mode644', 'test text\n', mode=0644)
+        t.put_file_non_atomic('mode644', StringIO('test text\n'), mode=0644)
         self.assertTransportMode(t, 'mode644', 0644)
-        t.put_bytes('mode666', 'test text\n', mode=0666)
+        t.put_file_non_atomic('mode666', StringIO('test text\n'), mode=0666)
         self.assertTransportMode(t, 'mode666', 0666)
-        t.put_bytes('mode600', 'test text\n', mode=0600)
+        t.put_file_non_atomic('mode600', StringIO('test text\n'), mode=0600)
         self.assertTransportMode(t, 'mode600', 0600)
-        # Yes, you can put_bytes a file such that it becomes readonly
-        t.put_bytes('mode400', 'test text\n', mode=0400)
+        # Yes, you can put_file_non_atomic a file such that it becomes readonly
+        t.put_file_non_atomic('mode400', StringIO('test text\n'), mode=0400)
         self.assertTransportMode(t, 'mode400', 0400)
 
         # The default permissions should be based on the current umask
         umask = osutils.get_umask()
-        t.put_bytes('nomode', 'test text\n', mode=None)
+        t.put_file_non_atomic('nomode', StringIO('test text\n'), mode=None)
         self.assertTransportMode(t, 'nomode', 0666 & ~umask)
         
-    def test_non_atomic_put_file_permissions(self):
+    def test_put_multi(self):
         t = self.get_transport()
 
         if t.is_readonly():
             return
-        if not t._can_roundtrip_unix_modebits():
-            # Can't roundtrip, so no need to run this test
-            return
-        t.non_atomic_put_file('mode644', StringIO('test text\n'), mode=0644)
-        self.assertTransportMode(t, 'mode644', 0644)
-        t.non_atomic_put_file('mode666', StringIO('test text\n'), mode=0666)
-        self.assertTransportMode(t, 'mode666', 0666)
-        t.non_atomic_put_file('mode600', StringIO('test text\n'), mode=0600)
-        self.assertTransportMode(t, 'mode600', 0600)
-        # Yes, you can non_atomic_put_file a file such that it becomes readonly
-        t.non_atomic_put_file('mode400', StringIO('test text\n'), mode=0400)
-        self.assertTransportMode(t, 'mode400', 0400)
+        deprecation_msg = symbol_versioning.deprecation_string(
+            t.put_multi, symbol_versioning.zero_eleven)
+        self.assertEqual(2, self.callDeprecated([deprecation_msg],
+            t.put_multi, [('a', StringIO('new\ncontents for\na\n')),
+                          ('d', StringIO('contents\nfor d\n'))]
+            ))
+        self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd'])),
+                [True, False, False, True])
+        self.check_transport_contents('new\ncontents for\na\n', t, 'a')
+        self.check_transport_contents('contents\nfor d\n', t, 'd')
 
-        # The default permissions should be based on the current umask
-        umask = osutils.get_umask()
-        t.non_atomic_put_file('nomode', StringIO('test text\n'), mode=None)
-        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
-        
-    def test_non_atomic_put_bytes_permissions(self):
-        t = self.get_transport()
+        self.assertEqual(2, self.callDeprecated([deprecation_msg],
+            t.put_multi, iter([('a', StringIO('diff\ncontents for\na\n')),
+                              ('d', StringIO('another contents\nfor d\n'))])
+            ))
+        self.check_transport_contents('diff\ncontents for\na\n', t, 'a')
+        self.check_transport_contents('another contents\nfor d\n', t, 'd')
 
-        if t.is_readonly():
-            return
-        if not t._can_roundtrip_unix_modebits():
-            # Can't roundtrip, so no need to run this test
-            return
-        t.non_atomic_put_bytes('mode644', 'test text\n', mode=0644)
-        self.assertTransportMode(t, 'mode644', 0644)
-        t.non_atomic_put_bytes('mode666', 'test text\n', mode=0666)
-        self.assertTransportMode(t, 'mode666', 0666)
-        t.non_atomic_put_bytes('mode600', 'test text\n', mode=0600)
-        self.assertTransportMode(t, 'mode600', 0600)
-        t.non_atomic_put_bytes('mode400', 'test text\n', mode=0400)
-        self.assertTransportMode(t, 'mode400', 0400)
-
-        # The default permissions should be based on the current umask
-        umask = osutils.get_umask()
-        t.non_atomic_put_bytes('nomode', 'test text\n', mode=None)
-        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
-        
     def test_mkdir(self):
         t = self.get_transport()
 

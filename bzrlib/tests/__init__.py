@@ -1058,8 +1058,8 @@ class TestCaseInTempDir(TestCase):
                 # On jam's machine, make_kernel_like_tree is:
                 #   put:    4.5-7.5s (averaging 6s)
                 #   append: 2.9-4.5s
-                #   non_atomic_put: 2.9-4.5s
-                transport.non_atomic_put_bytes(urlutils.escape(name), content)
+                #   put_non_atomic: 2.9-4.5s
+                transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
