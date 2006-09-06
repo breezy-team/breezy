@@ -410,7 +410,7 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.copy_to()."""
         # copy the current index to a temp index to avoid racing with local
         # writes
-        transport.non_atomic_put_file(name + INDEX_SUFFIX + '.tmp',
+        transport.put_file_non_atomic(name + INDEX_SUFFIX + '.tmp',
                 self.transport.get(self._index._filename))
         # copy the data file
         f = self._data._open_file()
@@ -1136,7 +1136,7 @@ class _KnitIndex(_KnitComponentFile):
                 if delay_create:
                     self._need_to_create = True
                 else:
-                    self._transport.non_atomic_put_bytes(self._filename,
+                    self._transport.put_bytes_non_atomic(self._filename,
                         self.HEADER, mode=self._file_mode)
 
         finally:
@@ -1266,7 +1266,7 @@ class _KnitIndex(_KnitComponentFile):
             sio.write(self.HEADER)
             sio.writelines(lines)
             sio.seek(0)
-            self._transport.non_atomic_put_file(self._filename, sio,
+            self._transport.put_file_non_atomic(self._filename, sio,
                                 create_parent_dir=self._create_parent_dir,
                                 mode=self._file_mode)
             self._need_to_create = False
@@ -1337,7 +1337,7 @@ class _KnitData(_KnitComponentFile):
             if delay_create:
                 self._need_to_create = create
             else:
-                self._transport.non_atomic_put_bytes(self._filename, '',
+                self._transport.put_bytes_non_atomic(self._filename, '',
                                                      mode=self._file_mode)
 
     def enable_cache(self):
@@ -1386,7 +1386,7 @@ class _KnitData(_KnitComponentFile):
         if not self._need_to_create:
             return self._transport.append_bytes(self._filename, raw_data)
         else:
-            self._transport.non_atomic_put_bytes(self._filename, raw_data,
+            self._transport.put_bytes_non_atomic(self._filename, raw_data,
                                    create_parent_dir=self._create_parent_dir,
                                    mode=self._file_mode)
             self._need_to_create = False
@@ -1400,7 +1400,7 @@ class _KnitData(_KnitComponentFile):
         if not self._need_to_create:
             start_pos = self._transport.append_file(self._filename, sio)
         else:
-            self._transport.non_atomic_put_file(self._filename, sio,
+            self._transport.put_file_non_atomic(self._filename, sio,
                                create_parent_dir=self._create_parent_dir,
                                mode=self._file_mode)
             self._need_to_create = False

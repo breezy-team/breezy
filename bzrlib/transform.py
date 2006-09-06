@@ -1326,10 +1326,11 @@ def conflict_pass(tt, conflicts):
             trans_id = conflict[1]
             try:
                 tt.cancel_deletion(trans_id)
-                new_conflicts.add((c_type, 'Not deleting', trans_id))
+                new_conflicts.add(('deleting parent', 'Not deleting', 
+                                   trans_id))
             except KeyError:
                 tt.create_directory(trans_id)
-                new_conflicts.add((c_type, 'Created directory.', trans_id))
+                new_conflicts.add((c_type, 'Created directory', trans_id))
         elif c_type == 'unversioned parent':
             tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))

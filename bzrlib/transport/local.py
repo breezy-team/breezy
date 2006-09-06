@@ -39,7 +39,7 @@ from bzrlib.transport import Transport, Server
 
 
 _append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY
-_non_atomic_put_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY
+_put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY
 
 
 class LocalTransport(Transport):
@@ -175,10 +175,10 @@ class LocalTransport(Transport):
         finally:
             fp.close()
 
-    def _non_atomic_put_helper(self, relpath, writer,
+    def _put_non_atomic_helper(self, relpath, writer,
                                mode=None,
                                create_parent_dir=False):
-        """Common functionality information for the non_atomic_put_*.
+        """Common functionality information for the put_*_non_atomic.
 
         This tracks all the create_parent_dir stuff.
 
@@ -196,7 +196,7 @@ class LocalTransport(Transport):
         else:
             local_mode = mode
         try:
-            fd = os.open(abspath, _non_atomic_put_flags, local_mode)
+            fd = os.open(abspath, _put_non_atomic_flags, local_mode)
         except (IOError, OSError),e:
             # We couldn't create the file, maybe we need to create
             # the parent directory, and try again
@@ -213,7 +213,7 @@ class LocalTransport(Transport):
             # We created the parent directory, lets try to open the
             # file again
             try:
-                fd = os.open(abspath, _non_atomic_put_flags, local_mode)
+                fd = os.open(abspath, _put_non_atomic_flags, local_mode)
             except (IOError, OSError), e:
                 self._translate_error(e, relpath)
         try:
@@ -226,7 +226,7 @@ class LocalTransport(Transport):
         finally:
             os.close(fd)
 
-    def non_atomic_put_file(self, relpath, f, mode=None,
+    def put_file_non_atomic(self, relpath, f, mode=None,
                             create_parent_dir=False):
         """Copy the file-like object into the target location.
 
@@ -245,14 +245,14 @@ class LocalTransport(Transport):
         """
         def writer(fd):
             self._pump_to_fd(f, fd)
-        self._non_atomic_put_helper(relpath, writer, mode=mode,
+        self._put_non_atomic_helper(relpath, writer, mode=mode,
                                     create_parent_dir=create_parent_dir)
 
-    def non_atomic_put_bytes(self, relpath, bytes, mode=None,
+    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
                              create_parent_dir=False):
         def writer(fd):
             os.write(fd, bytes)
-        self._non_atomic_put_helper(relpath, writer, mode=mode,
+        self._put_non_atomic_helper(relpath, writer, mode=mode,
                                     create_parent_dir=create_parent_dir)
 
     def iter_files_recursive(self):
