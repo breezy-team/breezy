@@ -73,6 +73,17 @@ IN DEVELOPMENT
     * WorkingTree has a new api ``unversion`` which allow the unversioning of
       entries by their file id. (Robert Collins)
 
+    * WorkingTree has a new parent class MutableTree which represents the 
+      specialisations of Tree which are able to be altered. (Robert Collins)
+
+    * New methods mkdir and put_file_bytes_non_atomic on MutableTree that
+      mutate the tree and its contents. (Robert Collins)
+
+  TESTING:
+
+    * New test helper classs MemoryTree. This is typically accessed via
+      ``self.make_branch_and_memory_tree()`` in test cases. (Robert Collins)
+      
 bzr 0.10.0RC1  2006-08-28
   
   IMPROVEMENTS:
