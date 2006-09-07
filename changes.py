@@ -18,11 +18,13 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import commands
 import os
 
 from debian_bundle import deb822
 
 from bdlogging import debug
+from errors import DebianError
 
 class DebianChanges(deb822.changes):
   """Abstraction of the .changes file. Use it to find out what files were 
