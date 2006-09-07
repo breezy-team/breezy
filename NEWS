@@ -48,6 +48,10 @@ IN DEVELOPMENT
       NoSuchFile and forcing the caller to repeat their request.
       (John Arbash Meinel)
 
+    * bzrlib.tsort.merge_sorted now accepts 'generate_revnos'. This parameter
+      will cause it to add another column to its output, which contains the
+      dotted-decimal revno for each revision, as a tuple. (Robert Collins)
+
 bzr 0.10.0RC1  2006-08-28
   
   IMPROVEMENTS:
