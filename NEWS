@@ -2,6 +2,12 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * When an entire subtree has been deleted, commit will now report that
+      just the top of the subtree has been deleted, rather than reporting
+      all the individual items. (Robert Collins)
+
+    * Commit performs one less XML parse. (Robert Collins)
+
   BUG FIXES:
 
     * Handle boundary="" lines properly to allow access through a Squid proxy.

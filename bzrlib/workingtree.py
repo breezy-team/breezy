@@ -557,7 +557,6 @@ class WorkingTree(bzrlib.tree.Tree):
         args = (DEPRECATED_PARAMETER, message, ) + args
         committed_id = Commit().commit( working_tree=self, revprops=revprops,
             *args, **kwargs)
-        self._set_inventory(self.read_working_inventory())
         return committed_id
 
     def id2abspath(self, file_id):

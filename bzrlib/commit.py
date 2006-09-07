@@ -462,17 +462,18 @@ class Commit(object):
         """
         specific = self.specific_files
         deleted_ids = []
+        deleted_paths = set()
         for path, ie in self.work_inv.iter_entries():
+            if is_inside_any(deleted_paths, path):
+                # The tree will delete the required ids recursively.
+                continue
             if specific and not is_inside_any(specific, path):
                 continue
             if not self.work_tree.has_filename(path):
+                deleted_paths.add(path)
                 self.reporter.missing(path)
-                deleted_ids.append((path, ie.file_id))
-        if deleted_ids:
-            deleted_ids.sort(reverse=True)
-            for path, file_id in deleted_ids:
-                del self.work_inv[file_id]
-            self.work_tree._write_inventory(self.work_inv)
+                deleted_ids.append(ie.file_id)
+        self.work_tree.unversion(deleted_ids)
 
     def _populate_new_inv(self):
         """Build revision inventory.
