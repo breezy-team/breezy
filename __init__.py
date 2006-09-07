@@ -301,12 +301,12 @@ class cmd_releasedeb(Command):
 #
 #    return retcode
 #
-def test_suite():
-  from unittest import TestSuite, TestLoader
-  import test_buildpackage
-  suite = TestSuite()
-  suite.addTest(TestLoader().loadTestsFromModule(test_buildpackage))
-  return suite
+#def test_suite():
+#  from unittest import TestSuite, TestLoader
+#  import test_buildpackage
+#  suite = TestSuite()
+#  suite.addTest(TestLoader().loadTestsFromModule(test_buildpackage))
+#  return suite
 
 register_command(cmd_builddeb)
 register_command(cmd_releasedeb)
