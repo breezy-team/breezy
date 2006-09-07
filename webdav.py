@@ -91,6 +91,9 @@ from bzrlib.errors import (
     TransportError,
     )
 
+from bzrlib.osutils import (
+    dirname
+    )
 from bzrlib.trace import mutter
 from bzrlib.transport import (
     register_urlparse_netloc_protocol,
@@ -317,7 +320,7 @@ class HttpDavTransport(PyCurlTransport):
     # becomes  a real  RFC and  gets implemented,  we can  try to
     # implement   it   in   a   test  server.   Below   are   two
     # implementations, a third one will correspond to the draft.
-    def append(self, relpath, f, mode=None):
+    def append_file(self, relpath, f, mode=None):
         """See Transport.append"""
         if self._accept_ranges:
             before = self._append_by_head_put(relpath, f)
@@ -334,7 +337,7 @@ class HttpDavTransport(PyCurlTransport):
         self._head(relpath)
         code = self._curl.getinfo(pycurl.HTTP_CODE)
         if code == 404:
-            self._put_file(relpath, f)
+            self.put_file(relpath, f)
             relpath_size = 0
         else:
             headers = _extract_headers(self._header_received.getvalue(),
@@ -365,7 +368,7 @@ class HttpDavTransport(PyCurlTransport):
         full_data.write(f.read())
         full_data.seek(0)
 
-        self.put(relpath, full_data)
+        self.put_file(relpath, full_data)
 
         return before
 
@@ -389,7 +392,7 @@ class HttpDavTransport(PyCurlTransport):
                                         'unable to copy from %r to %r'
                                         % (abs_from,abs_to))
 
-    def put(self, relpath, f, mode=None):
+    def put_file(self, relpath, f, mode=None):
         """Copy the file-like object into the location.
 
         Tests revealed that contrary to what is said in
@@ -415,7 +418,8 @@ class HttpDavTransport(PyCurlTransport):
         # client death
         tmp_relpath = relpath + stamp
 
-        self._put_file(tmp_relpath,f) # Will raise if something gets wrong
+        # Will raise if something gets wrong
+        self.put_file_non_atomic(tmp_relpath,f)
 
         # Now move the temp file
         try:
@@ -435,23 +439,45 @@ class HttpDavTransport(PyCurlTransport):
                 raise e # raise the saved except
             raise # raise the original with its traceback if we can.
 
-    def _put_file(self, relpath, f):
-        """Copy the file-like object into the location."""
+    def put_file_non_atomic(self, relpath, f,
+                            mode=None,
+                            create_parent_dir=False,
+                            dir_mode=False):
+        """See Transport.put_file_non_atomic"""
 
         abspath = self._real_abspath(relpath)
 
-        curl = self._set_curl_options()
-        curl.setopt(pycurl.URL, abspath)
-        curl.setopt(pycurl.UPLOAD, True)
-        curl.setopt(pycurl.READFUNCTION, f.read)
+        # FIXME: We just make a mix between the sftp
+        # implementation and the Transport one so there may be
+        # something wrong with default Transport implementation
+        # :-/
+        def bare_put_file_non_atomic():
 
-        self._perform()
-        code = curl.getinfo(pycurl.HTTP_CODE)
+            curl = self._set_curl_options()
+            curl.setopt(pycurl.URL, abspath)
+            curl.setopt(pycurl.UPLOAD, True)
+            curl.setopt(pycurl.READFUNCTION, f.read)
 
-        if code in (403, 409):
-            raise NoSuchFile(abspath) # Intermediate directories missing
-        if code not in  (200, 201, 204):
-            self._raise_curl_http_error(curl, 'expected 200, 201 or 204.')
+            self._perform()
+            code = curl.getinfo(pycurl.HTTP_CODE)
+
+            if code in (403, 409):
+                raise NoSuchFile(abspath) # Intermediate directories missing
+            if code not in  (200, 201, 204):
+                self._raise_curl_http_error(curl, 'expected 200, 201 or 204.')
+
+        # Keep file position in case something goes wrong at first put try
+        f_pos = f.tell()
+        try:
+            bare_put_file_non_atomic()
+        except NoSuchFile:
+            if not create_parent_dir:
+                raise
+            parent_dir = dirname(relpath)
+            if parent_dir:
+                self.mkdir(parent_dir, mode=dir_mode)
+                f.seek(f_pos)
+                return bare_put_file_non_atomic()
 
     def _put_ranged(self, relpath, f, at, size):
         """Append the file-like object part to the end of the location.

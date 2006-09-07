@@ -1,3 +1,14 @@
+2006-09-07  Vincent Ladeuil  <v.ladeuil@alplog.fr>
+        Takes jam *_{file|bytes}[_non_atomic] patch into account.
+	
+	* webdav.py:
+	(HttpDavTransport.append_file): Renamed from append.
+	(HttpDavTransport.put_file): Renamed from put.
+	(HttpDavTransport.put_file_non_atomic): Renamed from
+	_put_file. Takes new create_parent_dir parameter into
+	account. Protect file position in case something goes wrong at
+	first try.
+
 2006-09-05  Vincent Ladeuil  <v.ladeuil@alplog.fr>
 	Small cleanup.
 
