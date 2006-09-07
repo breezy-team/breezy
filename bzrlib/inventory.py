@@ -1217,6 +1217,18 @@ class Inventory(object):
     def has_id(self, file_id):
         return (file_id in self._byid)
 
+    def remove(self, file_id):
+        """Remove file_id, and children, from the inventory."""
+        to_find_delete = [self._byid[file_id]]
+        to_delete = []
+        while len(to_find_delete):
+            ie = to_find_delete.pop()
+            to_delete.append(ie.file_id)
+            if ie.kind == 'directory':
+                to_find_delete.extend(ie.children.values())
+        for file_id in reversed(to_delete):
+            del self._byid[file_id]
+
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.
 

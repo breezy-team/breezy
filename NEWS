@@ -48,6 +48,9 @@ IN DEVELOPMENT
       NoSuchFile and forcing the caller to repeat their request.
       (John Arbash Meinel)
 
+    * WorkingTree has a new api ``unversion`` which allow the unversioning of
+      entries by their file id. (Robert Collins)
+
 bzr 0.10.0RC1  2006-08-28
   
   IMPROVEMENTS:
