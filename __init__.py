@@ -19,18 +19,13 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 import os
-import sys
-import shutil
 import commands
 
-from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command
 from bzrlib.option import Option
 from bzrlib.workingtree import WorkingTree
-from debian_bundle.changelog import Changelog
 
 from builder import DebBuild, DebMergeBuild
-from changes import DebianChanges
 from config import DebBuildConfig
 from errors import NotInBaseError, ChangedError, DebianError
 from bdlogging import debug, info, set_verbose
