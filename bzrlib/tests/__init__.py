@@ -835,6 +835,7 @@ class TestCase(unittest.TestCase):
             variables. A value of None will unset the env variable.
             The values must be strings. The change will only occur in the
             child, so you don't need to fix the environment after running.
+        :param universal_newlines: Convert CRLF => LF
         """
         env_changes = kwargs.get('env_changes', {})
 
@@ -863,6 +864,11 @@ class TestCase(unittest.TestCase):
             
         out = process.stdout.read()
         err = process.stderr.read()
+
+        if kwargs.get('universal_newlines', False):
+            out = out.replace('\r\n', '\n')
+            err = err.replace('\r\n', '\n')
+
         retcode = process.wait()
         supplied_retcode = kwargs.get('retcode', 0)
         if supplied_retcode is not None:
