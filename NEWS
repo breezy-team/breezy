@@ -2,6 +2,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr log`` Now shows dotted-decimal revision numbers for all revisions,
+      rather than just showing a decimal revision number for revisions on the
+      mainline. These revision numbers are not yet accepted as input into bzr
+      commands - such as log, diff etc. (Robert Collins)
+
   BUG FIXES:
 
     * Handle boundary="" lines properly to allow access through a Squid proxy.
