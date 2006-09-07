@@ -32,7 +32,7 @@ from debian_bundle.changelog import Changelog
 from builder import DebBuild, DebMergeBuild
 from changes import DebianChanges
 from config import DebBuildConfig
-from errors import NotInBaseError, ChangedError
+from errors import NotInBaseError, ChangedError, DebianError
 from bdlogging import debug, info, set_verbose
 from properties import BuildProperties
 from util import goto_branch, find_changelog, is_clean
