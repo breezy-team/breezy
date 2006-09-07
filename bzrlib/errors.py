@@ -137,6 +137,10 @@ class BzrNewError(BzrError):
                 % (self.__class__.__name__, str(e))
 
 
+class AlreadyBuilding(BzrNewError):
+    """The tree builder is already building a tree."""
+
+
 class BzrCheckError(BzrNewError):
     """Internal check failed: %(message)s"""
 
@@ -180,6 +184,10 @@ class NoWorkingTree(BzrNewError):
     def __init__(self, base):
         BzrNewError.__init__(self)
         self.base = base
+
+
+class NotBuilding(BzrNewError):
+    """Not currently building a tree."""
 
 
 class NotLocalUrl(BzrNewError):

@@ -43,6 +43,7 @@ import unittest
 import time
 
 
+from bzrlib import memorytree
 import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 import bzrlib.commands
@@ -1226,20 +1227,18 @@ class TestCaseWithTransport(TestCaseInTempDir):
 
     def make_bzrdir(self, relpath, format=None):
         try:
-            url = self.get_url(relpath)
-            mutter('relpath %r => url %r', relpath, url)
-            segments = url.split('/')
+            # might be a relative or absolute path
+            maybe_a_url = self.get_url(relpath)
+            segments = maybe_a_url.split('/')
+            t = get_transport(maybe_a_url)
             if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
                 try:
-                    t.mkdir(segments[-1])
+                    t.mkdir('.')
                 except errors.FileExists:
                     pass
             if format is None:
-                format=bzrlib.bzrdir.BzrDirFormat.get_default_format()
-            # FIXME: make this use a single transport someday. RBC 20060418
-            return format.initialize_on_transport(get_transport(relpath))
+                format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+            return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
 
@@ -1247,6 +1246,11 @@ class TestCaseWithTransport(TestCaseInTempDir):
         """Create a repository on our default transport at relpath."""
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
+
+    def make_branch_and_memory_tree(self, relpath):
+        """Create a branch on the default transport and a MemoryTree for it."""
+        b = self.make_branch(relpath)
+        return memorytree.MemoryTree.create_on_branch(b)
 
     def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
@@ -1404,6 +1408,7 @@ def test_suite():
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
+                   'bzrlib.tests.test_memorytree',
                    'bzrlib.tests.test_merge',
                    'bzrlib.tests.test_merge3',
                    'bzrlib.tests.test_merge_core',
@@ -1442,6 +1447,7 @@ def test_suite():
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_tree',
+                   'bzrlib.tests.test_treebuilder',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',

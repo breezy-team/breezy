@@ -893,6 +893,12 @@ class TestConvenienceMakers(TestCaseWithTransport):
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
                               bzrlib.bzrdir.BzrDirFormat6)
 
+    def test_make_branch_and_mutable_tree(self):
+        # we should be able to get a new branch and a mutable tree from
+        # TestCaseWithTransport
+        tree = self.make_branch_and_memory_tree('a')
+        self.assertIsInstance(tree, bzrlib.memorytree.MemoryTree)
+
 
 class TestSelftest(TestCase):
     """Tests of bzrlib.tests.selftest."""
