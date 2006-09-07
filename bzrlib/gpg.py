@@ -20,6 +20,7 @@
 import errno
 import os
 import subprocess
+import sys
 
 from bzrlib import (
     errors,
