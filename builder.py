@@ -1,6 +1,5 @@
 #    builder.py -- Classes for building packages
-#    Copyright (C) 2005 Jamie Wilkinson <jaq@debian.org> 
-#                  2006 James Westby <jw+debian@jameswestby.net>
+#    Copyright (C) 2006 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
 #
@@ -28,7 +27,7 @@ from bzrlib.export import export
 
 from changes import DebianChanges
 from errors import DebianError, NoSourceDirError
-from bdlogging import info
+from bdlogging import info, debug
 from util import recursive_copy
 
 class DebBuild(object):
@@ -116,7 +115,7 @@ class DebMergeBuild(DebBuild):
       debug("Extracting %s to %s", tarball, source_dir)
       tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
       os.system('tar xzf '+tarball+' -C '+tempdir)
-      files = glob.glob(tempdir+'/*/*')
+      files = glob.glob(tempdir+'/*')
       os.makedirs(source_dir)
       for file in files:
         shutil.move(file, source_dir)

@@ -1,6 +1,5 @@
 #    util.py -- Utility functions
-#    Copyright (C) 2005 Jamie Wilkinson <jaq@debian.org> 
-#                  2006 James Westby <jw+debian@jameswestby.net>
+#    Copyright (C) 2006 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
 #
@@ -66,7 +65,7 @@ def recursive_copy(fromdir, todir):
   """Copy the contents of fromdir to todir. Like shutil.copytree, but the 
   destination directory must already exist with this method, rather than 
   not exists for shutil."""
-  mutter("Copying %s to %s", fromdir, todir)
+  debug("Copying %s to %s", fromdir, todir)
   for entry in os.listdir(fromdir):
     path = os.path.join(fromdir, entry)
     if os.path.isdir(path):
