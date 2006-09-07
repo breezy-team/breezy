@@ -21,7 +21,6 @@ See MemoryTree for more details.
 
 
 from copy import deepcopy
-from cStringIO import StringIO
 
 from bzrlib import errors, mutabletree
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -153,14 +152,14 @@ class MemoryTree(mutabletree.MutableTree):
             if entry.kind == 'directory':
                 self._file_transport.mkdir(path)
             elif entry.kind == 'file':
-                self._file_transport.put(path,
+                self._file_transport.put_file(path,
                     self._basis_tree.get_file(entry.file_id))
             else:
                 raise NotImplementedError(self._populate_from_branch)
 
     def put_file_bytes_non_atomic(self, file_id, bytes):
         """See MutableTree.put_file_bytes_non_atomic."""
-        self._file_transport.put(self.id2path(file_id), StringIO(bytes))
+        self._file_transport.put_bytes(self.id2path(file_id), bytes)
 
     def unlock(self):
         """Release a lock.
