@@ -1,6 +1,5 @@
 #    builder.py -- Classes for building packages
-#    Copyright (C) 2005 Jamie Wilkinson <jaq@debian.org> 
-#                  2006 James Westby <jw+debian@jameswestby.net>
+#    Copyright (C) 2006 James Westby <jw+debian@jameswestby.net>
 #    
 #    This file is part of bzr-builddeb.
 #
