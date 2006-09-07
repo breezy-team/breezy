@@ -1104,7 +1104,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         for file_id in file_ids:
             if self._inventory.has_id(file_id):
-                self._inventory.remove(file_id)
+                self._inventory.remove_recursive_id(file_id)
             else:
                 raise errors.NoSuchId(self, file_id)
         if len(file_ids):

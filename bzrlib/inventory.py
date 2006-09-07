@@ -1217,11 +1217,14 @@ class Inventory(object):
     def has_id(self, file_id):
         return (file_id in self._byid)
 
-    def remove(self, file_id):
-        """Remove file_id, and children, from the inventory."""
+    def remove_recursive_id(self, file_id):
+        """Remove file_id, and children, from the inventory.
+        
+        :param file_id: A file_id to remove.
+        """
         to_find_delete = [self._byid[file_id]]
         to_delete = []
-        while len(to_find_delete):
+        while to_find_delete:
             ie = to_find_delete.pop()
             to_delete.append(ie.file_id)
             if ie.kind == 'directory':
