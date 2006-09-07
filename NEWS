@@ -26,11 +26,15 @@ IN DEVELOPMENT
     * Handle when LANG is not recognized by python. Emit a warning, but
       just revert to using 'ascii'. (John Arbash Meinel, #35392)
 
+    * Don't use preexec_fn on win32, as it is not supported by subprocess.
+      (John Arbash Meinel)
+
   INTERNALS:
 
     * run_bzr_subprocess() can take an optional 'env_changes={}' parameter,
-      which will update os.environ inside the spawned child.
-      (John Arbash Meinel)
+      which will update os.environ inside the spawned child. It also can
+      take a 'universal_newlines=True', which helps when checking the output
+      of the command. (John Arbash Meinel)
 
     * Refactor SFTP vendors to allow easier re-use when ssh is used. 
       (Andrew Bennetts)
