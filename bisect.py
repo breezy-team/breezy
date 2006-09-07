@@ -31,8 +31,8 @@ class BisectCurrent(object):
         return self._revid
 
     def show_rev_log(self, out = sys.stdout):
-        from bzrlib.log import LongLogFormatter, show_log
-        lf = LongLogFormatter(out)
+        from bzrlib.log import ShortLogFormatter, show_log
+        lf = ShortLogFormatter(out, show_ids = True)
         revno = self._bzrbranch.revision_id_to_revno(self._revid)
         show_log(self._bzrbranch, lf,
                  start_revision = revno, end_revision = revno)
