@@ -193,7 +193,7 @@ class LockableFiles(object):
                      directory
         :param f: A file-like or string object whose contents should be copied.
         """
-        self._transport.put(self._escape(path), file, mode=self._file_mode)
+        self._transport.put_file(self._escape(path), file, mode=self._file_mode)
 
     @needs_write_lock
     def put_utf8(self, path, a_string):
@@ -339,5 +339,5 @@ class TransportLock(object):
     def create(self, mode=None):
         """Create lock mechanism"""
         # for old-style locks, create the file now
-        self._transport.put(self._escaped_name, StringIO(), 
+        self._transport.put_bytes(self._escaped_name, '',
                             mode=self._file_modebits)

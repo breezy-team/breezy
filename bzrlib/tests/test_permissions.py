@@ -33,7 +33,7 @@ permissions should be inherited individually, rather than all be the same.
 import os
 import sys
 import stat
-from StringIO import StringIO
+from cStringIO import StringIO
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
@@ -156,7 +156,7 @@ class TestPermissions(TestCaseWithTransport):
         #                    extra chmod calls aren't being made
         try:
             transport = get_transport(self.get_url())
-            transport.put('my-lock', StringIO(''))
+            transport.put_bytes('my-lock', '')
             lockable = LockableFiles(transport, 'my-lock', TransportLock)
             self.assertNotEqual(None, lockable._dir_mode)
             self.assertNotEqual(None, lockable._file_mode)
@@ -276,7 +276,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
             self.assertTransportMode(t, 'a', 0666 &~umask)
 
             # but Transport overrides umask
-            t.put('b', 'txt', mode=0666)
+            t.put_bytes('b', 'txt', mode=0666)
             self.assertTransportMode(t, 'b', 0666)
 
             t._sftp.mkdir('c', mode=0777)

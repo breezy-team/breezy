@@ -91,7 +91,7 @@ class SampleBranchFormat(bzrlib.branch.BranchFormat):
     def initialize(self, a_bzrdir):
         """Format 4 branches cannot be created."""
         t = a_bzrdir.get_branch_transport(self)
-        t.put('format', StringIO(self.get_format_string()))
+        t.put_bytes('format', self.get_format_string())
         return 'A branch'
 
     def is_supported(self):

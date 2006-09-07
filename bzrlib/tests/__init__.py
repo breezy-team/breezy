@@ -685,33 +685,20 @@ class TestCase(unittest.TestCase):
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
+            'BZR_PROGRESS_BAR': None,
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
         for name, value in new_env.iteritems():
             self._captureVar(name, value)
 
-
     def _captureVar(self, name, newvalue):
-        """Set an environment variable, preparing it to be reset when finished."""
-        self.__old_env[name] = os.environ.get(name, None)
-        if newvalue is None:
-            if name in os.environ:
-                del os.environ[name]
-        else:
-            os.environ[name] = newvalue
-
-    @staticmethod
-    def _restoreVar(name, value):
-        if value is None:
-            if name in os.environ:
-                del os.environ[name]
-        else:
-            os.environ[name] = value
+        """Set an environment variable, and reset it when finished."""
+        self.__old_env[name] = osutils.set_or_unset_env(name, newvalue)
 
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
-            self._restoreVar(name, value)
+            osutils.set_or_unset_env(name, value)
 
     def tearDown(self):
         self._runCleanups()
@@ -892,23 +879,40 @@ class TestCase(unittest.TestCase):
             variables. A value of None will unset the env variable.
             The values must be strings. The change will only occur in the
             child, so you don't need to fix the environment after running.
+        :param universal_newlines: Convert CRLF => LF
         """
         env_changes = kwargs.get('env_changes', {})
+
+        old_env = {}
+
         def cleanup_environment():
             for env_var, value in env_changes.iteritems():
-                if value is None:
-                    if env_var in os.environ:
-                        del os.environ[env_var]
-                else:
-                    os.environ[env_var] = value
+                old_env[env_var] = osutils.set_or_unset_env(env_var, value)
+
+        def restore_environment():
+            for env_var, value in old_env.iteritems():
+                osutils.set_or_unset_env(env_var, value)
 
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         args = list(args)
-        process = Popen([sys.executable, bzr_path]+args,
-                         stdout=PIPE, stderr=PIPE,
-                         preexec_fn=cleanup_environment)
+
+        try:
+            # win32 subprocess doesn't support preexec_fn
+            # so we will avoid using it on all platforms, just to
+            # make sure the code path is used, and we don't break on win32
+            cleanup_environment()
+            process = Popen([sys.executable, bzr_path]+args,
+                             stdout=PIPE, stderr=PIPE)
+        finally:
+            restore_environment()
+            
         out = process.stdout.read()
         err = process.stderr.read()
+
+        if kwargs.get('universal_newlines', False):
+            out = out.replace('\r\n', '\n')
+            err = err.replace('\r\n', '\n')
+
         retcode = process.wait()
         supplied_retcode = kwargs.get('retcode', 0)
         if supplied_retcode is not None:
@@ -1053,12 +1057,15 @@ class TestCaseInTempDir(TestCase):
                 i = i + 1
                 continue
             else:
-                self.test_dir = candidate_dir
+                os.mkdir(candidate_dir)
+                self.test_home_dir = candidate_dir + '/home'
+                os.mkdir(self.test_home_dir)
+                self.test_dir = candidate_dir + '/work'
                 os.mkdir(self.test_dir)
                 os.chdir(self.test_dir)
                 break
-        os.environ['HOME'] = self.test_dir
-        os.environ['APPDATA'] = self.test_dir
+        os.environ['HOME'] = self.test_home_dir
+        os.environ['APPDATA'] = self.test_home_dir
         def _leaveDirectory():
             os.chdir(_currentdir)
         self.addCleanup(_leaveDirectory)
@@ -1103,7 +1110,8 @@ class TestCaseInTempDir(TestCase):
                 # On jam's machine, make_kernel_like_tree is:
                 #   put:    4.5-7.5s (averaging 6s)
                 #   append: 2.9-4.5s
-                transport.append(urlutils.escape(name), StringIO(content))
+                #   put_non_atomic: 2.9-4.5s
+                transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)

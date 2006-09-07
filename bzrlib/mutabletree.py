@@ -101,8 +101,7 @@ class MutableTree(tree.Tree):
 
     @needs_write_lock
     def commit(self, message=None, revprops=None, *args, **kwargs):
-        """Perform a commit from the tree into the trees branch."""
-        # avoid circular imports:
+        # avoid circular imports
         from bzrlib import commit
         if revprops is None:
             revprops = {}
@@ -113,9 +112,7 @@ class MutableTree(tree.Tree):
         #message being used for the branch
         args = (DEPRECATED_PARAMETER, message, ) + args
         committed_id = commit.Commit().commit(working_tree=self,
-            revprops=revprops,
-            *args, **kwargs)
-        #self._set_inventory(self.read_working_inventory())
+            revprops=revprops, *args, **kwargs)
         return committed_id
 
     def _gather_kinds(self, files, kinds):
