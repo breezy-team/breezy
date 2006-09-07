@@ -363,7 +363,7 @@ class Branch(object):
             return None
         if history is None:
             history = self.revision_history()
-        elif revno <= 0 or revno > len(history):
+        if revno <= 0 or revno > len(history):
             raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
@@ -839,9 +839,9 @@ class BranchReferenceFormat(BranchFormat):
             raise errors.UninitializableFormat(self)
         mutter('creating branch reference in %s', a_bzrdir.transport.base)
         branch_transport = a_bzrdir.get_branch_transport(self)
-        # FIXME rbc 20060209 one j-a-ms encoding branch lands this str() cast is not needed.
-        branch_transport.put('location', StringIO(str(target_branch.bzrdir.root_transport.base)))
-        branch_transport.put('format', StringIO(self.get_format_string()))
+        branch_transport.put_bytes('location',
+            target_branch.bzrdir.root_transport.base)
+        branch_transport.put_bytes('format', self.get_format_string())
         return self.open(a_bzrdir, _found=True)
 
     def __init__(self):
@@ -1248,7 +1248,7 @@ class BzrBranch(Branch):
                         "use bzrlib.urlutils.escape")
                     
             url = urlutils.relative_url(self.base, url)
-            self.control_files.put('parent', url + '\n')
+            self.control_files.put('parent', StringIO(url + '\n'))
 
     @deprecated_function(zero_nine)
     def tree_config(self):

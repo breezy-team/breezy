@@ -207,7 +207,7 @@ class LockDir(object):
             # because we don't want to write to a temporary file and rename
             # into place, because that's going to happen to the whole
             # directory
-            self.transport.append(tmpname + self.__INFO_NAME, sio)
+            self.transport.append_file(tmpname + self.__INFO_NAME, sio)
 
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
