@@ -426,7 +426,7 @@ class TestTestCaseInTempDir(TestCaseInTempDir):
     def test_home_is_not_working(self):
         self.assertNotEqual(self.test_dir, self.test_home_dir)
         cwd = osutils.getcwd()
-        self.assertEqual(self.test_dir)
+        self.assertEqual(self.test_dir, cwd)
         self.assertEqual(self.test_home_dir, os.environ['HOME'])
 
 
