@@ -49,7 +49,9 @@ class TestUnversion(TestCaseWithWorkingTree):
         self.assertTrue(tree.has_filename('b'))
         self.assertTrue(tree.has_filename('c'))
         tree.unlock()
-        # after the unlock, the files should still be unversioned.
+        # the changes should have persisted to disk - reopen the workingtree
+        # to be sure.
+        tree = tree.bzrdir.open_workingtree()
         self.assertFalse(tree.has_id('a-id'))
         self.assertFalse(tree.has_id('b-id'))
         self.assertTrue(tree.has_id('c-id'))
