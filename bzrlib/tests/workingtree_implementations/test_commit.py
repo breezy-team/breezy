@@ -163,6 +163,43 @@ class TestCommit(TestCaseWithWorkingTree):
             'wibble@fofof--20050401--1928390812'],
             rev.parent_ids)
 
+    def test_commit_deleted_subtree_and_files_updates_workingtree(self):
+        """The working trees inventory may be adjusted by commit."""
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        self.build_tree(['a', 'b/', 'b/c', 'd'])
+        wt.add(['a', 'b', 'b/c', 'd'], ['a-id', 'b-id', 'c-id', 'd-id'])
+        this_dir = self.get_transport()
+        this_dir.delete_tree('b')
+        this_dir.delete('d')
+        # now we have a tree with a through d in the inventory, but only
+        # a present on disk. After commit b-id, c-id and d-id should be
+        # missing from the inventory, within the same tree transaction.
+        wt.commit('commit stuff')
+        self.assertTrue(wt.has_id('a-id'))
+        self.assertFalse(wt.has_or_had_id('b-id'))
+        self.assertFalse(wt.has_or_had_id('c-id'))
+        self.assertFalse(wt.has_or_had_id('d-id'))
+        self.assertTrue(wt.has_filename('a'))
+        self.assertFalse(wt.has_filename('b'))
+        self.assertFalse(wt.has_filename('b/c'))
+        self.assertFalse(wt.has_filename('d'))
+        wt.unlock()
+        # the changes should have persisted to disk - reopen the workingtree
+        # to be sure.
+        wt = wt.bzrdir.open_workingtree()
+        wt.lock_read()
+        self.assertTrue(wt.has_id('a-id'))
+        self.assertFalse(wt.has_or_had_id('b-id'))
+        self.assertFalse(wt.has_or_had_id('c-id'))
+        self.assertFalse(wt.has_or_had_id('d-id'))
+        self.assertTrue(wt.has_filename('a'))
+        self.assertFalse(wt.has_filename('b'))
+        self.assertFalse(wt.has_filename('b/c'))
+        self.assertFalse(wt.has_filename('d'))
+        wt.unlock()
+        
+
 class TestCommitProgress(TestCaseWithWorkingTree):
     
     def restoreDefaults(self):
