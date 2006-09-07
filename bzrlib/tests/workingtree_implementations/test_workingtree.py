@@ -19,7 +19,6 @@ from cStringIO import StringIO
 import os
 import sys
 
-from bzrlib import ignores
 import bzrlib
 from bzrlib import branch, bzrdir, errors, osutils, urlutils, workingtree
 from bzrlib.errors import (NotBranchError, NotVersionedError,
@@ -49,14 +48,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_list_files_sorted(self):
         tree = self.make_branch_and_tree('.')
-        ignores._set_user_ignores(['./.bazaar'])
         self.build_tree(['dir/', 'file', 'dir/file', 'dir/b',
                          'dir/subdir/', 'a', 'dir/subfile',
                          'zz_dir/', 'zz_dir/subfile'])
         files = [(path, kind) for (path, v, kind, file_id, entry)
                                in tree.list_files()]
         self.assertEqual([
-            ('.bazaar', 'directory'),
             ('a', 'file'),
             ('dir', 'directory'),
             ('file', 'file'),
@@ -67,7 +64,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         files = [(path, kind) for (path, v, kind, file_id, entry)
                                in tree.list_files()]
         self.assertEqual([
-            ('.bazaar', 'directory'),
             ('a', 'file'),
             ('dir', 'directory'),
             ('dir/b', 'file'),

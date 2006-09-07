@@ -1056,12 +1056,15 @@ class TestCaseInTempDir(TestCase):
                 i = i + 1
                 continue
             else:
-                self.test_dir = candidate_dir
+                os.mkdir(candidate_dir)
+                self.test_home_dir = candidate_dir + '/home'
+                os.mkdir(self.test_home_dir)
+                self.test_dir = candidate_dir + '/work'
                 os.mkdir(self.test_dir)
                 os.chdir(self.test_dir)
                 break
-        os.environ['HOME'] = self.test_dir
-        os.environ['APPDATA'] = self.test_dir
+        os.environ['HOME'] = self.test_home_dir
+        os.environ['APPDATA'] = self.test_home_dir
         def _leaveDirectory():
             os.chdir(_currentdir)
         self.addCleanup(_leaveDirectory)

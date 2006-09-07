@@ -31,6 +31,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * TestCaseInTempDir now creates a separate directory for HOME, rather
+      than having HOME set to the same location as the working directory.
+      (John Arbash Meinel)
+
     * run_bzr_subprocess() can take an optional 'env_changes={}' parameter,
       which will update os.environ inside the spawned child. It also can
       take a 'universal_newlines=True', which helps when checking the output
