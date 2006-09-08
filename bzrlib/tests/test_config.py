@@ -596,7 +596,7 @@ class TestLocationConfig(TestCaseInTempDir):
 
 
     def test_location_without_username(self):
-        self.get_branch_config('/b/')
+        self.get_branch_config('http://www.example.com/useglobal')
         self.assertEqual(u'Erik B\u00e5gfors <erik@bagfors.nu>',
                          self.my_config.username())
 
