@@ -400,23 +400,16 @@ class WorkingTree(bzrlib.tree.Tree):
         If the left most parent is a ghost then the returned tree will be an
         empty tree - one obtained by calling repository.revision_tree(None).
         """
-        try:
-            revision_id = self.get_parent_ids()[0]
-        except IndexError:
+        revision_id = self.last_revision()
+        if revision_id is None:
             # no parents, return an empty revision tree.
             # in the future this should return the tree for
             # 'empty:' - the implicit root empty tree.
             return self.branch.repository.revision_tree(None)
-        else:
-            try:
-                xml = self.read_basis_inventory()
-                inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
-                inv.root.revision = revision_id
-            except NoSuchFile:
-                inv = None
-            if inv is not None and inv.revision_id == revision_id:
-                return bzrlib.tree.RevisionTree(self.branch.repository, inv,
-                                                revision_id)
+        try:
+            return self.revision_tree(revision_id)
+        except errors.NoSuchRevision:
+            pass
         # No cached copy available, retrieve from the repository.
         # FIXME? RBC 20060403 should we cache the inventory locally
         # at this point ?
@@ -1522,6 +1515,30 @@ class WorkingTree(bzrlib.tree.Tree):
         else:
             resolve(self, filenames, ignore_misses=True)
         return conflicts
+
+    def revision_tree(self, revision_id):
+        """See Tree.revision_tree.
+
+        WorkingTree can supply revision_trees for the basis revision only
+        because there is only one cached inventory in the bzr directory.
+        """
+        if revision_id == self.last_revision():
+            try:
+                xml = self.read_basis_inventory()
+            except NoSuchFile:
+                pass
+            else:
+                inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+                # Fixup old inventory serialization that has a missing root
+                # revision_id attribute.
+                inv.root.revision = revision_id
+                # dont use the repository revision_tree api because we want
+                # to supply the inventory.
+                if inv.revision_id == revision_id:
+                    return bzrlib.tree.RevisionTree(self.branch.repository,
+                        inv, revision_id)
+        # raise if there was no inventory, or if we read the wrong inventory.
+        raise errors.NoSuchRevisionInTree(self, revision_id)
 
     # XXX: This method should be deprecated in favour of taking in a proper
     # new Inventory object.
