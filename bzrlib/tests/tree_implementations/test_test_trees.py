@@ -151,7 +151,7 @@ class TestTreeShapes(TestCaseWithTree):
         # note that the order of the paths and fileids is deliberately 
         # mismatched to ensure that the result order is path based.
         self.assertEqual(
-            [('', inventory.ROOT_ID, 'root_directory'),
+            [('', inventory.ROOT_ID, 'directory'),
              ('0file', '2file', 'file'),
              ('1top-dir', '1top-dir', 'directory'),
              (u'2utf\u1234file', u'0utf\u1234file', 'file'),

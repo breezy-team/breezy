@@ -170,10 +170,13 @@ class HttpTransportBase(Transport):
             # TODO: Don't call this with an array - no magic interfaces
             relpath_parts = relpath[:]
         if len(relpath_parts) > 1:
+            # TODO: Check that the "within branch" part of the
+            # error messages below is relevant in all contexts
             if relpath_parts[0] == '':
                 raise ValueError("path %r within branch %r seems to be absolute"
                                  % (relpath, self._path))
-            if relpath_parts[-1] == '':
+            # read only transports never manipulate directories
+            if self.is_readonly() and relpath_parts[-1] == '':
                 raise ValueError("path %r within branch %r seems to be a directory"
                                  % (relpath, self._path))
         basepath = self._path.split('/')
@@ -281,11 +284,11 @@ class HttpTransportBase(Transport):
 
         return combined
 
-    def put(self, relpath, f, mode=None):
-        """Copy the file-like or string object into the location.
+    def put_file(self, relpath, f, mode=None):
+        """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
         """
         raise TransportNotPossible('http PUT not supported')
 
@@ -297,7 +300,7 @@ class HttpTransportBase(Transport):
         """See Transport.rmdir."""
         raise TransportNotPossible('http does not support rmdir()')
 
-    def append(self, relpath, f):
+    def append_file(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """
@@ -494,10 +497,15 @@ class HttpServer(Server):
     # used to form the url that connects to this server
     _url_protocol = 'http'
 
+    # Subclasses can provide a specific request handler
+    def __init__(self, request_handler=TestingHTTPRequestHandler):
+        Server.__init__(self)
+        self.request_handler = request_handler
+
     def _http_start(self):
         httpd = None
         httpd = TestingHTTPServer(('localhost', 0),
-                                  TestingHTTPRequestHandler,
+                                  self.request_handler,
                                   self)
         host, port = httpd.socket.getsockname()
         self._http_base_url = '%s://localhost:%s/' % (self._url_protocol, port)
@@ -558,7 +566,7 @@ class HttpServer(Server):
         
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
-        # this is chosen to try to prevent trouble with proxies, wierd dns,
+        # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
         return 'http://127.0.0.1:1/'
 

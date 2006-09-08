@@ -16,24 +16,17 @@
 
 """bzr library"""
 
+from bzrlib.osutils import get_user_encoding
+
 
 IGNORE_FILENAME = ".bzrignore"
 
-import os
-import sys
-if sys.platform == 'darwin':
-    # work around egregious python 2.4 bug
-    sys.platform = 'posix'
-    import locale
-    sys.platform = 'darwin'
-else:
-    import locale
-# XXX: This probably belongs in osutils instead
-user_encoding = locale.getpreferredencoding() or 'ascii'
-del locale
+
+# XXX: Compatibility. This should probably be deprecated
+user_encoding = get_user_encoding()
+
 
 __copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
-__version__ = version_string = '0.9'
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
@@ -42,7 +35,7 @@ __version__ = version_string = '0.9'
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (0, 9, 0, 'dev', 0)
+version_info = (0, 11, 0, 'dev', 0)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
@@ -61,23 +54,6 @@ DEFAULT_IGNORE = deprecated_list(zero_nine, 'DEFAULT_IGNORE', [],
                     'Consider using bzrlib.ignores.add_unique_user_ignores'
                     ' or bzrlib.ignores.add_runtime_ignores')
 
-
-@deprecated_function(zero_seven)
-def get_bzr_revision():
-    """If bzr is run from a branch, return (revno,revid) or None."""
-    import bzrlib.errors
-    from bzrlib.branch import Branch
-    
-    try:
-        branch = Branch.open(os.path.dirname(__path__[0]))
-        rh = branch.revision_history()
-        if rh:
-            return len(rh), rh[-1]
-        else:
-            return None
-    except bzrlib.errors.BzrError:
-        return None
-    
 def test_suite():
     import tests
     return tests.test_suite()

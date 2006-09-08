@@ -64,6 +64,7 @@ import bzrlib.plugin
 import bzrlib.progress as progress
 from bzrlib.revision import common_ancestor
 import bzrlib.store
+from bzrlib import symbol_versioning
 import bzrlib.trace
 from bzrlib.transport import get_transport
 import bzrlib.transport
@@ -136,9 +137,30 @@ class _MyResult(unittest._TextTestResult):
     """
     stop_early = False
     
-    def __init__(self, stream, descriptions, verbosity, pb=None):
+    def __init__(self, stream, descriptions, verbosity, pb=None,
+                 bench_history=None):
+        """Construct new TestResult.
+
+        :param bench_history: Optionally, a writable file object to accumulate
+            benchmark results.
+        """
         unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
         self.pb = pb
+        if bench_history is not None:
+            from bzrlib.version import _get_bzr_source_tree
+            src_tree = _get_bzr_source_tree()
+            if src_tree:
+                try:
+                    revision_id = src_tree.get_parent_ids()[0]
+                except IndexError:
+                    # XXX: if this is a brand new tree, do the same as if there
+                    # is no branch.
+                    revision_id = ''
+            else:
+                # XXX: If there's no branch, what should we do?
+                revision_id = ''
+            bench_history.write("--date %s %s\n" % (time.time(), revision_id))
+        self._bench_history = bench_history
     
     def extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -248,6 +270,11 @@ class _MyResult(unittest._TextTestResult):
 
     def addSuccess(self, test):
         self.extractBenchmarkTime(test)
+        if self._bench_history is not None:
+            if self._benchmarkTime is not None:
+                self._bench_history.write("%s %s\n" % (
+                    self._formatTime(self._benchmarkTime),
+                    test.id()))
         if self.showAll:
             self.stream.writeln('   OK %s' % self._testTimeString())
             for bench_called, stats in getattr(test, '_benchcalls', []):
@@ -304,18 +331,21 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  keep_output=False,
-                 pb=None):
+                 pb=None,
+                 bench_history=None):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
         self.keep_output = keep_output
         self.pb = pb
+        self._bench_history = bench_history
 
     def _makeResult(self):
         result = _MyResult(self.stream,
                            self.descriptions,
                            self.verbosity,
-                           pb=self.pb)
+                           pb=self.pb,
+                           bench_history=self._bench_history)
         result.stop_early = self.stop_on_failure
         return result
 
@@ -395,7 +425,6 @@ def iter_suite_tests(suite):
 
 class TestSkipped(Exception):
     """Indicates that a test was intentionally skipped, rather than failing."""
-    # XXX: Not used yet
 
 
 class CommandFailed(Exception):
@@ -552,14 +581,78 @@ class TestCase(unittest.TestCase):
             self.fail("%r is an instance of %s rather than %s" % (
                 obj, obj.__class__, kls))
 
+    def _capture_warnings(self, a_callable, *args, **kwargs):
+        """A helper for callDeprecated and applyDeprecated.
+
+        :param a_callable: A callable to call.
+        :param args: The positional arguments for the callable
+        :param kwargs: The keyword arguments for the callable
+        :return: A tuple (warnings, result). result is the result of calling
+            a_callable(*args, **kwargs).
+        """
+        local_warnings = []
+        def capture_warnings(msg, cls, stacklevel=None):
+            # we've hooked into a deprecation specific callpath,
+            # only deprecations should getting sent via it.
+            self.assertEqual(cls, DeprecationWarning)
+            local_warnings.append(msg)
+        original_warning_method = symbol_versioning.warn
+        symbol_versioning.set_warning_method(capture_warnings)
+        try:
+            result = a_callable(*args, **kwargs)
+        finally:
+            symbol_versioning.set_warning_method(original_warning_method)
+        return (local_warnings, result)
+
+    def applyDeprecated(self, deprecation_format, a_callable, *args, **kwargs):
+        """Call a deprecated callable without warning the user.
+
+        :param deprecation_format: The deprecation format that the callable
+            should have been deprecated with. This is the same type as the 
+            parameter to deprecated_method/deprecated_function. If the 
+            callable is not deprecated with this format, an assertion error
+            will be raised.
+        :param a_callable: A callable to call. This may be a bound method or
+            a regular function. It will be called with *args and **kwargs.
+        :param args: The positional arguments for the callable
+        :param kwargs: The keyword arguments for the callable
+        :return: The result of a_callable(*args, **kwargs)
+        """
+        call_warnings, result = self._capture_warnings(a_callable,
+            *args, **kwargs)
+        expected_first_warning = symbol_versioning.deprecation_string(
+            a_callable, deprecation_format)
+        if len(call_warnings) == 0:
+            self.fail("No assertion generated by call to %s" %
+                a_callable)
+        self.assertEqual(expected_first_warning, call_warnings[0])
+        return result
+
+    def callDeprecated(self, expected, callable, *args, **kwargs):
+        """Assert that a callable is deprecated in a particular way.
+
+        This is a very precise test for unusual requirements. The 
+        applyDeprecated helper function is probably more suited for most tests
+        as it allows you to simply specify the deprecation format being used
+        and will ensure that that is issued for the function being called.
+
+        :param expected: a list of the deprecation warnings expected, in order
+        :param callable: The callable to call
+        :param args: The positional arguments for the callable
+        :param kwargs: The keyword arguments for the callable
+        """
+        call_warnings, result = self._capture_warnings(callable,
+            *args, **kwargs)
+        self.assertEqual(expected, call_warnings)
+        return result
+
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
 
         The file is removed as the test is torn down.
         """
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
-        encoder, decoder, stream_reader, stream_writer = codecs.lookup('UTF-8')
-        self._log_file = stream_writer(os.fdopen(fileno, 'w+'))
+        self._log_file = os.fdopen(fileno, 'w+')
         self._log_nonce = bzrlib.trace.enable_test_log(self._log_file)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
@@ -594,34 +687,22 @@ class TestCase(unittest.TestCase):
             'HOME': os.getcwd(),
             'APPDATA': os.getcwd(),
             'BZR_EMAIL': None,
+            'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
+            'BZR_PROGRESS_BAR': None,
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
         for name, value in new_env.iteritems():
             self._captureVar(name, value)
 
-
     def _captureVar(self, name, newvalue):
-        """Set an environment variable, preparing it to be reset when finished."""
-        self.__old_env[name] = os.environ.get(name, None)
-        if newvalue is None:
-            if name in os.environ:
-                del os.environ[name]
-        else:
-            os.environ[name] = newvalue
-
-    @staticmethod
-    def _restoreVar(name, value):
-        if value is None:
-            if name in os.environ:
-                del os.environ[name]
-        else:
-            os.environ[name] = value
+        """Set an environment variable, and reset it when finished."""
+        self.__old_env[name] = osutils.set_or_unset_env(name, newvalue)
 
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
-            self._restoreVar(name, value)
+            osutils.set_or_unset_env(name, value)
 
     def tearDown(self):
         self._runCleanups()
@@ -752,7 +833,7 @@ class TestCase(unittest.TestCase):
         return self.run_bzr_captured(args, retcode=retcode, encoding=encoding, stdin=stdin)
 
     def run_bzr_decode(self, *args, **kwargs):
-        if kwargs.has_key('encoding'):
+        if 'encoding' in kwargs:
             encoding = kwargs['encoding']
         else:
             encoding = bzrlib.user_encoding
@@ -797,14 +878,45 @@ class TestCase(unittest.TestCase):
         profiled or debugged so easily.
 
         :param retcode: The status code that is expected.  Defaults to 0.  If
-        None is supplied, the status code is not checked.
+            None is supplied, the status code is not checked.
+        :param env_changes: A dictionary which lists changes to environment
+            variables. A value of None will unset the env variable.
+            The values must be strings. The change will only occur in the
+            child, so you don't need to fix the environment after running.
+        :param universal_newlines: Convert CRLF => LF
         """
+        env_changes = kwargs.get('env_changes', {})
+
+        old_env = {}
+
+        def cleanup_environment():
+            for env_var, value in env_changes.iteritems():
+                old_env[env_var] = osutils.set_or_unset_env(env_var, value)
+
+        def restore_environment():
+            for env_var, value in old_env.iteritems():
+                osutils.set_or_unset_env(env_var, value)
+
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         args = list(args)
-        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
-                         stderr=PIPE)
+
+        try:
+            # win32 subprocess doesn't support preexec_fn
+            # so we will avoid using it on all platforms, just to
+            # make sure the code path is used, and we don't break on win32
+            cleanup_environment()
+            process = Popen([sys.executable, bzr_path]+args,
+                             stdout=PIPE, stderr=PIPE)
+        finally:
+            restore_environment()
+            
         out = process.stdout.read()
         err = process.stderr.read()
+
+        if kwargs.get('universal_newlines', False):
+            out = out.replace('\r\n', '\n')
+            err = err.replace('\r\n', '\n')
+
         retcode = process.wait()
         supplied_retcode = kwargs.get('retcode', 0)
         if supplied_retcode is not None:
@@ -863,6 +975,7 @@ class TestCase(unittest.TestCase):
             sys.stderr = real_stderr
             sys.stdin = real_stdin
 
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_eleven)
     def merge(self, branch_from, wt_to):
         """A helper for tests to do a ui-less merge.
 
@@ -874,10 +987,10 @@ class TestCase(unittest.TestCase):
         base_rev = common_ancestor(branch_from.last_revision(),
                                    wt_to.branch.last_revision(),
                                    wt_to.branch.repository)
-        merge_inner(wt_to.branch, branch_from.basis_tree(), 
+        merge_inner(wt_to.branch, branch_from.basis_tree(),
                     wt_to.branch.repository.revision_tree(base_rev),
                     this_tree=wt_to)
-        wt_to.add_pending_merge(branch_from.last_revision())
+        wt_to.add_parent_tree_id(branch_from.last_revision())
 
 
 BzrTestBase = TestCase
@@ -948,12 +1061,15 @@ class TestCaseInTempDir(TestCase):
                 i = i + 1
                 continue
             else:
-                self.test_dir = candidate_dir
+                os.mkdir(candidate_dir)
+                self.test_home_dir = candidate_dir + '/home'
+                os.mkdir(self.test_home_dir)
+                self.test_dir = candidate_dir + '/work'
                 os.mkdir(self.test_dir)
                 os.chdir(self.test_dir)
                 break
-        os.environ['HOME'] = self.test_dir
-        os.environ['APPDATA'] = self.test_dir
+        os.environ['HOME'] = self.test_home_dir
+        os.environ['APPDATA'] = self.test_home_dir
         def _leaveDirectory():
             os.chdir(_currentdir)
         self.addCleanup(_leaveDirectory)
@@ -963,6 +1079,8 @@ class TestCaseInTempDir(TestCase):
 
         shape is a sequence of file specifications.  If the final
         character is '/', a directory is created.
+
+        This assumes that all the elements in the tree being built are new.
 
         This doesn't add anything to a branch.
         :param line_endings: Either 'binary' or 'native'
@@ -974,7 +1092,7 @@ class TestCaseInTempDir(TestCase):
                           VFS's. If the transport is readonly or None,
                           "." is opened automatically.
         """
-        # XXX: It's OK to just create them using forward slashes on windows?
+        # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
             transport = get_transport(".")
         for name in shape:
@@ -989,7 +1107,15 @@ class TestCaseInTempDir(TestCase):
                 else:
                     raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
-                transport.put(urlutils.escape(name), StringIO(content))
+                # Technically 'put()' is the right command. However, put
+                # uses an AtomicFile, which requires an extra rename into place
+                # As long as the files didn't exist in the past, append() will
+                # do the same thing as put()
+                # On jam's machine, make_kernel_like_tree is:
+                #   put:    4.5-7.5s (averaging 6s)
+                #   append: 2.9-4.5s
+                #   put_non_atomic: 2.9-4.5s
+                transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
@@ -1199,7 +1325,7 @@ def filter_suite_by_re(suite, pattern):
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
-              transport=None, lsprof_timed=None):
+              transport=None, lsprof_timed=None, bench_history=None):
     TestCaseInTempDir._TEST_NAME = name
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
@@ -1212,7 +1338,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             descriptions=0,
                             verbosity=verbosity,
                             keep_output=keep_output,
-                            pb=pb)
+                            pb=pb,
+                            bench_history=bench_history)
     runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
         suite = filter_suite_by_re(suite, pattern)
@@ -1224,8 +1351,15 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              keep_output=False,
              transport=None,
              test_suite_factory=None,
-             lsprof_timed=None):
+             lsprof_timed=None,
+             bench_history=None):
     """Run the whole test suite under the enhanced runner"""
+    # XXX: Very ugly way to do this...
+    # Disable warning about old formats because we don't want it to disturb
+    # any blackbox tests.
+    from bzrlib import repository
+    repository._deprecation_warning_done = True
+
     global default_transport
     if transport is None:
         transport = default_transport
@@ -1239,7 +1373,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
                      stop_on_failure=stop_on_failure, keep_output=keep_output,
                      transport=transport,
-                     lsprof_timed=lsprof_timed)
+                     lsprof_timed=lsprof_timed,
+                     bench_history=bench_history)
     finally:
         default_transport = old_transport
 
@@ -1253,10 +1388,12 @@ def test_suite():
     testmod_names = [
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_api',
+                   'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
+                   'bzrlib.tests.test_cache_utf8',
                    'bzrlib.tests.test_command',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
@@ -1295,6 +1432,7 @@ def test_suite():
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_repository',
+                   'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revisiontree',
@@ -1303,6 +1441,7 @@ def test_suite():
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
+                   'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_status',
@@ -1322,6 +1461,7 @@ def test_suite():
                    'bzrlib.tests.test_upgrade',
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
+                   'bzrlib.tests.test_version',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',

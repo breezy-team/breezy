@@ -18,6 +18,7 @@
 
 from cStringIO import StringIO
 
+from bzrlib import revision
 from bzrlib.tree import Tree
 
 
@@ -40,6 +41,7 @@ class RevisionTree(Tree):
         self._repository = branch
         self._weave_store = branch.weave_store
         self._inventory = inv
+        assert inv.root is not None
         self._revision_id = revision_id
 
     def get_parent_ids(self):
@@ -47,7 +49,11 @@ class RevisionTree(Tree):
 
         A RevisionTree's parents match the revision graph.
         """
-        parent_ids = self._repository.get_revision(self._revision_id).parent_ids
+        if self._revision_id == revision.NULL_REVISION:
+            return []
+        else:
+            parent_ids = self._repository.get_revision(
+                self._revision_id).parent_ids
         return parent_ids
         
     def get_revision_id(self):
