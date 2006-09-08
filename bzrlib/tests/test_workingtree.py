@@ -252,14 +252,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # this test could be factored into a subclass of tests common to both
         # format 3 and 4, but for now its not much of an issue as there is only one in common.
         t = self.get_transport()
-        url = self.get_url()
-        dir = bzrdir.BzrDirMetaFormat1().initialize(url)
-        repo = dir.create_repository()
-        branch = dir.create_branch()
-        try:
-            tree = workingtree.WorkingTreeFormat3().initialize(dir)
-        except errors.NotLocalUrl:
-            raise TestSkipped('Not a local URL')
+        tree = self.make_workingtree()
         self.assertIsDirectory('.bzr', t)
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)
@@ -269,6 +262,94 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertTrue(our_lock.peek())
         tree.unlock()
         self.assertEquals(our_lock.peek(), None)
+
+    def make_workingtree(self):
+        url = self.get_url()
+        dir = bzrdir.BzrDirMetaFormat1().initialize(url)
+        repo = dir.create_repository()
+        branch = dir.create_branch()
+        try:
+            return workingtree.WorkingTreeFormat4().initialize(dir)
+        except errors.NotLocalUrl:
+            raise TestSkipped('Not a local URL')
+
+    # TODO: test that dirstate also stores & retrieves the parent list of 
+    # workingtree-parent revisions, including when they have multiple parents.
+    # (in other words, the case when we're constructing a merge of 
+    # revisions which are themselves merges.)
+
+    # The simplest case is that the the workingtree's primary 
+    # parent tree can be retrieved.  This is required for all WorkingTrees, 
+    # and covered by the generic tests.
+
+    def test_dirstate_stores_all_parent_inventories(self):
+        tree = self.make_workingtree()
+
+        # We're going to build in tree a working tree 
+        # with three parent trees, with some files in common.  
+    
+        # We really don't want to do commit or merge in the new dirstate-based
+        # tree, because that might not work yet.  So instead we build
+        # revisions elsewhere and pull them across, doing by hand part of the
+        # work that merge would do.
+
+        subtree = self.make_branch_and_tree('subdir')
+        self.build_tree(['subdir/file-a',])
+        subtree.add(['file-a'], ['id-a'])
+        rev1 = subtree.commit('commit in subdir')
+        rev1_tree = subtree.basis_tree()
+
+        subtree2 = subtree.bzrdir.sprout('subdir2').open_workingtree()
+        self.build_tree(['subdir2/file-b'])
+        subtree2.add(['file-b'], ['id-b'])
+        rev2 = subtree2.commit('commit in subdir2')
+        rev2_tree = subtree2.basis_tree()
+
+        subtree.merge_from_branch(subtree2.branch)
+        rev3 = subtree.commit('merge from subdir2')
+        rev3_tree = subtree.basis_tree()
+
+        repo = tree.branch.repository
+        repo.fetch(subtree.branch.repository, rev3)
+        # will also pull the others...
+
+        # tree doesn't contain a text merge yet but we'll just
+        # set the parents as if a merge had taken place. 
+        # this should cause the tree data to be folded into the 
+        # dirstate.
+        ## import pdb;pdb.set_trace()
+        tree.set_parent_trees([
+            (rev1, rev1_tree),
+            (rev2, rev2_tree),
+            (rev3, rev3_tree), ])
+
+        # now we should be able to get them back out
+        self.assertTreesEqual(tree.revision_tree(rev1), rev1_tree)
+        self.assertTreesEqual(tree.revision_tree(rev2), rev2_tree)
+        self.assertTreesEqual(tree.revision_tree(rev3), rev3_tree)
+
+    def test_dirstate_doesnt_read_parents_from_repo_when_setting(self):
+        """Setting parent trees on a dirstate working tree takes
+        the trees it's given and doesn't need to read them from the 
+        repository.
+        """
+        tree = self.make_workingtree()
+
+        subtree = self.make_branch_and_tree('subdir')
+        rev1 = subtree.commit('commit in subdir')
+        rev1_tree = subtree.basis_tree()
+
+        tree.branch.pull(subtree.branch)
+
+        # break the repository's legs to make sure it only uses the trees
+        # it's given; any calls to forbidden methods will raise an 
+        # AssertionError
+        repo = tree.branch.repository
+        repo.get_revision = self.fail
+        repo.get_inventory = self.fail
+        repo.get_inventory_xml = self.fail
+
+        tree.set_parent_trees([(rev1, rev1_tree)])
 
 
 class TestFormat2WorkingTree(TestCaseWithTransport):

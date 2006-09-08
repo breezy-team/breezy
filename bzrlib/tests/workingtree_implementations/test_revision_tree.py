@@ -29,14 +29,6 @@ from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 class TestRevisionTree(TestCaseWithWorkingTree):
 
-    def assertTreesEqual(self, left, right):
-        """Check that left and right have the same content and properties."""
-        # we use a tree delta to check for equality of the content, and we
-        # manually check for equality of other things such as the parents list.
-        self.assertEqual(left.get_parent_ids(), right.get_parent_ids())
-        differences = left.changes_from(right)
-        self.assertFalse(differences.has_changed())
-
     def test_get_zeroth_basis_tree_via_revision_tree(self):
         tree = self.make_branch_and_tree('.')
         try:
