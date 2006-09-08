@@ -825,6 +825,19 @@ class HttpDavTransport(HttpTransportBase):
         # disabled it for HTTP
         return Transport.copy_to(self, relpaths, other, mode=mode, pb=pb)
 
+    def lock_write(self, relpath):
+        """Lock the given file for exclusive access.
+        :return: A lock object, which should be passed to Transport.unlock()
+        """
+        # We follow the same path as FTP, which just returns a BogusLock
+        # object. We don't explicitly support locking a specific file.
+        # TODO: jam 2006-09-08 SFTP implements this by opening exclusive 
+        #       "relpath + '.lock_write'". Does DAV implement anything like
+        #       O_EXCL?
+        #       Alternatively, LocalTransport uses an OS lock to lock the file
+        #       and WebDAV supports some sort of locking.
+        return self.lock_read(relpath)
+
     def rmdir(self, relpath):
         """See Transport.rmdir."""
         self.delete(relpath) # That was easy thanks DAV
