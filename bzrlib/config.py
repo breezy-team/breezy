@@ -281,7 +281,7 @@ class IniBasedConfig(Config):
             return self._get_parser().get_value(self._get_section(),
                                                 option_name)
         except KeyError:
-            pass
+            return None
 
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
@@ -379,13 +379,8 @@ class LocationConfig(IniBasedConfig):
             location = urlutils.local_path_from_url(location)
         self.location = location
 
-    def _get_section(self):
-        """Get the section we should look in for config items.
-
-        Returns None if none exists. 
-        TODO: perhaps return a NullSection that thunks through to the 
-              global config.
-        """
+    def _get_matching_sections(self):
+        """Return an ordered list of section names matching this location."""
         sections = self._get_parser()
         location_names = self.location.split('/')
         if self.location.endswith('/'):
@@ -423,10 +418,18 @@ class LocationConfig(IniBasedConfig):
                 except KeyError:
                     pass
             matches.append((len(section_names), section))
-        if not len(matches):
-            return None
         matches.sort(reverse=True)
-        return matches[0][1]
+        return [section for (length, section) in matches]
+
+    def _get_user_option(self, option_name):
+        """See Config._get_user_option."""
+        for section in self._get_matching_sections():
+            try:
+                return self._get_parser().get_value(section, option_name)
+            except KeyError:
+                pass
+        else:
+            return None
 
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
