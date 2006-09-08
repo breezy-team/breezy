@@ -90,7 +90,7 @@ class SampleTreeFormat(workingtree.WorkingTreeFormat):
     def initialize(self, a_bzrdir, revision_id=None):
         """Sample branches cannot be created."""
         t = a_bzrdir.get_workingtree_transport(self)
-        t.put('format', StringIO(self.get_format_string()))
+        t.put_bytes('format', self.get_format_string())
         return 'A tree'
 
     def is_supported(self):
@@ -209,7 +209,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         control.create_branch()
         tree = workingtree.WorkingTreeFormat3().initialize(control)
         tree._control_files._transport.delete("pending-merges")
-        self.assertEqual([], tree.pending_merges())
+        self.assertEqual([], tree.get_parent_ids())
 
 
 class TestWorkingTreeFormat4(TestCaseWithTransport):

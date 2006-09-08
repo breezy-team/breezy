@@ -14,7 +14,6 @@ import bzrlib.errors as errors
 from bzrlib.option import Option
 from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note
 from bzrlib import urlutils
 
@@ -142,8 +141,12 @@ class cmd_bundle_revisions(Command):
             fileobj = file(output, 'wb')
         else:
             fileobj = sys.stdout
-        write_bundle(target_branch.repository, target_revision, base_revision,
-                     fileobj)
+        target_branch.repository.lock_read()
+        try:
+            write_bundle(target_branch.repository, target_revision,
+                         base_revision, fileobj)
+        finally:
+            target_branch.repository.unlock()
 
 
 class cmd_verify_changeset(Command):

@@ -17,6 +17,7 @@
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
+import optparse
 import re
 
 from bzrlib.trace import warning
@@ -31,25 +32,25 @@ def _parse_revision_str(revstr):
     each revision specifier supplied.
 
     >>> _parse_revision_str('234')
-    [<RevisionSpec_int 234>]
+    [<RevisionSpec_revno 234>]
     >>> _parse_revision_str('234..567')
-    [<RevisionSpec_int 234>, <RevisionSpec_int 567>]
+    [<RevisionSpec_revno 234>, <RevisionSpec_revno 567>]
     >>> _parse_revision_str('..')
     [<RevisionSpec None>, <RevisionSpec None>]
     >>> _parse_revision_str('..234')
-    [<RevisionSpec None>, <RevisionSpec_int 234>]
+    [<RevisionSpec None>, <RevisionSpec_revno 234>]
     >>> _parse_revision_str('234..')
-    [<RevisionSpec_int 234>, <RevisionSpec None>]
+    [<RevisionSpec_revno 234>, <RevisionSpec None>]
     >>> _parse_revision_str('234..456..789') # Maybe this should be an error
-    [<RevisionSpec_int 234>, <RevisionSpec_int 456>, <RevisionSpec_int 789>]
+    [<RevisionSpec_revno 234>, <RevisionSpec_revno 456>, <RevisionSpec_revno 789>]
     >>> _parse_revision_str('234....789') #Error ?
-    [<RevisionSpec_int 234>, <RevisionSpec None>, <RevisionSpec_int 789>]
+    [<RevisionSpec_revno 234>, <RevisionSpec None>, <RevisionSpec_revno 789>]
     >>> _parse_revision_str('revid:test@other.com-234234')
     [<RevisionSpec_revid revid:test@other.com-234234>]
     >>> _parse_revision_str('revid:test@other.com-234234..revid:test@other.com-234235')
     [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revid revid:test@other.com-234235>]
     >>> _parse_revision_str('revid:test@other.com-234234..23')
-    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_int 23>]
+    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revno 23>]
     >>> _parse_revision_str('date:2005-04-12')
     [<RevisionSpec_date date:2005-04-12>]
     >>> _parse_revision_str('date:2005-04-12 12:24:33')
@@ -59,40 +60,29 @@ def _parse_revision_str(revstr):
     >>> _parse_revision_str('date:2005-04-12,12:24:33')
     [<RevisionSpec_date date:2005-04-12,12:24:33>]
     >>> _parse_revision_str('-5..23')
-    [<RevisionSpec_int -5>, <RevisionSpec_int 23>]
+    [<RevisionSpec_revno -5>, <RevisionSpec_revno 23>]
     >>> _parse_revision_str('-5')
-    [<RevisionSpec_int -5>]
+    [<RevisionSpec_revno -5>]
     >>> _parse_revision_str('123a')
     Traceback (most recent call last):
       ...
-    BzrError: No namespace registered for string: '123a'
+    NoSuchRevisionSpec: No namespace registered for string: '123a'
     >>> _parse_revision_str('abc')
     Traceback (most recent call last):
       ...
-    BzrError: No namespace registered for string: 'abc'
+    NoSuchRevisionSpec: No namespace registered for string: 'abc'
     >>> _parse_revision_str('branch:../branch2')
     [<RevisionSpec_branch branch:../branch2>]
     >>> _parse_revision_str('branch:../../branch2')
     [<RevisionSpec_branch branch:../../branch2>]
     >>> _parse_revision_str('branch:../../branch2..23')
-    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_int 23>]
+    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_revno 23>]
     """
     # TODO: Maybe move this into revisionspec.py
-    old_format_re = re.compile('\d*:\d*')
-    m = old_format_re.match(revstr)
     revs = []
-    if m:
-        warning('Colon separator for revision numbers is deprecated.'
-                ' Use .. instead')
-        for rev in revstr.split(':'):
-            if rev:
-                revs.append(RevisionSpec(int(rev)))
-            else:
-                revs.append(RevisionSpec(None))
-    else:
-        sep = re.compile("\\.\\.(?!/)")
-        for x in sep.split(revstr):
-            revs.append(RevisionSpec(x or None))
+    sep = re.compile("\\.\\.(?!/)")
+    for x in sep.split(revstr):
+        revs.append(RevisionSpec.from_string(x or None))
     return revs
 
 
@@ -152,6 +142,68 @@ class Option(object):
         for short, option in Option.SHORT_OPTIONS.iteritems():
             if option is self:
                 return short
+
+    def get_negation_name(self):
+        if self.name.startswith('no-'):
+            return self.name[3:]
+        else:
+            return 'no-' + self.name
+
+    def add_option(self, parser, short_name):
+        """Add this option to an Optparse parser"""
+        option_strings = ['--%s' % self.name]
+        if short_name is not None:
+            option_strings.append('-%s' % short_name)
+        optargfn = self.type
+        if optargfn is None:
+            parser.add_option(action='store_true', dest=self.name, 
+                              help=self.help,
+                              default=OptionParser.DEFAULT_VALUE,
+                              *option_strings)
+            negation_strings = ['--%s' % self.get_negation_name()]
+            parser.add_option(action='store_false', dest=self.name, 
+                              help=optparse.SUPPRESS_HELP, *negation_strings)
+        else:
+            parser.add_option(action='callback', 
+                              callback=self._optparse_callback, 
+                              type='string', metavar=self.argname.upper(),
+                              help=self.help,
+                              default=OptionParser.DEFAULT_VALUE, 
+                              *option_strings)
+
+    def _optparse_callback(self, option, opt, value, parser):
+        setattr(parser.values, self.name, self.type(value))
+
+    def iter_switches(self):
+        """Iterate through the list of switches provided by the option
+        
+        :return: an iterator of (name, short_name, argname, help)
+        """
+        argname =  self.argname
+        if argname is not None:
+            argname = argname.upper()
+        yield self.name, self.short_name(), argname, self.help
+
+
+class OptionParser(optparse.OptionParser):
+    """OptionParser that raises exceptions instead of exiting"""
+
+    DEFAULT_VALUE = object()
+
+    def error(self, message):
+        raise BzrCommandError(message)
+
+
+def get_optparser(options):
+    """Generate an optparse parser for bzrlib-style options"""
+
+    parser = OptionParser()
+    parser.remove_option('--help')
+    short_options = dict((k.name, v) for v, k in 
+                         Option.SHORT_OPTIONS.iteritems())
+    for option in options.itervalues():
+        option.add_option(parser, short_options.get(option.name))
+    return parser
 
 
 def _global_option(name, **kwargs):

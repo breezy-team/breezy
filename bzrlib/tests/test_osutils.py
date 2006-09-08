@@ -131,6 +131,25 @@ class TestOSUtils(TestCaseInTempDir):
             finally:
                 os.remove('socket')
 
+    def test_get_umask(self):
+        if sys.platform == 'win32':
+            # umask always returns '0', no way to set it
+            self.assertEqual(0, osutils.get_umask())
+            return
+
+        orig_umask = osutils.get_umask()
+        try:
+            os.umask(0222)
+            self.assertEqual(0222, osutils.get_umask())
+            os.umask(0022)
+            self.assertEqual(0022, osutils.get_umask())
+            os.umask(0002)
+            self.assertEqual(0002, osutils.get_umask())
+            os.umask(0027)
+            self.assertEqual(0027, osutils.get_umask())
+        finally:
+            os.umask(orig_umask)
+
 
 class TestSafeUnicode(TestCase):
 
@@ -420,6 +439,59 @@ class TestWalkDirs(TestCaseInTempDir):
             sorted(original_paths, cmp=osutils.compare_paths_prefix_order))
 
 
+class TestCopyTree(TestCaseInTempDir):
+    
+    def test_copy_basic_tree(self):
+        self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
+        osutils.copy_tree('source', 'target')
+        self.assertEqual(['a', 'b'], os.listdir('target'))
+        self.assertEqual(['c'], os.listdir('target/b'))
+
+    def test_copy_tree_target_exists(self):
+        self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c',
+                         'target/'])
+        osutils.copy_tree('source', 'target')
+        self.assertEqual(['a', 'b'], os.listdir('target'))
+        self.assertEqual(['c'], os.listdir('target/b'))
+
+    def test_copy_tree_symlinks(self):
+        if not osutils.has_symlinks():
+            return
+        self.build_tree(['source/'])
+        os.symlink('a/generic/path', 'source/lnk')
+        osutils.copy_tree('source', 'target')
+        self.assertEqual(['lnk'], os.listdir('target'))
+        self.assertEqual('a/generic/path', os.readlink('target/lnk'))
+
+    def test_copy_tree_handlers(self):
+        processed_files = []
+        processed_links = []
+        def file_handler(from_path, to_path):
+            processed_files.append(('f', from_path, to_path))
+        def dir_handler(from_path, to_path):
+            processed_files.append(('d', from_path, to_path))
+        def link_handler(from_path, to_path):
+            processed_links.append((from_path, to_path))
+        handlers = {'file':file_handler,
+                    'directory':dir_handler,
+                    'symlink':link_handler,
+                   }
+
+        self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
+        if osutils.has_symlinks():
+            os.symlink('a/generic/path', 'source/lnk')
+        osutils.copy_tree('source', 'target', handlers=handlers)
+
+        self.assertEqual([('d', 'source', 'target'),
+                          ('f', 'source/a', 'target/a'),
+                          ('d', 'source/b', 'target/b'),
+                          ('f', 'source/b/c', 'target/b/c'),
+                         ], processed_files)
+        self.failIfExists('target')
+        if osutils.has_symlinks():
+            self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
+
+
 class TestTerminalEncoding(TestCase):
     """Test the auto-detection of proper terminal encoding."""
 
@@ -456,4 +528,64 @@ class TestTerminalEncoding(TestCase):
         sys.stdin.encoding = None
         # and in the worst case, use bzrlib.user_encoding
         self.assertEqual('user_encoding', osutils.get_terminal_encoding())
+
+
+class TestSetUnsetEnv(TestCase):
+    """Test updating the environment"""
+
+    def setUp(self):
+        super(TestSetUnsetEnv, self).setUp()
+
+        self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'),
+                         'Environment was not cleaned up properly.'
+                         ' Variable BZR_TEST_ENV_VAR should not exist.')
+        def cleanup():
+            if 'BZR_TEST_ENV_VAR' in os.environ:
+                del os.environ['BZR_TEST_ENV_VAR']
+
+        self.addCleanup(cleanup)
+
+    def test_set(self):
+        """Test that we can set an env variable"""
+        old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', 'foo')
+        self.assertEqual(None, old)
+        self.assertEqual('foo', os.environ.get('BZR_TEST_ENV_VAR'))
+
+    def test_double_set(self):
+        """Test that we get the old value out"""
+        osutils.set_or_unset_env('BZR_TEST_ENV_VAR', 'foo')
+        old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', 'bar')
+        self.assertEqual('foo', old)
+        self.assertEqual('bar', os.environ.get('BZR_TEST_ENV_VAR'))
+
+    def test_unicode(self):
+        """Environment can only contain plain strings
+        
+        So Unicode strings must be encoded.
+        """
+        # Try a few different characters, to see if we can get
+        # one that will be valid in the user_encoding
+        possible_vals = [u'm\xb5', u'\xe1', u'\u0410']
+        for uni_val in possible_vals:
+            try:
+                env_val = uni_val.encode(bzrlib.user_encoding)
+            except UnicodeEncodeError:
+                # Try a different character
+                pass
+            else:
+                break
+        else:
+            raise TestSkipped('Cannot find a unicode character that works in'
+                              ' encoding %s' % (bzrlib.user_encoding,))
+
+        old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', uni_val)
+        self.assertEqual(env_val, os.environ.get('BZR_TEST_ENV_VAR'))
+
+    def test_unset(self):
+        """Test that passing None will remove the env var"""
+        osutils.set_or_unset_env('BZR_TEST_ENV_VAR', 'foo')
+        old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', None)
+        self.assertEqual('foo', old)
+        self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'))
+        self.failIf('BZR_TEST_ENV_VAR' in os.environ)
 

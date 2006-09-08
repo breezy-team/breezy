@@ -1,6 +1,4 @@
 # This file is for listing TODOs for branches that are being worked on.
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
-
-Test osutils.file_kind for more than just regular files and directories
 Set the introduction version of WorkingTreeFormat4 in workingtree.py.

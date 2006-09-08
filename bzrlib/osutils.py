@@ -53,6 +53,14 @@ from bzrlib.symbol_versioning import (deprecated_function,
 from bzrlib.trace import mutter
 
 
+# On win32, O_BINARY is used to indicate the file should
+# be opened in binary mode, rather than text mode.
+# On other platforms, O_BINARY doesn't exist, because
+# they always open in binary mode, so it is okay to
+# OR with 0 on those platforms
+O_BINARY = getattr(os, 'O_BINARY', 0)
+
+
 def make_readonly(filename):
     """Make a filename read-only."""
     mod = os.stat(filename).st_mode
@@ -116,6 +124,16 @@ def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
         if getattr(e, 'errno', None) == errno.ENOENT:
             raise bzrlib.errors.NoSuchFile(f)
         raise
+
+
+def get_umask():
+    """Return the current umask"""
+    # Assume that people aren't messing with the umask while running
+    # XXX: This is not thread safe, but there is no way to get the
+    #      umask without setting it
+    umask = os.umask(0)
+    os.umask(umask)
+    return umask
 
 
 def kind_marker(kind):
@@ -849,8 +867,28 @@ def terminal_width():
 
     return width
 
+
 def supports_executable():
     return sys.platform != "win32"
+
+
+def set_or_unset_env(env_variable, value):
+    """Modify the environment, setting or removing the env_variable.
+
+    :param env_variable: The environment variable in question
+    :param value: The value to set the environment to. If None, then
+        the variable will be removed.
+    :return: The original value of the environment variable.
+    """
+    orig_val = os.environ.get(env_variable)
+    if value is None:
+        if orig_val is not None:
+            del os.environ[env_variable]
+    else:
+        if isinstance(value, unicode):
+            value = value.encode(bzrlib.user_encoding)
+        os.environ[env_variable] = value
+    return orig_val
 
 
 _validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
@@ -927,6 +965,48 @@ def walkdirs(top, prefix=""):
                 pending.append(dir)
 
 
+def copy_tree(from_path, to_path, handlers={}):
+    """Copy all of the entries in from_path into to_path.
+
+    :param from_path: The base directory to copy. 
+    :param to_path: The target directory. If it does not exist, it will
+        be created.
+    :param handlers: A dictionary of functions, which takes a source and
+        destinations for files, directories, etc.
+        It is keyed on the file kind, such as 'directory', 'symlink', or 'file'
+        'file', 'directory', and 'symlink' should always exist.
+        If they are missing, they will be replaced with 'os.mkdir()',
+        'os.readlink() + os.symlink()', and 'shutil.copy2()', respectively.
+    """
+    # Now, just copy the existing cached tree to the new location
+    # We use a cheap trick here.
+    # Absolute paths are prefixed with the first parameter
+    # relative paths are prefixed with the second.
+    # So we can get both the source and target returned
+    # without any extra work.
+
+    def copy_dir(source, dest):
+        os.mkdir(dest)
+
+    def copy_link(source, dest):
+        """Copy the contents of a symlink"""
+        link_to = os.readlink(source)
+        os.symlink(link_to, dest)
+
+    real_handlers = {'file':shutil.copy2,
+                     'symlink':copy_link,
+                     'directory':copy_dir,
+                    }
+    real_handlers.update(handlers)
+
+    if not os.path.exists(to_path):
+        real_handlers['directory'](from_path, to_path)
+
+    for dir_info, entries in walkdirs(from_path, prefix=to_path):
+        for relpath, name, kind, st, abspath in entries:
+            real_handlers[kind](abspath, relpath)
+
+
 def path_prefix_key(path):
     """Generate a prefix-order path key for path.
 
@@ -940,3 +1020,44 @@ def compare_paths_prefix_order(path_a, path_b):
     key_a = path_prefix_key(path_a)
     key_b = path_prefix_key(path_b)
     return cmp(key_a, key_b)
+
+
+_cached_user_encoding = None
+
+
+def get_user_encoding():
+    """Find out what the preferred user encoding is.
+
+    This is generally the encoding that is used for command line parameters
+    and file contents. This may be different from the terminal encoding
+    or the filesystem encoding.
+
+    :return: A string defining the preferred user encoding
+    """
+    global _cached_user_encoding
+    if _cached_user_encoding is not None:
+        return _cached_user_encoding
+
+    if sys.platform == 'darwin':
+        # work around egregious python 2.4 bug
+        sys.platform = 'posix'
+        try:
+            import locale
+        finally:
+            sys.platform = 'darwin'
+    else:
+        import locale
+
+    try:
+        _cached_user_encoding = locale.getpreferredencoding()
+    except locale.Error, e:
+        sys.stderr.write('bzr: warning: %s\n'
+                         '  Could not what text encoding to use.\n'
+                         '  This error usually means your Python interpreter\n'
+                         '  doesn\'t support the locale set by $LANG (%s)\n'
+                         "  Continuing with ascii encoding.\n"
+                         % (e, os.environ.get('LANG')))
+
+    if _cached_user_encoding is None:
+        _cached_user_encoding = 'ascii'
+    return _cached_user_encoding
