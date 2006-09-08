@@ -375,12 +375,7 @@ class HttpServer_Dav(HttpServer):
         super(HttpServer_Dav,self).__init__(TestingDAVRequestHandler)
 
     # urls returned by this server should require the webdav client impl
-
-    # FIXME: We should create two classes, one for each client
-    # implementation, but we will deprecate pycurl's one, so who
-    # cares ?
-    _url_protocol = 'http+webdav+urllib'
-    #_url_protocol = 'http+webdav+pycurl'
+    _url_protocol = 'http+webdav'
 
 class HttpServer_Dav_append(HttpServer_Dav):
     """Subclass of HttpServer that gives http+webdav urls.
@@ -398,4 +393,4 @@ class HttpServer_Dav_append(HttpServer_Dav):
         super(HttpServer_Dav,self).__init__(TestingDAVAppendRequestHandler)
 
     # urls returned by this server should require the webdav client impl
-    _url_protocol = 'http+webdav+urllib'
+    _url_protocol = 'http+webdav'

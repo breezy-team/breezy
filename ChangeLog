@@ -1,4 +1,33 @@
 2006-09-08  Vincent Ladeuil  <v.ladeuil@alplog.fr>
+        Simplify urllib implementation. Drop pycurl support.
+
+	* webdav.py:
+	Simplify design. Drop pycurl support.
+	(HttpDavTransport_pycurl): Deleted. Droped. Use bzr if you're
+	interested :)
+	(URLDirector): Deleted.
+	(build_url_director): Deleted.
+	(ConnectionHandler): Added, but mostly inactive. Reworked to
+	capture connection on the fly instead of always injecting them.
+	(HTTPHandler): New class. Far simpler to override do_open.
+	(HTTPErrorProcessor): Don't let the errors we are interested be
+	handled by the framework.
+	(HttpDavTransport._opener): New attribute.
+	(HttpDavTransport._first_connection): Now the connection comes
+	from the request. Or not. But we don't create it anymore.
+	(HttpDavTransport._perform): Mostly transfered in
+	HTTPHandler.do_open.
+	(HTTPErrorProcessor): New class.
+	(get_test_permutations): Drop pycurl.
+
+	* test_webdav.py:
+	(HttpServer_Dav._url_protocol): Drop pycurl.
+	(HttpServer_Dav_append._url_protocol): Drop pycurl.
+
+	* __init__.py: 
+	Drop pycurl.
+
+2006-09-08-1  Vincent Ladeuil  <v.ladeuil@alplog.fr>
         First urllib-based implementation able to branch bzr.dev.
 
 	Test server more versatile too.
@@ -35,7 +64,6 @@
 
 	* __init__.py: 
 	Register transports for the urllib-based implementation.
-
 
 2006-09-07  Vincent Ladeuil  <v.ladeuil@alplog.fr>
         Takes jam *_{file|bytes}[_non_atomic] patch into account.
