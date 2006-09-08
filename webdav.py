@@ -77,10 +77,10 @@ from cStringIO import StringIO
 import httplib
 import os
 import random
+import socket
 import time
 import urllib
 import urllib2
-import socket
 
 import bzrlib
 from bzrlib.errors import (
@@ -114,6 +114,7 @@ from bzrlib.transport.http.response import (
 
 register_urlparse_netloc_protocol('http+webdav')
 register_urlparse_netloc_protocol('https+webdav')
+
 
 # We define our own Response class to avoid the problems with the
 # addinfourl objects
@@ -151,9 +152,12 @@ class HTTPConnection(httplib.HTTPConnection):
             self.close()
             raise
 
-if hasattr(httplib, 'HTTPS'):
+
+_have_https = (getattr(httplib, 'HTTPS', None) is not None)
+
+if _have_https:
     class HTTPSConnection(httplib.HTTPSConnection, HTTPConnection):
-        getresponse = HTTPConnection.getresponse
+    getresponse = HTTPConnection.getresponse
 
 
 class Request(urllib2.Request):
@@ -238,9 +242,10 @@ class ConnectionHandler(urllib2.BaseHandler):
     def http_request(self, request):
         return self.capture_connection(request, HTTPConnection)
 
-    if hasattr(httplib, 'HTTPS'):
+    if _have_https:
         def https_request(self, request):
             return self.capture_connection(request, HTTPSConnection)
+
 
 class HTTPHandler(urllib2.HTTPHandler):
 
@@ -317,11 +322,12 @@ class HTTPHandler(urllib2.HTTPHandler):
         return self.do_open(HTTPConnection, request)
 
 
-if hasattr(httplib, 'HTTPS'):
+if _have_https:
     class HTTPSHandler(urllib2.HTTPSHandler, HTTPHandler):
 
         def https_open(self, request):
             return self.do_open(HTTPSConnection, request)
+
 
 # The errors we want to handle in the Transport object 
 class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
@@ -352,25 +358,33 @@ class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
 # redirection mechanism anyway.
 
 class GETRequest(Request):
+
     method = 'GET'
+
     def __init__(self, url):
         Request.__init__(self, url)
 
 
 class HEADRequest(Request):
+
     method = 'HEAD'
+
     def __init__(self, url):
         Request.__init__(self, url)
 
 
 class MKCOLRequest(Request):
+
     method = 'MKCOL'
+
     def __init__(self, url):
         Request.__init__(self, url)
 
 
 class PUTRequest(Request):
+
     method = 'PUT'
+
     def __init__(self, url, data):
         Request.__init__(self, url, data,
                          # FIXME: Why ? *we* send, we do not receive :-/
@@ -387,19 +401,25 @@ class PUTRequest(Request):
 
 
 class COPYRequest(Request):
+
     method = 'COPY'
+
     def __init__(self, url_from, url_to):
         Request.__init__(self, url_from, None, {'Destination': url_to})
 
 
 class MOVERequest(Request):
+
     method = 'MOVE'
+
     def __init__(self, url_from, url_to):
         Request.__init__(self, url_from, None, {'Destination': url_to})
 
 
 class DELETERequest(Request):
+
     method = 'DELETE'
+
     def __init__(self, url):
         Request.__init__(self, url)
 
@@ -799,7 +819,9 @@ class HttpDavTransport(HttpTransportBase):
 
         return before
 
+
 mutter("webdav plugin transports registered")
+
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
