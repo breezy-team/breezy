@@ -30,13 +30,20 @@ import urllib
 from zlib import adler32
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    symbol_versioning,
+    urlutils,
+    )
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
-from bzrlib.symbol_versioning import (deprecated_function, zero_eight)
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    zero_eight,
+    zero_eleven,
+    )
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 from bzrlib.transport.local import LocalTransport
-import bzrlib.urlutils as urlutils
 
 ######################################################################
 # stores
@@ -164,9 +171,13 @@ class TransportStore(Store):
     def add(self, f, fileid, suffix=None):
         """Add contents of a file into the store.
 
-        f -- A file-like object, or string
+        f -- A file-like object
         """
         mutter("add store entry %r", fileid)
+        if isinstance(f, str):
+            symbol_versioning.warn(zero_eleven % 'Passing a string to Store.add',
+                DeprecationWarning, stacklevel=2)
+            f = StringIO(f)
         
         names = self._id_to_names(fileid, suffix)
         if self._transport.has_any(names):
@@ -177,7 +188,6 @@ class TransportStore(Store):
         # if we find a time where it fails, (because the dir
         # doesn't exist), then create the dir, and try again
         self._add(names[0], f)
-
 
     def _add(self, relpath, f):
         """Actually add the file to the given location.

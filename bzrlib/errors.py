@@ -174,6 +174,15 @@ class InvalidRevisionId(BzrNewError):
         self.branch = branch
 
 
+class NoSuchId(BzrNewError):
+    """The file id %(file_id)s is not present in the tree %(tree)s."""
+    
+    def __init__(self, tree, file_id):
+        BzrNewError.__init__(self)
+        self.file_id = file_id
+        self.tree = tree
+
+
 class NoWorkingTree(BzrNewError):
     """No WorkingTree exists for %(base)s."""
     
@@ -967,6 +976,10 @@ class ParamikoNotPresent(DependencyNotPresent):
 
     def __init__(self, error):
         DependencyNotPresent.__init__(self, 'paramiko', error)
+
+
+class PointlessMerge(BzrNewError):
+    """Nothing to merge."""
 
 
 class UninitializableFormat(BzrNewError):

@@ -867,8 +867,28 @@ def terminal_width():
 
     return width
 
+
 def supports_executable():
     return sys.platform != "win32"
+
+
+def set_or_unset_env(env_variable, value):
+    """Modify the environment, setting or removing the env_variable.
+
+    :param env_variable: The environment variable in question
+    :param value: The value to set the environment to. If None, then
+        the variable will be removed.
+    :return: The original value of the environment variable.
+    """
+    orig_val = os.environ.get(env_variable)
+    if value is None:
+        if orig_val is not None:
+            del os.environ[env_variable]
+    else:
+        if isinstance(value, unicode):
+            value = value.encode(bzrlib.user_encoding)
+        os.environ[env_variable] = value
+    return orig_val
 
 
 _validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')

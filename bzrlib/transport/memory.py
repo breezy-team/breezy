@@ -98,8 +98,8 @@ class MemoryTransport(Transport):
         else:
             return temp_t.base[:-1]
 
-    def append(self, relpath, f, mode=None):
-        """See Transport.append()."""
+    def append_file(self, relpath, f, mode=None):
+        """See Transport.append_file()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
         orig_content, orig_mode = self._files.get(_abspath, ("", None))
@@ -133,8 +133,8 @@ class MemoryTransport(Transport):
             raise NoSuchFile(relpath)
         return StringIO(self._files[_abspath][0])
 
-    def put(self, relpath, f, mode=None):
-        """See Transport.put()."""
+    def put_file(self, relpath, f, mode=None):
+        """See Transport.put_file()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
         self._files[_abspath] = (f.read(), mode)

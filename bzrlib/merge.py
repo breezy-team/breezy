@@ -186,7 +186,13 @@ class Merger(object):
         self.this_tree.add_parent_tree((self.other_rev_id, self.other_tree))
 
     def set_other(self, other_revision):
-        other_branch, self.other_tree = _get_tree(other_revision, 
+        """Set the revision and tree to merge from.
+
+        This sets the other_tree, other_rev_id, other_basis attributes.
+
+        :param other_revision: The [path, revision] list to merge from.
+        """
+        other_branch, self.other_tree = _get_tree(other_revision,
                                                   self.this_branch)
         if other_revision[1] == -1:
             self.other_rev_id = other_branch.last_revision()
@@ -208,6 +214,10 @@ class Merger(object):
         self.set_base([None, None])
 
     def set_base(self, base_revision):
+        """Set the base revision to use for the merge.
+
+        :param base_revision: A 2-list containing a path and revision number.
+        """
         mutter("doing merge() with no base_revision specified")
         if base_revision == [None, None]:
             try:
@@ -913,7 +923,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
         assert not interesting_ids, ('Only supply interesting_ids'
                                      ' or interesting_files')
         merger._set_interesting_files(interesting_files)
-    merger.show_base = show_base 
+    merger.show_base = show_base
     merger.reprocess = reprocess
     merger.other_rev_id = other_rev_id
     merger.other_basis = other_rev_id

@@ -1088,6 +1088,7 @@ class RepositoryFormat(object):
                                   control_files,
                                   prefixed=True,
                                   versionedfile_class=WeaveFile,
+                                  versionedfile_kwargs={},
                                   escaped=False):
         weave_transport = control_files._transport.clone(name)
         dir_mode = control_files._dir_mode
@@ -1096,6 +1097,7 @@ class RepositoryFormat(object):
                                   dir_mode=dir_mode,
                                   file_mode=file_mode,
                                   versionedfile_class=versionedfile_class,
+                                  versionedfile_kwargs=versionedfile_kwargs,
                                   escaped=escaped)
 
     def initialize(self, a_bzrdir, shared=False):
@@ -1490,7 +1492,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
             prefixed=False,
             precious=True,
             versionedfile_class=KnitVersionedFile,
-            versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory()},
+            versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory(),},
             escaped=True,
             )
         return KnitRevisionStore(versioned_file_store)
@@ -1501,6 +1503,11 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
                                               transport,
                                               control_files,
                                               versionedfile_class=KnitVersionedFile,
+                                              versionedfile_kwargs={
+                                                  'create_parent_dir':True,
+                                                  'delay_create':True,
+                                                  'dir_mode':control_files._dir_mode,
+                                              },
                                               escaped=True)
 
     def initialize(self, a_bzrdir, shared=False):
