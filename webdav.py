@@ -72,12 +72,19 @@ This should enable remote push operations.
 # be defined as a  daughter of InvalidHttpResponse) but what will
 # the upper layers do ?
 
+# TODO: 20060908 All *_file functions are defined in terms of *_bytes
+# because we have to read the file to create a proper PUT request.
+# Is it possible to define PUT with a file-like object, so that
+# we don't have to potentially read in and hold onto potentially
+# 600MB of file contents?
+
 import bisect
 from cStringIO import StringIO
 import httplib
 import os
 import random
 import socket
+import sys
 import time
 import urllib
 import urllib2
@@ -119,6 +126,12 @@ register_urlparse_netloc_protocol('https+webdav')
 # We define our own Response class to avoid the problems with the
 # addinfourl objects
 class HTTPResponse(httplib.HTTPResponse):
+    """Custom HTTPResponse, to avoid needing to decorate.
+
+    httplib prefers to decorate the returned objects, rather
+    than using a custom object.
+    """
+
     def __init__(self, *args, **kwargs):
         httplib.HTTPResponse.__init__(self, *args, **kwargs)
 
@@ -129,6 +142,8 @@ class HTTPResponse(httplib.HTTPResponse):
 # We need to define our own HTTPConnections objects to work
 # around a weird problem. FIXME: Still need more investigation.
 class HTTPConnection(httplib.HTTPConnection):
+    """A custom HTTP Connection, which can reset itself on a bad response"""
+
     _getresponse = httplib.HTTPConnection.getresponse
     response_class = HTTPResponse
 
@@ -138,7 +153,7 @@ class HTTPConnection(httplib.HTTPConnection):
         If the response can't be acquired, the request itself may
         as well be considered aborted, so we reset the connection
         object to be able to send a new request.
-        
+
         httplib should be responsible for that, it's not
         currently (python 2.4.3 httplib (not versioned) , so we
         try to workaround it.
@@ -157,17 +172,25 @@ _have_https = (getattr(httplib, 'HTTPS', None) is not None)
 
 if _have_https:
     class HTTPSConnection(httplib.HTTPSConnection, HTTPConnection):
-    getresponse = HTTPConnection.getresponse
+        getresponse = HTTPConnection.getresponse
 
 
 class Request(urllib2.Request):
+    """A custom Request object.
+
+    urllib2.Request objects generally set their information based
+    on the data.  We set the method statically based on class, not
+    depending on the 'data' value as urllib2 does. We have numerous
+    different requests with or without data.
+
+    Also, the Request object tracks the connection the request will
+    be made on.
+    """
+
     def __init__(self, url, data=None, headers={}):
         urllib2.Request.__init__(self, url, data, headers)
         self.connection = None
 
-    # We set the method statically, not depending on the 'data'
-    # value as urllib2 does. We have numerous different requests
-    # with or without data
     def get_method(self):
         return self.method
 
@@ -248,6 +271,12 @@ class ConnectionHandler(urllib2.BaseHandler):
 
 
 class HTTPHandler(urllib2.HTTPHandler):
+    """A custom handler for HTTP(S) requests.
+
+    We overrive urllib2.HTTPHandler to get a better control of
+    the connection and the ability to implement new request
+    types.
+    """
 
     _default_headers = {'Pragma': 'no-cache',
                         'Cache-control': 'max-age=0',
@@ -255,19 +284,16 @@ class HTTPHandler(urllib2.HTTPHandler):
                         }
     _debuglevel = 0
 
-    # We overrive urllib2.HTTPHandler to get a better control of
-    # the connection and the ability to implement new request
-    # types.
     def do_open(self, http_class, request, first_try=True):
         """See urllib2.HTTPHandler.do_open for the general idea.
 
         The request will be retried once if it fails.
         """
-
         connection = request.connection
-        assert connection is not None
+        assert connection is not None, \
+            'cannot process a request without a connection'
 
-        headers = dict(self._default_headers)
+        headers = self._default_headers.copy()
         headers.update(request.header_items())
         headers.update(request.unredirected_hdrs)
         connection._send_request(request.get_method(),
@@ -311,6 +337,11 @@ class HTTPHandler(urllib2.HTTPHandler):
         # Let's title that because most of bzr handle titled
         # headers, but maybe we should switch to lowercased
         # headers...
+        # jam 20060908: I think we actually expect the headers to
+        #       be similar to mimetools.Message object, which uses
+        #       case insensitive keys. It lowers() all requests.
+        #       My concern is that the code may not do perfect title case.
+        #       For example, it may use Content-type rather than Content-Type
         headers = {}
         for header, value in (response.getheaders()):
             headers[header.title()] = value
@@ -329,7 +360,7 @@ if _have_https:
             return self.do_open(HTTPSConnection, request)
 
 
-# The errors we want to handle in the Transport object 
+# The errors we want to handle in the Transport object
 class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
     """Process HTTP error responses."""
     handler_order = 1000  # after all other processing
@@ -441,7 +472,7 @@ class HttpDavTransport(HttpTransportBase):
                                    #urllib2.HTTPRedirectHandler,
                                    HTTPErrorProcessor,
                                    )
-    _accept_ranges = 1
+    _accept_ranges = True
     _debuglevel = 0
 
     def __init__(self, base, from_transport=None):
@@ -519,7 +550,7 @@ class HttpDavTransport(HttpTransportBase):
             self._raise_http_error(abspath, response)
 
     def _get(self, relpath, ranges, tail_amount=0):
-        """See Transport._get"""
+        """See HttpTransport._get"""
 
         abspath = self._real_abspath(relpath)
         request = GETRequest(abspath)
@@ -542,7 +573,10 @@ class HttpDavTransport(HttpTransportBase):
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file"""
-        """Copy the file-like object into the location.
+        return self.put_bytes(relpath, f.read(), mode=None)
+
+    def put_bytes(self, relpath, bytes, mode=None):
+        """Copy the bytes object into the location.
 
         Tests revealed that contrary to what is said in
         http://www.rfc.net/rfc2068.html, the put is not
@@ -568,7 +602,7 @@ class HttpDavTransport(HttpTransportBase):
         tmp_relpath = relpath + stamp
 
         # Will raise if something gets wrong
-        self.put_file_non_atomic(tmp_relpath,f)
+        self.put_bytes_non_atomic(tmp_relpath, bytes)
 
         # Now move the temp file
         try:
@@ -576,31 +610,43 @@ class HttpDavTransport(HttpTransportBase):
         except Exception, e:
             # If  we fail,  try to  clean up  the  temporary file
             # before we throw the exception but don't let another
-            # exception mess  things up. Write  out the traceback
-            # (the one  where the  move have failed,  causing the
-            # exception),  because otherwise the  following catch
-            # and throw destroys it.
-            import traceback
-            mutter(traceback.format_exc())
+            # exception mess  things up.
+            exc_type, exc_val, exc_tb = sys.exc_info()
             try:
                 self.delete(tmp_relpath)
             except:
-                raise e # raise the saved except
+                raise exc_type, exc_val, exc_tb
             raise # raise the original with its traceback if we can.
 
     def put_file_non_atomic(self, relpath, f,
                             mode=None,
                             create_parent_dir=False,
                             dir_mode=False):
+        # Implementing put_bytes_non_atomic rather than put_file_non_atomic
+        # because to do a put request, we must read all of the file into
+        # RAM anyway. Better to do that than to have the contents, put
+        # into a StringIO() and then read them all out again later.
+        self.put_bytes_non_atomic(relpath, f.read(), mode=mode,
+                                  create_parent_dir=create_parent_dir,
+                                  dir_mode=dir_mode)
+
+    def put_bytes_non_atomic(self, relpath, bytes,
+                            mode=None,
+                            create_parent_dir=False,
+                            dir_mode=False):
         """See Transport.put_file_non_atomic"""
 
         abspath = self._real_abspath(relpath)
-        request = PUTRequest(abspath, f.read())
+        request = PUTRequest(abspath, bytes)
 
         # FIXME: We just make a mix between the sftp
         # implementation and the Transport one so there may be
         # something wrong with default Transport implementation
         # :-/
+        # jam 20060908 The default Transport implementation just uses
+        # the atomic apis, since all transports already implemented that.
+        # It is better to use non-atomic ones, but old transports need
+        # to be upgraded for that.
         def bare_put_file_non_atomic():
 
             response = self._perform(request)
@@ -621,27 +667,30 @@ class HttpDavTransport(HttpTransportBase):
             if parent_dir:
                 self.mkdir(parent_dir, mode=dir_mode)
                 return bare_put_file_non_atomic()
+            else:
+                # Don't forget to re-raise if the parent dir doesn't exist
+                raise
 
-    def _put_ranged(self, relpath, f, at, size):
+    def _put_bytes_ranged(self, relpath, bytes, at):
         """Append the file-like object part to the end of the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like object, only size bytes will be read.
-        :param at:      int, where to seek the location at.
-        :param size:    int, how many bytes to write.
+        :param bytes:   A string of bytes to upload
+        :param at:      The position in the file to add the bytes
         """
         # Acquire just the needed data
+        # TODO: jam 20060908 Why are we creating a StringIO to hold the
+        #       data, and then using data.read() to send the data
+        #       in the PUTRequest. Rather than just reading in and
+        #       uploading the data.
+        #       Also, if we have to read the whole file into memory anyway
+        #       it would be better to implement put_bytes(), and redefine
+        #       put_file as self.put_bytes(relpath, f.read())
         abspath = self._real_abspath(relpath)
-        before = f.tell()
-        data = StringIO(f.read(size))
-        after = f.tell()
-        assert(after - before == size,
-               'Invalid content: %d != %d - %d' % (after, before, size))
-        f.seek(before) # FIXME: May not be necessary
 
-        request = PUTRequest(abspath, data.read())
+        request = PUTRequest(abspath, bytes)
         request.add_header('Content-Range',
-                           'bytes %d-%d/%d' % (at, at+size, size))
+                           'bytes %d-%d/%d' % (at, at+len(bytes), len(bytes)))
         response = self._perform(request)
         code = response.code
 
@@ -659,6 +708,10 @@ class HttpDavTransport(HttpTransportBase):
         response = self._perform(request)
 
         code = response.code
+        # jam 20060908: The error handling seems to be repeated for
+        #       each function. Is it possible to factor it out into
+        #       a helper rather than repeat it for each one?
+        #       (I realize there is some custom behavior)
         if code == 403:
             # Forbidden  (generally server  misconfigured  or not
             # configured for DAV)
@@ -770,13 +823,17 @@ class HttpDavTransport(HttpTransportBase):
     # implementations, a third one will correspond to the draft.
     def append_file(self, relpath, f, mode=None):
         """See Transport.append_file"""
+        return self.append_bytes(relpath, f.read(), mode=mode)
+
+    def append_bytes(self, relpath, bytes, mode=None):
+        """See Transport.append_bytes"""
         if self._accept_ranges:
-            before = self._append_by_head_put(relpath, f)
+            before = self._append_by_head_put(relpath, bytes)
         else:
-            before = self._append_by_get_put(relpath, f)
+            before = self._append_by_get_put(relpath, bytes)
         return before
 
-    def _append_by_head_put(self, relpath, f):
+    def _append_by_head_put(self, relpath, bytes):
         """Append without getting the whole file.
 
         When the server allows it, a 'Content-Range' header can be specified.
@@ -784,23 +841,19 @@ class HttpDavTransport(HttpTransportBase):
         response = self._head(relpath)
         code = response.code
         if code == 404:
-            self.put_file(relpath, f)
+            self.put_bytes(relpath, bytes)
             relpath_size = 0
         else:
             mutter('response.headers [%r]' % response.headers)
             relpath_size = int(response.headers['Content-Length'])
-            # Get the size of the data to be appened
-            mark = f.tell()
-            size = len(f.read())
-            f.seek(mark)
-            self._put_ranged(relpath, f, relpath_size, size)
+            self._put_bytes_ranged(relpath, bytes, relpath_size)
 
         return relpath_size
 
-    def _append_by_get_put(self, relpath, f):
+    def _append_by_get_put(self, relpath, bytes):
         # So  we need to  GET the  file first,  append to  it and
         # finally PUT  back the  result.
-        full_data = StringIO() ;
+        full_data = StringIO()
         try:
             data = self.get(relpath)
             full_data.write(data.read())
@@ -810,7 +863,7 @@ class HttpDavTransport(HttpTransportBase):
 
         # Append the f content
         before = full_data.tell()
-        full_data.write(f.read())
+        full_data.write(bytes)
         full_data.seek(0)
 
         self.put_file(relpath, full_data)
