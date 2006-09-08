@@ -33,7 +33,16 @@ from bzrlib.transport import (
     register_lazy_transport
     )
 
-register_lazy_transport('https+webdav://',
-                        'bzrlib.plugins.webdav.webdav','HttpDavTransport')
-register_lazy_transport('http+webdav://',
-                        'bzrlib.plugins.webdav.webdav','HttpDavTransport')
+register_lazy_transport('https+webdav+pycurl://',
+                        'bzrlib.plugins.webdav.webdav',
+                        'HttpDavTransport_pycurl')
+register_lazy_transport('http+webdav+pycurl://',
+                        'bzrlib.plugins.webdav.webdav',
+                        'HttpDavTransport_pycurl')
+register_lazy_transport('https+webdav+urllib://',
+                        'bzrlib.plugins.webdav.webdav',
+                        'HttpDavTransport_urllib')
+register_lazy_transport('http+webdav+urllib://',
+                        'bzrlib.plugins.webdav.webdav',
+                        'HttpDavTransport_urllib')
+

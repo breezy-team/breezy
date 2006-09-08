@@ -52,10 +52,8 @@ from bzrlib.transport import(
     split_url
     )
 from bzrlib.transport.http import (
-    TestingHTTPRequestHandler
-    )
-from bzrlib.transport.http._pycurl import (
-    HttpServer_PyCurl
+    TestingHTTPRequestHandler,
+    HttpServer
     )
 
 class TestingDAVRequestHandler(TestingHTTPRequestHandler):
@@ -96,12 +94,32 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
         """Read a full line on the client socket"""
         return self._retry_if_not_available(self.rfile.readline)
 
-    def _read_chunk(self):
-        """
-        Read a chunk of data.
+    def read_body(self):
+        """Read the body either by chunk or as a whole."""
+        content_length = self.headers.get('Content-Length')
+        encoding = self.headers.get('Transfer-Encoding')
+        if encoding is not None:
+            assert encoding == 'chunked'
+            body = []
+            # We receive the content by chunk
+            while True:
+                length, data = self.read_chunk()
+                if length == 0:
+                    break
+                body.append(data)
+            body = ''.join(body)
+
+        else:
+            if content_length is not None:
+                body = self._read(int(content_length))
+
+        return body
+
+    def read_chunk(self):
+        """Read a chunk of data.
 
         A chunk consists of:
-        - a line containing the lenghtof the data in hexa,
+        - a line containing the length of the data in hexa,
         - the data.
         - a empty line.
 
@@ -137,9 +155,11 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
                 size = int(size)
                 do_append = True
 
-        # Tell the client to go ahead, we're ready to get the content
-        self.send_response(100,"Continue")
-        self.end_headers()
+        if self.headers.get('Expect') == '100-continue':
+            # Tell the client to go ahead, we're ready to get the content
+            self.send_response(100,"Continue")
+            self.end_headers()
+
         try:
             mutter("do_PUT will try to open: [%s]" % path)
             # Always write in binary mode.
@@ -151,17 +171,10 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
         except (IOError, OSError), e :
             self.send_error(409, 'Conflict')
             return
+
         try:
-            # We receive the content by chunk
-            while True:
-                length, data = self._read_chunk()
-                if length == 0:
-                    break
-                if do_append:
-                    # FIXME:  Apache just  write the  whole chunk
-                    # without checking its size (bad Apache)
-                    assert(length == size,'Request %d but send %d long data')
-                f.write(data)
+            data = self.read_body()
+            f.write(data)
         except (IOError, OSError):
             # FIXME: We leave a partially written file here
             self.send_error(409, "Conflict")
@@ -317,16 +330,15 @@ class TestingDAVAppendRequestHandler(TestingDAVRequestHandler):
     APPEND command.
     """
     def do_APPEND(self):
-        """Serve an APPEND request.
-    
-        We assume that APPEND will be implemented along the lines of PUT: 
-        - require to send a 100 Continue response
-        """
+        """Serve an APPEND request"""
         path = self.translate_path(self.path)
         mutter("do_APPEND rel: [%s], abs: [%s]" % (self.path,path))
-        # Tell the client to go ahead, we're ready to get the content
-        self.send_response(100,"Continue")
-        self.end_headers()
+
+        if self.headers.get('Expect') == '100-continue':
+            # Tell the client to go ahead, we're ready to get the content
+            self.send_response(100,"Continue")
+            self.end_headers()
+
         try:
             # Always write in binary mode.
             mutter("do_APPEND will try to open: [%s]" % path)
@@ -334,13 +346,10 @@ class TestingDAVAppendRequestHandler(TestingDAVRequestHandler):
         except (IOError, OSError), e :
             self.send_error(409, "Conflict")
             return
+
         try:
-            # We receive the content by chunk
-            while True:
-                length, data = self._read_chunk()
-                if length == 0:
-                    break
-                f.write(data)
+            data = self.read_body()
+            f.write(data)
         except (IOError, OSError):
             # FIXME: We leave a partially updated file here
             self.send_error(409, "Conflict")
@@ -353,7 +362,7 @@ class TestingDAVAppendRequestHandler(TestingDAVRequestHandler):
         self.end_headers()
 
 
-class HttpServer_Dav(HttpServer_PyCurl):
+class HttpServer_Dav(HttpServer):
     """Subclass of HttpServer that gives http+webdav urls.
 
     This is for use in testing: connections to this server will always go
@@ -366,13 +375,21 @@ class HttpServer_Dav(HttpServer_PyCurl):
         super(HttpServer_Dav,self).__init__(TestingDAVRequestHandler)
 
     # urls returned by this server should require the webdav client impl
-    _url_protocol = 'http+webdav'
+
+    # FIXME: We should create two classes, one for each client
+    # implementation, but we will deprecate pycurl's one, so who
+    # cares ?
+    _url_protocol = 'http+webdav+urllib'
+    #_url_protocol = 'http+webdav+pycurl'
 
 class HttpServer_Dav_append(HttpServer_Dav):
     """Subclass of HttpServer that gives http+webdav urls.
 
     This is for use in testing: connections to this server will always go
     through pycurl where possible.
+    This server implements the proposed
+    (www.ietf.org/internet-drafts/draft-suma-append-patch-00.txt)
+    APPEND request.
     """
 
     def __init__(self):
@@ -381,4 +398,4 @@ class HttpServer_Dav_append(HttpServer_Dav):
         super(HttpServer_Dav,self).__init__(TestingDAVAppendRequestHandler)
 
     # urls returned by this server should require the webdav client impl
-    _url_protocol = 'http+webdav'
+    _url_protocol = 'http+webdav+urllib'

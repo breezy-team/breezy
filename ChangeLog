@@ -1,3 +1,42 @@
+2006-09-08  Vincent Ladeuil  <v.ladeuil@alplog.fr>
+        First urllib-based implementation able to branch bzr.dev.
+
+	Test server more versatile too.
+
+	* webdav.py:
+	(HttpDavTransport_pycurl): Renamed from HttpDavTransport.
+	(HttpDavTransport_pycurl.mkdir): Use elif.
+	(URLDirector): New class to obtain HTTPConnection objects.
+	(build_url_director): build_opener sibling to be used with
+	URLDirector.
+	(HTTPConnection): httplib.HTTPConnection daughter class to
+	workaround borked connections. May disappear if a btter solution
+	is found.
+	(HTTPHandler): New class allowing Connection subclassing at
+	creation time. Part of the connection sharing strategy.
+	(HttpDavTransport_urllib): The urilib-based implementation itself.
+	(Request): New class to allows creation of new request types.
+	(get_test_permutations): Default to urlib-based implementation.
+
+	* test_webdav.py:
+	Make the test server more versatile.
+	(TestingDAVRequestHandler.read_body): New sub. We may be talking
+	with clients unable to handle the 'chunked' encoding.
+	(TestingDAVRequestHandler.read_chunk): Renamed from _read_chunk.
+	(TestingDAVRequestHandler.do_PUT): We may talking with clients
+	unable to handle the '100-continue' response and the 'chunked'
+	encoding.
+	(TestingDAVAppendRequestHandler.do_APPEND): We may talking with
+	clients unable to handle the '100-continue' response and the
+	'chunked' encoding.
+	(HttpServer_Dav_append): Inherits from HttpServer directly (thre
+	was no point inheriting from HttpServer_PyCurl except ignorance
+	:). Switch to urllib for the desired client.
+
+	* __init__.py: 
+	Register transports for the urllib-based implementation.
+
+
 2006-09-07  Vincent Ladeuil  <v.ladeuil@alplog.fr>
         Takes jam *_{file|bytes}[_non_atomic] patch into account.
 	
