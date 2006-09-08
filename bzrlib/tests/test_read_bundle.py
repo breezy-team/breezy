@@ -64,7 +64,7 @@ class TestReadBundleFromURL(TestTransportImplementation):
             f.write(out.getvalue())
             f.close()
         else:
-            self._transport.put('test_bundle', out)
+            self._transport.put_file('test_bundle', out)
             self.log('Put to: %s', self.get_url('test_bundle'))
         return wt
 

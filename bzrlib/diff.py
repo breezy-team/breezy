@@ -103,7 +103,12 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
     :return: A Popen object.
     """
     if capture_errors:
-        preexec_fn = _set_lang_C
+        if sys.platform == 'win32':
+            # Win32 doesn't support preexec_fn, but that is
+            # okay, because it doesn't support LANG either.
+            preexec_fn = None
+        else:
+            preexec_fn = _set_lang_C
         stderr = subprocess.PIPE
     else:
         preexec_fn = None

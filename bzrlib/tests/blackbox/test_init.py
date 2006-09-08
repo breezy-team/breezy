@@ -73,7 +73,7 @@ class TestInit(ExternalBase):
         self.assertEqual('', out)
         self.assertContainsRe(err,
             r'^bzr: ERROR: .*'
-            '\[Errno 2\] No such file or directory: ')
+            '\[Errno 2\] No such file or directory')
         
         os.mkdir('subdir2')
         out, err = self.run_bzr('init', 'subdir2')

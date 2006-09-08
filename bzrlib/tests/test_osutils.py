@@ -529,3 +529,63 @@ class TestTerminalEncoding(TestCase):
         # and in the worst case, use bzrlib.user_encoding
         self.assertEqual('user_encoding', osutils.get_terminal_encoding())
 
+
+class TestSetUnsetEnv(TestCase):
+    """Test updating the environment"""
+
+    def setUp(self):
+        super(TestSetUnsetEnv, self).setUp()
+
+        self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'),
+                         'Environment was not cleaned up properly.'
+                         ' Variable BZR_TEST_ENV_VAR should not exist.')
+        def cleanup():
+            if 'BZR_TEST_ENV_VAR' in os.environ:
+                del os.environ['BZR_TEST_ENV_VAR']
+
+        self.addCleanup(cleanup)
+
+    def test_set(self):
+        """Test that we can set an env variable"""
+        old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', 'foo')
+        self.assertEqual(None, old)
+        self.assertEqual('foo', os.environ.get('BZR_TEST_ENV_VAR'))
+
+    def test_double_set(self):
+        """Test that we get the old value out"""
+        osutils.set_or_unset_env('BZR_TEST_ENV_VAR', 'foo')
+        old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', 'bar')
+        self.assertEqual('foo', old)
+        self.assertEqual('bar', os.environ.get('BZR_TEST_ENV_VAR'))
+
+    def test_unicode(self):
+        """Environment can only contain plain strings
+        
+        So Unicode strings must be encoded.
+        """
+        # Try a few different characters, to see if we can get
+        # one that will be valid in the user_encoding
+        possible_vals = [u'm\xb5', u'\xe1', u'\u0410']
+        for uni_val in possible_vals:
+            try:
+                env_val = uni_val.encode(bzrlib.user_encoding)
+            except UnicodeEncodeError:
+                # Try a different character
+                pass
+            else:
+                break
+        else:
+            raise TestSkipped('Cannot find a unicode character that works in'
+                              ' encoding %s' % (bzrlib.user_encoding,))
+
+        old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', uni_val)
+        self.assertEqual(env_val, os.environ.get('BZR_TEST_ENV_VAR'))
+
+    def test_unset(self):
+        """Test that passing None will remove the env var"""
+        osutils.set_or_unset_env('BZR_TEST_ENV_VAR', 'foo')
+        old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', None)
+        self.assertEqual('foo', old)
+        self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'))
+        self.failIf('BZR_TEST_ENV_VAR' in os.environ)
+
