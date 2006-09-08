@@ -105,6 +105,7 @@ from bzrlib.osutils import (
 from bzrlib.trace import mutter
 from bzrlib.transport import (
     register_urlparse_netloc_protocol,
+    Transport,
     )
 from bzrlib.transport.http import (
     HttpTransportBase,
@@ -811,6 +812,18 @@ class HttpDavTransport(HttpTransportBase):
             self._raise_http_error(abs_from, response,
                                    'unable to copy from %r to %r'
                                    % (abs_from,abs_to))
+
+    def copy_to(self, relpaths, other, mode=None, pb=None):
+        """Copy a set of entries from self into another Transport.
+
+        :param relpaths: A list/generator of entries to be copied.
+        """
+        # DavTransport can be a target. So our simple implementation
+        # just returns the Transport implementation. (Which just does
+        # a put(get())
+        # We only override, because the default HttpTransportBase, explicitly
+        # disabled it for HTTP
+        return Transport.copy_to(self, relpaths, other, mode=mode, pb=pb)
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""
