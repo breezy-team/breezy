@@ -62,7 +62,8 @@ class TestMerge(ExternalBase):
         file('hello', 'wt').write('quuux')
         # We can't merge when there are in-tree changes
         self.runbzr('merge ../b', retcode=3)
-        self.runbzr(['commit', '-m', "Like an epidemic of u's"])
+        a = WorkingTree.open('.')
+        a_tip = a.commit("Like an epidemic of u's")
         self.runbzr('merge ../b -r last:1..last:1 --merge-type blooof',
                     retcode=3)
         self.runbzr('merge ../b -r last:1..last:1 --merge-type merge3')
@@ -74,15 +75,13 @@ class TestMerge(ExternalBase):
         self.runbzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
-        a = WorkingTree.open('.')
         b = Branch.open('../b')
-        a.branch.repository.get_revision_xml(b.last_revision())
-        self.log('pending merges: %s', a.pending_merges())
-        self.assertEquals(a.pending_merges(),
-                          [b.last_revision()])
-        self.runbzr('commit -m merged')
+        b_tip = b.last_revision()
+        self.failUnless(a.branch.repository.has_revision(b_tip))
+        self.assertEqual([a_tip, b_tip], a.get_parent_ids())
+        a_tip = a.commit('merged')
         self.runbzr('merge ../b -r last:1')
-        self.assertEqual(a.pending_merges(), [])
+        self.assertEqual([a_tip], a.get_parent_ids())
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""
@@ -195,10 +194,10 @@ class TestMerge(ExternalBase):
         file('../bundle', 'wb').write(self.runbzr('bundle ../branch_a')[0])
         os.chdir('../branch_a')
         self.runbzr('merge ../bundle', retcode=1)
-        testament_a = Testament.from_revision(tree_a.branch.repository, 
-                                              tree_b.last_revision())
+        testament_a = Testament.from_revision(tree_a.branch.repository,
+                                              tree_b.get_parent_ids()[0])
         testament_b = Testament.from_revision(tree_b.branch.repository,
-                                              tree_b.last_revision())
+                                              tree_b.get_parent_ids()[0])
         self.assertEqualDiff(testament_a.as_text(),
                          testament_b.as_text())
         tree_a.set_conflicts(ConflictList())
@@ -208,3 +207,22 @@ class TestMerge(ExternalBase):
         # but it does nothing
         self.assertFalse(tree_a.changes_from(tree_a.basis_tree()).has_changed())
         self.assertEqual('Nothing to do.\n', output)
+
+    def test_merge_uncommitted(self):
+        """Check that merge --uncommitted behaves properly"""
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/file_1', 'a/file_2'])
+        tree_a.add(['file_1', 'file_2'])
+        tree_a.commit('commit 1')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        self.failUnlessExists('b/file_1')
+        tree_a.rename_one('file_1', 'file_i')
+        tree_a.commit('commit 2')
+        tree_a.rename_one('file_2', 'file_ii')
+        os.chdir('b')
+        self.run_bzr('merge', '../a', '--uncommitted')
+        self.failUnlessExists('file_1')
+        self.failUnlessExists('file_ii')
+        tree_b.revert([])
+        self.run_bzr_error(('Cannot use --uncommitted and --revision',), 
+                           'merge', '../a', '--uncommitted', '-r1')

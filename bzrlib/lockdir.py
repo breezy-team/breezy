@@ -189,7 +189,17 @@ class LockDir(object):
             raise UnlockableTransport(self.transport)
         try:
             tmpname = '%s/pending.%s.tmp' % (self.path, rand_chars(20))
-            self.transport.mkdir(tmpname)
+            try:
+                self.transport.mkdir(tmpname)
+            except NoSuchFile:
+                # This may raise a FileExists exception
+                # which is okay, it will be caught later and determined
+                # to be a LockContention.
+                self.create(mode=self._dir_modebits)
+                
+                # After creating the lock directory, try again
+                self.transport.mkdir(tmpname)
+
             sio = StringIO()
             self._prepare_info(sio)
             sio.seek(0)
@@ -197,7 +207,8 @@ class LockDir(object):
             # because we don't want to write to a temporary file and rename
             # into place, because that's going to happen to the whole
             # directory
-            self.transport.append(tmpname + self.__INFO_NAME, sio)
+            self.transport.append_file(tmpname + self.__INFO_NAME, sio)
+
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
             self.confirm()

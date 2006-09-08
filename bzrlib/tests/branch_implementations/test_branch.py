@@ -164,7 +164,7 @@ class TestBranch(TestCaseWithBranch):
         repo_b = self.make_repository('b')
         wt_a.bzrdir.open_repository().copy_content_into(repo_b)
         br_b = wt_a.bzrdir.open_branch().clone(repo_b.bzrdir, revision_id='1')
-        self.assertEqual(br_b.last_revision(), '1')
+        self.assertEqual('1', br_b.last_revision())
 
     def test_sprout_partial(self):
         # test sprouting with a prefix of the revision-history.
@@ -179,7 +179,17 @@ class TestBranch(TestCaseWithBranch):
         repo_b = self.make_repository('b')
         wt_a.bzrdir.open_repository().copy_content_into(repo_b)
         br_b = wt_a.bzrdir.open_branch().sprout(repo_b.bzrdir, revision_id='1')
-        self.assertEqual(br_b.last_revision(), '1')
+        self.assertEqual('1', br_b.last_revision())
+
+    def get_parented_branch(self):
+        wt_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/one'])
+        wt_a.add(['one'])
+        wt_a.commit('commit one', rev_id='1')
+
+        branch_b = wt_a.bzrdir.sprout('b', revision_id='1').open_branch()
+        self.assertEqual(wt_a.branch.base, branch_b.get_parent())
+        return branch_b
 
     def test_clone_branch_nickname(self):
         # test the nick name is preserved always
@@ -187,8 +197,21 @@ class TestBranch(TestCaseWithBranch):
 
     def test_clone_branch_parent(self):
         # test the parent is preserved always
-        raise TestSkipped('XXX branch cloning is not yet tested..')
-        
+        branch_b = self.get_parented_branch()
+        repo_c = self.make_repository('c')
+        branch_b.repository.copy_content_into(repo_c)
+        branch_c = branch_b.clone(repo_c.bzrdir)
+        self.assertNotEqual(None, branch_c.get_parent())
+        self.assertEqual(branch_b.get_parent(), branch_c.get_parent())
+
+        # We can also set a specific parent, and it should be honored
+        random_parent = 'http://bazaar-vcs.org/path/to/branch'
+        branch_b.set_parent(random_parent)
+        repo_d = self.make_repository('d')
+        branch_b.repository.copy_content_into(repo_d)
+        branch_d = branch_b.clone(repo_d.bzrdir)
+        self.assertEqual(random_parent, branch_d.get_parent())
+
     def test_sprout_branch_nickname(self):
         # test the nick name is reset always
         raise TestSkipped('XXX branch sprouting is not yet tested..')
@@ -207,17 +230,31 @@ class TestBranch(TestCaseWithBranch):
         branch.set_submit_branch('sftp://example.net')
         self.assertEqual(branch.get_submit_branch(), 'sftp://example.net')
         
-    def test_record_initial_ghost_merge(self):
-        """A pending merge with no revision present is still a merge."""
+    def test_record_initial_ghost(self):
+        """Branches should support having ghosts."""
         wt = self.make_branch_and_tree('.')
-        branch = wt.branch
-        wt.add_pending_merge('non:existent@rev--ision--0--2')
-        wt.commit('pretend to merge nonexistent-revision', rev_id='first')
-        rev = branch.repository.get_revision(branch.last_revision())
-        self.assertEqual(len(rev.parent_ids), 1)
+        wt.set_parent_ids(['non:existent@rev--ision--0--2'],
+            allow_leftmost_as_ghost=True)
+        rev_id = wt.commit('commit against a ghost first parent.')
+        rev = wt.branch.repository.get_revision(rev_id)
+        self.assertEqual(rev.parent_ids, ['non:existent@rev--ision--0--2'])
         # parent_sha1s is not populated now, WTF. rbc 20051003
         self.assertEqual(len(rev.parent_sha1s), 0)
-        self.assertEqual(rev.parent_ids[0], 'non:existent@rev--ision--0--2')
+
+    def test_record_two_ghosts(self):
+        """Recording with all ghosts works."""
+        wt = self.make_branch_and_tree('.')
+        wt.set_parent_ids([
+                'foo@azkhazan-123123-abcabc',
+                'wibble@fofof--20050401--1928390812',
+            ],
+            allow_leftmost_as_ghost=True)
+        rev_id = wt.commit("commit from ghost base with one merge")
+        # the revision should have been committed with two parents
+        rev = wt.branch.repository.get_revision(rev_id)
+        self.assertEqual(['foo@azkhazan-123123-abcabc',
+            'wibble@fofof--20050401--1928390812'],
+            rev.parent_ids)
 
     def test_bad_revision(self):
         self.assertRaises(errors.InvalidRevisionId,
@@ -229,29 +266,6 @@ class TestBranch(TestCaseWithBranch):
 #     an identical tree without a ghost
 # fetch missing should rewrite the TOC of weaves to list newly available parents.
         
-    def test_pending_merges(self):
-        """Tracking pending-merged revisions."""
-        wt = self.make_branch_and_tree('.')
-        b = wt.branch
-        self.assertEquals(wt.pending_merges(), [])
-        wt.add_pending_merge('foo@azkhazan-123123-abcabc')
-        self.assertEquals(wt.pending_merges(), ['foo@azkhazan-123123-abcabc'])
-        wt.add_pending_merge('foo@azkhazan-123123-abcabc')
-        self.assertEquals(wt.pending_merges(), ['foo@azkhazan-123123-abcabc'])
-        wt.add_pending_merge('wibble@fofof--20050401--1928390812')
-        self.assertEquals(wt.pending_merges(),
-                          ['foo@azkhazan-123123-abcabc',
-                           'wibble@fofof--20050401--1928390812'])
-        wt.commit("commit from base with two merges")
-        rev = b.repository.get_revision(b.revision_history()[0])
-        self.assertEquals(len(rev.parent_ids), 2)
-        self.assertEquals(rev.parent_ids[0],
-                          'foo@azkhazan-123123-abcabc')
-        self.assertEquals(rev.parent_ids[1],
-                           'wibble@fofof--20050401--1928390812')
-        # list should be cleared when we do a commit
-        self.assertEquals(wt.pending_merges(), [])
-
     def test_sign_existing_revision(self):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
@@ -372,6 +386,24 @@ class TestBranch(TestCaseWithBranch):
         rev1 = tree.commit('foo')
         tree.branch.generate_revision_history(bzrlib.revision.NULL_REVISION)
         self.assertEqual([], tree.branch.revision_history())
+
+    def test_create_checkout(self):
+        tree_a = self.make_branch_and_tree('a')
+        branch_a = tree_a.branch
+        checkout_b = branch_a.create_checkout('b')
+        checkout_b.commit('rev1', rev_id='rev1')
+        self.assertEqual('rev1', branch_a.last_revision())
+        self.assertNotEqual(checkout_b.branch.base, branch_a.base)
+
+        checkout_c = branch_a.create_checkout('c', lightweight=True)
+        checkout_c.commit('rev2', rev_id='rev2')
+        self.assertEqual('rev2', branch_a.last_revision())
+        self.assertEqual(checkout_c.branch.base, branch_a.base)
+
+        os.mkdir('d')
+        checkout_d = branch_a.create_checkout('d', lightweight=True)
+        os.mkdir('e')
+        checkout_e = branch_a.create_checkout('e')
 
 
 class ChrootedTests(TestCaseWithBranch):

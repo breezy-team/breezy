@@ -18,6 +18,9 @@
 import os
 import warnings
 
+from bzrlib import (
+    revision,
+    )
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
 from bzrlib.graph import Graph
@@ -25,7 +28,7 @@ from bzrlib.revision import (find_present_ancestors, combined_graph,
                              common_ancestor,
                              is_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
@@ -67,20 +70,18 @@ def make_branches(self):
     tree2.commit("Commit four", rev_id="b@u-0-3")
     tree2.commit("Commit five", rev_id="b@u-0-4")
     revisions_2 = br2.revision_history()
+    self.assertEquals(revisions_2[-1], 'b@u-0-4')
     
-    br1.fetch(br2)
-    tree1.add_pending_merge(revisions_2[4])
-    self.assertEquals(revisions_2[4], 'b@u-0-4')
+    tree1.merge_from_branch(br2)
     tree1.commit("Commit six", rev_id="a@u-0-3")
     tree1.commit("Commit seven", rev_id="a@u-0-4")
     tree2.commit("Commit eight", rev_id="b@u-0-5")
+    self.assertEquals(br2.revision_history()[-1], 'b@u-0-5')
     
-    br1.fetch(br2)
-    tree1.add_pending_merge(br2.revision_history()[5])
+    tree1.merge_from_branch(br2)
     tree1.commit("Commit nine", rev_id="a@u-0-5")
-    # DO NOT FETCH HERE - we WANT a GHOST.
-    # br2.fetch(br1)
-    tree2.add_pending_merge(br1.revision_history()[4])
+    # DO NOT MERGE HERE - we WANT a GHOST.
+    tree2.add_parent_tree_id(br1.revision_history()[4])
     tree2.commit("Commit ten - ghost merge", rev_id="b@u-0-6")
     
     return br1, br2
@@ -155,12 +156,10 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         wt2.commit("Commit twelve", rev_id="b@u-0-8")
         wt2.commit("Commit thirtteen", rev_id="b@u-0-9")
 
-        self.br1.fetch(self.br2)
-        wt1.add_pending_merge(self.br2.revision_history()[6])
+        wt1.merge_from_branch(self.br2)
         wt1.commit("Commit fourtten", rev_id="a@u-0-6")
 
-        self.br2.fetch(self.br1)
-        wt2.add_pending_merge(self.br1.revision_history()[6])
+        wt2.merge_from_branch(self.br1)
         wt2.commit("Commit fifteen", rev_id="b@u-0-10")
 
         from bzrlib.revision import MultipleRevisionSources
@@ -235,7 +234,7 @@ class TestCommonAncestor(TestCaseWithTransport):
         """
         br1, br2 = make_branches(self)
         source = MultipleRevisionSources(br1.repository, br2.repository)
-        combined_1 = combined_graph(br1.last_revision(), 
+        combined_1 = combined_graph(br1.last_revision(),
                                     br2.last_revision(), source)
         combined_2 = combined_graph(br2.last_revision(),
                                     br1.last_revision(), source)
@@ -288,7 +287,7 @@ class TestMultipleRevisionSources(TestCaseWithTransport):
         # in repo 2, which has A, the revision_graph()
         # should return A and B both.
         tree_1 = self.make_branch_and_tree('1')
-        tree_1.add_pending_merge('A')
+        tree_1.set_parent_ids(['A'], allow_leftmost_as_ghost=True)
         tree_1.commit('foo', rev_id='B', allow_pointless=True)
         tree_2 = self.make_branch_and_tree('2')
         tree_2.commit('bar', rev_id='A', allow_pointless=True)
@@ -297,40 +296,3 @@ class TestMultipleRevisionSources(TestCaseWithTransport):
         self.assertEqual({'B':['A'],
                           'A':[]},
                          source.get_revision_graph('B'))
-
-class TestRevisionAttributes(TestCaseWithTransport):
-    """Test that revision attributes are correct."""
-
-    def test_revision_accessors(self):
-        """Make sure the values that come out of a revision are the same as the ones that go in.
-        """
-        tree1 = self.make_branch_and_tree("br1")
-
-        # create a revision
-        tree1.commit(message="quux", allow_pointless=True, committer="jaq",
-                     revprops={'empty':'',
-                               'value':'one',
-                               'unicode':'\xb5',
-                               'multiline':'foo\nbar\n\n'
-                              })
-        assert len(tree1.branch.revision_history()) > 0
-        rev_a = tree1.branch.repository.get_revision(tree1.branch.last_revision())
-
-        tree2 = self.make_branch_and_tree("br2")
-        tree2.commit(message=rev_a.message,
-                     timestamp=rev_a.timestamp,
-                     timezone=rev_a.timezone,
-                     committer=rev_a.committer,
-                     rev_id=rev_a.revision_id,
-                     revprops=rev_a.properties,
-                     allow_pointless=True, # there's nothing in this commit
-                     strict=True,
-                     verbose=True)
-        rev_b = tree2.branch.repository.get_revision(tree2.branch.last_revision())
-        
-        self.assertEqual(rev_a.message, rev_b.message)
-        self.assertEqual(rev_a.timestamp, rev_b.timestamp)
-        self.assertEqual(rev_a.timezone, rev_b.timezone)
-        self.assertEqual(rev_a.committer, rev_b.committer)
-        self.assertEqual(rev_a.revision_id, rev_b.revision_id)
-        self.assertEqual(rev_a.properties, rev_b.properties)

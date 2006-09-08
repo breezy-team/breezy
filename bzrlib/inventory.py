@@ -34,6 +34,7 @@ import re
 import sys
 import tarfile
 import types
+from warnings import warn
 
 import bzrlib
 from bzrlib import errors, osutils
@@ -85,7 +86,7 @@ class InventoryEntry(object):
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
     ... 
-    (True, RootEntry('TREE_ROOT', u'', parent_id=None, revision=None))
+    (True, InventoryDirectory('TREE_ROOT', '', parent_id=None, revision=None))
     (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None))
     (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None))
     >>> i.add(InventoryFile('2323', 'bye.c', '123'))
@@ -295,7 +296,7 @@ class InventoryEntry(object):
         """Return a short kind indicator useful for appending to names."""
         raise BzrError('unknown kind %r' % self.kind)
 
-    known_kinds = ('file', 'directory', 'symlink', 'root_directory')
+    known_kinds = ('file', 'directory', 'symlink')
 
     def _put_in_tar(self, item, tree):
         """populate item for stashing in a tar, and return the content stream.
@@ -324,7 +325,7 @@ class InventoryEntry(object):
 
     @staticmethod
     def versionable_kind(kind):
-        return kind in ('file', 'directory', 'symlink')
+        return (kind in ('file', 'directory', 'symlink'))
 
     def check(self, checker, rev_id, inv, tree):
         """Check this inventory entry is intact.
@@ -509,10 +510,13 @@ class RootEntry(InventoryEntry):
     def __init__(self, file_id):
         self.file_id = file_id
         self.children = {}
-        self.kind = 'root_directory'
+        self.kind = 'directory'
         self.parent_id = None
         self.name = u''
         self.revision = None
+        warn('RootEntry is deprecated as of bzr 0.10.  Please use '
+             'InventoryDirectory instead.',
+            DeprecationWarning, stacklevel=2)
 
     def __eq__(self, other):
         if not isinstance(other, RootEntry):
@@ -861,10 +865,17 @@ class Inventory(object):
         # root id. Rather than generating a random one here.
         #if root_id is None:
         #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
-        self.root = RootEntry(root_id)
+        if root_id is not None:
+            self._set_root(InventoryDirectory(root_id, '', None))
+        else:
+            self.root = None
+            self._byid = {}
         # FIXME: this isn't ever used, changing it to self.revision may break
         # things. TODO make everything use self.revision_id
         self.revision_id = revision_id
+
+    def _set_root(self, ie):
+        self.root = ie
         self._byid = {self.root.file_id: self.root}
 
     def copy(self):
@@ -1006,7 +1017,7 @@ class Inventory(object):
         >>> '456' in inv
         False
         """
-        return file_id in self._byid
+        return (file_id in self._byid)
 
     def __getitem__(self, file_id):
         """Return the entry for given file_id.
@@ -1042,7 +1053,12 @@ class Inventory(object):
         if entry.file_id in self._byid:
             raise BzrError("inventory already contains entry with id {%s}" % entry.file_id)
 
-        if entry.parent_id == ROOT_ID or entry.parent_id is None:
+        if entry.parent_id is None:
+            assert self.root is None and len(self._byid) == 0
+            self._set_root(entry)
+            return entry
+        if entry.parent_id == ROOT_ID:
+            assert self.root is not None, self
             entry.parent_id = self.root.file_id
 
         try:
@@ -1070,7 +1086,7 @@ class Inventory(object):
         if len(parts) == 0:
             if file_id is None:
                 file_id = bzrlib.workingtree.gen_root_id()
-            self.root = RootEntry(file_id)
+            self.root = InventoryDirectory(file_id, '', None)
             self._byid = {self.root.file_id: self.root}
             return
         else:
@@ -1199,7 +1215,25 @@ class Inventory(object):
         return bool(self.path2id(names))
 
     def has_id(self, file_id):
-        return self._byid.has_key(file_id)
+        return (file_id in self._byid)
+
+    def remove_recursive_id(self, file_id):
+        """Remove file_id, and children, from the inventory.
+        
+        :param file_id: A file_id to remove.
+        """
+        to_find_delete = [self._byid[file_id]]
+        to_delete = []
+        while to_find_delete:
+            ie = to_find_delete.pop()
+            to_delete.append(ie.file_id)
+            if ie.kind == 'directory':
+                to_find_delete.extend(ie.children.values())
+        for file_id in reversed(to_delete):
+            ie = self[file_id]
+            del self._byid[file_id]
+            if ie.parent_id is not None:
+                del self[ie.parent_id].children[ie.name]
 
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.

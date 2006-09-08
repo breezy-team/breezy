@@ -88,6 +88,46 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     print >>to_file
 
 
+def _set_lang_C():
+    """Set the env var LANG=C"""
+    os.environ['LANG'] = 'C'
+
+
+def _spawn_external_diff(diffcmd, capture_errors=True):
+    """Spawn the externall diff process, and return the child handle.
+
+    :param diffcmd: The command list to spawn
+    :param capture_errors: Capture stderr as well as setting LANG=C.
+        This lets us read and understand the output of diff, and respond 
+        to any errors.
+    :return: A Popen object.
+    """
+    if capture_errors:
+        if sys.platform == 'win32':
+            # Win32 doesn't support preexec_fn, but that is
+            # okay, because it doesn't support LANG either.
+            preexec_fn = None
+        else:
+            preexec_fn = _set_lang_C
+        stderr = subprocess.PIPE
+    else:
+        preexec_fn = None
+        stderr = None
+
+    try:
+        pipe = subprocess.Popen(diffcmd,
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
+                                stderr=stderr,
+                                preexec_fn=preexec_fn)
+    except OSError, e:
+        if e.errno == errno.ENOENT:
+            raise errors.NoDiff(str(e))
+        raise
+
+    return pipe
+
+
 def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
@@ -147,31 +187,44 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         if diff_opts:
             diffcmd.extend(diff_opts)
 
-        try:
-            pipe = subprocess.Popen(diffcmd,
-                                    stdin=subprocess.PIPE,
-                                    stdout=subprocess.PIPE)
-        except OSError, e:
-            if e.errno == errno.ENOENT:
-                raise errors.NoDiff(str(e))
-            raise
-        pipe.stdin.close()
-
-        first_line = pipe.stdout.readline()
-        to_file.write(first_line)
-        bzrlib.osutils.pumpfile(pipe.stdout, to_file)
-        rc = pipe.wait()
+        pipe = _spawn_external_diff(diffcmd, capture_errors=True)
+        out,err = pipe.communicate()
+        rc = pipe.returncode
         
+        # internal_diff() adds a trailing newline, add one here for consistency
+        out += '\n'
         if rc == 2:
             # 'diff' gives retcode == 2 for all sorts of errors
             # one of those is 'Binary files differ'.
             # Bad options could also be the problem.
-            # 'Binary files' is not a real error, so we suppress that error
-            m = re.match('^binary files.*differ$', first_line, re.I)
-            if not m:
+            # 'Binary files' is not a real error, so we suppress that error.
+            lang_c_out = out
+
+            # Since we got here, we want to make sure to give an i18n error
+            pipe = _spawn_external_diff(diffcmd, capture_errors=False)
+            out, err = pipe.communicate()
+
+            # Write out the new i18n diff response
+            to_file.write(out+'\n')
+            if pipe.returncode != 2:
+                raise BzrError('external diff failed with exit code 2'
+                               ' when run with LANG=C, but not when run'
+                               ' natively: %r' % (diffcmd,))
+
+            first_line = lang_c_out.split('\n', 1)[0]
+            # Starting with diffutils 2.8.4 the word "binary" was dropped.
+            m = re.match('^(binary )?files.*differ$', first_line, re.I)
+            if m is None:
                 raise BzrError('external diff failed with exit code 2;'
                                ' command: %r' % (diffcmd,))
-        elif rc not in (0, 1):
+            else:
+                # Binary files differ, just return
+                return
+
+        # If we got to here, we haven't written out the output of diff
+        # do so now
+        to_file.write(out)
+        if rc not in (0, 1):
             # returns 1 if files differ; that's OK
             if rc < 0:
                 msg = 'signal %d' % (-rc)
@@ -181,8 +234,6 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             raise BzrError('external diff failed with %s; command: %r' 
                            % (rc, diffcmd))
 
-        # internal_diff() adds a trailing newline, add one here for consistency
-        to_file.write('\n')
 
     finally:
         oldtmpf.close()                 # and delete
