@@ -115,10 +115,21 @@ from bzrlib.transport.http.response import (
 register_urlparse_netloc_protocol('http+webdav')
 register_urlparse_netloc_protocol('https+webdav')
 
+# We define our own Response class to avoid the problems with the
+# addinfourl objects
+class HTTPResponse(httplib.HTTPResponse):
+    def __init__(self, *args, **kwargs):
+        httplib.HTTPResponse.__init__(self, *args, **kwargs)
+
+    def info(self):
+        return self.headers
+
+
 # We need to define our own HTTPConnections objects to work
 # around a weird problem. FIXME: Still need more investigation.
 class HTTPConnection(httplib.HTTPConnection):
     _getresponse = httplib.HTTPConnection.getresponse
+    response_class = HTTPResponse
 
     def getresponse(self):
         """Get the response from the server.
@@ -144,11 +155,6 @@ if hasattr(httplib, 'HTTPS'):
     class HTTPSConnection(httplib.HTTPSConnection, HTTPConnection):
         getresponse = HTTPConnection.getresponse
 
-# urllib2 provides no way to access the HTTPConnection object
-# internally used. But we need it in order to achieve connection
-# sharing. We just add it to the request just before it is
-# processed. And then we will override the do_open method for
-# http[s] requests.
 
 class Request(urllib2.Request):
     def __init__(self, url, data=None, headers={}):
@@ -156,11 +162,17 @@ class Request(urllib2.Request):
         self.connection = None
 
     # We set the method statically, not depending on the 'data'
-    # value as urlilib2 does. We have numerous different requests
+    # value as urllib2 does. We have numerous different requests
     # with or without data
     def get_method(self):
         return self.method
 
+
+# urllib2 provides no way to access the HTTPConnection object
+# internally used. But we need it in order to achieve connection
+# sharing. So, we add it to the request just before it is
+# processed, and then we override the do_open method for http[s]
+# requests.
 
 class ConnectionHandler(urllib2.BaseHandler):
     """Provides connection-sharing by pre-processing requests"""
@@ -170,20 +182,23 @@ class ConnectionHandler(urllib2.BaseHandler):
     _cache_activated = False
     _debuglevel = 0
 
+    def get_key(self, connection):
+        """Returns the key for the connection in the cache"""
+        return '%s:%d' % (connection.host, connection.port)
+
     def create_connection(self, request, http_connection_class):
         host = request.get_host()
         if not host:
             raise urllib2.URLError('no host given')
 
         # We create a connection (but it will not connect yet) to
-        # be able to use get_host and take default port into
-        # account (request don't do that) to avoid having
-        # different connections for http://host and
-        # http://host:80
+        # be able to get host and take default port into account
+        # (request don't do that) to avoid having different
+        # connections for http://host and http://host:80
         connection = http_connection_class(host)
         # jam says 20060908: no cache for now
         if self._cache_activated:
-            key = connection.get_host()
+            key = self.get_key(connection)
             if key not in self._connection_of:
                 self._connection_of[key] = connection
             else:
@@ -196,9 +211,13 @@ class ConnectionHandler(urllib2.BaseHandler):
 
         Two cases:
         - the request have no connection: create a new one,
+
         - the request have a connection: this one have been used
           already, let's capture it, so that we can give it to
-          another transport to be reused.
+          another transport to be reused. We don't do that
+          ourselves: the Transport object get the connection from
+          a first request and then propagate it, from request to
+          request or to cloned transports.
         """
         connection = request.connection
         if connection is None:
@@ -208,7 +227,7 @@ class ConnectionHandler(urllib2.BaseHandler):
         else:
             if self._cache_activated:
                 # Capture the precioussss
-                key = connection.get_host()
+                key = self.get_key(connection)
                 if key not in self._connection_of:
                     self._connection_of[key] = connection
 
@@ -217,11 +236,11 @@ class ConnectionHandler(urllib2.BaseHandler):
         return request
 
     def http_request(self, request):
-        return self.cache_connection(request, HTTPConnection)
+        return self.capture_connection(request, HTTPConnection)
 
     if hasattr(httplib, 'HTTPS'):
         def https_request(self, request):
-            return self.cache_connection(request, HTTPSConnection)
+            return self.capture_connection(request, HTTPSConnection)
 
 class HTTPHandler(urllib2.HTTPHandler):
 
@@ -229,6 +248,7 @@ class HTTPHandler(urllib2.HTTPHandler):
                         'Cache-control': 'max-age=0',
                         'Connection': 'Keep-Alive',
                         }
+    _debuglevel = 0
 
     # We overrive urllib2.HTTPHandler to get a better control of
     # the connection and the ability to implement new request
@@ -257,7 +277,7 @@ class HTTPHandler(urllib2.HTTPHandler):
             # for an unknown reason. Let's try again. FIXME: This
             # may be already covered by HTTPConnection.getresponse
             if first_try:
-                if debug > 0:
+                if self._debuglevel > 0:
                     print 'Will retry, %s: %r' % (retry,
                                                   request.get_method(),
                                                   request.get_full_url())
@@ -281,23 +301,17 @@ class HTTPHandler(urllib2.HTTPHandler):
 #            connection.send(body)
 #            response = connection.getresponse()
 
-        # Enrich the response (the code below was copied from urllib2)
-
-        # Pick apart the HTTPResponse object to get the addinfourl
-        # object initialized properly.
-
-        # Wrap the HTTPResponse object in socket's file object adapter
-        # for Windows.  That adapter calls recv(), so delegate recv()
-        # to read().  This weird wrapping allows the returned object to
-        # have readline() and readlines() methods.
-        response.recv = response.read
-        fp = socket._fileobject(response)
-
-        rich = urllib.addinfourl(fp, response.msg, request.get_full_url())
-        rich.code = response.status
-        rich.msg = response.reason
-
-        return rich
+        # we need titled headers in a dict but
+        # response.getheaders returns a list of (lower(header).
+        # Let's title that because most of bzr handle titled
+        # headers, but maybe we should switch to lowercased
+        # headers...
+        headers = {}
+        for header, value in (response.getheaders()):
+            headers[header.title()] = value
+        response.code = response.status
+        response.headers = headers
+        return response
 
     def http_open(self, request):
         return self.do_open(HTTPConnection, request)
@@ -331,6 +345,11 @@ class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
 
 
 # TODO: Handle password managers.
+
+# FIXME: We use a specific Request to pass the connection between
+# the transport and the HTTPHandler. urllib2.HTTPRedirectHandler
+# creates urlib2.Request. We need to get our hands on the
+# redirection mechanism anyway.
 
 class GETRequest(Request):
     method = 'GET'

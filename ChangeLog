@@ -1,4 +1,20 @@
 2006-09-08  Vincent Ladeuil  <v.ladeuil@alplog.fr>
+	Small fixes after more tests. Can't handle redirect yet (see FIXME).
+
+	* webdav.py:
+	(HTTPResponse): New class to replace the use of addinfourl buggy
+	with persistent connections, sometimes.
+	(ConnectionHandler.get_key): New method.
+	(ConnectionHandler): Fix various typos.
+	(HTTPHandler.do_open): Replace addinfourl object with our own
+	HTTPResponse.
+
+	* test_webdav.py:
+	(TestingDAVRequestHandler.send_error): New
+	method. BaseHTTPServer.BaseHTTPRequestHandler drives
+	htmllib.getresponse nuts, cool dowm guys.
+
+2006-09-08-1  Vincent Ladeuil  <v.ladeuil@alplog.fr>
         Simplify urllib implementation. Drop pycurl support.
 
 	* webdav.py:
