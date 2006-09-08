@@ -18,7 +18,6 @@ import os
 
 from bzrlib.errors import BzrCommandError, NoSuchRevision
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.workingtree import WorkingTree
 
 
