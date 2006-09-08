@@ -114,7 +114,7 @@ class TextStore(bzrlib.store.TransportStore):
         # gzip.GzipFile.read() requires a tell() function
         # but some transports return objects that cannot seek
         # so buffer them in a StringIO instead
-        if getattr(f, 'tell', None) != None:
+        if getattr(f, 'tell', None) is not None:
             return gzip.GzipFile(mode='rb', fileobj=f)
         else:
             from cStringIO import StringIO

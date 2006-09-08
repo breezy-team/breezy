@@ -211,7 +211,7 @@ class Transport(object):
 
         This handles things like ENOENT, ENOTDIR, EEXIST, and EACCESS
         """
-        if getattr(e, 'errno', None) != None:
+        if getattr(e, 'errno', None) is not None:
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
                 raise errors.NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
@@ -882,7 +882,7 @@ class TransportTestProviderAdapter(object):
 
     def get_transport_test_permutations(self, module):
         """Get the permutations module wants to have tested."""
-        if getattr(module, 'get_test_permutations', None) == None:
+        if getattr(module, 'get_test_permutations', None) is None:
             warning("transport module %s doesn't provide get_test_permutations()"
                     % module.__name__)
             return []

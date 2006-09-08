@@ -58,7 +58,7 @@ if version_info < NEED_VERS:
     print >>sys.stderr, "bzr: error: cannot find a suitable python interpreter"
     print >>sys.stderr, "  (need %d.%d or later)" % NEED_VERS
     sys.exit(1)
-if getattr(os, "unsetenv", None) != None:
+if getattr(os, "unsetenv", None) is not None:
     os.unsetenv(REINVOKE)
 
 

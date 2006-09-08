@@ -235,7 +235,7 @@ def _parse_response_http10(header):
         debug("can't handle response status %r" % r.status)
         raise NotImplementedError()
 
-    if r.content_length == None:
+    if r.content_length is None:
         raise NotImplementedError()
 
     if r.content_length == 0:

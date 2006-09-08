@@ -449,7 +449,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if not self.parse_request(): # An error code has been sent, just exit
             return
         mname = 'do_' + self.command
-        if getattr(self, mname, None) == None:
+        if getattr(self, mname, None) is None:
             self.send_error(501, "Unsupported method (%r)" % self.command)
             return
         method = getattr(self, mname)

@@ -87,7 +87,7 @@ class Store(object):
 
     def listable(self):
         """Return True if this store is able to be listed."""
-        return (getattr(self, "__iter__", None) != None)
+        return (getattr(self, "__iter__", None) is not None)
 
     def copy_all_ids(self, store_from, pb=None):
         """Copy all the file ids from store_from into self."""

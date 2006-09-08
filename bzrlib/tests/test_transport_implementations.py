@@ -67,7 +67,7 @@ class TransportTests(TestTransportImplementation):
         except excClass:
             return
         else:
-            if getattr(excClass,'__name__', None) != None:
+            if getattr(excClass,'__name__', None) is not None:
                 excName = excClass.__name__
             else:
                 excName = str(excClass)
