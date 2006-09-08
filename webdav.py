@@ -507,9 +507,7 @@ class HttpDavTransport(HttpTransportBase):
     def has(self, relpath):
         """Does the target location exist?
         """
-        self._head(relpath)
         response = self._head(relpath)
-
 
         code = response.code
         if code == 404: # not found
