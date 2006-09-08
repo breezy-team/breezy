@@ -566,7 +566,6 @@ class WorkingTree(bzrlib.tree.Tree):
         args = (DEPRECATED_PARAMETER, message, ) + args
         committed_id = Commit().commit( working_tree=self, revprops=revprops,
             *args, **kwargs)
-        self._set_inventory(self.read_working_inventory())
         return committed_id
 
     def id2abspath(self, file_id):
@@ -1105,7 +1104,33 @@ class WorkingTree(bzrlib.tree.Tree):
         for subp in self.extras():
             if not self.is_ignored(subp):
                 yield subp
+    
+    @needs_write_lock
+    def unversion(self, file_ids):
+        """Remove the file ids in file_ids from the current versioned set.
 
+        When a file_id is unversioned, all of its children are automatically
+        unversioned.
+
+        :param file_ids: The file ids to stop versioning.
+        :raises: NoSuchId if any fileid is not currently versioned.
+        """
+        for file_id in file_ids:
+            if self._inventory.has_id(file_id):
+                self._inventory.remove_recursive_id(file_id)
+            else:
+                raise errors.NoSuchId(self, file_id)
+        if len(file_ids):
+            # in the future this should just set a dirty bit to wait for the 
+            # final unlock. However, until all methods of workingtree start
+            # with the current in -memory inventory rather than triggering 
+            # a read, it is more complex - we need to teach read_inventory
+            # to know when to read, and when to not read first... and possibly
+            # to save first when the in memory one may be corrupted.
+            # so for now, we just only write it if it is indeed dirty.
+            # - RBC 20060907
+            self._write_inventory(self._inventory)
+    
     @deprecated_method(zero_eight)
     def iter_conflicts(self):
         """List all files in the tree that have text or content conflicts.
@@ -1333,7 +1358,6 @@ class WorkingTree(bzrlib.tree.Tree):
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
 
-    @deprecated_method(zero_eleven)
     def last_revision(self):
         """Return the last revision id of this working tree.
 

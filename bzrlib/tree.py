@@ -169,6 +169,21 @@ class Tree(object):
     def lock_read(self):
         pass
 
+    def revision_tree(self, revision_id):
+        """Obtain a revision tree for the revision revision_id.
+
+        The intention of this method is to allow access to possibly cached
+        tree data. Implementors of this method should raise NoSuchRevision if
+        the tree is not locally available, even if they could obtain the 
+        tree via a repository or some other means. Callers are responsible 
+        for finding the ultimate source for a revision tree.
+
+        :param revision_id: The revision_id of the requested tree.
+        :return: A Tree.
+        :raises: NoSuchRevision if the tree cannot be obtained.
+        """
+        raise errors.NoSuchRevisionInTree(self, revision_id)
+
     def unknowns(self):
         """What files are present in this tree and unknown.
         

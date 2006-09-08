@@ -420,6 +420,16 @@ class TestInterTreeProviderAdapter(TestCase):
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
+
+class TestTestCaseInTempDir(TestCaseInTempDir):
+
+    def test_home_is_not_working(self):
+        self.assertNotEqual(self.test_dir, self.test_home_dir)
+        cwd = osutils.getcwd()
+        self.assertEqual(self.test_dir, cwd)
+        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+
+
 class TestTestCaseWithTransport(TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 

@@ -33,13 +33,9 @@ class TestParents(TestCaseWithWorkingTree):
         """
         self.assertEqual(expected, tree.get_parent_ids())
         if expected == []:
-            self.assertEqual(None,
-                self.applyDeprecated(symbol_versioning.zero_eleven,
-                    tree.last_revision))
+            self.assertEqual(None, tree.last_revision())
         else:
-            self.assertEqual(expected[0],
-                self.applyDeprecated(symbol_versioning.zero_eleven,
-                    tree.last_revision))
+            self.assertEqual(expected[0], tree.last_revision())
         self.assertEqual(expected[1:],
             self.applyDeprecated(symbol_versioning.zero_eleven,
                 tree.pending_merges))

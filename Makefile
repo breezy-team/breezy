@@ -73,7 +73,7 @@ exe:
 	python tools/win32/ostools.py copytodir tools/win32/bazaar.url win32_bzr.exe
 
 # win32 installer for bzr.exe
-installer: exe copy_docs
+installer: exe copy-docs
 	@echo *** Make windows installer
 	cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
 	iscc /Q tools/win32/bzr.iss

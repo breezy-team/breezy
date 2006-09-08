@@ -279,12 +279,18 @@ class KnitVersionedFile(VersionedFile):
     stored and retrieved.
     """
 
-    def __init__(self, relpath, transport, file_mode=None, access_mode=None, 
+    def __init__(self, relpath, transport, file_mode=None, access_mode=None,
                  factory=None, basis_knit=DEPRECATED_PARAMETER, delta=True,
-                 create=False):
+                 create=False, create_parent_dir=False, delay_create=False,
+                 dir_mode=None):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
+        :param create_parent_dir: If True, create the parent directory if 
+            creating the file fails. (This is used for stores with 
+            hash-prefixes that may not exist yet)
+        :param delay_create: The calling code is aware that the knit won't 
+            actually be created until the first data is stored.
         """
         if deprecated_passed(basis_knit):
             warnings.warn("KnitVersionedFile.__(): The basis_knit parameter is"
@@ -301,9 +307,13 @@ class KnitVersionedFile(VersionedFile):
         self.delta = delta
 
         self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
-            access_mode, create=create, file_mode=file_mode)
+            access_mode, create=create, file_mode=file_mode,
+            create_parent_dir=create_parent_dir, delay_create=delay_create,
+            dir_mode=dir_mode)
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
-            access_mode, create=create and not len(self), file_mode=file_mode)
+            access_mode, create=create and not len(self), file_mode=file_mode,
+            create_parent_dir=create_parent_dir, delay_create=delay_create,
+            dir_mode=dir_mode)
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, 
@@ -403,18 +413,20 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.copy_to()."""
         # copy the current index to a temp index to avoid racing with local
         # writes
-        transport.put(name + INDEX_SUFFIX + '.tmp', self.transport.get(self._index._filename),)
+        transport.put_file_non_atomic(name + INDEX_SUFFIX + '.tmp',
+                self.transport.get(self._index._filename))
         # copy the data file
         f = self._data._open_file()
         try:
-            transport.put(name + DATA_SUFFIX, f)
+            transport.put_file(name + DATA_SUFFIX, f)
         finally:
             f.close()
         # move the copied index into place
         transport.move(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
 
     def create_empty(self, name, transport, mode=None):
-        return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta, create=True)
+        return KnitVersionedFile(name, transport, factory=self.factory,
+                                 delta=self.delta, create=True)
     
     def _fix_parents(self, version, new_parents):
         """Fix the parents list for version.
@@ -946,16 +958,15 @@ class KnitVersionedFile(VersionedFile):
 class _KnitComponentFile(object):
     """One of the files used to implement a knit database"""
 
-    def __init__(self, transport, filename, mode, file_mode=None):
+    def __init__(self, transport, filename, mode, file_mode=None,
+                 create_parent_dir=False, dir_mode=None):
         self._transport = transport
         self._filename = filename
         self._mode = mode
-        self._file_mode=file_mode
-
-    def write_header(self):
-        if self._transport.append(self._filename, StringIO(self.HEADER),
-            mode=self._file_mode):
-            raise KnitCorrupt(self._filename, 'misaligned after writing header')
+        self._file_mode = file_mode
+        self._dir_mode = dir_mode
+        self._create_parent_dir = create_parent_dir
+        self._need_to_create = False
 
     def check_header(self, fp):
         line = fp.readline()
@@ -1048,8 +1059,12 @@ class _KnitIndex(_KnitComponentFile):
                                    parents,
                                    index)
 
-    def __init__(self, transport, filename, mode, create=False, file_mode=None):
-        _KnitComponentFile.__init__(self, transport, filename, mode, file_mode)
+    def __init__(self, transport, filename, mode, create=False, file_mode=None,
+                 create_parent_dir=False, delay_create=False, dir_mode=None):
+        _KnitComponentFile.__init__(self, transport, filename, mode,
+                                    file_mode=file_mode,
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
         self._cache = {}
         # position in _history is the 'official' index for a revision
         # but the values may have come from a newer entry.
@@ -1124,7 +1139,12 @@ class _KnitIndex(_KnitComponentFile):
             except NoSuchFile, e:
                 if mode != 'w' or not create:
                     raise
-                self.write_header()
+                if delay_create:
+                    self._need_to_create = True
+                else:
+                    self._transport.put_bytes_non_atomic(self._filename,
+                        self.HEADER, mode=self._file_mode)
+
         finally:
             pb.update('read knit index', total, total)
             pb.finished()
@@ -1245,7 +1265,19 @@ class _KnitIndex(_KnitComponentFile):
             assert isinstance(line, str), \
                 'content must be utf-8 encoded: %r' % (line,)
             lines.append(line)
-        self._transport.append(self._filename, StringIO(''.join(lines)))
+        if not self._need_to_create:
+            self._transport.append_bytes(self._filename, ''.join(lines))
+        else:
+            sio = StringIO()
+            sio.write(self.HEADER)
+            sio.writelines(lines)
+            sio.seek(0)
+            self._transport.put_file_non_atomic(self._filename, sio,
+                                create_parent_dir=self._create_parent_dir,
+                                mode=self._file_mode,
+                                dir_mode=self._dir_mode)
+            self._need_to_create = False
+
         # cache after writing, so that a failed write leads to missing cache
         # entries not extra ones. XXX TODO: RBC 20060502 in the event of a 
         # failure, reload the index or flush it or some such, to prevent
@@ -1296,10 +1328,13 @@ class _KnitIndex(_KnitComponentFile):
 class _KnitData(_KnitComponentFile):
     """Contents of the knit data file"""
 
-    HEADER = "# bzr knit data 8\n"
-
-    def __init__(self, transport, filename, mode, create=False, file_mode=None):
-        _KnitComponentFile.__init__(self, transport, filename, mode)
+    def __init__(self, transport, filename, mode, create=False, file_mode=None,
+                 create_parent_dir=False, delay_create=False,
+                 dir_mode=None):
+        _KnitComponentFile.__init__(self, transport, filename, mode,
+                                    file_mode=file_mode,
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
         self._checked = False
         # TODO: jam 20060713 conceptually, this could spill to disk
         #       if the cached size gets larger than a certain amount
@@ -1308,7 +1343,11 @@ class _KnitData(_KnitComponentFile):
         self._cache = {}
         self._do_cache = False
         if create:
-            self._transport.put(self._filename, StringIO(''), mode=file_mode)
+            if delay_create:
+                self._need_to_create = create
+            else:
+                self._transport.put_bytes_non_atomic(self._filename, '',
+                                                     mode=self._file_mode)
 
     def enable_cache(self):
         """Enable caching of reads."""
@@ -1353,14 +1392,30 @@ class _KnitData(_KnitComponentFile):
         :return: the offset in the data file raw_data was written.
         """
         assert isinstance(raw_data, str), 'data must be plain bytes'
-        return self._transport.append(self._filename, StringIO(raw_data))
+        if not self._need_to_create:
+            return self._transport.append_bytes(self._filename, raw_data)
+        else:
+            self._transport.put_bytes_non_atomic(self._filename, raw_data,
+                                   create_parent_dir=self._create_parent_dir,
+                                   mode=self._file_mode,
+                                   dir_mode=self._dir_mode)
+            self._need_to_create = False
+            return 0
         
     def add_record(self, version_id, digest, lines):
         """Write new text record to disk.  Returns the position in the
         file where it was written."""
         size, sio = self._record_to_data(version_id, digest, lines)
         # write to disk
-        start_pos = self._transport.append(self._filename, sio)
+        if not self._need_to_create:
+            start_pos = self._transport.append_file(self._filename, sio)
+        else:
+            self._transport.put_file_non_atomic(self._filename, sio,
+                               create_parent_dir=self._create_parent_dir,
+                               mode=self._file_mode,
+                               dir_mode=self._dir_mode)
+            self._need_to_create = False
+            start_pos = 0
         if self._do_cache:
             self._cache[version_id] = sio.getvalue()
         return start_pos, size

@@ -174,6 +174,15 @@ class InvalidRevisionId(BzrNewError):
         self.branch = branch
 
 
+class NoSuchId(BzrNewError):
+    """The file id %(file_id)s is not present in the tree %(tree)s."""
+    
+    def __init__(self, tree, file_id):
+        BzrNewError.__init__(self)
+        self.file_id = file_id
+        self.tree = tree
+
+
 class NoWorkingTree(BzrNewError):
     """No WorkingTree exists for %(base)s."""
     
@@ -516,6 +525,15 @@ class NoSuchRevision(BzrNewError):
 
     def __init__(self, branch, revision):
         BzrNewError.__init__(self, branch=branch, revision=revision)
+
+
+class NoSuchRevisionInTree(NoSuchRevision):
+    """The revision id %(revision_id)s is not present in the tree %(tree)s."""
+
+    def __init__(self, tree, revision_id):
+        BzrNewError.__init__(self)
+        self.tree = tree
+        self.revision_id = revision_id
 
 
 class NoSuchRevisionSpec(BzrNewError):
