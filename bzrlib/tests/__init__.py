@@ -150,7 +150,12 @@ class _MyResult(unittest._TextTestResult):
             from bzrlib.version import _get_bzr_source_tree
             src_tree = _get_bzr_source_tree()
             if src_tree:
-                revision_id = src_tree.last_revision()
+                try:
+                    revision_id = src_tree.get_parent_ids()[0]
+                except IndexError:
+                    # XXX: if this is a brand new tree, do the same as if there
+                    # is no branch.
+                    revision_id = ''
             else:
                 # XXX: If there's no branch, what should we do?
                 revision_id = ''

@@ -173,7 +173,10 @@ def _show_missing_revisions_working(working):
     work_inv = working.inventory
     delta = working.changes_from(basis, want_unchanged=True)
     history = branch.revision_history()
-    tree_last_id = working.last_revision()
+    try:
+        tree_last_id = working.get_parent_ids()[0]
+    except IndexError:
+        tree_last_id = None
 
     if len(history) and tree_last_id != history[-1]:
         tree_last_revno = branch.revision_id_to_revno(tree_last_id)

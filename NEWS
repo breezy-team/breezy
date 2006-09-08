@@ -73,6 +73,9 @@ IN DEVELOPMENT
     * WorkingTree has a new api ``unversion`` which allow the unversioning of
       entries by their file id. (Robert Collins)
 
+    * WorkingTree.pending_merges is deprecated.  Please use the get_parent_ids
+      (introduced in 0.10) method instead. (Robert Collins)
+
 bzr 0.10.0RC1  2006-08-28
   
   IMPROVEMENTS:

@@ -96,6 +96,7 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
         DEPRECATED_PARAMETER,
         zero_eight,
+        zero_eleven,
         )
 from bzrlib.trace import mutter, note
 from bzrlib.transform import build_tree
@@ -399,8 +400,14 @@ class WorkingTree(bzrlib.tree.Tree):
         If the left most parent is a ghost then the returned tree will be an
         empty tree - one obtained by calling repository.revision_tree(None).
         """
-        revision_id = self.last_revision()
-        if revision_id is not None:
+        try:
+            revision_id = self.get_parent_ids()[0]
+        except IndexError:
+            # no parents, return an empty revision tree.
+            # in the future this should return the tree for
+            # 'empty:' - the implicit root empty tree.
+            return self.branch.repository.revision_tree(None)
+        else:
             try:
                 xml = self.read_basis_inventory()
                 inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
@@ -410,7 +417,9 @@ class WorkingTree(bzrlib.tree.Tree):
             if inv is not None and inv.revision_id == revision_id:
                 return bzrlib.tree.RevisionTree(self.branch.repository, inv,
                                                 revision_id)
-        # FIXME? RBC 20060403 should we cache the inventory here ?
+        # No cached copy available, retrieve from the repository.
+        # FIXME? RBC 20060403 should we cache the inventory locally
+        # at this point ?
         try:
             return self.branch.repository.revision_tree(revision_id)
         except errors.RevisionNotPresent:
@@ -486,7 +495,7 @@ class WorkingTree(bzrlib.tree.Tree):
         This implementation reads the pending merges list and last_revision
         value and uses that to decide what the parents list should be.
         """
-        last_rev = self.last_revision()
+        last_rev = self._last_revision()
         if last_rev is None:
             parents = []
         else:
@@ -714,12 +723,16 @@ class WorkingTree(bzrlib.tree.Tree):
         if updated:
             self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
+    @deprecated_method(zero_eleven)
     @needs_read_lock
     def pending_merges(self):
         """Return a list of pending merges.
 
         These are revisions that have been merged into the working
         directory but not yet committed.
+
+        As of 0.11 this is deprecated. Please see WorkingTree.get_parent_ids()
+        instead - which is available on all tree objects.
         """
         return self.get_parent_ids()[1:]
 
@@ -1345,14 +1358,21 @@ class WorkingTree(bzrlib.tree.Tree):
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
 
-    @needs_read_lock
     def last_revision(self):
         """Return the last revision id of this working tree.
 
-        In early branch formats this was == the branch last_revision,
+        In early branch formats this was the same as the branch last_revision,
         but that cannot be relied upon - for working tree operations,
-        always use tree.last_revision().
+        always use tree.last_revision(). This returns the left most parent id,
+        or None if there are no parents.
+
+        This was deprecated as of 0.11. Please use get_parent_ids instead.
         """
+        return self._last_revision()
+
+    @needs_read_lock
+    def _last_revision(self):
+        """helper for get_parent_ids."""
         return self.branch.last_revision()
 
     def is_locked(self):
@@ -1585,7 +1605,11 @@ class WorkingTree(bzrlib.tree.Tree):
         # local work is unreferenced and will appear to have been lost.
         # 
         result = 0
-        if self.last_revision() != self.branch.last_revision():
+        try:
+            last_rev = self.get_parent_ids()[0]
+        except IndexError:
+            last_rev = None
+        if last_rev != self.branch.last_revision():
             # merge tree state up to new branch tip.
             basis = self.basis_tree()
             to_tree = self.branch.basis_tree()
@@ -1609,13 +1633,14 @@ class WorkingTree(bzrlib.tree.Tree):
                 parent_trees.append(
                     (old_tip, self.branch.repository.revision_tree(old_tip)))
             self.set_parent_trees(parent_trees)
+            last_rev = parent_trees[0][0]
         else:
             # the working tree had the same last-revision as the master
             # branch did. We may still have pivot local work from the local
             # branch into old_tip:
             if old_tip is not None:
                 self.add_parent_tree_id(old_tip)
-        if old_tip and old_tip != self.last_revision():
+        if old_tip and old_tip != last_rev:
             # our last revision was not the prior branch last revision
             # and we have converted that last revision to a pending merge.
             # base is somewhere between the branch tip now
@@ -1707,8 +1732,8 @@ class WorkingTree3(WorkingTree):
     """
 
     @needs_read_lock
-    def last_revision(self):
-        """See WorkingTree.last_revision."""
+    def _last_revision(self):
+        """See WorkingTree._last_revision."""
         try:
             return self._control_files.get_utf8('last-revision').read()
         except NoSuchFile:

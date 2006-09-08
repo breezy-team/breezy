@@ -729,7 +729,7 @@ class TestRunner(TestCase):
         output_string = output.getvalue()
         self.assertContainsRe(output_string, "--date [0-9.]+")
         if workingtree is not None:
-            revision_id = workingtree.last_revision()
+            revision_id = workingtree.get_parent_ids()[0]
             self.assertEndsWith(output_string.rstrip(), revision_id)
 
 

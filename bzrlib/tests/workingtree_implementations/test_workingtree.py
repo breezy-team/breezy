@@ -263,32 +263,31 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('source')
         cloned_dir = wt.bzrdir.clone('target')
         cloned = cloned_dir.open_workingtree()
-        self.assertEqual(cloned.last_revision(), wt.last_revision())
+        self.assertEqual(cloned.get_parent_ids(), wt.get_parent_ids())
 
     def test_last_revision(self):
         wt = self.make_branch_and_tree('source')
-        self.assertEqual(None, wt.last_revision())
+        self.assertEqual([], wt.get_parent_ids())
         wt.commit('A', allow_pointless=True, rev_id='A')
-        self.assertEqual('A', wt.last_revision())
+        self.assertEqual(['A'], wt.get_parent_ids())
 
     def test_set_last_revision(self):
         wt = self.make_branch_and_tree('source')
-        self.assertEqual(None, wt.last_revision())
         # set last-revision to one not in the history
         wt.set_last_revision('A')
         # set it back to None for an empty tree.
         wt.set_last_revision(None)
         wt.commit('A', allow_pointless=True, rev_id='A')
-        self.assertEqual('A', wt.last_revision())
+        self.assertEqual(['A'], wt.get_parent_ids())
         # None is aways in the branch
         wt.set_last_revision(None)
-        self.assertEqual(None, wt.last_revision())
+        self.assertEqual([], wt.get_parent_ids())
         # and now we can set it to 'A'
         # because some formats mutate the branch to set it on the tree
         # we need to alter the branch to let this pass.
         wt.branch.set_revision_history(['A', 'B'])
         wt.set_last_revision('A')
-        self.assertEqual('A', wt.last_revision())
+        self.assertEqual(['A'], wt.get_parent_ids())
 
     def test_set_last_revision_different_to_branch(self):
         # working tree formats from the meta-dir format and newer support
@@ -309,19 +308,20 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt = branch.bzrdir.create_workingtree()
         wt.commit('A', allow_pointless=True, rev_id='A')
         wt.set_last_revision(None)
-        self.assertEqual(None, wt.last_revision())
+        self.assertEqual([], wt.get_parent_ids())
         self.assertEqual('A', wt.branch.last_revision())
         # and now we can set it back to 'A'
         wt.set_last_revision('A')
-        self.assertEqual('A', wt.last_revision())
+        self.assertEqual(['A'], wt.get_parent_ids())
         self.assertEqual('A', wt.branch.last_revision())
 
     def test_clone_and_commit_preserves_last_revision(self):
+        """Doing a commit into a clone tree does not affect the source."""
         wt = self.make_branch_and_tree('source')
         cloned_dir = wt.bzrdir.clone('target')
         wt.commit('A', allow_pointless=True, rev_id='A')
-        self.assertNotEqual(cloned_dir.open_workingtree().last_revision(),
-                            wt.last_revision())
+        self.assertNotEqual(cloned_dir.open_workingtree().get_parent_ids(),
+                            wt.get_parent_ids())
 
     def test_clone_preserves_content(self):
         wt = self.make_branch_and_tree('source')
@@ -380,7 +380,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         source.branch.repository.clone(made_control)
         source.branch.clone(made_control)
         made_tree = self.workingtree_format.initialize(made_control, revision_id='a')
-        self.assertEqual('a', made_tree.last_revision())
+        self.assertEqual(['a'], made_tree.get_parent_ids())
 
     def test_update_sets_last_revision(self):
         # working tree formats from the meta-dir format and newer support
@@ -411,7 +411,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # and update old_tree
         self.assertEqual(0, old_tree.update())
         self.failUnlessExists('checkout/file')
-        self.assertEqual('A', old_tree.last_revision())
+        self.assertEqual(['A'], old_tree.get_parent_ids())
 
     def test_update_returns_conflict_count(self):
         # working tree formats from the meta-dir format and newer support
@@ -444,7 +444,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         old_tree.add('file')
         # and update old_tree
         self.assertEqual(1, old_tree.update())
-        self.assertEqual('A', old_tree.last_revision())
+        self.assertEqual(['A'], old_tree.get_parent_ids())
 
     def test_merge_revert(self):
         from bzrlib.merge import merge_inner
@@ -483,7 +483,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             return
         master_tree.commit('foo', rev_id='foo', allow_pointless=True)
         tree.update()
-        self.assertEqual('foo', tree.last_revision())
+        self.assertEqual(['foo'], tree.get_parent_ids())
         self.assertEqual('foo', tree.branch.last_revision())
 
     def test_update_turns_local_commit_into_merge(self):
@@ -512,9 +512,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # sync with master prepatory to committing
         tree.update()
         # which should have pivoted the local tip into a merge
-        self.assertEqual(master_tip, tree.last_revision())
-        self.assertEqual([master_tip], tree.branch.revision_history())
         self.assertEqual([master_tip, 'bar'], tree.get_parent_ids())
+        # and the local branch history should match the masters now.
+        self.assertEqual(master_tree.branch.revision_history(),
+            tree.branch.revision_history())
 
     def test_merge_modified(self):
         tree = self.make_branch_and_tree('master')
