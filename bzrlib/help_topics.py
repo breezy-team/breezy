@@ -110,5 +110,3 @@ Basic commands:
 add_topic("revisionspec", _help_on_revisionspec, "Revisions specifier")
 add_topic("basic", _basic_help, "Basic commands")
 add_topic("topics", _help_on_topics, "Topics list")
-
-

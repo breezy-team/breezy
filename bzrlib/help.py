@@ -32,6 +32,8 @@ help_topics.add_topic("commands",
 
 
 def help(topic=None, outfile=None):
+    """Print out the help for a specific topic or command."""
+
     if outfile is None:
         outfile = sys.stdout
     if topic is None:
