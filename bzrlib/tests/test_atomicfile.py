@@ -26,7 +26,7 @@ from bzrlib import (
     osutils,
     symbol_versioning,
     )
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir, TestSkipped
 
 
 class TestAtomicFile(TestCaseInTempDir):
@@ -86,7 +86,7 @@ class TestAtomicFile(TestCaseInTempDir):
 
     def _test_mode(self, mode):
         if not self.can_sys_preserve_mode():
-            return
+            raise TestSkipped("This test cannot be run on your platform")
         f = atomicfile.AtomicFile('test', mode='wb', new_mode=mode)
         f.write('foo\n')
         f.commit()

@@ -96,6 +96,7 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
         DEPRECATED_PARAMETER,
         zero_eight,
+        zero_eleven,
         )
 from bzrlib.trace import mutter, note
 from bzrlib.transform import build_tree
@@ -399,8 +400,14 @@ class WorkingTree(bzrlib.tree.Tree):
         If the left most parent is a ghost then the returned tree will be an
         empty tree - one obtained by calling repository.revision_tree(None).
         """
-        revision_id = self.last_revision()
-        if revision_id is not None:
+        try:
+            revision_id = self.get_parent_ids()[0]
+        except IndexError:
+            # no parents, return an empty revision tree.
+            # in the future this should return the tree for
+            # 'empty:' - the implicit root empty tree.
+            return self.branch.repository.revision_tree(None)
+        else:
             try:
                 xml = self.read_basis_inventory()
                 inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
@@ -410,7 +417,9 @@ class WorkingTree(bzrlib.tree.Tree):
             if inv is not None and inv.revision_id == revision_id:
                 return bzrlib.tree.RevisionTree(self.branch.repository, inv,
                                                 revision_id)
-        # FIXME? RBC 20060403 should we cache the inventory here ?
+        # No cached copy available, retrieve from the repository.
+        # FIXME? RBC 20060403 should we cache the inventory locally
+        # at this point ?
         try:
             return self.branch.repository.revision_tree(revision_id)
         except errors.RevisionNotPresent:
@@ -486,7 +495,7 @@ class WorkingTree(bzrlib.tree.Tree):
         This implementation reads the pending merges list and last_revision
         value and uses that to decide what the parents list should be.
         """
-        last_rev = self.last_revision()
+        last_rev = self._last_revision()
         if last_rev is None:
             parents = []
         else:
@@ -557,7 +566,6 @@ class WorkingTree(bzrlib.tree.Tree):
         args = (DEPRECATED_PARAMETER, message, ) + args
         committed_id = Commit().commit( working_tree=self, revprops=revprops,
             *args, **kwargs)
-        self._set_inventory(self.read_working_inventory())
         return committed_id
 
     def id2abspath(self, file_id):
@@ -693,7 +701,12 @@ class WorkingTree(bzrlib.tree.Tree):
             If the revision_id is a ghost, pass None for the tree.
         :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
-        self.set_parent_ids(self.get_parent_ids() + [parent_tuple[0]],
+        parent_ids = self.get_parent_ids() + [parent_tuple[0]]
+        if len(parent_ids) > 1:
+            # the leftmost may have already been a ghost, preserve that if it
+            # was.
+            allow_leftmost_as_ghost = True
+        self.set_parent_ids(parent_ids,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
     @needs_write_lock
@@ -710,12 +723,16 @@ class WorkingTree(bzrlib.tree.Tree):
         if updated:
             self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
+    @deprecated_method(zero_eleven)
     @needs_read_lock
     def pending_merges(self):
         """Return a list of pending merges.
 
         These are revisions that have been merged into the working
         directory but not yet committed.
+
+        As of 0.11 this is deprecated. Please see WorkingTree.get_parent_ids()
+        instead - which is available on all tree objects.
         """
         return self.get_parent_ids()[1:]
 
@@ -774,6 +791,49 @@ class WorkingTree(bzrlib.tree.Tree):
     def _put_rio(self, filename, stanzas, header):
         my_file = rio_file(stanzas, header)
         self._control_files.put(filename, my_file)
+
+    @needs_write_lock
+    def merge_from_branch(self, branch, to_revision=None):
+        """Merge from a branch into this working tree.
+
+        :param branch: The branch to merge from.
+        :param to_revision: If non-None, the merge will merge to to_revision, but 
+            not beyond it. to_revision does not need to be in the history of
+            the branch when it is supplied. If None, to_revision defaults to
+            branch.last_revision().
+        """
+        from bzrlib.merge import Merger, Merge3Merger
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            merger = Merger(self.branch, this_tree=self, pb=pb)
+            merger.pp = ProgressPhase("Merge phase", 5, pb)
+            merger.pp.next_phase()
+            # check that there are no
+            # local alterations
+            merger.check_basis(check_clean=True, require_commits=False)
+            if to_revision is None:
+                to_revision = branch.last_revision()
+            merger.other_rev_id = to_revision
+            if merger.other_rev_id is None:
+                raise error.NoCommits(branch)
+            self.branch.fetch(branch, last_revision=merger.other_rev_id)
+            merger.other_basis = merger.other_rev_id
+            merger.other_tree = self.branch.repository.revision_tree(
+                merger.other_rev_id)
+            merger.pp.next_phase()
+            merger.find_base()
+            if merger.base_rev_id == merger.other_rev_id:
+                raise errors.PointlessMerge
+            merger.backup_files = False
+            merger.merge_type = Merge3Merger
+            merger.set_interesting_files(None)
+            merger.show_base = False
+            merger.reprocess = False
+            conflicts = merger.do_merge()
+            merger.set_pending()
+        finally:
+            pb.finished()
+        return conflicts
 
     @needs_read_lock
     def merge_modified(self):
@@ -1044,7 +1104,33 @@ class WorkingTree(bzrlib.tree.Tree):
         for subp in self.extras():
             if not self.is_ignored(subp):
                 yield subp
+    
+    @needs_write_lock
+    def unversion(self, file_ids):
+        """Remove the file ids in file_ids from the current versioned set.
 
+        When a file_id is unversioned, all of its children are automatically
+        unversioned.
+
+        :param file_ids: The file ids to stop versioning.
+        :raises: NoSuchId if any fileid is not currently versioned.
+        """
+        for file_id in file_ids:
+            if self._inventory.has_id(file_id):
+                self._inventory.remove_recursive_id(file_id)
+            else:
+                raise errors.NoSuchId(self, file_id)
+        if len(file_ids):
+            # in the future this should just set a dirty bit to wait for the 
+            # final unlock. However, until all methods of workingtree start
+            # with the current in -memory inventory rather than triggering 
+            # a read, it is more complex - we need to teach read_inventory
+            # to know when to read, and when to not read first... and possibly
+            # to save first when the in memory one may be corrupted.
+            # so for now, we just only write it if it is indeed dirty.
+            # - RBC 20060907
+            self._write_inventory(self._inventory)
+    
     @deprecated_method(zero_eight)
     def iter_conflicts(self):
         """List all files in the tree that have text or content conflicts.
@@ -1272,14 +1358,21 @@ class WorkingTree(bzrlib.tree.Tree):
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
 
-    @needs_read_lock
     def last_revision(self):
         """Return the last revision id of this working tree.
 
-        In early branch formats this was == the branch last_revision,
+        In early branch formats this was the same as the branch last_revision,
         but that cannot be relied upon - for working tree operations,
-        always use tree.last_revision().
+        always use tree.last_revision(). This returns the left most parent id,
+        or None if there are no parents.
+
+        This was deprecated as of 0.11. Please use get_parent_ids instead.
         """
+        return self._last_revision()
+
+    @needs_read_lock
+    def _last_revision(self):
+        """helper for get_parent_ids."""
         return self.branch.last_revision()
 
     def is_locked(self):
@@ -1520,12 +1613,14 @@ class WorkingTree(bzrlib.tree.Tree):
         # 
         result = 0
         if revision is None:
-            revision = self.branch.last_revision()
+            try:
+                last_rev = self.get_parent_ids()[0]
+            except IndexError:
+                last_rev = None
         else:
             if revision not in self.branch.revision_history():
                 raise errors.NoSuchRevision(self.branch, revision)
-
-        if self.last_revision() != revision:
+        if revision != self.last_revision():
             # merge tree state up to new branch tip.
             basis = self.basis_tree()
             to_tree = self.branch.repository.revision_tree(revision)
@@ -1550,13 +1645,14 @@ class WorkingTree(bzrlib.tree.Tree):
                 parent_trees.append(
                     (old_tip, self.branch.repository.revision_tree(old_tip)))
             self.set_parent_trees(parent_trees)
+            last_rev = parent_trees[0][0]
         else:
             # the working tree had the same last-revision as the master
             # branch did. We may still have pivot local work from the local
             # branch into old_tip:
             if old_tip is not None:
                 self.add_parent_tree_id(old_tip)
-        if old_tip and old_tip != self.last_revision():
+        if old_tip and old_tip != last_rev:
             # our last revision was not the prior branch last revision
             # and we have converted that last revision to a pending merge.
             # base is somewhere between the branch tip now
@@ -1648,8 +1744,8 @@ class WorkingTree3(WorkingTree):
     """
 
     @needs_read_lock
-    def last_revision(self):
-        """See WorkingTree.last_revision."""
+    def _last_revision(self):
+        """See WorkingTree._last_revision."""
         try:
             return self._control_files.get_utf8('last-revision').read()
         except NoSuchFile:
