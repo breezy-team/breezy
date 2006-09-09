@@ -20,13 +20,8 @@
 class Registry(object):
     """A class that registers objects to a name."""
 
-    def __init__(self, first_is_default=False):
-        """Create a new Registry.
-
-        :param first_is_default: If True, then the first key to be registered
-            will be set as the default key for get() to use.
-        """
-        self._first_is_default = first_is_default
+    def __init__(self):
+        """Create a new Registry."""
         self._default_key = None
         # Map from key => (is_lazy, info)
         self._dict = {}
@@ -37,8 +32,6 @@ class Registry(object):
         :param key: This is the key to use to request the object later.
         :param object: The object to register.
         """
-        if self._first_is_default and not self._dict:
-            self._default_key = key
         self._dict[key] = (False, object)
 
     __setitem__ = register
@@ -50,8 +43,6 @@ class Registry(object):
         :param member_name: The member of the module to return, if empty or 
                 None get() will return the module itself.
         """
-        if self._first_is_default and not self._dict:
-            self._default_key = key
         self._dict[key] = (True, (module_name, member_name))
 
     def get(self, key=None):

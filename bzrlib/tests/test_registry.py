@@ -60,26 +60,6 @@ class TestRegistry(TestCase):
         # test keys()
         self.assertEqual(['five', 'four', 'one', 'two'], a_registry.keys())
 
-    def test_registry_with_first_is_default(self):
-        a_registry = registry.Registry(True)
-        self.register_stuff(a_registry)
-
-        self.failUnless(a_registry.default_key == 'one')
-
-        # test get() (self.default_key == 'one')
-        self.assertEqual(1, a_registry.get())
-        self.assertEqual(1, a_registry.get(None))
-        self.assertEqual(2, a_registry.get('two'))
-        self.assertRaises(KeyError, a_registry.get, 'three')
-
-        # test _set_default_key
-        a_registry.default_key = 'five'
-        self.failUnless(a_registry.default_key == 'five')
-        self.assertEqual(5, a_registry.get())
-        self.assertEqual(5, a_registry.get(None))
-        self.assertRaises(KeyError, a_registry.get, 'six')
-        self.assertRaises(KeyError, a_registry._set_default_key, 'six')
-
     def test_registry_like_dict(self):
         a_registry = registry.Registry()
         self.register_stuff(a_registry)
