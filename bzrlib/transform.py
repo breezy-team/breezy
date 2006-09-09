@@ -1086,7 +1086,7 @@ def new_by_entry(tt, entry, parent_id, tree):
 def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
     """Create new file contents according to an inventory entry."""
     if entry.kind == "file":
-        if lines == None:
+        if lines is None:
             lines = tree.get_file(entry.file_id).readlines()
         tt.create_file(lines, trans_id, mode_id=mode_id)
     elif entry.kind == "symlink":

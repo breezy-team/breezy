@@ -547,7 +547,7 @@ class SFTPTransport(Transport):
         """
         # paramiko seems to generate detailless errors.
         self._translate_error(e, path, raise_generic=False)
-        if hasattr(e, 'args'):
+        if getattr(e, 'args', None) is not None:
             if (e.args == ('No such file or directory',) or
                 e.args == ('No such file',)):
                 raise NoSuchFile(path, str(e) + more_info)
@@ -557,7 +557,7 @@ class SFTPTransport(Transport):
             if (e.args == ('Failure',)):
                 raise failure_exc(path, str(e) + more_info)
             mutter('Raising exception with args %s', e.args)
-        if hasattr(e, 'errno'):
+        if getattr(e, 'errno', None) is not None:
             mutter('Raising exception with errno %s', e.errno)
         raise e
 

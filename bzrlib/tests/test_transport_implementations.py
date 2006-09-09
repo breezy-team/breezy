@@ -68,8 +68,10 @@ class TransportTests(TestTransportImplementation):
         except excClass:
             return
         else:
-            if hasattr(excClass,'__name__'): excName = excClass.__name__
-            else: excName = str(excClass)
+            if getattr(excClass,'__name__', None) is not None:
+                excName = excClass.__name__
+            else:
+                excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
     def test_has(self):

@@ -1002,7 +1002,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if not self.has_filename(to_name):
             raise BzrError("destination %r not in working directory" % to_abs)
         to_dir_id = inv.path2id(to_name)
-        if to_dir_id == None and to_name != '':
+        if to_dir_id is None and to_name != '':
             raise BzrError("destination %r is not a versioned directory" % to_name)
         to_dir_ie = inv[to_dir_id]
         if to_dir_ie.kind != 'directory':
@@ -1014,7 +1014,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if not self.has_filename(f):
                 raise BzrError("%r does not exist in working tree" % f)
             f_id = inv.path2id(f)
-            if f_id == None:
+            if f_id is None:
                 raise BzrError("%r is not versioned" % f)
             name_tail = splitpath(f)[-1]
             dest_path = pathjoin(to_name, name_tail)
@@ -1059,7 +1059,7 @@ class WorkingTree(bzrlib.tree.Tree):
             raise BzrError("can't rename: new working file %r already exists" % to_rel)
 
         file_id = inv.path2id(from_rel)
-        if file_id == None:
+        if file_id is None:
             raise BzrError("can't rename: old name %r is not versioned" % from_rel)
 
         entry = inv[file_id]
@@ -1071,7 +1071,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
         to_dir, to_tail = os.path.split(to_rel)
         to_dir_id = inv.path2id(to_dir)
-        if to_dir_id == None and to_dir != '':
+        if to_dir_id is None and to_dir != '':
             raise BzrError("can't determine destination directory id for %r" % to_dir)
 
         mutter("rename_one:")
@@ -1286,7 +1286,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """Yield list of PATH, IGNORE_PATTERN"""
         for subp in self.extras():
             pat = self.is_ignored(subp)
-            if pat != None:
+            if pat is not None:
                 yield subp, pat
 
     def get_ignore_list(self):

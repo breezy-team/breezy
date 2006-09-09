@@ -1647,7 +1647,7 @@ class InterRepository(InterObject):
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] == None
+            assert source_ids[0] is None
             source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
@@ -1750,7 +1750,7 @@ class InterWeaveRepo(InterRepository):
         # - RBC 20060209
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] == None
+            assert source_ids[0] is None
             source_ids.pop(0)
         else:
             source_ids = self.source._all_possible_ids()
@@ -1813,7 +1813,7 @@ class InterKnitRepo(InterRepository):
         """See InterRepository.missing_revision_ids()."""
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] == None
+            assert source_ids[0] is None
             source_ids.pop(0)
         else:
             source_ids = self.source._all_possible_ids()
