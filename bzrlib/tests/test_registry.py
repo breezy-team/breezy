@@ -28,60 +28,100 @@ from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
 class TestRegistry(TestCase):
-    def register_stuff(self, registry):
-        registry.register('one', 1)
-        registry.register('two', 2)
-        registry.register('four', 4)
-        registry.register('five', 5)
+
+    def register_stuff(self, a_registry):
+        a_registry.register('one', 1)
+        a_registry.register('two', 2)
+        a_registry.register('four', 4)
+        a_registry.register('five', 5)
 
     def test_registry(self):
-        registry_ = registry.Registry()
-        self.register_stuff(registry_)
+        a_registry = registry.Registry()
+        self.register_stuff(a_registry)
 
-        self.failUnless(registry_.default_key is None)
+        self.failUnless(a_registry.default_key is None)
 
         # test get() (self.default_key == None)
-        self.assertRaises(KeyError, registry_.get)
-        self.assertRaises(KeyError, registry_.get, None)
-        self.assertEqual(2, registry_.get('two'))
-        self.assertRaises(KeyError, registry_.get, 'three')
+        self.assertRaises(KeyError, a_registry.get)
+        self.assertRaises(KeyError, a_registry.get, None)
+        self.assertEqual(2, a_registry.get('two'))
+        self.assertRaises(KeyError, a_registry.get, 'three')
 
         # test _set_default_key
-        registry_.default_key = 'five'
-        self.failUnless(registry_.default_key == 'five')
-        self.assertEqual(5, registry_.get())
-        self.assertEqual(5, registry_.get(None))
-        self.assertEqual(5, registry_.get('six'))
-        self.assertRaises(KeyError, registry_._set_default_key, 'six')
+        a_registry.default_key = 'five'
+        self.failUnless(a_registry.default_key == 'five')
+        self.assertEqual(5, a_registry.get())
+        self.assertEqual(5, a_registry.get(None))
+        # If they ask for a specific entry, they should get KeyError
+        # not the default value. They can always pass None if they prefer
+        self.assertRaises(KeyError, a_registry.get, 'six')
+        self.assertRaises(KeyError, a_registry._set_default_key, 'six')
 
         # test keys()
-        self.assertEqual(['five', 'four', 'one', 'two'], registry_.keys())
+        self.assertEqual(['five', 'four', 'one', 'two'], a_registry.keys())
 
     def test_registry_with_first_is_default(self):
-        registry_ = registry.Registry(True)
-        self.register_stuff(registry_)
+        a_registry = registry.Registry(True)
+        self.register_stuff(a_registry)
 
-        self.failUnless(registry_.default_key == 'one')
+        self.failUnless(a_registry.default_key == 'one')
 
         # test get() (self.default_key == 'one')
-        self.assertEqual(1, registry_.get())
-        self.assertEqual(1, registry_.get(None))
-        self.assertEqual(2, registry_.get('two'))
-        self.assertEqual(1, registry_.get('three'))
+        self.assertEqual(1, a_registry.get())
+        self.assertEqual(1, a_registry.get(None))
+        self.assertEqual(2, a_registry.get('two'))
+        self.assertRaises(KeyError, a_registry.get, 'three')
 
         # test _set_default_key
-        registry_.default_key = 'five'
-        self.failUnless(registry_.default_key == 'five')
-        self.assertEqual(5, registry_.get())
-        self.assertEqual(5, registry_.get(None))
-        self.assertEqual(5, registry_.get('six'))
-        self.assertRaises(KeyError, registry_._set_default_key, 'six')
+        a_registry.default_key = 'five'
+        self.failUnless(a_registry.default_key == 'five')
+        self.assertEqual(5, a_registry.get())
+        self.assertEqual(5, a_registry.get(None))
+        self.assertRaises(KeyError, a_registry.get, 'six')
+        self.assertRaises(KeyError, a_registry._set_default_key, 'six')
 
-class TestLazyImportRegistry(TestCaseInTempDir):
+    def test_registry_like_dict(self):
+        a_registry = registry.Registry()
+        self.register_stuff(a_registry)
+
+        self.failUnless('one' in a_registry)
+        del a_registry['one']
+        self.failIf('one' in a_registry)
+        self.assertRaises(KeyError, a_registry.get, 'one')
+
+        a_registry['one'] = 'one'
+        self.assertEqual('one', a_registry['one'])
+        self.assertEqual(4, len(a_registry))
+
+        self.assertEqual(['five', 'four', 'one', 'two'],
+                         sorted(a_registry.iterkeys()))
+        self.assertEqual([('five', 5), ('four', 4),
+                          ('one', 'one'), ('two', 2)],
+                         sorted(a_registry.iteritems()))
+        self.assertEqual([2, 4, 5, 'one'],
+                         sorted(a_registry.itervalues()))
+
+        self.assertEqual(['five', 'four', 'one', 'two'],
+                         sorted(a_registry.keys()))
+        self.assertEqual([('five', 5), ('four', 4),
+                          ('one', 'one'), ('two', 2)],
+                         sorted(a_registry.items()))
+        self.assertEqual([2, 4, 5, 'one'],
+                         sorted(a_registry.values()))
+
+
+class TestRegistryWithDirs(TestCaseInTempDir):
+    """Registry tests that require temporary dirs"""
 
     def create_plugin_file(self, contents):
+        """Create a file to be used as a plugin.
+
+        This is created in a temporary directory, so that we
+        are sure that it doesn't start in the plugin path.
+        """
+        os.mkdir('tmp')
         plugin_name = 'bzr_plugin_a_%s' % (osutils.rand_chars(4),)
-        open(plugin_name+'.py', 'wb').write(contents)
+        open('tmp/'+plugin_name+'.py', 'wb').write(contents)
         return plugin_name
 
     def create_simple_plugin(self):
@@ -99,35 +139,35 @@ class TestLazyImportRegistry(TestCaseInTempDir):
 
     def test_lazy_import_registry(self):
         plugin_name = self.create_simple_plugin()
-        factory = registry.LazyImportRegistry()
-        factory.register('obj', plugin_name, 'object1')
-        factory.register('function', plugin_name, 'function')
-        factory.register('klass', plugin_name, 'MyClass')
-        factory.register('module', plugin_name, None)
+        a_registry = registry.Registry()
+        a_registry.register_lazy('obj', plugin_name, 'object1')
+        a_registry.register_lazy('function', plugin_name, 'function')
+        a_registry.register_lazy('klass', plugin_name, 'MyClass')
+        a_registry.register_lazy('module', plugin_name, None)
 
         self.assertEqual(['function', 'klass', 'module', 'obj'],
-                         sorted(factory.keys()))
+                         sorted(a_registry.keys()))
         # The plugin should not be loaded until we grab the first object
         self.failIf(plugin_name in sys.modules)
 
         # By default the plugin won't be in the search path
-        self.assertRaises(ImportError, factory.get, 'obj')
+        self.assertRaises(ImportError, a_registry.get, 'obj')
 
-        cwd = os.getcwd()
-        sys.path.append(cwd)
+        plugin_path = os.getcwd() + '/tmp'
+        sys.path.append(plugin_path)
         try:
-            obj = factory.get('obj')
+            obj = a_registry.get('obj')
             self.assertEqual('foo', obj)
             self.failUnless(plugin_name in sys.modules)
 
             # Now grab another object
-            func = factory.get('function')
+            func = a_registry.get('function')
             self.assertEqual(plugin_name, func.__module__)
             self.assertEqual('function', func.__name__)
             self.assertEqual((1, [], '3'), func(1, [], '3'))
 
             # And finally a class
-            klass = factory.get('klass')
+            klass = a_registry.get('klass')
             self.assertEqual(plugin_name, klass.__module__)
             self.assertEqual('MyClass', klass.__name__)
 
@@ -135,9 +175,11 @@ class TestLazyImportRegistry(TestCaseInTempDir):
             self.assertIsInstance(inst, klass)
             self.assertEqual(1, inst.a)
 
-            module = factory.get('module')
+            module = a_registry.get('module')
             self.assertIs(obj, module.object1)
             self.assertIs(func, module.function)
             self.assertIs(klass, module.MyClass)
         finally:
-            sys.path.remove(cwd)
+            sys.path.remove(plugin_path)
+
+
