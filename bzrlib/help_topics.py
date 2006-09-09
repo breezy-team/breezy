@@ -14,17 +14,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import textwrap
+"""A collection of extra help information for using bzr.
+
+Help topics are meant to be help for items that aren't commands, but will
+help bzr become fully learnable without referring to a tutorial.
+"""
+
 import sys
+
 
 HELP_TOPICS={}
 HELP_TOPICS_COMMENT={}
+
 
 def add_topic(name, obj, comment):
     """add a new topic, obj can be a function or a text; comment
        is a text"""
     HELP_TOPICS[name]=obj
     HELP_TOPICS_COMMENT[name]=comment
+
 
 def write_topic(name, outfile=sys.stdout):
     """write to outfile the topic named "name"""
@@ -34,9 +42,11 @@ def write_topic(name, outfile=sys.stdout):
     else:
         outfile.write(obj)
 
+
 def is_topic(name):
     """is "name" a topic ?"""
     return name in HELP_TOPICS
+
 
 def get_topics_list( ):
     """return a dict like {topic_name:topi_comment}"""
@@ -45,25 +55,31 @@ def get_topics_list( ):
 
 #----------------------------------------------------
 
-def help_topics(name, outfile):
-    topics=get_topics_list( )
-    for i in topics:
-        outfile.write("%s\n        %s\n"%(i,topics[i]))
+def _help_on_topics(name, outfile):
+    """Write out the help for topics to outfile"""
 
-def help_revisions(name, outfile):
-    import revisionspec
+    topics = get_topics_list()
+    for i in topics:
+        outfile.write("%s\n        %s\n" % (i, topics[i]))
+
+
+def _help_on_revisionspec(name, outfile):
+    """Write out the help for revison spec information"""
+    import bzrlib.revisionspec
+
     outfile.write("\nRevision prefix specifier:\n--------------------------\n")
 
-    for i in revisionspec.SPEC_TYPES:
+    for i in bzrlib.revisionspec.SPEC_TYPES:
         doc = i.__doc__
-        if doc == revisionspec.RevisionSpec.__doc__:
+        if doc == bzrlib.revisionspec.RevisionSpec.__doc__:
             doc = "N/A\n"
-        while (len(doc) > 2 and doc[-2:]=='\n\n') or ( len(doc)>1 and doc[-1]==' '):
+        while (len(doc) > 2 and doc[-2:]=='\n\n') or (len(doc)>1 and doc[-1]==' '):
             doc = doc[:-1]
 
-        outfile.write("  %s%s"%(i.prefix,doc))
+        outfile.write("  %s%s" % (i.prefix, doc))
 
-global_help = \
+
+_basic_help= \
 """Bazaar -- a free distributed version-control tool
 http://bazaar-vcs.org/
 
@@ -87,10 +103,12 @@ Basic commands:
 
   bzr help init      more help on e.g. init command
   bzr help commands  list all commands
+  bzr help topics    list all help topics
 """
 
-add_topic("revisionspec",help_revisions,"Revisions specifier")
-add_topic("global_help", global_help, "Basic commands")
-add_topic("topics", help_topics, "Topics list")
+
+add_topic("revisionspec", _help_on_revisionspec, "Revisions specifier")
+add_topic("basic", _basic_help, "Basic commands")
+add_topic("topics", _help_on_topics, "Topics list")
 
 
