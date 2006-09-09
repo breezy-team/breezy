@@ -20,55 +20,26 @@
 # executable files with reasonable names.
 
 # TODO: `help commands --all` should show hidden commands
-import textwrap
-
-global_help = \
-"""Bazaar -- a free distributed version-control tool
-http://bazaar-vcs.org/
-
-Basic commands:
-
-  bzr init           makes this directory a versioned branch
-  bzr branch         make a copy of another branch
-
-  bzr add            make files or directories versioned
-  bzr ignore         ignore a file or pattern
-  bzr mv             move or rename a versioned file
-
-  bzr status         summarize changes in working copy
-  bzr diff           show detailed diffs
-
-  bzr merge          pull in changes from another branch
-  bzr commit         save some or all changes
-
-  bzr log            show history of changes
-  bzr check          validate storage
-
-  bzr help init      more help on e.g. init command
-  bzr help commands  list all commands
-"""
-
 
 import sys
-from bzrlib.help_topics import (
-    write_topic,
-    is_topic,
-    add_topic
-)
+
+from bzrlib import help_topics
 
 
-add_topic("commands",( lambda name, outfile: help_commands(outfile) ),
-    "List of commands") 
+help_topics.add_topic("commands",
+                      (lambda name, outfile: help_commands(outfile)),
+                      "Basic help for all commands")
 
-def help(topic=None, outfile = None):
-    if outfile == None:
+
+def help(topic=None, outfile=None):
+    if outfile is None:
         outfile = sys.stdout
-    if topic == None:
-        write_topic("global_help", outfile)
-    elif is_topic(topic):
-        write_topic(topic, outfile)
+    if topic is None:
+        help_topics.write_topic("basic", outfile)
+    elif help_topics.is_topic(topic):
+        help_topics.write_topic(topic, outfile)
     else:
-        help_on_command(topic, outfile = outfile)
+        help_on_command(topic, outfile=outfile)
 
 
 def command_usage(cmd_object):
