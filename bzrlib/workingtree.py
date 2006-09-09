@@ -1634,7 +1634,7 @@ class WorkingTree(bzrlib.tree.Tree):
             parent_trees = [(revision, to_tree)]
             merges = self.get_parent_ids()[1:]
             # Ideally we ask the tree for the trees here, that way the working
-            # tree can decide whether to give us teh entire tree or give us a
+            # tree can decide whether to give us the entire tree or give us a
             # lazy initialised tree. dirstate for instance will have the trees
             # in ram already, whereas a last-revision + basis-inventory tree
             # will not, but also does not need them when setting parents.

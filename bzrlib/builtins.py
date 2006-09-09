@@ -46,7 +46,7 @@ from bzrlib.commands import Command, display_command
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch,
-                           NotVersionedError, NotABundle)
+                           NotVersionedError, NotABundle, InvalidRevisionSpec)
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
 from bzrlib.progress import DummyProgress, ProgressPhase
@@ -836,7 +836,7 @@ class cmd_update(Command):
                     rev = revision[0].in_history(branch).rev_id
                     # no need to run branch.update()
                     old_tip = None
-                except errors.NoSuchRevision:
+                except (errors.NoSuchRevision, errors.InvalidRevisionSpec):
                     # revision was not there, but is maybe in the master.
                     old_tip = branch.update()
                     rev = revision[0].in_history(branch).rev_id
