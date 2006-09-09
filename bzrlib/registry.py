@@ -18,32 +18,69 @@
 
 
 class Registry(object):
-    """A class that registers objects to a name."""
+    """A class that registers objects to a name.
+
+    This is designed such that you can register objects in a lazy fashion,
+    so that they can be imported later. While still having the help text
+    available right away.
+    """
 
     def __init__(self):
         """Create a new Registry."""
         self._default_key = None
         # Map from key => (is_lazy, info)
         self._dict = {}
+        self._help_dict = {}
+        self._info_dict = {}
 
-    def register(self, key, object):
+    def register(self, key, object, help=None, info=None,
+                 override_existing=False):
         """Register a new object to a name.
 
         :param key: This is the key to use to request the object later.
         :param object: The object to register.
+        :param help: Help text for this entry. This may be a string or
+                a callable. If it is a callable, it should take a
+                single parameter, which is the key that the help was
+                registered under.
+        :param info: More information for this entry. Registry.get_info()
+                can be used to get this information. It is meant as an
+                opaque storage location.
+        :param override_existing: If True, replace the existing object
+                with the new one. If False, if there is already something
+                registered with the same key, raise a KeyError
         """
+        if not override_existing:
+            if key in self._dict:
+                raise KeyError('Key %r already registered' % key)
         self._dict[key] = (False, object)
+        self._add_help_and_info(key, help=help, info=info)
 
-    __setitem__ = register
-
-    def register_lazy(self, key, module_name, member_name):
+    def register_lazy(self, key, module_name, member_name,
+                      help=None, info=None,
+                      override_existing=False):
         """Register a new object to be loaded on request.
 
         :param module_name: The python path to the module. Such as 'os.path'.
         :param member_name: The member of the module to return, if empty or 
                 None get() will return the module itself.
+        :param help: Help text for this entry. This may be a string or
+                a callable.
+        :param info: More information for this entry. Registry 
+        :param override_existing: If True, replace the existing object
+                with the new one. If False, if there is already something
+                registered with the same key, raise a KeyError
         """
+        if not override_existing:
+            if key in self._dict:
+                raise KeyError('Key %r already registered' % key)
         self._dict[key] = (True, (module_name, member_name))
+        self._add_help_and_info(key, help=help, info=info)
+
+    def _add_help_and_info(self, key, help=None, info=None):
+        """Add the help and information about this key"""
+        self._help_dict[key] = help
+        self._info_dict[key] = info
 
     def get(self, key=None):
         """Return the object register()'ed to the given key.
@@ -58,12 +95,16 @@ class Registry(object):
             raised.
         :return: The previously registered object.
         """
-        if key is None:
-            if self.default_key is None:
-                raise KeyError('Key is None, and no default key is set')
-            else:
-                key = self.default_key
-        return self._get_one(key)
+        return self._get_one(self._get_key_or_default(key))
+
+    def _get_key_or_default(self, key=None):
+        """Return either 'key' or the default key if key is None"""
+        if key is not None:
+            return key
+        if self.default_key is None:
+            raise KeyError('Key is None, and no default key is set')
+        else:
+            return self.default_key
 
     __getitem__ = get
 
@@ -87,6 +128,17 @@ class Registry(object):
             obj = getattr(obj, member_name)
         self._dict[key] = (False, obj)
         return obj
+
+    def get_help(self, key=None):
+        """Get the help text associated with the given key"""
+        the_help = self._help_dict[self._get_key_or_default(key)]
+        if callable(the_help):
+            return the_help(key)
+        return the_help
+
+    def get_info(self, key=None):
+        """Get the extra information associated with the given key"""
+        return self._info_dict[self._get_key_or_default(key)]
 
     def remove(self, key):
         """Remove a registered entry.

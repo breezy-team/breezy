@@ -69,7 +69,14 @@ class TestRegistry(TestCase):
         self.failIf('one' in a_registry)
         self.assertRaises(KeyError, a_registry.get, 'one')
 
-        a_registry['one'] = 'one'
+        # We intentionally don't implement __setitem__, because
+        # register() is a much richer function, that doesn't translate
+        # well into foo[x] = y
+        def set_one():
+            a_registry['one'] = 'one'
+        self.assertRaises(AttributeError, set_one)
+
+        a_registry.register('one', 'one')
         self.assertEqual('one', a_registry['one'])
         self.assertEqual(4, len(a_registry))
 
@@ -88,6 +95,76 @@ class TestRegistry(TestCase):
                          sorted(a_registry.items()))
         self.assertEqual([2, 4, 5, 'one'],
                          sorted(a_registry.values()))
+
+    def test_register_override(self):
+        a_registry = registry.Registry()
+        a_registry.register('one', 'one')
+        self.assertRaises(KeyError, a_registry.register, 'one', 'two')
+        self.assertRaises(KeyError, a_registry.register, 'one', 'two',
+                                    override_existing=False)
+
+        a_registry.register('one', 'two', override_existing=True)
+        self.assertEqual('two', a_registry.get('one'))
+
+        self.assertRaises(KeyError, a_registry.register_lazy,
+                          'one', 'three', 'four')
+
+        a_registry.register_lazy('one', 'module', 'member',
+                                 override_existing=True)
+
+    def test_registry_help(self):
+        a_registry = registry.Registry()
+        a_registry.register('one', 1, help='help text for one')
+        # We should not have to import the module to return the help
+        # information
+        a_registry.register_lazy('two', 'nonexistent_module', 'member',
+                                 help='help text for two')
+
+        # We should be able to handle a callable to get information
+        def generic_help(key):
+            return 'generic help for %s' % (key,)
+        a_registry.register('three', 3, help=generic_help)
+        a_registry.register_lazy('four', 'nonexistent_module', 'member2',
+                                 help=generic_help)
+
+        self.assertEqual('help text for one', a_registry.get_help('one'))
+        self.assertEqual('help text for two', a_registry.get_help('two'))
+        self.assertEqual('generic help for three',
+                         a_registry.get_help('three'))
+        self.assertEqual('generic help for four',
+                         a_registry.get_help('four'))
+
+        self.assertRaises(KeyError, a_registry.get_help, None)
+        self.assertRaises(KeyError, a_registry.get_help, 'five')
+
+        a_registry.default_key = 'one'
+        self.assertEqual('help text for one', a_registry.get_help(None))
+        self.assertRaises(KeyError, a_registry.get_help, 'five')
+
+    def test_registry_info(self):
+        a_registry = registry.Registry()
+        a_registry.register('one', 1, info='string info')
+        # We should not have to import the module to return the info
+        a_registry.register_lazy('two', 'nonexistent_module', 'member',
+                                 info=2)
+
+        # We should be able to handle a callable to get information
+        a_registry.register('three', 3, info=['a', 'list'])
+        obj = object()
+        a_registry.register_lazy('four', 'nonexistent_module', 'member2',
+                                 info=obj)
+
+        self.assertEqual('string info', a_registry.get_info('one'))
+        self.assertEqual(2, a_registry.get_info('two'))
+        self.assertEqual(['a', 'list'], a_registry.get_info('three'))
+        self.assertIs(obj, a_registry.get_info('four'))
+
+        self.assertRaises(KeyError, a_registry.get_info, None)
+        self.assertRaises(KeyError, a_registry.get_info, 'five')
+
+        a_registry.default_key = 'one'
+        self.assertEqual('string info', a_registry.get_info(None))
+        self.assertRaises(KeyError, a_registry.get_info, 'five')
 
 
 class TestRegistryWithDirs(TestCaseInTempDir):
