@@ -1612,15 +1612,16 @@ class WorkingTree(bzrlib.tree.Tree):
         # local work is unreferenced and will appear to have been lost.
         # 
         result = 0
+        try:
+            last_rev = self.get_parent_ids()[0]
+        except IndexError:
+            last_rev = None
         if revision is None:
-            try:
-                last_rev = self.get_parent_ids()[0]
-            except IndexError:
-                last_rev = None
+            revision = self.branch.last_revision()
         else:
             if revision not in self.branch.revision_history():
                 raise errors.NoSuchRevision(self.branch, revision)
-        if revision != self.last_revision():
+        if last_rev != revision:
             # merge tree state up to new branch tip.
             basis = self.basis_tree()
             to_tree = self.branch.repository.revision_tree(revision)
