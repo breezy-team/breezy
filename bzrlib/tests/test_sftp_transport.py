@@ -403,6 +403,8 @@ class TestSocketDelay(TestCase):
 
     def setUp(self):
         TestCase.setUp(self)
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
 
     def test_delay(self):
         from bzrlib.transport.sftp import SocketDelay
