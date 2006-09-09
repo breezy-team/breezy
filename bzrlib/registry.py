@@ -176,6 +176,15 @@ class Registry(object):
     def values(self):
         return list(self.itervalues())
 
+    def iterhelp(self):
+        """Iterate over all items, returning the key and help value"""
+        for key in self._help_dict.iterkeys():
+            yield key, self.get_help(key)
+
+    def iterinfo(self):
+        """Iterate over all items, returning the key and info value"""
+        return self._info_dict.iteritems()
+
     def _set_default_key(self, key):
         if not self._dict.has_key(key):
             raise KeyError('No object registered under key %s.' % key)

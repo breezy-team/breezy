@@ -121,25 +121,42 @@ class TestRegistry(TestCase):
                                  help='help text for two')
 
         # We should be able to handle a callable to get information
+        help_calls = []
         def generic_help(key):
+            help_calls.append(key)
             return 'generic help for %s' % (key,)
         a_registry.register('three', 3, help=generic_help)
         a_registry.register_lazy('four', 'nonexistent_module', 'member2',
                                  help=generic_help)
+        a_registry.register('five', 5)
 
         self.assertEqual('help text for one', a_registry.get_help('one'))
         self.assertEqual('help text for two', a_registry.get_help('two'))
         self.assertEqual('generic help for three',
                          a_registry.get_help('three'))
+        self.assertEqual(['three'], help_calls)
         self.assertEqual('generic help for four',
                          a_registry.get_help('four'))
+        self.assertEqual(['three', 'four'], help_calls)
+        self.assertEqual(None, a_registry.get_help('five'))
 
         self.assertRaises(KeyError, a_registry.get_help, None)
-        self.assertRaises(KeyError, a_registry.get_help, 'five')
+        self.assertRaises(KeyError, a_registry.get_help, 'six')
 
         a_registry.default_key = 'one'
         self.assertEqual('help text for one', a_registry.get_help(None))
-        self.assertRaises(KeyError, a_registry.get_help, 'five')
+        self.assertRaises(KeyError, a_registry.get_help, 'six')
+
+        self.assertEqual([('five', None),
+                          ('four', 'generic help for four'),
+                          ('one', 'help text for one'),
+                          ('three', 'generic help for three'),
+                          ('two', 'help text for two'),
+                         ], sorted(a_registry.iterhelp()))
+        # We don't know what order it was called in, but we should get
+        # 2 more calls to three and four
+        self.assertEqual(['four', 'four', 'three', 'three'],
+                         sorted(help_calls))
 
     def test_registry_info(self):
         a_registry = registry.Registry()
@@ -153,19 +170,27 @@ class TestRegistry(TestCase):
         obj = object()
         a_registry.register_lazy('four', 'nonexistent_module', 'member2',
                                  info=obj)
+        a_registry.register('five', 5)
 
         self.assertEqual('string info', a_registry.get_info('one'))
         self.assertEqual(2, a_registry.get_info('two'))
         self.assertEqual(['a', 'list'], a_registry.get_info('three'))
         self.assertIs(obj, a_registry.get_info('four'))
+        self.assertIs(None, a_registry.get_info('five'))
 
         self.assertRaises(KeyError, a_registry.get_info, None)
-        self.assertRaises(KeyError, a_registry.get_info, 'five')
+        self.assertRaises(KeyError, a_registry.get_info, 'six')
 
         a_registry.default_key = 'one'
         self.assertEqual('string info', a_registry.get_info(None))
-        self.assertRaises(KeyError, a_registry.get_info, 'five')
+        self.assertRaises(KeyError, a_registry.get_info, 'six')
 
+        self.assertEqual([('five', None),
+                          ('four', obj),
+                          ('one', 'string info'),
+                          ('three', ['a', 'list']),
+                          ('two', 2),
+                         ], sorted(a_registry.iterinfo()))
 
 class TestRegistryWithDirs(TestCaseInTempDir):
     """Registry tests that require temporary dirs"""
