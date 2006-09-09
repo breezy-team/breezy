@@ -1506,7 +1506,7 @@ class WorkingTree(bzrlib.tree.Tree):
         :param old_tip: If branch.update() has already been run, the value it returned 
         (old tip of the branch or None). _marker is used otherwise.
         """
-        if old_tip == _marker:
+        if old_tip == self._marker:
             old_tip = self.branch.update()
         # here if old_tip is not None, it is the old tip of the branch before
         # it was updated from the master branch. This should become a pending
