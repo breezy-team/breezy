@@ -19,7 +19,7 @@
 import os
 import sys
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 
 
 class TestLocale(TestCaseWithTransport):
