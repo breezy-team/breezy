@@ -203,11 +203,11 @@ class LockDir(object):
             sio = StringIO()
             self._prepare_info(sio)
             sio.seek(0)
-            # append will create a new file; we use append rather than put
-            # because we don't want to write to a temporary file and rename
-            # into place, because that's going to happen to the whole
-            # directory
-            self.transport.append_file(tmpname + self.__INFO_NAME, sio)
+            # We use put_file_non_atomic because we just created a new unique
+            # directory so we don't have to worry about files existing there.
+            # We'll rename the whole directory into place to get atomic
+            # properties
+            self.transport.put_file_non_atomic(tmpname + self.__INFO_NAME, sio)
 
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
