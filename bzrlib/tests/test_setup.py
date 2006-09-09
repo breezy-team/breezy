@@ -47,7 +47,11 @@ class TestSetup(TestCase):
         if not os.path.isfile('setup.py'):
             raise TestSkipped('There is no setup.py file in current directory')
         try:
-            import distutils.core
+            import distutils.sysconfig
+            makefile_path = distutils.sysconfig.get_makefile_filename()
+            if not os.path.exists(makefile_path):
+                raise TestSkipped('You must have the python Makefile installed to run this test.'
+                                  ' Usually this can be found by installing "python-dev"')
         except ImportError:
             raise TestSkipped('You must have distutils installed to run this test.'
                               ' Usually this can be found by installing "python-dev"')
