@@ -1140,6 +1140,7 @@ class RepositoryFormat(object):
                                   control_files,
                                   prefixed=True,
                                   versionedfile_class=WeaveFile,
+                                  versionedfile_kwargs={},
                                   escaped=False):
         weave_transport = control_files._transport.clone(name)
         dir_mode = control_files._dir_mode
@@ -1148,6 +1149,7 @@ class RepositoryFormat(object):
                                   dir_mode=dir_mode,
                                   file_mode=file_mode,
                                   versionedfile_class=versionedfile_class,
+                                  versionedfile_kwargs=versionedfile_kwargs,
                                   escaped=escaped)
 
     def initialize(self, a_bzrdir, shared=False):
@@ -1560,7 +1562,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
             prefixed=False,
             precious=True,
             versionedfile_class=KnitVersionedFile,
-            versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory()},
+            versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory(),},
             escaped=True,
             )
         return KnitRevisionStore(versioned_file_store)
@@ -1571,6 +1573,11 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
                                               transport,
                                               control_files,
                                               versionedfile_class=KnitVersionedFile,
+                                              versionedfile_kwargs={
+                                                  'create_parent_dir':True,
+                                                  'delay_create':True,
+                                                  'dir_mode':control_files._dir_mode,
+                                              },
                                               escaped=True)
 
     def has_unnested_inventory(self):
@@ -1759,7 +1766,7 @@ class InterRepository(InterObject):
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] == None
+            assert source_ids[0] is None
             source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
@@ -1931,7 +1938,7 @@ class InterWeaveRepo(InterSameDataRepository):
         # - RBC 20060209
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] == None
+            assert source_ids[0] is None
             source_ids.pop(0)
         else:
             source_ids = self.source._all_possible_ids()
@@ -1994,7 +2001,7 @@ class InterKnitRepo(InterSameDataRepository):
         """See InterRepository.missing_revision_ids()."""
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids[0] == None
+            assert source_ids[0] is None
             source_ids.pop(0)
         else:
             source_ids = self.source._all_possible_ids()

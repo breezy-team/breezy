@@ -74,7 +74,7 @@ class SampleRepositoryFormat(repository.RepositoryFormat):
     def initialize(self, a_bzrdir, shared=False):
         """Initialize a repository in a BzrDir"""
         t = a_bzrdir.get_repository_transport(self)
-        t.put('format', StringIO(self.get_format_string()))
+        t.put_bytes('format', self.get_format_string())
         return 'A bzr repository dir'
 
     def is_supported(self):

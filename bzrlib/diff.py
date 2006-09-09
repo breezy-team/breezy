@@ -22,12 +22,14 @@ import sys
 import tempfile
 import time
 
+from bzrlib import (
+    errors,
+    osutils,
+    )
 # compatability - plugins import compare_trees from diff!!!
 # deprecated as of 0.10
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
-import bzrlib.errors as errors
-import bzrlib.osutils
 from bzrlib.patiencediff import unified_diff
 import bzrlib.patiencediff
 from bzrlib.symbol_versioning import (deprecated_function,
@@ -90,7 +92,10 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 
 def _set_lang_C():
     """Set the env var LANG=C"""
-    os.environ['LANG'] = 'C'
+    osutils.set_or_unset_env('LANG', 'C')
+    osutils.set_or_unset_env('LC_ALL', None)
+    osutils.set_or_unset_env('LC_CTYPE', None)
+    osutils.set_or_unset_env('LANGUAGE', None)
 
 
 def _spawn_external_diff(diffcmd, capture_errors=True):
@@ -103,7 +108,12 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
     :return: A Popen object.
     """
     if capture_errors:
-        preexec_fn = _set_lang_C
+        if sys.platform == 'win32':
+            # Win32 doesn't support preexec_fn, but that is
+            # okay, because it doesn't support LANG either.
+            preexec_fn = None
+        else:
+            preexec_fn = _set_lang_C
         stderr = subprocess.PIPE
     else:
         preexec_fn = None
@@ -192,7 +202,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             # 'diff' gives retcode == 2 for all sorts of errors
             # one of those is 'Binary files differ'.
             # Bad options could also be the problem.
-            # 'Binary files' is not a real error, so we suppress that error
+            # 'Binary files' is not a real error, so we suppress that error.
             lang_c_out = out
 
             # Since we got here, we want to make sure to give an i18n error
@@ -207,7 +217,8 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                                ' natively: %r' % (diffcmd,))
 
             first_line = lang_c_out.split('\n', 1)[0]
-            m = re.match('^binary files.*differ$', first_line, re.I)
+            # Starting with diffutils 2.8.4 the word "binary" was dropped.
+            m = re.match('^(binary )?files.*differ$', first_line, re.I)
             if m is None:
                 raise BzrError('external diff failed with exit code 2;'
                                ' command: %r' % (diffcmd,))

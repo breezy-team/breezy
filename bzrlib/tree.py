@@ -147,7 +147,7 @@ class Tree(object):
         fp = fingerprint_file(f)
         f.seek(0)
         
-        if ie.text_size != None:
+        if ie.text_size is not None:
             if ie.text_size != fp['size']:
                 raise BzrError("mismatched size for file %r in %r" % (ie.file_id, self._store),
                         ["inventory expects %d bytes" % ie.text_size,
@@ -220,7 +220,7 @@ class EmptyTree(Tree):
         return iter([])
     
     def __contains__(self, file_id):
-        return file_id in self._inventory
+        return (file_id in self._inventory)
 
     def get_file_sha1(self, file_id, path=None):
         return None

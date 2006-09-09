@@ -18,6 +18,7 @@ import os
 import errno
 from stat import S_ISREG
 
+from bzrlib import bzrdir, errors
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo)
@@ -475,7 +476,10 @@ class TreeTransform(object):
 
     def path_changed(self, trans_id):
         """Return True if a trans_id's path has changed."""
-        return trans_id in self._new_name or trans_id in self._new_parent
+        return (trans_id in self._new_name) or (trans_id in self._new_parent)
+
+    def new_contents(self, trans_id):
+        return (trans_id in self._new_contents)
 
     def find_conflicts(self):
         """Find any violations of inventory or filesystem invariants"""
@@ -646,17 +650,18 @@ class TreeTransform(object):
             last_name = None
             last_trans_id = None
             for name, trans_id in name_ids:
-                if name == last_name:
-                    conflicts.append(('duplicate', last_trans_id, trans_id,
-                    name))
                 try:
                     kind = self.final_kind(trans_id)
                 except NoSuchFile:
                     kind = None
                 file_id = self.final_file_id(trans_id)
-                if kind is not None or file_id is not None:
-                    last_name = name
-                    last_trans_id = trans_id
+                if kind is None and file_id is None:
+                    continue
+                if name == last_name:
+                    conflicts.append(('duplicate', last_trans_id, trans_id,
+                    name))
+                last_name = name
+                last_trans_id = trans_id
         return conflicts
 
     def _duplicate_ids(self):
@@ -934,35 +939,134 @@ def topology_sorted_ids(tree):
     file_ids.sort(key=tree.id2path)
     return file_ids
 
+
 def build_tree(tree, wt):
-    """Create working tree for a branch, using a Transaction."""
+    """Create working tree for a branch, using a TreeTransform.
+    
+    This function should be used on empty trees, having a tree root at most.
+    (see merge and revert functionality for working with existing trees)
+
+    Existing files are handled like so:
+    
+    - Existing bzrdirs take precedence over creating new items.  They are
+      created as '%s.diverted' % name.
+    - Otherwise, if the content on disk matches the content we are building,
+      it is silently replaced.
+    - Otherwise, conflict resolution will move the old file to 'oldname.moved'.
+    """
+    assert 2 > len(wt.inventory)
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
     tt = TreeTransform(wt)
+    divert = set()
     try:
         pp.next_phase()
-        file_trans_id[wt.get_root_id()] = tt.trans_id_tree_file_id(wt.get_root_id())
-        file_ids = topology_sorted_ids(tree)
+        file_trans_id[wt.get_root_id()] = \
+            tt.trans_id_tree_file_id(wt.get_root_id())
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            for num, file_id in enumerate(file_ids):
-                pb.update("Building tree", num, len(file_ids))
-                entry = tree.inventory[file_id]
+            for num, (tree_path, entry) in \
+                enumerate(tree.inventory.iter_entries_by_dir()):
+                pb.update("Building tree", num, len(tree.inventory))
                 if entry.parent_id is None:
                     continue
+                reparent = False
+                file_id = entry.file_id
+                target_path = wt.abspath(tree_path)
+                try:
+                    kind = file_kind(target_path)
+                except NoSuchFile:
+                    pass
+                else:
+                    if kind == "directory":
+                        try:
+                            bzrdir.BzrDir.open(target_path)
+                        except errors.NotBranchError:
+                            pass
+                        else:
+                            divert.add(file_id)
+                    if (file_id not in divert and
+                        _content_match(tree, entry, file_id, kind,
+                        target_path)):
+                        tt.delete_contents(tt.trans_id_tree_path(tree_path))
+                        if kind == 'directory':
+                            reparent = True
                 if entry.parent_id not in file_trans_id:
                     raise repr(entry.parent_id)
                 parent_id = file_trans_id[entry.parent_id]
-                file_trans_id[file_id] = new_by_entry(tt, entry, parent_id, 
+                file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
                                                       tree)
+                if reparent:
+                    new_trans_id = file_trans_id[file_id]
+                    old_parent = tt.trans_id_tree_path(tree_path)
+                    _reparent_children(tt, old_parent, new_trans_id)
         finally:
             pb.finished()
         pp.next_phase()
+        divert_trans = set(file_trans_id[f] for f in divert)
+        resolver = lambda t, c: resolve_checkout(t, c, divert_trans)
+        raw_conflicts = resolve_conflicts(tt, pass_func=resolver)
+        conflicts = cook_conflicts(raw_conflicts, tt)
+        for conflict in conflicts:
+            warning(conflict)
+        try:
+            wt.add_conflicts(conflicts)
+        except errors.UnsupportedOperation:
+            pass
         tt.apply()
     finally:
         tt.finalize()
         top_pb.finished()
+
+
+def _reparent_children(tt, old_parent, new_parent):
+    for child in tt.iter_tree_children(old_parent):
+        tt.adjust_path(tt.final_name(child), new_parent, child)
+
+
+def _content_match(tree, entry, file_id, kind, target_path):
+    if entry.kind != kind:
+        return False
+    if entry.kind == "directory":
+        return True
+    if entry.kind == "file":
+        if tree.get_file(file_id).read() == file(target_path, 'rb').read():
+            return True
+    elif entry.kind == "symlink":
+        if tree.get_symlink_target(file_id) == os.readlink(target_path):
+            return True
+    return False
+
+
+def resolve_checkout(tt, conflicts, divert):
+    new_conflicts = set()
+    for c_type, conflict in ((c[0], c) for c in conflicts):
+        # Anything but a 'duplicate' would indicate programmer error
+        assert c_type == 'duplicate', c_type
+        # Now figure out which is new and which is old
+        if tt.new_contents(conflict[1]):
+            new_file = conflict[1]
+            old_file = conflict[2]
+        else:
+            new_file = conflict[2]
+            old_file = conflict[1]
+
+        # We should only get here if the conflict wasn't completely
+        # resolved
+        final_parent = tt.final_parent(old_file)
+        if new_file in divert:
+            new_name = tt.final_name(old_file)+'.diverted'
+            tt.adjust_path(new_name, final_parent, new_file)
+            new_conflicts.add((c_type, 'Diverted to',
+                               new_file, old_file))
+        else:
+            new_name = tt.final_name(old_file)+'.moved'
+            tt.adjust_path(new_name, final_parent, old_file)
+            new_conflicts.add((c_type, 'Moved existing file to',
+                               old_file, new_file))
+    return new_conflicts
+
 
 def new_by_entry(tt, entry, parent_id, tree):
     """Create a new file according to its inventory entry"""
@@ -982,7 +1086,7 @@ def new_by_entry(tt, entry, parent_id, tree):
 def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
     """Create new file contents according to an inventory entry."""
     if entry.kind == "file":
-        if lines == None:
+        if lines is None:
             lines = tree.get_file(entry.file_id).readlines()
         tt.create_file(lines, trans_id, mode_id=mode_id)
     elif entry.kind == "symlink":
@@ -1085,7 +1189,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
     """Revert a working tree's contents to those of a target tree."""
     interesting_ids = find_interesting(working_tree, target_tree, filenames)
     def interesting(file_id):
-        return interesting_ids is None or file_id in interesting_ids
+        return interesting_ids is None or (file_id in interesting_ids)
 
     tt = TreeTransform(working_tree, pb)
     try:
@@ -1132,8 +1236,25 @@ def revert(working_tree, target_tree, filenames, backups=False,
                 if file_id not in target_tree:
                     trans_id = tt.trans_id_tree_file_id(file_id)
                     tt.unversion_file(trans_id)
-                    if file_id in merge_modified:
+                    try:
+                        file_kind = working_tree.kind(file_id)
+                    except NoSuchFile:
+                        file_kind = None
+                    if file_kind != 'file' and file_kind is not None:
+                        keep_contents = False
+                        delete_merge_modified = False
+                    else:
+                        if (file_id in merge_modified and 
+                            merge_modified[file_id] == 
+                            working_tree.get_file_sha1(file_id)):
+                            keep_contents = False
+                            delete_merge_modified = True
+                        else:
+                            keep_contents = True
+                            delete_merge_modified = False
+                    if not keep_contents:
                         tt.delete_contents(trans_id)
+                    if delete_merge_modified:
                         del merge_modified[file_id]
         finally:
             child_pb.finished()
@@ -1155,8 +1276,10 @@ def revert(working_tree, target_tree, filenames, backups=False,
     return conflicts
 
 
-def resolve_conflicts(tt, pb=DummyProgress()):
+def resolve_conflicts(tt, pb=DummyProgress(), pass_func=None):
     """Make many conflict-resolution attempts, but die if they fail"""
+    if pass_func is None:
+        pass_func = conflict_pass
     new_conflicts = set()
     try:
         for n in range(10):
@@ -1164,7 +1287,7 @@ def resolve_conflicts(tt, pb=DummyProgress()):
             conflicts = tt.find_conflicts()
             if len(conflicts) == 0:
                 return new_conflicts
-            new_conflicts.update(conflict_pass(tt, conflicts))
+            new_conflicts.update(pass_func(tt, conflicts))
         raise MalformedTransform(conflicts=conflicts)
     finally:
         pb.clear()
@@ -1203,10 +1326,11 @@ def conflict_pass(tt, conflicts):
             trans_id = conflict[1]
             try:
                 tt.cancel_deletion(trans_id)
-                new_conflicts.add((c_type, 'Not deleting', trans_id))
+                new_conflicts.add(('deleting parent', 'Not deleting', 
+                                   trans_id))
             except KeyError:
                 tt.create_directory(trans_id)
-                new_conflicts.add((c_type, 'Created directory.', trans_id))
+                new_conflicts.add((c_type, 'Created directory', trans_id))
         elif c_type == 'unversioned parent':
             tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))

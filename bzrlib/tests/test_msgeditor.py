@@ -56,10 +56,10 @@ added:
         self._bzr_editor = os.environ.get('BZR_EDITOR', None)
 
     def tearDown(self):
-        if self._bzr_editor != None:
+        if self._bzr_editor is not None:
             os.environ['BZR_EDITOR'] = self._bzr_editor
         else:
-            if os.environ.get('BZR_EDITOR', None) != None:
+            if os.environ.get('BZR_EDITOR', None) is not None:
                 del os.environ['BZR_EDITOR']
         super(MsgEditorTest, self).tearDown()
 

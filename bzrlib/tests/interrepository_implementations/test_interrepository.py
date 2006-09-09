@@ -186,7 +186,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         from_tree.add('filename', 'funky-chars<>%&;"\'')
         from_tree.commit('commit filename')
         to_repo = self.make_to_repository('to')
-        to_repo.fetch(from_tree.branch.repository, from_tree.last_revision())
+        to_repo.fetch(from_tree.branch.repository, from_tree.get_parent_ids()[0])
 
     def test_fetch_no_inventory_revision(self):
         """Old inventories lack revision_ids, so simulate this"""

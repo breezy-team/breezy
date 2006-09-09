@@ -77,10 +77,11 @@ class TestBasisInventory(TestCaseWithWorkingTree):
     def test_basis_inv_gets_revision(self):
         """When the inventory of the basis tree has no revision id it gets set.
 
-        It gets set during set_last_revision.
+        It gets set during set_parent_trees() or set_parent_ids().
         """
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
+        # TODO change this to use CommitBuilder
         inv = inventory.Inventory(revision_id='r1')
         inv.root.revision = 'r1'
         inv_lines = tree.branch.repository.serialise_inventory(inv).split('\n')
@@ -98,7 +99,8 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         tree.branch.repository.add_revision('r1', rev)
         tree.unlock()
         tree.branch.append_revision('r1')
-        tree.set_last_revision('r1')
+        tree.set_parent_trees(
+            [('r1', tree.branch.repository.revision_tree('r1'))])
         # TODO: we should deserialise the file here, rather than peeking
         # without parsing, but to do this properly needs a serialiser on the
         # tree object that abstracts whether it is xml/rio/etc.

@@ -43,7 +43,6 @@ from bzrlib.errors import (BzrError,
 from bzrlib import option
 from bzrlib.option import Option
 import bzrlib.osutils
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, be_quiet
@@ -65,7 +64,7 @@ def register_command(cmd, decorate=False):
         k_unsquished = _unsquish_command_name(k)
     else:
         k_unsquished = k
-    if not plugin_cmds.has_key(k_unsquished):
+    if k_unsquished not in plugin_cmds:
         plugin_cmds[k_unsquished] = cmd
         mutter('registered plugin command %s', k_unsquished)
         if decorate and k_unsquished in builtin_command_names():
@@ -130,7 +129,10 @@ def get_cmd_object(cmd_name, plugins_override=True):
     """
     from bzrlib.externalcommand import ExternalCommand
 
-    cmd_name = str(cmd_name)            # not unicode
+    # We want only 'ascii' command names, but the user may have typed
+    # in a Unicode name. In that case, they should just get a
+    # 'command not found' error later.
+    # In the future, we may actually support Unicode command names.
 
     # first look up this command under the specified name
     cmds = _get_cmd_dict(plugins_override=plugins_override)
@@ -549,7 +551,10 @@ def run_bzr(argv):
             alias_argv = [a.decode(bzrlib.user_encoding) for a in alias_argv]
             argv[0] = alias_argv.pop(0)
 
-    cmd = str(argv.pop(0))
+    cmd = argv.pop(0)
+    # We want only 'ascii' command names, but the user may have typed
+    # in a Unicode name. In that case, they should just get a
+    # 'command not found' error later.
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
     if not getattr(cmd_obj.run_argv, 'is_deprecated', False):
@@ -579,7 +584,7 @@ def display_command(func):
             sys.stdout.flush()
             return result
         except IOError, e:
-            if not hasattr(e, 'errno'):
+            if getattr(e, 'errno', None) is None:
                 raise
             if e.errno != errno.EPIPE:
                 # Win32 raises IOError with errno=0 on a broken pipe

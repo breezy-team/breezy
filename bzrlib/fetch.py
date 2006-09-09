@@ -147,7 +147,7 @@ class RepoFetcher(object):
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
             return None
-        if (self._last_revision != None and
+        if (self._last_revision is not None and
             self.to_repository.has_revision(self._last_revision)):
             return None
             

@@ -17,9 +17,11 @@
 
 """Tests for the formatting and construction of errors."""
 
-import bzrlib.bzrdir as bzrdir
-import bzrlib.errors as errors
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import (
+    bzrdir,
+    errors,
+    )
+from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
 class TestErrors(TestCaseWithTransport):
@@ -29,6 +31,12 @@ class TestErrors(TestCaseWithTransport):
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1, str(error).find((dir.transport.clone('..').base)))
         self.assertEqual(-1, str(error).find((dir.transport.base)))
+        
+    def test_no_such_id(self):
+        error = errors.NoSuchId("atree", "anid")
+        self.assertEqualDiff("The file id anid is not present in the tree "
+            "atree.",
+            str(error))
 
     def test_up_to_date(self):
         error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
@@ -44,3 +52,23 @@ class TestErrors(TestCaseWithTransport):
                              "Please run bzr reconcile on this repository." %
                              repo.bzrdir.root_transport.base,
                              str(error))
+
+
+class PassThroughError(errors.BzrNewError):
+    """Pass through %(foo)s and %(bar)s"""
+
+    def __init__(self, foo, bar):
+        errors.BzrNewError.__init__(self, foo=foo, bar=bar)
+
+
+class TestErrorFormatting(TestCase):
+    
+    def test_always_str(self):
+        e = PassThroughError(u'\xb5', 'bar')
+        self.assertIsInstance(e.__str__(), str)
+        # In Python str(foo) *must* return a real byte string
+        # not a Unicode string. The following line would raise a
+        # Unicode error, because it tries to call str() on the string
+        # returned from e.__str__(), and it has non ascii characters
+        s = str(e)
+        self.assertEqual('Pass through \xc2\xb5 and bar', s)
