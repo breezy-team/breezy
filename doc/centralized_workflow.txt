@@ -179,7 +179,7 @@ track it locally.::
 We now have a place to make any fixes to doodles that we need. And we
 won't interrupt people who are working on other parts of the code.
 Because we have a checkout, any commits made in the ``doodle-fixes/`` will
-also show up on ``centralhost``.
+also show up on ``centralhost``. [#nestedbranches_]
 It is also completely possible to have 2 developers collaborate on one of
 these branches, just like they would have collaborated on the ``dev``
 branch.[#cbranch]_
@@ -192,6 +192,11 @@ branch.[#cbranch]_
    and create a checkout of that branch, all with much less typing.
    Configuring ``cbranch`` is outside the scope of this document, but the
    final commands look like ``bzr cbranch dev my-feature-branch``
+
+.. [#nestedbranches] It may look odd to have a branch in a subdirectory of
+   another branch. However, this is just fine, and you can think of it as
+   a heirarchial namespace. Where the nested branch is derived from the
+   outer branch.
 
 .. _bzrtools: https://launchpad.net/products/bzrtools
 
