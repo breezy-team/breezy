@@ -50,15 +50,23 @@ Basic commands:
 
 
 import sys
+from bzrlib.help_topics import (
+    write_topic,
+    is_topic,
+    add_topic
+)
 
+
+add_topic("commands",( lambda name, outfile: help_commands(outfile) ),
+    "List of commands") 
 
 def help(topic=None, outfile = None):
     if outfile == None:
         outfile = sys.stdout
     if topic == None:
-        outfile.write(global_help)
-    elif topic == 'commands':
-        help_commands(outfile = outfile)
+        write_topic("global_help", outfile)
+    elif is_topic(topic):
+        write_topic(topic, outfile)
     else:
         help_on_command(topic, outfile = outfile)
 
@@ -164,4 +172,4 @@ def help_commands(outfile=None):
         if cmd_help:
             firstline = cmd_help.split('\n', 1)[0]
             print >>outfile, '        ' + firstline
-        
+

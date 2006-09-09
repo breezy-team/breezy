@@ -228,6 +228,14 @@ class RevisionSpec(object):
 # private API
 
 class RevisionSpec_revno(RevisionSpec):
+    """
+    This takes the a number  and return the related revision.
+    Optionally can be specified a branch
+    examples:
+      revno:1                   -> return the first revision
+      revno:3:/path/to/branch   -> return the 3rd revision of
+                                   the branch '/path/to/branch'
+    """
     prefix = 'revno:'
 
     def _match_on(self, branch, revs):
@@ -280,6 +288,11 @@ SPEC_TYPES.append(RevisionSpec_revno)
 
 
 class RevisionSpec_revid(RevisionSpec):
+    """
+    This takes the a revision-id and return the related revision.
+    examples:
+      revid:aaaa@bbbb-123456789
+    """    
     prefix = 'revid:'
 
     def _match_on(self, branch, revs):
@@ -293,6 +306,12 @@ SPEC_TYPES.append(RevisionSpec_revid)
 
 
 class RevisionSpec_last(RevisionSpec):
+    """
+    This takes the a namber <n> and return the <n> - 1 revision before.
+    examples:
+      last:1        -> return the last revision
+      last3:        -> return the last - 2 revision
+    """    
 
     prefix = 'last:'
 
@@ -321,6 +340,12 @@ SPEC_TYPES.append(RevisionSpec_last)
 
 
 class RevisionSpec_before(RevisionSpec):
+    """
+    This takes the a revision and return the revision before.
+    examples:
+      before:1913
+      before:revid:aaaa@bbbb-1234567890
+    """
 
     prefix = 'before:'
     
@@ -354,6 +379,9 @@ SPEC_TYPES.append(RevisionSpec_before)
 
 
 class RevisionSpec_tag(RevisionSpec):
+    """
+    To be implemented.
+    """
     prefix = 'tag:'
 
     def _match_on(self, branch, revs):
@@ -384,6 +412,19 @@ class _RevListToTimestamps(object):
 
 
 class RevisionSpec_date(RevisionSpec):
+    """
+    This takes the date and return the first revision which matches.
+    date can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
+    matches the first entry after a given date (either at midnight or
+    at a specified time).
+
+    So the proper way of saying 'give me all entries for today' is:
+          date:yesterday..date:today
+
+    examples:
+      date:yesterday
+      date:2006-08-14,17:10:14
+    """    
     prefix = 'date:'
     _date_re = re.compile(
             r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
@@ -454,6 +495,11 @@ SPEC_TYPES.append(RevisionSpec_date)
 
 
 class RevisionSpec_ancestor(RevisionSpec):
+    """
+    This takes the path to a branch and returns the common ancestor.
+    examples:
+      ancestor:/path/to/branch
+    """
     prefix = 'ancestor:'
 
     def _match_on(self, branch, revs):
@@ -480,9 +526,10 @@ SPEC_TYPES.append(RevisionSpec_ancestor)
 
 
 class RevisionSpec_branch(RevisionSpec):
-    """A branch: revision specifier.
-
+    """
     This takes the path to a branch and returns its tip revision id.
+    examples:
+      branch:/path/to/branch
     """
     prefix = 'branch:'
 
