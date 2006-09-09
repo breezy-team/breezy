@@ -40,8 +40,8 @@ class Registry(object):
         :param key: This is the key to use to request the object later.
         :param object: The object to register.
         :param help: Help text for this entry. This may be a string or
-                a callable. If it is a callable, it should take a
-                single parameter, which is the key that the help was
+                a callable. If it is a callable, it should take two
+                parameters, this registry and the key that the help was
                 registered under.
         :param info: More information for this entry. Registry.get_info()
                 can be used to get this information. It is meant as an
@@ -133,7 +133,7 @@ class Registry(object):
         """Get the help text associated with the given key"""
         the_help = self._help_dict[self._get_key_or_default(key)]
         if callable(the_help):
-            return the_help(key)
+            return the_help(self, key)
         return the_help
 
     def get_info(self, key=None):

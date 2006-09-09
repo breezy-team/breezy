@@ -122,7 +122,7 @@ class TestRegistry(TestCase):
 
         # We should be able to handle a callable to get information
         help_calls = []
-        def generic_help(key):
+        def generic_help(reg, key):
             help_calls.append(key)
             return 'generic help for %s' % (key,)
         a_registry.register('three', 3, help=generic_help)
