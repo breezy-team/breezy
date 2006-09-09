@@ -1631,7 +1631,7 @@ class WorkingTree(bzrlib.tree.Tree):
             self.set_last_revision(revision)
             # TODO - dedup parents list with things merged by pull ?
             # reuse the tree we've updated to to set the basis:
-            parent_trees = [(self.branch.last_revision(), to_tree)]
+            parent_trees = [(revision, to_tree)]
             merges = self.get_parent_ids()[1:]
             # Ideally we ask the tree for the trees here, that way the working
             # tree can decide whether to give us teh entire tree or give us a

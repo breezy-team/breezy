@@ -827,7 +827,7 @@ class cmd_update(Command):
         branch = tree.branch
         tree.lock_write()
         try:
-            existing_pending_merges = tree.pending_merges()
+            existing_pending_merges = tree.get_parent_ids()[1:]
             # potentially get new revisions from the master branch.
             # needed for the case where -r N is given, with N not yet
             # in the local branch for a heavyweight checkout.
@@ -855,7 +855,7 @@ class cmd_update(Command):
                                       % (e.revision))
             revno = branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
-            if tree.pending_merges() != existing_pending_merges:
+            if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
             if conflicts != 0:
