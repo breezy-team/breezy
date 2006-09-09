@@ -2346,19 +2346,16 @@ class cmd_help(Command):
     """Show help on a command or other topic.
 
     For a list of all available commands, say 'bzr help commands'."""
-    takes_options = [Option('long', 'show help on all commands'),
-                     Option('list-topics', 'show the topics list')]
+    takes_options = [Option('long', 'show help on all commands')]
     takes_args = ['topic?']
     aliases = ['?', '--help', '-?', '-h']
     
     @display_command
-    def run(self, topic=None, long=False, list_topics=False):
-        import help
+    def run(self, topic=None, long=False):
+        import bzrlib.help
         if topic is None and long:
             topic = "commands"
-        elif topic is None and list_topics:
-            topic = "topics"
-        help.help(topic)
+        bzrlib.help.help(topic)
 
 
 class cmd_shell_complete(Command):
