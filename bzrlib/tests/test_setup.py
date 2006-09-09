@@ -46,6 +46,11 @@ class TestSetup(TestCase):
         """
         if not os.path.isfile('setup.py'):
             raise TestSkipped('There is no setup.py file in current directory')
+        try:
+            import distutils.core
+        except ImportError:
+            raise TestSkipped('You must have distutils installed to run this test.'
+                              ' Usually this can be found by installing "python-dev"')
         self.log('test_build running in %s' % os.getcwd())
         install_dir = tempfile.mkdtemp()
         # setup.py must be run from the root source directory, but the tests
