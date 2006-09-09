@@ -228,13 +228,20 @@ class RevisionSpec(object):
 # private API
 
 class RevisionSpec_revno(RevisionSpec):
-    """
-    This takes the a number  and return the related revision.
-    Optionally can be specified a branch
+    """Use an integer to specify a revision in the history of the branch.
+    Optionally a branch can be specified. The 'revno:' prefix is optional.
+    A negative number will count from the end of the branch (-1 is the
+    last revision, -2 the previous one). If the negative number is larger
+    than the branch's history, the first revision is returned.
     examples:
       revno:1                   -> return the first revision
       revno:3:/path/to/branch   -> return the 3rd revision of
                                    the branch '/path/to/branch'
+      revno:-1                  -> The last revision in a branch.
+      -2:http://other/branch    -> The second to last revision in the
+                                   remote branch.
+      -1000000                  -> Most likely the first revision, unless
+                                   your history is very long.
     """
     prefix = 'revno:'
 
@@ -288,10 +295,11 @@ SPEC_TYPES.append(RevisionSpec_revno)
 
 
 class RevisionSpec_revid(RevisionSpec):
-    """
-    This takes the a revision-id and return the related revision.
+    """Supply a specific revision id.
+    This can be used to specify any revision id in the ancestry of the branch.
+    Including merges, and pending merges.
     examples:
-      revid:aaaa@bbbb-123456789
+      revid:aaaa@bbbb-123456789 -> Select revision 'aaa@bbb-123456789'
     """    
     prefix = 'revid:'
 
@@ -306,11 +314,11 @@ SPEC_TYPES.append(RevisionSpec_revid)
 
 
 class RevisionSpec_last(RevisionSpec):
-    """
-    This takes the a namber <n> and return the <n> - 1 revision before.
+    """Supply a positive number to get the nth revision from the end.
+    This is the same as suppling negative numbers to the 'revno:' spec.
     examples:
       last:1        -> return the last revision
-      last3:        -> return the last - 2 revision
+      last:3        -> return the revision 2 before the end.
     """    
 
     prefix = 'last:'
@@ -340,11 +348,18 @@ SPEC_TYPES.append(RevisionSpec_last)
 
 
 class RevisionSpec_before(RevisionSpec):
-    """
-    This takes the a revision and return the revision before.
+    """Supply any revision spec to return the parent of that revision.
+    It is an error to request the parent of the null revision (before:0).
+    This is mostly useful when inspecting revisions that are not in the
+    revision history of a branch.
+
     examples:
-      before:1913
-      before:revid:aaaa@bbbb-1234567890
+      before:1913    -> Return the parent of revno 1913 (revno 1912)
+      before:revid:aaaa@bbbb-1234567890  -> return the parent of revision
+                                            aaa@bbb-1234567890
+      bzr diff -r before:revid:aaaa..revid:aaaa
+            -> Find the changes between revision 'aaaa' and its parent.
+               (what changes did 'aaaa' introduce)
     """
 
     prefix = 'before:'
@@ -379,9 +394,7 @@ SPEC_TYPES.append(RevisionSpec_before)
 
 
 class RevisionSpec_tag(RevisionSpec):
-    """
-    To be implemented.
-    """
+    """To be implemented."""
     prefix = 'tag:'
 
     def _match_on(self, branch, revs):
@@ -412,18 +425,18 @@ class _RevListToTimestamps(object):
 
 
 class RevisionSpec_date(RevisionSpec):
-    """
-    This takes the date and return the first revision which matches.
-    date can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
-    matches the first entry after a given date (either at midnight or
+    """Supply a datestamp to select the first revision that matches the date.
+    Date can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
+    Matches the first entry after a given date (either at midnight or
     at a specified time).
 
-    So the proper way of saying 'give me all entries for today' is:
-          date:yesterday..date:today
+    One way to display all the changes since yesterday would be:
+        bzr log -r date:yesterday..-1
 
     examples:
-      date:yesterday
-      date:2006-08-14,17:10:14
+      date:yesterday            -> select the first revision since yesterday
+      date:2006-08-14,17:10:14  -> select the first revision after
+                                   August 14th, 2006 at 5:10pm.
     """    
     prefix = 'date:'
     _date_re = re.compile(
@@ -433,13 +446,13 @@ class RevisionSpec_date(RevisionSpec):
         )
 
     def _match_on(self, branch, revs):
-        """
-        Spec for date revisions:
+        """Spec for date revisions:
           date:value
           value can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
           matches the first entry after a given date (either at midnight or
           at a specified time).
 
+          XXX: This doesn't actually work
           So the proper way of saying 'give me all entries for today' is:
               -r date:yesterday..date:today
         """
@@ -495,10 +508,19 @@ SPEC_TYPES.append(RevisionSpec_date)
 
 
 class RevisionSpec_ancestor(RevisionSpec):
-    """
-    This takes the path to a branch and returns the common ancestor.
+    """Supply the path to a branch to select the common ancestor.
+
+    The common ancestor is the last revision that existed in both
+    branches. Usually this is the branch point, but it could also be
+    a revision that was merged.
+
+    This is frequently used with 'diff' to return all of the changes
+    that your branch introduces, while excluding the changes that you
+    have not merged from the remote branch.
+
     examples:
       ancestor:/path/to/branch
+      bzr diff -r ancestor:../../mainline/branch
     """
     prefix = 'ancestor:'
 
@@ -526,8 +548,8 @@ SPEC_TYPES.append(RevisionSpec_ancestor)
 
 
 class RevisionSpec_branch(RevisionSpec):
-    """
-    This takes the path to a branch and returns its tip revision id.
+    """Supply the path to a branch to select its last revision.
+
     examples:
       branch:/path/to/branch
     """
