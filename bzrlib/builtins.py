@@ -2299,6 +2299,7 @@ class cmd_remerge(Command):
         else:
             return 0
 
+
 class cmd_revert(Command):
     """Reverse all changes since the last commit.
 
@@ -2345,7 +2346,8 @@ class cmd_assert_fail(Command):
 class cmd_help(Command):
     """Show help on a command or other topic.
 
-    For a list of all available commands, say 'bzr help commands'."""
+    For a list of all available commands, say 'bzr help commands'.
+    """
     takes_options = [Option('long', 'show help on all commands')]
     takes_args = ['topic?']
     aliases = ['?', '--help', '-?', '-h']
@@ -2361,7 +2363,8 @@ class cmd_help(Command):
 class cmd_shell_complete(Command):
     """Show appropriate completions for context.
 
-    For a list of all available commands, say 'bzr shell-complete'."""
+    For a list of all available commands, say 'bzr shell-complete'.
+    """
     takes_args = ['context?']
     aliases = ['s-c']
     hidden = True
@@ -2375,7 +2378,8 @@ class cmd_shell_complete(Command):
 class cmd_fetch(Command):
     """Copy in history from another branch but don't merge it.
 
-    This is an internal method used for pull and merge."""
+    This is an internal method used for pull and merge.
+    """
     hidden = True
     takes_args = ['from_branch', 'to_branch']
     def run(self, from_branch, to_branch):
@@ -2388,7 +2392,8 @@ class cmd_fetch(Command):
 class cmd_missing(Command):
     """Show unmerged/unpulled revisions between two branches.
 
-    OTHER_BRANCH may be local or remote."""
+    OTHER_BRANCH may be local or remote.
+    """
     takes_args = ['other_branch?']
     takes_options = [Option('reverse', 'Reverse the order of revisions'),
                      Option('mine-only', 
