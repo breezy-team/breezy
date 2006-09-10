@@ -282,63 +282,104 @@ class KnitRepoFetcher(RepoFetcher):
 
 
 class Inter1and2Helper(object):
+    """Helper for operations that convert data from model 1 and 2
+    
+    This is for use by fetchers and converters.
+    """
 
-    def iter_rev_trees(self, revs, source):
-        while len(revs):
-            for tree in source.revision_trees(revs[:500]):
+    def __init__(self, source, target):
+        """Constructor.
+
+        :param source: The repository data comes from
+        :param target: The repository data goes to
+        """
+        self.source = source
+        self.target = target
+
+    def iter_rev_trees(self, revs):
+        """Iterate through RevisionTrees efficiently.
+
+        Additionally, the inventory's revision_id is set if unset.
+
+        Trees are retrieved in batches of 100, and then yielded in the order
+        they were requested.
+
+        :param revs: A list of revision ids
+        """
+        while revs:
+            for tree in self.source.revision_trees(revs[:100]):
                 if tree.inventory.revision_id is None:
                     tree.inventory.revision_id = tree.get_revision_id()
                 yield tree
-            revs = revs[500:]
+            revs = revs[100:]
 
-    def generate_root_texts(self, fetcher, revs):
-        inventory_weave = fetcher.from_repository.get_inventory_weave()
-        for tree in self.iter_rev_trees(revs, fetcher.from_repository):
-            parent_texts = {}
+    def generate_root_texts(self, revs):
+        """Generate VersionedFiles for all root ids.
+        
+        :param revs: the revisions to include
+        """
+        inventory_weave = self.source.get_inventory_weave()
+        parent_texts = {}
+        versionedfile = {}
+        to_store = self.target.weave_store
+        for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
+            root_id = tree.inventory.root.file_id
             parents = inventory_weave.get_parents(revision_id)
-            to_store = fetcher.to_repository.weave_store
-            versionedfile = to_store.get_weave_or_empty(
-                tree.inventory.root.file_id, 
-                fetcher.to_repository.get_transaction())
-            parent_texts = versionedfile.add_lines(revision_id, parents, [], 
-                                                   parent_texts)
-        versionedfile.clear_cache()
+            if root_id not in versionedfile:
+                versionedfile[root_id] = to_store.get_weave_or_empty(root_id, 
+                    self.target.get_transaction())
+            parent_texts[root_id] = versionedfile[root_id].add_lines(
+                revision_id, parents, [], parent_texts)
 
-
-    def regenerate_inventory(self, fetcher, revs):
-        inventory_weave = fetcher.from_repository.get_inventory_weave()
-        for tree in self.iter_rev_trees(revs, fetcher.from_repository):
+    def regenerate_inventory(self, revs):
+        """Generate a new inventory versionedfile in target, convertin data.
+        
+        The inventory is retrieved from the source, (deserializing it), and
+        stored in the target (reserializing it in a different format).
+        :param revs: The revisions to include
+        """
+        inventory_weave = self.source.get_inventory_weave()
+        for tree in self.iter_rev_trees(revs):
             parents = inventory_weave.get_parents(tree.get_revision_id())
-            if tree.inventory.revision_id is None:
-                tree.inventory.revision_id = tree.get_revision_id()
-            fetcher.to_repository.add_inventory(tree.get_revision_id(),
-                                                tree.inventory, parents)
+            self.target.add_inventory(tree.get_revision_id(), tree.inventory,
+                                      parents)
 
 
 class Model1toKnit2Fetcher(GenericRepoFetcher):
     """Fetch from a Model1 repository into a Knit2 repository
     """
+    def __init__(self, to_repository, from_repository, last_revision=None, 
+                 pb=None):
+        self.helper = Inter1and2Helper(from_repository, to_repository)
+        GenericRepoFetcher.__init__(self, to_repository, from_repository,
+                                    last_revision, pb)
 
     def _fetch_weave_texts(self, revs):
         GenericRepoFetcher._fetch_weave_texts(self, revs)
         # Now generate a weave for the tree root
-        Inter1and2Helper().generate_root_texts(self, revs)
+        self.helper.generate_root_texts(revs)
 
     def _fetch_inventory_weave(self, revs):
-        Inter1and2Helper().regenerate_inventory(self, revs)
+        self.helper.regenerate_inventory(revs)
  
 
 class Knit1to2Fetcher(KnitRepoFetcher):
     """Fetch from a Knit1 repository into a Knit2 repository"""
 
+    def __init__(self, to_repository, from_repository, last_revision=None, 
+                 pb=None):
+        self.helper = Inter1and2Helper(from_repository, to_repository)
+        KnitRepoFetcher.__init__(self, to_repository, from_repository,
+                                 last_revision, pb)
+
     def _fetch_weave_texts(self, revs):
         KnitRepoFetcher._fetch_weave_texts(self, revs)
         # Now generate a weave for the tree root
-        Inter1and2Helper().generate_root_texts(self, revs)
+        self.helper.generate_root_texts(revs)
 
     def _fetch_inventory_weave(self, revs):
-        Inter1and2Helper().regenerate_inventory(self, revs)
+        self.helper.regenerate_inventory(revs)
         
 
 class Fetcher(object):

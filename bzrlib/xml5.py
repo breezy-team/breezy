@@ -97,6 +97,10 @@ class Serializer_v5(Serializer):
     
     __slots__ = []
 
+    support_altered_by_hack = True
+    # This format supports the altered-by hack that reads file ids directly out
+    # of the versionedfile, without doing XML parsing.
+
     def write_inventory_to_string(self, inv):
         """Just call write_inventory with a StringIO and return the value"""
         sio = cStringIO.StringIO()

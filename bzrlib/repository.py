@@ -206,6 +206,7 @@ class Repository(object):
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
         self._warn_if_deprecated()
+        self._serializer = xml5.serializer_v5
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, 
@@ -410,7 +411,7 @@ class Repository(object):
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
-        assert self._format.has_unnested_inventory(), \
+        assert self._serializer.support_altered_by_hack, \
             ("fileids_altered_by_revision_ids only supported for branches " 
              "which store inventory as unnested xml, not on %r" % self)
         selected_revision_ids = set(revision_ids)
@@ -458,12 +459,12 @@ class Repository(object):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
-        result = xml5.serializer_v5.read_inventory_from_string(xml)
+        result = self._serializer.read_inventory_from_string(xml)
         result.root.revision = revision_id
         return result
 
     def serialise_inventory(self, inv):
-        return xml5.serializer_v5.write_inventory_to_string(inv)
+        return self._serializer.write_inventory_to_string(inv)
 
     @needs_read_lock
     def get_inventory_xml(self, revision_id):
@@ -1002,6 +1003,11 @@ class KnitRepository(MetaDirRepository):
 
 class KnitRepository2(KnitRepository):
     """"""
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
+                 control_store, text_store):
+        KnitRepository.__init__(self, _format, a_bzrdir, control_files,
+                              _revision_store, control_store, text_store)
+        self._serializer = xml6.serializer_v6
 
     def deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object. 
@@ -1009,7 +1015,7 @@ class KnitRepository2(KnitRepository):
         :param revision_id: The expected revision id of the inventory.
         :param xml: A serialised inventory.
         """
-        result = xml6.serializer_v6.read_inventory_from_string(xml)
+        result = self._serializer.read_inventory_from_string(xml)
         assert result.root.revision is not None
         return result
 
@@ -1021,7 +1027,7 @@ class KnitRepository2(KnitRepository):
         """
         assert inv.revision_id is not None
         assert inv.root.revision is not None
-        return xml6.serializer_v6.write_inventory_to_string(inv)
+        return KnitRepository.serialise_inventory(self, inv)
 
     def get_commit_builder(self, branch, parents, config, timestamp=None, 
                            timezone=None, committer=None, revprops=None, 
@@ -1171,9 +1177,6 @@ class RepositoryFormat(object):
         """
         return True
 
-    def has_unnested_inventory(self):
-        raise NotImplementedError(self.has_unnested_inventory)
-
     def check_conversion_target(self, target_format):
         raise NotImplementedError(self.check_conversion_target)
 
@@ -1296,9 +1299,6 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         """See RepositoryFormat.get_format_description()."""
         return "Repository format 4"
 
-    def has_unnested_inventory(self):
-        return True
-
     def initialize(self, url, shared=False, _internal=False):
         """Format 4 branches cannot be created."""
         raise errors.UninitializableFormat(self)
@@ -1348,9 +1348,6 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 5"
 
-    def has_unnested_inventory(self):
-        return True
-
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
         """Return the revision store object for this a_bzrdir."""
@@ -1380,9 +1377,6 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 6"
-
-    def has_unnested_inventory(self):
-        return True
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
@@ -1458,9 +1452,6 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 7"
-
-    def has_unnested_inventory(self):
-        return True
 
     def check_conversion_target(self, target_format):
         pass
@@ -1580,9 +1571,6 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
                                               },
                                               escaped=True)
 
-    def has_unnested_inventory(self):
-        return True
-
     def initialize(self, a_bzrdir, shared=False):
         """Create a knit format 1 repository.
 
@@ -1682,7 +1670,7 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return "Bazaar Knit Repository Format 2"
+        return "Bazaar Knit Repository Format 2\n"
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""

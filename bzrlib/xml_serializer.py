@@ -36,7 +36,6 @@ except ImportError:
                                               fromstring, tostring)
     import util.elementtree as elementtree
 
-from bzrlib.errors import BzrError
 from bzrlib import errors
 
 
