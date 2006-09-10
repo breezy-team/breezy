@@ -551,7 +551,7 @@ class BundleTree(Tree):
             return None
         if old_path in self.deleted:
             return None
-        if hasattr(self.base_tree, 'path2id'):
+        if getattr(self.base_tree, 'path2id', None) is not None:
             return self.base_tree.path2id(old_path)
         else:
             return self.base_tree.inventory.path2id(old_path)

@@ -228,7 +228,7 @@ def read_stanza(line_iter):
     tag = None
     accum_value = None
     for line in line_iter:
-        if line == None or line == '':
+        if line is None or line == '':
             break       # end of file
         if line == '\n':
             break       # end of stanza

@@ -90,7 +90,7 @@ class SampleTreeFormat(workingtree.WorkingTreeFormat):
     def initialize(self, a_bzrdir, revision_id=None):
         """Sample branches cannot be created."""
         t = a_bzrdir.get_workingtree_transport(self)
-        t.put('format', StringIO(self.get_format_string()))
+        t.put_bytes('format', self.get_format_string())
         return 'A tree'
 
     def is_supported(self):

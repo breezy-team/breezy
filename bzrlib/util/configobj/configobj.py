@@ -1024,7 +1024,7 @@ class ConfigObj(Section):
             else:
                 self.configspec = None
             return
-        elif hasattr(infile, 'read'):
+        elif getattr(infile, 'read', None) is not None:
             # This supports file like objects
             infile = infile.read() or []
             # needs splitting into lines - but needs doing *after* decoding
@@ -2852,7 +2852,7 @@ def _doctest():
     >>> uc2 = ConfigObj(file_like)
     >>> uc2 == uc
     1
-    >>> uc2.filename == None
+    >>> uc2.filename is None
     1
     >>> uc2.newlines == '\\r'
     1

@@ -422,7 +422,7 @@ class BundleReader(object):
             return
 
         revision_info = self.info.revisions[-1]
-        if hasattr(revision_info, key):
+        if key in revision_info.__dict__:
             if getattr(revision_info, key) is None:
                 setattr(revision_info, key, value)
             else:

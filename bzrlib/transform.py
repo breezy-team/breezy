@@ -1094,7 +1094,7 @@ def new_by_entry(tt, entry, parent_id, tree):
 def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
     """Create new file contents according to an inventory entry."""
     if entry.kind == "file":
-        if lines == None:
+        if lines is None:
             lines = tree.get_file(entry.file_id).readlines()
         tt.create_file(lines, trans_id, mode_id=mode_id)
     elif entry.kind == "symlink":
@@ -1337,10 +1337,11 @@ def conflict_pass(tt, conflicts):
             trans_id = conflict[1]
             try:
                 tt.cancel_deletion(trans_id)
-                new_conflicts.add((c_type, 'Not deleting', trans_id))
+                new_conflicts.add(('deleting parent', 'Not deleting', 
+                                   trans_id))
             except KeyError:
                 tt.create_directory(trans_id)
-                new_conflicts.add((c_type, 'Created directory.', trans_id))
+                new_conflicts.add((c_type, 'Created directory', trans_id))
         elif c_type == 'unversioned parent':
             tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))

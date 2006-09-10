@@ -149,7 +149,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir.create_repository()
         dir.create_branch()
         wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
-        self.assertIs(wt.last_revision(), None)
+        self.assertEqual([], wt.get_parent_ids())
 
     def test_clone_bzrdir_empty(self):
         dir = self.make_bzrdir('source')
@@ -446,7 +446,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = tree.bzrdir
         target = dir.clone(self.get_url('target'), revision_id='1')
         self.skipIfNoWorkingTree(target)
-        self.assertEqual('1', target.open_workingtree().last_revision())
+        self.assertEqual(['1'], target.open_workingtree().get_parent_ids())
 
     def test_clone_bzrdir_incomplete_source_with_basis(self):
         # ensure that basis really does grab from the basis by having incomplete source
@@ -465,7 +465,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.clone(self.get_url('target'), basis=tree.bzrdir)
         self.assertEqual('2', target.open_branch().last_revision())
         try:
-            self.assertEqual('2', target.open_workingtree().last_revision())
+            self.assertEqual(['2'], target.open_workingtree().get_parent_ids())
         except errors.NoWorkingTree:
             # It should have a working tree if it's able to have one, so if
             # we're here make sure it really can't have one.
@@ -855,7 +855,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # place
         target.open_repository()
         # we trust that the working tree sprouting works via the other tests.
-        self.assertEqual('1', target.open_workingtree().last_revision())
+        self.assertEqual(['1'], target.open_workingtree().get_parent_ids())
         self.assertEqual('1', target.open_branch().last_revision())
 
     def test_sprout_bzrdir_tree_revision(self):
@@ -871,7 +871,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         dir = tree.bzrdir
         target = self.sproutOrSkip(dir, self.get_url('target'), revision_id='1')
-        self.assertEqual('1', target.open_workingtree().last_revision())
+        self.assertEqual(['1'], target.open_workingtree().get_parent_ids())
 
     def test_sprout_bzrdir_incomplete_source_with_basis(self):
         # ensure that basis really does grab from the basis by having incomplete source
@@ -890,7 +890,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = self.sproutOrSkip(dir, self.get_url('target'),
                                    basis=tree.bzrdir)
         self.assertEqual('2', target.open_branch().last_revision())
-        self.assertEqual('2', target.open_workingtree().last_revision())
+        self.assertEqual(['2'], target.open_workingtree().get_parent_ids())
         self.assertTrue(target.open_branch().repository.has_revision('2'))
 
     def test_format_initialize_find_open(self):
@@ -1037,7 +1037,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             made_tree = made_control.create_workingtree(revision_id='a')
         except errors.NotLocalUrl:
             raise TestSkipped("Can't make working tree on transport %r" % t)
-        self.assertEqual('a', made_tree.last_revision())
+        self.assertEqual(['a'], made_tree.get_parent_ids())
         
     def test_open_workingtree(self):
         if not self.bzrdir_format.is_supported():

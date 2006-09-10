@@ -37,9 +37,7 @@ _serializers = {}
 
 
 def _get_filename(f):
-    if hasattr(f, 'name'):
-        return f.name
-    return '<unknown>'
+    return getattr(f, 'name', '<unknown>')
 
 
 def read_bundle(f):
@@ -151,7 +149,7 @@ def format_highres_date(t, offset=0):
     
     # This has to be formatted for "original" date, so that the
     # revision XML entry will be reproduced faithfully.
-    if offset == None:
+    if offset is None:
         offset = 0
     tt = time.gmtime(t + offset)
 

@@ -148,7 +148,7 @@ class Tree(object):
         fp = fingerprint_file(f)
         f.seek(0)
         
-        if ie.text_size != None:
+        if ie.text_size is not None:
             if ie.text_size != fp['size']:
                 raise BzrError("mismatched size for file %r in %r" % (ie.file_id, self._store),
                         ["inventory expects %d bytes" % ie.text_size,

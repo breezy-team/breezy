@@ -1484,7 +1484,7 @@ class ConvertBzrDir4To5(Converter):
         inv = serializer_v4.read_inventory(self.branch.control_files.get('inventory'))
         new_inv_xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
         # FIXME inventory is a working tree change.
-        self.branch.control_files.put('inventory', new_inv_xml)
+        self.branch.control_files.put('inventory', StringIO(new_inv_xml))
 
     def _write_all_weaves(self):
         controlweaves = WeaveStore(self.bzrdir.transport, prefixed=False)
@@ -1572,11 +1572,12 @@ class ConvertBzrDir4To5(Converter):
     def _store_new_weave(self, rev, inv, present_parents):
         # the XML is now updated with text versions
         if __debug__:
-            for file_id in inv:
-                if inv.is_root(file_id):
+            entries = inv.iter_entries()
+            entries.next()
+            for path, ie in entries:
+                if inv.is_root(ie.file_id):
                     continue
-                ie = inv[file_id]
-                assert hasattr(ie, 'revision'), \
+                assert getattr(ie, 'revision', None) is not None, \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
         new_inv_xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)

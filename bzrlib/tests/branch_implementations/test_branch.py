@@ -164,7 +164,7 @@ class TestBranch(TestCaseWithBranch):
         repo_b = self.make_repository('b')
         wt_a.bzrdir.open_repository().copy_content_into(repo_b)
         br_b = wt_a.bzrdir.open_branch().clone(repo_b.bzrdir, revision_id='1')
-        self.assertEqual(br_b.last_revision(), '1')
+        self.assertEqual('1', br_b.last_revision())
 
     def test_sprout_partial(self):
         # test sprouting with a prefix of the revision-history.
@@ -179,7 +179,7 @@ class TestBranch(TestCaseWithBranch):
         repo_b = self.make_repository('b')
         wt_a.bzrdir.open_repository().copy_content_into(repo_b)
         br_b = wt_a.bzrdir.open_branch().sprout(repo_b.bzrdir, revision_id='1')
-        self.assertEqual(br_b.last_revision(), '1')
+        self.assertEqual('1', br_b.last_revision())
 
     def get_parented_branch(self):
         wt_a = self.make_branch_and_tree('a')

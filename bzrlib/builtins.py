@@ -911,7 +911,7 @@ class cmd_file_id(Command):
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
         i = tree.inventory.path2id(relpath)
-        if i == None:
+        if i is None:
             raise BzrError("%r is not a versioned file" % filename)
         else:
             self.outf.write(i + '\n')
@@ -932,7 +932,7 @@ class cmd_file_path(Command):
         tree, relpath = WorkingTree.open_containing(filename)
         inv = tree.inventory
         fid = inv.path2id(relpath)
-        if fid == None:
+        if fid is None:
             raise BzrError("%r is not a versioned file" % filename)
         for fip in inv.get_idpath(fid):
             self.outf.write(fip + '\n')
@@ -996,7 +996,7 @@ class cmd_ancestry(Command):
             last_revision = wt.last_revision()
 
         revision_ids = b.repository.get_ancestry(last_revision)
-        assert revision_ids[0] == None
+        assert revision_ids[0] is None
         revision_ids.pop(0)
         for revision_id in revision_ids:
             self.outf.write(revision_id + '\n')
@@ -1377,7 +1377,7 @@ class cmd_log(Command):
         if rev1 > rev2:
             (rev2, rev1) = (rev1, rev2)
 
-        if (log_format == None):
+        if (log_format is None):
             default = b.get_config().log_format()
             log_format = get_log_format(long=long, short=short, line=line, 
                                         default=default)
@@ -2427,7 +2427,7 @@ class cmd_missing(Command):
             remote_branch.lock_read()
             try:
                 local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
-                if (log_format == None):
+                if (log_format is None):
                     default = local_branch.get_config().log_format()
                     log_format = get_log_format(long=long, short=short, 
                                                 line=line, default=default)
@@ -2481,12 +2481,12 @@ class cmd_plugins(Command):
         import bzrlib.plugin
         from inspect import getdoc
         for name, plugin in bzrlib.plugin.all_plugins().items():
-            if hasattr(plugin, '__path__'):
+            if getattr(plugin, '__path__', None) is not None:
                 print plugin.__path__[0]
-            elif hasattr(plugin, '__file__'):
+            elif getattr(plugin, '__file__', None) is not None:
                 print plugin.__file__
             else:
-                print `plugin`
+                print repr(plugin)
                 
             d = getdoc(plugin)
             if d:

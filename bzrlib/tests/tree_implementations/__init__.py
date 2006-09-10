@@ -92,7 +92,8 @@ class TestCaseWithTree(TestCaseWithBzrDir):
     def _make_abc_tree(self, tree):
         """setup an abc content tree."""
         files = ['a', 'b/', 'b/c']
-        self.build_tree(files, transport=tree.bzrdir.root_transport)
+        self.build_tree(files, line_endings='binary', 
+                        transport=tree.bzrdir.root_transport)
         tree.set_root_id('root-id')
         tree.add(files, ['a-id', 'b-id', 'c-id'])
 
