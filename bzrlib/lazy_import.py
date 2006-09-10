@@ -117,184 +117,26 @@ class ImportReplacer(ScopeReplacer):
         self._import_replacer_children = children
         self._member = member
         self._module_path = module_path
+
+        # Indirecting through __class__ so that children can
+        # override _import (especially our instrumented version)
+        cls = object.__getattribute__(self, '__class__')
         ScopeReplacer.__init__(self, scope=scope, name=name,
-                               factory=ImportReplacer._import)
+                               factory=cls._import)
 
     def _import(self, scope, name):
         children = object.__getattribute__(self, '_import_replacer_children')
         member = object.__getattribute__(self, '_member')
         module_path = object.__getattribute__(self, '_module_path')
         if member is not None:
-            module = __import__(module_path, scope, scope, (member,))
+            module = __import__(module_path, scope, scope, [member])
             return getattr(module, member)
         else:
-            module = __import__(module_path, scope, scope, None)
+            module = __import__(module_path, scope, scope, [])
 
         # Prepare the children to be imported
         for child_name, child_path, grandchildren in children:
             ImportReplacer(module.__dict__, name=child_name,
                            module_path=child_path, member=None,
                            children=grandchildren)
-
-    def _replace(self):
-        """Actually replace self with other in the given scope"""
-        factory = object.__getattribute__(self, '_factory')
-        scope = object.__getattribute__(self, '_scope')
-        name = object.__getattribute__(self, '_name')
-        obj = factory()
-        scope[name] = obj
-        return obj
-
-
-class _Importer(object):
-    """Helper for importing modules, but waiting until they are used.
-
-    This also helps to ensure that existing ScopeReplacer objects are
-    re-used in the current scope.
-    """
-
-    __slots__ = ['scope', 'modname', 'fromlist', 'mod']
-
-    def __init__(self, scope, modname, fromlist):
-        """
-        :param scope: calling context globals() where the import should be made
-        :param modname: The name of the module
-        :param fromlist: the fromlist portion of 'from foo import bar'
-        """
-        self.scope = scope
-        self.modname = modname
-        self.fromlist = fromlist
-        self.mod = None
-
-    def module(self):
-        """Import a module if not imported yet, and return"""
-        if self.mod is None:
-            self.mod = __import__(self.modname, self.scope, self.scope,
-                                  self.fromlist)
-            if isinstance(self.mod, _replacer):
-                del sys.modules[self.modname]
-                self.mod = __import__(self.modname, self.scope, self.scope,
-                                      self.fromlist)
-            del self.modname, self.fromlist
-        return self.mod
-
-class _replacer(object):
-    '''placeholder for a demand loaded module. demandload puts this in
-    a target scope.  when an attribute of this object is looked up,
-    this object is replaced in the target scope with the actual
-    module.
-
-    we use __getattribute__ to avoid namespace clashes between
-    placeholder object and real module.'''
-
-    def __init__(self, importer, target):
-        self.importer = importer
-        self.target = target
-        # consider case where we do this:
-        #   demandload(globals(), 'foo.bar foo.quux')
-        # foo will already exist in target scope when we get to
-        # foo.quux.  so we remember that we will need to demandload
-        # quux into foo's scope when we really load it.
-        self.later = []
-
-    def module(self):
-        return object.__getattribute__(self, 'importer').module()
-
-    def __getattribute__(self, key):
-        '''look up an attribute in a module and return it. replace the
-        name of the module in the caller\'s dict with the actual
-        module.'''
-
-        module = object.__getattribute__(self, 'module')()
-        target = object.__getattribute__(self, 'target')
-        importer = object.__getattribute__(self, 'importer')
-        later = object.__getattribute__(self, 'later')
-
-        if later:
-            demandload(module.__dict__, ' '.join(later))
-
-        importer.scope[target] = module
-
-        return getattr(module, key)
-
-class _replacer_from(_replacer):
-    '''placeholder for a demand loaded module.  used for "from foo
-    import ..." emulation. semantics of this are different than
-    regular import, so different implementation needed.'''
-
-    def module(self):
-        importer = object.__getattribute__(self, 'importer')
-        target = object.__getattribute__(self, 'target')
-
-        return getattr(importer.module(), target)
-
-    def __call__(self, *args, **kwargs):
-        target = object.__getattribute__(self, 'module')()
-        return target(*args, **kwargs)
-
-def demandload(scope, modules):
-    '''import modules into scope when each is first used.
-
-    scope should be the value of globals() in the module calling this
-    function, or locals() in the calling function.
-
-    modules is a string listing module names, separated by white
-    space.  names are handled like this:
-
-    foo            import foo
-    foo bar        import foo, bar
-    foo.bar        import foo.bar
-    foo:bar        from foo import bar
-    foo:bar,quux   from foo import bar, quux
-    foo.bar:quux   from foo.bar import quux'''
-
-    for mod in modules.split():
-        col = mod.find(':')
-        if col >= 0:
-            fromlist = mod[col+1:].split(',')
-            mod = mod[:col]
-        else:
-            fromlist = []
-        importer = _importer(scope, mod, fromlist)
-        if fromlist:
-            for name in fromlist:
-                scope[name] = _replacer_from(importer, name)
-        else:
-            dot = mod.find('.')
-            if dot >= 0:
-                basemod = mod[:dot]
-                val = scope.get(basemod)
-                # if base module has already been demandload()ed,
-                # remember to load this submodule into its namespace
-                # when needed.
-                if isinstance(val, _replacer):
-                    later = object.__getattribute__(val, 'later')
-                    later.append(mod[dot+1:])
-                    continue
-            else:
-                basemod = mod
-            scope[basemod] = _replacer(importer, basemod)
-
-def lazy_import(scope, module_name, member=None, import_as=None):
-    """Lazily import a module into the correct scope.
-
-    This is meant as a possible replacement for __import__.
-    It will return a ScopeReplacer object, which will call the real
-    '__import__' at the appropriate time.
-
-    :param module_name: The dotted module name
-    :param member: Optional, if supplied return the sub member instead of
-        the base module.
-    :param import_as: Use this as the local object name instead of the
-        default name.
-    """
-    if import_as is None:
-        if member is None:
-            module_pieces = module_name.split('.')
-            final_name = module_pieces[0]
-            def factory():
-                return __import__(module_name, scope, locals(), [])
-        else:
-            final_name = member
-    else:
-        raise NotImplemented('import_as is not yet implemented')
+        return module

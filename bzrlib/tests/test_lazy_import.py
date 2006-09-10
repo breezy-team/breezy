@@ -46,10 +46,31 @@ class InstrumentedReplacer(lazy_import.ScopeReplacer):
         return lazy_import.ScopeReplacer.__call__(self, *args, **kwargs)
 
 
+class InstrumentedImportReplacer(lazy_import.ImportReplacer):
+
+    @staticmethod
+    def use_actions(actions):
+        InstrumentedImportReplacer.actions = actions
+
+    def _import(self, scope, name):
+        InstrumentedImportReplacer.actions.append(('_import', name))
+        return lazy_import.ImportReplacer._import(self, scope, name)
+
+    def _replace(self):
+        InstrumentedImportReplacer.actions.append('_replace')
+        return lazy_import.ScopeReplacer._replace(self)
+
+    def __getattribute__(self, attr):
+        InstrumentedImportReplacer.actions.append(('__getattribute__', attr))
+        return lazy_import.ScopeReplacer.__getattribute__(self, attr)
+
+    def __call__(self, *args, **kwargs):
+        InstrumentedImportReplacer.actions.append(('__call__', args, kwargs))
+        return lazy_import.ScopeReplacer.__call__(self, *args, **kwargs)
+
+
 class TestClass(object):
     """Just a simple test class instrumented for the test cases"""
-
-    actions = []
 
     class_member = 'class_member'
 
@@ -211,9 +232,21 @@ class TestImportReplacer(TestCaseInTempDir):
         self.create_modules()
         base_path = self.test_dir + '/base'
 
-        sys.path.append(base_path)
+        self.actions = []
+        InstrumentedImportReplacer.use_actions(self.actions)
+
+        original_import = __import__
+        def instrumented_import(mod, scope1, scope2, fromlist):
+            self.actions.append(('import', mod, fromlist))
+            return original_import(mod, scope1, scope2, fromlist)
+
         def cleanup():
-            sys.path.remove(base_path)
+            if base_path in sys.path:
+                sys.path.remove(base_path)
+            __builtins__['__import__'] = original_import
+        self.addCleanup(cleanup)
+        sys.path.append(base_path)
+        __builtins__['__import__'] = instrumented_import
 
     def create_modules(self):
         """Create some random modules to be imported.
@@ -269,10 +302,44 @@ class TestImportReplacer(TestCaseInTempDir):
         self.submod_name = submod_name
 
     def test_basic_import(self):
-        root = __import__('.'.join([self.root_name, self.sub_name,
-                                    self.submod_name]),
-                          globals(), locals(), [])
+        sub_mod_path = '.'.join([self.root_name, self.sub_name,
+                                  self.submod_name])
+        root = __import__(sub_mod_path, globals(), locals(), [])
         self.assertEqual(1, root.var1)
         self.assertEqual(3, getattr(root, self.sub_name).var3)
         self.assertEqual(4, getattr(getattr(root, self.sub_name),
                                     self.submod_name).var4)
+
+        mod_path = '.'.join([self.root_name, self.mod_name])
+        root = __import__(mod_path, globals(), locals(), [])
+        self.assertEqual(2, getattr(root, self.mod_name).var2)
+
+        self.assertEqual([('import', sub_mod_path, []),
+                          ('import', mod_path, []),
+                         ], self.actions)
+
+    def test_import_root(self):
+        try:
+            root1
+        except NameError:
+            # root1 shouldn't exist yet
+            pass
+        else:
+            self.fail('root1 was not supposed to exist yet')
+
+        # This should replicate 'import root-xxyyzz as root1'
+        InstrumentedImportReplacer(scope=globals(), name='root1',
+                                   module_path=self.root_name,
+                                   member=None,
+                                   children=[])
+
+        self.assertEqual(InstrumentedImportReplacer,
+                         object.__getattribute__(root1, '__class__'))
+        self.assertEqual(1, root1.var1)
+        self.assertEqual('x', root1.func1('x'))
+
+        self.assertEqual([('__getattribute__', 'var1'),
+                          '_replace',
+                          ('_import', 'root1'),
+                          ('import', self.root_name, []),
+                         ], self.actions)
