@@ -2052,7 +2052,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          _format=self,
                          _bzrdir=a_bzrdir,
                          _control_files=control_files)
-        wt.lock_write()
+        wt.lock_tree_write()
         try:
             wt._write_inventory(inv)
             wt.set_root_id(inv.root.file_id)

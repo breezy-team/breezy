@@ -16,6 +16,10 @@ IN DEVELOPMENT
 
     * Commit performs one less XML parse. (Robert Collins)
 
+    * ``bzr checkout --lightweight`` now operates on readonly branches as well
+      as readwrite branches. This fixes bug #39542 for lightweight checkouts 
+      but not for heavyweight ones (the default). (Robert Collins)
+
   BUG FIXES:
 
     * Handle boundary="" lines properly to allow access through a Squid proxy.
