@@ -410,13 +410,12 @@ class WorkingTree(bzrlib.tree.Tree):
         else:
             try:
                 xml = self.read_basis_inventory()
-                inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
-                inv.root.revision = revision_id
-            except NoSuchFile:
-                inv = None
-            if inv is not None and inv.revision_id == revision_id:
-                return bzrlib.tree.RevisionTree(self.branch.repository, inv,
-                                                revision_id)
+                inv = bzrlib.xml6.serializer_v6.read_inventory_from_string(xml)
+                if inv is not None and inv.revision_id == revision_id:
+                    return bzrlib.tree.RevisionTree(self.branch.repository, 
+                                                    inv, revision_id)
+            except (NoSuchFile, errors.BadInventoryFormat):
+                pass
         # No cached copy available, retrieve from the repository.
         # FIXME? RBC 20060403 should we cache the inventory locally
         # at this point ?
@@ -1400,7 +1399,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return self._control_files.get_physical_lock_status()
 
     def _basis_inventory_name(self):
-        return 'basis-inventory'
+        return 'basis-inventory-cache'
 
     @needs_write_lock
     def set_last_revision(self, new_revision):
@@ -1441,11 +1440,13 @@ class WorkingTree(bzrlib.tree.Tree):
             # root node id can legitimately look like 'revision_id' but cannot
             # contain a '"'.
             xml = self.branch.repository.get_inventory_xml(new_revision)
-            if not 'revision_id="' in xml.split('\n', 1)[0]:
+            firstline = xml.split('\n', 1)[0]
+            if (not 'revision_id="' in firstline or 
+                'format="6"' not in firstline):
                 inv = self.branch.repository.deserialise_inventory(
                     new_revision, xml)
                 inv.revision_id = new_revision
-                xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
+                xml = bzrlib.xml6.serializer_v6.write_inventory_to_string(inv)
             assert isinstance(xml, str), 'serialised xml must be bytestring.'
             path = self._basis_inventory_name()
             sio = StringIO(xml)

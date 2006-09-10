@@ -990,6 +990,15 @@ class UninitializableFormat(BzrNewError):
         self.format = format
 
 
+class BadConversionTarget(BzrNewError):
+    """Cannot convert to format %(format)s.  %(problem)s"""
+
+    def __init__(self, problem, format):
+        BzrNewError.__init__(self)
+        self.problem = problem
+        self.format = format
+
+
 class NoDiff(BzrNewError):
     """Diff is not installed on this machine: %(msg)s"""
 
@@ -1146,6 +1155,17 @@ class UnsupportedEOLMarker(BadBundle):
 
     def __init__(self):
         BzrNewError.__init__(self)
+
+
+class BadInventoryFormat(BzrNewError):
+    """Root class for inventory serialization errors"""
+
+
+class UnexpectedInventoryFormat(BadInventoryFormat):
+    """The inventory was not in the expected format:\n %(msg)s"""
+
+    def __init__(self, msg):
+        BadInventoryFormat.__init__(self, msg=msg)
 
 
 class UnknownSSH(BzrNewError):

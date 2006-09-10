@@ -107,6 +107,10 @@ def get_format_type(typestring):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = repository.RepositoryFormatKnit1()
         return format
+    if typestring == "experimental-knit2":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        return format
     msg = "Unknown bzr format %s. Current formats are: default, knit,\n" \
           "metaweave and weave" % typestring
     raise BzrCommandError(msg)
