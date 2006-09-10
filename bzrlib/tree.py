@@ -376,7 +376,7 @@ class InterTree(InterObject):
     will pass through to InterTree as appropriate.
     """
 
-    _optimisers = set()
+    _optimisers = []
 
     @needs_read_lock
     def compare(self, want_unchanged=False, specific_files=None,
