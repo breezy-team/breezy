@@ -19,11 +19,6 @@ The plugin pass the bzr selftest except for:
   abandoned in the existing code already in favor of a global lock
   valid for all transports.
 
-- copy_to: We  can implement that,  but a special care  should be
-  taken  with aliases  (i.e.  how sure  can  we be  that the  two
-  transports are really  on the same server and  that we can really
-  delegate the copy to the server).
-
 - test_rmdir_not_empty: We have cheated there. That's bad.
 
 Extensions:

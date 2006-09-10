@@ -21,7 +21,7 @@ classes which implements the DAV specification parts used by the
 webdav plugin.
 """
 
-# TODO: Implement the  handling of the range header  for both GET
+# TODO: Implement the  testing of the range header  for both GET
 # and PUT requests. The server should be able to refuse the Range
 # headers optionally (or two servers should be available).
 
@@ -78,6 +78,7 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
         else:
             for i in range(1,10):
                 try:
+                    if i > 1: mutter('DAV request retry : [%d]' % i)
                     return func(*args)
                 except socket.error, e:
                     if e.args[0] == errno.EAGAIN:

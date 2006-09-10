@@ -151,21 +151,47 @@ class HTTPConnection(httplib.HTTPConnection):
             self.close()
             raise
 
-if hasattr(httplib, 'HTTPS'):
-    class HTTPSConnection(httplib.HTTPSConnection, HTTPConnection):
-        getresponse = HTTPConnection.getresponse
+class HTTPSConnection(httplib.HTTPSConnection, HTTPConnection):
+    getresponse = HTTPConnection.getresponse
 
+
+# FIXME: We use a specific Request to pass the connection between
+# the transport and the HTTPHandler. urllib2.HTTPRedirectHandler
+# creates urlib2.Request. We need to get our hands on the
+# redirection mechanism anyway.
 
 class Request(urllib2.Request):
-    def __init__(self, url, data=None, headers={}):
-        urllib2.Request.__init__(self, url, data, headers)
-        self.connection = None
+    def __init__(self, method, url, data=None, headers={},
+                 origin_req_host=None, unverifiable=False,
+                 connection=None,):
+        urllib2.Request.__init__(self, url, data, headers,
+                                 origin_req_host, unverifiable)
+        self.method = method
+        self.connection = connection
 
-    # We set the method statically, not depending on the 'data'
-    # value as urllib2 does. We have numerous different requests
-    # with or without data
+    # urllib2 determines the method heuristically (based on the
+    # presence or absence of data). It does not work for us
+    # because the heuristic do not take our requests into account
+    # (it can't, it have no idea what our requests are).
     def get_method(self):
         return self.method
+
+
+class PUTRequest(Request):
+    def __init__(self, url, data):
+        Request.__init__(self, 'PUT', url, data,
+                         # FIXME: Why ? *we* send, we do not receive :-/
+                         {'Accept': '*/*',
+                          'Content-type': 'application/octet-stream',
+                          # FIXME: We should complete the
+                          # implementation of
+                          # htmllib.HTTPConnection, it's just a
+                          # shame (at least a waste) that we
+                          # can't use the following.
+
+                          #  'Expect': '100-continue',
+                          #  'Transfer-Encoding': 'chunked',
+                          })
 
 
 # urllib2 provides no way to access the HTTPConnection object
@@ -238,23 +264,28 @@ class ConnectionHandler(urllib2.BaseHandler):
     def http_request(self, request):
         return self.capture_connection(request, HTTPConnection)
 
-    if hasattr(httplib, 'HTTPS'):
-        def https_request(self, request):
-            return self.capture_connection(request, HTTPSConnection)
+    def https_request(self, request):
+        return self.capture_connection(request, HTTPSConnection)
 
-class HTTPHandler(urllib2.HTTPHandler):
+
+class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
+
+    handler_order = 400 # Before urllib2 HTTP[S]Handlers to override them
 
     _default_headers = {'Pragma': 'no-cache',
                         'Cache-control': 'max-age=0',
                         'Connection': 'Keep-Alive',
                         }
-    _debuglevel = 0
 
-    # We overrive urllib2.HTTPHandler to get a better control of
-    # the connection and the ability to implement new request
-    # types.
+    def __init__(self, debuglevel=0):
+        self._debuglevel = debuglevel
+
+    # We overrive urllib2.AbstractHTTPHandler to get a better
+    # control of the connection, the ability to implement new
+    # request types and return a response able to cope wuth
+    # persistent connections.
     def do_open(self, http_class, request, first_try=True):
-        """See urllib2.HTTPHandler.do_open for the general idea.
+        """See urllib2.AbstractHTTPHandler.do_open for the general idea.
 
         The request will be retried once if it fails.
         """
@@ -267,8 +298,9 @@ class HTTPHandler(urllib2.HTTPHandler):
         headers.update(request.unredirected_hdrs)
         connection._send_request(request.get_method(),
                                  request.get_selector(),
-                                 request.get_data(),
+                                 # FIXME: implements 100-continue
                                  #None, # We don't send the body yet
+                                 request.get_data(),
                                  headers)
         try:
             response = connection.getresponse()
@@ -309,23 +341,29 @@ class HTTPHandler(urllib2.HTTPHandler):
         headers = {}
         for header, value in (response.getheaders()):
             headers[header.title()] = value
+        # FIXME: Implements a secured .read method
         response.code = response.status
         response.headers = headers
         return response
 
+
+class HTTPHandler(AbstractHTTPHandler):
     def http_open(self, request):
         return self.do_open(HTTPConnection, request)
 
 
-if hasattr(httplib, 'HTTPS'):
-    class HTTPSHandler(urllib2.HTTPSHandler, HTTPHandler):
+class HTTPSHandler(AbstractHTTPHandler):
+    def https_open(self, request):
+        return self.do_open(HTTPSConnection, request)
 
-        def https_open(self, request):
-            return self.do_open(HTTPSConnection, request)
 
-# The errors we want to handle in the Transport object 
+# The errors we want to handle in the Transport object.
 class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
-    """Process HTTP error responses."""
+    """Process HTTP error responses.
+
+    We don't really process the errors, quite the contrary
+    instead, we leave our Transport handle them.
+    """
     handler_order = 1000  # after all other processing
 
     def http_response(self, request, response):
@@ -336,8 +374,8 @@ class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
                         403, 404, 405, 409, 412,
                         999, # FIXME: <cough> search for 999 in this file
                         ):
-            response = self.parent.error(
-                'http', request, response, code, msg, hdrs)
+            response = self.parent.error('http', request, response,
+                                         code, msg, hdrs)
 
         return response
 
@@ -345,64 +383,6 @@ class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
 
 
 # TODO: Handle password managers.
-
-# FIXME: We use a specific Request to pass the connection between
-# the transport and the HTTPHandler. urllib2.HTTPRedirectHandler
-# creates urlib2.Request. We need to get our hands on the
-# redirection mechanism anyway.
-
-class GETRequest(Request):
-    method = 'GET'
-    def __init__(self, url):
-        Request.__init__(self, url)
-
-
-class HEADRequest(Request):
-    method = 'HEAD'
-    def __init__(self, url):
-        Request.__init__(self, url)
-
-
-class MKCOLRequest(Request):
-    method = 'MKCOL'
-    def __init__(self, url):
-        Request.__init__(self, url)
-
-
-class PUTRequest(Request):
-    method = 'PUT'
-    def __init__(self, url, data):
-        Request.__init__(self, url, data,
-                         # FIXME: Why ? *we* send, we do not receive :-/
-                         {'Accept': '*/*',
-                          # FIXME: We should complete the
-                          # implementation of
-                          # htmllib.HTTPConnection, it's just a
-                          # shame (at least a waste). We can't
-                          # use the following.
-
-                          #  'Expect': '100-continue',
-                          #  'Transfer-Encoding': 'chunked',
-                          })
-
-
-class COPYRequest(Request):
-    method = 'COPY'
-    def __init__(self, url_from, url_to):
-        Request.__init__(self, url_from, None, {'Destination': url_to})
-
-
-class MOVERequest(Request):
-    method = 'MOVE'
-    def __init__(self, url_from, url_to):
-        Request.__init__(self, url_from, None, {'Destination': url_to})
-
-
-class DELETERequest(Request):
-    method = 'DELETE'
-    def __init__(self, url):
-        Request.__init__(self, url)
-
 
 # We bypass the HttpTransport_urllib step in the hierarchy
 class HttpDavTransport(HttpTransportBase):
@@ -412,17 +392,22 @@ class HttpDavTransport(HttpTransportBase):
     We don't try to implement the whole WebDAV protocol. Just the minimum
     needed for bzr.
     """
+    _accept_ranges = 1
+    _debuglevel = 1
     # We define our own opener
     _opener = urllib2.build_opener(ConnectionHandler,
                                    #urllib2.ProxyHandler,
                                    HTTPHandler,
+                                   HTTPSHandler,
                                    #urllib2.HTTPDefaultErrorHandler,
                                    # FIXME: specializes ?
                                    #urllib2.HTTPRedirectHandler,
                                    HTTPErrorProcessor,
                                    )
-    _accept_ranges = 1
-    _debuglevel = 0
+
+    if _debuglevel > 0:
+        import pprint
+        pprint.pprint(_opener.__dict__)
 
     def __init__(self, base, from_transport=None):
         assert base.startswith('https+webdav') or base.startswith('http+webdav')
@@ -479,7 +464,7 @@ class HttpDavTransport(HttpTransportBase):
         Performs the request and leaves callers handle the results.
         """
         abspath = self._real_abspath(relpath)
-        request = HEADRequest(abspath)
+        request = Request('HEAD', abspath)
         response = self._perform(request)
 
         return response
@@ -504,7 +489,7 @@ class HttpDavTransport(HttpTransportBase):
         """See Transport._get"""
 
         abspath = self._real_abspath(relpath)
-        request = GETRequest(abspath)
+        request = Request('GET', abspath)
         if ranges or tail_amount:
             bytes = 'bytes=' + self.range_header(ranges, tail_amount)
             request.add_header('Range', bytes)
@@ -637,7 +622,7 @@ class HttpDavTransport(HttpTransportBase):
         """See Transport.mkdir"""
         abspath = self._real_abspath(relpath)
 
-        request = MKCOLRequest(abspath)
+        request = Request('MKCOL', abspath)
         response = self._perform(request)
 
         code = response.code
@@ -659,9 +644,9 @@ class HttpDavTransport(HttpTransportBase):
         abs_from = self._real_abspath(rel_from)
         abs_to = self._real_abspath(rel_to)
 
-        request = MOVERequest(abs_from, abs_to)
-        request.add_header('Destination', abs_to)
-        request.add_header('Overwrite', 'F')
+        request = Request('MOVE', abs_from, None,
+                          {'Destination': abs_to,
+                           'Overwrite': 'F'})
         response = self._perform(request)
 
         code = response.code
@@ -686,7 +671,7 @@ class HttpDavTransport(HttpTransportBase):
         abs_from = self._real_abspath(rel_from)
         abs_to = self._real_abspath(rel_to)
 
-        request = MOVERequest(abs_from, abs_to)
+        request = Request('MOVE', abs_from, None, {'Destination': abs_to})
         response = self._perform(request)
 
         code = response.code
@@ -710,7 +695,7 @@ class HttpDavTransport(HttpTransportBase):
         """
         abs_path = self._real_abspath(rel_path)
 
-        request = DELETERequest(abs_path)
+        request = Request('DELETE', abs_path)
         response = self._perform(request)
 
         code = response.code
@@ -730,7 +715,7 @@ class HttpDavTransport(HttpTransportBase):
         abs_from = self._real_abspath(rel_from)
         abs_to = self._real_abspath(rel_to)
 
-        request = COPYRequest(abs_from, abs_to)
+        request = Request('COPY', abs_from, None, {'Destination': abs_to})
         response = self._perform(request)
 
         code = response.code

@@ -1,3 +1,27 @@
+2006-09-10  Vincent Ladeuil  <v.ladeuil@free.fr>
+	Cleaning. New simpler Request syntax.
+
+	* webdav.py
+	(HTTPSConnection, ConnectionHandler.https_request, HTTPSHandler):
+	We don't have to test for hasattr(httplib, 'HTTPS'), urllib2 have
+	already done that.
+	(Request): Change the signature to make creation of specific
+	requests easier.
+	(PUTRequest): Moved closer to ReQuest. Add 'Content-Type' header.
+	(AbstractHTTPHandler): New class. Cleaner sharing of methods
+	between HTTPHanler and HTTPSHandler. Needs to specify
+	handler_order to work around a bug in urllib2.build_opener
+	bug (which mentions urllib2.HTTPHandler and (conditionally
+	urllib2.HTTPSHandler) as default handlers instead of
+	urllib2.AbstractHTTPHandler).
+	(GETRequest, HEADRequest, MKCOLRequest, COPYRequest, MOVERequest,
+	DELETERequest): Deleted. The new Request signature make it easy to
+	write them inline.
+	(HttpDavTransport): Uses the new syntax for the Request objects.
+
+	* test_webdav.py: 
+	Cosmetic change.
+
 2006-09-08  Vincent Ladeuil  <v.ladeuil@alplog.fr>
 	Small fixes after more tests. Can't handle redirect yet (see FIXME).
 
