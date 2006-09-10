@@ -16,9 +16,12 @@
 
 """Test the lazy_import functionality."""
 
+import os
+import sys
 
 from bzrlib import (
     lazy_import,
+    osutils,
     )
 from bzrlib.tests import TestCase, TestCaseInTempDir
 
@@ -199,6 +202,77 @@ class TestScopeReplacer(TestCase):
                           'func',
                          ], actions)
 
+
 class TestImportReplacer(TestCaseInTempDir):
     """Test the ability to have a lazily imported module or object"""
 
+    def setUp(self):
+        TestCaseInTempDir.setUp(self)
+        self.create_modules()
+        base_path = self.test_dir + '/base'
+
+        sys.path.append(base_path)
+        def cleanup():
+            sys.path.remove(base_path)
+
+    def create_modules(self):
+        """Create some random modules to be imported.
+
+        Each entry has a random suffix, and the full names are saved
+
+        These are setup as follows:
+         base/ <= used to ensure not in default search path
+            root-XXX/
+                __init__.py <= This will contain var1, func1
+                mod-XXX.py <= This will contain var2, func2
+                sub-XXX/
+                    __init__.py <= Contains var3, func3
+                    submod-XXX.py <= contains var4, func4
+        """
+        rand_suffix = osutils.rand_chars(4)
+        root_name = 'root_' + rand_suffix
+        mod_name = 'mod_' + rand_suffix
+        sub_name = 'sub_' + rand_suffix
+        submod_name = 'submod_' + rand_suffix
+        os.mkdir('base')
+        root_path = osutils.pathjoin('base', root_name)
+        os.mkdir(root_path)
+        root_init = osutils.pathjoin(root_path, '__init__.py')
+        f = open(osutils.pathjoin(root_path, '__init__.py'), 'wb')
+        try:
+            f.write('var1 = 1\ndef func1(a):\n  return a\n')
+        finally:
+            f.close()
+        mod_path = osutils.pathjoin(root_path, mod_name + '.py')
+        f = open(mod_path, 'wb')
+        try:
+            f.write('var2 = 2\ndef func2(a):\n  return a\n')
+        finally:
+            f.close()
+
+        sub_path = osutils.pathjoin(root_path, sub_name)
+        os.mkdir(sub_path)
+        f = open(osutils.pathjoin(sub_path, '__init__.py'), 'wb')
+        try:
+            f.write('var3 = 3\ndef func3(a):\n  return a\n')
+        finally:
+            f.close()
+        submod_path = osutils.pathjoin(sub_path, submod_name + '.py')
+        f = open(submod_path, 'wb')
+        try:
+            f.write('var4 = 4\ndef func4(a):\n  return a\n')
+        finally:
+            f.close()
+        self.root_name = root_name
+        self.mod_name = mod_name
+        self.sub_name = sub_name
+        self.submod_name = submod_name
+
+    def test_basic_import(self):
+        root = __import__('.'.join([self.root_name, self.sub_name,
+                                    self.submod_name]),
+                          globals(), locals(), [])
+        self.assertEqual(1, root.var1)
+        self.assertEqual(3, getattr(root, self.sub_name).var3)
+        self.assertEqual(4, getattr(getattr(root, self.sub_name),
+                                    self.submod_name).var4)
