@@ -104,7 +104,7 @@ class ImportReplacer(ScopeReplacer):
             import foo => name='foo' module_path='foo',
                           member=None, children=[]
             import foo.bar => name='foo' module_path='foo', member=None,
-                              children=[('bar', 'foo.bar', [])]
+                              children=[('bar', ['foo', 'bar'], [])]
             from foo import bar => name='bar' module_path='foo', member='bar'
                                    children=[]
             from foo import bar, baz would get translated into 2 import
@@ -139,7 +139,10 @@ class ImportReplacer(ScopeReplacer):
 
         # Prepare the children to be imported
         for child_name, child_path, grandchildren in children:
-            ImportReplacer(module.__dict__, name=child_name,
-                           module_path=child_path, member=None,
-                           children=grandchildren)
+            # Using self.__class__, so that children get children classes
+            # instantiated. (This helps with instrumented tests)
+            cls = object.__getattribute__(self, '__class__')
+            cls(module.__dict__, name=child_name,
+                module_path=child_path, member=None,
+                children=grandchildren)
         return module
