@@ -673,7 +673,7 @@ class TestCanonicalize(TestCase):
 
     def check(self, expected, text):
         proc = lazy_import.ImportProcessor()
-        parsed = proc._canonicalize_import_strings(text)
+        parsed = proc._canonicalize_import_text(text)
         self.assertEqual(expected, parsed,
                          'Incorrect parsing of text:\n%s\n%s\n!=\n%s'
                          % (text, expected, parsed))
@@ -687,6 +687,7 @@ class TestCanonicalize(TestCase):
     def test_import_one_two(self):
         self.check(['import one, two'], 'import one, two')
         self.check(['import one, two'], '\nimport one, two\n\n')
+        # v- It turns out this syntax isn't actually supported by python
         self.check(['import one, two'], '\nimport (one, two)\n')
         self.check(['import  one, two '], '\nimport (\n\tone,\ntwo\n)\n')
 
@@ -694,6 +695,7 @@ class TestCanonicalize(TestCase):
         self.check(['import one as x, two as y'], 'import one as x, two as y')
         self.check(['import one as x, two as y'],
                    '\nimport one as x, two as y\n')
+        # v- It turns out this syntax isn't actually supported by python
         self.check(['import one as x, two as y'],
                    '\nimport (one as x, two as y)\n')
         self.check(['import  one as x, two as y '],
@@ -728,3 +730,96 @@ class TestCanonicalize(TestCase):
                    '    four,\n'
                    '    )\n'
                    )
+
+
+class TestImportProcessor(TestCase):
+    """Test that ImportProcessor can turn import texts into lazy imports"""
+
+    def check(self, expected, text):
+        proc = lazy_import.ImportProcessor()
+        proc._build_map(text)
+        self.assertEqual(expected, proc.imports,
+                         'Incorrect processing of:\n%s\n%s\n!=\n%s'
+                         % (text, expected, proc.imports))
+
+    def test_import_one(self):
+        exp = {'one':(['one'], None, {})}
+        self.check(exp, 'import one')
+        self.check(exp, '\nimport one\n')
+
+    def test_import_one_two(self):
+        exp = {'one':(['one'], None,
+                      {'two':(['one', 'two'], None, {}),
+                      }),
+              }
+        self.check(exp, 'import one.two')
+        self.check(exp, 'import one, one.two')
+        self.check(exp, 'import one\nimport one.two')
+
+    def test_import_as(self):
+        exp = {'two':(['one'], None, {})}
+        self.check(exp, 'import one as two')
+
+    def test_import_many(self):
+        exp = {'one':(['one'], None,
+                      {'two':(['one', 'two'], None,
+                              {'three':(['one', 'two', 'three'], None, {}),
+                              }),
+                       'four':(['one', 'four'], None, {}),
+                      }),
+               'five':(['one', 'five'], None, {}),
+              }
+        self.check(exp, 'import one.two.three, one.four, one.five as five')
+        self.check(exp, 'import one.five as five\n'
+                        'import one\n'
+                        'import one.two.three\n'
+                        'import one.four\n')
+
+    def test_from_one_import_two(self):
+        exp = {'two':(['one'], 'two', {})}
+        self.check(exp, 'from one import two\n')
+        self.check(exp, 'from one import (\n'
+                        '    two,\n'
+                        '    )\n')
+
+    def test_from_one_import_two(self):
+        exp = {'two':(['one'], 'two', {})}
+        self.check(exp, 'from one import two\n')
+        self.check(exp, 'from one import (two)\n')
+        self.check(exp, 'from one import (two,)\n')
+        self.check(exp, 'from one import two as two\n')
+        self.check(exp, 'from one import (\n'
+                        '    two,\n'
+                        '    )\n')
+
+    def test_from_many(self):
+        exp = {'two':(['one'], 'two', {}),
+               'three':(['one', 'two'], 'three', {}),
+               'five':(['one', 'two'], 'four', {}),
+              }
+        self.check(exp, 'from one import two\n'
+                        'from one.two import three, four as five\n')
+        self.check(exp, 'from one import two\n'
+                        'from one.two import (\n'
+                        '    three,\n'
+                        '    four as five,\n'
+                        '    )\n')
+
+    def test_mixed(self):
+        exp = {'two':(['one'], 'two', {}),
+               'three':(['one', 'two'], 'three', {}),
+               'five':(['one', 'two'], 'four', {}),
+               'one':(['one'], None,
+                      {'two':(['one', 'two'], None, {}),
+                      }),
+              }
+        self.check(exp, 'from one import two\n'
+                        'from one.two import three, four as five\n'
+                        'import one.two')
+        self.check(exp, 'from one import two\n'
+                        'from one.two import (\n'
+                        '    three,\n'
+                        '    four as five,\n'
+                        '    )\n'
+                        'import one\n'
+                        'import one.two\n')

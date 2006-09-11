@@ -157,6 +157,15 @@ class ImportProcessor(object):
     def __init__(self):
         self.imports = {}
 
+    def _build_map(self, text):
+        """Take a string describing imports, and build up the internal map"""
+        for line in self._canonicalize_import_text(text):
+            if line.startswith('import'):
+                self._convert_import_str(line)
+            else:
+                assert line.startswith('from')
+                self._convert_from_str(line)
+
     def _convert_import_str(self, import_str):
         """This converts a import string into an import map.
 
@@ -169,6 +178,8 @@ class ImportProcessor(object):
 
         for path in import_str.split(','):
             path = path.strip()
+            if not path:
+                continue
             as_hunks = path.split(' as ')
             if len(as_hunks) == 2:
                 # We have 'as' so this is a different style of import
@@ -215,6 +226,8 @@ class ImportProcessor(object):
 
         for path in import_list.split(','):
             path = path.strip()
+            if not path:
+                continue
             as_hunks = path.split(' as ')
             if len(as_hunks) == 2:
                 # We have 'as' so this is a different style of import
@@ -227,8 +240,7 @@ class ImportProcessor(object):
             assert name not in self.imports
             self.imports[name] = (from_module_path, module, {})
 
-
-    def _canonicalize_import_strings(self, text):
+    def _canonicalize_import_text(self, text):
         """Take a list of imports, and split it into regularized form.
 
         This is meant to take regular import text, and convert it to
