@@ -2165,8 +2165,7 @@ class cmd_merge(Command):
             branch = revision[0].get_branch() or branch
             if len(revision) == 1:
                 base = [None, None]
-                other_branch = Branch.open_containing(branch)
-                path = None
+                other_branch, path = Branch.open_containing(branch)
                 revno = revision[0].in_history(other_branch).revno
                 other = [branch, revno]
             else:
@@ -2183,8 +2182,7 @@ class cmd_merge(Command):
                     raise BzrCommandError(
                         "Merge doesn't accept two revisions "
                         "in different branches.")
-                other_branch = Branch.open_containing(branch)
-                path = None
+                other_branch, path = Branch.open_containing(branch)
 
                 base = [branch, revision[0].in_history(other_branch).revno]
                 other = [branch, revision[1].in_history(other_branch).revno]
