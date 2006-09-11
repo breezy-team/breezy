@@ -284,11 +284,11 @@ class HttpTransportBase(Transport):
 
         return combined
 
-    def put(self, relpath, f, mode=None):
-        """Copy the file-like or string object into the location.
+    def put_file(self, relpath, f, mode=None):
+        """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
         """
         raise TransportNotPossible('http PUT not supported')
 
@@ -300,7 +300,7 @@ class HttpTransportBase(Transport):
         """See Transport.rmdir."""
         raise TransportNotPossible('http does not support rmdir()')
 
-    def append(self, relpath, f):
+    def append_file(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """
@@ -449,7 +449,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if not self.parse_request(): # An error code has been sent, just exit
             return
         mname = 'do_' + self.command
-        if not hasattr(self, mname):
+        if getattr(self, mname, None) is None:
             self.send_error(501, "Unsupported method (%r)" % self.command)
             return
         method = getattr(self, mname)

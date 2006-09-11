@@ -294,7 +294,7 @@ class FtpTransport(Transport):
                 self._FTP_instance = None
                 return self.get(relpath, decode, retries+1)
 
-    def put(self, relpath, fp, mode=None, retries=0):
+    def put_file(self, relpath, fp, mode=None, retries=0):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
@@ -307,7 +307,7 @@ class FtpTransport(Transport):
         abspath = self._abspath(relpath)
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
                         os.getpid(), random.randint(0,0x7FFFFFFF))
-        if not hasattr(fp, 'read'):
+        if getattr(fp, 'read', None) is None:
             fp = StringIO(fp)
         try:
             mutter("FTP put: %s", abspath)
@@ -333,7 +333,7 @@ class FtpTransport(Transport):
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
                 self._FTP_instance = None
-                self.put(relpath, fp, mode, retries+1)
+                self.put_file(relpath, fp, mode, retries+1)
         except EOFError:
             if retries > _number_of_retries:
                 raise errors.TransportError("FTP control connection closed during PUT %s."
@@ -342,7 +342,7 @@ class FtpTransport(Transport):
                 warning("FTP control connection closed. Trying to reopen.")
                 time.sleep(_sleep_between_retries)
                 self._FTP_instance = None
-                self.put(relpath, fp, mode, retries+1)
+                self.put_file(relpath, fp, mode, retries+1)
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
@@ -365,7 +365,7 @@ class FtpTransport(Transport):
         except ftplib.error_perm, e:
             self._translate_perm_error(e, abspath, unknown_exc=errors.PathError)
 
-    def append(self, relpath, f, mode=None):
+    def append_file(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """

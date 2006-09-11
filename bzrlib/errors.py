@@ -174,6 +174,15 @@ class InvalidRevisionId(BzrNewError):
         self.branch = branch
 
 
+class NoSuchId(BzrNewError):
+    """The file id %(file_id)s is not present in the tree %(tree)s."""
+    
+    def __init__(self, tree, file_id):
+        BzrNewError.__init__(self)
+        self.file_id = file_id
+        self.tree = tree
+
+
 class NoWorkingTree(BzrNewError):
     """No WorkingTree exists for %(base)s."""
     
@@ -969,11 +978,24 @@ class ParamikoNotPresent(DependencyNotPresent):
         DependencyNotPresent.__init__(self, 'paramiko', error)
 
 
+class PointlessMerge(BzrNewError):
+    """Nothing to merge."""
+
+
 class UninitializableFormat(BzrNewError):
     """Format %(format)s cannot be initialised by this version of bzr."""
 
     def __init__(self, format):
         BzrNewError.__init__(self)
+        self.format = format
+
+
+class BadConversionTarget(BzrNewError):
+    """Cannot convert to format %(format)s.  %(problem)s"""
+
+    def __init__(self, problem, format):
+        BzrNewError.__init__(self)
+        self.problem = problem
         self.format = format
 
 
@@ -1133,6 +1155,17 @@ class UnsupportedEOLMarker(BadBundle):
 
     def __init__(self):
         BzrNewError.__init__(self)
+
+
+class BadInventoryFormat(BzrNewError):
+    """Root class for inventory serialization errors"""
+
+
+class UnexpectedInventoryFormat(BadInventoryFormat):
+    """The inventory was not in the expected format:\n %(msg)s"""
+
+    def __init__(self, msg):
+        BadInventoryFormat.__init__(self, msg=msg)
 
 
 class UnknownSSH(BzrNewError):

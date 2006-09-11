@@ -138,13 +138,14 @@ class Branch(object):
         """
         return bzrdir.BzrDir.create_standalone_workingtree(base).branch
 
+    @deprecated_function(zero_eight)
     def setup_caching(self, cache_root):
         """Subclasses that care about caching should override this, and set
         up cached stores located under cache_root.
+        
+        NOTE: This is unused.
         """
-        # seems to be unused, 2006-01-13 mbp
-        warn('%s is deprecated' % self.setup_caching)
-        self.cache_root = cache_root
+        pass
 
     def get_config(self):
         return bzrlib.config.BranchConfig(self)
@@ -580,6 +581,18 @@ class Branch(object):
             mainline_parent_id = revision_id
         return BranchCheckResult(self)
 
+    def _get_checkout_format(self):
+        """Return the most suitable metadir for a checkout of this branch.
+        Weaves are used if this branch's repostory uses weaves.
+        """
+        if isinstance(self.bzrdir, bzrdir.BzrDirPreSplitOut):
+            from bzrlib import repository
+            format = bzrdir.BzrDirMetaFormat1()
+            format.repository_format = repository.RepositoryFormat7()
+        else:
+            format = self.repository.bzrdir.cloning_metadir()
+        return format
+
     def create_checkout(self, to_location, revision_id=None, 
                         lightweight=False):
         """Create a checkout of a branch.
@@ -590,17 +603,18 @@ class Branch(object):
         produce a bound branch (heavyweight checkout)
         :return: The tree of the created checkout
         """
+        t = transport.get_transport(to_location)
+        try:
+            t.mkdir('.')
+        except errors.FileExists:
+            pass
         if lightweight:
-            t = transport.get_transport(to_location)
-            try:
-                t.mkdir('.')
-            except errors.FileExists:
-                pass
             checkout = bzrdir.BzrDirMetaFormat1().initialize_on_transport(t)
             BranchReferenceFormat().initialize(checkout, self)
         else:
+            format = self._get_checkout_format()
             checkout_branch = bzrdir.BzrDir.create_branch_convenience(
-                to_location, force_new_tree=False)
+                to_location, force_new_tree=False, format=format)
             checkout = checkout_branch.bzrdir
             checkout_branch.bind(self)
             if revision_id is not None:
@@ -839,9 +853,9 @@ class BranchReferenceFormat(BranchFormat):
             raise errors.UninitializableFormat(self)
         mutter('creating branch reference in %s', a_bzrdir.transport.base)
         branch_transport = a_bzrdir.get_branch_transport(self)
-        # FIXME rbc 20060209 one j-a-ms encoding branch lands this str() cast is not needed.
-        branch_transport.put('location', StringIO(str(target_branch.bzrdir.root_transport.base)))
-        branch_transport.put('format', StringIO(self.get_format_string()))
+        branch_transport.put_bytes('location',
+            target_branch.bzrdir.root_transport.base)
+        branch_transport.put_bytes('format', self.get_format_string())
         return self.open(a_bzrdir, _found=True)
 
     def __init__(self):
@@ -957,21 +971,6 @@ class BzrBranch(Branch):
         return '%s(%r)' % (self.__class__.__name__, self.base)
 
     __repr__ = __str__
-
-    def __del__(self):
-        # TODO: It might be best to do this somewhere else,
-        # but it is nice for a Branch object to automatically
-        # cache it's information.
-        # Alternatively, we could have the Transport objects cache requests
-        # See the earlier discussion about how major objects (like Branch)
-        # should never expect their __del__ function to run.
-        # XXX: cache_root seems to be unused, 2006-01-13 mbp
-        if hasattr(self, 'cache_root') and self.cache_root is not None:
-            try:
-                osutils.rmtree(self.cache_root)
-            except:
-                pass
-            self.cache_root = None
 
     def _get_base(self):
         return self._base

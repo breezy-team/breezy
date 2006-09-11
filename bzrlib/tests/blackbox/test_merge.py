@@ -206,10 +206,10 @@ class TestMerge(ExternalBase):
         file('../bundle', 'wb').write(self.runbzr('bundle ../branch_a')[0])
         os.chdir('../branch_a')
         self.runbzr('merge ../bundle', retcode=1)
-        testament_a = Testament.from_revision(tree_a.branch.repository, 
-                                              tree_b.last_revision())
+        testament_a = Testament.from_revision(tree_a.branch.repository,
+                                              tree_b.get_parent_ids()[0])
         testament_b = Testament.from_revision(tree_b.branch.repository,
-                                              tree_b.last_revision())
+                                              tree_b.get_parent_ids()[0])
         self.assertEqualDiff(testament_a.as_text(),
                          testament_b.as_text())
         tree_a.set_conflicts(ConflictList())

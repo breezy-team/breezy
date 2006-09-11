@@ -17,6 +17,7 @@
 import os
 from StringIO import StringIO
 
+from bzrlib import conflicts
 from bzrlib.branch import Branch
 from bzrlib.builtins import merge
 from bzrlib.conflicts import ConflictList, TextConflict
@@ -148,3 +149,27 @@ class TestMerge(TestCaseWithTransport):
         tree_a.set_conflicts(ConflictList([TextConflict('patha')]))
         merge_inner(tree_a.branch, tree_a, tree_a, this_tree=tree_a)
         self.assertEqual(1, len(tree_a.conflicts()))
+
+    def test_rmdir_conflict(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/b/'])
+        tree_a.add('b', 'b-id')
+        tree_a.commit('added b')
+        base_tree = tree_a.basis_tree()
+        tree_z = tree_a.bzrdir.sprout('z').open_workingtree()
+        self.build_tree(['a/b/c'])
+        tree_a.add('b/c')
+        tree_a.commit('added c')
+        os.rmdir('z/b')
+        tree_z.commit('removed b')
+        merge_inner(tree_z.branch, tree_a, base_tree, this_tree=tree_z)
+        self.assertEqual([
+            conflicts.MissingParent('Created directory', 'b', 'b-id'),
+            conflicts.UnversionedParent('Versioned directory', 'b', 'b-id')],
+            tree_z.conflicts())
+        merge_inner(tree_a.branch, tree_z.basis_tree(), base_tree, 
+                    this_tree=tree_a)
+        self.assertEqual([
+            conflicts.DeletingParent('Not deleting', 'b', 'b-id'),
+            conflicts.UnversionedParent('Versioned directory', 'b', 'b-id')],
+            tree_a.conflicts())
