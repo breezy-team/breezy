@@ -260,13 +260,16 @@ class TestImportReplacer(TestCaseInTempDir):
                 mod-XXX.py <= This will contain var2, func2
                 sub-XXX/
                     __init__.py <= Contains var3, func3
-                    submod-XXX.py <= contains var4, func4
+                    submoda-XXX.py <= contains var4, func4
+                    submodb-XXX.py <= containse var5, func5
         """
         rand_suffix = osutils.rand_chars(4)
         root_name = 'root_' + rand_suffix
         mod_name = 'mod_' + rand_suffix
         sub_name = 'sub_' + rand_suffix
-        submod_name = 'submod_' + rand_suffix
+        submoda_name = 'submoda_' + rand_suffix
+        submodb_name = 'submodb_' + rand_suffix
+
         os.mkdir('base')
         root_path = osutils.pathjoin('base', root_name)
         os.mkdir(root_path)
@@ -290,25 +293,33 @@ class TestImportReplacer(TestCaseInTempDir):
             f.write('var3 = 3\ndef func3(a):\n  return a\n')
         finally:
             f.close()
-        submod_path = osutils.pathjoin(sub_path, submod_name + '.py')
-        f = open(submod_path, 'wb')
+        submoda_path = osutils.pathjoin(sub_path, submoda_name + '.py')
+        f = open(submoda_path, 'wb')
         try:
             f.write('var4 = 4\ndef func4(a):\n  return a\n')
+        finally:
+            f.close()
+        submodb_path = osutils.pathjoin(sub_path, submodb_name + '.py')
+        f = open(submodb_path, 'wb')
+        try:
+            f.write('var5 = 5\ndef func5(a):\n  return a\n')
         finally:
             f.close()
         self.root_name = root_name
         self.mod_name = mod_name
         self.sub_name = sub_name
-        self.submod_name = submod_name
+        self.submoda_name = submoda_name
+        self.submodb_name = submodb_name
 
     def test_basic_import(self):
+        """Test that a real import of these modules works"""
         sub_mod_path = '.'.join([self.root_name, self.sub_name,
-                                  self.submod_name])
+                                  self.submoda_name])
         root = __import__(sub_mod_path, globals(), locals(), [])
         self.assertEqual(1, root.var1)
         self.assertEqual(3, getattr(root, self.sub_name).var3)
         self.assertEqual(4, getattr(getattr(root, self.sub_name),
-                                    self.submod_name).var4)
+                                    self.submoda_name).var4)
 
         mod_path = '.'.join([self.root_name, self.mod_name])
         root = __import__(mod_path, globals(), locals(), [])
@@ -433,7 +444,11 @@ class TestImportReplacer(TestCaseInTempDir):
                          ], self.actions)
 
     def test_import_root_and_root_mod(self):
-        """Test that 'import root-XXX, root-XXX.mod-XXX' can be done"""
+        """Test that 'import root, root.mod' can be done.
+
+        The second import should re-use the first one, and just add
+        children to be imported.
+        """
         try:
             root4
         except NameError:
@@ -470,4 +485,80 @@ class TestImportReplacer(TestCaseInTempDir):
                           '_replace',
                           ('_import', 'mod4'),
                           ('import', mod_path, []),
+                         ], self.actions)
+
+    def test_import_root_sub_submod(self):
+        """Test import root.mod, root.sub.submoda, root.sub.submodb
+        root should be a lazy import, with multiple children, who also
+        have children to be imported.
+        And when root is imported, the children should be lazy, and
+        reuse the intermediate lazy object.
+        """
+        try:
+            root5
+        except NameError:
+            # root4 shouldn't exist yet
+            pass
+        else:
+            self.fail('root5 was not supposed to exist yet')
+
+        InstrumentedImportReplacer(scope=globals(),
+            name='root5', module_path=[self.root_name], member=None,
+            children=[('mod5', [self.root_name, self.mod_name], []),
+                      ('sub5', [self.root_name, self.sub_name],
+                            [('submoda5', [self.root_name, self.sub_name,
+                                         self.submoda_name], []),
+                             ('submodb5', [self.root_name, self.sub_name,
+                                          self.submodb_name], [])
+                            ]),
+                     ])
+
+        # So 'root5' should be a lazy import
+        self.assertEqual(InstrumentedImportReplacer,
+                         object.__getattribute__(root5, '__class__'))
+
+        # Accessing root5.mod5 should import root, but mod should stay lazy
+        self.assertEqual(InstrumentedImportReplacer,
+                         object.__getattribute__(root5.mod5, '__class__'))
+        # root5.sub5 should still be lazy, but not re-import root5
+        self.assertEqual(InstrumentedImportReplacer,
+                         object.__getattribute__(root5.sub5, '__class__'))
+        # Accessing root5.sub5.submoda5 should import sub5, but not either
+        # of the sub objects (they should be available as lazy objects
+        self.assertEqual(InstrumentedImportReplacer,
+                     object.__getattribute__(root5.sub5.submoda5, '__class__'))
+        self.assertEqual(InstrumentedImportReplacer,
+                     object.__getattribute__(root5.sub5.submodb5, '__class__'))
+
+        # This should import mod5
+        self.assertEqual(2, root5.mod5.var2)
+        # These should import submoda5 and submodb5
+        self.assertEqual(4, root5.sub5.submoda5.var4)
+        self.assertEqual(5, root5.sub5.submodb5.var5)
+
+        mod_path = self.root_name + '.' + self.mod_name
+        sub_path = self.root_name + '.' + self.sub_name
+        submoda_path = sub_path + '.' + self.submoda_name
+        submodb_path = sub_path + '.' + self.submodb_name
+
+        self.assertEqual([('__getattribute__', 'mod5'),
+                          '_replace',
+                          ('_import', 'root5'),
+                          ('import', self.root_name, []),
+                          ('__getattribute__', 'submoda5'),
+                          '_replace',
+                          ('_import', 'sub5'),
+                          ('import', sub_path, []),
+                          ('__getattribute__', 'var2'),
+                          '_replace',
+                          ('_import', 'mod5'),
+                          ('import', mod_path, []),
+                          ('__getattribute__', 'var4'),
+                          '_replace',
+                          ('_import', 'submoda5'),
+                          ('import', submoda_path, []),
+                          ('__getattribute__', 'var5'),
+                          '_replace',
+                          ('_import', 'submodb5'),
+                          ('import', submodb_path, []),
                          ], self.actions)
