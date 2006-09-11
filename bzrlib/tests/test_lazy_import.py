@@ -431,3 +431,43 @@ class TestImportReplacer(TestCaseInTempDir):
                           ('_import', 'mod3'),
                           ('import', mod_path, []),
                          ], self.actions)
+
+    def test_import_root_and_root_mod(self):
+        """Test that 'import root-XXX, root-XXX.mod-XXX' can be done"""
+        try:
+            root4
+        except NameError:
+            # root4 shouldn't exist yet
+            pass
+        else:
+            self.fail('root4 was not supposed to exist yet')
+
+        InstrumentedImportReplacer(scope=globals(),
+            name='root4', module_path=[self.root_name], member=None,
+            children=[])
+
+        # So 'root4' should be a lazy import
+        self.assertEqual(InstrumentedImportReplacer,
+                         object.__getattribute__(root4, '__class__'))
+
+        # Lets add a new child to be imported on demand
+        # This syntax of using object.__getattribute__ is the correct method
+        # for accessing the _import_replacer_children member
+        children = object.__getattribute__(root4, '_import_replacer_children')
+        children.append(('mod4', [self.root_name, self.mod_name], []))
+
+        # Accessing root4.mod4 should import root, but mod should stay lazy
+        self.assertEqual(InstrumentedImportReplacer,
+                         object.__getattribute__(root4.mod4, '__class__'))
+        self.assertEqual(2, root4.mod4.var2)
+
+        mod_path = self.root_name + '.' + self.mod_name
+        self.assertEqual([('__getattribute__', 'mod4'),
+                          '_replace',
+                          ('_import', 'root4'),
+                          ('import', self.root_name, []),
+                          ('__getattribute__', 'var2'),
+                          '_replace',
+                          ('_import', 'mod4'),
+                          ('import', mod_path, []),
+                         ], self.actions)
