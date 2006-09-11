@@ -2173,19 +2173,15 @@ class cmd_merge(Command):
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit empty revision specifier.")
-                if revision[1].get_branch() != revision[0].get_branch():
-                    # branch is obtained from
-                    # revision[0].get_branch(), and will be used for
-                    # the merge. Having two different branches here
-                    # does not work. Fix it and uncomment the relevant
-                    # section in test_merge if you want it to work.
-                    raise BzrCommandError(
-                        "Merge doesn't accept two revisions "
-                        "in different branches.")
-                other_branch, path = Branch.open_containing(branch)
+                base_branch, path = Branch.open_containing(branch)
+                branch1 = revision[1].get_branch() or branch
+                other_branch, path1 = Branch.open_containing(branch1)
+                if revision[0].get_branch() is not None:
+                    # then path was obtained from it, and is None.
+                    path = path1
 
-                base = [branch, revision[0].in_history(other_branch).revno]
-                other = [branch, revision[1].in_history(other_branch).revno]
+                base = [branch, revision[0].in_history(base_branch).revno]
+                other = [branch1, revision[1].in_history(other_branch).revno]
 
         if tree.branch.get_parent() is None or remember:
             tree.branch.set_parent(other_branch.base)

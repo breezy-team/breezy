@@ -81,13 +81,12 @@ class TestMerge(ExternalBase):
         self.failUnless(a.branch.repository.has_revision(b_tip))
         self.assertEqual([a_tip, b_tip], a.get_parent_ids())
         self.runbzr('revert --no-backup')
-        # If bzr merge is fixed to work with two revno:N:path with
-        # different paths, uncomment this section.        
-        #         self.runbzr('merge -r revno:%d:./..revno:%d:../b'
-        #                     %(ancestor,b.revno()))
-        #         self.assertEquals(a.pending_merges(), [b.last_revision()])
-        #         self.check_file_contents('goodbye', 'quux')
-        #         self.runbzr('revert --no-backup')
+        self.runbzr('merge -r revno:1:./hello', retcode=3)
+        self.runbzr('merge -r revno:%d:./..revno:%d:../b'
+                    %(ancestor,b.revno()))
+        self.assertEquals(a.pending_merges(), [b.last_revision()])
+        self.check_file_contents('goodbye', 'quux')
+        self.runbzr('revert --no-backup')
         self.runbzr('merge -r revno:%d:../b'%b.revno())
         self.assertEquals(a.pending_merges(),
                           [b.last_revision()])
