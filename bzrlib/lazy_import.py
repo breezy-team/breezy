@@ -93,8 +93,8 @@ class ImportReplacer(ScopeReplacer):
             Typically this is globals()
         :param name: The variable name. Often this is the same as the 
             module_path. 'bzrlib'
-        :param module_path: The fully specified dotted path to the module.
-            'bzrlib.foo.bar'
+        :param module_path: A list for the fully specified module path
+            ['bzrlib', 'foo', 'bar']
         :param member: The member inside the module to import, often this is
             None, indicating the module is being imported.
         :param children: Children entries to be imported later.
@@ -128,11 +128,14 @@ class ImportReplacer(ScopeReplacer):
         children = object.__getattribute__(self, '_import_replacer_children')
         member = object.__getattribute__(self, '_member')
         module_path = object.__getattribute__(self, '_module_path')
+        module_python_path = '.'.join(module_path)
         if member is not None:
-            module = __import__(module_path, scope, scope, [member])
+            module = __import__(module_python_path, scope, scope, [member])
             return getattr(module, member)
         else:
-            module = __import__(module_path, scope, scope, [])
+            module = __import__(module_python_path, scope, scope, [])
+            for path in module_path[1:]:
+                module = getattr(module, path)
 
         # Prepare the children to be imported
         for child_name, child_path, grandchildren in children:

@@ -319,6 +319,7 @@ class TestImportReplacer(TestCaseInTempDir):
                          ], self.actions)
 
     def test_import_root(self):
+        """Test 'import root-XXX as root1'"""
         try:
             root1
         except NameError:
@@ -329,9 +330,8 @@ class TestImportReplacer(TestCaseInTempDir):
 
         # This should replicate 'import root-xxyyzz as root1'
         InstrumentedImportReplacer(scope=globals(), name='root1',
-                                   module_path=self.root_name,
-                                   member=None,
-                                   children=[])
+                                   module_path=[self.root_name],
+                                   member=None, children=[])
 
         self.assertEqual(InstrumentedImportReplacer,
                          object.__getattribute__(root1, '__class__'))
@@ -342,4 +342,55 @@ class TestImportReplacer(TestCaseInTempDir):
                           '_replace',
                           ('_import', 'root1'),
                           ('import', self.root_name, []),
+                         ], self.actions)
+
+    def test_import_mod(self):
+        """Test 'import root-XXX.mod-XXX as mod2'"""
+        try:
+            mod1
+        except NameError:
+            # mod1 shouldn't exist yet
+            pass
+        else:
+            self.fail('mod1 was not supposed to exist yet')
+
+        mod_path = self.root_name + '.' + self.mod_name
+        InstrumentedImportReplacer(scope=globals(), name='mod1',
+                                   module_path=[self.root_name, self.mod_name],
+                                   member=None, children=[])
+
+        self.assertEqual(InstrumentedImportReplacer,
+                         object.__getattribute__(mod1, '__class__'))
+        self.assertEqual(2, mod1.var2)
+        self.assertEqual('y', mod1.func2('y'))
+
+        self.assertEqual([('__getattribute__', 'var2'),
+                          '_replace',
+                          ('_import', 'mod1'),
+                          ('import', mod_path, []),
+                         ], self.actions)
+
+    def test_import_mod_from_root(self):
+        """Test 'from root-XXX import mod-XXX as mod2'"""
+        try:
+            mod2
+        except NameError:
+            # mod2 shouldn't exist yet
+            pass
+        else:
+            self.fail('mod2 was not supposed to exist yet')
+
+        InstrumentedImportReplacer(scope=globals(), name='mod2',
+                                   module_path=[self.root_name],
+                                   member=self.mod_name, children=[])
+
+        self.assertEqual(InstrumentedImportReplacer,
+                         object.__getattribute__(mod2, '__class__'))
+        self.assertEqual(2, mod2.var2)
+        self.assertEqual('y', mod2.func2('y'))
+
+        self.assertEqual([('__getattribute__', 'var2'),
+                          '_replace',
+                          ('_import', 'mod2'),
+                          ('import', self.root_name, [self.mod_name]),
                          ], self.actions)
