@@ -1346,7 +1346,8 @@ class cmd_log(Command):
         else:
             # local dir only
             # FIXME ? log the current subdir only RBC 20060203 
-            if revision is not None and len(revision) > 0 and revision[0].get_branch():
+            if revision is not None \
+                    and len(revision) > 0 and revision[0].get_branch():
                 location = revision[0].get_branch()
             else:
                 location = '.'
@@ -2145,7 +2146,8 @@ class cmd_merge(Command):
                 else:
                     return 1
 
-        if revision is None or len(revision) < 1 or revision[0].needs_branch():
+        if revision is None \
+                or len(revision) < 1 or revision[0].needs_branch():
             branch = self._get_remembered_parent(tree, branch, 'Merging from')
 
         if revision is None or len(revision) < 1:
@@ -2163,14 +2165,15 @@ class cmd_merge(Command):
             branch = revision[0].get_branch() or branch
             if len(revision) == 1:
                 base = [None, None]
-                other_branch, path = Branch.open_containing(branch)
+                other_branch = Branch.open_containing(branch)
+                path = None
                 revno = revision[0].in_history(other_branch).revno
                 other = [branch, revno]
             else:
                 assert len(revision) == 2
                 if None in revision:
                     raise BzrCommandError(
-                        "Merge doesn't permit that revision specifier.")
+                        "Merge doesn't permit empty revision specifier.")
                 if revision[1].get_branch() != revision[0].get_branch():
                     # branch is obtained from
                     # revision[0].get_branch(), and will be used for
@@ -2178,8 +2181,10 @@ class cmd_merge(Command):
                     # does not work. Fix it and uncomment the relevant
                     # section in test_merge if you want it to work.
                     raise BzrCommandError(
-                        "Merge doesn't accept two revisions in different branches.")
-                other_branch, path = Branch.open_containing(branch)
+                        "Merge doesn't accept two revisions "
+                        "in different branches.")
+                other_branch = Branch.open_containing(branch)
+                path = None
 
                 base = [branch, revision[0].in_history(other_branch).revno]
                 other = [branch, revision[1].in_history(other_branch).revno]

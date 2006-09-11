@@ -56,7 +56,8 @@ class TestCat(TestCaseInTempDir):
         
         os.chdir('..')
         
-        self.assertEquals(bzr('cat', 'branch/a', '-r', 'revno:1:branch'), 'foo\n')
+        self.assertEquals(bzr('cat', 'branch/a', '-r', 'revno:1:branch'),
+                          'foo\n')
         bzr('cat', 'a', retcode=3)
         bzr('cat', 'a', '-r', 'revno:1:branch-that-does-not-exist', retcode=3)
         
