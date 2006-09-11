@@ -574,7 +574,7 @@ class TestImportReplacer(ImportReplacerHelper):
 class TestConvertImportToMap(TestCase):
     """Directly test the conversion from import strings to maps"""
 
-    def check_result(self, expected, import_strings):
+    def check(self, expected, import_strings):
         proc = lazy_import.ImportProcessor()
         for import_str in import_strings:
             proc._convert_import_str(import_str)
@@ -584,18 +584,18 @@ class TestConvertImportToMap(TestCase):
                                         proc.imports))
 
     def test_import_one(self):
-        self.check_result({'one':(['one'], None, {}),
-                          }, ['import one'])
+        self.check({'one':(['one'], None, {}),
+                   }, ['import one'])
 
     def test_import_one_two(self):
         one_two_map = {'one':(['one'], None,
                               {'two':(['one', 'two'], None, {}),
                               }),
                       }
-        self.check_result(one_two_map, ['import one.two'])
-        self.check_result(one_two_map, ['import one, one.two'])
-        self.check_result(one_two_map, ['import one', 'import one.two'])
-        self.check_result(one_two_map, ['import one.two', 'import one'])
+        self.check(one_two_map, ['import one.two'])
+        self.check(one_two_map, ['import one, one.two'])
+        self.check(one_two_map, ['import one', 'import one.two'])
+        self.check(one_two_map, ['import one.two', 'import one'])
 
     def test_import_one_two_three(self):
         one_two_three_map = {
@@ -605,20 +605,20 @@ class TestConvertImportToMap(TestCase):
                            }),
                    }),
         }
-        self.check_result(one_two_three_map, ['import one.two.three'])
-        self.check_result(one_two_three_map, ['import one, one.two.three'])
-        self.check_result(one_two_three_map, ['import one',
+        self.check(one_two_three_map, ['import one.two.three'])
+        self.check(one_two_three_map, ['import one, one.two.three'])
+        self.check(one_two_three_map, ['import one',
                                               'import one.two.three'])
-        self.check_result(one_two_three_map, ['import one.two.three',
+        self.check(one_two_three_map, ['import one.two.three',
                                               'import one'])
 
     def test_import_one_as_x(self):
-        self.check_result({'x':(['one'], None, {}),
+        self.check({'x':(['one'], None, {}),
                           }, ['import one as x'])
 
     def test_import_one_two_as_x(self):
-        self.check_result({'x':(['one', 'two'], None, {}),
-                          }, ['import one.two as x'])
+        self.check({'x':(['one', 'two'], None, {}),
+                   }, ['import one.two as x'])
 
     def test_import_mixed(self):
         mixed = {'x':(['one', 'two'], None, {}),
@@ -626,12 +626,12 @@ class TestConvertImportToMap(TestCase):
                        {'two':(['one', 'two'], None, {}),
                        }),
                 }
-        self.check_result(mixed, ['import one.two as x, one.two'])
-        self.check_result(mixed, ['import one.two as x', 'import one.two'])
-        self.check_result(mixed, ['import one.two', 'import one.two as x'])
+        self.check(mixed, ['import one.two as x, one.two'])
+        self.check(mixed, ['import one.two as x', 'import one.two'])
+        self.check(mixed, ['import one.two', 'import one.two as x'])
 
     def test_import_with_as(self):
-        self.check_result({'fast':(['fast'], None, {})}, ['import fast'])
+        self.check({'fast':(['fast'], None, {})}, ['import fast'])
 
 
 class TestFromToMap(TestCase):
@@ -704,3 +704,27 @@ class TestCanonicalize(TestCase):
         self.check(['from one import two'], '\nfrom one import two\n\n')
         self.check(['from one import two'], '\nfrom one import (two)\n')
         self.check(['from one import  two '], '\nfrom one import (\n\ttwo\n)\n')
+
+    def test_multiple(self):
+        self.check(['import one', 'import two, three', 'from one import four'],
+                   'import one\nimport two, three\nfrom one import four')
+        self.check(['import one', 'import two, three', 'from one import four'],
+                   'import one\nimport (two, three)\nfrom one import four')
+        self.check(['import one', 'import  two, three', 'from one import four'],
+                   'import one\n'
+                   'import (\n'
+                   'two, three)\n'
+                   'from one import four')
+        self.check(['import  one, ',
+                    'import  two, three, ', 'from one import  four, '],
+                   'import (\n'
+                   '    one,\n'
+                   '    )\n'
+                   'import (\n'
+                   '    two,\n'
+                   '    three,\n'
+                   '    )\n'
+                   'from one import (\n'
+                   '    four,\n'
+                   '    )\n'
+                   )
