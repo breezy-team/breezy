@@ -224,7 +224,7 @@ class TestScopeReplacer(TestCase):
                          ], actions)
 
 
-class TestImportReplacer(TestCaseInTempDir):
+class ImportReplacerHelper(TestCaseInTempDir):
     """Test the ability to have a lazily imported module or object"""
 
     def setUp(self):
@@ -311,6 +311,9 @@ class TestImportReplacer(TestCaseInTempDir):
         self.submoda_name = submoda_name
         self.submodb_name = submodb_name
 
+
+class TestImportReplacerHelper(ImportReplacerHelper):
+
     def test_basic_import(self):
         """Test that a real import of these modules works"""
         sub_mod_path = '.'.join([self.root_name, self.sub_name,
@@ -328,6 +331,9 @@ class TestImportReplacer(TestCaseInTempDir):
         self.assertEqual([('import', sub_mod_path, []),
                           ('import', mod_path, []),
                          ], self.actions)
+
+
+class TestImportReplacer(ImportReplacerHelper):
 
     def test_import_root(self):
         """Test 'import root-XXX as root1'"""
