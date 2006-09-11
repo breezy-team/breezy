@@ -666,34 +666,39 @@ class TestFromToMap(TestCase):
         self.check_result({'three':(['one', 'two'], 'three', {})},
                           ['from one.two import three'])
 
-# These will be used when we want to check converting 'import foo' into
-# the parameters necessary for creating ImportReplacer objects
-#    def check_result(self, expected, import_string):
-#        val = lazy_import._convert_import_to_list(import_string)
-#        self.assertEqual(expected, val)
-#
-#    def test_import_one(self):
-#        self.check_result(['one', ['one'], None, []], 'import one')
-#
-#    def test_import_one_two(self):
-#        self.check_result(['one', ['one'], None,
-#                            [('two', ['one', 'two'], [])]
-#                          ],
-#                          'import one.two')
-#
-#    def test_import_one_two_three(self):
-#        self.check_result(['one', ['one'], None,
-#                            [('two', ['one', 'two'],
-#                                [('three', ['one', 'two', 'three'], []),
-#                                ]
-#                             ),
-#                            ]
-#                          ],
-#                          'import one.two.three')
-#
-#    def test_from_one_import_two(self):
-#        self.check_result(['two', ['one'], 'two', []], 'from one import two')
-#
-#    def test_from_one_two_import_three(self):
-#        self.check_result(['three', ['one', 'two'], 'three', []],
-#                          'from one.two import three')
+
+class TestCanonicalize(TestCase):
+    """Test that we can canonicalize import texts"""
+
+    def check(self, expected, text):
+        parsed = lazy_import._canonicalize_import_strings(text)
+        self.assertEqual(expected, parsed,
+                         'Incorrect parsing of text:\n%s\n%s\n!=\n%s'
+                         % (text, expected, parsed))
+
+    def test_import_one(self):
+        self.check(['import one'], 'import one')
+        self.check(['import one'], '\nimport one\n\n')
+        self.check(['import one'], '\nimport (one)\n')
+        self.check(['import  one '], '\nimport (\n\tone\n)\n')
+
+    def test_import_one_two(self):
+        self.check(['import one, two'], 'import one, two')
+        self.check(['import one, two'], '\nimport one, two\n\n')
+        self.check(['import one, two'], '\nimport (one, two)\n')
+        self.check(['import  one, two '], '\nimport (\n\tone,\ntwo\n)\n')
+
+    def test_import_one_as_two_as(self):
+        self.check(['import one as x, two as y'], 'import one as x, two as y')
+        self.check(['import one as x, two as y'],
+                   '\nimport one as x, two as y\n')
+        self.check(['import one as x, two as y'],
+                   '\nimport (one as x, two as y)\n')
+        self.check(['import  one as x, two as y '],
+                   '\nimport (\n\tone as x,\ntwo as y\n)\n')
+
+    def test_from_one_import_two(self):
+        self.check(['from one import two'], 'from one import two')
+        self.check(['from one import two'], '\nfrom one import two\n\n')
+        self.check(['from one import two'], '\nfrom one import (two)\n')
+        self.check(['from one import  two '], '\nfrom one import (\n\ttwo\n)\n')
