@@ -19,6 +19,7 @@
 This includes waiting to import a module until it is actually used.
 """
 
+import re
 import sys
 
 
@@ -146,3 +147,49 @@ class ImportReplacer(ScopeReplacer):
                 module_path=child_path, member=None,
                 children=grandchildren)
         return module
+
+
+def _convert_import_str_to_map(import_str, imports):
+    """This converts a import string into a list of imports.
+
+    This only understands 'import foo, foo.bar, foo.bar.baz as bing'
+
+    :param import_str: The import string to process
+    :param imports: The current map of all imports
+    """
+    assert import_str.startswith('import ')
+    import_str = import_str[len('import '):]
+
+    for path in import_str.split(','):
+        path = path.strip()
+        as_hunks = path.split(' as ')
+        if len(as_hunks) == 2:
+            # We have 'as' so this is a different style of import
+            # 'import foo.bar.baz as bing' creates a local variable
+            # named 'bing' which points to 'foo.bar.baz'
+            name = as_hunks[1].strip()
+            module_path = as_hunks[0].strip().split('.')
+            assert name not in imports
+            # No children available in 'import foo as bar'
+            imports[name] = (module_path, None, {})
+        else:
+            # Now we need to handle
+            module_path = path.split('.')
+            name = module_path[0]
+            if name not in imports:
+                # This is a new import that we haven't seen before
+                module_def = ([name], None, {})
+                imports[name] = module_def
+            else:
+                module_def = imports[name]
+
+            cur_path = [name]
+            cur = module_def[2]
+            for child in module_path[1:]:
+                cur_path.append(child)
+                if child in cur:
+                    cur = cur[child]
+                else:
+                    next = (cur_path[:], None, {})
+                    cur[child] = next
+                    cur = next[2]

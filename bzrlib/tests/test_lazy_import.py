@@ -529,6 +529,7 @@ class TestImportReplacer(ImportReplacerHelper):
         # root5.sub5 should still be lazy, but not re-import root5
         self.assertEqual(InstrumentedImportReplacer,
                          object.__getattribute__(root5.sub5, '__class__'))
+
         # Accessing root5.sub5.submoda5 should import sub5, but not either
         # of the sub objects (they should be available as lazy objects
         self.assertEqual(InstrumentedImportReplacer,
@@ -568,3 +569,97 @@ class TestImportReplacer(ImportReplacerHelper):
                           ('_import', 'submodb5'),
                           ('import', submodb_path, []),
                          ], self.actions)
+
+
+class TestConvertImportToList(TestCase):
+    """Directly test the conversion from import strings to lists"""
+
+    def check_result(self, expected, import_strings):
+        imports = {}
+        for import_str in import_strings:
+            lazy_import._convert_import_str_to_map(import_str, imports)
+        self.assertEqual(expected, imports,
+                         'Import of %r was not converted correctly'
+                         ' %s != %s' % (import_strings, expected, imports))
+
+    def test_import_one(self):
+        self.check_result({'one':(['one'], None, {}),
+                          }, ['import one'])
+
+    def test_import_one_two(self):
+        one_two_map = {'one':(['one'], None,
+                              {'two':(['one', 'two'], None, {}),
+                              }),
+                      }
+        self.check_result(one_two_map, ['import one.two'])
+        self.check_result(one_two_map, ['import one, one.two'])
+        self.check_result(one_two_map, ['import one', 'import one.two'])
+        self.check_result(one_two_map, ['import one.two', 'import one'])
+
+    def test_import_one_two_three(self):
+        one_two_three_map = {
+            'one':(['one'], None,
+                   {'two':(['one', 'two'], None,
+                           {'three':(['one', 'two', 'three'], None, {}),
+                           }),
+                   }),
+        }
+        self.check_result(one_two_three_map, ['import one.two.three'])
+        self.check_result(one_two_three_map, ['import one, one.two.three'])
+        self.check_result(one_two_three_map, ['import one',
+                                              'import one.two.three'])
+        self.check_result(one_two_three_map, ['import one.two.three',
+                                              'import one'])
+
+    def test_import_one_as_x(self):
+        self.check_result({'x':(['one'], None, {}),
+                          }, ['import one as x'])
+
+    def test_import_one_two_as_x(self):
+        self.check_result({'x':(['one', 'two'], None, {}),
+                          }, ['import one.two as x'])
+
+    def test_import_mixed(self):
+        mixed = {'x':(['one', 'two'], None, {}),
+                 'one':(['one'], None,
+                       {'two':(['one', 'two'], None, {}),
+                       }),
+                }
+        self.check_result(mixed, ['import one.two as x, one.two'])
+        self.check_result(mixed, ['import one.two as x', 'import one.two'])
+        self.check_result(mixed, ['import one.two', 'import one.two as x'])
+
+    def test_import_with_as(self):
+        self.check_result({'fast':(['fast'], None, {})}, ['import fast'])
+
+# These will be used when we want to check converting 'import foo' into
+# the parameters necessary for creating ImportReplacer objects
+#    def check_result(self, expected, import_string):
+#        val = lazy_import._convert_import_to_list(import_string)
+#        self.assertEqual(expected, val)
+#
+#    def test_import_one(self):
+#        self.check_result(['one', ['one'], None, []], 'import one')
+#
+#    def test_import_one_two(self):
+#        self.check_result(['one', ['one'], None,
+#                            [('two', ['one', 'two'], [])]
+#                          ],
+#                          'import one.two')
+#
+#    def test_import_one_two_three(self):
+#        self.check_result(['one', ['one'], None,
+#                            [('two', ['one', 'two'],
+#                                [('three', ['one', 'two', 'three'], []),
+#                                ]
+#                             ),
+#                            ]
+#                          ],
+#                          'import one.two.three')
+#
+#    def test_from_one_import_two(self):
+#        self.check_result(['two', ['one'], 'two', []], 'from one import two')
+#
+#    def test_from_one_two_import_three(self):
+#        self.check_result(['three', ['one', 'two'], 'three', []],
+#                          'from one.two import three')
