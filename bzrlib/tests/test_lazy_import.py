@@ -571,8 +571,8 @@ class TestImportReplacer(ImportReplacerHelper):
                          ], self.actions)
 
 
-class TestConvertImportToList(TestCase):
-    """Directly test the conversion from import strings to lists"""
+class TestConvertImportToMap(TestCase):
+    """Directly test the conversion from import strings to maps"""
 
     def check_result(self, expected, import_strings):
         imports = {}
@@ -631,6 +631,40 @@ class TestConvertImportToList(TestCase):
 
     def test_import_with_as(self):
         self.check_result({'fast':(['fast'], None, {})}, ['import fast'])
+
+
+class TestFromToMap(TestCase):
+    """Directly test the conversion of 'from foo import bar' syntax"""
+
+    def check_result(self, expected, from_strings):
+        imports = {}
+        for from_str in from_strings:
+            lazy_import._convert_from_str_to_map(from_str, imports)
+        self.assertEqual(expected, imports,
+                         'Import of %r was not converted correctly'
+                         ' %s != %s' % (from_strings, expected, imports))
+
+    def test_from_one_import_two(self):
+        self.check_result({'two':(['one'], 'two', {})},
+                          ['from one import two'])
+
+    def test_from_one_import_two_as_three(self):
+        self.check_result({'three':(['one'], 'two', {})},
+                          ['from one import two as three'])
+
+    def test_from_one_import_two_three(self):
+        two_three_map = {'two':(['one'], 'two', {}),
+                         'three':(['one'], 'three', {}),
+                        }
+        self.check_result(two_three_map,
+                          ['from one import two, three'])
+        self.check_result(two_three_map,
+                          ['from one import two',
+                           'from one import three'])
+
+    def test_from_one_two_import_three(self):
+        self.check_result({'three':(['one', 'two'], 'three', {})},
+                          ['from one.two import three'])
 
 # These will be used when we want to check converting 'import foo' into
 # the parameters necessary for creating ImportReplacer objects

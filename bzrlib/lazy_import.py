@@ -150,7 +150,7 @@ class ImportReplacer(ScopeReplacer):
 
 
 def _convert_import_str_to_map(import_str, imports):
-    """This converts a import string into a list of imports.
+    """This converts a import string into an import map.
 
     This only understands 'import foo, foo.bar, foo.bar.baz as bing'
 
@@ -193,3 +193,31 @@ def _convert_import_str_to_map(import_str, imports):
                     next = (cur_path[:], None, {})
                     cur[child] = next
                     cur = next[2]
+
+
+def _convert_from_str_to_map(from_str, imports):
+    """This converts a 'from foo import bar' string into an import map.
+
+    :param from_str: The import string to process
+    :param imports: The current map of all imports
+    """
+    assert from_str.startswith('from ')
+    from_str = from_str[len('from '):]
+
+    from_module, import_list = from_str.split(' import ')
+
+    from_module_path = from_module.split('.')
+
+    for path in import_list.split(','):
+        path = path.strip()
+        as_hunks = path.split(' as ')
+        if len(as_hunks) == 2:
+            # We have 'as' so this is a different style of import
+            # 'import foo.bar.baz as bing' creates a local variable
+            # named 'bing' which points to 'foo.bar.baz'
+            name = as_hunks[1].strip()
+            module = as_hunks[0].strip()
+        else:
+            name = module = path
+        assert name not in imports
+        imports[name] = (from_module_path, module, {})
