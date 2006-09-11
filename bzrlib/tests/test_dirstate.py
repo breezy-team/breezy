@@ -27,6 +27,8 @@ from bzrlib.tests import TestCaseWithTransport
 # i.e. file in parent 1, dir in parent 2, symlink in tree.
 # test that renames in the tree result in correct parent paths 
 # Test get state from a file, then asking for lines.
+# write a smaller state, and check the file has been truncated.
+# add a entry when its in state deleted
 
 class TestTreeToDirstate(TestCaseWithTransport):
 
@@ -72,7 +74,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         rev_id = tree.commit('first post')
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         tree2.commit('second post', allow_pointless=True)
-        self.merge(tree2.branch, tree)
+        tree.merge_from_branch(tree2.branch)
         state = dirstate.DirState.from_tree(tree)
         # we want to be able to get the lines of the dirstate that we will
         # write to disk.
@@ -162,7 +164,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         # and length:
         self.build_tree_contents([('tree2/a file', 'merge content\n')])
         rev_id2 = tree2.commit('second post')
-        self.merge(tree2.branch, tree)
+        tree.merge_from_branch(tree2.branch)
         # change the current content to be different this will alter stat, sha
         # and length again, giving us three distinct values:
         self.build_tree_contents([('tree/a file', 'new content\n')])
@@ -210,3 +212,25 @@ class TestDirStateInitialize(TestCaseWithTransport):
             '0\x00\n'
             '\x00',
             'dirstate')
+
+
+class TestDirstateManipulations(TestCaseWithTransport):
+
+    def test_add_ghost_tree(self):
+        state = dirstate.DirState.initialize('dirstate')
+        state.add_parent_tree('a-ghost', None)
+        # now the parent list should be changed:
+        self.assertEqual(['a-ghost'], state.get_parent_ids())
+        # save the state and reopen to check its persistent
+        state.save()
+        state = dirstate.DirState.on_file('dirstate')
+        self.assertEqual(['a-ghost'], state.get_parent_ids())
+
+
+class TestGetLines(TestCaseWithTransport):
+
+    def test_adding_tree_changes_lines(self):
+        state = dirstate.DirState.initialize('dirstate')
+        lines = list(state.get_lines())
+        state.add_parent_tree('a-ghost', None)
+        self.assertNotEqual(lines, state.get_lines())

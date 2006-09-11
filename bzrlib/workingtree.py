@@ -1999,6 +1999,59 @@ class WorkingTree4(WorkingTree3):
         self._inventory = Inventory()
         self._dirty = True
 
+    @needs_read_lock
+    def revision_tree(self, revision_id):
+        """See Tree.revision_tree.
+
+        WorkingTree4 supplies revision_trees for any basis tree.
+        """
+        local_path = self.bzrdir.get_workingtree_transport(None).local_abspath('dirstate')
+        self._dirstate = dirstate.DirState.on_file(local_path)
+        parent_ids = self._dirstate.get_parent_ids()
+        if revision_id not in parent_ids:
+            raise errors.NoSuchRevisionInTree(self, revision_id)
+
+    @needs_write_lock
+    def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
+        """Set the parent ids to revision_ids.
+        
+        See also set_parent_trees. This api will try to retrieve the tree data
+        for each element of revision_ids from the trees repository. If you have
+        tree data already available, it is more efficient to use
+        set_parent_trees rather than set_parent_ids. set_parent_ids is however
+        an easier API to use.
+
+        :param revision_ids: The revision_ids to set as the parent ids of this
+            working tree. Any of these may be ghosts.
+        """
+        trees = []
+        for revision_id in revision_ids:
+            try:
+                revtree = self.branch.repository.revision_tree(revision_id)
+            except errors.NoSuchRevision:
+                revtree = None
+            trees.append((revision_id, revtree))
+        self.set_parent_trees(trees,
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
+    @needs_write_lock
+    def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
+        """Set the parents of the working tree.
+
+        :param parents_list: A list of (revision_id, tree) tuples. 
+            If tree is None, then that element is treated as an unreachable
+            parent tree - i.e. a ghost.
+        """
+        if len(parents_list) > 0:
+            if not allow_leftmost_as_ghost and parents_list[0][1] is None:
+                raise errors.GhostRevisionUnusableHere(leftmost_id)
+            leftmost_id = parents_list[0][0]
+            #self.set_last_revision(leftmost_id)
+        else:
+            self.set_last_revision(None)
+        merges = [revid for revid, tree in parents_list[1:]]
+        self._control_files.put_utf8('pending-merges', '\n'.join(merges))
+
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
         if self._control_files._lock_count == 1:

@@ -42,6 +42,15 @@ class DirState(object):
     _kind_to_minikind = {'file':'f', 'directory':'d', 'symlink':'l'}
     _minikind_to_kind = {'f':'file', 'd':'directory', 'l':'symlink'}
 
+    def __init__(self):
+        self._header_read = False
+        self._clean = False
+        self._parents = []
+
+    def add_parent_tree(self, tree_id, tree):
+        """Add tree as a parent to this dirstate."""
+        self._parents.append(tree_id)
+        self._clean = False
 
     @staticmethod
     def from_tree(tree):
@@ -153,10 +162,17 @@ class DirState(object):
                 block.remove(entry)
 
         result.lines = result._get_output_lines(lines)
+        result._header_read = True
+        result._clean = True
         return result
 
     def get_lines(self):
         """Serialise the entire dirstate to a sequence of lines."""
+        if self._clean:
+            return self.lines
+        lines = []
+        lines.append(self._get_parents_line(self.get_parent_ids()))
+        self.lines = self._get_output_lines(lines)
         return self.lines
 
     def _get_parents_line(self, parent_ids):
@@ -165,21 +181,22 @@ class DirState(object):
         
     def get_parent_ids(self):
         """Return a list of the parent tree ids for the directory state."""
-        self._read_header()
+        self._read_header_if_needed()
         return self._parents
 
     @staticmethod
     def initialize(path):
         """Create a new dirstate on path."""
         result = DirState()
-        lines = []
-        lines.append(result._get_parents_line([]))
-        result.lines = result._get_output_lines(lines)
-        state_file = open(path, 'wb+')
+        # tell the dirstate that its memory copy is accurate - and the default
+        # memmory structure is a clean dirstate.
+        result._header_read = True
+        result.state_file = open(path, 'wb+')
         try:
-            state_file.write(''.join(result.lines))
-        finally:
-            state_file.close()
+            result.save()
+        except:
+            result.state_file.close()
+            raise
         return result
 
     def _get_output_lines(self, lines):
@@ -202,7 +219,7 @@ class DirState(object):
     def on_file(path):
         """Construct a DirState on the file at path path."""
         result = DirState()
-        result.state_file = open(path, 'rb')
+        result.state_file = open(path, 'rb+')
         return result
 
     def _read_all(self):
@@ -225,6 +242,11 @@ class DirState(object):
 
         self._parents = [p.decode('utf8') for p in info[1:-1]]
 
+    def _read_header_if_needed(self):
+        """Read the header of the dirstate file if needed."""
+        if self._header_read is False:
+            self._read_header()
+
     def _read_prelude(self):
         """Read in the prelude header of the dirstate file
 
@@ -244,6 +266,12 @@ class DirState(object):
         assert num_entries_line.startswith('num_entries: '), 'missing num_entries line'
         self.num_entries = int(num_entries_line[len('num_entries: '):-1])
     
+    def save(self):
+        """Save any pending changes created during this session."""
+        self.state_file.seek(0)
+        self.state_file.writelines(self.get_lines())
+        self.state_file.flush()
+        self._clean = True
 
 def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):
     """Convert stat values into a packed representation."""

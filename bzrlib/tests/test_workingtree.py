@@ -348,8 +348,56 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         repo.get_revision = self.fail
         repo.get_inventory = self.fail
         repo.get_inventory_xml = self.fail
-
+        # try to set the parent trees.
         tree.set_parent_trees([(rev1, rev1_tree)])
+
+    def test_dirstate_doesnt_read_from_repo_when_returning_cache_tree(self):
+        """Getting parent trees from a dirstate tree does not read from the 
+        repos inventory store. This is an important part of the dirstate
+        performance optimisation work.
+        """
+        tree = self.make_workingtree()
+
+        subtree = self.make_branch_and_tree('subdir')
+        rev1 = subtree.commit('commit in subdir')
+        rev1_tree = subtree.basis_tree()
+        rev2 = subtree.commit('second commit in subdir', allow_pointless=True)
+        rev2_tree = subtree.basis_tree()
+
+        tree.branch.pull(subtree.branch)
+
+        # break the repository's legs to make sure it only uses the trees
+        # it's given; any calls to forbidden methods will raise an 
+        # AssertionError
+        repo = tree.branch.repository
+        repo.get_revision = self.fail
+        repo.get_inventory = self.fail
+        repo.get_inventory_xml = self.fail
+        # set the parent trees.
+        tree.set_parent_trees([(rev1, rev1_tree), (rev2, rev2_tree)])
+        # read the first tree
+        result_rev1_tree = tree.revision_tree(rev1)
+        # read the second
+        result_rev2_tree = tree.revision_tree(rev2)
+        # compare - there should be no differences between the handed and 
+        # returned trees
+        self.assertTreesEqual(rev1_tree, result_rev1_tree)
+        self.assertTreesEqual(rev2_tree, result_rev2_tree)
+
+    def test_dirstate_doesnt_cache_non_parent_trees(self):
+        """Getting parent trees from a dirstate tree does not read from the 
+        repos inventory store. This is an important part of the dirstate
+        performance optimisation work.
+        """
+        tree = self.make_workingtree()
+
+        # make a tree that we can try for, which is able to be returned but
+        # must not be
+        subtree = self.make_branch_and_tree('subdir')
+        rev1 = subtree.commit('commit in subdir')
+        tree.branch.pull(subtree.branch)
+        # check it fails
+        self.assertRaises(errors.NoSuchRevision, tree.revision_tree, rev1)
 
 
 class TestFormat2WorkingTree(TestCaseWithTransport):
