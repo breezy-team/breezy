@@ -149,108 +149,113 @@ class ImportReplacer(ScopeReplacer):
         return module
 
 
-def _convert_import_str_to_map(import_str, imports):
-    """This converts a import string into an import map.
+class ImportProcessor(object):
+    """Convert text that users input into import requests"""
 
-    This only understands 'import foo, foo.bar, foo.bar.baz as bing'
+    __slots__ = ['imports']
 
-    :param import_str: The import string to process
-    :param imports: The current map of all imports
-    """
-    assert import_str.startswith('import ')
-    import_str = import_str[len('import '):]
+    def __init__(self):
+        self.imports = {}
 
-    for path in import_str.split(','):
-        path = path.strip()
-        as_hunks = path.split(' as ')
-        if len(as_hunks) == 2:
-            # We have 'as' so this is a different style of import
-            # 'import foo.bar.baz as bing' creates a local variable
-            # named 'bing' which points to 'foo.bar.baz'
-            name = as_hunks[1].strip()
-            module_path = as_hunks[0].strip().split('.')
-            assert name not in imports
-            # No children available in 'import foo as bar'
-            imports[name] = (module_path, None, {})
-        else:
-            # Now we need to handle
-            module_path = path.split('.')
-            name = module_path[0]
-            if name not in imports:
-                # This is a new import that we haven't seen before
-                module_def = ([name], None, {})
-                imports[name] = module_def
+    def _convert_import_str(self, import_str):
+        """This converts a import string into an import map.
+
+        This only understands 'import foo, foo.bar, foo.bar.baz as bing'
+
+        :param import_str: The import string to process
+        """
+        assert import_str.startswith('import ')
+        import_str = import_str[len('import '):]
+
+        for path in import_str.split(','):
+            path = path.strip()
+            as_hunks = path.split(' as ')
+            if len(as_hunks) == 2:
+                # We have 'as' so this is a different style of import
+                # 'import foo.bar.baz as bing' creates a local variable
+                # named 'bing' which points to 'foo.bar.baz'
+                name = as_hunks[1].strip()
+                module_path = as_hunks[0].strip().split('.')
+                assert name not in self.imports
+                # No children available in 'import foo as bar'
+                self.imports[name] = (module_path, None, {})
             else:
-                module_def = imports[name]
-
-            cur_path = [name]
-            cur = module_def[2]
-            for child in module_path[1:]:
-                cur_path.append(child)
-                if child in cur:
-                    cur = cur[child]
+                # Now we need to handle
+                module_path = path.split('.')
+                name = module_path[0]
+                if name not in self.imports:
+                    # This is a new import that we haven't seen before
+                    module_def = ([name], None, {})
+                    self.imports[name] = module_def
                 else:
-                    next = (cur_path[:], None, {})
-                    cur[child] = next
-                    cur = next[2]
+                    module_def = self.imports[name]
 
+                cur_path = [name]
+                cur = module_def[2]
+                for child in module_path[1:]:
+                    cur_path.append(child)
+                    if child in cur:
+                        cur = cur[child]
+                    else:
+                        next = (cur_path[:], None, {})
+                        cur[child] = next
+                        cur = next[2]
 
-def _convert_from_str_to_map(from_str, imports):
-    """This converts a 'from foo import bar' string into an import map.
+    def _convert_from_str(self, from_str):
+        """This converts a 'from foo import bar' string into an import map.
 
-    :param from_str: The import string to process
-    :param imports: The current map of all imports
-    """
-    assert from_str.startswith('from ')
-    from_str = from_str[len('from '):]
+        :param from_str: The import string to process
+        """
+        assert from_str.startswith('from ')
+        from_str = from_str[len('from '):]
 
-    from_module, import_list = from_str.split(' import ')
+        from_module, import_list = from_str.split(' import ')
 
-    from_module_path = from_module.split('.')
+        from_module_path = from_module.split('.')
 
-    for path in import_list.split(','):
-        path = path.strip()
-        as_hunks = path.split(' as ')
-        if len(as_hunks) == 2:
-            # We have 'as' so this is a different style of import
-            # 'import foo.bar.baz as bing' creates a local variable
-            # named 'bing' which points to 'foo.bar.baz'
-            name = as_hunks[1].strip()
-            module = as_hunks[0].strip()
-        else:
-            name = module = path
-        assert name not in imports
-        imports[name] = (from_module_path, module, {})
-
-
-def _canonicalize_import_strings(text):
-    """Take a list of imports, and split it into regularized form.
-
-    This is meant to take regular import text, and convert it to
-    the forms that the rest of the converters prefer.
-    """
-    out = []
-    cur = None
-    continuing = False
-
-    for line in text.split('\n'):
-        line = line.strip()
-        loc = line.find('#')
-        if loc != -1:
-            line = line[:loc].strip()
-
-        if not line:
-            continue
-        if cur is not None:
-            if line.endswith(')'):
-                out.append(cur + ' ' + line[:-1])
-                cur = None
+        for path in import_list.split(','):
+            path = path.strip()
+            as_hunks = path.split(' as ')
+            if len(as_hunks) == 2:
+                # We have 'as' so this is a different style of import
+                # 'import foo.bar.baz as bing' creates a local variable
+                # named 'bing' which points to 'foo.bar.baz'
+                name = as_hunks[1].strip()
+                module = as_hunks[0].strip()
             else:
-                cur += ' ' + line
-        else:
-            if '(' in line and ')' not in line:
-                cur = line.replace('(', '')
+                name = module = path
+            assert name not in self.imports
+            self.imports[name] = (from_module_path, module, {})
+
+
+    def _canonicalize_import_strings(self, text):
+        """Take a list of imports, and split it into regularized form.
+
+        This is meant to take regular import text, and convert it to
+        the forms that the rest of the converters prefer.
+        """
+        out = []
+        cur = None
+        continuing = False
+
+        for line in text.split('\n'):
+            line = line.strip()
+            loc = line.find('#')
+            if loc != -1:
+                line = line[:loc].strip()
+
+            if not line:
+                continue
+            if cur is not None:
+                if line.endswith(')'):
+                    out.append(cur + ' ' + line[:-1])
+                    cur = None
+                else:
+                    cur += ' ' + line
             else:
-                out.append(line.replace('(', '').replace(')', ''))
-    assert cur is None
-    return out
+                if '(' in line and ')' not in line:
+                    cur = line.replace('(', '')
+                else:
+                    out.append(line.replace('(', '').replace(')', ''))
+        assert cur is None
+        return out

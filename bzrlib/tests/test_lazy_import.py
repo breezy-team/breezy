@@ -575,12 +575,13 @@ class TestConvertImportToMap(TestCase):
     """Directly test the conversion from import strings to maps"""
 
     def check_result(self, expected, import_strings):
-        imports = {}
+        proc = lazy_import.ImportProcessor()
         for import_str in import_strings:
-            lazy_import._convert_import_str_to_map(import_str, imports)
-        self.assertEqual(expected, imports,
+            proc._convert_import_str(import_str)
+        self.assertEqual(expected, proc.imports,
                          'Import of %r was not converted correctly'
-                         ' %s != %s' % (import_strings, expected, imports))
+                         ' %s != %s' % (import_strings, expected,
+                                        proc.imports))
 
     def test_import_one(self):
         self.check_result({'one':(['one'], None, {}),
@@ -637,12 +638,12 @@ class TestFromToMap(TestCase):
     """Directly test the conversion of 'from foo import bar' syntax"""
 
     def check_result(self, expected, from_strings):
-        imports = {}
+        proc = lazy_import.ImportProcessor()
         for from_str in from_strings:
-            lazy_import._convert_from_str_to_map(from_str, imports)
-        self.assertEqual(expected, imports,
+            proc._convert_from_str(from_str)
+        self.assertEqual(expected, proc.imports,
                          'Import of %r was not converted correctly'
-                         ' %s != %s' % (from_strings, expected, imports))
+                         ' %s != %s' % (from_strings, expected, proc.imports))
 
     def test_from_one_import_two(self):
         self.check_result({'two':(['one'], 'two', {})},
@@ -671,7 +672,8 @@ class TestCanonicalize(TestCase):
     """Test that we can canonicalize import texts"""
 
     def check(self, expected, text):
-        parsed = lazy_import._canonicalize_import_strings(text)
+        proc = lazy_import.ImportProcessor()
+        parsed = proc._canonicalize_import_strings(text)
         self.assertEqual(expected, parsed,
                          'Incorrect parsing of text:\n%s\n%s\n!=\n%s'
                          % (text, expected, parsed))
