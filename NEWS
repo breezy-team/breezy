@@ -16,9 +16,13 @@ IN DEVELOPMENT
 
     * Commit performs one less XML parse. (Robert Collins)
 
-    * ``bzr checkout --lightweight`` now operates on readonly branches as well
-      as readwrite branches. This fixes bug #39542 for lightweight checkouts 
-      but not for heavyweight ones (the default). (Robert Collins)
+    * ``bzr checkout`` now operates on readonly branches as well
+      as readwrite branches. This fixes bug #39542. (Robert Collins)
+
+    * ``bzr bind`` no longer synchronises history with the master branch.
+      Binding should be followed by an update or push to synchronise the 
+      two branches. This is closely related to the fix for bug #39542.
+      (Robert Collins)
 
   BUG FIXES:
 
@@ -97,6 +101,11 @@ IN DEVELOPMENT
       remote branches, where trivial operations used to pay a significant 
       penalty. It also provides the basis for allowing readonly checkouts.
       (Robert Collins)
+
+    * ``Branch.bind(other_branch)`` no longer takes a write lock on the
+      other branch, and will not push or pull between the two branches.
+      API users will need to perform a push or pull or update operation if they
+      require branch synchronisation to take place. (Robert Collins)
 
 bzr 0.10.0RC1  2006-08-28
   
