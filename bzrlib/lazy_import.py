@@ -22,6 +22,10 @@ This includes waiting to import a module until it is actually used.
 import re
 import sys
 
+from bzrlib import (
+    errors,
+    )
+
 
 class ScopeReplacer(object):
     """A lazy object that will replace itself in the appropriate scope.
@@ -48,9 +52,20 @@ class ScopeReplacer(object):
 
     def _replace(self):
         """Actually replace self with other in the given scope"""
-        factory = object.__getattribute__(self, '_factory')
-        scope = object.__getattribute__(self, '_scope')
         name = object.__getattribute__(self, '_name')
+        try:
+            factory = object.__getattribute__(self, '_factory')
+            scope = object.__getattribute__(self, '_scope')
+        except AttributeError, e:
+            # Because ScopeReplacer objects only replace a single
+            # item, passing them to another variable before they are
+            # replaced would cause them to keep getting replaced
+            # (only they are replacing the wrong variable). So we
+            # make it forbidden, and try to give a good error.
+            raise errors.IllegalUseOfScopeReplacer(
+                name, msg="Object already cleaned up, did you assign it"
+                          "to another variable?",
+                extra=e)
         obj = factory(self, scope, name)
         scope[name] = obj
         return obj
@@ -59,7 +74,8 @@ class ScopeReplacer(object):
         """Stop holding on to all the extra stuff"""
         del self._factory
         del self._scope
-        del self._name
+        # We keep _name, so that we can report errors
+        # del self._name
 
     def __getattribute__(self, attr):
         obj = object.__getattribute__(self, '_replace')()

@@ -20,6 +20,7 @@ import os
 import sys
 
 from bzrlib import (
+    errors,
     lazy_import,
     osutils,
     )
@@ -221,6 +222,74 @@ class TestScopeReplacer(TestCase):
                           '_replace',
                           'factory',
                           'func',
+                         ], actions)
+
+    def test_other_variable(self):
+        """Test when a ScopeReplacer is assigned to another variable.
+
+        This test could be updated if we find a way to trap '=' rather
+        than just giving a belated exception.
+        ScopeReplacer only knows about the variable it was created as,
+        so until the object is replaced, it is illegal to pass it to
+        another variable. (Though discovering this may take a while)
+        """
+        actions = []
+        InstrumentedReplacer.use_actions(actions)
+        TestClass.use_actions(actions)
+
+        def factory(replacer, scope, name):
+            actions.append('factory')
+            return TestClass()
+
+        try:
+            test_obj2
+        except NameError:
+            # test_obj2 shouldn't exist yet
+            pass
+        else:
+            self.fail('test_obj2 was not supposed to exist yet')
+
+        InstrumentedReplacer(scope=globals(), name='test_obj2',
+                             factory=factory)
+
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj2, '__class__'))
+        # This is technically not allowed, but we don't have a way to
+        # test it until later.
+        test_obj3 = test_obj2
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj2, '__class__'))
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj3, '__class__'))
+        
+        # The first use of the alternate variable causes test_obj2 to
+        # be replaced.
+        self.assertEqual('foo', test_obj3.foo(1))
+        # test_obj2 has been replaced, but the ScopeReplacer has no
+        # idea of test_obj3
+        self.assertEqual(TestClass,
+                         object.__getattribute__(test_obj2, '__class__'))
+        self.assertEqual(InstrumentedReplacer,
+                         object.__getattribute__(test_obj3, '__class__'))
+        # We should be able to access test_obj2 attributes normally
+        self.assertEqual('foo', test_obj2.foo(2))
+        self.assertEqual('foo', test_obj2.foo(3))
+
+        # However, the next access on test_obj3 should raise an error
+        # because only now are we able to detect the problem.
+        self.assertRaises(errors.IllegalUseOfScopeReplacer,
+                          getattr, test_obj3, 'foo')
+        
+        # However, the 
+        self.assertEqual([('__getattribute__', 'foo'),
+                          '_replace',
+                          'factory',
+                          'init',
+                          ('foo', 1),
+                          ('foo', 2),
+                          ('foo', 3),
+                          ('__getattribute__', 'foo'),
+                          '_replace',
                          ], actions)
 
 
