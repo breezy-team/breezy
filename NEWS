@@ -2,6 +2,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Support bzr:// urls to work with the new RPC-based transport which will be
+      used with the upcoming high-performance smart server. The new command
+      ``bzr serve`` will invoke bzr in server mode, which processes these
+      requests. (Andrew Bennetts, Robert Collins, Martin Pool)
+
   BUG FIXES:
     * revert now removes newly-added directories (Aaron Bentley, #54172)
 

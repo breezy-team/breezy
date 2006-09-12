@@ -2742,6 +2742,32 @@ class cmd_break_lock(Command):
             pass
         
 
+class cmd_serve(Command):
+    """Run the bzr server.
+    """
+    takes_options = [
+        Option('inet',
+               help='serve on stdin/out for use from inetd or sshd'),
+        Option('port',
+               help='listen for connections on nominated port',
+               type=int),
+        Option('directory',
+               help='serve contents of directory',
+               type=unicode),
+        ]
+
+    def run(self, port=None, inet=False, directory=None):
+        from bzrlib.transport import smart
+        from bzrlib.transport import get_transport
+        if directory is None:
+            directory = os.getcwd()
+        t = get_transport(directory)
+        if inet:
+            server = smart.SmartStreamServer(sys.stdin, sys.stdout, t)
+        elif port is not None:
+            server = smart.SmartTCPServer(t, port=port)
+        server.serve()
+
 
 # command-line interpretation helper for merge-related commands
 def merge(other_revision, base_revision,

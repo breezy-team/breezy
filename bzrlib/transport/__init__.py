@@ -331,7 +331,10 @@ class Transport(object):
         # transports?
         if not isinstance(relpath, str):
             raise errors.InvalidURL("not a valid url: %r" % relpath)
-        base_parts = base_path.split('/')
+        if relpath.startswith('/'):
+            base_parts = []
+        else:
+            base_parts = base_path.split('/')
         if len(base_parts) > 0 and base_parts[-1] == '':
             base_parts = base_parts[:-1]
         for p in relpath.split('/'):
@@ -1011,6 +1014,9 @@ register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
-register_lazy_transport('vfat+', 
+register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
+register_lazy_transport('bzr://',
+                        'bzrlib.transport.smart',
+                        'SmartTCPTransport')
