@@ -101,9 +101,13 @@ class ImportReplacer(ScopeReplacer):
     At present, this only supports 'import foo.bar.baz' syntax.
     """
 
-    # Intentially a long semi-unique name that won't likely exist
-    # elsewhere. (We can't use isinstance because that accesses __class__
-    # which causes the __getattribute__ to trigger)
+    # '_import_replacer_children' is intentionally a long semi-unique name
+    # that won't likely exist elsewhere. This allows us to detect an
+    # ImportReplacer object by using
+    #       object.__getattribute__(obj, '_import_replacer_children')
+    # We can't just use 'isinstance(obj, ImportReplacer)', because that
+    # accesses .__class__, which goes through __getattribute__, and triggers
+    # the replacement.
     __slots__ = ('_import_replacer_children', '_member', '_module_path')
 
     def __init__(self, scope, name, module_path, member=None, children={}):
