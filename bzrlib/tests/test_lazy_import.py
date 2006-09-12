@@ -348,7 +348,7 @@ class TestImportReplacer(ImportReplacerHelper):
         # This should replicate 'import root-xxyyzz as root1'
         InstrumentedImportReplacer(scope=globals(), name='root1',
                                    module_path=[self.root_name],
-                                   member=None, children=[])
+                                   member=None, children={})
 
         self.assertEqual(InstrumentedImportReplacer,
                          object.__getattribute__(root1, '__class__'))
@@ -374,7 +374,7 @@ class TestImportReplacer(ImportReplacerHelper):
         mod_path = self.root_name + '.' + self.mod_name
         InstrumentedImportReplacer(scope=globals(), name='mod1',
                                    module_path=[self.root_name, self.mod_name],
-                                   member=None, children=[])
+                                   member=None, children={})
 
         self.assertEqual(InstrumentedImportReplacer,
                          object.__getattribute__(mod1, '__class__'))
@@ -399,7 +399,7 @@ class TestImportReplacer(ImportReplacerHelper):
 
         InstrumentedImportReplacer(scope=globals(), name='mod2',
                                    module_path=[self.root_name],
-                                   member=self.mod_name, children=[])
+                                   member=self.mod_name, children={})
 
         self.assertEqual(InstrumentedImportReplacer,
                          object.__getattribute__(mod2, '__class__'))
@@ -424,7 +424,7 @@ class TestImportReplacer(ImportReplacerHelper):
 
         InstrumentedImportReplacer(scope=globals(),
             name='root3', module_path=[self.root_name], member=None,
-            children=[('mod3', [self.root_name, self.mod_name], [])])
+            children={'mod3':([self.root_name, self.mod_name], None, {})})
 
         # So 'root3' should be a lazy import
         # and once it is imported, mod3 should also be lazy until
@@ -465,7 +465,7 @@ class TestImportReplacer(ImportReplacerHelper):
 
         InstrumentedImportReplacer(scope=globals(),
             name='root4', module_path=[self.root_name], member=None,
-            children=[])
+            children={})
 
         # So 'root4' should be a lazy import
         self.assertEqual(InstrumentedImportReplacer,
@@ -475,7 +475,7 @@ class TestImportReplacer(ImportReplacerHelper):
         # This syntax of using object.__getattribute__ is the correct method
         # for accessing the _import_replacer_children member
         children = object.__getattribute__(root4, '_import_replacer_children')
-        children.append(('mod4', [self.root_name, self.mod_name], []))
+        children['mod4'] = ([self.root_name, self.mod_name], None, {})
 
         # Accessing root4.mod4 should import root, but mod should stay lazy
         self.assertEqual(InstrumentedImportReplacer,
@@ -503,21 +503,21 @@ class TestImportReplacer(ImportReplacerHelper):
         try:
             root5
         except NameError:
-            # root4 shouldn't exist yet
+            # root5 shouldn't exist yet
             pass
         else:
             self.fail('root5 was not supposed to exist yet')
 
         InstrumentedImportReplacer(scope=globals(),
             name='root5', module_path=[self.root_name], member=None,
-            children=[('mod5', [self.root_name, self.mod_name], []),
-                      ('sub5', [self.root_name, self.sub_name],
-                            [('submoda5', [self.root_name, self.sub_name,
-                                         self.submoda_name], []),
-                             ('submodb5', [self.root_name, self.sub_name,
-                                          self.submodb_name], [])
-                            ]),
-                     ])
+            children={'mod5':([self.root_name, self.mod_name], None, {}),
+                      'sub5':([self.root_name, self.sub_name], None,
+                            {'submoda5':([self.root_name, self.sub_name,
+                                         self.submoda_name], None, {}),
+                             'submodb5':([self.root_name, self.sub_name,
+                                          self.submodb_name], None, {})
+                            }),
+                     })
 
         # So 'root5' should be a lazy import
         self.assertEqual(InstrumentedImportReplacer,
@@ -681,25 +681,15 @@ class TestCanonicalize(TestCase):
     def test_import_one(self):
         self.check(['import one'], 'import one')
         self.check(['import one'], '\nimport one\n\n')
-        self.check(['import one'], '\nimport (one)\n')
-        self.check(['import  one '], '\nimport (\n\tone\n)\n')
 
     def test_import_one_two(self):
         self.check(['import one, two'], 'import one, two')
         self.check(['import one, two'], '\nimport one, two\n\n')
-        # v- It turns out this syntax isn't actually supported by python
-        self.check(['import one, two'], '\nimport (one, two)\n')
-        self.check(['import  one, two '], '\nimport (\n\tone,\ntwo\n)\n')
 
     def test_import_one_as_two_as(self):
         self.check(['import one as x, two as y'], 'import one as x, two as y')
         self.check(['import one as x, two as y'],
                    '\nimport one as x, two as y\n')
-        # v- It turns out this syntax isn't actually supported by python
-        self.check(['import one as x, two as y'],
-                   '\nimport (one as x, two as y)\n')
-        self.check(['import  one as x, two as y '],
-                   '\nimport (\n\tone as x,\ntwo as y\n)\n')
 
     def test_from_one_import_two(self):
         self.check(['from one import two'], 'from one import two')
@@ -712,20 +702,14 @@ class TestCanonicalize(TestCase):
                    'import one\nimport two, three\nfrom one import four')
         self.check(['import one', 'import two, three', 'from one import four'],
                    'import one\nimport (two, three)\nfrom one import four')
-        self.check(['import one', 'import  two, three', 'from one import four'],
+        self.check(['import one', 'import two, three', 'from one import four'],
                    'import one\n'
-                   'import (\n'
-                   'two, three)\n'
+                   'import two, three\n'
                    'from one import four')
-        self.check(['import  one, ',
-                    'import  two, three, ', 'from one import  four, '],
-                   'import (\n'
-                   '    one,\n'
-                   '    )\n'
-                   'import (\n'
-                   '    two,\n'
-                   '    three,\n'
-                   '    )\n'
+        self.check(['import one',
+                    'import two, three', 'from one import  four, '],
+                   'import one\n'
+                   'import two, three\n'
                    'from one import (\n'
                    '    four,\n'
                    '    )\n'
@@ -823,3 +807,67 @@ class TestImportProcessor(TestCase):
                         '    )\n'
                         'import one\n'
                         'import one.two\n')
+
+
+class TestLazyImportProcessor(ImportReplacerHelper):
+
+    def test_root(self):
+        try:
+            root6
+        except NameError:
+            pass # root6 should not be defined yet
+        else:
+            self.fail('root6 was not supposed to exist yet')
+
+        text = 'import %s as root6' % (self.root_name,)
+        proc = lazy_import.ImportProcessor(InstrumentedImportReplacer)
+        proc.lazy_import(text=text, scope=globals())
+
+        # So 'root6' should be a lazy import
+        self.assertEqual(InstrumentedImportReplacer,
+                         object.__getattribute__(root6, '__class__'))
+
+        self.assertEqual(1, root6.var1)
+        self.assertEqual('x', root6.func1('x'))
+
+        self.assertEqual([('__getattribute__', 'var1'),
+                          '_replace',
+                          ('_import', 'root6'),
+                          ('import', self.root_name, []),
+                         ], self.actions)
+
+    def test_import_deep(self):
+        """Test import root.mod, root.sub.submoda, root.sub.submodb
+        root should be a lazy import, with multiple children, who also
+        have children to be imported.
+        And when root is imported, the children should be lazy, and
+        reuse the intermediate lazy object.
+        """
+        try:
+            submoda7
+        except NameError:
+            pass # submoda7 should not be defined yet
+        else:
+            self.fail('submoda7 was not supposed to exist yet')
+
+        text = """\
+import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
+""" % self.__dict__
+        proc = lazy_import.ImportProcessor(InstrumentedImportReplacer)
+        proc.lazy_import(text=text, scope=globals())
+
+        # So 'submoda7' should be a lazy import
+        self.assertEqual(InstrumentedImportReplacer,
+                         object.__getattribute__(submoda7, '__class__'))
+
+        # This should import submoda7
+        self.assertEqual(4, submoda7.var4)
+
+        sub_path = self.root_name + '.' + self.sub_name
+        submoda_path = sub_path + '.' + self.submoda_name
+
+        self.assertEqual([('__getattribute__', 'var4'),
+                          '_replace',
+                          ('_import', 'submoda7'),
+                          ('import', submoda_path, []),
+                         ], self.actions)

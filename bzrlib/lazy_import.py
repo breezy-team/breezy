@@ -86,7 +86,7 @@ class ImportReplacer(ScopeReplacer):
     # which causes the __getattribute__ to trigger)
     __slots__ = ('_import_replacer_children', '_member', '_module_path')
 
-    def __init__(self, scope, name, module_path, member=None, children=[]):
+    def __init__(self, scope, name, module_path, member=None, children={}):
         """Upon request import 'module_path' as the name 'module_name'.
         When imported, prepare children to also be imported.
 
@@ -99,15 +99,17 @@ class ImportReplacer(ScopeReplacer):
         :param member: The member inside the module to import, often this is
             None, indicating the module is being imported.
         :param children: Children entries to be imported later.
-            This should be a list of children specifications.
-            [('foo', 'bzrlib.foo', [('bar', 'bzrlib.foo.bar'),])]
+            This should be a map of children specifications.
+            {'foo':(['bzrlib', 'foo'], None, 
+                {'bar':(['bzrlib', 'foo', 'bar'], None {})})
+            }
         Examples:
             import foo => name='foo' module_path='foo',
-                          member=None, children=[]
+                          member=None, children={}
             import foo.bar => name='foo' module_path='foo', member=None,
-                              children=[('bar', ['foo', 'bar'], [])]
+                              children={'bar':(['foo', 'bar'], None, {}}
             from foo import bar => name='bar' module_path='foo', member='bar'
-                                   children=[]
+                                   children={}
             from foo import bar, baz would get translated into 2 import
             requests. On for 'name=bar' and one for 'name=baz'
         """
@@ -139,23 +141,43 @@ class ImportReplacer(ScopeReplacer):
                 module = getattr(module, path)
 
         # Prepare the children to be imported
-        for child_name, child_path, grandchildren in children:
+        for child_name, (child_path, child_member, grandchildren) in \
+                children.iteritems():
             # Using self.__class__, so that children get children classes
             # instantiated. (This helps with instrumented tests)
             cls = object.__getattribute__(self, '__class__')
             cls(module.__dict__, name=child_name,
-                module_path=child_path, member=None,
+                module_path=child_path, member=child_member,
                 children=grandchildren)
         return module
 
 
 class ImportProcessor(object):
-    """Convert text that users input into import requests"""
+    """Convert text that users input into lazy import requests"""
 
-    __slots__ = ['imports']
+    __slots__ = ['imports', '_lazy_import_class']
 
-    def __init__(self):
+    def __init__(self, lazy_import_class=None):
         self.imports = {}
+        if lazy_import_class is None:
+            self._lazy_import_class = ImportReplacer
+        else:
+            self._lazy_import_class = lazy_import_class
+
+    def lazy_import(self, text, scope):
+        """Convert the given text into a bunch of lazy import objects.
+
+        This takes a text string, which should be similar to normal python
+        import markup.
+        """
+        self._build_map(text)
+        self._convert_imports(scope)
+
+    def _convert_imports(self, scope):
+        # Now convert the map into a set of imports
+        for name, info in self.imports.iteritems():
+            self._lazy_import_class(scope, name=name, module_path=info[0],
+                                    member=info[1], children=info[2])
 
     def _build_map(self, text):
         """Take a string describing imports, and build up the internal map"""
@@ -206,7 +228,7 @@ class ImportProcessor(object):
                 for child in module_path[1:]:
                     cur_path.append(child)
                     if child in cur:
-                        cur = cur[child]
+                        cur = cur[child][2]
                     else:
                         next = (cur_path[:], None, {})
                         cur[child] = next
