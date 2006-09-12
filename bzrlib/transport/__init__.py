@@ -26,14 +26,17 @@ The Transport returned has methods to read, write and manipulate files within
 it.
 """
 
+from cStringIO import StringIO
+import re
+import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import errno
 from collections import deque
 from copy import deepcopy
-from cStringIO import StringIO
-import re
 from stat import S_ISDIR
-import sys
-from unittest import TestSuite
+import unittest
 import urllib
 import urlparse
 import warnings
@@ -45,8 +48,8 @@ from bzrlib import (
     symbol_versioning,
     urlutils,
     )
-from bzrlib.errors import DependencyNotPresent
-from bzrlib.osutils import pumpfile
+""")
+
 from bzrlib.symbol_versioning import (
         deprecated_passed,
         deprecated_method,
@@ -259,7 +262,7 @@ class Transport(object):
         """
         assert not isinstance(from_file, basestring), \
             '_pump should only be called on files not %s' % (type(from_file,))
-        pumpfile(from_file, to_file)
+        osutils.pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
         """Try to figure out how many entries are in multi,
@@ -948,7 +951,7 @@ def _try_transport_factories(base, factory_list):
     for factory in factory_list:
         try:
             return factory(base), None
-        except DependencyNotPresent, e:
+        except errors.DependencyNotPresent, e:
             mutter("failed to instantiate transport %r for %r: %r" %
                     (factory, base, e))
             last_err = e
@@ -1001,7 +1004,7 @@ class TransportTestProviderAdapter(object):
     """
 
     def adapt(self, test):
-        result = TestSuite()
+        result = unittest.TestSuite()
         for klass, server_factory in self._test_permutations():
             new_test = deepcopy(test)
             new_test.transport_class = klass
