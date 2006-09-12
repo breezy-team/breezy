@@ -135,6 +135,12 @@ class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
         TestCaseWithWebserver.setUp(self)
         self._prep_tree()
 
+    def test_bogus_host(self):
+        from urllib2 import URLError
+        t = self._transport('http://1.2.3.4.5.6.7.8/')
+        self.assertRaises(URLError,
+            t.has,
+            'foo/bar')
 
 
 class TestHttpConnections_pycurl(TestCaseWithWebserver, TestHttpMixins):
