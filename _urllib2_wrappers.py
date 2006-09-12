@@ -59,8 +59,6 @@ class Response(httplib.HTTPResponse):
             #print "Consumed body: [%s]" % body
             self.close()
 
-# We need to define our own HTTPConnections objects to work
-# around a weird problem. FIXME: Still need more investigation.
 class AbstractHTTPConnection:
     """A custom HTTP(S) Connection, which can reset itself on a bad response"""
 
@@ -135,6 +133,14 @@ class Request(urllib2.Request):
     def get_method(self):
         return self.method
 
+# The urlib2.xxxAuthHandler handle the authentification of the
+# requests, to do that, they need an urllib2 PasswordManager *at
+# build time*.
+
+# We want to associate such PasswordManager objects to the
+# connection, so that they can be reused (otherwise we will have
+# to prompt the user for its password at each connection).
+
 
 # urllib2 provides no way to access the HTTPConnection object
 # internally used. But we need it in order to achieve connection
@@ -147,8 +153,16 @@ class ConnectionHandler(urllib2.BaseHandler):
 
     handler_order = 1000 # after all pre-processings
     _connection_of = {} # map connections by host
+    
+    # TODO: We don't want a global cache that can interact badly
+    # with the test suite, but being able to share connections on
+    # the same (host IP, port) combination can be good even
+    # inside a single tranport (some redirections can benefit
+    # from it, bazaar-ng.org and bazaar-vcs.org are two virtual
+    # hosts on the same IP for example). So we may activate the
+    # cache as currently it is used inside one Transport at a
+    # time.
     _cache_activated = False
-    _debuglevel = 0
 
     def get_key(self, connection):
         """Returns the key for the connection in the cache"""
@@ -164,13 +178,6 @@ class ConnectionHandler(urllib2.BaseHandler):
         # (request don't do that) to avoid having different
         # connections for http://host and http://host:80
         connection = http_connection_class(host)
-        # TODO: We don't want a global cache that can interact
-        # badly with the test suite, but being able to share
-        # conections on the same (host IP, port) combination can
-        # be good even inside a single tranport (some
-        # redirections can benefit from it, bazaar-ng.org and
-        # bazaar-vcs.org are two virtual hosts on the same IP for
-        # example).
         if self._cache_activated:
             key = self.get_key(connection)
             if key not in self._connection_of:
@@ -206,7 +213,7 @@ class ConnectionHandler(urllib2.BaseHandler):
                     self._connection_of[key] = connection
 
         # All connections will pass here, propagate debug level
-        connection.set_debuglevel(self._debuglevel)
+        connection.set_debuglevel(DEBUG)
         return request
 
     def http_request(self, request):
@@ -357,7 +364,7 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
     Request object and because we want to implement a specific
     policy.
     """
-    _debuglevel = 0
+    _debuglevel = DEBUG
     # RFC2616 says that only read requests should be redirected
     # without interacting with the user. But bzr use some
     # shortcuts to optimize against roundtrips which can leads to
@@ -494,12 +501,23 @@ class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
 
     https_response = http_response
 
+# TODO: Is there a way to share the password manager with other
+# protocols ? By prefixing th realm with the protocol ? A
+# different password for the same user may be required on the
+# same host for different protocol/host/directories combination.
+class PasswordManager(urllib2.HTTPPasswordMgrWithDefaultRealm):
+    pass
 
-# TODO: Handle password managers.
 
 def get_opener():
+    # TODO: Implements the necessary wrappers for the handlers
+    # commented out below
     opener = urllib2.build_opener(ConnectionHandler,
                                   #urllib2.ProxyHandler,
+                                  #urllib2.HTTPBasicAuthHandler,
+                                  #urllib2.HTTPDigestAuthHandler,
+                                  #urllib2.ProxyBasicAuthHandler,
+                                  #urllib2.ProxyDigestAuthHandler,
                                   HTTPHandler,
                                   HTTPSHandler,
                                   #urllib2.HTTPDefaultErrorHandler,
@@ -509,6 +527,5 @@ def get_opener():
     global DEBUG
     if DEBUG > 0:
         import pprint
-        pprint.pprint(_opener.__dict__)
-
+        pprint.pprint(opener.__dict__)
     return opener

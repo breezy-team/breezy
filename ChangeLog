@@ -1,3 +1,8 @@
+2006-09-12  Vincent Ladeuil  <vila@imac-blanc.local>
+	Cosmetic changes.
+
+	* _urllib2_wrappers.py: Cosmetic changes
+
 2006-09-12  Vincent Ladeuil  <v.ladeuil@alplog.fr>
         Separate urllib2 wrappers from core webdav.
 
