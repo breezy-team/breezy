@@ -784,6 +784,12 @@ class TestCanonicalize(TestCase):
                    '    )\n'
                    )
 
+    def test_missing_trailing(self):
+        proc = lazy_import.ImportProcessor()
+        self.assertRaises(errors.InvalidImportLine,
+                          proc._canonicalize_import_text,
+                          "from foo import (\n  bar\n")
+
 
 class TestImportProcessor(TestCase):
     """Test that ImportProcessor can turn import texts into lazy imports"""
@@ -876,6 +882,30 @@ class TestImportProcessor(TestCase):
                         '    )\n'
                         'import one\n'
                         'import one.two\n')
+
+    def test_incorrect_line(self):
+        proc = lazy_import.ImportProcessor()
+        self.assertRaises(errors.InvalidImportLine,
+                          proc._build_map, 'foo bar baz')
+        self.assertRaises(errors.InvalidImportLine,
+                          proc._build_map, 'improt foo')
+        self.assertRaises(errors.InvalidImportLine,
+                          proc._build_map, 'importfoo')
+        self.assertRaises(errors.InvalidImportLine,
+                          proc._build_map, 'fromimport')
+
+    def test_name_collision(self):
+        proc = lazy_import.ImportProcessor()
+        proc._build_map('import foo')
+
+        # All of these would try to create an object with the
+        # same name as an existing object.
+        self.assertRaises(errors.ImportNameCollision,
+                          proc._build_map, 'import bar as foo')
+        self.assertRaises(errors.ImportNameCollision,
+                          proc._build_map, 'from foo import bar as foo')
+        self.assertRaises(errors.ImportNameCollision,
+                          proc._build_map, 'from bar import foo')
 
 
 class TestLazyImportProcessor(ImportReplacerHelper):

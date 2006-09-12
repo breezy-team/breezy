@@ -175,6 +175,12 @@ class ImportReplacer(ScopeReplacer):
 class ImportProcessor(object):
     """Convert text that users input into lazy import requests"""
 
+    # TODO: jam 20060912 This class is probably not strict enough about
+    #       what type of text it allows. For example, you can do:
+    #       import (foo, bar), which is not allowed by python.
+    #       For now, it should be supporting a superset of python import
+    #       syntax which is all we really care about.
+
     __slots__ = ['imports', '_lazy_import_class']
 
     def __init__(self, lazy_import_class=None):
@@ -202,11 +208,13 @@ class ImportProcessor(object):
     def _build_map(self, text):
         """Take a string describing imports, and build up the internal map"""
         for line in self._canonicalize_import_text(text):
-            if line.startswith('import'):
+            if line.startswith('import '):
                 self._convert_import_str(line)
-            else:
-                assert line.startswith('from')
+            elif line.startswith('from '):
                 self._convert_from_str(line)
+            else:
+                raise errors.InvalidImportLine(line,
+                    "doesn't start with 'import ' or 'from '")
 
     def _convert_import_str(self, import_str):
         """This converts a import string into an import map.
@@ -229,7 +237,8 @@ class ImportProcessor(object):
                 # named 'bing' which points to 'foo.bar.baz'
                 name = as_hunks[1].strip()
                 module_path = as_hunks[0].strip().split('.')
-                assert name not in self.imports
+                if name in self.imports:
+                    raise errors.ImportNameCollision(name)
                 # No children available in 'import foo as bar'
                 self.imports[name] = (module_path, None, {})
             else:
@@ -279,7 +288,8 @@ class ImportProcessor(object):
                 module = as_hunks[0].strip()
             else:
                 name = module = path
-            assert name not in self.imports
+            if name in self.imports:
+                raise errors.ImportNameCollision(name)
             self.imports[name] = (from_module_path, module, {})
 
     def _canonicalize_import_text(self, text):
@@ -311,5 +321,6 @@ class ImportProcessor(object):
                     cur = line.replace('(', '')
                 else:
                     out.append(line.replace('(', '').replace(')', ''))
-        assert cur is None
+        if cur is not None:
+            raise errors.InvalidImportLine(cur, 'Unmatched parenthesis')
         return out

@@ -1178,3 +1178,23 @@ class IllegalUseOfScopeReplacer(BzrNewError):
         else:
             self.extra = ''
 
+
+class InvalidImportLine(BzrNewError):
+    """Not a valid import statement: %(msg)\n%(text)s"""
+
+    is_user_error = False
+
+    def __init__(self, text, msg):
+        BzrNewError.__init__(self)
+        self.text = text
+        self.msg = msg
+
+
+class ImportNameCollision(BzrNewError):
+    """Tried to import an object to the same name as an existing object. %(name)s"""
+
+    is_user_error = False
+
+    def __init__(self, name):
+        BzrNewError.__init__(self)
+        self.name = name
