@@ -1,4 +1,13 @@
 2006-09-12  Vincent Ladeuil  <v.ladeuil@alplog.fr>
+        Separate urllib2 wrappers from core webdav.
+
+	* _urllib2_wrappers.py:
+	New file. Initialized from webdav.py.
+
+	* webdav.py:
+	Move all urllib wrappers to their own file.
+
+2006-09-12-1  Vincent Ladeuil  <v.ladeuil@alplog.fr>
 	First version handling automatic redirection.
 
 	* webdav.py:
