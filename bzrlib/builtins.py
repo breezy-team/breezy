@@ -16,11 +16,12 @@
 
 """builtin bzr commands"""
 
+import os
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import codecs
 import errno
-import os
-import os.path
 import sys
 
 import bzrlib
@@ -32,29 +33,30 @@ from bzrlib import (
     errors,
     ignores,
     log,
+    merge,
     osutils,
     repository,
     transport,
     ui,
     urlutils,
     )
-from bzrlib.branch import Branch, BranchReferenceFormat
-from bzrlib.bundle import read_bundle_from_url
+from bzrlib.branch import Branch
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.conflicts import ConflictList
+from bzrlib.revision import common_ancestor
+from bzrlib.revisionspec import RevisionSpec
+from bzrlib.workingtree import WorkingTree
+""")
+
 from bzrlib.commands import Command, display_command
-from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
+from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError,
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch,
                            NotVersionedError, NotABundle)
-from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
 from bzrlib.progress import DummyProgress, ProgressPhase
-from bzrlib.revision import common_ancestor
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 from bzrlib.transport.local import LocalTransport
-from bzrlib.workingtree import WorkingTree
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -294,7 +296,7 @@ class cmd_add(Command):
                 base_tree, base_path = WorkingTree.open_containing(
                                             file_ids_from)
             except errors.NoWorkingTree:
-                base_branch, base_path = branch.Branch.open_containing(
+                base_branch, base_path = Branch.open_containing(
                                             file_ids_from)
                 base_tree = base_branch.basis_tree()
 
@@ -2040,7 +2042,7 @@ class cmd_find_merge_base(Command):
     
     @display_command
     def run(self, branch, other):
-        from bzrlib.revision import common_ancestor, MultipleRevisionSources
+        from bzrlib.revision import MultipleRevisionSources
         
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
@@ -2108,15 +2110,14 @@ class cmd_merge(Command):
                             ' from a working copy, instead of branch changes')]
 
     def help(self):
-        from merge import merge_type_help
         from inspect import getdoc
-        return getdoc(self) + '\n' + merge_type_help() 
+        return getdoc(self) + '\n' + merge.merge_type_help()
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False, 
             uncommitted=False):
         if merge_type is None:
-            merge_type = Merge3Merger
+            merge_type = merge.Merge3Merger
 
         tree = WorkingTree.open_containing(u'.')[0]
 
@@ -2172,11 +2173,12 @@ class cmd_merge(Command):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             try:
-                conflict_count = merge(other, base, check_clean=(not force),
-                                       merge_type=merge_type,
-                                       reprocess=reprocess,
-                                       show_base=show_base,
-                                       pb=pb, file_list=interesting_files)
+                conflict_count = _merge_helper(
+                    other, base, check_clean=(not force),
+                    merge_type=merge_type,
+                    reprocess=reprocess,
+                    show_base=show_base,
+                    pb=pb, file_list=interesting_files)
             finally:
                 pb.finished()
             if conflict_count != 0:
@@ -2236,15 +2238,13 @@ class cmd_remerge(Command):
                             "conflicts")]
 
     def help(self):
-        from merge import merge_type_help
         from inspect import getdoc
-        return getdoc(self) + '\n' + merge_type_help() 
+        return getdoc(self) + '\n' + merge.merge_type_help()
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
-        from bzrlib.merge import merge_inner, transform_tree
         if merge_type is None:
-            merge_type = Merge3Merger
+            merge_type = merge.Merge3Merger
         tree, file_list = tree_files(file_list)
         tree.lock_write()
         try:
@@ -2274,7 +2274,7 @@ class cmd_remerge(Command):
                     for name, ie in tree.inventory.iter_entries(file_id):
                         interesting_ids.add(ie.file_id)
                 new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
-            transform_tree(tree, tree.basis_tree(), interesting_ids)
+            merge.transform_tree(tree, tree.basis_tree(), interesting_ids)
             tree.set_conflicts(ConflictList(new_conflicts))
             if file_list is None:
                 restore_files = list(tree.iter_conflicts())
@@ -2285,13 +2285,13 @@ class cmd_remerge(Command):
                     restore(tree.abspath(filename))
                 except NotConflicted:
                     pass
-            conflicts = merge_inner(tree.branch, other_tree, base_tree,
-                                    this_tree=tree,
-                                    interesting_ids=interesting_ids,
-                                    other_rev_id=parents[1],
-                                    merge_type=merge_type,
-                                    show_base=show_base,
-                                    reprocess=reprocess)
+            conflicts = merge.merge_inner(tree.branch, other_tree, base_tree,
+                                          this_tree=tree,
+                                          interesting_ids=interesting_ids,
+                                          other_rev_id=parents[1],
+                                          merge_type=merge_type,
+                                          show_base=show_base,
+                                          reprocess=reprocess)
         finally:
             tree.unlock()
         if conflicts > 0:
@@ -2744,11 +2744,12 @@ class cmd_break_lock(Command):
 
 
 # command-line interpretation helper for merge-related commands
-def merge(other_revision, base_revision,
-          check_clean=True, ignore_zero=False,
-          this_dir=None, backup_files=False, merge_type=Merge3Merger,
-          file_list=None, show_base=False, reprocess=False,
-          pb=DummyProgress()):
+def _merge_helper(other_revision, base_revision,
+                  check_clean=True, ignore_zero=False,
+                  this_dir=None, backup_files=False,
+                  merge_type=merge.Merge3Merger,
+                  file_list=None, show_base=False, reprocess=False,
+                  pb=DummyProgress()):
     """Merge changes into a tree.
 
     base_revision
@@ -2776,11 +2777,10 @@ def merge(other_revision, base_revision,
     clients might prefer to call merge.merge_inner(), which has less magic 
     behavior.
     """
-    from bzrlib.merge import Merger
     if this_dir is None:
         this_dir = u'.'
     this_tree = WorkingTree.open_containing(this_dir)[0]
-    if show_base and not merge_type is Merge3Merger:
+    if show_base and not merge_type is merge.Merge3Merger:
         raise BzrCommandError("Show-base is not supported for this merge"
                               " type. %s" % merge_type)
     if reprocess and not merge_type.supports_reprocess:
@@ -2789,7 +2789,7 @@ def merge(other_revision, base_revision,
     if reprocess and show_base:
         raise BzrCommandError("Cannot do conflict reduction and show base.")
     try:
-        merger = Merger(this_tree.branch, this_tree=this_tree, pb=pb)
+        merger = merge.Merger(this_tree.branch, this_tree=this_tree, pb=pb)
         merger.pp = ProgressPhase("Merge phase", 5, pb)
         merger.pp.next_phase()
         merger.check_basis(check_clean)
