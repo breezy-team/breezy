@@ -285,6 +285,17 @@ class UnsupportedProtocol(PathError):
         PathError.__init__(self, url, extra=extra)
 
 
+class ShortReadvError(PathError):
+    """readv() could not read the %(length)s bytes at %(offset)s for %(path)s%(extra)s"""
+
+    is_user_error = False
+
+    def __init__(self, path, offset, length, extra=None):
+        PathError.__init__(self, path, extra=extra)
+        self.offset = offset
+        self.length = length
+
+
 class PathNotChild(BzrNewError):
     """Path %(path)r is not a child of path %(base)r%(extra)s"""
 

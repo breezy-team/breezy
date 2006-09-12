@@ -30,6 +30,10 @@ import urllib
 import urlparse
 import weakref
 
+from bzrlib import (
+    errors,
+    urlutils,
+    )
 from bzrlib.errors import (FileExists, 
                            NoSuchFile, PathNotChild,
                            TransportError,
@@ -47,7 +51,6 @@ from bzrlib.transport import (
     ssh,
     Transport,
     )
-import bzrlib.urlutils as urlutils
 
 try:
     import paramiko
@@ -263,13 +266,13 @@ class SFTPTransport(Transport):
             fp = self._sftp.file(path, mode='rb')
             readv = getattr(fp, 'readv', None)
             if readv:
-                return self._sftp_readv(fp, offsets)
+                return self._sftp_readv(fp, offsets, relpath)
             mutter('seek and read %s offsets', len(offsets))
-            return self._seek_and_read(fp, offsets)
+            return self._seek_and_read(fp, offsets, relpath)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
 
-    def _sftp_readv(self, fp, offsets):
+    def _sftp_readv(self, fp, offsets, relpath='<unknown>'):
         """Use the readv() member of fp to do async readv.
 
         And then read them using paramiko.readv(). paramiko.readv()
@@ -344,7 +347,6 @@ class SFTPTransport(Transport):
             cur_data_len += len(data)
 
             if cur_data_len < cur_coalesced.length:
-                assert cur_data_len > 0
                 continue
             assert cur_data_len == cur_coalesced.length, \
                 "Somehow we read too much: %s != %s" % (cur_data_len,
@@ -363,9 +365,15 @@ class SFTPTransport(Transport):
                 yield cur_offset_and_size[0], this_data
                 cur_offset_and_size = offset_stack.next()
 
+            # We read a coalesced entry, so mark it as done
+            cur_coalesced = None
             # Now that we've read all of the data for this coalesced section
             # on to the next
             cur_coalesced = cur_coalesced_stack.next()
+
+        if cur_coalesced is not None:
+            raise errors.ShortReadvError(relpath, cur_coalesced.start,
+                cur_coalesced.length, extra="Got to the end of the function")
 
     def put_file(self, relpath, f, mode=None):
         """

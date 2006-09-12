@@ -26,6 +26,7 @@ import stat
 import sys
 
 from bzrlib import (
+    errors,
     osutils,
     urlutils,
     )
@@ -1202,3 +1203,21 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[1], (9, '9'))
         self.assertEqual(d[2], (0, '0'))
         self.assertEqual(d[3], (3, '34'))
+
+    def test_readv_short_read(self):
+        transport = self.get_transport()
+        if transport.is_readonly():
+            file('a', 'w').write('0123456789')
+        else:
+            transport.put_bytes('a', '01234567890')
+
+        # This is intentionally reading off the end of the file
+        # since we are sure that it cannot get there
+        self.assertListRaises((errors.ShortReadvError, AssertionError),
+                              transport.readv, 'a', [(1,1), (8,10)])
+
+        # This is trying to seek past the end of the file, it should
+        # also raise a special error
+        self.assertListRaises(errors.ShortReadvError,
+                              transport.readv, 'a', [(12,2)])
+                        

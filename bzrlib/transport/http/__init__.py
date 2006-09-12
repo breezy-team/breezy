@@ -254,7 +254,9 @@ class HttpTransportBase(Transport):
             f.seek(start, (start < 0) and 2 or 0)
             start = f.tell()
             data = f.read(size)
-            assert len(data) == size
+            if len(data) != size:
+                raise errors.ShortReadvError(relpath, start, size,
+                            extra='Only read %s bytes' % (len(data),))
             yield start, data
 
     @staticmethod
