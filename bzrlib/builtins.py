@@ -33,7 +33,7 @@ from bzrlib import (
     errors,
     ignores,
     log,
-    merge,
+    merge as _mod_merge,
     osutils,
     repository,
     transport,
@@ -2111,13 +2111,13 @@ class cmd_merge(Command):
 
     def help(self):
         from inspect import getdoc
-        return getdoc(self) + '\n' + merge.merge_type_help()
+        return getdoc(self) + '\n' + _mod_merge.merge_type_help()
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False, 
             uncommitted=False):
         if merge_type is None:
-            merge_type = merge.Merge3Merger
+            merge_type = _mod_merge.Merge3Merger
 
         tree = WorkingTree.open_containing(u'.')[0]
 
@@ -2239,12 +2239,12 @@ class cmd_remerge(Command):
 
     def help(self):
         from inspect import getdoc
-        return getdoc(self) + '\n' + merge.merge_type_help()
+        return getdoc(self) + '\n' + _mod_merge.merge_type_help()
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
         if merge_type is None:
-            merge_type = merge.Merge3Merger
+            merge_type = _mod_merge.Merge3Merger
         tree, file_list = tree_files(file_list)
         tree.lock_write()
         try:
@@ -2274,7 +2274,7 @@ class cmd_remerge(Command):
                     for name, ie in tree.inventory.iter_entries(file_id):
                         interesting_ids.add(ie.file_id)
                 new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
-            merge.transform_tree(tree, tree.basis_tree(), interesting_ids)
+            _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_ids)
             tree.set_conflicts(ConflictList(new_conflicts))
             if file_list is None:
                 restore_files = list(tree.iter_conflicts())
@@ -2285,13 +2285,14 @@ class cmd_remerge(Command):
                     restore(tree.abspath(filename))
                 except NotConflicted:
                     pass
-            conflicts = merge.merge_inner(tree.branch, other_tree, base_tree,
-                                          this_tree=tree,
-                                          interesting_ids=interesting_ids,
-                                          other_rev_id=parents[1],
-                                          merge_type=merge_type,
-                                          show_base=show_base,
-                                          reprocess=reprocess)
+            conflicts = _mod_merge.merge_inner(
+                                      tree.branch, other_tree, base_tree,
+                                      this_tree=tree,
+                                      interesting_ids=interesting_ids,
+                                      other_rev_id=parents[1],
+                                      merge_type=merge_type,
+                                      show_base=show_base,
+                                      reprocess=reprocess)
         finally:
             tree.unlock()
         if conflicts > 0:
@@ -2311,7 +2312,6 @@ class cmd_revert(Command):
     aliases = ['merge-revert']
 
     def run(self, revision=None, no_backup=False, file_list=None):
-        from bzrlib.commands import parse_spec
         if file_list is not None:
             if len(file_list) == 0:
                 raise BzrCommandError("No files specified")
@@ -2747,7 +2747,7 @@ class cmd_break_lock(Command):
 def _merge_helper(other_revision, base_revision,
                   check_clean=True, ignore_zero=False,
                   this_dir=None, backup_files=False,
-                  merge_type=merge.Merge3Merger,
+                  merge_type=_mod_merge.Merge3Merger,
                   file_list=None, show_base=False, reprocess=False,
                   pb=DummyProgress()):
     """Merge changes into a tree.
@@ -2780,7 +2780,7 @@ def _merge_helper(other_revision, base_revision,
     if this_dir is None:
         this_dir = u'.'
     this_tree = WorkingTree.open_containing(this_dir)[0]
-    if show_base and not merge_type is merge.Merge3Merger:
+    if show_base and not merge_type is _mod_merge.Merge3Merger:
         raise BzrCommandError("Show-base is not supported for this merge"
                               " type. %s" % merge_type)
     if reprocess and not merge_type.supports_reprocess:
@@ -2789,7 +2789,8 @@ def _merge_helper(other_revision, base_revision,
     if reprocess and show_base:
         raise BzrCommandError("Cannot do conflict reduction and show base.")
     try:
-        merger = merge.Merger(this_tree.branch, this_tree=this_tree, pb=pb)
+        merger = _mod_merge.Merger(this_tree.branch, this_tree=this_tree,
+                                   pb=pb)
         merger.pp = ProgressPhase("Merge phase", 5, pb)
         merger.pp.next_phase()
         merger.check_basis(check_clean)
@@ -2810,6 +2811,10 @@ def _merge_helper(other_revision, base_revision,
     finally:
         pb.clear()
     return conflicts
+
+
+# Compatibility
+merge = _merge_helper
 
 
 # these get imported and then picked up by the scan for cmd_*

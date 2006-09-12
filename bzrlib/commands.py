@@ -46,7 +46,12 @@ from bzrlib import (
     )
 """)
 
-from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_method,
+    zero_eight,
+    zero_eleven,
+    )
 # Compatibility
 from bzrlib.option import Option
 
@@ -320,6 +325,9 @@ class Command(object):
             return None
 
 
+# Technically, this function hasn't been use in a *really* long time
+# but we are only deprecating it now.
+@deprecated_function(zero_eleven)
 def parse_spec(spec):
     """
     >>> parse_spec(None)

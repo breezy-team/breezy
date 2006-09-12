@@ -20,7 +20,7 @@ import sys
 import tempfile
 
 from bzrlib import inventory
-from bzrlib.builtins import merge
+from bzrlib.builtins import _merge_helper
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
@@ -573,7 +573,8 @@ class BundleTester(TestCaseWithTransport):
         other = self.get_checkout('a@cset-0-5')
         other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
         other.commit('rename file', rev_id='a@cset-0-6b')
-        merge([other.basedir, -1], [None, None], this_dir=self.tree1.basedir)
+        _merge_helper([other.basedir, -1], [None, None],
+                      this_dir=self.tree1.basedir)
         self.tree1.commit(u'Merge', rev_id='a@cset-0-7',
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-6', 'a@cset-0-7')
@@ -674,7 +675,8 @@ class BundleTester(TestCaseWithTransport):
         tt.create_file('file2', trans_id)
         tt.apply()
         other.commit('modify text in another tree', rev_id='a@lmod-0-2b')
-        merge([other.basedir, -1], [None, None], this_dir=self.tree1.basedir)
+        _merge_helper([other.basedir, -1], [None, None],
+                      this_dir=self.tree1.basedir)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-3',
                           verbose=False)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-4')

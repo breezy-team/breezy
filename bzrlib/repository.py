@@ -31,6 +31,7 @@ from bzrlib import (
     errors,
     gpg,
     graph,
+    knit,
     lockable_files,
     lockdir,
     osutils,
@@ -42,7 +43,6 @@ from bzrlib import (
     weavefile,
     xml5,
     )
-from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
 from bzrlib.osutils import (
     rand_bytes,
     compact_date, 
@@ -1487,8 +1487,8 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
             repo_transport,
             prefixed=False,
             file_mode=control_files._file_mode,
-            versionedfile_class=KnitVersionedFile,
-            versionedfile_kwargs={'factory':KnitPlainFactory()},
+            versionedfile_class=knit.KnitVersionedFile,
+            versionedfile_kwargs={'factory':knit.KnitPlainFactory()},
             )
 
     def get_format_string(self):
@@ -1507,8 +1507,10 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
             file_mode=control_files._file_mode,
             prefixed=False,
             precious=True,
-            versionedfile_class=KnitVersionedFile,
-            versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory(),},
+            versionedfile_class=knit.KnitVersionedFile,
+            versionedfile_kwargs={'delta':False,
+                                  'factory':knit.KnitPlainFactory(),
+                                 },
             escaped=True,
             )
         return KnitRevisionStore(versioned_file_store)
@@ -1516,15 +1518,15 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
     def _get_text_store(self, transport, control_files):
         """See RepositoryFormat._get_text_store()."""
         return self._get_versioned_file_store('knits',
-                                              transport,
-                                              control_files,
-                                              versionedfile_class=KnitVersionedFile,
-                                              versionedfile_kwargs={
-                                                  'create_parent_dir':True,
-                                                  'delay_create':True,
-                                                  'dir_mode':control_files._dir_mode,
-                                              },
-                                              escaped=True)
+                                  transport,
+                                  control_files,
+                                  versionedfile_class=knit.KnitVersionedFile,
+                                  versionedfile_kwargs={
+                                      'create_parent_dir':True,
+                                      'delay_create':True,
+                                      'dir_mode':control_files._dir_mode,
+                                  },
+                                  escaped=True)
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a knit format 1 repository.
