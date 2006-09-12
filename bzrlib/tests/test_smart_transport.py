@@ -160,6 +160,9 @@ class SmartTCPTests(tests.TestCase):
         
     def test_get_error_enoent(self):
         """Error reported from server getting nonexistent file."""
+        # The path in a raised NoSuchFile exception should be the precise path
+        # asked for by the client. This gives meaningful and unsurprising errors
+        # for users.
         try:
             self.transport.get('not%20a%20file')
         except errors.NoSuchFile, e:

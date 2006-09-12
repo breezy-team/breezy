@@ -2,7 +2,13 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Support bzr:// urls to work with the new RPC-based transport which will be
+      used with the upcoming high-performance smart server. The new command
+      ``bzr serve`` will invoke bzr in server mode, which processes these
+      requests. (Andrew Bennetts, Robert Collins, Martin Pool)
+
   BUG FIXES:
+
     * revert now removes newly-added directories (Aaron Bentley, #54172)
 
     * ``bzr upgrade sftp://`` shouldn't fail to upgrade v6 branches if there 
@@ -16,6 +22,10 @@ IN DEVELOPMENT
     * Transport.list_dir() and Transport.iter_files_recursive() should always
       return urlescaped paths. This is now tested (there were bugs in a few
       of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
+
+    * Add a new method ``Transport.get_smart_client()``. This is provided to
+      allow upgrades to a richer interface than the VFS one provided by
+      Transport. (Andrew Bennetts, Martin Pool)
 
 bzr 0.10.0RC1  2006-08-28
   

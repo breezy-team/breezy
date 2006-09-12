@@ -283,11 +283,14 @@ class SmartStreamServer(SmartProtocolBase):
 
     def serve(self):
         """Serve requests until the client disconnects."""
+        # Keep a reference to stderr because the sys module's globals get set to
+        # None during interpreter shutdown.
+        from sys import stderr
         try:
             while self._serve_one_request() != False:
                 pass
         except Exception, e:
-            sys.stderr.write("%s terminating on exception %s\n" % (self, e))
+            stderr.write("%s terminating on exception %s\n" % (self, e))
             raise
 
 
@@ -419,14 +422,18 @@ class SmartTCPServer(object):
 
     def serve(self):
         # let connections timeout so that we get a chance to terminate
+        # Keep a reference to the exceptions we want to catch because the socket
+        # module's globals get set to None during interpreter shutdown.
+        from socket import timeout as socket_timeout
+        from socket import error as socket_error
         self._should_terminate = False
         while not self._should_terminate:
             try:
                 self.accept_and_serve()
-            except socket.timeout:
+            except socket_timeout:
                 # just check if we're asked to stop
                 pass
-            except socket.error, e:
+            except socket_error, e:
                 trace.warning("client disconnected: %s", e)
                 pass
 
@@ -488,7 +495,7 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         # XXX: I think this is likely to break on windows -- self._homedir will
         # have backslashes (and maybe a drive letter?).
         #  -- Andrew Bennetts, 2006-08-29
-        return "bzr://%s:%d%s" % (host, port, self._homedir)
+        return "bzr://%s:%d%s" % (host, port, urlutils.escape(self._homedir))
 
     def get_bogus_url(self):
         """Return a URL which will fail to connect"""
@@ -566,7 +573,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
         return urlparse.urlunparse((self._scheme, netloc, path, '', '', ''))
 
     def _remote_path(self, relpath):
-        return urlutils.escape(self._combine_paths(self._path, relpath))
+        return self._combine_paths(self._path, relpath)
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.
@@ -586,12 +593,10 @@ class SmartTransport(sftp.SFTPUrlHandling):
         
         :see: Transport.get()
         """
-        ## mutter("%s.get %s", self, relpath)
         remote = self._remote_path(relpath)
-        ## mutter("  remote path: %s", remote)
         resp = self._client._call('get', remote)
         if resp != ('ok', ):
-            self._translate_error(resp)
+            self._translate_error(resp, relpath)
         return StringIO(self._client._recv_bulk())
 
     def _optional_mode(self, mode):
@@ -650,13 +655,17 @@ class SmartTransport(sftp.SFTPUrlHandling):
         resp = self._client._call(method, *args)
         self._translate_error(resp)
 
-    def _translate_error(self, resp):
+    def _translate_error(self, resp, orig_path=None):
         """Raise an exception from a response"""
         what = resp[0]
         if what == 'ok':
             return
         elif what == 'NoSuchFile':
-            raise errors.NoSuchFile(resp[1])
+            if orig_path is not None:
+                error_path = orig_path
+            else:
+                error_path = resp[1]
+            raise errors.NoSuchFile(error_path)
         elif what == 'error':
             raise BzrProtocolError(unicode(resp[1]))
         elif what == 'FileExists':

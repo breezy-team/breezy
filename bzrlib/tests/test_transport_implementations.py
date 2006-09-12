@@ -826,6 +826,17 @@ class TransportTests(TestTransportImplementation):
         self.failUnless(t2.has('d'))
         self.failUnless(t3.has('b/d'))
 
+    def test_clone_to_root(self):
+        orig_transport = self.get_transport()
+        # Repeatedly go up to a parent directory until we're at the root
+        # directory of this transport
+        root_transport = orig_transport
+        while root_transport.clone("..").base != root_transport.base:
+            root_transport = root_transport.clone("..")
+
+        # Cloning to "/" should take us to exactly the same location.
+        self.assertEqual(root_transport.base, orig_transport.clone("/").base)
+
     def test_base_url(self):
         t = self.get_transport()
         self.assertEqual('/', t.base[-1])
@@ -860,6 +871,12 @@ class TransportTests(TestTransportImplementation):
         
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
+
+        # This should work without raising an error.
+        transport.abspath("/")
+
+        # the abspath of "/" and "/foo/.." should result in the same location
+        self.assertEqual(transport.abspath("/"), transport.abspath("/foo/.."))
 
     def test_local_abspath(self):
         transport = self.get_transport()

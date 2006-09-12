@@ -169,16 +169,18 @@ class HttpTransportBase(Transport):
         else:
             # TODO: Don't call this with an array - no magic interfaces
             relpath_parts = relpath[:]
-        if len(relpath_parts) > 1:
-            if relpath_parts[0] == '':
-                raise ValueError("path %r within branch %r seems to be absolute"
-                                 % (relpath, self._path))
-            if relpath_parts[-1] == '':
+
+        if relpath.startswith('/'):
+            basepath = []
+        else:
+            # Except for the root, no trailing slashes are allowed
+            if len(relpath_parts) > 1 and relpath_parts[-1] == '':
                 raise ValueError("path %r within branch %r seems to be a directory"
                                  % (relpath, self._path))
-        basepath = self._path.split('/')
-        if len(basepath) > 0 and basepath[-1] == '':
-            basepath = basepath[:-1]
+            basepath = self._path.split('/')
+            if len(basepath) > 0 and basepath[-1] == '':
+                basepath = basepath[:-1]
+
         for p in relpath_parts:
             if p == '..':
                 if len(basepath) == 0:

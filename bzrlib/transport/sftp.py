@@ -241,6 +241,39 @@ class SFTPTransport(SFTPUrlHandling):
         else:
             return SFTPTransport(self.abspath(offset), self)
 
+    def _remote_path(self, relpath):
+        """Return the path to be passed along the sftp protocol for relpath.
+        
+        relpath is a urlencoded string.
+
+        :return: a path prefixed with / for regular abspath-based urls, or a
+            path that does not begin with / for urls which begin with /~/.
+        """
+        # FIXME: share the common code across transports
+        assert isinstance(relpath, basestring)
+        basepath = self._path.split('/')
+        if relpath.startswith('/'):
+            basepath = ['', '']
+        relpath = urlutils.unescape(relpath).split('/')
+        if len(basepath) > 0 and basepath[-1] == '':
+            basepath = basepath[:-1]
+
+        for p in relpath:
+            if p == '..':
+                if len(basepath) == 0:
+                    # In most filesystems, a request for the parent
+                    # of root, just returns root.
+                    continue
+                basepath.pop()
+            elif p == '.':
+                continue # No-op
+            elif p != '':
+                basepath.append(p)
+
+        path = '/'.join(basepath)
+        # mutter('relpath => remotepath %s => %s', relpath, path)
+        return path
+
     def relpath(self, abspath):
         scheme, username, password, host, port, path = self._split_url(abspath)
         error = []

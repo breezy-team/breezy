@@ -331,11 +331,13 @@ class Transport(object):
         # transports?
         if not isinstance(relpath, str):
             raise errors.InvalidURL("not a valid url: %r" % relpath)
-        relpath = urlutils.unescape(relpath).split('/')
-        base_parts = base_path.split('/')
+        if relpath.startswith('/'):
+            base_parts = []
+        else:
+            base_parts = base_path.split('/')
         if len(base_parts) > 0 and base_parts[-1] == '':
             base_parts = base_parts[:-1]
-        for p in relpath:
+        for p in relpath.split('/'):
             if p == '..':
                 if len(base_parts) == 0:
                     # In most filesystems, a request for the parent
@@ -344,7 +346,7 @@ class Transport(object):
                 base_parts.pop()
             elif p == '.':
                 continue # No-op
-            else:
+            elif p != '':
                 base_parts.append(p)
         path = '/'.join(base_parts)
         return path
