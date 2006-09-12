@@ -19,6 +19,8 @@
 
 # TODO: Should be renamed to bzrlib.transport.http.tests?
 
+import socket
+
 import bzrlib
 from bzrlib.errors import DependencyNotPresent
 from bzrlib.tests import TestCase, TestSkipped
@@ -135,12 +137,14 @@ class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
         TestCaseWithWebserver.setUp(self)
         self._prep_tree()
 
-    def test_bogus_host(self):
-        from urllib2 import URLError
-        t = self._transport('http://1.2.3.4.5.6.7.8/')
-        self.assertRaises(URLError,
-            t.has,
-            'foo/bar')
+    def test_has_on_bogus_host(self):
+        import urllib2
+        # Get a random address, so that we can be sure there is no
+        # http handler there.
+        s = socket.socket()
+        s.bind(('localhost', 0))
+        t = self._transport('http://%s:%s/' % s.getsockname())
+        self.assertRaises(urllib2.URLError, t.has, 'foo/bar')
 
 
 class TestHttpConnections_pycurl(TestCaseWithWebserver, TestHttpMixins):
