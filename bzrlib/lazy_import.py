@@ -78,13 +78,17 @@ class ScopeReplacer(object):
         # del self._name
 
     def __getattribute__(self, attr):
-        obj = object.__getattribute__(self, '_replace')()
-        object.__getattribute__(self, '_cleanup')()
+        _replace = object.__getattribute__(self, '_replace')
+        obj = _replace()
+        _cleanup = object.__getattribute__(self, '_cleanup')
+        _cleanup()
         return getattr(obj, attr)
 
     def __call__(self, *args, **kwargs):
-        obj = object.__getattribute__(self, '_replace')()
-        object.__getattribute__(self, '_cleanup')()
+        _replace = object.__getattribute__(self, '_replace')
+        obj = _replace()
+        _cleanup = object.__getattribute__(self, '_cleanup')
+        _cleanup()
         return obj(*args, **kwargs)
 
 
