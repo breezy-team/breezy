@@ -159,6 +159,19 @@ def gen_root_id():
     return gen_file_id('TREE_ROOT')
 
 
+def needs_tree_write_lock(unbound):
+    """Decorate unbound to take out and release a tree_write lock."""
+    def tree_write_locked(self, *args, **kwargs):
+        self.lock_tree_write()
+        try:
+            return unbound(self, *args, **kwargs)
+        finally:
+            self.unlock()
+    tree_write_locked.__doc__ = unbound.__doc__
+    tree_write_locked.__name__ = unbound.__name__
+    return tree_write_locked
+
+
 class TreeEntry(object):
     """An entry that implements the minimum interface used by commands.
 
@@ -609,7 +622,7 @@ class WorkingTree(bzrlib.tree.Tree):
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def add(self, files, ids=None):
         """Make files versioned.
 
@@ -670,7 +683,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
         self._write_inventory(inv)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def add_parent_tree_id(self, revision_id, allow_leftmost_as_ghost=False):
         """Add revision_id as a parent.
 
@@ -686,7 +699,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self.set_parent_ids(parents,
             allow_leftmost_as_ghost=len(parents) > 1 or allow_leftmost_as_ghost)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def add_parent_tree(self, parent_tuple, allow_leftmost_as_ghost=False):
         """Add revision_id, tree tuple as a parent.
 
@@ -708,7 +721,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self.set_parent_ids(parent_ids,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def add_pending_merge(self, *revision_ids):
         # TODO: Perhaps should check at this point that the
         # history of the revision is actually present?
@@ -735,7 +748,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         return self.get_parent_ids()[1:]
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
         
@@ -759,7 +772,7 @@ class WorkingTree(bzrlib.tree.Tree):
         merges = revision_ids[1:]
         self._control_files.put_utf8('pending-merges', '\n'.join(merges))
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """Set the parents of the working tree.
 
@@ -772,26 +785,26 @@ class WorkingTree(bzrlib.tree.Tree):
         self.set_parent_ids([rev for (rev, tree) in parents_list],
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_pending_merges(self, rev_list):
         parents = self.get_parent_ids()
         leftmost = parents[:1]
         new_parents = leftmost + rev_list
         self.set_parent_ids(new_parents)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_merge_modified(self, modified_hashes):
         def iter_stanzas():
             for file_id, hash in modified_hashes.iteritems():
                 yield Stanza(file_id=file_id, hash=hash)
         self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def _put_rio(self, filename, stanzas, header):
         my_file = rio_file(stanzas, header)
         self._control_files.put(filename, my_file)
 
-    @needs_write_lock
+    @needs_write_lock # because merge pulls data into the branch.
     def merge_from_branch(self, branch, to_revision=None):
         """Merge from a branch into this working tree.
 
@@ -975,8 +988,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
-
-    @needs_write_lock
+    @needs_tree_write_lock
     def move(self, from_paths, to_name):
         """Rename files.
 
@@ -1045,7 +1057,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self._write_inventory(inv)
         return result
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel):
         """Rename one file.
 
@@ -1104,7 +1116,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if not self.is_ignored(subp):
                 yield subp
     
-    @needs_write_lock
+    @needs_tree_write_lock
     def unversion(self, file_ids):
         """Remove the file ids in file_ids from the current versioned set.
 
@@ -1386,6 +1398,22 @@ class WorkingTree(bzrlib.tree.Tree):
             self.branch.unlock()
             raise
 
+    def lock_tree_write(self):
+        """Lock the working tree for write, and the branch for read.
+
+        This is useful for operations which only need to mutate the working
+        tree. Taking out branch write locks is a relatively expensive process
+        and may fail if the branch is on read only media. So branch write locks
+        should only be taken out when we are modifying branch data - such as in
+        operations like commit, pull, uncommit and update.
+        """
+        self.branch.lock_read()
+        try:
+            return self._control_files.lock_write()
+        except:
+            self.branch.unlock()
+            raise
+
     def lock_write(self):
         """See Branch.lock_write, and WorkingTree.unlock."""
         self.branch.lock_write()
@@ -1401,7 +1429,7 @@ class WorkingTree(bzrlib.tree.Tree):
     def _basis_inventory_name(self):
         return 'basis-inventory-cache'
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
         if self._change_last_revision(new_revision):
@@ -1469,7 +1497,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self._set_inventory(result)
         return result
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def remove(self, files, verbose=False, to_file=None):
         """Remove nominated files from the working inventory..
 
@@ -1509,7 +1537,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
         self._write_inventory(inv)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def revert(self, filenames, old_tree=None, backups=True, 
                pb=DummyProgress()):
         from transform import revert
@@ -1526,7 +1554,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
     # XXX: This method should be deprecated in favour of taking in a proper
     # new Inventory object.
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_inventory(self, new_inventory_list):
         from bzrlib.inventory import (Inventory,
                                       InventoryDirectory,
@@ -1549,7 +1577,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 raise BzrError("unknown kind %r" % kind)
         self._write_inventory(inv)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_root_id(self, file_id):
         """Set the root id for this tree."""
         inv = self.read_working_inventory()
@@ -1661,7 +1689,7 @@ class WorkingTree(bzrlib.tree.Tree):
                                   this_tree=self)
         return result
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
         sio = StringIO()
@@ -1711,6 +1739,19 @@ class WorkingTree2(WorkingTree):
      - uses the branch last-revision.
     """
 
+    def lock_tree_write(self):
+        """See WorkingTree.lock_tree_write().
+
+        In Format2 WorkingTrees we have a single lock for the branch and tree
+        so lock_tree_write() degrades to lock_write().
+        """
+        self.branch.lock_write()
+        try:
+            return self._control_files.lock_write()
+        except:
+            self.branch.unlock()
+            raise
+
     def unlock(self):
         # we share control files:
         if self._hashcache.needs_write and self._control_files._lock_count==3:
@@ -1752,12 +1793,12 @@ class WorkingTree3(WorkingTree):
             self._control_files.put_utf8('last-revision', revision_id)
             return True
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_conflicts(self, conflicts):
         self._put_rio('conflicts', conflicts.to_stanzas(), 
                       CONFLICT_HEADER_1)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def add_conflicts(self, new_conflicts):
         conflict_set = set(self.conflicts())
         conflict_set.update(set(list(new_conflicts)))
@@ -2011,7 +2052,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          _format=self,
                          _bzrdir=a_bzrdir,
                          _control_files=control_files)
-        wt.lock_write()
+        wt.lock_tree_write()
         try:
             wt._write_inventory(inv)
             wt.set_root_id(inv.root.file_id)

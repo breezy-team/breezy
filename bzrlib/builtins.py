@@ -764,7 +764,7 @@ class cmd_checkout(Command):
         # if the source and to_location are the same, 
         # and there is no working tree,
         # then reconstitute a branch
-        if (osutils.abspath(to_location) == 
+        if (osutils.abspath(to_location) ==
             osutils.abspath(branch_location)):
             try:
                 source.bzrdir.open_workingtree()
