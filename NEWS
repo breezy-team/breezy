@@ -101,7 +101,7 @@ IN DEVELOPMENT
       penalty. It also provides the basis for allowing readonly checkouts.
       (Robert Collins)
 
-bzr 0.10.0RC1  2006-08-28
+bzr 0.10  2006-08-29
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
@@ -159,6 +159,9 @@ bzr 0.10.0RC1  2006-08-28
     * Testament handles more cases when content is unicode. Specific bug was
       in handling of revision properties. (John Arbash Meinel, Holger Krekel,
       #54723)
+
+    * The bzr selftest was failing on installed versions due to a bug in a new
+      test helper. (John Arbash Meinel, Robert Collins, #58057)
 
   INTERNALS:
 

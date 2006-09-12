@@ -898,6 +898,9 @@ class TestCase(unittest.TestCase):
                 osutils.set_or_unset_env(env_var, value)
 
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        if not os.path.isfile(bzr_path):
+            # We are probably installed. Assume sys.argv is the right file
+            bzr_path = sys.argv[0]
         args = list(args)
 
         try:
