@@ -428,6 +428,8 @@ class Transport(object):
             #       benchmarked.
             fp.seek(c_offset.start)
             data = fp.read(c_offset.length)
+            assert len(data) == c_offset.length
+
             for suboffset, subsize in c_offset.ranges:
                 key = (c_offset.start+suboffset, subsize)
                 data_map[key] = data[suboffset:suboffset+subsize]

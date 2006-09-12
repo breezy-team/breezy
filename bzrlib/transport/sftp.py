@@ -344,6 +344,7 @@ class SFTPTransport(Transport):
             cur_data_len += len(data)
 
             if cur_data_len < cur_coalesced.length:
+                assert cur_data_len > 0
                 continue
             assert cur_data_len == cur_coalesced.length, \
                 "Somehow we read too much: %s != %s" % (cur_data_len,
