@@ -1,3 +1,26 @@
+2006-09-12  Vincent Ladeuil  <v.ladeuil@alplog.fr>
+	First version handling automatic redirection.
+
+	* webdav.py:
+	(Response): Renamed from HTTPRespone to be coherent with Request.
+	(Response.begin): Override httplib.HTTPResponse.begin to purge the
+	socket of an optional message nobody cares for.
+	(AbstractHTTPConnection): New class to better define HTTPConection
+	and HTTPSConnection.
+	(AbstractHTTPConnection.fake_close): New method.
+	(Request.__init__): New 'parent' and 'redirected_to' attributes to
+	handle redirection.
+	(AbstractHTTPHandler.do_open): Convert to addinfourl only when
+	needed.
+	(HTTPRedirectHandler): New class.
+	(HTTPErrorProcessor.http_response): Reorder error codes.
+	(HttpDavTransport._opener): We can redirect now.
+	(HttpDavTransport._head): No message, fake_close the socket.
+	(HttpDavTransport._get): fake_close the socket when needed.
+
+2006-09-10  Vincent Ladeuil  <v.ladeuil@alplog.fr>
+	Merge jam fixes.
+
 2006-09-10  Vincent Ladeuil  <v.ladeuil@free.fr>
 	Cleaning. New simpler Request syntax.
 

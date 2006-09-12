@@ -72,11 +72,23 @@ This should enable remote push operations.
 # be defined as a  daughter of InvalidHttpResponse) but what will
 # the upper layers do ?
 
-# TODO: 20060908 All *_file functions are defined in terms of *_bytes
-# because we have to read the file to create a proper PUT request.
-# Is it possible to define PUT with a file-like object, so that
-# we don't have to potentially read in and hold onto potentially
-# 600MB of file contents?
+# TODO: 20060908 All *_file functions are defined in terms of
+# *_bytes because we have to read the file to create a proper PUT
+# request.  Is it possible to define PUT with a file-like object,
+# so that we don't have to potentially read in and hold onto
+# potentially 600MB of file contents?
+#
+# There is a contradiction between returning a file-object after
+# a GET and sharing connections: they both want to use the same
+# socket. To solve this we need to either create a new connection
+# (but some servers limits the number of simultaneous connections
+# see bug #31140) when one is used for streaming or create a
+# temporary local file with the GET content an return that file.
+
+# TODO: Factor out the error handling.
+
+# TODO: Implement the redirection scheme described in:
+# http://thread.gmane.org/gmane.comp.version-control.bazaar-ng.general/14881/
 
 import bisect
 from cStringIO import StringIO
@@ -88,6 +100,7 @@ import sys
 import time
 import urllib
 import urllib2
+import urlparse
 
 import bzrlib
 from bzrlib.errors import (
@@ -124,9 +137,8 @@ register_urlparse_netloc_protocol('http+webdav')
 register_urlparse_netloc_protocol('https+webdav')
 
 
-# We define our own Response class to avoid the problems with the
-# addinfourl objects
-class HTTPResponse(httplib.HTTPResponse):
+# We define our own Response class to keep our httplib pipe clean
+class Response(httplib.HTTPResponse):
     """Custom HTTPResponse, to avoid needing to decorate.
 
     httplib prefers to decorate the returned objects, rather
@@ -136,17 +148,30 @@ class HTTPResponse(httplib.HTTPResponse):
     def __init__(self, *args, **kwargs):
         httplib.HTTPResponse.__init__(self, *args, **kwargs)
 
-    def info(self):
-        return self.headers
+    _begin = httplib.HTTPResponse.begin
+    def begin(self):
+        """Begin to read the response from the server.
 
+        httplib assumes that some responses get no content and do
+        not even attempt to read the body in that case, leaving
+        the body in the socket, blocking the next request. Let's
+        try to workaround that.
+        """
+        self._begin()
+        if self.status in (999,
+                           301,
+                           302, 303, 307):
+            body = self.fp.read(self.length)
+            #print "Consumed body: [%s]" % body
+            self.close()
 
 # We need to define our own HTTPConnections objects to work
 # around a weird problem. FIXME: Still need more investigation.
-class HTTPConnection(httplib.HTTPConnection):
-    """A custom HTTP Connection, which can reset itself on a bad response"""
+class AbstractHTTPConnection:
+    """A custom HTTP(S) Connection, which can reset itself on a bad response"""
 
     _getresponse = httplib.HTTPConnection.getresponse
-    response_class = HTTPResponse
+    response_class = Response
 
     def getresponse(self):
         """Get the response from the server.
@@ -161,15 +186,34 @@ class HTTPConnection(httplib.HTTPConnection):
         """
         try:
             return self._getresponse()
-        except:
+        # TODO: A bit of selection on different exceptions may be
+        # of good taste
+        except Exception, e:
             if self.debuglevel > 0:
-                print 'Reset connection'
+                print 'On exception: [%r]' % e
+                print '  Reset connection: [%s]' % self
             # Things look really weird, let's start again
             self.close()
             raise
 
-class HTTPSConnection(httplib.HTTPSConnection, HTTPConnection):
-    getresponse = HTTPConnection.getresponse
+    def fake_close(self):
+        """Make the connection believes the response have been fully handled.
+
+        That makes the httplib.HTTPConnection happy
+        """
+        # Preserve our preciousss
+        sock = self.sock
+        self.sock = None
+        self.close()
+        self.sock = sock
+
+
+class HTTPConnection(AbstractHTTPConnection, httplib.HTTPConnection):
+    pass
+
+
+class HTTPSConnection(AbstractHTTPConnection, httplib.HTTPSConnection):
+    pass
 
 
 class Request(urllib2.Request):
@@ -185,11 +229,14 @@ class Request(urllib2.Request):
 
     def __init__(self, method, url, data=None, headers={},
                  origin_req_host=None, unverifiable=False,
-                 connection=None,):
+                 connection=None, parent=None,):
         urllib2.Request.__init__(self, url, data, headers,
                                  origin_req_host, unverifiable)
         self.method = method
         self.connection = connection
+        # To handle redirections
+        self.parent = parent
+        self.redirected_to = None
 
     def get_method(self):
         return self.method
@@ -240,7 +287,13 @@ class ConnectionHandler(urllib2.BaseHandler):
         # (request don't do that) to avoid having different
         # connections for http://host and http://host:80
         connection = http_connection_class(host)
-        # jam says 20060908: no cache for now
+        # TODO: We don't want a global cache that can interact
+        # badly with the test suite, but being able to share
+        # conections on the same (host IP, port) combination can
+        # be good even inside a single tranport (some
+        # redirections can benefit from it, bazaar-ng.org and
+        # bazaar-vcs.org are two virtual hosts on the same IP for
+        # example).
         if self._cache_activated:
             key = self.get_key(connection)
             if key not in self._connection_of:
@@ -295,13 +348,18 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
     persistent connections.
     """
 
-    handler_order = 400 # Before urllib2 HTTP[S]Handlers to override them
+    # We change our order to be before urllib2 HTTP[S]Handlers
+    # and choosed instead of them (the first http_open called
+    # wins).
+    handler_order = 400
 
     _default_headers = {'Pragma': 'no-cache',
                         'Cache-control': 'max-age=0',
                         'Connection': 'Keep-Alive',
                         }
-    _debuglevel = 0
+
+    def __init__(self):
+        urllib2.AbstractHTTPHandler.__init__(self, debuglevel=0)
 
     def do_open(self, http_class, request, first_try=True):
         """See urllib2.AbstractHTTPHandler.do_open for the general idea.
@@ -310,7 +368,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         """
         connection = request.connection
         assert connection is not None, \
-            'cannot process a request without a connection'
+            'Cannot process a request without a connection'
 
         headers = self._default_headers.copy()
         headers.update(request.header_items())
@@ -321,24 +379,31 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                                  #None, # We don't send the body yet
                                  request.get_data(),
                                  headers)
+        if self._debuglevel > 0:
+            print 'Request sent: [%r]' % request
         try:
             response = connection.getresponse()
-        except httplib.BadStatusLine:
+            convert_to_addinfourl = True
+        except httplib.BadStatusLine, e:
             # Presumably the server have borked the connection
-            # for an unknown reason. Let's try again. FIXME: This
-            # may be already covered by HTTPConnection.getresponse
+            # for an unknown reason. Let's try again.
             if first_try:
                 if self._debuglevel > 0:
-                    print 'Will retry, %s: %r' % (retry,
-                                                  request.get_method(),
-                                                  request.get_full_url())
+                    print 'Received exception: [%r]' % e
+                    print '  On connection: [%r]' % request.connection
+                    method = request.get_method()
+                    url = request.get_full_url()
+                    print '  Will retry, %s %r' % (method, url)
                 response = self.do_open(http_class, request, False)
+                convert_to_addinfourl = False
             else:
+                if self._debuglevel > 0:
+                    print 'On connection: [%r]' % request.connection
+                    method = request.get_method()
+                    url = request.get_full_url()
+                    print '  Failed again, %s %r' % (method, url)
+                    print '  Will raise: [%r]' % e
                 raise
-
-        #print 'Request sent'
-        #code = response.code
-        #print ('Server replied: %d' % code)
 
 # FIXME: HTTPConnection does not fully support 100-continue (the
 # server responses are just ignored)
@@ -352,23 +417,50 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
 #            connection.send(body)
 #            response = connection.getresponse()
 
-        # we need titled headers in a dict but
-        # response.getheaders returns a list of (lower(header).
-        # Let's title that because most of bzr handle titled
-        # headers, but maybe we should switch to lowercased
-        # headers...
-        # jam 20060908: I think we actually expect the headers to
-        #       be similar to mimetools.Message object, which uses
-        #       case insensitive keys. It lowers() all requests.
-        #       My concern is that the code may not do perfect title case.
-        #       For example, it may use Content-type rather than Content-Type
-        headers = {}
-        for header, value in (response.getheaders()):
-            headers[header.title()] = value
-        # FIXME: Implements a secured .read method
-        response.code = response.status
-        response.headers = headers
-        return response
+        if self._debuglevel > 0:
+            print 'Receives response: %r' % response
+            print '  For: %r(%r)' % (request.get_method(),
+                                     request.get_full_url())
+
+        if convert_to_addinfourl:
+            # Shamelessly copied from urllib2
+            req = request
+            r = response
+            r.recv = r.read
+            fp = socket._fileobject(r)
+            resp = urllib2.addinfourl(fp, r.msg, req.get_full_url())
+            resp.code = r.status
+            resp.msg = r.reason
+            if self._debuglevel > 0:
+                print 'Create addinfourl: %r' % resp
+                print '  For: %r(%r)' % (request.get_method(),
+                                         request.get_full_url())
+        else:
+            resp = response
+        return resp
+
+#       # we need titled headers in a dict but
+#       # response.getheaders returns a list of (lower(header).
+#       # Let's title that because most of bzr handle titled
+#       # headers, but maybe we should switch to lowercased
+#       # headers...
+#        # jam 20060908: I think we actually expect the headers to
+#        #       be similar to mimetools.Message object, which uses
+#        #       case insensitive keys. It lowers() all requests.
+#        #       My concern is that the code may not do perfect title case.
+#        #       For example, it may use Content-type rather than Content-Type
+#
+#        # When we get rid of addinfourl, we must ensure that bzr
+#        # always use titled headers and that any header received
+#        # from server is also titled
+#
+#        headers = {}
+#        for header, value in (response.getheaders()):
+#            headers[header.title()] = value
+#        # FIXME: Implements a secured .read method
+#        response.code = response.status
+#        response.headers = headers
+#        return response
 
 
 class HTTPHandler(AbstractHTTPHandler):
@@ -379,6 +471,128 @@ class HTTPHandler(AbstractHTTPHandler):
 class HTTPSHandler(AbstractHTTPHandler):
     def https_open(self, request):
         return self.do_open(HTTPSConnection, request)
+
+
+class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
+    """Handles redirect requests.
+
+    We have to implement our own scheme because we use a specific
+    Request object and because we want to implement a specific
+    policy.
+    """
+    _debuglevel = 0
+    # RFC2616 says that only read requests should be redirected
+    # without interacting with the user. But bzr use some
+    # shortcuts to optimize against roundtrips which can leads to
+    # write requests being issued before read requests of
+    # containing dirs can be redirected. So we redirect write
+    # requests in the same way which seems to respect the spirit
+    # of the RFC if not its letter.
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        """See urllib2.HTTPRedirectHandler.redirect_request"""
+        # We would have preferred to update the request instead
+        # of creating a new one, but the urllib2.Request object
+        # has a too complicated creation process to provide a
+        # simple enough equivalent update process. Instead, when
+        # redirecting, we only update the original request with a
+        # reference to the following request in the redirect
+        # chain.
+
+        # Some codes make no sense on out context and are treated
+        # as errors:
+
+        # 300: Multiple choices for different representations of
+        #      the URI. Using that mechanisn with bzr will violate the
+        #      protocol neutrality of Transport.
+
+        # 304: Not modified (SHOULD only occurs with conditional
+        #      GETs which are not used by our implementation)
+
+        # 305: Use proxy. I can't imagine this one occurring in
+        #      our context-- vila/20060909
+
+        # 306: Unused (if the RFC says so...)
+
+        if code in (301, 302, 303, 307):
+            return Request(req.get_method(),newurl,
+                           headers = req.headers,
+                           origin_req_host = req.get_origin_req_host(),
+                           unverifiable = True,
+                           # TODO: It will be nice to be able to
+                           # detect virtual hosts sharing the same
+                           # IP address, that will allow us to
+                           # share the same connection...
+                           connection = None,
+                           parent = req,
+                           )
+        else:
+            raise urllib2.HTTPError(req.get_full_url(), code, msg, headers, fp)
+
+    # Copied from urllib2 to be able to fake_close the associated
+    # connection, *before* issuing the redirected request but
+    # *after* having eventually raised an error
+    def http_error_30x(self, req, fp, code, msg, headers):
+        """Requests the redirected to URI"""
+        # Some servers (incorrectly) return multiple Location headers
+        # (so probably same goes for URI).  Use first header.
+
+        # TODO: Once we get rid of addinfourl objects, the
+        # following will need to be updated to use correct case
+        # for headers.
+        if 'location' in headers:
+            newurl = headers.getheaders('location')[0]
+        elif 'uri' in headers:
+            newurl = headers.getheaders('uri')[0]
+        else:
+            return
+        if self._debuglevel > 0:
+            print 'Redirected to: %s' % newurl
+        newurl = urlparse.urljoin(req.get_full_url(), newurl)
+
+        # This call succeeds or raise an error. urllib2 returns
+        # if redirect_request returns None, but our
+        # redirect_request never returns None.
+        redirected_req = self.redirect_request(req, fp, code, msg, headers,
+                                               newurl)
+
+        # loop detection
+        # .redirect_dict has a key url if url was previously visited.
+        if hasattr(req, 'redirect_dict'):
+            visited = redirected_req.redirect_dict = req.redirect_dict
+            if (visited.get(newurl, 0) >= self.max_repeats or
+                len(visited) >= self.max_redirections):
+                raise urllib2.HTTPError(req.get_full_url(), code,
+                                        self.inf_msg + msg, headers, fp)
+        else:
+            visited = redirected_req.redirect_dict = req.redirect_dict = {}
+        visited[newurl] = visited.get(newurl, 0) + 1
+
+        # We can close the fp now that we are sure that we won't
+        # use it with HTTPError.
+        fp.close()
+        # We have all we need already in the response
+        req.connection.fake_close()
+
+        return self.parent.open(redirected_req)
+
+    http_error_302 = http_error_303 = http_error_307 = http_error_30x
+
+    def http_error_301(self, req, fp, code, msg, headers):
+        response = self.http_error_30x(req, fp, code, msg, headers)
+        # If one or several 301 response occur during the
+        # redirection chain, we MUST update the original request
+        # to indicate where the URI where finally found.
+
+        original_req = req
+        while original_req.parent is not None:
+            original_req = original_req.parent
+            if original_req.redirected_to is None:
+                # Only the last occurring 301 should be taken
+                # into account i.e. the first occurring here when
+                # redirected_to has not yet been set.
+                original_req.redirected_to = redirected_url
+        return response
 
 
 # The errors we want to handle in the Transport object.
@@ -393,14 +607,12 @@ class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
     def http_response(self, request, response):
         code, msg, hdrs = response.code, response.msg, response.info()
 
-        if code not in (200, 201, 204, 206,
-                        302,# FIXME: Not sure we get this one
-                        403, 404, 405, 409, 412,
+        if code not in (200, 206, # GET/HEAD
+                        201, 204, 403, 404, 405, 409, 412, # DAV
                         999, # FIXME: <cough> search for 999 in this file
                         ):
             response = self.parent.error('http', request, response,
                                          code, msg, hdrs)
-
         return response
 
     https_response = http_response
@@ -424,8 +636,7 @@ class HttpDavTransport(HttpTransportBase):
                                    HTTPHandler,
                                    HTTPSHandler,
                                    #urllib2.HTTPDefaultErrorHandler,
-                                   # FIXME: specializes ?
-                                   #urllib2.HTTPRedirectHandler,
+                                   HTTPRedirectHandler,
                                    HTTPErrorProcessor,
                                    )
 
@@ -464,13 +675,21 @@ class HttpDavTransport(HttpTransportBase):
         if self._connection is not None:
             request.connection = self._connection
 
-        #mutter('Request method is: [%s]' % request.get_method())
+        mutter('%s: [%s]' % (request.method, request.get_full_url()))
         if self._debuglevel > 0:
-            print 'perform: %s base: %s' % (request.get_method(), self.base)
+            print 'perform: %s base: %s, url: %s' % (request.method, self.base,
+                                                     request.get_full_url())
 
         response = self._opener.open(request)
         if self._connection is None:
             self._first_connection(request)
+
+        if request.redirected_to is not None:
+            # TODO: Update the transport so that subsequent
+            # requests goes directly to the right host
+            if self._debuglevel > 0:
+                print 'redirected from: %s to: %s' % (request.get_full_url(),
+                                                      request.redirected_to)
 
         return response
 
@@ -491,6 +710,7 @@ class HttpDavTransport(HttpTransportBase):
         request = Request('HEAD', abspath)
         response = self._perform(request)
 
+        self._connection.fake_close()
         return response
 
     def has(self, relpath):
@@ -520,13 +740,13 @@ class HttpDavTransport(HttpTransportBase):
 
         code = response.code
         if code == 404: # not found
-            # Close response to free the httplib.HTTPConnection pipeline
-            response.close()
+            # FIXME: Check that there is really no message to be read
+            self._connection.fake_close()
             raise NoSuchFile(abspath)
 
         data = handle_response(abspath, code, response.headers, response)
         # Close response to free the httplib.HTTPConnection pipeline
-        response.close()
+        self._connection.fake_close()
         return code, data
 
     def put_file(self, relpath, f, mode=None):
@@ -644,6 +864,9 @@ class HttpDavTransport(HttpTransportBase):
         #       Also, if we have to read the whole file into memory anyway
         #       it would be better to implement put_bytes(), and redefine
         #       put_file as self.put_bytes(relpath, f.read())
+
+        # Once we teach httplib to do that, we will use file-like
+        # objects (see handling chunked data and 100-continue).
         abspath = self._real_abspath(relpath)
 
         request = PUTRequest(abspath, bytes)
@@ -670,6 +893,7 @@ class HttpDavTransport(HttpTransportBase):
         #       each function. Is it possible to factor it out into
         #       a helper rather than repeat it for each one?
         #       (I realize there is some custom behavior)
+        # Yes it is and will be done.
         if code == 403:
             # Forbidden  (generally server  misconfigured  or not
             # configured for DAV)
