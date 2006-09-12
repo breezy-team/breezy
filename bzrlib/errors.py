@@ -1115,6 +1115,13 @@ class UnsupportedEOLMarker(BadBundle):
         BzrNewError.__init__(self)    
 
 
+class NoSmartServer(NotBranchError):
+    """No smart server available at %(url)s"""
+
+    def __init__(self, url):
+        self.url = url
+
+
 class UnknownSSH(BzrNewError):
     """Unrecognised value for BZR_SSH environment variable: %(vendor)s"""
 
