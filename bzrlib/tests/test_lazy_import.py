@@ -920,7 +920,7 @@ class TestLazyImportProcessor(ImportReplacerHelper):
 
         text = 'import %s as root6' % (self.root_name,)
         proc = lazy_import.ImportProcessor(InstrumentedImportReplacer)
-        proc.lazy_import(text=text, scope=globals())
+        proc.lazy_import(scope=globals(), text=text)
 
         # So 'root6' should be a lazy import
         self.assertEqual(InstrumentedImportReplacer,
@@ -953,7 +953,7 @@ class TestLazyImportProcessor(ImportReplacerHelper):
 import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
 """ % self.__dict__
         proc = lazy_import.ImportProcessor(InstrumentedImportReplacer)
-        proc.lazy_import(text=text, scope=globals())
+        proc.lazy_import(scope=globals(), text=text)
 
         # So 'submoda7' should be a lazy import
         self.assertEqual(InstrumentedImportReplacer,
@@ -969,4 +969,29 @@ import %(root_name)s.%(sub_name)s.%(submoda_name)s as submoda7
                           '_replace',
                           ('_import', 'submoda7'),
                           ('import', submoda_path, []),
+                         ], self.actions)
+
+    def test_lazy_import(self):
+        """Smoke test that lazy_import() does the right thing"""
+        try:
+            root8
+        except NameError:
+            pass # root8 should not be defined yet
+        else:
+            self.fail('root8 was not supposed to exist yet')
+        lazy_import.lazy_import(globals(),
+                                'import %s as root8' % (self.root_name,),
+                                lazy_import_class=InstrumentedImportReplacer)
+
+        self.assertEqual(InstrumentedImportReplacer,
+                         object.__getattribute__(root8, '__class__'))
+
+        self.assertEqual(1, root8.var1)
+        self.assertEqual(1, root8.var1)
+        self.assertEqual(1, root8.func1(1))
+
+        self.assertEqual([('__getattribute__', 'var1'),
+                          '_replace',
+                          ('_import', 'root8'),
+                          ('import', self.root_name, []),
                          ], self.actions)

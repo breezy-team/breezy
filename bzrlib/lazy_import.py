@@ -190,7 +190,7 @@ class ImportProcessor(object):
         else:
             self._lazy_import_class = lazy_import_class
 
-    def lazy_import(self, text, scope):
+    def lazy_import(self, scope, text):
         """Convert the given text into a bunch of lazy import objects.
 
         This takes a text string, which should be similar to normal python
@@ -324,3 +324,31 @@ class ImportProcessor(object):
         if cur is not None:
             raise errors.InvalidImportLine(cur, 'Unmatched parenthesis')
         return out
+
+
+def lazy_import(scope, text, lazy_import_class=None):
+    """Create lazy imports for all of the imports in text.
+
+    This is typically used as something like:
+    from bzrlib.lazy_import import lazy_import
+    lazy_import(globals(), '''
+    from bzrlib import (
+        foo,
+        bar,
+        baz,
+        )
+    import bzrlib.branch
+    import bzrlib.transport
+    ''')
+
+    Then 'foo, bar, baz' and 'bzrlib' will exist as lazy-loaded
+    objects which will be replaced with a real object on first use.
+
+    In general, it is best to only load modules in this way. This is
+    because other objects (functions/classes/variables) are frequently
+    used without accessing a member, which means we cannot tell they
+    have been used.
+    """
+    # This is just a helper around ImportProcessor.lazy_import
+    proc = ImportProcessor(lazy_import_class=lazy_import_class)
+    return proc.lazy_import(scope, text)
