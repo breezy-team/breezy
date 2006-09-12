@@ -31,7 +31,7 @@ from bzrlib import (
         lockdir,
         lockable_files,
         osutils,
-        revision,
+        revision as _mod_revision,
         transport,
         tree,
         ui,
@@ -227,7 +227,7 @@ class Branch(object):
                     last_revision = from_history[-1]
                 else:
                     # no history in the source branch
-                    last_revision = revision.NULL_REVISION
+                    last_revision = _mod_revision.NULL_REVISION
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
                                          pb=nested_pb)
@@ -1124,7 +1124,7 @@ class BzrBranch(Branch):
         # make a new revision history from the graph
         current_rev_id = revision_id
         new_history = []
-        while current_rev_id not in (None, revision.NULL_REVISION):
+        while current_rev_id not in (None, _mod_revision.NULL_REVISION):
             new_history.append(current_rev_id)
             current_rev_id_parents = stop_graph[current_rev_id]
             try:

@@ -34,6 +34,7 @@ from bzrlib import (
     errors,
     lockable_files,
     lockdir,
+    revision as _mod_revision,
     urlutils,
     xml4,
     xml5,
@@ -43,7 +44,6 @@ from bzrlib.osutils import (
     sha_strings,
     sha_string,
     )
-import bzrlib.revision
 from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
@@ -691,7 +691,7 @@ class BzrDirPreSplitOut(BzrDir):
         # done on this format anyway. So - acceptable wart.
         result = self.open_workingtree()
         if revision_id is not None:
-            if revision_id == bzrlib.revision.NULL_REVISION:
+            if revision_id == _mod_revision.NULL_REVISION:
                 result.set_parent_ids([])
             else:
                 result.set_parent_ids([revision_id])
