@@ -923,7 +923,11 @@ class TestCase(unittest.TestCase):
         retcode = process.wait()
         supplied_retcode = kwargs.get('retcode', 0)
         if supplied_retcode is not None:
-            assert supplied_retcode == retcode
+            if supplied_retcode != retcode:
+                mutter('Output of bzr %s:\n%s', args, out)
+                mutter('Error for bzr %s:\n%s', args, err)
+                self.fail('Command bzr %s failed with retcode %s != %s'
+                          % (args, supplied_retcode, retcode))
         return [out, err]
 
     def check_inventory_shape(self, inv, shape):
