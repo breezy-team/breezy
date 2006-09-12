@@ -22,6 +22,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
+      (Vincent Ladeuil, #59835)
+
     * Handle boundary="" lines properly to allow access through a Squid proxy.
       (John Arbash Meinel, #57723)
 
