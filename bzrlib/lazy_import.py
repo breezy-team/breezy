@@ -64,7 +64,7 @@ class ScopeReplacer(object):
             # make it forbidden, and try to give a good error.
             raise errors.IllegalUseOfScopeReplacer(
                 name, msg="Object already cleaned up, did you assign it"
-                          "to another variable?",
+                          " to another variable?",
                 extra=e)
         obj = factory(self, scope, name)
         scope[name] = obj
