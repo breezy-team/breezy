@@ -2747,7 +2747,7 @@ class cmd_break_lock(Command):
 def _merge_helper(other_revision, base_revision,
                   check_clean=True, ignore_zero=False,
                   this_dir=None, backup_files=False,
-                  merge_type=_mod_merge.Merge3Merger,
+                  merge_type=None,
                   file_list=None, show_base=False, reprocess=False,
                   pb=DummyProgress()):
     """Merge changes into a tree.
@@ -2777,6 +2777,9 @@ def _merge_helper(other_revision, base_revision,
     clients might prefer to call merge.merge_inner(), which has less magic 
     behavior.
     """
+    # Loading it late, so that we don't always have to import bzrlib.merge
+    if merge_type is None:
+        merge_type = _mod_merge.Merge3Merger
     if this_dir is None:
         this_dir = u'.'
     this_tree = WorkingTree.open_containing(this_dir)[0]
