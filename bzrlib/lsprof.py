@@ -165,7 +165,7 @@ def label(code, calltree=False):
         for k, v in sys.modules.items():
             if v is None:
                 continue
-            if not hasattr(v, '__file__'):
+            if getattr(v, '__file__', None) is None:
                 continue
             if not isinstance(v.__file__, str):
                 continue

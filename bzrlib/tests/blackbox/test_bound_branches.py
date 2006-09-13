@@ -324,8 +324,8 @@ class TestBoundBranches(TestCaseWithTransport):
         bzr('merge', '../other')
 
         self.failUnlessExists('c')
-        tree = WorkingTree.open('.')
-        self.assertEqual([new_rev_id], tree.pending_merges())
+        tree = WorkingTree.open('.') # opens child
+        self.assertEqual([new_rev_id], tree.get_parent_ids()[1:])
 
         # Make sure the local branch has the installed revision
         bzr('cat-revision', new_rev_id)

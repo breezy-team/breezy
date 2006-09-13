@@ -20,7 +20,7 @@
 import difflib
 
 
-from bzrlib.errors import KnitError, RevisionAlreadyPresent
+from bzrlib.errors import KnitError, RevisionAlreadyPresent, NoSuchFile
 from bzrlib.knit import (
     KnitVersionedFile,
     KnitPlainFactory,
@@ -36,12 +36,14 @@ from bzrlib.weave import Weave
 class KnitTests(TestCaseWithTransport):
     """Class containing knit test helper routines."""
 
-    def make_test_knit(self, annotate=False):
+    def make_test_knit(self, annotate=False, delay_create=False):
         if not annotate:
             factory = KnitPlainFactory()
         else:
             factory = None
-        return KnitVersionedFile('test', get_transport('.'), access_mode='w', factory=factory, create=True)
+        return KnitVersionedFile('test', get_transport('.'), access_mode='w',
+                                 factory=factory, create=True,
+                                 delay_create=delay_create)
 
 
 class BasicKnitTests(KnitTests):
@@ -312,6 +314,7 @@ class BasicKnitTests(KnitTests):
         # this tests that a new knit index file has the expected content
         # and that is writes the data we expect as records are added.
         knit = self.make_test_knit(True)
+        # Now knit files are not created until we first add data to them
         self.assertFileEqual("# bzr knit index 8\n", 'test.kndx')
         knit.add_lines_with_ghosts('revid', ['a_ghost'], ['a\n'])
         self.assertFileEqual(
@@ -341,6 +344,91 @@ class BasicKnitTests(KnitTests):
         knit = KnitVersionedFile('test', get_transport('.'), access_mode='r')
         self.assertEqual(['revid', 'revid2', 'revid3'], knit.versions())
         self.assertEqual(['revid2'], knit.get_parents('revid3'))
+
+    def test_delay_create(self):
+        """Test that passing delay_create=True creates files late"""
+        knit = self.make_test_knit(annotate=True, delay_create=True)
+        self.failIfExists('test.knit')
+        self.failIfExists('test.kndx')
+        knit.add_lines_with_ghosts('revid', ['a_ghost'], ['a\n'])
+        self.failUnlessExists('test.knit')
+        self.assertFileEqual(
+            "# bzr knit index 8\n"
+            "\n"
+            "revid fulltext 0 84 .a_ghost :",
+            'test.kndx')
+
+    def test_create_parent_dir(self):
+        """create_parent_dir can create knits in nonexistant dirs"""
+        # Has no effect if we don't set 'delay_create'
+        trans = get_transport('.')
+        self.assertRaises(NoSuchFile, KnitVersionedFile, 'dir/test',
+                          trans, access_mode='w', factory=None,
+                          create=True, create_parent_dir=True)
+        # Nothing should have changed yet
+        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
+                                 factory=None, create=True,
+                                 create_parent_dir=True,
+                                 delay_create=True)
+        self.failIfExists('dir/test.knit')
+        self.failIfExists('dir/test.kndx')
+        self.failIfExists('dir')
+        knit.add_lines('revid', [], ['a\n'])
+        self.failUnlessExists('dir')
+        self.failUnlessExists('dir/test.knit')
+        self.assertFileEqual(
+            "# bzr knit index 8\n"
+            "\n"
+            "revid fulltext 0 84  :",
+            'dir/test.kndx')
+
+    def test_create_mode_700(self):
+        trans = get_transport('.')
+        if not trans._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
+                                 factory=None, create=True,
+                                 create_parent_dir=True,
+                                 delay_create=True,
+                                 file_mode=0600,
+                                 dir_mode=0700)
+        knit.add_lines('revid', [], ['a\n'])
+        self.assertTransportMode(trans, 'dir', 0700)
+        self.assertTransportMode(trans, 'dir/test.knit', 0600)
+        self.assertTransportMode(trans, 'dir/test.kndx', 0600)
+
+    def test_create_mode_770(self):
+        trans = get_transport('.')
+        if not trans._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
+                                 factory=None, create=True,
+                                 create_parent_dir=True,
+                                 delay_create=True,
+                                 file_mode=0660,
+                                 dir_mode=0770)
+        knit.add_lines('revid', [], ['a\n'])
+        self.assertTransportMode(trans, 'dir', 0770)
+        self.assertTransportMode(trans, 'dir/test.knit', 0660)
+        self.assertTransportMode(trans, 'dir/test.kndx', 0660)
+
+    def test_create_mode_777(self):
+        trans = get_transport('.')
+        if not trans._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        knit = KnitVersionedFile('dir/test', trans, access_mode='w',
+                                 factory=None, create=True,
+                                 create_parent_dir=True,
+                                 delay_create=True,
+                                 file_mode=0666,
+                                 dir_mode=0777)
+        knit.add_lines('revid', [], ['a\n'])
+        self.assertTransportMode(trans, 'dir', 0777)
+        self.assertTransportMode(trans, 'dir/test.knit', 0666)
+        self.assertTransportMode(trans, 'dir/test.kndx', 0666)
 
     def test_plan_merge(self):
         my_knit = self.make_test_knit(annotate=True)
