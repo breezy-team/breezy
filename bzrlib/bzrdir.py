@@ -39,6 +39,7 @@ from bzrlib.osutils import (
                             sha_strings,
                             sha_string,
                             )
+import bzrlib.revision
 from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
@@ -686,7 +687,10 @@ class BzrDirPreSplitOut(BzrDir):
         # done on this format anyway. So - acceptable wart.
         result = self.open_workingtree()
         if revision_id is not None:
-            result.set_last_revision(revision_id)
+            if revision_id == bzrlib.revision.NULL_REVISION:
+                result.set_parent_ids([])
+            else:
+                result.set_parent_ids([revision_id])
         return result
 
     def get_branch_transport(self, branch_format):
@@ -1475,7 +1479,7 @@ class ConvertBzrDir4To5(Converter):
         inv = serializer_v4.read_inventory(self.branch.control_files.get('inventory'))
         new_inv_xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
         # FIXME inventory is a working tree change.
-        self.branch.control_files.put('inventory', new_inv_xml)
+        self.branch.control_files.put('inventory', StringIO(new_inv_xml))
 
     def _write_all_weaves(self):
         controlweaves = WeaveStore(self.bzrdir.transport, prefixed=False)
@@ -1566,7 +1570,7 @@ class ConvertBzrDir4To5(Converter):
             entries = inv.iter_entries()
             entries.next()
             for path, ie in entries:
-                assert hasattr(ie, 'revision'), \
+                assert getattr(ie, 'revision', None) is not None, \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
         new_inv_xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)

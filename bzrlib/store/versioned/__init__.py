@@ -113,12 +113,12 @@ class VersionedFileStore(TransportStore):
     def _put(self, file_id, f):
         fn = self.filename(file_id)
         try:
-            return self._transport.put(fn, f, mode=self._file_mode)
+            return self._transport.put_file(fn, f, mode=self._file_mode)
         except errors.NoSuchFile:
             if not self._prefixed:
                 raise
             self._transport.mkdir(os.path.dirname(fn), mode=self._dir_mode)
-            return self._transport.put(fn, f, mode=self._file_mode)
+            return self._transport.put_file(fn, f, mode=self._file_mode)
 
     def get_weave(self, file_id, transaction, _filename=None):
         """Return the VersionedFile for file_id.

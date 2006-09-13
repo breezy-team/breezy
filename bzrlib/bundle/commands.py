@@ -14,7 +14,6 @@ import bzrlib.errors as errors
 from bzrlib.option import Option
 from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note
 from bzrlib import urlutils
 
