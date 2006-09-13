@@ -17,6 +17,9 @@ IN DEVELOPMENT
       return urlescaped paths. This is now tested (there were bugs in a few
       of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
 
+    * Transport behaviour at the root of the URL is now defined and tested.
+      (Andrew Bennetts, Robert Collins)
+
 bzr 0.10.0RC1  2006-08-28
   
   IMPROVEMENTS:
