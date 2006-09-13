@@ -898,6 +898,9 @@ class TestCase(unittest.TestCase):
                 osutils.set_or_unset_env(env_var, value)
 
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        if not os.path.isfile(bzr_path):
+            # We are probably installed. Assume sys.argv is the right file
+            bzr_path = sys.argv[0]
         args = list(args)
 
         try:
@@ -920,7 +923,11 @@ class TestCase(unittest.TestCase):
         retcode = process.wait()
         supplied_retcode = kwargs.get('retcode', 0)
         if supplied_retcode is not None:
-            assert supplied_retcode == retcode
+            if supplied_retcode != retcode:
+                mutter('Output of bzr %s:\n%s', args, out)
+                mutter('Error for bzr %s:\n%s', args, err)
+                self.fail('Command bzr %s failed with retcode %s != %s'
+                          % (args, supplied_retcode, retcode))
         return [out, err]
 
     def check_inventory_shape(self, inv, shape):

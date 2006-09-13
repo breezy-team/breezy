@@ -16,12 +16,19 @@ IN DEVELOPMENT
 
     * Commit performs one less XML parse. (Robert Collins)
 
+    * ``bzr checkout --lightweight`` now operates on readonly branches as well
+      as readwrite branches. This fixes bug #39542 for lightweight checkouts 
+      but not for heavyweight ones (the default). (Robert Collins)
+
     * ``bzrlib.lazy_import.lazy_import`` function to create on-demand 
       objects.  This allows all imports to stay at the global scope, but
       modules will not actually be imported if they are not used.
       (John Arbash Meinel)
 
   BUG FIXES:
+
+    * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
+      (Vincent Ladeuil, #59835)
 
     * Handle boundary="" lines properly to allow access through a Squid proxy.
       (John Arbash Meinel, #57723)
@@ -161,6 +168,9 @@ bzr 0.10  2006-08-29
     * Testament handles more cases when content is unicode. Specific bug was
       in handling of revision properties. (John Arbash Meinel, Holger Krekel,
       #54723)
+
+    * The bzr selftest was failing on installed versions due to a bug in a new
+      test helper. (John Arbash Meinel, Robert Collins, #58057)
 
   INTERNALS:
 
