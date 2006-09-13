@@ -67,7 +67,7 @@ class TestBranch(ExternalBase):
         self.runbzr('branch source target --basis commit_tree')
         target = bzrdir.BzrDir.open('target')
         self.assertEqual('2', target.open_branch().last_revision())
-        self.assertEqual('2', target.open_workingtree().last_revision())
+        self.assertEqual(['2'], target.open_workingtree().get_parent_ids())
         self.assertTrue(target.open_branch().repository.has_revision('2'))
 
     def test_branch_only_copies_history(self):
