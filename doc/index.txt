@@ -19,29 +19,33 @@ and what is documented on the wiki.
 * `Configuration <configuration.htm>`_ 
   (wiki page: http://bazaar-vcs.org/ConfiguringBzr)
 
-    Information on how to configure Bazaar
+    Information on how to configure Bazaar.
 
 * `Setting up email <setting_up_email.htm>`_
   (wiki page: http://bazaar-vcs.org/BzrSettingEmail)
 
     The various ways that exist to tell Bazaar your email address for
-    commits
+    commits.
 
 * `Plugins <plugins.htm>`_
   (wiki page: http://bazaar-vcs.org/BzrPlugins)
     
-    Information on how to use plugins in Bazaar
+    Information on how to use plugins in Bazaar.
 
 * `Specifying revision <specifying_revisions.htm>`_
   (wiki page: http://bazaar-vcs.org/BzrRevisionSpec)
 
     Description of the subarguments for ``-r`` as used by commands such as
-    **bzr log** and **bzr merge**
+    **bzr log** and **bzr merge**.
 
 * `Using aliases <using_aliases.htm>`_
   (wiki page: http://bazaar-vcs.org/CommandAliases)
 
     How to setup and use command aliases.
+
+* `Running a Bazaar server <server.htm>`_
+  
+    How to run a server to allow remote access to Bazaar branches.
 
 This document automatically created based on output of **bzr help**:
 
