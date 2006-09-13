@@ -91,7 +91,6 @@ MODULES_TO_DOCTEST = [
                       bzrlib.lockdir,
                       bzrlib.merge3,
                       bzrlib.option,
-                      bzrlib.osutils,
                       bzrlib.store
                       ]
 

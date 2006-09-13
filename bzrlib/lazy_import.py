@@ -19,9 +19,6 @@
 This includes waiting to import a module until it is actually used.
 """
 
-import re
-import sys
-
 from bzrlib import (
     errors,
     )
