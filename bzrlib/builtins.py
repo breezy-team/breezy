@@ -2763,8 +2763,10 @@ class cmd_serve(Command):
         Option('inet',
                help='serve on stdin/out for use from inetd or sshd'),
         Option('port',
-               help='listen for connections on nominated port',
-               type=int),
+               help='listen for connections on nominated port of the form '
+                    '[hostname:]portnumber. Passing 0 as the port number will '
+                    'result in a dynamically allocated port.',
+               type=str),
         Option('directory',
                help='serve contents of directory',
                type=unicode),
@@ -2779,7 +2781,13 @@ class cmd_serve(Command):
         if inet:
             server = smart.SmartStreamServer(sys.stdin, sys.stdout, t)
         elif port is not None:
-            server = smart.SmartTCPServer(t, port=port)
+            if ':' in port:
+                host, port = port.split(':')
+            else:
+                host = '127.0.0.1'
+            server = smart.SmartTCPServer(t, host=host, port=int(port))
+            print 'listening on port: ', server.port
+            sys.stdout.flush()
         server.serve()
 
 
