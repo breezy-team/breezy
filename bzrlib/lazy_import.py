@@ -17,6 +17,27 @@
 """Functionality to create lazy evaluation objects.
 
 This includes waiting to import a module until it is actually used.
+
+Most commonly, the 'lazy_import' function is used to import other modules
+in an on-demand fashion. Typically use looks like:
+    from bzrlib.lazy_import import lazy_import
+    lazy_import(globals(), '''
+    from bzrlib import (
+        errors,
+        osutils,
+        branch,
+        )
+    import bzrlib.branch
+    ''')
+
+    Then 'errors, osutils, branch' and 'bzrlib' will exist as lazy-loaded
+    objects which will be replaced with a real object on first use.
+
+    In general, it is best to only load modules in this way. This is because
+    it isn't safe to pass these variables to other functions before they
+    have been replaced. This is especially true for constants, sometimes
+    true for classes or functions (when used as a factory, or you want
+    to inherit from them).
 """
 
 import re
