@@ -47,7 +47,7 @@ class TestCommands(ExternalBase):
 
         # is_ignored() will now create the user global ignore file
         # if it doesn't exist, so make sure we ignore it in our tests
-        ignores._set_user_ignores(['*.tmp', './.bazaar'])
+        ignores._set_user_ignores(['*.tmp'])
 
         self.build_tree_contents(
             [('foo.tmp', '.tmp files are ignored by default'),

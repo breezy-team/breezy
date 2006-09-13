@@ -325,7 +325,7 @@ class InventoryEntry(object):
 
     @staticmethod
     def versionable_kind(kind):
-        return kind in ('file', 'directory', 'symlink')
+        return (kind in ('file', 'directory', 'symlink'))
 
     def check(self, checker, rev_id, inv, tree):
         """Check this inventory entry is intact.
@@ -1017,7 +1017,7 @@ class Inventory(object):
         >>> '456' in inv
         False
         """
-        return file_id in self._byid
+        return (file_id in self._byid)
 
     def __getitem__(self, file_id):
         """Return the entry for given file_id.
@@ -1215,7 +1215,25 @@ class Inventory(object):
         return bool(self.path2id(names))
 
     def has_id(self, file_id):
-        return self._byid.has_key(file_id)
+        return (file_id in self._byid)
+
+    def remove_recursive_id(self, file_id):
+        """Remove file_id, and children, from the inventory.
+        
+        :param file_id: A file_id to remove.
+        """
+        to_find_delete = [self._byid[file_id]]
+        to_delete = []
+        while to_find_delete:
+            ie = to_find_delete.pop()
+            to_delete.append(ie.file_id)
+            if ie.kind == 'directory':
+                to_find_delete.extend(ie.children.values())
+        for file_id in reversed(to_delete):
+            ie = self[file_id]
+            del self._byid[file_id]
+            if ie.parent_id is not None:
+                del self[ie.parent_id].children[ie.name]
 
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.

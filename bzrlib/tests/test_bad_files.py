@@ -18,7 +18,6 @@
 """Tests being able to ignore mad filetypes.
 """
 
-from bzrlib import ignores
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.errors import BadFileKindError
 import os
@@ -58,13 +57,10 @@ class TestBadFiles(TestCaseWithTransport):
         # put some bogus stuff in the tree
 
         # We can only continue if we have mkfifo
-        if not hasattr(os, 'mkfifo'):
+        if getattr(os, 'mkfifo', None) is None:
             # TODO: Ultimately this should be TestSkipped
             # or PlatformDeficiency
             return
-
-        # Ignore the .bazaar/ home directory that is created
-        ignores._set_user_ignores(['./.bazaar'])
 
         # status with nothing
         verify_status(self, wt, [])
