@@ -19,6 +19,7 @@
 This is a fairly thin wrapper on regular file IO.
 """
 
+import errno
 import os
 import shutil
 import sys
@@ -26,6 +27,7 @@ from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
 import tempfile
 
 from bzrlib import (
+    atomicfile,
     osutils,
     urlutils,
     )
@@ -37,6 +39,7 @@ from bzrlib.transport import Transport, Server
 
 
 _append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY
+_put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY
 
 
 class LocalTransport(Transport):
@@ -130,19 +133,20 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
-    def put(self, relpath, f, mode=None):
-        """Copy the file-like or string object into the location.
+    def put_file(self, relpath, f, mode=None):
+        """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
+        :param mode: The mode for the newly created file, 
+                     None means just use the default
         """
-        from bzrlib.atomicfile import AtomicFile
 
         path = relpath
         try:
             path = self._abspath(relpath)
             check_legal_path(path)
-            fp = AtomicFile(path, 'wb', new_mode=mode)
+            fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
         try:
@@ -150,6 +154,107 @@ class LocalTransport(Transport):
             fp.commit()
         finally:
             fp.close()
+
+    def put_bytes(self, relpath, bytes, mode=None):
+        """Copy the string into the location.
+
+        :param relpath: Location to put the contents, relative to base.
+        :param bytes:   String
+        """
+
+        path = relpath
+        try:
+            path = self._abspath(relpath)
+            check_legal_path(path)
+            fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
+        try:
+            fp.write(bytes)
+            fp.commit()
+        finally:
+            fp.close()
+
+    def _put_non_atomic_helper(self, relpath, writer,
+                               mode=None,
+                               create_parent_dir=False,
+                               dir_mode=None):
+        """Common functionality information for the put_*_non_atomic.
+
+        This tracks all the create_parent_dir stuff.
+
+        :param relpath: the path we are putting to.
+        :param writer: A function that takes an os level file descriptor
+            and writes whatever data it needs to write there.
+        :param mode: The final file mode.
+        :param create_parent_dir: Should we be creating the parent directory
+            if it doesn't exist?
+        """
+        abspath = self._abspath(relpath)
+        if mode is None:
+            # os.open() will automatically use the umask
+            local_mode = 0666
+        else:
+            local_mode = mode
+        try:
+            fd = os.open(abspath, _put_non_atomic_flags, local_mode)
+        except (IOError, OSError),e:
+            # We couldn't create the file, maybe we need to create
+            # the parent directory, and try again
+            if (not create_parent_dir
+                or e.errno not in (errno.ENOENT,errno.ENOTDIR)):
+                self._translate_error(e, relpath)
+            parent_dir = os.path.dirname(abspath)
+            if not parent_dir:
+                self._translate_error(e, relpath)
+            self._mkdir(parent_dir, mode=dir_mode)
+            # We created the parent directory, lets try to open the
+            # file again
+            try:
+                fd = os.open(abspath, _put_non_atomic_flags, local_mode)
+            except (IOError, OSError), e:
+                self._translate_error(e, relpath)
+        try:
+            st = os.fstat(fd)
+            if mode is not None and mode != S_IMODE(st.st_mode):
+                # Because of umask, we may still need to chmod the file.
+                # But in the general case, we won't have to
+                os.chmod(abspath, mode)
+            writer(fd)
+        finally:
+            os.close(fd)
+
+    def put_file_non_atomic(self, relpath, f, mode=None,
+                            create_parent_dir=False,
+                            dir_mode=None):
+        """Copy the file-like object into the target location.
+
+        This function is not strictly safe to use. It is only meant to
+        be used when you already know that the target does not exist.
+        It is not safe, because it will open and truncate the remote
+        file. So there may be a time when the file has invalid contents.
+
+        :param relpath: The remote location to put the contents.
+        :param f:       File-like object.
+        :param mode:    Possible access permissions for new file.
+                        None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
+        """
+        def writer(fd):
+            self._pump_to_fd(f, fd)
+        self._put_non_atomic_helper(relpath, writer, mode=mode,
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
+
+    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+                             create_parent_dir=False, dir_mode=None):
+        def writer(fd):
+            os.write(fd, bytes)
+        self._put_non_atomic_helper(relpath, writer, mode=mode,
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
 
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree."""
@@ -163,44 +268,64 @@ class LocalTransport(Transport):
             else:
                 yield relpath
 
-    def mkdir(self, relpath, mode=None):
-        """Create a directory at the given path."""
-        path = relpath
+    def _mkdir(self, abspath, mode=None):
+        """Create a real directory, filtering through mode"""
+        if mode is None:
+            # os.mkdir() will filter through umask
+            local_mode = 0777
+        else:
+            local_mode = mode
         try:
-            if mode is None:
-                # os.mkdir() will filter through umask
-                local_mode = 0777
-            else:
-                local_mode = mode
-            path = self._abspath(relpath)
-            os.mkdir(path, local_mode)
+            os.mkdir(abspath, local_mode)
             if mode is not None:
                 # It is probably faster to just do the chmod, rather than
                 # doing a stat, and then trying to compare
-                os.chmod(path, mode)
+                os.chmod(abspath, mode)
         except (IOError, OSError),e:
-            self._translate_error(e, path)
+            self._translate_error(e, abspath)
 
-    def append(self, relpath, f, mode=None):
-        """Append the text in the file-like object into the final location."""
-        abspath = self._abspath(relpath)
+    def mkdir(self, relpath, mode=None):
+        """Create a directory at the given path."""
+        self._mkdir(self._abspath(relpath), mode=mode)
+
+    def _get_append_file(self, relpath, mode=None):
+        """Call os.open() for the given relpath"""
+        file_abspath = self._abspath(relpath)
         if mode is None:
             # os.open() will automatically use the umask
             local_mode = 0666
         else:
             local_mode = mode
         try:
-            fd = os.open(abspath, _append_flags, local_mode)
+            return file_abspath, os.open(file_abspath, _append_flags, local_mode)
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
+
+    def _check_mode_and_size(self, file_abspath, fd, mode=None):
+        """Check the mode of the file, and return the current size"""
+        st = os.fstat(fd)
+        if mode is not None and mode != S_IMODE(st.st_mode):
+            # Because of umask, we may still need to chmod the file.
+            # But in the general case, we won't have to
+            os.chmod(file_abspath, mode)
+        return st.st_size
+
+    def append_file(self, relpath, f, mode=None):
+        """Append the text in the file-like object into the final location."""
+        file_abspath, fd = self._get_append_file(relpath, mode=mode)
         try:
-            st = os.fstat(fd)
-            result = st.st_size
-            if mode is not None and mode != S_IMODE(st.st_mode):
-                # Because of umask, we may still need to chmod the file.
-                # But in the general case, we won't have to
-                os.chmod(abspath, mode)
+            result = self._check_mode_and_size(file_abspath, fd, mode=mode)
             self._pump_to_fd(f, fd)
+        finally:
+            os.close(fd)
+        return result
+
+    def append_bytes(self, relpath, bytes, mode=None):
+        """Append the text in the string into the final location."""
+        file_abspath, fd = self._get_append_file(relpath, mode=mode)
+        try:
+            result = self._check_mode_and_size(file_abspath, fd, mode=mode)
+            os.write(fd, bytes)
         finally:
             os.close(fd)
         return result

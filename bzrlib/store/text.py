@@ -63,7 +63,7 @@ class TextStore(bzrlib.store.TransportStore):
 
     def _try_put(self, fn, f):
         try:
-            self._transport.put(fn, f, mode=self._file_mode)
+            self._transport.put_file(fn, f, mode=self._file_mode)
         except NoSuchFile:
             if not self._prefixed:
                 raise
@@ -71,7 +71,7 @@ class TextStore(bzrlib.store.TransportStore):
                 self._transport.mkdir(os.path.dirname(fn), mode=self._dir_mode)
             except FileExists:
                 pass
-            self._transport.put(fn, f, mode=self._file_mode)
+            self._transport.put_file(fn, f, mode=self._file_mode)
 
     def _get(self, fn):
         if fn.endswith('.gz'):
@@ -114,7 +114,7 @@ class TextStore(bzrlib.store.TransportStore):
         # gzip.GzipFile.read() requires a tell() function
         # but some transports return objects that cannot seek
         # so buffer them in a StringIO instead
-        if hasattr(f, 'tell'):
+        if getattr(f, 'tell', None) is not None:
             return gzip.GzipFile(mode='rb', fileobj=f)
         else:
             from cStringIO import StringIO

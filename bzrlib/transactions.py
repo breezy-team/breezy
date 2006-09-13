@@ -59,7 +59,7 @@ class ReadOnlyTransaction(object):
 
     def is_clean(self, an_object):
         """Return True if an_object is clean."""
-        return an_object in self._clean_objects
+        return (an_object in self._clean_objects)
 
     def register_clean(self, an_object, precious=False):
         """Register an_object as being clean.
@@ -134,7 +134,7 @@ class WriteTransaction(ReadOnlyTransaction):
 
     def is_dirty(self, an_object):
         """Return True if an_object is dirty."""
-        return an_object in self._dirty_objects
+        return (an_object in self._dirty_objects)
 
     def register_dirty(self, an_object):
         """Register an_object as being dirty.

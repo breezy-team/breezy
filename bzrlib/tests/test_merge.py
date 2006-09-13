@@ -17,6 +17,7 @@
 import os
 from StringIO import StringIO
 
+from bzrlib import conflicts
 from bzrlib.branch import Branch
 from bzrlib.builtins import merge
 from bzrlib.conflicts import ConflictList, TextConflict
@@ -34,10 +35,10 @@ class TestMerge(TestCaseWithTransport):
 
     def test_pending(self):
         wt = self.make_branch_and_tree('.')
-        wt.commit("lala!")
-        self.assertEquals(len(wt.pending_merges()), 0)
+        rev_a = wt.commit("lala!")
+        self.assertEqual([rev_a], wt.get_parent_ids())
         merge([u'.', -1], [None, None])
-        self.assertEquals(len(wt.pending_merges()), 0)
+        self.assertEqual([rev_a], wt.get_parent_ids())
 
     def test_undo(self):
         wt = self.make_branch_and_tree('.')
@@ -60,9 +61,10 @@ class TestMerge(TestCaseWithTransport):
                           [None, None])
         return wt2
 
-    def test_merge_one(self):
+    def test_merge_one_file(self):
+        """Do a partial merge of a tree which should not affect tree parents."""
         wt1 = self.make_branch_and_tree('branch1')
-        wt1.commit('empty commit')
+        tip = wt1.commit('empty commit')
         wt2 = self.make_branch_and_tree('branch2')
         wt2.pull(wt1.branch)
         file('branch1/foo', 'wb').write('foo')
@@ -75,9 +77,9 @@ class TestMerge(TestCaseWithTransport):
         self.run_bzr('merge', '../branch1/foo')
         self.failUnlessExists('foo')
         self.failIfExists('bar')
-        wt2 = WorkingTree.open_containing('branch2')[0]
-        self.assertEqual(wt2.pending_merges(), [])
-
+        wt2 = WorkingTree.open('.') # opens branch2
+        self.assertEqual([tip], wt2.get_parent_ids())
+        
     def test_pending_with_null(self):
         """When base is forced to revno 0, pending_merges is set"""
         wt2 = self.test_unrelated()
@@ -86,10 +88,11 @@ class TestMerge(TestCaseWithTransport):
         br1.fetch(wt2.branch)
         # merge all of branch 2 into branch 1 even though they 
         # are not related.
-        self.assertRaises(BzrCommandError, merge, ['branch2', -1], 
+        self.assertRaises(BzrCommandError, merge, ['branch2', -1],
                           ['branch2', 0], reprocess=True, show_base=True)
         merge(['branch2', -1], ['branch2', 0], reprocess=True)
-        self.assertEquals(len(wt1.pending_merges()), 1)
+        self.assertEqual([br1.last_revision(), wt2.branch.last_revision()],
+            wt1.get_parent_ids())
         return (wt1, wt2.branch)
 
     def test_two_roots(self):
@@ -97,7 +100,7 @@ class TestMerge(TestCaseWithTransport):
         wt1, br2 = self.test_pending_with_null()
         wt1.commit("blah")
         last = wt1.branch.last_revision()
-        self.assertEquals(common_ancestor(last, last, wt1.branch.repository), last)
+        self.assertEqual(common_ancestor(last, last, wt1.branch.repository), last)
 
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
@@ -146,3 +149,27 @@ class TestMerge(TestCaseWithTransport):
         tree_a.set_conflicts(ConflictList([TextConflict('patha')]))
         merge_inner(tree_a.branch, tree_a, tree_a, this_tree=tree_a)
         self.assertEqual(1, len(tree_a.conflicts()))
+
+    def test_rmdir_conflict(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/b/'])
+        tree_a.add('b', 'b-id')
+        tree_a.commit('added b')
+        base_tree = tree_a.basis_tree()
+        tree_z = tree_a.bzrdir.sprout('z').open_workingtree()
+        self.build_tree(['a/b/c'])
+        tree_a.add('b/c')
+        tree_a.commit('added c')
+        os.rmdir('z/b')
+        tree_z.commit('removed b')
+        merge_inner(tree_z.branch, tree_a, base_tree, this_tree=tree_z)
+        self.assertEqual([
+            conflicts.MissingParent('Created directory', 'b', 'b-id'),
+            conflicts.UnversionedParent('Versioned directory', 'b', 'b-id')],
+            tree_z.conflicts())
+        merge_inner(tree_a.branch, tree_z.basis_tree(), base_tree, 
+                    this_tree=tree_a)
+        self.assertEqual([
+            conflicts.DeletingParent('Not deleting', 'b', 'b-id'),
+            conflicts.UnversionedParent('Versioned directory', 'b', 'b-id')],
+            tree_a.conflicts())

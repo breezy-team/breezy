@@ -20,7 +20,7 @@
 import sys
 import os
 
-from bzrlib import ignores, osutils, urlutils
+from bzrlib import osutils, urlutils
 import bzrlib
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter, note
@@ -471,7 +471,6 @@ class TestNonAscii(TestCaseWithTransport):
     def test_ignore(self):
         bzr = self.run_bzr_decode
 
-        ignores._set_user_ignores(['./.bazaar'])
         fname2 = self.info['filename'] + '2.txt'
         open(fname2, 'wb').write('ignored\n')
 
