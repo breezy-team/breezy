@@ -28,6 +28,7 @@ from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (ConnectionError,
                            ParamikoNotPresent,
                            TransportError,
+                           UnknownSSH,
                            )
 
 from bzrlib.osutils import pathjoin
@@ -101,7 +102,7 @@ def _get_ssh_vendor():
     # A check for putty's plink or lsh would go here.
 
     mutter('falling back to paramiko implementation')
-    _ssh_vendor = ssh.ParamikoVendor()
+    _ssh_vendor = ParamikoVendor()
     return _ssh_vendor
 
 

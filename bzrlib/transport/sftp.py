@@ -17,26 +17,23 @@
 
 """Implementation of Transport over SFTP, using paramiko."""
 
-import errno
 import os
 import random
 import select
 import socket
 import stat
-import subprocess
 import sys
 import time
 import urllib
 import urlparse
 import weakref
 
-from bzrlib.errors import (FileExists, 
+from bzrlib.errors import (FileExists,
                            NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError, 
+                           LockError,
                            PathError,
                            ParamikoNotPresent,
-                           UnknownSSH,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.trace import mutter, warning
