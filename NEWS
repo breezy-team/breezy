@@ -2,10 +2,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-    * Support bzr:// urls to work with the new RPC-based transport which will be
-      used with the upcoming high-performance smart server. The new command
-      ``bzr serve`` will invoke bzr in server mode, which processes these
-      requests. (Andrew Bennetts, Robert Collins, Martin Pool)
+    * Support bzr:// and bzr+ssh:// urls to work with the new RPC-based
+      transport which will be used with the upcoming high-performance smart
+      server. The new command ``bzr serve`` will invoke bzr in server mode,
+      which processes these requests. (Andrew Bennetts, Robert Collins, Martin
+      Pool)
 
   BUG FIXES:
 
@@ -22,6 +23,13 @@ IN DEVELOPMENT
     * Transport.list_dir() and Transport.iter_files_recursive() should always
       return urlescaped paths. This is now tested (there were bugs in a few
       of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
+
+    * Transport behaviour at the root of the URL is now defined and tested.
+      (Andrew Bennetts, Robert Collins)
+
+    * Add start_bzr_subprocess and stop_bzr_subprocess to allow test code to
+      continue running concurrently with a subprocess of bzr. (Andrew Bennetts,
+      Robert Collins)
 
     * Add a new method ``Transport.get_smart_client()``. This is provided to
       allow upgrades to a richer interface than the VFS one provided by

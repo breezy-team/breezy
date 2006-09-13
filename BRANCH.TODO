@@ -2,9 +2,19 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 
+Support use cases:
+ 1) bzr log over bzr+ssh to a machine without bzr 0.11 installed, without
+editing remote bashrc files.
+
+ 2) bzr log to a inet running bzr://
+
+Put both in the tutorial.
+
+
 The path/url handling in the smart server protocol needs some thought -- be
 explicit about what is to be passed over the wire and how it is to be
 interpreted.
+
 
 We should test that we upgrade branches and repositories through the smart
 server.
