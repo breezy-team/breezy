@@ -34,9 +34,9 @@ from bzrlib.transport import local, memory, smart, get_transport
 class SmartClientTests(tests.TestCase):
 
     def test_construct_smart_stream_client(self):
-        # make a new client; this really wants two fifos or sockets
-        # but the constructor should not do any IO
-        client = smart.SmartStreamClient(None, None)
+        # make a new client; this really wants a connector function that returns
+        # two fifos or sockets but the constructor should not do any IO
+        client = smart.SmartStreamClient(None)
 
 
 class TCPClientTests(tests.TestCaseWithTransport):
@@ -113,7 +113,7 @@ class BasicSmartTests(tests.TestCase):
         args = [sys.executable, sys.argv[0], 'serve', '--inet']
         child = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                  close_fds=True)
-        conn = smart.SmartStreamClient(to_server=child.stdin, from_server=child.stdout)
+        conn = smart.SmartStreamClient(lambda: (child.stdout, child.stdin))
         conn.query_version()
         conn.query_version()
         conn.disconnect()
@@ -160,10 +160,13 @@ class SmartTCPTests(tests.TestCase):
         
     def test_get_error_enoent(self):
         """Error reported from server getting nonexistent file."""
+        # The path in a raised NoSuchFile exception should be the precise path
+        # asked for by the client. This gives meaningful and unsurprising errors
+        # for users.
         try:
-            self.transport.get('not a file')
+            self.transport.get('not%20a%20file')
         except errors.NoSuchFile, e:
-            self.assertEqual('/not a file', e.path)
+            self.assertEqual('not%20a%20file', e.path)
         else:
             self.fail("get did not raise expected error")
 
@@ -171,7 +174,9 @@ class SmartTCPTests(tests.TestCase):
         """Test that cloning reuses the same connection."""
         # we create a real connection not a loopback one, but it will use the
         # same server and pipes
-        conn2 = smart.SmartTransport(self.transport.base, clone_from=self.transport)
+        conn2 = self.transport.clone('.')
+        # XXX: shouldn't this assert something?
+        # assertIdentical(self.transport._client, conn2._client), perhaps?
 
     def test_remote_path(self):
         self.assertEquals('/foo/bar',
@@ -223,6 +228,15 @@ class SmartServerTests(tests.TestCaseWithTransport):
         self.assert_(response.body.startswith('# Bazaar revision bundle '),
                      "doesn't look like a bundle: %r" % response.body)
         bundle = serializer.read_bundle(StringIO(response.body))
+
+
+class SmartTransportRegistration(tests.TestCase):
+
+    def test_registration(self):
+        t = get_transport('bzr+ssh://example.com/path')
+        self.assertIsInstance(t, smart.SmartSSHTransport)
+        self.assertEqual('example.com', t._host)
+
 
 # TODO: Client feature that does get_bundle and then installs that into a
 # branch; this can be used in place of the regular pull/fetch operation when

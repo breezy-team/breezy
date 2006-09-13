@@ -84,6 +84,9 @@ class TransportDecorator(Transport):
         """See Transport.get()."""
         return self._decorated.get(relpath)
 
+    def get_smart_client(self):
+        return self._decorated.get_smart_client()
+
     def has(self, relpath):
         """See Transport.has()."""
         return self._decorated.has(relpath)

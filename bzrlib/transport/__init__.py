@@ -1028,3 +1028,6 @@ register_lazy_transport('vfat+',
 register_lazy_transport('bzr://',
                         'bzrlib.transport.smart',
                         'SmartTCPTransport')
+register_lazy_transport('bzr+ssh://',
+                        'bzrlib.transport.smart',
+                        'SmartSSHTransport')

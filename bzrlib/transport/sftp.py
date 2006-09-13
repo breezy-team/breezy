@@ -179,8 +179,7 @@ class SFTPUrlHandling(Transport):
         return (scheme, username, password, host, port, path)
 
     def abspath(self, relpath):
-        """
-        Return the full url to the given relative path.
+        """Return the full url to the given relative path.
         
         @param relpath: the relative path or path components
         @type relpath: str or list
