@@ -151,17 +151,25 @@ def show_tree_status(wt, show_unchanged=None,
 
 def show_pending_merges(new, to_file):
     """Write out a display of pending merges in a working tree."""
-    pending = new.pending_merges()
-    branch = new.branch
-    if len(pending) == 0:
+    parents = new.get_parent_ids()
+    if len(parents) < 2:
         return
+    pending = parents[1:]
+    branch = new.branch
+    last_revision = parents[0]
     print >>to_file, 'pending merges:'
-    last_revision = branch.last_revision()
     if last_revision is not None:
-        ignore = set(branch.repository.get_ancestry(last_revision))
+        try:
+            ignore = set(branch.repository.get_ancestry(last_revision))
+        except errors.NoSuchRevision:
+            # the last revision is a ghost : assume everything is new 
+            # except for it
+            ignore = set([None, last_revision])
     else:
         ignore = set([None])
-    for merge in new.pending_merges():
+    # TODO: this could be improved using merge_sorted - we'd get the same 
+    # output rather than one level of indent.
+    for merge in pending:
         ignore.add(merge)
         try:
             from bzrlib.osutils import terminal_width
@@ -169,7 +177,7 @@ def show_pending_merges(new, to_file):
             m_revision = branch.repository.get_revision(merge)
             print >> to_file, ' ', line_log(m_revision, width - 3)
             inner_merges = branch.repository.get_ancestry(merge)
-            assert inner_merges[0] == None
+            assert inner_merges[0] is None
             inner_merges.pop(0)
             inner_merges.reverse()
             for mmerge in inner_merges:
