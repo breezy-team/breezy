@@ -45,7 +45,7 @@ FORMAT_1 = '# bzr weave file v5\n'
 
 
 def write_weave(weave, f, format=None):
-    if format == None or format == 1:
+    if format is None or format == 1:
         return write_weave_v5(weave, f)
     else:
         raise ValueError("unknown weave format %r" % format)

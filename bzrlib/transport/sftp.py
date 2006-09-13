@@ -379,12 +379,12 @@ class SFTPTransport(Transport):
             # on to the next
             cur_coalesced = cur_coalesced_stack.next()
 
-    def put(self, relpath, f, mode=None):
+    def put_file(self, relpath, f, mode=None):
         """
-        Copy the file-like or string object into the location.
+        Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
         :param mode: The final mode for the file
         """
         final_path = self._remote_path(relpath)
@@ -402,6 +402,19 @@ class SFTPTransport(Transport):
                 self._pump(f, fout)
             except (IOError, paramiko.SSHException), e:
                 self._translate_io_exception(e, tmp_abspath)
+            # XXX: This doesn't truly help like we would like it to.
+            #      The problem is that openssh strips sticky bits. So while we
+            #      can properly set group write permission, we lose the group
+            #      sticky bit. So it is probably best to stop chmodding, and
+            #      just tell users that they need to set the umask correctly.
+            #      The attr.st_mode = mode, in _sftp_open_exclusive
+            #      will handle when the user wants the final mode to be more 
+            #      restrictive. And then we avoid a round trip. Unless 
+            #      paramiko decides to expose an async chmod()
+
+            # This is designed to chmod() right before we close.
+            # Because we set_pipelined() earlier, theoretically we might 
+            # avoid the round trip for fout.close()
             if mode is not None:
                 self._sftp.chmod(tmp_abspath, mode)
             fout.close()
@@ -425,6 +438,83 @@ class SFTPTransport(Transport):
             # raise the original with its traceback if we can.
             raise
 
+    def _put_non_atomic_helper(self, relpath, writer, mode=None,
+                               create_parent_dir=False,
+                               dir_mode=None):
+        abspath = self._remote_path(relpath)
+
+        # TODO: jam 20060816 paramiko doesn't publicly expose a way to
+        #       set the file mode at create time. If it does, use it.
+        #       But for now, we just chmod later anyway.
+
+        def _open_and_write_file():
+            """Try to open the target file, raise error on failure"""
+            fout = None
+            try:
+                try:
+                    fout = self._sftp.file(abspath, mode='wb')
+                    fout.set_pipelined(True)
+                    writer(fout)
+                except (paramiko.SSHException, IOError), e:
+                    self._translate_io_exception(e, abspath,
+                                                 ': unable to open')
+
+                # This is designed to chmod() right before we close.
+                # Because we set_pipelined() earlier, theoretically we might 
+                # avoid the round trip for fout.close()
+                if mode is not None:
+                    self._sftp.chmod(abspath, mode)
+            finally:
+                if fout is not None:
+                    fout.close()
+
+        if not create_parent_dir:
+            _open_and_write_file()
+            return
+
+        # Try error handling to create the parent directory if we need to
+        try:
+            _open_and_write_file()
+        except NoSuchFile:
+            # Try to create the parent directory, and then go back to
+            # writing the file
+            parent_dir = os.path.dirname(abspath)
+            self._mkdir(parent_dir, dir_mode)
+            _open_and_write_file()
+
+    def put_file_non_atomic(self, relpath, f, mode=None,
+                            create_parent_dir=False,
+                            dir_mode=None):
+        """Copy the file-like object into the target location.
+
+        This function is not strictly safe to use. It is only meant to
+        be used when you already know that the target does not exist.
+        It is not safe, because it will open and truncate the remote
+        file. So there may be a time when the file has invalid contents.
+
+        :param relpath: The remote location to put the contents.
+        :param f:       File-like object.
+        :param mode:    Possible access permissions for new file.
+                        None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
+        """
+        def writer(fout):
+            self._pump(f, fout)
+        self._put_non_atomic_helper(relpath, writer, mode=mode,
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
+
+    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+                             create_parent_dir=False,
+                             dir_mode=None):
+        def writer(fout):
+            fout.write(bytes)
+        self._put_non_atomic_helper(relpath, writer, mode=mode,
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
+
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
         queue = list(self.list_dir('.'))
@@ -437,21 +527,22 @@ class SFTPTransport(Transport):
             else:
                 yield relpath
 
+    def _mkdir(self, abspath, mode=None):
+        if mode is None:
+            local_mode = 0777
+        else:
+            local_mode = mode
+        try:
+            self._sftp.mkdir(abspath, local_mode)
+            if mode is not None:
+                self._sftp.chmod(abspath, mode=mode)
+        except (paramiko.SSHException, IOError), e:
+            self._translate_io_exception(e, abspath, ': unable to mkdir',
+                failure_exc=FileExists)
+
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
-        path = self._remote_path(relpath)
-        try:
-            # In the paramiko documentation, it says that passing a mode flag 
-            # will filtered against the server umask.
-            # StubSFTPServer does not do this, which would be nice, because it is
-            # what we really want :)
-            # However, real servers do use umask, so we really should do it that way
-            self._sftp.mkdir(path)
-            if mode is not None:
-                self._sftp.chmod(path, mode=mode)
-        except (paramiko.SSHException, IOError), e:
-            self._translate_io_exception(e, path, ': unable to mkdir',
-                failure_exc=FileExists)
+        self._mkdir(self._remote_path(relpath), mode=mode)
 
     def _translate_io_exception(self, e, path, more_info='', 
                                 failure_exc=PathError):
@@ -469,7 +560,7 @@ class SFTPTransport(Transport):
         """
         # paramiko seems to generate detailless errors.
         self._translate_error(e, path, raise_generic=False)
-        if hasattr(e, 'args'):
+        if getattr(e, 'args', None) is not None:
             if (e.args == ('No such file or directory',) or
                 e.args == ('No such file',)):
                 raise NoSuchFile(path, str(e) + more_info)
@@ -479,11 +570,11 @@ class SFTPTransport(Transport):
             if (e.args == ('Failure',)):
                 raise failure_exc(path, str(e) + more_info)
             mutter('Raising exception with args %s', e.args)
-        if hasattr(e, 'errno'):
+        if getattr(e, 'errno', None) is not None:
             mutter('Raising exception with errno %s', e.errno)
         raise e
 
-    def append(self, relpath, f, mode=None):
+    def append_file(self, relpath, f, mode=None):
         """
         Append the text in the file-like object into the final
         location.
@@ -654,6 +745,10 @@ class SFTPTransport(Transport):
         :param abspath: The remote absolute path where the file should be opened
         :param mode: The mode permissions bits for the new file
         """
+        # TODO: jam 20060816 Paramiko >= 1.6.2 (probably earlier) supports
+        #       using the 'x' flag to indicate SFTP_FLAG_EXCL.
+        #       However, there is no way to set the permission mode at open 
+        #       time using the sftp_client.file() functionality.
         path = self._sftp._adjust_cwd(abspath)
         # mutter('sftp abspath %s => %s', abspath, path)
         attr = SFTPAttributes()
@@ -671,6 +766,12 @@ class SFTPTransport(Transport):
             self._translate_io_exception(e, abspath, ': unable to open',
                 failure_exc=FileExists)
 
+    def _can_roundtrip_unix_modebits(self):
+        if sys.platform == 'win32':
+            # anyone else?
+            return False
+        else:
+            return True
 
 # ------------- server test implementation --------------
 import threading
