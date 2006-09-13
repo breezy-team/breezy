@@ -862,6 +862,44 @@ class TestCase(unittest.TestCase):
             assert supplied_retcode == retcode
         return [out, err]
 
+    def start_bzr_subprocess(self, *args):
+        """Start bzr in a subprocess for testing.
+
+        This starts a new Python interpreter and runs bzr in there. 
+        This should only be used for tests that have a justifiable need for
+        this isolation: e.g. they are testing startup time, or signal
+        handling, or early startup code, etc.  Subprocess code can't be 
+        profiled or debugged so easily.
+
+        :returns: Popen object for the started process.
+        """
+        # TODO: this ought to remove BZR_PDB when running the subprocess- the
+        # user probably doesn't want to debug it, and anyhow since its files
+        # are redirected they can't usefully get at it.  It just makes the
+        # test suite hang.
+        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        args = list(args)
+        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
+                         stderr=PIPE)
+        return process
+
+    def finish_bzr_subprocess(self, process, retcode=0, send_signal=None):
+        """Finish the execution of process.
+
+        :param process: the Popen object returned from start_bzr_subprocess.
+        :param retcode: the expected return code of the process, if None any
+            value is accepted, otherwise if there is a difference a failure will
+            be raised.
+        :param send_signal: an optional signal to send to the process.
+        :returns: (stdout, stderr)
+        """
+        if send_signal is not None:
+            os.kill(process.pid, send_signal)
+        result = process.communicate()
+        if retcode is not None:
+            self.assertEqual(retcode, process.returncode)
+        return result
+
     def check_inventory_shape(self, inv, shape):
         """Compare an inventory to a list of expected names.
 
