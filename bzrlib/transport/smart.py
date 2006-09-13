@@ -526,27 +526,29 @@ class SmartTransport(sftp.SFTPUrlHandling):
     type: SmartTCPTransport, etc.
     """
 
-    def __init__(self, server_url):
+    def __init__(self, server_url, clone_from=None):
+        ### Technically super() here is faulty because Transport's __init__
+        ### fails to take 2 parameters, and if super were to choose a silly
+        ### initialisation order things would blow up. 
         super(SmartTransport, self).__init__(server_url)
-        self._client = SmartStreamClient(self._connect_to_server)
-        ## print 'init transport url=%r' % server_url
+        if clone_from is None:
+            self._client = SmartStreamClient(self._connect_to_server)
+        else:
+            # credentials may be stripped from the base in some circumstances
+            # as yet to be clearly defined or documented, so copy them.
+            self._username = clone_from._username
+            # reuse same connection
+            self._client = clone_from._client
 
     def clone(self, relative_url):
         """Make a new SmartTransport related to me, sharing the same connection.
 
         This essentially opens a handle on a different remote directory.
         """
-        new_path = self._combine_paths(self._path, relative_url)
-        netloc = urllib.quote(self._host)
-        if self._username is not None:
-            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
-        if self._port is not None:
-            netloc = '%s:%d' % (netloc, self._port)
-        new_url = self._scheme + '://' + netloc + new_path
-        clone = self.__class__(new_url)
-        # reuse same connection
-        clone._client = self._client
-        return clone
+        if relative_url is None:
+            return self.__class__(self.base, self)
+        else:
+            return self.__class__(self.abspath(relative_url), self)
 
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
@@ -798,8 +800,8 @@ class SmartStreamClient(SmartProtocolBase):
 class SmartTCPTransport(SmartTransport):
     """Connection to smart server over plain tcp"""
 
-    def __init__(self, url):
-        super(SmartTCPTransport, self).__init__(url)
+    def __init__(self, url, clone_from=None):
+        super(SmartTCPTransport, self).__init__(url, clone_from)
         self._scheme, self._username, self._password, self._host, self._port, self._path = \
                 transport.split_url(url)
         try:
@@ -832,9 +834,9 @@ class SmartTCPTransport(SmartTransport):
 class SmartSSHTransport(SmartTransport):
     """Connection to smart server over SSH."""
 
-    def __init__(self, url):
+    def __init__(self, url, clone_from=None):
         # TODO: all this probably belongs in the parent class.
-        super(SmartSSHTransport, self).__init__(url)
+        super(SmartSSHTransport, self).__init__(url, clone_from)
         self._scheme, self._username, self._password, self._host, self._port, self._path = \
                 transport.split_url(url)
         try:
