@@ -796,7 +796,7 @@ class TransportNotPossible(TransportError):
 
 
 class ConnectionError(TransportError):
-    """Connection error: %(msg)s %(orig_error)s"""
+    """%(msg)s %(orig_error)s"""
 
 
 class ConnectionReset(TransportError):

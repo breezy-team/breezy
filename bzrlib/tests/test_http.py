@@ -22,7 +22,9 @@
 import socket
 
 import bzrlib
-from bzrlib.errors import DependencyNotPresent
+from bzrlib.errors import (DependencyNotPresent,
+                           ConnectionError,
+                           )
 from bzrlib.tests import TestCase, TestSkipped
 from bzrlib.transport import Transport
 from bzrlib.transport.http import extract_auth, HttpTransportBase
@@ -138,13 +140,19 @@ class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
         self._prep_tree()
 
     def test_has_on_bogus_host(self):
-        import urllib2
-        # Get a random address, so that we can be sure there is no
-        # http handler there.
-        s = socket.socket()
-        s.bind(('localhost', 0))
-        t = self._transport('http://%s:%s/' % s.getsockname())
-        self.assertRaises(urllib2.URLError, t.has, 'foo/bar')
+        # Get a free address and don't 'accept' on it, so that we
+        # can be sure there is no http handler there, but set a
+        # reasonable timeout to not slow down tests too much.
+        default_timeout = socket.getdefaulttimeout()
+        try:
+            socket.setdefaulttimeout(2)
+            s = socket.socket()
+            s.bind(('localhost', 0))
+            t = self._transport('http://%s:%s/' % s.getsockname())
+            self.assertRaises(ConnectionError, t.has, 'foo/bar')
+        finally:
+            socket.setdefaulttimeout(default_timeout)
+
 
 
 class TestHttpConnections_pycurl(TestCaseWithWebserver, TestHttpMixins):
