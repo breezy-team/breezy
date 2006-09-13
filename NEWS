@@ -17,6 +17,10 @@ IN DEVELOPMENT
       return urlescaped paths. This is now tested (there were bugs in a few
       of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
 
+    * Add start_bzr_subprocess and stop_bzr_subprocess to allow test code to
+      continue running concurrently with a subprocess of bzr. (Andrew Bennetts,
+      Robert Collins)
+
 bzr 0.10.0RC1  2006-08-28
   
   IMPROVEMENTS:
