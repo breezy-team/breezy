@@ -195,15 +195,15 @@ class ParamikoVendor(SSHVendor):
         server_key = t.get_remote_server_key()
         server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
         keytype = server_key.get_name()
-        if SYSTEM_HOSTKEYS.has_key(host) and SYSTEM_HOSTKEYS[host].has_key(keytype):
+        if host in SYSTEM_HOSTKEYS and keytype in SYSTEM_HOSTKEYS[host]:
             our_server_key = SYSTEM_HOSTKEYS[host][keytype]
             our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
-        elif BZR_HOSTKEYS.has_key(host) and BZR_HOSTKEYS[host].has_key(keytype):
+        elif host in BZR_HOSTKEYS and keytype in BZR_HOSTKEYS[host]:
             our_server_key = BZR_HOSTKEYS[host][keytype]
             our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
         else:
             warning('Adding %s host key for %s: %s' % (keytype, host, server_key_hex))
-            if not BZR_HOSTKEYS.has_key(host):
+            if host not in BZR_HOSTKEYS:
                 BZR_HOSTKEYS[host] = {}
             BZR_HOSTKEYS[host][keytype] = server_key
             our_server_key = server_key

@@ -28,7 +28,7 @@ from os import mkdir, chdir
 import sys
 from tempfile import TemporaryFile
 
-from bzrlib import bzrdir, errors, ignores
+from bzrlib import bzrdir, errors
 import bzrlib.branch
 from bzrlib.builtins import merge
 from bzrlib.osutils import pathjoin
@@ -40,78 +40,85 @@ from bzrlib.workingtree import WorkingTree
 
 class BranchStatus(TestCaseWithTransport):
     
+    def assertStatus(self, output_lines, working_tree,
+        revision=None):
+        """Run status in working_tree and look for output.
+        
+        :param output_lines: The lines to look for.
+        :param working_tree: The tree to run status in.
+        """
+        output_string = self.status_string(working_tree, revision)
+        self.assertEqual(output_lines, output_string.splitlines(True))
+    
+    def status_string(self, wt, revision=None):
+        # use a real file rather than StringIO because it doesn't handle
+        # Unicode very well.
+        tof = codecs.getwriter('utf-8')(TemporaryFile())
+        show_tree_status(wt, to_file=tof, revision=revision)
+        tof.seek(0)
+        return tof.read().decode('utf-8')
+
     def test_branch_status(self):
         """Test basic branch status"""
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
 
-        ignores._set_user_ignores(['./.bazaar'])
+        # status with no commits or files - it must
+        # work and show no output. We do this with no
+        # commits to be sure that it's not going to fail
+        # as a corner case.
+        self.assertStatus([], wt)
 
-        # status with nothing
-        tof = StringIO()
-        show_tree_status(wt, to_file=tof)
-        self.assertEquals(tof.getvalue(), "")
-
-        tof = StringIO()
         self.build_tree(['hello.c', 'bye.c'])
-        wt.add_pending_merge('pending@pending-0-0')
-        show_tree_status(wt, to_file=tof)
-        tof.seek(0)
-        self.assertEquals(tof.readlines(),
-                          ['unknown:\n',
-                           '  bye.c\n',
-                           '  hello.c\n',
-                           'pending merges:\n',
-                           '  pending@pending-0-0\n'
-                           ])
+        self.assertStatus([
+                'unknown:\n',
+                '  bye.c\n',
+                '  hello.c\n',
+            ],
+            wt)
+
+        # add a commit to allow showing pending merges.
+        wt.commit('create a parent to allow testing merge output')
+
+        wt.add_parent_tree_id('pending@pending-0-0')
+        self.assertStatus([
+                'unknown:\n',
+                '  bye.c\n',
+                '  hello.c\n',
+                'pending merges:\n',
+                '  pending@pending-0-0\n',
+            ],
+            wt)
 
     def test_branch_status_revisions(self):
         """Tests branch status with revisions"""
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
 
-        ignores._set_user_ignores(['./.bazaar'])
-
-        tof = StringIO()
         self.build_tree(['hello.c', 'bye.c'])
         wt.add('hello.c')
         wt.add('bye.c')
         wt.commit('Test message')
 
-        tof = StringIO()
-        revs =[]
-        revs.append(RevisionSpec(0))
-        
-        show_tree_status(wt, to_file=tof, revision=revs)
-        
-        tof.seek(0)
-        self.assertEquals(tof.readlines(),
-                          ['added:\n',
-                           '  bye.c\n',
-                           '  hello.c\n'])
+        revs = [RevisionSpec.from_string('0')]
+        self.assertStatus([
+                'added:\n',
+                '  bye.c\n',
+                '  hello.c\n'
+            ],
+            wt,
+            revision=revs)
 
         self.build_tree(['more.c'])
         wt.add('more.c')
         wt.commit('Another test message')
         
-        tof = StringIO()
-        revs.append(RevisionSpec(1))
-        
-        show_tree_status(wt, to_file=tof, revision=revs)
-        
-        tof.seek(0)
-        self.assertEquals(tof.readlines(),
-                          ['added:\n',
-                           '  bye.c\n',
-                           '  hello.c\n'])
-
-    def status_string(self, wt):
-        # use a real file rather than StringIO because it doesn't handle
-        # Unicode very well.
-        tof = codecs.getwriter('utf-8')(TemporaryFile())
-        show_tree_status(wt, to_file=tof)
-        tof.seek(0)
-        return tof.read().decode('utf-8')
+        revs.append(RevisionSpec.from_string('1'))
+        self.assertStatus([
+                'added:\n',
+                '  bye.c\n',
+                '  hello.c\n',
+            ],
+            wt,
+            revision=revs)
 
     def test_pending(self):
         """Pending merges display works, including Unicode"""
@@ -141,8 +148,6 @@ class BranchStatus(TestCaseWithTransport):
         """Tests branch status with given specific files"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
-
-        ignores._set_user_ignores(['./.bazaar'])
 
         self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
         wt.add('directory')
@@ -204,8 +209,6 @@ class CheckoutStatus(BranchStatus):
 class TestStatus(TestCaseWithTransport):
 
     def test_status(self):
-        ignores._set_user_ignores(['./.bazaar'])
-
         self.run_bzr("init")
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status")[0]

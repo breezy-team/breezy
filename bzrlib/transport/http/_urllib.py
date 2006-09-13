@@ -67,7 +67,7 @@ class HttpTransport_urllib(HttpTransportBase):
                 raise NoSuchFile(path, extra=e)
             raise
         except (BzrError, IOError), e:
-            if hasattr(e, 'errno'):
+            if getattr(e, 'errno', None) is not None:
                 mutter('io error: %s %s for has url: %r',
                     e.errno, errno.errorcode.get(e.errno), path)
                 if e.errno == errno.ENOENT:
