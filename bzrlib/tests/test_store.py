@@ -38,6 +38,14 @@ class TestStores(object):
         f = store.get(fileid)
         self.assertEqual(f.read(), value)
 
+    def test_add_str_deprecated(self):
+        os.mkdir('a')
+        store = self.get_store('a')
+        self.callDeprecated(['Passing a string to Store.add'
+                             ' was deprecated in version 0.11.'],
+                            store.add, 'foo', '1')
+        self.assertEqual('foo', store.get('1').read())
+
     def fill_store(self, store):
         store.add(StringIO('hello'), 'a')
         store.add(StringIO('other'), 'b')
@@ -48,7 +56,7 @@ class TestStores(object):
         """Test copying"""
         os.mkdir('a')
         store_a = self.get_store('a')
-        store_a.add('foo', '1')
+        store_a.add(StringIO('foo'), '1')
         os.mkdir('b')
         store_b = self.get_store('b')
         store_b.copy_all_ids(store_a)

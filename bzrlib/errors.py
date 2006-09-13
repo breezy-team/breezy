@@ -167,11 +167,21 @@ class InvalidRevisionNumber(BzrNewError):
 
 class InvalidRevisionId(BzrNewError):
     """Invalid revision-id {%(revision_id)s} in %(branch)s"""
+
     def __init__(self, revision_id, branch):
         # branch can be any string or object with __str__ defined
         BzrNewError.__init__(self)
         self.revision_id = revision_id
         self.branch = branch
+
+
+class NoSuchId(BzrNewError):
+    """The file id %(file_id)s is not present in the tree %(tree)s."""
+    
+    def __init__(self, tree, file_id):
+        BzrNewError.__init__(self)
+        self.file_id = file_id
+        self.tree = tree
 
 
 class NoWorkingTree(BzrNewError):
@@ -505,7 +515,6 @@ class UpToDateFormat(BzrNewError):
         self.format = format
 
 
-
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
@@ -516,8 +525,26 @@ class NoSuchRevision(BzrNewError):
     is_user_error = False
 
     def __init__(self, branch, revision):
-        self.branch = branch
-        self.revision = revision
+        BzrNewError.__init__(self, branch=branch, revision=revision)
+
+
+class NoSuchRevisionSpec(BzrNewError):
+    """No namespace registered for string: %(spec)r"""
+
+    def __init__(self, spec):
+        BzrNewError.__init__(self, spec=spec)
+
+
+class InvalidRevisionSpec(BzrNewError):
+    """Requested revision: '%(spec)s' does not exist in branch:
+%(branch)s%(extra)s"""
+
+    def __init__(self, spec, branch, extra=None):
+        BzrNewError.__init__(self, branch=branch, spec=spec)
+        if extra:
+            self.extra = '\n' + str(extra)
+        else:
+            self.extra = ''
 
 
 class HistoryMissing(BzrError):
@@ -586,10 +613,11 @@ class AmbiguousBase(BzrError):
         self.bases = bases
 
 
-class NoCommits(BzrError):
+class NoCommits(BzrNewError):
+    """Branch %(branch)s has no commits."""
+
     def __init__(self, branch):
-        msg = "Branch %s has no commits." % branch
-        BzrError.__init__(self, msg)
+        BzrNewError.__init__(self, branch=branch)
 
 
 class UnlistableStore(BzrError):
@@ -777,11 +805,13 @@ class ConnectionReset(TransportError):
 
 
 class InvalidRange(TransportError):
-    """Invalid range access."""
+    """Invalid range access in %(path)s at %(offset)s."""
     
     def __init__(self, path, offset):
         TransportError.__init__(self, ("Invalid range access in %s at %d"
                                        % (path, offset)))
+        self.path = path
+        self.offset = offset
 
 
 class InvalidHttpResponse(TransportError):
@@ -949,6 +979,10 @@ class ParamikoNotPresent(DependencyNotPresent):
         DependencyNotPresent.__init__(self, 'paramiko', error)
 
 
+class PointlessMerge(BzrNewError):
+    """Nothing to merge."""
+
+
 class UninitializableFormat(BzrNewError):
     """Format %(format)s cannot be initialised by this version of bzr."""
 
@@ -1112,7 +1146,7 @@ class UnsupportedEOLMarker(BadBundle):
     """End of line marker was not \\n in bzr revision-bundle"""    
 
     def __init__(self):
-        BzrNewError.__init__(self)    
+        BzrNewError.__init__(self)
 
 
 class UnknownSSH(BzrNewError):
@@ -1122,3 +1156,10 @@ class UnknownSSH(BzrNewError):
         BzrNewError.__init__(self)
         self.vendor = vendor
 
+
+class GhostRevisionUnusableHere(BzrNewError):
+    """Ghost revision {%(revision_id)s} cannot be used here."""
+
+    def __init__(self, revision_id):
+        BzrNewError.__init__(self)
+        self.revision_id = revision_id
