@@ -236,7 +236,7 @@ class Serializer_v5(Serializer):
         get_cached = cache_utf8.get_cached_unicode
 
         parent_id = elt.get('parent_id')
-        if parent_id == None:
+        if parent_id is None:
             parent_id = ROOT_ID
         # TODO: jam 20060817 At present, caching file ids costs us too 
         #       much time. It slows down overall read performances from
