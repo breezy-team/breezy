@@ -200,7 +200,7 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
 
         wt_child.branch.unbind()
         open('child/a', 'ab').write('child contents\n')
-        wt_child.commit('child', rev_id='r@c-2')
+        wt_child_rev = wt_child.commit('child', rev_id='r@c-2')
 
         self.assertEqual(['r@b-1', 'r@c-2'], wt_child.branch.revision_history())
         self.assertEqual(['r@b-1'], b_base.revision_history())
@@ -224,7 +224,7 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
         #       work, you have to use list notation
         merge((sftp_b_base.base, 2), [None, None], this_dir=wt_child.branch.base)
 
-        self.assertEqual(['r@b-2'], wt_child.pending_merges())
+        self.assertEqual([wt_child_rev, 'r@b-2'], wt_child.get_parent_ids())
         wt_child.commit('merged', rev_id='r@c-3')
 
         # After a merge, trying to bind again should succeed
@@ -323,7 +323,7 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
         merge((wt_other.branch.base, 2), [None, None], this_dir=wt_child.branch.base)
 
         self.failUnlessExists('child/c')
-        self.assertEqual(['r@d-2'], wt_child.pending_merges())
+        self.assertEqual(['r@d-2'], wt_child.get_parent_ids()[1:])
         self.failUnless(wt_child.branch.repository.has_revision('r@d-2'))
         self.failIf(b_base.repository.has_revision('r@d-2'))
 

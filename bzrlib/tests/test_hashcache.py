@@ -112,7 +112,7 @@ class TestHashCache(TestCaseInTempDir):
     def test_hashcache_raise(self):
         """check that hashcache can raise BzrError"""
         hc = self.make_hashcache()
-        if not hasattr(os, 'mkfifo'):
+        if getattr(os, 'mkfifo', None) is None:
             raise TestSkipped('filesystem fifos not supported on this system')
         os.mkfifo('a')
         # It's possible that the system supports fifos but the filesystem

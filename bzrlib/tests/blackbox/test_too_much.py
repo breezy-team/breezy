@@ -420,7 +420,7 @@ class TestCommands(ExternalBase):
         oldpath = os.environ.get('BZRPATH', None)
         bzr = self.capture
         try:
-            if os.environ.has_key('BZRPATH'):
+            if 'BZRPATH' in os.environ:
                 del os.environ['BZRPATH']
 
             f = file(cmd_name, 'wb')

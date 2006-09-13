@@ -53,9 +53,9 @@ import sys
 
 
 def help(topic=None, outfile = None):
-    if outfile == None:
+    if outfile is None:
         outfile = sys.stdout
-    if topic == None:
+    if topic is None:
         outfile.write(global_help)
     elif topic == 'commands':
         help_commands(outfile = outfile)
@@ -102,13 +102,13 @@ def help_on_command(cmdname, outfile=None):
 
     cmdname = str(cmdname)
 
-    if outfile == None:
+    if outfile is None:
         outfile = sys.stdout
 
     cmd_object = get_cmd_object(cmdname)
 
     doc = cmd_object.help()
-    if doc == None:
+    if doc is None:
         raise NotImplementedError("sorry, no detailed help yet for %r" % cmdname)
 
     print >>outfile, 'usage:', command_usage(cmd_object) 
@@ -142,7 +142,7 @@ def help_commands(outfile=None):
                                  plugin_command_names,
                                  get_cmd_object)
 
-    if outfile == None:
+    if outfile is None:
         outfile = sys.stdout
 
     names = set()                       # to eliminate duplicates

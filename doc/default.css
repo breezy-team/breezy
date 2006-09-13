@@ -16,10 +16,13 @@ body {
   text-indent: 3em
 } */
 
+h1, h2, h3 {
+  font-family: Georgia, "Times New Roman", Times, serif;
+}
+
 h1.title {
   text-align: center;
   color: #000000;
-  font-family: Georgia, "Time New Roman", Times, serif;
   font-size: 1.8em;
   }
 
@@ -36,7 +39,6 @@ h1 {
   color: #b52b2b; 
   /* DKREDcolor: #966b72; */
   /* GREY color: #444444; */
-  font-family: Georgia, "Time New Roman", Times, serif;
   font-size: 1.5em;
   }
 
@@ -56,7 +58,6 @@ h2 {
   color: #222;
   /* RED color: #966b72; */
   text-decoration: underline;
-  font-family: Georgia, "Time New Roman", Times, serif;
   font-size: 1.4em;
   }
 
@@ -75,7 +76,6 @@ h2 a:visited {
 h3 {
   color: #966b72; 
   /* color: #966b72; */
-  font-family: Georgia, "Time New Roman", Times, serif;
   }
 
 h3 a:link {
@@ -109,17 +109,19 @@ dt:active
   }
 */
 
+tt, .literal-block {
+  font-family: monospace;
+  }
+
 tt {
   color: #000000;
   font-weight: normal;
-  font-family: "Lucida", "Monaco", "Courier", Monospace;
   }
 
 .literal-block {
   margin-left: 5em;
   color: #000000;
   font-weight: normal;
-  font-family: "Lucida", "Monaco", "Courier", Monospace;
   background-color: #c1d1ff;
   background-color: #e5ecf9;
   border: 1px solid #888888;

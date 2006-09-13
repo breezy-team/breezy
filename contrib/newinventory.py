@@ -35,7 +35,7 @@ def write_inventory(inv, f):
                 el.set('text_id', ie.text_id)
             if ie.text_sha1:
                 el.set('text_sha1', ie.text_sha1)
-            if ie.text_size != None:
+            if ie.text_size is not None:
                 el.set('text_size', ('%d' % ie.text_size))
         elif kind != 'directory':
             raise BzrError('unknown InventoryEntry kind %r' % kind)
@@ -84,7 +84,7 @@ def write_slacker_inventory(inv, f):
                 f.write('text_id="%s" ' % ie.text_id)
             if ie.text_sha1:
                 f.write('text_sha1="%s" ' % ie.text_sha1)
-            if ie.text_size != None:
+            if ie.text_size is not None:
                 f.write('text_size="%d" ' % ie.text_size)
             f.write('/>\n')
         elif kind == 'directory':
