@@ -317,7 +317,7 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         tree.commit('message', rev_id='rev_id')
         self.assertEqual('rev_id', tree.basis_tree().inventory.root.revision)
-        rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
+        rev_tree = tree.branch.repository.revision_tree(tree.get_parent_ids()[0])
         self.assertEqual('rev_id', rev_tree.inventory.root.revision)
 
 
@@ -338,11 +338,11 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         # add a real revision 'rev2' based on rev1
         tree_a.commit('rev2', rev_id='rev2', allow_pointless=True)
         # add a reference to a ghost
-        tree_a.add_pending_merge('ghost1')
+        tree_a.add_parent_tree_id('ghost1')
         tree_a.commit('rev3', rev_id='rev3', allow_pointless=True)
         # add another reference to a ghost, and a second ghost.
-        tree_a.add_pending_merge('ghost1')
-        tree_a.add_pending_merge('ghost2')
+        tree_a.add_parent_tree_id('ghost1')
+        tree_a.add_parent_tree_id('ghost2')
         tree_a.commit('rev4', rev_id='rev4', allow_pointless=True)
 
     def test_revision_trees(self):

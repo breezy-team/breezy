@@ -138,13 +138,14 @@ class Branch(object):
         """
         return bzrdir.BzrDir.create_standalone_workingtree(base).branch
 
+    @deprecated_function(zero_eight)
     def setup_caching(self, cache_root):
         """Subclasses that care about caching should override this, and set
         up cached stores located under cache_root.
+        
+        NOTE: This is unused.
         """
-        # seems to be unused, 2006-01-13 mbp
-        warn('%s is deprecated' % self.setup_caching)
-        self.cache_root = cache_root
+        pass
 
     def get_config(self):
         return bzrlib.config.BranchConfig(self)
@@ -363,7 +364,7 @@ class Branch(object):
             return None
         if history is None:
             history = self.revision_history()
-        elif revno <= 0 or revno > len(history):
+        if revno <= 0 or revno > len(history):
             raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
@@ -839,9 +840,9 @@ class BranchReferenceFormat(BranchFormat):
             raise errors.UninitializableFormat(self)
         mutter('creating branch reference in %s', a_bzrdir.transport.base)
         branch_transport = a_bzrdir.get_branch_transport(self)
-        # FIXME rbc 20060209 one j-a-ms encoding branch lands this str() cast is not needed.
-        branch_transport.put('location', StringIO(str(target_branch.bzrdir.root_transport.base)))
-        branch_transport.put('format', StringIO(self.get_format_string()))
+        branch_transport.put_bytes('location',
+            target_branch.bzrdir.root_transport.base)
+        branch_transport.put_bytes('format', self.get_format_string())
         return self.open(a_bzrdir, _found=True)
 
     def __init__(self):
@@ -957,21 +958,6 @@ class BzrBranch(Branch):
         return '%s(%r)' % (self.__class__.__name__, self.base)
 
     __repr__ = __str__
-
-    def __del__(self):
-        # TODO: It might be best to do this somewhere else,
-        # but it is nice for a Branch object to automatically
-        # cache it's information.
-        # Alternatively, we could have the Transport objects cache requests
-        # See the earlier discussion about how major objects (like Branch)
-        # should never expect their __del__ function to run.
-        # XXX: cache_root seems to be unused, 2006-01-13 mbp
-        if hasattr(self, 'cache_root') and self.cache_root is not None:
-            try:
-                osutils.rmtree(self.cache_root)
-            except:
-                pass
-            self.cache_root = None
 
     def _get_base(self):
         return self._base
@@ -1248,7 +1234,7 @@ class BzrBranch(Branch):
                         "use bzrlib.urlutils.escape")
                     
             url = urlutils.relative_url(self.base, url)
-            self.control_files.put('parent', url + '\n')
+            self.control_files.put('parent', StringIO(url + '\n'))
 
     @deprecated_function(zero_nine)
     def tree_config(self):
