@@ -1421,6 +1421,7 @@ def test_suite():
                    'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
+                   'bzrlib.tests.test_lazy_import',
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',

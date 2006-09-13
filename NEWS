@@ -20,6 +20,11 @@ IN DEVELOPMENT
       as readwrite branches. This fixes bug #39542 for lightweight checkouts 
       but not for heavyweight ones (the default). (Robert Collins)
 
+    * ``bzrlib.lazy_import.lazy_import`` function to create on-demand 
+      objects.  This allows all imports to stay at the global scope, but
+      modules will not actually be imported if they are not used.
+      (John Arbash Meinel)
+
   BUG FIXES:
 
     * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
@@ -100,6 +105,10 @@ IN DEVELOPMENT
       remote branches, where trivial operations used to pay a significant 
       penalty. It also provides the basis for allowing readonly checkouts.
       (Robert Collins)
+
+    * Special case importing the standard library 'copy' module. This shaves
+      off 40ms of startup time, while retaining compatibility. See:
+      ``bzrlib/inspect_for_copy.py`` for more details. (John Arbash Meinel)
 
 bzr 0.10  2006-08-29
   

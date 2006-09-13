@@ -1182,3 +1182,39 @@ class GhostRevisionUnusableHere(BzrNewError):
     def __init__(self, revision_id):
         BzrNewError.__init__(self)
         self.revision_id = revision_id
+
+
+class IllegalUseOfScopeReplacer(BzrNewError):
+    """ScopeReplacer object %(name)r was used incorrectly: %(msg)s%(extra)s"""
+
+    is_user_error = False
+
+    def __init__(self, name, msg, extra=None):
+        BzrNewError.__init__(self)
+        self.name = name
+        self.msg = msg
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
+
+
+class InvalidImportLine(BzrNewError):
+    """Not a valid import statement: %(msg)\n%(text)s"""
+
+    is_user_error = False
+
+    def __init__(self, text, msg):
+        BzrNewError.__init__(self)
+        self.text = text
+        self.msg = msg
+
+
+class ImportNameCollision(BzrNewError):
+    """Tried to import an object to the same name as an existing object. %(name)s"""
+
+    is_user_error = False
+
+    def __init__(self, name):
+        BzrNewError.__init__(self)
+        self.name = name
