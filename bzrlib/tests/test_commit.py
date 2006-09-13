@@ -436,7 +436,7 @@ class TestCommit(TestCaseWithTransport):
         # do a merge into the bound branch from other, and then change the
         # content file locally to force a new revision (rather than using the
         # revision from other). This forces extra processing in commit.
-        self.merge(other_tree.branch, bound_tree)
+        bound_tree.merge_from_branch(other_tree.branch)
         self.build_tree_contents([('bound/content_file', 'change in bound\n')])
 
         # before #34959 was fixed, this failed with 'revision not present in
@@ -490,7 +490,7 @@ class TestCommit(TestCaseWithTransport):
             other_tree.commit('modify all sample files and dirs.')
         finally:
             other_tree.unlock()
-        self.merge(other_tree.branch, this_tree)
+        this_tree.merge_from_branch(other_tree.branch)
         reporter = CapturingReporter()
         this_tree.commit('do the commit', reporter=reporter)
         self.assertEqual([

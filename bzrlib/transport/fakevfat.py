@@ -91,8 +91,8 @@ class FakeVFATTransportDecorator(TransportDecorator):
     def readv(self, relpath, offsets):
         return self._decorated.readv(self._squash_name(relpath), offsets)
 
-    def put(self, relpath, f, mode=None):
-        return self._decorated.put(self._squash_name(relpath), f, mode)
+    def put_file(self, relpath, f, mode=None):
+        return self._decorated.put_file(self._squash_name(relpath), f, mode)
 
 
 class FakeVFATServer(DecoratorServer):
