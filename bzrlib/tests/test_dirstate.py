@@ -16,6 +16,8 @@
 
 """Tests of the dirstate functionality being built for WorkingTreeFormat4."""
 
+import os
+
 from bzrlib import dirstate
 from bzrlib.tests import TestCaseWithTransport
 
@@ -29,6 +31,9 @@ from bzrlib.tests import TestCaseWithTransport
 # Test get state from a file, then asking for lines.
 # write a smaller state, and check the file has been truncated.
 # add a entry when its in state deleted
+# revision attribute for root entries.
+# test that utf8 strings are preserved in _row_to_line
+# test parent manipulation
 
 class TestTreeToDirstate(TestCaseWithTransport):
 
@@ -41,7 +46,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         # write to disk.
         lines = state.get_lines()
         expected_lines_re = (
-            '#bzr dirstate flat format 1\n'
+            '#bazaar dirstate flat format 1\n'
             'adler32: [0-9-][0-9]*\n'
             'num_entries: 1\n'
             '0\x00\n'
@@ -60,7 +65,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         # we now have parent revisions, and all the files in the tree were
         # last modified in the parent.
         expected_lines_re = (
-            '#bzr dirstate flat format 1\n'
+            '#bazaar dirstate flat format 1\n'
             'adler32: [0-9-][0-9]*\n'
             'num_entries: 1\n'
             '1\x00.*\x00\n'
@@ -82,7 +87,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         # we now have parent revisions, and all the files in the tree were
         # last modified in the parent.
         expected_lines_re = (
-            '#bzr dirstate flat format 1\n'
+            '#bazaar dirstate flat format 1\n'
             'adler32: [0-9-][0-9]*\n'
             'num_entries: 1\n'
             '2\x00.*\x00.*\x00\n'
@@ -100,7 +105,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         # write to disk.
         lines = state.get_lines()
         expected_lines_re = (
-            '#bzr dirstate flat format 1\n'
+            '#bazaar dirstate flat format 1\n'
             'adler32: [0-9-][0-9]*\n'
             'num_entries: 1\n'
             '0\x00\n'
@@ -123,7 +128,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         # write to disk.
         lines = state.get_lines()
         expected_lines_re = (
-            '#bzr dirstate flat format 1\n'
+            '#bazaar dirstate flat format 1\n'
             'adler32: [0-9-][0-9]*\n'
             'num_entries: 2\n'
             '0\x00\n'
@@ -146,7 +151,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         # we now have parent revisions, and all the files in the tree were
         # last modified in the parent.
         expected_lines_re = (
-            '#bzr dirstate flat format 1\n'
+            '#bazaar dirstate flat format 1\n'
             'adler32: [0-9-][0-9]*\n'
             'num_entries: 2\n'
             '1\x00.*\x00\n'
@@ -175,7 +180,7 @@ class TestTreeToDirstate(TestCaseWithTransport):
         # we now have parent revisions, and all the files in the tree were
         # last modified in the parent.
         expected_lines_re = (
-            '#bzr dirstate flat format 1\n'
+            '#bazaar dirstate flat format 1\n'
             'adler32: [0-9-][0-9]*\n'
             'num_entries: 2\n'
             '2\x00.*\x00.*\x00\n'
@@ -206,10 +211,15 @@ class TestDirStateInitialize(TestCaseWithTransport):
         state = dirstate.DirState.initialize('dirstate')
         self.assertIsInstance(state, dirstate.DirState)
         self.assertFileEqual(
-            '#bzr dirstate flat format 1\n'
-            'adler32: 14155835\n'
-            'num_entries: 0\n'
+            '#bazaar dirstate flat format 1\n'
+            'adler32: -682945876\n'
+            'num_entries: 1\n'
             '0\x00\n'
+            # after the 0 parent count, there is the \x00\n\x00 line delim
+            # then '' for dir, '' for basame, and then 'd' for directory.
+            # then the root value, 0 size, our constant xxxx packed stat, and 
+            # an empty sha value. Finally a new \x00\n\x00 delimiter
+            '\x00\x00\x00d\x00TREE_ROOT\x000\x00xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\x00\x00\n'
             '\x00',
             'dirstate')
 
@@ -226,6 +236,8 @@ class TestDirstateManipulations(TestCaseWithTransport):
         state = dirstate.DirState.on_file('dirstate')
         self.assertEqual(['a-ghost'], state.get_parent_ids())
 
+    ### add a path via _set_data - so we dont need delta work, just
+    # raw data in, and ensure that it comes out via get_lines happily.
 
 class TestGetLines(TestCaseWithTransport):
 
@@ -234,3 +246,11 @@ class TestGetLines(TestCaseWithTransport):
         lines = list(state.get_lines())
         state.add_parent_tree('a-ghost', None)
         self.assertNotEqual(lines, state.get_lines())
+
+    def test_row_to_line(self):
+        state = dirstate.DirState.initialize('dirstate')
+        packed_stat = 'AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk'
+        root_row_data = ('', '', 'directory', 'a-root-value', 0, packed_stat, '')
+        root_parents = []
+        root_row = (root_row_data, root_parents)
+        self.assertEqual('\x00\x00d\x00a-root-value\x000\x00AAAAREUHaIpFB2iKAAADAQAtkqUAAIGk\x00', state._row_to_line(root_row))
