@@ -837,6 +837,16 @@ class TransportTests(TestTransportImplementation):
         # Cloning to "/" should take us to exactly the same location.
         self.assertEqual(root_transport.base, orig_transport.clone("/").base)
 
+        # At the root, the URL must still end with / as its a directory
+        self.assertEqual(root_transport.base[-1], '/')
+
+    def test_clone_from_root(self):
+        """At the root, cloning to a simple dir should just do string append."""
+        orig_transport = self.get_transport()
+        root_transport = orig_transport.clone('/')
+        self.assertEqual(root_transport.base + '.bzr/',
+            root_transport.clone('.bzr').base)
+
     def test_base_url(self):
         t = self.get_transport()
         self.assertEqual('/', t.base[-1])
