@@ -2788,6 +2788,8 @@ class cmd_serve(Command):
             server = smart.SmartTCPServer(t, host=host, port=int(port))
             print 'listening on port: ', server.port
             sys.stdout.flush()
+        else:
+            raise BzrCommandError("bzr serve requires one of --inet or --port")
         server.serve()
 
 
