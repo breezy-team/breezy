@@ -20,6 +20,7 @@ The contents of the transport will be lost when the object is discarded,
 so this is primarily useful for testing.
 """
 
+from copy import copy
 import os
 import errno
 import re

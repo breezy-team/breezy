@@ -405,6 +405,18 @@ class TestBranch(TestCaseWithBranch):
         os.mkdir('e')
         checkout_e = branch_a.create_checkout('e')
 
+    def test_create_anonymous_lightweight_checkout(self):
+        """A checkout from a readonly branch should succeed."""
+        tree_a = self.make_branch_and_tree('a')
+        rev_id = tree_a.commit('put some content in the branch')
+        source_branch = bzrlib.branch.Branch.open(
+            'readonly+' + tree_a.bzrdir.root_transport.base)
+        # sanity check that the test will be valid
+        self.assertRaises((errors.LockError, errors.TransportNotPossible),
+            source_branch.lock_write)
+        checkout = source_branch.create_checkout('c', lightweight=True)
+        self.assertEqual(rev_id, checkout.last_revision())
+
 
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.

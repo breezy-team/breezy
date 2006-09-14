@@ -61,14 +61,18 @@ if '--profile-imports' in sys.argv:
 
 try:
     import bzrlib
-    import bzrlib.commands
-    import bzrlib.trace
 except ImportError, e:
     sys.stderr.write("bzr: ERROR: "
                      "Couldn't import bzrlib and dependencies.\n"
                      "Please check bzrlib is on your PYTHONPATH.\n"
                      "\n")
     raise
+
+import bzrlib.inspect_for_copy
+bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
+
+import bzrlib.commands
+import bzrlib.trace
 
 if bzrlib.version_info[:3] != (0, 11, 0):
     sys.stderr.write("bzr: WARNING: bzrlib version doesn't match the bzr program.\n"

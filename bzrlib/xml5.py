@@ -97,6 +97,10 @@ class Serializer_v5(Serializer):
     
     __slots__ = []
 
+    support_altered_by_hack = True
+    # This format supports the altered-by hack that reads file ids directly out
+    # of the versionedfile, without doing XML parsing.
+
     def write_inventory_to_string(self, inv):
         """Just call write_inventory with a StringIO and return the value"""
         sio = cStringIO.StringIO()
@@ -150,7 +154,7 @@ class Serializer_v5(Serializer):
         append(_encode_and_escape(ie.file_id))
         append(' name="')
         append(_encode_and_escape(ie.name))
-        if ie.parent_id != ROOT_ID:
+        if self._parent_condition(ie):
             assert isinstance(ie.parent_id, basestring)
             append(' parent_id="')
             append(_encode_and_escape(ie.parent_id))
@@ -168,6 +172,9 @@ class Serializer_v5(Serializer):
             append(' text_size="%d"' % ie.text_size)
         append(" />\n")
         return
+
+    def _parent_condition(self, ie):
+        return ie.parent_id != ROOT_ID
 
     def _pack_revision(self, rev):
         """Revision object -> xml tree"""
@@ -228,7 +235,7 @@ class Serializer_v5(Serializer):
             inv.add(ie)
         return inv
 
-    def _unpack_entry(self, elt):
+    def _unpack_entry(self, elt, none_parents=False):
         kind = elt.tag
         if not InventoryEntry.versionable_kind(kind):
             raise AssertionError('unsupported entry kind %s' % kind)
@@ -236,7 +243,7 @@ class Serializer_v5(Serializer):
         get_cached = cache_utf8.get_cached_unicode
 
         parent_id = elt.get('parent_id')
-        if parent_id is None:
+        if parent_id is None and not none_parents:
             parent_id = ROOT_ID
         # TODO: jam 20060817 At present, caching file ids costs us too 
         #       much time. It slows down overall read performances from
