@@ -1,3 +1,20 @@
+2006-09-14  Vincent Ladeuil  <v.ladeuil@free.fr>
+	Based on bzrlib/transport/http/_urllib.
+
+	* webdav.py:
+	(PUTRequest.__init__): Allows additional headers.
+	(DAVErrorProcessor): New class.
+	(DavOpener): New class.
+	(HttpDavTransport): Based on HttpTransport_urllib again.
+	(HttpDavTransport.__init__): Simplified.
+	(HttpDavTransport._first_connection, HttpDavTransport._perform,
+	HttpDavTransport._head, HttpDavTransport.has,
+	HttpDavTransport._get): Deleted.
+	(HttpDavTransport._put_bytes_ranged): Use new PUTRequest syntax.
+
+	* _urllib2_wrappers.py: 
+	Deleted. Part of bzr from now on.
+
 2006-09-12  Vincent Ladeuil  <vila@imac-blanc.local>
 	Cosmetic changes.
 

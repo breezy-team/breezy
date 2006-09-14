@@ -37,6 +37,10 @@ This should enable remote push operations.
 # implies a mean to  store file properties, apply them, detecting
 # their changes, etc.
 
+# TODO: Various parts of the code assert that a header can not
+# appear several times in a HTTP response. Try to investigate the
+# possible consequences.
+
 # TODO:   Cache  files   to   improve  performance   (a  bit   at
 # least). Files  should be kept  in a temporary directory  (or an
 # hash-based hierarchy to limit  local file systems problems) and
@@ -108,18 +112,19 @@ from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     Transport,
     )
-from bzrlib.transport.http import (
-    HttpTransportBase,
-    _extract_headers,
-    )
 
 from bzrlib.transport.http.response import (
     handle_response
     )
 
-from _urllib2_wrappers import (
+from bzrlib.transport.http._urllib import (
+    HttpTransport_urllib,
+    )
+
+from bzrlib.transport.http._urllib2_wrappers import (
     Request,
-    get_opener,
+    Opener,
+    HTTPErrorProcessor,
     )
 
 # We want https because user and passwords are required to
@@ -130,83 +135,63 @@ register_urlparse_netloc_protocol('http+webdav')
 register_urlparse_netloc_protocol('https+webdav')
 
 class PUTRequest(Request):
-    def __init__(self, url, data):
-        Request.__init__(self, 'PUT', url, data,
-                         # FIXME: Why ? *we* send, we do not receive :-/
-                         {'Accept': '*/*',
-                          'Content-type': 'application/octet-stream',
-                          # FIXME: We should complete the
-                          # implementation of
-                          # htmllib.HTTPConnection, it's just a
-                          # shame (at least a waste) that we
-                          # can't use the following.
+    def __init__(self, url, data, more_headers={}):
+        # FIXME: Accept */* ? Why ? *we* send, we do not receive :-/
+        headers = {'Accept': '*/*',
+                   'Content-type': 'application/octet-stream',
+                   # FIXME: We should complete the
+                   # implementation of
+                   # htmllib.HTTPConnection, it's just a
+                   # shame (at least a waste) that we
+                   # can't use the following.
+                   
+                   #  'Expect': '100-continue',
+                   #  'Transfer-Encoding': 'chunked',
+                   }
+        headers.update(more_headers)
+        Request.__init__(self, 'PUT', url, data, headers)
 
-                          #  'Expect': '100-continue',
-                          #  'Transfer-Encoding': 'chunked',
-                          })
+
+class DAVErrorProcessor(HTTPErrorProcessor):
+    """Process DAV error responses.
+
+    We don't really process the errors, quite the contrary
+    instead, we leave our Transport handle them.    
+    """
+    def http_response(self, request, response):
+        code, msg, hdrs = response.code, response.msg, response.info()
+
+        if code not in (201, 204, 403, 405, 409, 412, # DAV
+                        999, # FIXME: <cough> search for 999 in this file
+                        ):
+            response = HTTPErrorProcessor.http_response(self, request, response)
+        return response
+
+    https_response = http_response
 
 
-# We bypass the HttpTransport_urllib step in the hierarchy
-class HttpDavTransport(HttpTransportBase):
+class DavOpener(Opener):
+    """Dav specific needs regarding HTTP(S)"""
+
+    def __init__(self):
+        super(DavOpener, self).__init__(error=DAVErrorProcessor)
+
+
+class HttpDavTransport(HttpTransport_urllib):
     """An transport able to put files using http[s] on a DAV server.
 
     Implementation base on python urllib2 and httplib.
     We don't try to implement the whole WebDAV protocol. Just the minimum
     needed for bzr.
     """
-    _accept_ranges = True
     _debuglevel = 0
-    # We define our own opener
-    _opener = get_opener()
-
-    def __init__(self, base, from_transport=None):
+    def __init__(self, base, from_transport=None,opener=DavOpener()):
         assert base.startswith('https+webdav') or base.startswith('http+webdav')
-        super(HttpDavTransport, self).__init__(base)
-        if from_transport is not None:
-            if self._debuglevel > 0:
-                print 'HttpDavTransport Cloned from [%s]' % base
-            self._accept_ranges = from_transport._accept_ranges
-            self._connection = from_transport._connection
-        else:
-            if self._debuglevel > 0:
-                print 'new HttpDavTransport for [%s]' % base
-            self._accept_ranges = True
-            self._connection = None
-
-    def _first_connection(self, request):
-        """Very first connection to the server.
-
-        We get our hands on the Connection object, our preciouuuus.
-        """
-        self._connection = request.connection
+        super(HttpDavTransport, self).__init__(base, from_transport, opener)
 
     def is_readonly(self):
         """See Transport.is_readonly."""
         return False
-
-    def _perform(self, request):
-        """Send the request to the server and handles common errors.
-        """
-        if self._connection is not None:
-            request.connection = self._connection
-
-        mutter('%s: [%s]' % (request.method, request.get_full_url()))
-        if self._debuglevel > 0:
-            print 'perform: %s base: %s, url: %s' % (request.method, self.base,
-                                                     request.get_full_url())
-
-        response = self._opener.open(request)
-        if self._connection is None:
-            self._first_connection(request)
-
-        if request.redirected_to is not None:
-            # TODO: Update the transport so that subsequent
-            # requests goes directly to the right host
-            if self._debuglevel > 0:
-                print 'redirected from: %s to: %s' % (request.get_full_url(),
-                                                      request.redirected_to)
-
-        return response
 
     def _raise_http_error(url, response, info=None):
         if info is None:
@@ -216,53 +201,6 @@ class HttpDavTransport(HttpTransportBase):
         raise InvalidHttpResponse(url,
                                   'Unable to handle http code %d%s'
                                   % (response.code, msg))
-    def _head(self, relpath):
-        """Request the HEAD of a file.
-
-        Performs the request and leaves callers handle the results.
-        """
-        abspath = self._real_abspath(relpath)
-        request = Request('HEAD', abspath)
-        response = self._perform(request)
-
-        self._connection.fake_close()
-        return response
-
-    def has(self, relpath):
-        """Does the target location exist?
-        """
-        response = self._head(relpath)
-
-        code = response.code
-        if code == 404: # not found
-            return False
-        elif code in (200, 302): # "ok", "found"
-            return True
-        else:
-            abspath = self._real_abspath(relpath)
-            self._raise_http_error(abspath, response)
-
-    def _get(self, relpath, ranges, tail_amount=0):
-        """See HttpTransport._get"""
-
-        abspath = self._real_abspath(relpath)
-        request = Request('GET', abspath)
-        if ranges or tail_amount:
-            bytes = 'bytes=' + self.range_header(ranges, tail_amount)
-            request.add_header('Range', bytes)
-
-        response = self._perform(request)
-
-        code = response.code
-        if code == 404: # not found
-            # FIXME: Check that there is really no message to be read
-            self._connection.fake_close()
-            raise NoSuchFile(abspath)
-
-        data = handle_response(abspath, code, response.headers, response)
-        # Close response to free the httplib.HTTPConnection pipeline
-        self._connection.fake_close()
-        return code, data
 
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file"""
@@ -384,9 +322,11 @@ class HttpDavTransport(HttpTransportBase):
         # objects (see handling chunked data and 100-continue).
         abspath = self._real_abspath(relpath)
 
-        request = PUTRequest(abspath, bytes)
-        request.add_header('Content-Range',
-                           'bytes %d-%d/%d' % (at, at+len(bytes), len(bytes)))
+        request = PUTRequest(abspath, bytes,
+                             {'Content-Range': 
+                              'bytes %d-%d/%d' % (at, at+len(bytes),
+                                                  len(bytes)),
+                              })
         response = self._perform(request)
         code = response.code
 
