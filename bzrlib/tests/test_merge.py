@@ -127,7 +127,7 @@ class TestMerge(TestCaseWithTransport):
         transform_tree(tree, tree.branch.basis_tree())
 
     def test_ignore_zero_merge_inner(self):
-        # Test that merge_inner's ignore zero paramter is effective
+        # Test that merge_inner's ignore zero parameter is effective
         tree_a =self.make_branch_and_tree('a')
         tree_a.commit(message="hello")
         dir_b = tree_a.bzrdir.sprout('b')

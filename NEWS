@@ -16,7 +16,19 @@ IN DEVELOPMENT
 
     * Commit performs one less XML parse. (Robert Collins)
 
+    * ``bzr checkout --lightweight`` now operates on readonly branches as well
+      as readwrite branches. This fixes bug #39542 for lightweight checkouts 
+      but not for heavyweight ones (the default). (Robert Collins)
+
+    * ``bzrlib.lazy_import.lazy_import`` function to create on-demand 
+      objects.  This allows all imports to stay at the global scope, but
+      modules will not actually be imported if they are not used.
+      (John Arbash Meinel)
+
   BUG FIXES:
+
+    * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
+      (Vincent Ladeuil, #59835)
 
     * Handle boundary="" lines properly to allow access through a Squid proxy.
       (John Arbash Meinel, #57723)
@@ -76,7 +88,29 @@ IN DEVELOPMENT
     * WorkingTree.pending_merges is deprecated.  Please use the get_parent_ids
       (introduced in 0.10) method instead. (Robert Collins)
 
-bzr 0.10.0RC1  2006-08-28
+    * WorkingTree has a new lock_tree_write method which locks the branch for
+      read rather than write. This is appropriate for actions which only need
+      the branch data for reference rather than mutation. A new decorator
+      needs_tree_write_lock is provided in the workingtree module. Like the
+      needs_read_lock and needs_write_lock decorators this allows static 
+      declaration of the locking requirements of a function to ensure that
+      a lock is taken out for casual scripts. (Robert Collins)
+
+    * All WorkingTree methods which write to the tree, but not to the branch
+      have been converted to use ``needs_tree_write_lock`` rather than 
+      ``needs_write_lock``. Also converted is the revert, conflicts and tree
+      transform modules. This provides a modest performance improvement on 
+      metadir style trees, due to the reduce lock-acquisition, and a more
+      significant performance improvement on lightweight checkouts from 
+      remote branches, where trivial operations used to pay a significant 
+      penalty. It also provides the basis for allowing readonly checkouts.
+      (Robert Collins)
+
+    * Special case importing the standard library 'copy' module. This shaves
+      off 40ms of startup time, while retaining compatibility. See:
+      ``bzrlib/inspect_for_copy.py`` for more details. (John Arbash Meinel)
+
+bzr 0.10  2006-08-29
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
@@ -134,6 +168,9 @@ bzr 0.10.0RC1  2006-08-28
     * Testament handles more cases when content is unicode. Specific bug was
       in handling of revision properties. (John Arbash Meinel, Holger Krekel,
       #54723)
+
+    * The bzr selftest was failing on installed versions due to a bug in a new
+      test helper. (John Arbash Meinel, Robert Collins, #58057)
 
   INTERNALS:
 
