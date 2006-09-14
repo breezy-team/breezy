@@ -1248,9 +1248,9 @@ class TestCaseWithTransport(TestCaseInTempDir):
         try:
             # might be a relative or absolute path
             maybe_a_url = self.get_url(relpath)
-            segments = maybe_a_url.split('/')
+            segments = maybe_a_url.rsplit('/', 1)
             t = get_transport(maybe_a_url)
-            if segments and segments[-1] not in ('', '.'):
+            if len(segments) > 1 and segments[-1] not in ('', '.'):
                 try:
                     t.mkdir('.')
                 except errors.FileExists:
