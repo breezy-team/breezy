@@ -17,7 +17,7 @@
 import errno
 import urllib, urllib2
 import errno
-from StringIO import StringIO
+from cStringIO import StringIO
 
 import bzrlib  # for the version
 from bzrlib.errors import (TransportNotPossible,
@@ -39,6 +39,9 @@ from bzrlib.transport.http._urllib2_wrappers import (
     Request,
     Opener,
     )
+from bzrlib.ui import (
+    ui_factory,
+    )
 
 register_urlparse_netloc_protocol('http+urllib')
 
@@ -57,17 +60,40 @@ class HttpTransport_urllib(HttpTransportBase):
         if from_transport is not None:
             self._accept_ranges = from_transport._accept_ranges
             self._connection = from_transport._connection
+            self._user = from_transport._user
+            self._password = from_transport._password
         else:
             self._accept_ranges = True
             self._connection = None
+            self._user = None
+            self._password = None
         self._opener = opener
 
+    def ask_password(self, request):
+        """Ask for a password if none is already provided in the request"""
+        if request.password is None:
+            http_pass = 'HTTP %(user)s@%(host)s password'
+            request.password = ui_factory.get_password(prompt=http_pass,
+                                                       user=request.user,
+                                                       host=request.get_host())
+            password_manager = self._opener.password_manager
+            # We can't predict realm, let's try None, we get a
+            # 401 if we are wrong anyway
+            password_manager.add_password(None, request.get_host(),
+                                          request.user, request.password)
+
+
     def _perform(self, request):
-        """Send the request to the server and handles common errors.
-        """
-        # Give back connection if we have one (see below)
+        """Send the request to the server and handles common errors."""
         if self._connection is not None:
+            # Give back shared info
             request.connection = self._connection
+            request.user = self._user
+            request.password = self._password
+        else:
+            # We will issue our first request, time to ask for a
+            # password if needed
+            self.ask_password(request)
 
         mutter('%s: [%s]' % (request.method, request.get_full_url()))
         if self._debuglevel > 0:
@@ -79,6 +105,8 @@ class HttpTransport_urllib(HttpTransportBase):
             # Acquire connection when the first request is able
             # to connect to the server
             self._connection = request.connection
+            self._user = request.user
+            self._password = request.password
 
         if request.redirected_to is not None:
             # TODO: Update the transport so that subsequent

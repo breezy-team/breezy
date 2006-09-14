@@ -45,6 +45,7 @@ from bzrlib import (
     )
 
 from bzrlib.errors import (
+    BzrError,
     ConnectionError,
     NoSuchFile,
     )
@@ -60,7 +61,6 @@ class Response(httplib.HTTPResponse):
     def __init__(self, *args, **kwargs):
         httplib.HTTPResponse.__init__(self, *args, **kwargs)
 
-    _begin = httplib.HTTPResponse.begin
     def begin(self):
         """Begin to read the response from the server.
 
@@ -69,18 +69,19 @@ class Response(httplib.HTTPResponse):
         the body in the socket, blocking the next request. Let's
         try to workaround that.
         """
-        self._begin()
+        httplib.HTTPResponse.begin(self)
         if self.status in (999,
                            301,
-                           302, 303, 307):
+                           302, 303, 307,
+                           401, ):
             body = self.fp.read(self.length)
             #print "Consumed body: [%s]" % body
             self.close()
 
+
 class AbstractHTTPConnection:
     """A custom HTTP(S) Connection, which can reset itself on a bad response"""
 
-    _getresponse = httplib.HTTPConnection.getresponse
     response_class = Response
 
     def getresponse(self):
@@ -95,7 +96,7 @@ class AbstractHTTPConnection:
         try to workaround it.
         """
         try:
-            return self._getresponse()
+            return httplib.HTTPConnection.getresponse(self)
         # TODO: A bit of selection on different exceptions may be
         # of good taste
         except Exception, e:
@@ -140,6 +141,9 @@ class Request(urllib2.Request):
     def __init__(self, method, url, data=None, headers={},
                  origin_req_host=None, unverifiable=False,
                  connection=None, parent=None,):
+        # urllib2.Request will be confused if we don't extract
+        # authentification info before building the request
+        url, self.user, self.password = self.extract_auth(url)
         urllib2.Request.__init__(self, url, data, headers,
                                  origin_req_host, unverifiable)
         self.method = method
@@ -147,6 +151,30 @@ class Request(urllib2.Request):
         # To handle redirections
         self.parent = parent
         self.redirected_to = None
+
+    def extract_auth(self, url):
+        """Extracts authentification information from url.
+
+        Get user and password from url of the form: http://user:pass@host/path
+        """
+        scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
+    
+        if '@' in netloc:
+            auth, netloc = netloc.split('@', 1)
+            if ':' in auth:
+                user, password = auth.split(':', 1)
+            else:
+                user, password = auth, None
+            user = urllib.unquote(user)
+            if password is not None:
+                password = urllib.unquote(password)
+        else:
+            user = None
+            password = None
+
+        url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
+
+        return url, user, password
 
     def get_method(self):
         return self.method
@@ -165,8 +193,8 @@ class Request(urllib2.Request):
 # different password for the same user may be required on the
 # same host for different protocol/host/directories combination.
 class PasswordManager(urllib2.HTTPPasswordMgrWithDefaultRealm):
-    pass
-
+    def __init__(self):
+        urllib2.HTTPPasswordMgrWithDefaultRealm.__init__(self)
 
 class ConnectionHandler(urllib2.BaseHandler):
     """Provides connection-sharing by pre-processing requests.
@@ -273,7 +301,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
     def __init__(self):
         urllib2.AbstractHTTPHandler.__init__(self, debuglevel=0)
 
-    # FIXME: This is the place where all the httplib execptions
+    # FIXME: This is the place where all the httplib exceptions
     # should be catched, translated into bzr errors or handled
     # accordingly (reset connection and try again or raise)
     def do_open(self, http_class, request, first_try=True):
@@ -574,21 +602,24 @@ class Opener(object):
     """
     # TODO: Provides hooks for daugther classes.
 
+    password_manager = PasswordManager()
+
     def __init__(self, 
                  connection=ConnectionHandler,
                  redirect=HTTPRedirectHandler,
                  error=HTTPErrorProcessor,):
         # TODO: Implements the necessary wrappers for the handlers
         # commented out below
-        self._opener = urllib2.build_opener(connection, redirect, error,
-                                           #urllib2.ProxyHandler,
-                                           #urllib2.HTTPBasicAuthHandler,
-                                           #urllib2.HTTPDigestAuthHandler,
-                                           #urllib2.ProxyBasicAuthHandler,
-                                           #urllib2.ProxyDigestAuthHandler,
-                                           HTTPHandler,
-                                           HTTPSHandler,
-                                           HTTPDefaultErrorHandler,
+        self._opener = urllib2.build_opener( \
+            connection, redirect, error,
+            #urllib2.ProxyHandler,
+            urllib2.HTTPBasicAuthHandler(self.password_manager),
+            #urllib2.HTTPDigestAuthHandler(self.password_manager),
+            #urllib2.ProxyBasicAuthHandler,
+            #urllib2.ProxyDigestAuthHandler,
+            HTTPHandler,
+            HTTPSHandler,
+            HTTPDefaultErrorHandler,
                                            )
         self.open = self._opener.open
         if DEBUG > 0:
