@@ -197,3 +197,73 @@ class TestUpdate(ExternalBase):
 
         # The pending merges should still be there
         self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
+
+    def test_update_dash_r(self):
+        # Test that 'bzr update' works correctly when you have
+        # an update in the master tree, and a lightweight checkout
+        # which has merged another branch
+        master = self.make_branch_and_tree('master')
+        os.chdir('master')
+        self.build_tree(['./file1'])
+        master.add(['file1'])
+        master.commit('one', rev_id='m1')
+        self.build_tree(['./file2'])
+        master.add(['file2'])
+        master.commit('two', rev_id='m2')
+        
+        out, err = self.run_bzr('update', '-r', '1')
+        self.assertEqual('', out)
+        self.assertEqual('All changes applied successfully.\n'
+                         'Updated to revision 1.\n', err)
+        self.failUnlessExists('./file1')
+        self.failIfExists('./file2')
+        self.check_file_contents('.bzr/checkout/last-revision',
+                                 'm1')
+
+    def test_update_dash_r_outside_history(self):
+        # Test that 'bzr update' works correctly when you have
+        # an update in the master tree, and a lightweight checkout
+        # which has merged another branch
+        master = self.make_branch_and_tree('master')
+        self.build_tree(['master/file1'])
+        master.add(['file1'])
+        master.commit('one', rev_id='m1')
+
+        # Create a second branch, with an extra commit
+        other = master.bzrdir.sprout('other').open_workingtree()
+        self.build_tree(['other/file2'])
+        other.add(['file2'])
+        other.commit('other2', rev_id='o2')
+
+        os.chdir('master')
+        self.run_bzr('merge', '../other')
+        master.commit('merge', rev_id='merge')
+
+        out, err = self.run_bzr('update', '-r', 'revid:o2',
+                                retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: branch has no revision o2\n'
+                         'bzr update --revision works only'
+                         ' for a revision in the branch history\n',
+                         err)
+
+    def test_update_dash_r_in_master(self):
+        # Test that 'bzr update' works correctly when you have
+        # an update in the master tree,
+        master = self.make_branch_and_tree('master')
+        self.build_tree(['master/file1'])
+        master.add(['file1'])
+        master.commit('one', rev_id='m1')
+
+        self.run_bzr('checkout', 'master', 'checkout')
+
+        # add a revision in the master.
+        self.build_tree(['master/file2'])
+        master.add(['file2'])
+        master.commit('two', rev_id='m2')
+
+        os.chdir('checkout')
+        out, err = self.run_bzr('update', '-r', 'revid:m2')
+        self.assertEqual('', out)
+        self.assertEqual('All changes applied successfully.\n'
+                         'Updated to revision 2.\n', err)

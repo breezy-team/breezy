@@ -46,7 +46,7 @@ from bzrlib.commands import Command, display_command
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch,
-                           NotVersionedError, NotABundle)
+                           NotVersionedError, NotABundle, InvalidRevisionSpec)
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
 from bzrlib.progress import DummyProgress, ProgressPhase
@@ -821,25 +821,45 @@ class cmd_update(Command):
     'bzr revert' instead of 'bzr commit' after the update.
     """
     takes_args = ['dir?']
+    takes_options = ['revision']
     aliases = ['up']
 
-    def run(self, dir='.'):
+    def run(self, dir='.', revision=None):
+        if revision is not None and len(revision) != 1:
+            raise BzrCommandError("bzr update --revision takes exactly one revision")
         tree = WorkingTree.open_containing(dir)[0]
+        branch = tree.branch
         tree.lock_write()
         try:
-            existing_pending_merges = tree.pending_merges()
-            last_rev = tree.last_revision()
-            if last_rev == tree.branch.last_revision():
-                # may be up to date, check master too.
-                master = tree.branch.get_master_branch()
-                if master is None or last_rev == master.last_revision():
-                    revno = tree.branch.revision_id_to_revno(last_rev)
-                    note("Tree is up to date at revision %d." % (revno,))
-                    return 0
-            conflicts = tree.update()
-            revno = tree.branch.revision_id_to_revno(tree.last_revision())
+            existing_pending_merges = tree.get_parent_ids()[1:]
+            # potentially get new revisions from the master branch.
+            # needed for the case where -r N is given, with N not yet
+            # in the local branch for a heavyweight checkout.
+            if revision is not None:
+                try:
+                    rev = revision[0].in_history(branch).rev_id
+                    # no need to run branch.update()
+                    old_tip = None
+                except (errors.NoSuchRevision, errors.InvalidRevisionSpec):
+                    # revision was not there, but is maybe in the master.
+                    old_tip = branch.update()
+                    rev = revision[0].in_history(branch).rev_id
+            else:
+                old_tip = branch.update()
+                rev = branch.last_revision()
+            if tree.last_revision() == rev:
+                revno = branch.revision_id_to_revno(rev)
+                note("Tree is up to date at revision %d." % (revno,))
+                return 0
+            try:
+                conflicts = tree.update(rev, old_tip)
+            except errors.NoSuchRevision, e:
+                raise BzrCommandError("branch has no revision %s\n"
+                                      "bzr update --revision works only for a revision in the branch history"
+                                      % (e.revision))
+            revno = branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
-            if tree.pending_merges() != existing_pending_merges:
+            if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
             if conflicts != 0:

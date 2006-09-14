@@ -1602,8 +1602,10 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         raise NotImplementedError(self.unlock)
 
+    _marker = object()
+
     @needs_write_lock
-    def update(self):
+    def update(self, revision=None, old_tip=_marker):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have multiple trees involved:
@@ -1621,8 +1623,13 @@ class WorkingTree(bzrlib.tree.Tree):
         There isn't a single operation at the moment to do that, so we:
         Merge current state -> basis tree of the master w.r.t. the old tree basis.
         Do a 'normal' merge of the old branch basis if it is relevant.
+
+        :param revision: The target revision to update to. Must be in the revision history.
+        :param old_tip: If branch.update() has already been run, the value it returned 
+        (old tip of the branch or None). _marker is used otherwise.
         """
-        old_tip = self.branch.update()
+        if old_tip == self._marker:
+            old_tip = self.branch.update()
         # here if old_tip is not None, it is the old tip of the branch before
         # it was updated from the master branch. This should become a pending
         # merge in the working tree to preserve the user existing work.  we
@@ -1638,20 +1645,26 @@ class WorkingTree(bzrlib.tree.Tree):
             last_rev = self.get_parent_ids()[0]
         except IndexError:
             last_rev = None
-        if last_rev != self.branch.last_revision():
+        if revision is None:
+            revision = self.branch.last_revision()
+        else:
+            if revision not in self.branch.revision_history():
+                raise errors.NoSuchRevision(self.branch, revision)
+        if last_rev != revision:
             # merge tree state up to new branch tip.
             basis = self.basis_tree()
-            to_tree = self.branch.basis_tree()
+            to_tree = self.branch.repository.revision_tree(revision)
             result += merge_inner(self.branch,
                                   to_tree,
                                   basis,
                                   this_tree=self)
+            self.set_last_revision(revision)
             # TODO - dedup parents list with things merged by pull ?
             # reuse the tree we've updated to to set the basis:
-            parent_trees = [(self.branch.last_revision(), to_tree)]
+            parent_trees = [(revision, to_tree)]
             merges = self.get_parent_ids()[1:]
             # Ideally we ask the tree for the trees here, that way the working
-            # tree can decide whether to give us teh entire tree or give us a
+            # tree can decide whether to give us the entire tree or give us a
             # lazy initialised tree. dirstate for instance will have the trees
             # in ram already, whereas a last-revision + basis-inventory tree
             # will not, but also does not need them when setting parents.
@@ -1676,7 +1689,7 @@ class WorkingTree(bzrlib.tree.Tree):
             # and the now pending merge
             from bzrlib.revision import common_ancestor
             try:
-                base_rev_id = common_ancestor(self.branch.last_revision(),
+                base_rev_id = common_ancestor(revision,
                                               old_tip,
                                               self.branch.repository)
             except errors.NoCommonAncestor:
