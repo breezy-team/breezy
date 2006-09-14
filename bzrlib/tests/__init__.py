@@ -1209,7 +1209,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         return self.__server
 
     def get_url(self, relpath=None):
-        """Get a URL for the readwrite transport.
+        """Get a URL (or maybe a path) for the readwrite transport.
 
         This will either be backed by '.' or to an equivalent non-file based
         facility.
@@ -1220,7 +1220,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
         if relpath is not None and relpath != '.':
             if not base.endswith('/'):
                 base = base + '/'
-            base = base + urlutils.escape(relpath)
+            # XXX: Really base should be a url; we did after all call
+            # get_url()!  But sometimes it's just a path (from
+            # LocalAbspathServer), and it'd be wrong to append urlescaped data
+            # to a non-escaped local path.
+            if base.startswith('./') or base.startswith('/'):
+                base += relpath
+            else:
+                base += urlutils.escape(relpath)
         return base
 
     def get_transport(self):
@@ -1246,20 +1253,18 @@ class TestCaseWithTransport(TestCaseInTempDir):
 
     def make_bzrdir(self, relpath, format=None):
         try:
-            url = self.get_url(relpath)
-            mutter('relpath %r => url %r', relpath, url)
-            segments = url.split('/')
-            if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
+            # might be a relative or absolute path
+            maybe_a_url = self.get_url(relpath)
+            segments = maybe_a_url.rsplit('/', 1)
+            t = get_transport(maybe_a_url)
+            if len(segments) > 1 and segments[-1] not in ('', '.'):
                 try:
-                    t.mkdir(segments[-1])
+                    t.mkdir('.')
                 except errors.FileExists:
                     pass
             if format is None:
-                format=bzrlib.bzrdir.BzrDirFormat.get_default_format()
-            # FIXME: make this use a single transport someday. RBC 20060418
-            return format.initialize_on_transport(get_transport(relpath))
+                format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+            return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
 
@@ -1271,7 +1276,17 @@ class TestCaseWithTransport(TestCaseInTempDir):
     def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
 
-        Returns the tree.
+        If the transport is not a LocalTransport, the Tree can't be created on
+        the transport.  In that case the working tree is created in the local
+        directory, and the returned tree's branch and repository will also be
+        accessed locally.
+
+        This will fail if the original default transport for this test
+        case wasn't backed by the working directory, as the branch won't
+        be on disk for us to open it.  
+
+        :param format: The BzrDirFormat.
+        :returns: the WorkingTree.
         """
         # TODO: always use the local disk path for the working tree,
         # this obviously requires a format that supports branch references
@@ -1281,11 +1296,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
         try:
             return b.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            # new formats - catch No tree error and create
-            # a branch reference and a checkout.
-            # old formats at that point - raise TestSkipped.
-            # TODO: rbc 20060208
-            return WorkingTreeFormat2().initialize(bzrdir.BzrDir.open(relpath))
+            # We can only make working trees locally at the moment.  If the
+            # transport can't support them, then reopen the branch on a local
+            # transport, and create the working tree there.  
+            #
+            # Possibly we should instead keep
+            # the non-disk-backed branch and create a local checkout?
+            bd = bzrdir.BzrDir.open(relpath)
+            return bd.create_workingtree()
 
     def assertIsDirectory(self, relpath, transport):
         """Assert that relpath within transport is a directory.
