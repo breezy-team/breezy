@@ -107,6 +107,10 @@ def get_format_type(typestring):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = repository.RepositoryFormatKnit1()
         return format
+    if typestring == "experimental-knit2":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        return format
     msg = "Unknown bzr format %s. Current formats are: default, knit,\n" \
           "metaweave and weave" % typestring
     raise BzrCommandError(msg)
@@ -760,7 +764,7 @@ class cmd_checkout(Command):
         # if the source and to_location are the same, 
         # and there is no working tree,
         # then reconstitute a branch
-        if (osutils.abspath(to_location) == 
+        if (osutils.abspath(to_location) ==
             osutils.abspath(branch_location)):
             try:
                 source.bzrdir.open_workingtree()
@@ -1346,7 +1350,12 @@ class cmd_log(Command):
         else:
             # local dir only
             # FIXME ? log the current subdir only RBC 20060203 
-            dir, relpath = bzrdir.BzrDir.open_containing('.')
+            if revision is not None \
+                    and len(revision) > 0 and revision[0].get_branch():
+                location = revision[0].get_branch()
+            else:
+                location = '.'
+            dir, relpath = bzrdir.BzrDir.open_containing(location)
             b = dir.open_branch()
 
         if revision is None:
@@ -1355,6 +1364,12 @@ class cmd_log(Command):
         elif len(revision) == 1:
             rev1 = rev2 = revision[0].in_history(b).revno
         elif len(revision) == 2:
+            if revision[1].get_branch() != revision[0].get_branch():
+                # b is taken from revision[0].get_branch(), and
+                # show_log will use its revision_history. Having
+                # different branches will lead to weird behaviors.
+                raise BzrCommandError(
+                    "Log doesn't accept two revisions in different branches.")
             if revision[0].spec is None:
                 # missing begin-range means first revision
                 rev1 = 1
@@ -1648,6 +1663,8 @@ class cmd_cat(Command):
 
         if tree is None:
             b, relpath = Branch.open_containing(filename)
+        if revision is not None and revision[0].get_branch() is not None:
+            b = Branch.open(revision[0].get_branch())
         if revision is None:
             revision_id = b.last_revision()
         else:
@@ -2133,7 +2150,9 @@ class cmd_merge(Command):
                 else:
                     return 1
 
-        branch = self._get_remembered_parent(tree, branch, 'Merging from')
+        if revision is None \
+                or len(revision) < 1 or revision[0].needs_branch():
+            branch = self._get_remembered_parent(tree, branch, 'Merging from')
 
         if revision is None or len(revision) < 1:
             if uncommitted:
@@ -2147,6 +2166,7 @@ class cmd_merge(Command):
             if uncommitted:
                 raise BzrCommandError('Cannot use --uncommitted and --revision'
                                       ' at the same time.')
+            branch = revision[0].get_branch() or branch
             if len(revision) == 1:
                 base = [None, None]
                 other_branch, path = Branch.open_containing(branch)
@@ -2156,11 +2176,16 @@ class cmd_merge(Command):
                 assert len(revision) == 2
                 if None in revision:
                     raise BzrCommandError(
-                        "Merge doesn't permit that revision specifier.")
-                other_branch, path = Branch.open_containing(branch)
+                        "Merge doesn't permit empty revision specifier.")
+                base_branch, path = Branch.open_containing(branch)
+                branch1 = revision[1].get_branch() or branch
+                other_branch, path1 = Branch.open_containing(branch1)
+                if revision[0].get_branch() is not None:
+                    # then path was obtained from it, and is None.
+                    path = path1
 
-                base = [branch, revision[0].in_history(other_branch).revno]
-                other = [branch, revision[1].in_history(other_branch).revno]
+                base = [branch, revision[0].in_history(base_branch).revno]
+                other = [branch1, revision[1].in_history(other_branch).revno]
 
         if tree.branch.get_parent() is None or remember:
             tree.branch.set_parent(other_branch.base)

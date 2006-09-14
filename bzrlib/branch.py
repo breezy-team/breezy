@@ -581,6 +581,18 @@ class Branch(object):
             mainline_parent_id = revision_id
         return BranchCheckResult(self)
 
+    def _get_checkout_format(self):
+        """Return the most suitable metadir for a checkout of this branch.
+        Weaves are used if this branch's repostory uses weaves.
+        """
+        if isinstance(self.bzrdir, bzrdir.BzrDirPreSplitOut):
+            from bzrlib import repository
+            format = bzrdir.BzrDirMetaFormat1()
+            format.repository_format = repository.RepositoryFormat7()
+        else:
+            format = self.repository.bzrdir.cloning_metadir()
+        return format
+
     def create_checkout(self, to_location, revision_id=None, 
                         lightweight=False):
         """Create a checkout of a branch.
@@ -591,17 +603,18 @@ class Branch(object):
         produce a bound branch (heavyweight checkout)
         :return: The tree of the created checkout
         """
+        t = transport.get_transport(to_location)
+        try:
+            t.mkdir('.')
+        except errors.FileExists:
+            pass
         if lightweight:
-            t = transport.get_transport(to_location)
-            try:
-                t.mkdir('.')
-            except errors.FileExists:
-                pass
             checkout = bzrdir.BzrDirMetaFormat1().initialize_on_transport(t)
             BranchReferenceFormat().initialize(checkout, self)
         else:
+            format = self._get_checkout_format()
             checkout_branch = bzrdir.BzrDir.create_branch_convenience(
-                to_location, force_new_tree=False)
+                to_location, force_new_tree=False, format=format)
             checkout = checkout_branch.bzrdir
             checkout_branch.bind(self)
             if revision_id is not None:
