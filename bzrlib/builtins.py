@@ -855,7 +855,8 @@ class cmd_update(Command):
                 conflicts = tree.update(rev, old_tip)
             except errors.NoSuchRevision, e:
                 raise BzrCommandError("branch has no revision %s\n"
-                                      "bzr update --revision works only for a revision in the branch history"
+                                      "bzr update --revision only works"
+                                      " for a revision in the branch history"
                                       % (e.revision))
             revno = branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))

@@ -1608,7 +1608,8 @@ class WorkingTree(bzrlib.tree.Tree):
     def update(self, revision=None, old_tip=_marker):
         """Update a working tree along its branch.
 
-        This will update the branch if its bound too, which means we have multiple trees involved:
+        This will update the branch if its bound too, which means we have
+        multiple trees involved:
         The new basis tree of the master.
         The old basis tree of the branch.
         The old basis tree of the working tree.
@@ -1617,16 +1618,19 @@ class WorkingTree(bzrlib.tree.Tree):
         Conceptually we want to:
         Preserve the wt.basis->wt.state changes
         Transform the wt.basis to the new master basis.
-        Apply a merge of the old branch basis to get any 'local' changes from it into the tree.
+        Apply a merge of the old branch basis to get any 'local' changes from
+        it into the tree.
         Restore the wt.basis->wt.state changes.
 
         There isn't a single operation at the moment to do that, so we:
-        Merge current state -> basis tree of the master w.r.t. the old tree basis.
-        Do a 'normal' merge of the old branch basis if it is relevant.
+        Merge current state -> basis tree of the master w.r.t. the old tree 
+        basis. Do a 'normal' merge of the old branch basis if it is relevant.
 
-        :param revision: The target revision to update to. Must be in the revision history.
-        :param old_tip: If branch.update() has already been run, the value it returned 
-        (old tip of the branch or None). _marker is used otherwise.
+        :param revision: The target revision to update to. Must be in the
+            revision history.
+        :param old_tip: If branch.update() has already been run, the value it
+            returned (old tip of the branch or None). _marker is used
+            otherwise.
         """
         if old_tip == self._marker:
             old_tip = self.branch.update()
