@@ -106,6 +106,11 @@ class MemoryTree(mutabletree.MutableTree):
         self._file_transport.mkdir(path)
         return file_id
 
+    @needs_read_lock
+    def last_revision(self):
+        """See MutableTree.last_revision."""
+        return self._branch_revision_id
+
     def lock_read(self):
         """Lock the memory tree for reading.
 
@@ -212,3 +217,4 @@ class MemoryTree(mutabletree.MutableTree):
                 self._basis_tree = self.branch.repository.revisiontree(None)
             else:
                 self._basis_tree = parents_list[0][1]
+            self._branch_revision_id = parents_list[0][0]
