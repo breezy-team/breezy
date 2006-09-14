@@ -25,6 +25,10 @@ IN DEVELOPMENT
       modules will not actually be imported if they are not used.
       (John Arbash Meinel)
 
+    * ``bzr update`` now takes a ``--revision`` argument. This lets you
+      change the revision of the working tree to any revision in the
+      ancestry of the current or master branch. (Matthieu Moy, #45719)
+
   BUG FIXES:
 
     * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
