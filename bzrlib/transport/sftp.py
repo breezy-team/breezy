@@ -373,7 +373,7 @@ class SFTPTransport(Transport):
 
         if cur_coalesced is not None:
             raise errors.ShortReadvError(relpath, cur_coalesced.start,
-                cur_coalesced.length, extra="Got to the end of the function")
+                cur_coalesced.length, len(data))
 
     def put_file(self, relpath, f, mode=None):
         """

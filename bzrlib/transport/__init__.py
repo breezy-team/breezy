@@ -430,8 +430,7 @@ class Transport(object):
             data = fp.read(c_offset.length)
             if len(data) < c_offset.length:
                 raise errors.ShortReadvError(relpath, c_offset.start,
-                            c_offset.length, extra='Only read %s bytes' 
-                            % (len(data),))
+                            c_offset.length, actual=len(data))
             for suboffset, subsize in c_offset.ranges:
                 key = (c_offset.start+suboffset, subsize)
                 data_map[key] = data[suboffset:suboffset+subsize]
