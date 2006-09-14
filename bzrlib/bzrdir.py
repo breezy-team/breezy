@@ -22,6 +22,12 @@ directories.
 
 # TODO: remove unittest dependency; put that stuff inside the test suite
 
+# TODO: The Format probe_transport seems a bit redundant with just trying to
+# open the bzrdir. -- mbp
+#
+# TODO: Can we move specific formats into separate modules to make this file
+# smaller?
+
 from copy import deepcopy
 from cStringIO import StringIO
 import os
@@ -298,7 +304,7 @@ class BzrDir(object):
         This will use the current default BzrDirFormat, and use whatever 
         repository format that that uses for bzrdirformat.create_repository.
 
-        ;param shared: Create a shared repository rather than a standalone
+        :param shared: Create a shared repository rather than a standalone
                        repository.
         The Repository object is returned.
 
@@ -319,7 +325,7 @@ class BzrDir(object):
         repository format that that uses for bzrdirformat.create_workingtree,
         create_branch and create_repository.
 
-        The WorkingTree object is returned.
+        :return: The WorkingTree object.
         """
         t = get_transport(safe_unicode(base))
         if not isinstance(t, LocalTransport):
