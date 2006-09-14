@@ -1299,11 +1299,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_read_lock
     def last_revision(self):
-        """Return the last revision id of this working tree.
+        """Return the last revision of the branch for this tree.
 
-        In early branch formats this was == the branch last_revision,
-        but that cannot be relied upon - for working tree operations,
-        always use tree.last_revision().
+        This format tree does not support a separate marker for last-revision
+        compared to the branch.
+
+        See MutableTree.last_revision
         """
         return self.branch.last_revision()
 
@@ -1660,7 +1661,7 @@ class WorkingTree3(WorkingTree):
 
     @needs_read_lock
     def last_revision(self):
-        """See WorkingTree.last_revision."""
+        """See Mutable.last_revision."""
         try:
             return self._control_files.get_utf8('last-revision').read()
         except NoSuchFile:

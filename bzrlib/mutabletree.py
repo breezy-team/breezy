@@ -119,6 +119,11 @@ class MutableTree(tree.Tree):
         """Helper function for add - sets the entries of kinds."""
         raise NotImplementedError(self._gather_kinds)
 
+    @needs_read_lock
+    def last_revision(self):
+        """Return the last revision id of this working tree."""
+        raise NotImplementedError(self.last_revision)
+
     def lock_write(self):
         """Lock the tree and its branch. This allows mutating calls to be made.
 
