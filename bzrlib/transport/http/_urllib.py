@@ -72,9 +72,9 @@ class HttpTransport_urllib(HttpTransportBase):
                     e.errno, errno.errorcode.get(e.errno), path)
                 if e.errno == errno.ENOENT:
                     raise NoSuchFile(path, extra=e)
-            raise ConnectionError(msg = "Error retrieving %s: %s" 
-                             % (self.abspath(relpath), str(e)),
-                             orig_error=e)
+            raise ConnectionError(msg = "Error retrieving %s: %s"
+                                  % (self.abspath(relpath), str(e)),
+                                  orig_error=e)
 
     def _get_url_impl(self, url, method, ranges, tail_amount=0):
         """Actually pass get request into urllib
@@ -113,10 +113,13 @@ class HttpTransport_urllib(HttpTransportBase):
             f.read()
             f.close()
             return True
-        except urllib2.URLError, e:
-            mutter('url error code: %s for has url: %r', e.code, abspath)
+        except urllib2.HTTPError, e:
+            mutter('url error code: %s, for has url: %r', e.code, abspath)
             if e.code == 404:
                 return False
+            raise
+        except urllib2.URLError, e:
+            mutter('url error: %s, for has url: %r', e.reason, abspath)
             raise
         except IOError, e:
             mutter('io error: %s %s for has url: %r',
