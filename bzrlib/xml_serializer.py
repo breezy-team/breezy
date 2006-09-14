@@ -36,7 +36,7 @@ except ImportError:
                                               fromstring, tostring)
     import util.elementtree as elementtree
 
-from bzrlib.errors import BzrError
+from bzrlib import errors
 
 
 class Serializer(object):
@@ -50,10 +50,16 @@ class Serializer(object):
         return tostring(self._pack_inventory(inv)) + '\n'
 
     def read_inventory_from_string(self, xml_string):
-        return self._unpack_inventory(fromstring(xml_string))
+        try:
+            return self._unpack_inventory(fromstring(xml_string))
+        except SyntaxError, e:
+            raise errors.UnexpectedInventoryFormat(e)
 
     def read_inventory(self, f):
-        return self._unpack_inventory(self._read_element(f))
+        try:
+            return self._unpack_inventory(self._read_element(f))
+        except SyntaxError, e:
+            raise errors.UnexpectedInventoryFormat(e)
 
     def write_revision(self, rev, f):
         self._write_element(self._pack_revision(rev), f)
