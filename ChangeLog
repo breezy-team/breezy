@@ -1,4 +1,10 @@
 2006-09-14  Vincent Ladeuil  <v.ladeuil@free.fr>
+	Fix stupid typo.
+
+	* webdav.py:	
+	(HttpDavTransport): Fix typo. Duh.
+
+2006-09-14-1  Vincent Ladeuil  <v.ladeuil@free.fr>
 	Based on bzrlib/transport/http/_urllib.
 
 	* webdav.py:

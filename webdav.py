@@ -193,7 +193,7 @@ class HttpDavTransport(HttpTransport_urllib):
         """See Transport.is_readonly."""
         return False
 
-    def _raise_http_error(url, response, info=None):
+    def _raise_http_error(self, url, response, info=None):
         if info is None:
             msg = ''
         else:
