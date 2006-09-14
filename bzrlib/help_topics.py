@@ -64,7 +64,7 @@ def _help_on_topics(name, outfile):
 
 
 def _help_on_revisionspec(name, outfile):
-    """Write out the help for revison spec information"""
+    """Write out the help for revision spec information"""
     import bzrlib.revisionspec
 
     outfile.write("\nRevision prefix specifier:\n--------------------------\n")
