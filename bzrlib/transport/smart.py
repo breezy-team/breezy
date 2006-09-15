@@ -130,7 +130,13 @@ limited to a directory?
 #
 # TODO: SmartBzrDir class, proxying all Branch etc methods across to another
 # branch doing file-level operations.
-
+#
+# TODO: jam 20060915 _decode_tuple is acting directly on input over
+#       the socket, and it assumes everything is UTF8 sections separated
+#       by \001. Which means a request like '\002' Will abort the connection
+#       because of a UnicodeDecodeError. It does look like invalid data will
+#       kill the SmartStreamServer, but only with an abort + exception, and 
+#       the overall server shouldn't die.
 
 from cStringIO import StringIO
 import errno
@@ -399,6 +405,17 @@ class SmartServer(object):
             return SmartServerResponse(('FileExists', e.path))
         except errors.DirectoryNotEmpty, e:
             return SmartServerResponse(('DirectoryNotEmpty', e.path))
+        except UnicodeError, e:
+            # If it is a DecodeError, than most likely we are starting
+            # with a plain string
+            str_or_unicode = e.object
+            if isinstance(str_or_unicode, unicode):
+                val = u'u:' + str_or_unicode
+            else:
+                val = u's:' + str_or_unicode.encode('base64')
+            # This handles UnicodeEncodeError or UnicodeDecodeError
+            return SmartServerResponse((e.__class__.__name__,
+                    e.encoding, val, str(e.start), str(e.end), e.reason))
 
 
 class SmartTCPServer(object):
@@ -706,6 +723,20 @@ class SmartTransport(transport.Transport):
             raise errors.FileExists(resp[1])
         elif what == 'DirectoryNotEmpty':
             raise errors.DirectoryNotEmpty(resp[1])
+        elif what in ('UnicodeEncodeError', 'UnicodeDecodeError'):
+            encoding = str(resp[1]) # encoding must always be a string
+            val = resp[2]
+            start = int(resp[3])
+            end = int(resp[4])
+            reason = str(resp[5]) # reason must always be a string
+            if val.startswith('u:'):
+                val = val[2:]
+            elif val.startswith('s:'):
+                val = val[2:].decode('base64')
+            if what == 'UnicodeDecodeError':
+                raise UnicodeDecodeError(encoding, val, start, end, reason)
+            elif what == 'UnicodeEncodeError':
+                raise UnicodeEncodeError(encoding, val, start, end, reason)
         else:
             raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 
