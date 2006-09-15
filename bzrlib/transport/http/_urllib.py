@@ -58,13 +58,19 @@ class HttpTransport_urllib(HttpTransportBase):
         """Set the base path where files will be stored."""
         super(HttpTransport_urllib, self).__init__(base)
         if from_transport is not None:
+            # Tracing transport creations that use cloning process
+            # mutter('Cloning HttpTransport_urllib '
+            #       + 'for base : [%s], from base [%s]' % (base,
+            #                                              from_transport.base))
+            # import traceback
+            # mutter(''.join(traceback.format_stack()))
             self._accept_ranges = from_transport._accept_ranges
             self._connection = from_transport._connection
             self._user = from_transport._user
             self._password = from_transport._password
         else:
             # Tracing transport creations that avoid cloning process
-            # mutter('Creating new HttpTransport_urllib')
+            # mutter('Creating new HttpTransport_urllib for base : [%s]' % base)
             # import traceback
             # mutter(''.join(traceback.format_stack()))
             self._accept_ranges = True
