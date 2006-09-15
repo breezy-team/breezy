@@ -53,6 +53,10 @@ IN DEVELOPMENT
     * Don't use preexec_fn on win32, as it is not supported by subprocess.
       (John Arbash Meinel)
 
+    * Skip specific tests when the dependencies aren't met. This includes
+      some ``setup.py`` tests when ``python-dev`` is not available, and
+      some tests that depend on paramiko. (John Arbash Meinel, Mattheiu Moy)
+
   INTERNALS:
 
     * TestCaseInTempDir now creates a separate directory for HOME, rather
