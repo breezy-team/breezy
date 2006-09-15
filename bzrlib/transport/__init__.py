@@ -307,7 +307,8 @@ class Transport(object):
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
-        This can be supplied with a string or a list
+
+        :param relpath: a string of a relative path
         """
 
         # XXX: Robert Collins 20051016 - is this really needed in the public
