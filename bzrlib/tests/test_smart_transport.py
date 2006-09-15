@@ -197,9 +197,15 @@ class SmartTCPTests(tests.TestCase):
         self.backing_transport.mkdir('toffee')
         self.backing_transport.mkdir('toffee/apple')
         self.assertEquals('/toffee', transport._remote_path('toffee'))
+        toffee_trans = transport.clone('toffee')
+        # Check that each transport has only the contents of its directory
+        # directly visible. If state was being held in the wrong object, it's
+        # conceivable that cloning a transport would alter the state of the
+        # cloned-from transport.
         self.assertTrue(transport.has('toffee'))
-        sub_conn = transport.clone('toffee')
-        self.assertTrue(sub_conn.has('apple'))
+        self.assertFalse(toffee_trans.has('toffee'))
+        self.assertFalse(transport.has('apple'))
+        self.assertTrue(toffee_trans.has('apple'))
 
     def test_open_bzrdir(self):
         """Open an existing bzrdir over smart transport"""
@@ -221,15 +227,12 @@ class SmartServerTests(tests.TestCaseWithTransport):
     def test_get_bundle(self):
         from bzrlib.bundle import serializer
         wt = self.make_branch_and_tree('.')
-        b = wt.branch
-        file('hello', 'w').write('hello world')
+        self.build_tree_contents([('hello', 'hello world')])
         wt.add('hello')
-        wt.commit(message='add hello', rev_id='rev-1')
+        rev_id = wt.commit('add hello')
         
         server = smart.SmartServer(self.get_transport())
-        response = server.dispatch_command('get_bundle', ('.', 'rev-1'))
-        self.assert_(response.body.startswith('# Bazaar revision bundle '),
-                     "doesn't look like a bundle: %r" % response.body)
+        response = server.dispatch_command('get_bundle', ('.', rev_id))
         bundle = serializer.read_bundle(StringIO(response.body))
 
 
