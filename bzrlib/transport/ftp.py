@@ -196,15 +196,13 @@ class FtpTransport(Transport):
     def _abspath(self, relpath):
         assert isinstance(relpath, basestring)
         relpath = urlutils.unescape(relpath)
-        relpath_parts = relpath.split('/')
-        if len(relpath_parts) > 1:
-            if relpath_parts[0] == '':
-                raise ValueError("path %r within branch %r seems to be absolute"
-                                 % (relpath, self._path))
-        basepath = self._path.split('/')
+        if relpath.startswith('/'):
+            basepath = []
+        else:
+            basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
-        for p in relpath_parts:
+        for p in relpath.split('/'):
             if p == '..':
                 if len(basepath) == 0:
                     # In most filesystems, a request for the parent
