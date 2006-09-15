@@ -894,7 +894,8 @@ class TestCase(unittest.TestCase):
             universal_newlines=kwargs.get('universal_newlines', False),
             process_args=args)
 
-    def start_bzr_subprocess(self, process_args, env_changes=None):
+    def start_bzr_subprocess(self, process_args, env_changes=None,
+                             skip_if_plan_to_signal=False):
         """Start bzr in a subprocess for testing.
 
         This starts a new Python interpreter and runs bzr in there.
@@ -909,9 +910,15 @@ class TestCase(unittest.TestCase):
             variables. A value of None will unset the env variable.
             The values must be strings. The change will only occur in the
             child, so you don't need to fix the environment after running.
+        :param skip_if_plan_to_signal: raise TestSkipped when true and os.kill
+            is not available.
 
         :returns: Popen object for the started process.
         """
+        if skip_if_plan_to_signal:
+            if not getattr(os, 'kill', None):
+                raise TestSkipped("os.kill not available.")
+
         if env_changes is None:
             env_changes = {}
         old_env = {}

@@ -280,7 +280,8 @@ class TestRunBzrCaptured(ExternalBase):
         """finish_bzr_subprocess raises self.failureException if the retcode is
         not the expected one.
         """
-        process = self.start_bzr_subprocess(['wait-until-signalled'])
+        process = self.start_bzr_subprocess(['wait-until-signalled'],
+                                            skip_if_plan_to_signal=True)
         self.assertEqual('running\n', process.stdout.readline())
         result = self.finish_bzr_subprocess(process, send_signal=signal.SIGINT,
                                             retcode=3)
