@@ -942,7 +942,7 @@ class TestCase(unittest.TestCase):
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
             process = Popen([sys.executable, bzr_path] + list(process_args),
-                             stdout=PIPE, stderr=PIPE)
+                             stdin=PIPE, stdout=PIPE, stderr=PIPE)
         finally:
             restore_environment()
         return process

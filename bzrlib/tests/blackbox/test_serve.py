@@ -20,17 +20,68 @@
 import signal
 
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.transport import smart
+
+
+class DoesNotCloseStdOutClient(smart.SmartStreamClient):
+    """A client that doesn't close stdout upon disconnect().
+    
+    We wish to let stdout remain open so that we can see if the server writes
+    anything to stdout during its shutdown.
+    """
+
+    def disconnect(self):
+        if self._connected:
+            self._connected = False
+            # The client's out is the server's in.
+            self._out.close()
 
 
 class TestBzrServe(TestCaseWithTransport):
+
+    def test_bzr_serve_inet(self):
+        # Make a branch
+        self.make_branch('.')
+
+        # Serve that branch from the current directory
+        process = self.start_bzr_subprocess(['serve', '--inet'])
+
+        # Connect to the server
+        # We use this url because while this is no valid URL to connect to this
+        # server instance, the transport needs a URL.
+        client = DoesNotCloseStdOutClient(
+            lambda: (process.stdout, process.stdin))
+        transport = smart.SmartTransport('bzr://localhost/', client=client)
+
+        # We get a working branch
+        branch = BzrDir.open_from_transport(transport).open_branch()
+        branch.repository.get_revision_graph()
+        self.assertEqual(None, branch.last_revision())
+
+        # finish with the transport
+        del transport
+        # Disconnect the client forcefully JUST IN CASE because of __del__'s use
+        # in the smart module.
+        client.disconnect()
+
+        # Shutdown the server: the client should have disconnected cleanly and
+        # closed stdin, so the server process should shut itself down.
+        self.assertTrue(process.stdin.closed)
+        # Hide stdin from the subprocess module, so it won't fail to close it.
+        process.stdin = None
+        result = self.finish_bzr_subprocess(process, retcode=0)
+        self.assertEqual('', result[0])
+        self.assertEqual('', result[1])
     
     def test_bzr_serve_port(self):
         # Make a branch
         self.make_branch('.')
 
         # Serve that branch from the current directory
-        process = self.start_bzr_subprocess('serve', '--port', 'localhost:0')
+        process = self.start_bzr_subprocess(['serve', '--port', 'localhost:0'],
+                                            skip_if_plan_to_signal=True)
         port_line = process.stdout.readline()
         prefix = 'listening on port: '
         self.assertStartsWith(port_line, prefix)

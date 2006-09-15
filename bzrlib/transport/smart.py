@@ -172,11 +172,12 @@ def _decode_tuple(req_line):
         return None
     if req_line[-1] != '\n':
         raise BzrProtocolError("request %r not terminated" % req_line)
-    return tuple((a.decode('utf-8') for a in req_line[:-1].split('\1')))
+    return tuple((a.decode('utf-8') for a in req_line[:-1].split('\x01')))
 
 
 def _send_tuple(to_file, args):
-    to_file.write('\1'.join((a.encode('utf-8') for a in args)) + '\n')
+    # XXX: this will be inefficient.  Just ask Robert.
+    to_file.write('\x01'.join((a.encode('utf-8') for a in args)) + '\n')
     to_file.flush()
 
 
@@ -528,13 +529,20 @@ class SmartTransport(sftp.SFTPUrlHandling):
     type: SmartTCPTransport, etc.
     """
 
-    def __init__(self, server_url, clone_from=None):
+    def __init__(self, server_url, clone_from=None, client=None):
+        """Constructor.
+
+        :param client: ignored when clone_from is not None.
+        """
         ### Technically super() here is faulty because Transport's __init__
         ### fails to take 2 parameters, and if super were to choose a silly
         ### initialisation order things would blow up. 
         super(SmartTransport, self).__init__(server_url)
         if clone_from is None:
-            self._client = SmartStreamClient(self._connect_to_server)
+            if client is None:
+                self._client = SmartStreamClient(self._connect_to_server)
+            else:
+                self._client = client
         else:
             # credentials may be stripped from the base in some circumstances
             # as yet to be clearly defined or documented, so copy them.

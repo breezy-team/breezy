@@ -22,13 +22,17 @@ import subprocess
 import sys
 
 import bzrlib
-from bzrlib import tests, errors, bzrdir
-from bzrlib.transport import local, memory, smart, get_transport
-
-## class SmartURLTests(tests.TestCase):
-##     """Tests for handling of URLs and detection of smart servers"""
-## 
-##     def test_bzr_url_is_smart(self):
+from bzrlib import (
+        bzrdir,
+        errors,
+        tests,
+        )
+from bzrlib.transport import (
+        get_transport,
+        local,
+        memory,
+        smart,
+        )
 
 
 class SmartClientTests(tests.TestCase):
@@ -75,7 +79,7 @@ class BasicSmartTests(tests.TestCase):
 
     def test_canned_get_response(self):
         transport = memory.MemoryTransport('memory:///')
-        transport.put('testfile', StringIO('contents\nof\nfile\n'))
+        transport.put_bytes('testfile', 'contents\nof\nfile\n')
         to_server = StringIO('get\001./testfile\n')
         from_server = StringIO()
         server = smart.SmartStreamServer(to_server, from_server, transport)
@@ -148,13 +152,13 @@ class SmartTCPTests(tests.TestCase):
 
     def test_smart_transport_has(self):
         """Checking for file existence over smart."""
-        self.backing_transport.put("foo", StringIO("contents of foo\n"))
+        self.backing_transport.put_bytes("foo", "contents of foo\n")
         self.assertTrue(self.transport.has("foo"))
         self.assertFalse(self.transport.has("non-foo"))
 
     def test_smart_transport_get(self):
         """Read back a file over smart."""
-        self.backing_transport.put("foo", StringIO("contents\nof\nfoo\n"))
+        self.backing_transport.put_bytes("foo", "contents\nof\nfoo\n")
         fp = self.transport.get("foo")
         self.assertEqual('contents\nof\nfoo\n', fp.read())
         
@@ -236,6 +240,38 @@ class SmartTransportRegistration(tests.TestCase):
         t = get_transport('bzr+ssh://example.com/path')
         self.assertIsInstance(t, smart.SmartSSHTransport)
         self.assertEqual('example.com', t._host)
+
+
+class FakeClient(smart.SmartStreamClient):
+    """Emulate a client for testing a transport's use of the client."""
+
+    def __init__(self):
+        smart.SmartStreamClient.__init__(self, None)
+        self._calls = []
+
+    def _call(self, *args):
+        self._calls.append(('_call', args))
+        return ('ok', )
+
+    def _recv_bulk(self):
+        return 'bar'
+
+
+class TestSmartTransport(tests.TestCase):
+        
+    def test_use_connection_factory(self):
+        # We want to be able to pass a client as a parameter to SmartTransport.
+        client = FakeClient()
+        transport = smart.SmartTransport('bzr://localhost/', client=client)
+
+        # We want to make sure the client is used when the first remote
+        # method is called.  No method should have been called yet.
+        self.assertEqual([], client._calls)
+
+        # Now call a method that should result in a single request.
+        self.assertEqual('bar', transport.get_bytes('foo'))
+        # The only call to _call should have been to get /foo.
+        self.assertEqual([('_call', ('get', '/foo'))], client._calls)
 
 
 # TODO: Client feature that does get_bundle and then installs that into a
