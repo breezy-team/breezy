@@ -26,6 +26,19 @@ from bzrlib.osutils import splitpath
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER
 
 
+def needs_tree_write_lock(unbound):
+    """Decorate unbound to take out and release a tree_write lock."""
+    def tree_write_locked(self, *args, **kwargs):
+        self.lock_tree_write()
+        try:
+            return unbound(self, *args, **kwargs)
+        finally:
+            self.unlock()
+    tree_write_locked.__doc__ = unbound.__doc__
+    tree_write_locked.__name__ = unbound.__name__
+    return tree_write_locked
+
+
 class MutableTree(tree.Tree):
     """A MutableTree is a specialisation of Tree which is able to be mutated.
 
@@ -134,6 +147,17 @@ class MutableTree(tree.Tree):
         instead.
         """
         raise NotImplementedError(self.last_revision)
+
+    def lock_tree_write(self):
+        """Lock the working tree for write, and the branch for read.
+
+        This is useful for operations which only need to mutate the working
+        tree. Taking out branch write locks is a relatively expensive process
+        and may fail if the branch is on read only media. So branch write locks
+        should only be taken out when we are modifying branch data - such as in
+        operations like commit, pull, uncommit and update.
+        """
+        raise NotImplementedError(self.lock_tree_write)
 
     def lock_write(self):
         """Lock the tree and its branch. This allows mutating calls to be made.

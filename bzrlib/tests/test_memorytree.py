@@ -52,6 +52,21 @@ class TestMemoryTree(TestCaseWithTransport):
             tree.get_file(tree.path2id('foo')).read())
         tree.unlock()
 
+    def test_lock_tree_write(self):
+        """Check we can lock_tree_write and unlock MemoryTrees."""
+        branch = self.make_branch('branch')
+        tree = MemoryTree.create_on_branch(branch)
+        tree.lock_tree_write()
+        tree.unlock()
+
+    def test_lock_tree_write_after_read_fails(self):
+        """Check that we error when trying to upgrade a read lock to write."""
+        branch = self.make_branch('branch')
+        tree = MemoryTree.create_on_branch(branch)
+        tree.lock_read()
+        self.assertRaises(errors.ReadOnlyError, tree.lock_tree_write)
+        tree.unlock()
+
     def test_lock_write(self):
         """Check we can lock_write and unlock MemoryTrees."""
         branch = self.make_branch('branch')

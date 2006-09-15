@@ -72,6 +72,7 @@ from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 from bzrlib.merge import merge_inner, transform_tree
 import bzrlib.mutabletree
+from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import (
                             abspath,
                             compact_date,
@@ -158,19 +159,6 @@ def gen_file_id(name):
 def gen_root_id():
     """Return a new tree-root file id."""
     return gen_file_id('TREE_ROOT')
-
-
-def needs_tree_write_lock(unbound):
-    """Decorate unbound to take out and release a tree_write lock."""
-    def tree_write_locked(self, *args, **kwargs):
-        self.lock_tree_write()
-        try:
-            return unbound(self, *args, **kwargs)
-        finally:
-            self.unlock()
-    tree_write_locked.__doc__ = unbound.__doc__
-    tree_write_locked.__name__ = unbound.__name__
-    return tree_write_locked
 
 
 class TreeEntry(object):
@@ -1350,14 +1338,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             raise
 
     def lock_tree_write(self):
-        """Lock the working tree for write, and the branch for read.
-
-        This is useful for operations which only need to mutate the working
-        tree. Taking out branch write locks is a relatively expensive process
-        and may fail if the branch is on read only media. So branch write locks
-        should only be taken out when we are modifying branch data - such as in
-        operations like commit, pull, uncommit and update.
-        """
+        """See MutableTree.lock_tree_write, and WorkingTree.unlock."""
         self.branch.lock_read()
         try:
             return self._control_files.lock_write()

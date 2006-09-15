@@ -72,5 +72,5 @@ class TreeBuilder(object):
         if self._tree is not None:
             raise errors.AlreadyBuilding
         self._tree = tree
-        self._tree.lock_write()
+        self._tree.lock_tree_write()
 
