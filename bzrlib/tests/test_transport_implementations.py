@@ -145,7 +145,9 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('file-like\ncontents\n', t, 'b')
 
         self.assertRaises(NoSuchFile,
-                          t.put, 'path/doesnt/exist/c', StringIO('contents'))
+            self.applyDeprecated,
+            zero_eleven,
+            t.put, 'path/doesnt/exist/c', StringIO('contents'))
 
     def test_put_bytes(self):
         t = self.get_transport()
@@ -1234,7 +1236,6 @@ class TransportTests(TestTransportImplementation):
             self.assertRaises(TransportNotPossible, transport.lock_write, 'foo')
             return
         transport.put_bytes('lock', '')
-        transport.put('lock', StringIO())
         try:
             lock = transport.lock_write('lock')
         except TransportNotPossible:

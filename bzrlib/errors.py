@@ -791,7 +791,7 @@ class TransportError(BzrNewError):
         BzrNewError.__init__(self)
 
 
-class SmartProtocolError(errors.TransportError):
+class SmartProtocolError(TransportError):
     """Generic bzr smart protocol error: %(details)s"""
 
     def __init__(self, details):

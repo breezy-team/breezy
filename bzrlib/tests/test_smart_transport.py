@@ -93,7 +93,7 @@ class BasicSmartTests(tests.TestCase):
     def test_get_error_unexpected(self):
         """Error reported by server with no specific representation"""
         class FlakyTransport(object):
-            def get(self, path):
+            def get_bytes(self, path):
                 raise Exception("some random exception from inside server")
         server = smart.SmartTCPServer(backing_transport=FlakyTransport())
         server.start_background_thread()
