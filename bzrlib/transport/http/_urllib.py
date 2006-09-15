@@ -63,6 +63,10 @@ class HttpTransport_urllib(HttpTransportBase):
             self._user = from_transport._user
             self._password = from_transport._password
         else:
+            # Tracing transport creations that avoid cloning process
+            # mutter('Creating new HttpTransport_urllib')
+            # import traceback
+            # mutter(''.join(traceback.format_stack()))
             self._accept_ranges = True
             self._connection = None
             self._user = None
@@ -72,14 +76,15 @@ class HttpTransport_urllib(HttpTransportBase):
     def ask_password(self, request):
         """Ask for a password if none is already provided in the request"""
         if request.password is None:
+            host = request.get_host()
             http_pass = 'HTTP %(user)s@%(host)s password'
             request.password = ui_factory.get_password(prompt=http_pass,
                                                        user=request.user,
-                                                       host=request.get_host())
+                                                       host=host)
             password_manager = self._opener.password_manager
             # We can't predict realm, let's try None, we get a
             # 401 if we are wrong anyway
-            password_manager.add_password(None, request.get_host(),
+            password_manager.add_password(None, host,
                                           request.user, request.password)
 
 
@@ -88,9 +93,10 @@ class HttpTransport_urllib(HttpTransportBase):
         if self._connection is not None:
             # Give back shared info
             request.connection = self._connection
-            request.user = self._user
-            request.password = self._password
-        else:
+            if self._user is not None:
+                request.user = self._user
+                request.password = self._password
+        elif request.user is not None:
             # We will issue our first request, time to ask for a
             # password if needed
             self.ask_password(request)
