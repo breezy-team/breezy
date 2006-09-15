@@ -30,20 +30,18 @@ import random
 import select
 import socket
 import stat
-import subprocess
 import sys
 import time
 import urllib
 import urlparse
 import weakref
 
-from bzrlib.errors import (FileExists, 
+from bzrlib.errors import (FileExists,
                            NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError, 
+                           LockError,
                            PathError,
                            ParamikoNotPresent,
-                           UnknownSSH,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.trace import mutter, warning
@@ -1037,7 +1035,6 @@ class SFTPServerWithoutSSH(SFTPServer):
         # Re-import these as locals, so that they're still accessible during
         # interpreter shutdown (when all module globals get set to None, leading
         # to confusing errors like "'NoneType' object has no attribute 'error'".
-        import socket, errno
         class FakeChannel(object):
             def get_transport(self):
                 return self

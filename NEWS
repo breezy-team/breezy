@@ -51,6 +51,9 @@ IN DEVELOPMENT
       some ``setup.py`` tests when ``python-dev`` is not available, and
       some tests that depend on paramiko. (John Arbash Meinel, Mattheiu Moy)
 
+    * Fallback to Paramiko properly, if no ``ssh`` executable exists on
+      the system. (Andrew Bennetts, John Arbash Meinel)
+
   INTERNALS:
 
     * TestCaseInTempDir now creates a separate directory for HOME, rather
