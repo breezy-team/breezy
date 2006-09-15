@@ -408,3 +408,17 @@ class TestLockDir(TestCaseWithTransport):
             self.assertRaises(LockBroken, ld1.unlock)
         finally:
             bzrlib.ui.ui_factory = orig_factory
+
+    def test__format_lock_info(self):
+        ld1 = self.get_lock()
+        ld1.create()
+        ld1.lock_write()
+        try:
+            info_list = ld1._format_lock_info(ld1.peek())
+        finally:
+            ld1.unlock()
+        self.assertEqual('lock %s' % (ld1.transport.abspath(ld1.path),),
+                         info_list[0])
+        self.assertContainsRe(info_list[1],
+                              r'^held by .* on host .* \[process #\d*\]$')
+        self.assertContainsRe(info_list[2], r'locked \d+ seconds? ago$')
