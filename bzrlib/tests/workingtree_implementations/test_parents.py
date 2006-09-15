@@ -18,7 +18,7 @@
 
 import os
 
-from bzrlib import errors
+from bzrlib import errors, symbol_versioning
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.uncommit import uncommit
 
@@ -26,12 +26,19 @@ from bzrlib.uncommit import uncommit
 class TestParents(TestCaseWithWorkingTree):
 
     def assertConsistentParents(self, expected, tree):
+        """Check that the parents found are as expected.
+
+        This test helper also checks that they are consistent with
+        the pre-get_parent_ids() api - which is now deprecated.
+        """
         self.assertEqual(expected, tree.get_parent_ids())
         if expected == []:
             self.assertEqual(None, tree.last_revision())
         else:
             self.assertEqual(expected[0], tree.last_revision())
-        self.assertEqual(expected[1:], tree.pending_merges())
+        self.assertEqual(expected[1:],
+            self.applyDeprecated(symbol_versioning.zero_eleven,
+                tree.pending_merges))
 
 
 class TestSetParents(TestParents):

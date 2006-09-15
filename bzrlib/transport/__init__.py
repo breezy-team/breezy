@@ -198,6 +198,8 @@ class Transport(object):
     implementations can do pipelining.
     In general implementations should support having a generator or a list
     as an argument (ie always iterate, never index)
+
+    :ivar base: Base URL for the transport; should always end in a slash.
     """
 
     # implementations can override this if it is more efficient
@@ -220,7 +222,7 @@ class Transport(object):
 
         This handles things like ENOENT, ENOTDIR, EEXIST, and EACCESS
         """
-        if hasattr(e, 'errno'):
+        if getattr(e, 'errno', None) is not None:
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
                 raise errors.NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
@@ -342,6 +344,8 @@ class Transport(object):
         Note that some transports MAY allow querying on directories, but this
         is not part of the protocol.  In other words, the results of 
         t.has("a_directory_name") are undefined.
+
+        :rtype: bool
         """
         raise NotImplementedError(self.has)
 
@@ -634,11 +638,15 @@ class Transport(object):
         return self.append_file(relpath, f, mode=mode)
 
     def append_file(self, relpath, f, mode=None):
-        """Append the text in the file-like object to the supplied location.
+        """Append bytes from a file-like object to a file at relpath.
 
-        returns the length of relpath before the content was written to it.
-        
-        If the file does not exist, it is created with the supplied mode.
+        The file is created if it does not already exist.
+
+        :param f: a file-like object of the bytes to append.
+        :param mode: Unix mode for newly created files.  This is not used for
+            existing files.
+
+        :returns: the length of relpath before the content was written to it.
         """
         symbol_versioning.warn('Transport %s should implement append_file,'
                                ' rather than implementing append() as of'
@@ -648,11 +656,16 @@ class Transport(object):
         return self.append(relpath, f, mode=mode)
 
     def append_bytes(self, relpath, bytes, mode=None):
-        """Append the text in the string object to the supplied location.
+        """Append bytes to a file at relpath.
 
-        returns the length of relpath before the content was written to it.
-        
-        If the file does not exist, it is created with the supplied mode.
+        The file is created if it does not already exist.
+
+        :type f: str
+        :param f: a string of the bytes to append.
+        :param mode: Unix mode for newly created files.  This is not used for
+            existing files.
+
+        :returns: the length of relpath before the content was written to it.
         """
         assert isinstance(bytes, str), \
             'bytes must be a plain string, not %s' % type(bytes)
@@ -1015,7 +1028,7 @@ class TransportTestProviderAdapter(object):
 
     def get_transport_test_permutations(self, module):
         """Get the permutations module wants to have tested."""
-        if not hasattr(module, 'get_test_permutations'):
+        if getattr(module, 'get_test_permutations', None) is None:
             warning("transport module %s doesn't provide get_test_permutations()"
                     % module.__name__)
             return []

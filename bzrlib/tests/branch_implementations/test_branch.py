@@ -164,7 +164,7 @@ class TestBranch(TestCaseWithBranch):
         repo_b = self.make_repository('b')
         wt_a.bzrdir.open_repository().copy_content_into(repo_b)
         br_b = wt_a.bzrdir.open_branch().clone(repo_b.bzrdir, revision_id='1')
-        self.assertEqual(br_b.last_revision(), '1')
+        self.assertEqual('1', br_b.last_revision())
 
     def test_sprout_partial(self):
         # test sprouting with a prefix of the revision-history.
@@ -179,7 +179,7 @@ class TestBranch(TestCaseWithBranch):
         repo_b = self.make_repository('b')
         wt_a.bzrdir.open_repository().copy_content_into(repo_b)
         br_b = wt_a.bzrdir.open_branch().sprout(repo_b.bzrdir, revision_id='1')
-        self.assertEqual(br_b.last_revision(), '1')
+        self.assertEqual('1', br_b.last_revision())
 
     def get_parented_branch(self):
         wt_a = self.make_branch_and_tree('a')
@@ -404,6 +404,18 @@ class TestBranch(TestCaseWithBranch):
         checkout_d = branch_a.create_checkout('d', lightweight=True)
         os.mkdir('e')
         checkout_e = branch_a.create_checkout('e')
+
+    def test_create_anonymous_lightweight_checkout(self):
+        """A checkout from a readonly branch should succeed."""
+        tree_a = self.make_branch_and_tree('a')
+        rev_id = tree_a.commit('put some content in the branch')
+        source_branch = bzrlib.branch.Branch.open(
+            'readonly+' + tree_a.bzrdir.root_transport.base)
+        # sanity check that the test will be valid
+        self.assertRaises((errors.LockError, errors.TransportNotPossible),
+            source_branch.lock_write)
+        checkout = source_branch.create_checkout('c', lightweight=True)
+        self.assertEqual(rev_id, checkout.last_revision())
 
 
 class ChrootedTests(TestCaseWithBranch):

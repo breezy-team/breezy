@@ -17,6 +17,13 @@
 
 """Implementation of Transport over SFTP, using paramiko."""
 
+# TODO: Remove the transport-based lock_read and lock_write methods.  They'll
+# then raise TransportNotPossible, which will break remote access to any
+# formats which rely on OS-level locks.  That should be fine as those formats
+# are pretty old, but these combinations may have to be removed from the test
+# suite.  Those formats all date back to 0.7; so we should be able to remove
+# these methods when we officially drop support for those formats.
+
 import errno
 import os
 import random
@@ -85,8 +92,15 @@ def clear_connection_cache():
 
 
 class SFTPLock(object):
-    """This fakes a lock in a remote location."""
+    """This fakes a lock in a remote location.
+    
+    A present lock is indicated just by the existence of a file.  This
+    doesn't work well on all transports and they are only used in 
+    deprecated storage formats.
+    """
+    
     __slots__ = ['path', 'lock_path', 'lock_file', 'transport']
+
     def __init__(self, path, transport):
         assert isinstance(transport, SFTPTransport)
 
@@ -547,7 +561,7 @@ class SFTPTransport(Transport):
         """
         # paramiko seems to generate detailless errors.
         self._translate_error(e, path, raise_generic=False)
-        if hasattr(e, 'args'):
+        if getattr(e, 'args', None) is not None:
             if (e.args == ('No such file or directory',) or
                 e.args == ('No such file',)):
                 raise NoSuchFile(path, str(e) + more_info)
@@ -557,7 +571,7 @@ class SFTPTransport(Transport):
             if (e.args == ('Failure',)):
                 raise failure_exc(path, str(e) + more_info)
             mutter('Raising exception with args %s', e.args)
-        if hasattr(e, 'errno'):
+        if getattr(e, 'errno', None) is not None:
             mutter('Raising exception with errno %s', e.errno)
         raise e
 

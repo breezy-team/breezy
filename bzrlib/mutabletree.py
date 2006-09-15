@@ -121,7 +121,18 @@ class MutableTree(tree.Tree):
 
     @needs_read_lock
     def last_revision(self):
-        """Return the last revision id of this working tree."""
+        """Return the revision id of the last commit performed in this tree.
+
+        In early tree formats the result of last_revision is the same as the
+        branch last_revision, but that is no longer the case for modern tree
+        formats.
+        
+        last_revision returns the left most parent id, or None if there are no
+        parents.
+
+        last_revision was deprecated as of 0.11. Please use get_parent_ids
+        instead.
+        """
         raise NotImplementedError(self.last_revision)
 
     def lock_write(self):

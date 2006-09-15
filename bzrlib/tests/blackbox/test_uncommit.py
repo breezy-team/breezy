@@ -48,7 +48,7 @@ class TestUncommit(TestCaseWithTransport):
         self.assertContainsRe(out, 'second commit')
 
         # Nothing has changed
-        self.assertEqual('a2', wt.last_revision())
+        self.assertEqual(['a2'], wt.get_parent_ids())
 
         # Uncommit, don't prompt
         out, err = self.run_bzr('uncommit', '--force')
@@ -56,7 +56,7 @@ class TestUncommit(TestCaseWithTransport):
         self.assertContainsRe(out, 'second commit')
 
         # This should look like we are back in revno 1
-        self.assertEqual('a1', wt.last_revision())
+        self.assertEqual(['a1'], wt.get_parent_ids())
         out, err = self.run_bzr('status')
         self.assertEquals(out, 'modified:\n  a\n')
 
@@ -66,7 +66,7 @@ class TestUncommit(TestCaseWithTransport):
         checkout_tree = wt.bzrdir.sprout('checkout').open_workingtree()
         checkout_tree.branch.bind(wt.branch)
 
-        self.assertEqual('a2', checkout_tree.last_revision())
+        self.assertEqual(['a2'], checkout_tree.get_parent_ids())
 
         os.chdir('checkout')
         out, err = self.run_bzr('uncommit', '--dry-run', '--force')
@@ -74,7 +74,7 @@ class TestUncommit(TestCaseWithTransport):
         self.assertNotContainsRe(out, 'initial commit')
         self.assertContainsRe(out, 'second commit')
 
-        self.assertEqual('a2', checkout_tree.last_revision())
+        self.assertEqual(['a2'], checkout_tree.get_parent_ids())
 
         out, err = self.run_bzr('uncommit', '--force')
         self.assertNotContainsRe(out, 'initial commit')
@@ -82,9 +82,9 @@ class TestUncommit(TestCaseWithTransport):
 
         # uncommit in a checkout should uncommit the parent branch
         # (but doesn't effect the other working tree)
-        self.assertEquals('a1', checkout_tree.last_revision())
+        self.assertEquals(['a1'], checkout_tree.get_parent_ids())
         self.assertEquals('a1', wt.branch.last_revision())
-        self.assertEquals('a2', wt.last_revision())
+        self.assertEquals(['a2'], wt.get_parent_ids())
 
     def test_uncommit_bound(self):
         os.mkdir('a')
@@ -115,7 +115,7 @@ class TestUncommit(TestCaseWithTransport):
 
         self.assertNotContainsRe(out, 'initial commit')
         self.assertContainsRe(out, 'second commit')
-        self.assertEqual('a1', wt.last_revision())
+        self.assertEqual(['a1'], wt.get_parent_ids())
         self.assertEqual('a1', wt.branch.last_revision())
 
     def test_uncommit_neg_1(self):
@@ -152,8 +152,7 @@ class TestUncommit(TestCaseWithTransport):
 
         os.chdir('tree')
         out, err = self.run_bzr('uncommit', '--force')
-        self.assertEqual('a1', wt.last_revision())
-        self.assertEqual(['b3'], wt.pending_merges())
+        self.assertEqual(['a1', 'b3'], wt.get_parent_ids())
 
     def test_uncommit_multiple_merge(self):
         wt = self.create_simple_tree()
@@ -191,14 +190,12 @@ class TestUncommit(TestCaseWithTransport):
         wt.branch.fetch(tree2.branch)
         wt.set_pending_merges(['b4'])
 
-        self.assertEqual('a3', wt.last_revision())
-        self.assertEqual(['b4'], wt.pending_merges())
+        self.assertEqual(['a3', 'b4'], wt.get_parent_ids())
 
         os.chdir('tree')
         out, err = self.run_bzr('uncommit', '--force', '-r', '2')
 
-        self.assertEqual('a2', wt.last_revision())
-        self.assertEqual(['b3', 'b4'], wt.pending_merges())
+        self.assertEqual(['a2', 'b3', 'b4'], wt.get_parent_ids())
 
     def test_uncommit_octopus_merge(self):
         # Check that uncommit keeps the pending merges in the same order

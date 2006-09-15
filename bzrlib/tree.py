@@ -163,7 +163,7 @@ class Tree(object):
         fp = fingerprint_file(f)
         f.seek(0)
         
-        if ie.text_size != None:
+        if ie.text_size is not None:
             if ie.text_size != fp['size']:
                 raise BzrError("mismatched size for file %r in %r" % (ie.file_id, self._store),
                         ["inventory expects %d bytes" % ie.text_size,
@@ -394,7 +394,7 @@ class InterTree(InterObject):
     will pass through to InterTree as appropriate.
     """
 
-    _optimisers = set()
+    _optimisers = []
 
     @needs_read_lock
     def compare(self, want_unchanged=False, specific_files=None,

@@ -40,7 +40,7 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
 
         pending_merges = []
         if tree is not None:
-            pending_merges = tree.pending_merges()
+            pending_merges = tree.get_parent_ids()[1:]
 
         master = branch.get_master_branch()
         if master is not None:

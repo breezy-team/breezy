@@ -68,8 +68,10 @@ class TransportTests(TestTransportImplementation):
         except excClass:
             return
         else:
-            if hasattr(excClass,'__name__'): excName = excClass.__name__
-            else: excName = str(excClass)
+            if getattr(excClass,'__name__', None) is not None:
+                excName = excClass.__name__
+            else:
+                excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
     def test_has(self):
@@ -749,6 +751,8 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('adir/asubdir')
         t.mkdir('bdir')
         t.mkdir('bdir/bsubdir')
+        # any kind of PathError would be OK, though we normally expect
+        # DirectoryNotEmpty
         self.assertRaises(PathError, t.rename, 'bdir', 'adir')
         # nothing was changed so it should still be as before
         self.assertTrue(t.has('bdir/bsubdir'))
@@ -839,7 +843,11 @@ class TransportTests(TestTransportImplementation):
         # TODO: test copy_multi
 
     def test_connection_error(self):
-        """ConnectionError is raised when connection is impossible"""
+        """ConnectionError is raised when connection is impossible.
+        
+        The error may be raised from either the constructor or the first
+        operation on the transport.
+        """
         try:
             url = self._server.get_bogus_url()
         except NotImplementedError:
