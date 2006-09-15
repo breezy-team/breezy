@@ -209,6 +209,65 @@ but they shouldn't be *named* like classes:
 > factory, then yes, foo_factory is what I would use.
 
 
+Lazy Imports
+------------
+
+To make startup time faster, we use the ``bzrlib.lazy_import`` module to
+delay importing modules until they are actually used. ``lazy_import`` uses
+the same syntax as regular python imports. So to import a few modules in a
+lazy fashion do::
+
+  from bzrlib.lazy_import import lazy_import
+  lazy_import(globals(), """
+  import os
+  import subprocess
+  import sys
+  import time
+
+  from bzrlib import (
+     errors,
+     transport,
+     foo as bar,
+     )
+  import bzrlib.transport
+  import bzrlib.xml5
+  """)
+
+At this point, all of these exist as a ``ImportReplacer`` object, ready to
+be imported once a member is accessed.
+
+
+Modules versus Members
+~~~~~~~~~~~~~~~~~~~~~~
+
+While it is possible for ``lazy_import()`` to import members of a module
+wehn using the ``from module import member`` syntax, it is recommended to
+only use that syntax to load sub modules ``from module import submodule``.
+This is because variables and classes can frequently be used without
+needing a sub-member for example::
+
+  lazy_import(globals(), """
+  from module import MyClass
+  """)
+
+  def test(x):
+      return isinstance(x, MyClass)
+
+This will incorrectly fail, because ``MyClass`` is a ``ImportReplacer``
+object, rather than the real class.
+
+
+Passing to other variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It also is incorrect to assign ``ImportReplacer`` objects to other variables.
+Because the replacer only knows about the original name, it is unable to
+replace other variables. The ``ImportReplacer`` class will raise an
+``IllegalUseOfScopeReplacer`` exception if it can figure out that this
+happened. But it requires accessing a member more than once from the new
+variable, so some bugs are not detected right away.
+
+
 Writing output
 ==============
 
