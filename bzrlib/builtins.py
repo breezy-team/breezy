@@ -2767,6 +2767,19 @@ class cmd_break_lock(Command):
             pass
         
 
+class cmd_wait_until_signalled(Command):
+    """Test helper for test_start_and_stop_bzr_subprocess_send_signal.
+
+    This just prints a line to signal when it is ready, then blocks on stdin.
+    """
+
+    hidden = True
+
+    def run(self):
+        sys.stdout.write("running\n")
+        sys.stdout.flush()
+        sys.stdin.readline()
+
 
 # command-line interpretation helper for merge-related commands
 def merge(other_revision, base_revision,
