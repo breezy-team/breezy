@@ -19,7 +19,9 @@ import urllib, urllib2
 import errno
 from cStringIO import StringIO
 
-import bzrlib  # for the version
+from bzrlib import (
+    ui,
+    )
 from bzrlib.errors import (TransportNotPossible,
                            NoSuchFile,
                            BzrError,
@@ -29,21 +31,17 @@ from bzrlib.errors import (TransportNotPossible,
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import (HttpTransportBase,
-                                   HttpServer,
-                                   extract_auth)
+                                   HttpServer)
 # TODO: handle_response should integrated into the _urllib2_wrappers
-from bzrlib.transport.http.response import (
-    handle_response
-    )
+from bzrlib.transport.http.response import handle_response
 from bzrlib.transport.http._urllib2_wrappers import (
-    Request,
     Opener,
-    )
-from bzrlib.ui import (
-    ui_factory,
+    Request,
     )
 
+
 register_urlparse_netloc_protocol('http+urllib')
+
 
 class HttpTransport_urllib(HttpTransportBase):
     """Python urllib transport for http and https."""
@@ -51,10 +49,12 @@ class HttpTransport_urllib(HttpTransportBase):
     # In order to debug we have to issue our traces in syc with
     # httplib, which use print :(
     _debuglevel = 0
+    
+    # TODO: jam 20060915 Rather than having a class-wide opener class
+    #       consider having a class-wide instance.
+    _opener_class = Opener
 
-    # TODO: Implement pipelined versions of all of the *_multi() functions.
-
-    def __init__(self, base, from_transport=None, opener=Opener()):
+    def __init__(self, base, from_transport=None):
         """Set the base path where files will be stored."""
         super(HttpTransport_urllib, self).__init__(base)
         if from_transport is not None:
@@ -68,6 +68,7 @@ class HttpTransport_urllib(HttpTransportBase):
             self._connection = from_transport._connection
             self._user = from_transport._user
             self._password = from_transport._password
+            self._opener = from_transport._opener
         else:
             # Tracing transport creations that avoid cloning process
             # mutter('Creating new HttpTransport_urllib for base : [%s]' % base)
@@ -77,14 +78,16 @@ class HttpTransport_urllib(HttpTransportBase):
             self._connection = None
             self._user = None
             self._password = None
-        self._opener = opener
+            self._opener = self._opener_class()
 
     def ask_password(self, request):
         """Ask for a password if none is already provided in the request"""
+        # TODO: jam 20060915 There should be a test that asserts we ask 
+        #       for a password at the right time.
         if request.password is None:
             host = request.get_host()
             http_pass = 'HTTP %(user)s@%(host)s password'
-            request.password = ui_factory.get_password(prompt=http_pass,
+            request.password = ui.ui_factory.get_password(prompt=http_pass,
                                                        user=request.user,
                                                        host=host)
             password_manager = self._opener.password_manager
@@ -92,7 +95,6 @@ class HttpTransport_urllib(HttpTransportBase):
             # 401 if we are wrong anyway
             password_manager.add_password(None, host,
                                           request.user, request.password)
-
 
     def _perform(self, request):
         """Send the request to the server and handles common errors."""

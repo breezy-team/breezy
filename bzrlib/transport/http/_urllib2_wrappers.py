@@ -14,7 +14,26 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Implementaion of urllib2 tailored to bzr needs"""
+"""Implementaion of urllib2 tailored to bzr needs
+
+This file re-implements the urllib2 class hierarchy with custom classes.
+
+For instance, we create a new HTTPConnection and HTTPSConnection that inherit
+from the original urllib2.HTTP(s)Connection objects, but also have a new base
+which implements a custom getresponse and fake_close handlers.
+
+And then we implement custom HTTPHandler and HTTPSHandler classes, that use
+the custom HTTPConnection classes.
+
+We have a custom Response class, which lets us maintain a keep-alive
+connection even for requests that urllib2 doesn't expect to contain body data.
+
+And a custom Request class that lets us track redirections, and send
+authentication data without requiring an extra round trip to get rejected by
+the server. We also create a Request hierarchy, to make it clear what type
+of request is being made.
+"""
+
 
 DEBUG = 0
 
@@ -41,14 +60,14 @@ import urllib2
 import urlparse
 
 from bzrlib import (
-    __version__,
+    __version__ as bzrlib_version,
     )
-
 from bzrlib.errors import (
     BzrError,
     ConnectionError,
     NoSuchFile,
     )
+
 
 # We define our own Response class to keep our httplib pipe clean
 class Response(httplib.HTTPResponse):
@@ -79,6 +98,7 @@ class Response(httplib.HTTPResponse):
             self.close()
 
 
+# Not inheriting from 'object' because httplib.HTTPConnection doesn't.
 class AbstractHTTPConnection:
     """A custom HTTP(S) Connection, which can reset itself on a bad response"""
 
@@ -158,7 +178,7 @@ class Request(urllib2.Request):
         Get user and password from url of the form: http://user:pass@host/path
         """
         scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-    
+
         if '@' in netloc:
             auth, netloc = netloc.split('@', 1)
             if ':' in auth:
@@ -193,8 +213,14 @@ class Request(urllib2.Request):
 # different password for the same user may be required on the
 # same host for different protocol/host/directories combination.
 class PasswordManager(urllib2.HTTPPasswordMgrWithDefaultRealm):
+
     def __init__(self):
         urllib2.HTTPPasswordMgrWithDefaultRealm.__init__(self)
+
+    # TODO: jam 20060915 This manager should implement find_user_password
+    #       so that even if we don't supply username in the url, if the
+    #       site requests a password we prompt the user for one.
+
 
 class ConnectionHandler(urllib2.BaseHandler):
     """Provides connection-sharing by pre-processing requests.
@@ -208,7 +234,7 @@ class ConnectionHandler(urllib2.BaseHandler):
 
     handler_order = 1000 # after all pre-processings
     _connection_of = {} # map connections by host
-    
+
     # TODO: We don't want a global cache that can interact badly
     # with the test suite, but being able to share connections on
     # the same (host IP, port) combination can be good even
@@ -217,6 +243,9 @@ class ConnectionHandler(urllib2.BaseHandler):
     # hosts on the same IP for example). So we may activate the
     # cache as currently it is used inside one Transport at a
     # time.
+    # jam 20060915: I think most of this get_key stuff can be removed
+    #               since we now properly share the connection between
+    #               clones of the same Transport.
     _cache_activated = False
 
     def get_key(self, connection):
@@ -295,7 +324,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
     _default_headers = {'Pragma': 'no-cache',
                         'Cache-control': 'max-age=0',
                         'Connection': 'Keep-Alive',
-                        'User-Agent': 'bzr/%s (urllib)' % __version__,
+                        'User-Agent': 'bzr/%s (urllib)' % bzrlib_version,
                         }
 
     def __init__(self):
@@ -361,7 +390,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         # from _urllib.py and should not occurs -- vila 20060913
         except (BzrError, IOError), e:
             mutter('io error: %s %s for %s url: %r',
-                   e.errno, errno.errorcode.get(e.errno), 
+                   e.errno, errno.errorcode.get(e.errno),
                    request.get_method(), url)
             raise TransportError(orig_error=e)
 
@@ -424,11 +453,15 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
 
 
 class HTTPHandler(AbstractHTTPHandler):
+    """A custom handler that just thunks into HTTPConnection"""
+
     def http_open(self, request):
         return self.do_open(HTTPConnection, request)
 
 
 class HTTPSHandler(AbstractHTTPHandler):
+    """A custom handler that just thunks into HTTPSConnection"""
+
     def https_open(self, request):
         return self.do_open(HTTPSConnection, request)
 
@@ -585,6 +618,7 @@ class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
 
 class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
     """Translate common errors into bzr Exceptions"""
+
     def http_error_default(self, req, fp, code, msg, hdrs):
         if code == 404:
             raise NoSuchFile(req.get_selector(),
@@ -594,7 +628,7 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
             raise InvalidHttpResponse(url,
                                       'Unable to handle http code %d: %s'
                                       % (response.code, response.reason))
-    
+
 class Opener(object):
     """A wrapper around urllib2.build_opener
 
@@ -602,9 +636,18 @@ class Opener(object):
     """
     # TODO: Provides hooks for daugther classes.
 
+    # This is a global password manager object, intended to be shared
+    # by all instances of Opener. It is global so that users don't get
+    # prompted for their passwords more than once.
+    # TODO: jam 20060915 Consider making it only exist as long as the Opener 
+    #       is alive, or possibly as long as a living Transport group.
+    #       Consider a long-running gui: it may be better to prompt the
+    #       user for the password from time to time, rather than caching
+    #       the password indefinitely. At a minimum, the GUI should
+    #       be able to set policy.
     password_manager = PasswordManager()
 
-    def __init__(self, 
+    def __init__(self,
                  connection=ConnectionHandler,
                  redirect=HTTPRedirectHandler,
                  error=HTTPErrorProcessor,):
@@ -620,7 +663,7 @@ class Opener(object):
             HTTPHandler,
             HTTPSHandler,
             HTTPDefaultErrorHandler,
-                                           )
+            )
         self.open = self._opener.open
         if DEBUG > 0:
             import pprint
