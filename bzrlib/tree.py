@@ -451,25 +451,39 @@ class InterTree(InterObject):
             versioned = compared(from_versioned, True)
             if from_versioned:
                 from_kind = get_versioned_kind(from_tree, file_id)
+                if from_kind is not None:
+                    from_executable = (from_tree.is_executable(file_id) not in 
+                                       (False, None))
+                else:
+                    from_executable = None
                 from_entry = from_tree.inventory[file_id]
                 from_parent = from_entry.parent_id
                 from_name = from_entry.name
-                from_executable = from_tree.is_executable(file_id)
             else:
                 from_kind = None
                 from_parent = None
                 from_name = None
                 from_executable = None
-            kind = compared(from_kind, get_versioned_kind(to_tree, file_id))
+            to_kind = get_versioned_kind(to_tree, file_id)
+            kind = compared(from_kind, to_kind)
             if kind is not None:
                 changed_content = True
-            elif (from_tree.get_file_sha1(file_id) != 
-                  to_tree.get_file_sha1(file_id)):
-                changed_content = True
+            elif from_kind == 'file':
+                if (from_tree.get_file_sha1(file_id) !=
+                    to_tree.get_file_sha1(file_id)):
+                    changed_content = True
+            elif from_kind == 'symlink':
+                if (from_tree.get_symlink_target(file_id) != 
+                    to_tree.get_symlink_target(file_id)):
+                    changed_content = True
             parent = compared(from_parent, to_entry.parent_id)
             name = compared(from_name, to_entry.name)
-            executable = compared(from_executable,
-                                  to_tree.is_executable(file_id))
+            if to_kind is not None:
+                to_executable = (to_tree.is_executable(file_id) not in 
+                                 (False, None))
+            else:
+                to_executable = None
+            executable = compared(from_executable, to_executable)
             if (changed_content is not False or versioned is not None or
                 parent is not None or name is not None or executable is not
                 None or include_unchanged):
@@ -484,7 +498,9 @@ class InterTree(InterObject):
             parent = (from_entry.parent_id, None)
             name = (from_entry.name, None)
             kind = (get_versioned_kind(from_tree, file_id), None)
-            executable = (from_tree.is_executable(file_id), None)
+            from_executable = (from_tree.is_executable(file_id) not in 
+                               (False, None))
+            executable = (from_executable, None)
             changed_content = True
             # the parent's path is necessarily known at this point.
             to_path = osutils.pathjoin(to_paths[from_entry.parent_id],

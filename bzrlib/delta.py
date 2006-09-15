@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib import errors
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter
 from bzrlib.symbol_versioning import deprecated_function, zero_nine
@@ -157,147 +158,61 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
 
 def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
 
-    from osutils import is_inside_any
-    
-    old_inv = old_tree.inventory
-    new_inv = new_tree.inventory
     delta = TreeDelta()
     # mutter('start compare_trees')
 
+    root_id = new_tree.inventory.root.file_id
     # TODO: Rather than iterating over the whole tree and then filtering, we
     # could diff just the specified files (if any) and their subtrees.  
 
-    old_files = old_tree.list_files()
-    new_files = new_tree.list_files()
+    for (file_id, path, content_change, versioned, parent_id, name, kind,
+         executable) in new_tree.iter_changes(old_tree, want_unchanged):
+        if specific_file_ids and file_id not in specific_file_ids:
+            continue
+        if file_id == root_id:
+            continue
+        assert kind is None or None in kind
+        # the only 'kind change' permitted is creation/deletion
+        if kind is not None:
+            new_kind = kind[1]
+        else:
+            try:
+                new_kind = new_tree.kind(file_id)
+            except errors.NoSuchFile:
+                new_kind = None
 
-    more_old = True
-    more_new = True
-
-    added = {}
-    removed = {}
-
-    def get_next(iter):
-        try:
-            return iter.next()
-        except StopIteration:
-            return None, None, None, None, None
-    old_path, old_class, old_kind, old_file_id, old_entry = get_next(old_files)
-    new_path, new_class, new_kind, new_file_id, new_entry = get_next(new_files)
-
-
-    def check_matching(old_path, old_entry, new_path, new_entry):
-        """We have matched up 2 file_ids, check for changes."""
-        assert old_entry.kind == new_entry.kind
-
-        if specific_file_ids:
-            if (old_entry.file_id not in specific_file_ids and 
-                new_entry.file_id not in specific_file_ids):
-                return
-
-        # temporary hack until all entries are populated before clients 
-        # get them
-        old_entry._read_tree_state(old_path, old_tree)
-        new_entry._read_tree_state(new_path, new_tree)
-        text_modified, meta_modified = new_entry.detect_changes(old_entry)
-        
         # If the name changes, or the parent_id changes, we have a rename
         # (if we move a parent, that doesn't count as a rename for the file)
-        if (old_entry.name != new_entry.name 
-            or old_entry.parent_id != new_entry.parent_id):
-            delta.renamed.append((old_path,
-                                  new_path,
-                                  old_entry.file_id, old_entry.kind,
-                                  text_modified, meta_modified))
-        elif text_modified or meta_modified:
-            delta.modified.append((new_path, new_entry.file_id, new_entry.kind,
-                                   text_modified, meta_modified))
-        elif want_unchanged:
-            delta.unchanged.append((new_path, new_entry.file_id, new_entry.kind))
-
-
-    def handle_old(path, entry):
-        """old entry without a new entry match
-
-        Check to see if a matching new entry was already seen as an
-        added file, and switch the pair into being a rename.
-        Otherwise just mark the old entry being removed.
-        """
-        if entry.file_id in added:
-            # Actually this is a rename, we found a new file_id earlier
-            # at a different location, so it is no-longer added
-            x_new_path, x_new_entry = added.pop(entry.file_id)
-            check_matching(path, entry, x_new_path, x_new_entry)
-        else:
-            # We have an old_file_id which doesn't line up with a new_file_id
-            # So this file looks to be removed
-            assert entry.file_id not in removed
-            removed[entry.file_id] = path, entry
-
-    def handle_new(path, entry):
-        """new entry without an old entry match
-        
-        Check to see if a matching old entry was already seen as a
-        removal, and change the pair into a rename.
-        Otherwise just mark the new entry as an added file.
-        """
-        if entry.file_id in removed:
-            # We saw this file_id earlier at an old different location
-            # it is no longer removed, just renamed
-            x_old_path, x_old_entry = removed.pop(entry.file_id)
-            check_matching(x_old_path, x_old_entry, path, entry)
-        else:
-            # We have a new file which does not match an old file
-            # mark it as added
-            assert entry.file_id not in added
-            added[entry.file_id] = path, entry
-
-    while old_path or new_path:
-        # list_files() returns files in alphabetical path sorted order
-        if old_path == new_path:
-            if old_file_id == new_file_id:
-                # This is the common case, the files are in the same place
-                # check if there were any content changes
-
-                if old_file_id is None:
-                    # We have 2 unversioned files, no deltas possible???
-                    pass
-                else:
-                    check_matching(old_path, old_entry, new_path, new_entry)
+        if versioned is not None:
+            if versioned == (False, True) and (kind is not None 
+                                               and kind[1] is not None):
+                delta.added.append((path, file_id, new_kind))
             else:
-                # The ids don't match, so we have to handle them both
-                # separately.
-                if old_file_id is not None:
-                    handle_old(old_path, old_entry)
-
-                if new_file_id is not None:
-                    handle_new(new_path, new_entry)
-
-            # The two entries were at the same path, so increment both sides
-            old_path, old_class, old_kind, old_file_id, old_entry = get_next(old_files)
-            new_path, new_class, new_kind, new_file_id, new_entry = get_next(new_files)
-        elif new_path is None or (old_path is not None and old_path < new_path):
-            # Assume we don't match, only process old_path
-            if old_file_id is not None:
-                handle_old(old_path, old_entry)
-            # old_path came first, so increment it, trying to match up
-            old_path, old_class, old_kind, old_file_id, old_entry = get_next(old_files)
-        elif new_path is not None:
-            # new_path came first, so increment it, trying to match up
-            if new_file_id is not None:
-                handle_new(new_path, new_entry)
-            new_path, new_class, new_kind, new_file_id, new_entry = get_next(new_files)
-
-    # Now we have a set of added and removed files, mark them all
-    for old_path, old_entry in removed.itervalues():
-        if specific_file_ids:
-            if not old_entry.file_id in specific_file_ids:
-                continue
-        delta.removed.append((old_path, old_entry.file_id, old_entry.kind))
-    for new_path, new_entry in added.itervalues():
-        if specific_file_ids:
-            if not new_entry.file_id in specific_file_ids:
-                continue
-        delta.added.append((new_path, new_entry.file_id, new_entry.kind))
+                assert versioned == (True, False)
+                old_path = old_tree.id2path(file_id)
+                old_kind = old_tree.kind(file_id)
+                delta.removed.append((old_path, file_id, old_kind))
+        elif kind is not None:
+            if kind[0] is None:
+                delta.added.append((path, file_id, new_kind))
+            else:
+                assert kind[1] is None
+                old_path = old_tree.id2path(file_id)
+                old_kind = old_tree.kind(file_id)
+                delta.removed.append((old_path, file_id, old_kind))
+                
+        elif name is not None or parent_id is not None:
+            old_path = old_tree.id2path(file_id)
+            delta.renamed.append((old_path,
+                                  path,
+                                  file_id, 
+                                  new_kind,
+                                  content_change, (executable is not None)))
+        elif content_change is True or executable is not None:
+            delta.modified.append((path, file_id, new_kind,
+                                   content_change, (executable is not None)))
+        else:
+            delta.unchanged.append((path, file_id, new_kind))
 
     delta.removed.sort()
     delta.added.sort()
