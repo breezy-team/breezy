@@ -31,6 +31,8 @@ class TestCat(TestCaseInTempDir):
         def bzr(*args, **kwargs):
             return self.run_bzr(*args, **kwargs)[0]
 
+        os.mkdir('branch')
+        os.chdir('branch')
         bzr('init')
         open('a', 'wb').write('foo\n')
         bzr('add', 'a')
@@ -51,4 +53,11 @@ class TestCat(TestCaseInTempDir):
         rev_id = bzr('revision-history').strip().split('\n')[-1]
 
         self.assertEquals(bzr('cat', 'a', '-r', 'revid:%s' % rev_id), 'baz\n')
-
+        
+        os.chdir('..')
+        
+        self.assertEquals(bzr('cat', 'branch/a', '-r', 'revno:1:branch'),
+                          'foo\n')
+        bzr('cat', 'a', retcode=3)
+        bzr('cat', 'a', '-r', 'revno:1:branch-that-does-not-exist', retcode=3)
+        
