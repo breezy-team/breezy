@@ -2776,7 +2776,7 @@ class cmd_wait_until_signalled(Command):
     hidden = True
 
     def run(self):
-        print "running"
+        sys.stdout.write("running\n")
         sys.stdout.flush()
         sys.stdin.readline()
 
