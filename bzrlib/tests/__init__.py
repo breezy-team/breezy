@@ -94,7 +94,8 @@ MODULES_TO_DOCTEST = [
                       bzrlib.merge3,
                       bzrlib.option,
                       bzrlib.osutils,
-                      bzrlib.store
+                      bzrlib.store,
+                      bzrlib.transport,
                       ]
 
 
