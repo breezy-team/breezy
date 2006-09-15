@@ -22,7 +22,7 @@ from cStringIO import StringIO
 from warnings import warn
 
 import bzrlib
-from bzrlib import delta
+from bzrlib import delta, osutils
 from bzrlib.decorators import needs_read_lock
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib import errors
@@ -82,6 +82,10 @@ class Tree(object):
             extra_trees=extra_trees,
             require_versioned=require_versioned,
             )
+
+    def iter_changes(self, from_tree, include_unchanged=False):
+        return InterTree.get(from_tree, self).iter_changes(from_tree, self,
+                                                           include_unchanged)
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -408,3 +412,83 @@ class InterTree(InterObject):
             return delta.TreeDelta()
         return delta._compare_trees(self.source, self.target, want_unchanged,
             specific_file_ids)
+
+    def iter_changes(self, from_tree, to_tree, include_unchanged):
+        """Generate an iterator of changes between trees.
+
+        A tuple is returned:
+        (file_id, path, changed_content, versioned, parent, name, kind,
+         executable)
+
+        file_id and path are always returned.  Path is relative to the to_tree.
+        changed_content is True if the file's content has changed.  This
+        includes changes to its kind.
+
+        versioned, parent, name, kind, executable are None if unchanged, or
+        tuples of (from, to) if changed.  If a file is missing in a tree, its
+        kind is None.
+
+        Iteration is done in parent-to-child order, relative to the to_tree.
+        """
+        def get_versioned_kind(tree, file_id):
+            try:
+                return tree.kind(file_id)
+            except errors.NoSuchFile:
+                return None
+
+        def compared(from_value, to_value):
+            if from_value != to_value:
+                return (from_value, to_value)
+            else:
+                return None
+
+        to_paths = {}
+        for path, to_entry in to_tree.iter_entries_by_dir():
+            file_id = to_entry.file_id
+            to_paths[file_id] = path
+            changed_content = False
+            from_versioned = (file_id in from_tree)
+            versioned = compared(from_versioned, True)
+            if from_versioned:
+                from_kind = get_versioned_kind(from_tree, file_id)
+                from_entry = from_tree.inventory[file_id]
+                from_parent = from_entry.parent_id
+                from_name = from_entry.name
+                from_executable = from_tree.is_executable(file_id)
+            else:
+                from_kind = None
+                from_parent = None
+                from_name = None
+                from_executable = None
+            kind = compared(from_kind, get_versioned_kind(to_tree, file_id))
+            if kind is not None:
+                changed_content = True
+            elif (from_tree.get_file_sha1(file_id) != 
+                  to_tree.get_file_sha1(file_id)):
+                changed_content = True
+            parent = compared(from_parent, to_entry.parent_id)
+            name = compared(from_name, to_entry.name)
+            executable = compared(from_executable,
+                                  to_tree.is_executable(file_id))
+            if (changed_content is not False or versioned is not None or
+                parent is not None or name is not None or executable is not
+                None or include_unchanged):
+                yield (file_id, path, changed_content, versioned, parent,
+                       name, kind, executable)
+
+        for path, from_entry in from_tree.iter_entries_by_dir():
+            file_id = from_entry.file_id
+            if file_id in to_paths:
+                continue
+            versioned = (True, False)
+            parent = (from_entry.parent_id, None)
+            name = (from_entry.name, None)
+            kind = (get_versioned_kind(from_tree, file_id), None)
+            executable = (from_tree.is_executable(file_id), None)
+            changed_content = True
+            # the parent's path is necessarily known at this point.
+            to_path = osutils.pathjoin(to_paths[from_entry.parent_id],
+                                       from_entry.name)
+            to_paths[file_id] = to_path
+            yield(file_id, to_path, changed_content, versioned, parent,
+                  name, kind, executable)
