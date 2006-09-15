@@ -70,9 +70,6 @@ class TestHttpUrls(TestCase):
         self.assertRaises(ValueError,
             t.abspath,
             '.bzr/')
-        self.assertRaises(ValueError,
-            t.abspath,
-            '/.bzr')
 
     def test_http_root_urls(self):
         """Construction of URLs from server root"""

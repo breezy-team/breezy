@@ -165,7 +165,8 @@ def split_url(url):
             port = int(port)
         except ValueError:
             # TODO: Should this be ConnectionError?
-            raise errors.TransportError('%s: invalid port number' % port)
+            raise errors.TransportError(
+                'invalid port number %s in url:\n%s' % (port, url))
     host = urllib.unquote(host)
 
     path = urllib.unquote(path)

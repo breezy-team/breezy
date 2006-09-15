@@ -70,7 +70,10 @@ class MemoryTransport(Transport):
         if offset is None or offset == '':
             return copy(self)
         segments = offset.split('/')
-        cwdsegments = self._cwd.split('/')[:-1]
+        if offset.startswith('/'):
+            cwdsegments = ['']
+        else:
+            cwdsegments = self._cwd.split('/')[:-1]
         while len(segments):
             segment = segments.pop(0)
             if segment == '.':
@@ -79,7 +82,8 @@ class MemoryTransport(Transport):
                 if len(cwdsegments) > 1:
                     cwdsegments.pop()
                 continue
-            cwdsegments.append(segment)
+            if segment != '':
+                cwdsegments.append(segment)
         url = self.base[:self.base.find(':') + 3] + '/'.join(cwdsegments) + '/'
         result = MemoryTransport(url)
         result._dirs = self._dirs
@@ -236,6 +240,8 @@ class MemoryTransport(Transport):
         relpath = urlutils.unescape(relpath)
         if relpath.find('..') != -1:
             raise AssertionError('relpath contains ..')
+        if relpath[0] == '/':
+            return relpath
         if relpath == '.':
             if (self._cwd == '/'):
                 return self._cwd

@@ -198,11 +198,16 @@ class SFTPTransport(Transport):
         """Return the path to be passed along the sftp protocol for relpath.
         
         relpath is a urlencoded string.
+
+        :return: a path prefixed with / for regular abspath-based urls, or a
+            path that does not begin with / for urls which begin with /~/.
         """
         # FIXME: share the common code across transports
         assert isinstance(relpath, basestring)
-        relpath = urlutils.unescape(relpath).split('/')
         basepath = self._path.split('/')
+        if relpath.startswith('/'):
+            basepath = ['', '']
+        relpath = urlutils.unescape(relpath).split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
 
@@ -215,7 +220,7 @@ class SFTPTransport(Transport):
                 basepath.pop()
             elif p == '.':
                 continue # No-op
-            else:
+            elif p != '':
                 basepath.append(p)
 
         path = '/'.join(basepath)
@@ -688,6 +693,7 @@ class SFTPTransport(Transport):
         return SFTPLock(relpath, self)
 
     def _unparse_url(self, path=None):
+        """Gives a url for a relative reference."""
         if path is None:
             path = self._path
         path = urllib.quote(path)
