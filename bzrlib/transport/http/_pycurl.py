@@ -174,7 +174,7 @@ class PyCurlTransport(HttpTransportBase):
         data.seek(0)
 
         code = curl.getinfo(pycurl.HTTP_CODE)
-        # mutter('url: %s header:\n%s', abspath, header.getvalue())
+        # mutter('header:\n%r', header.getvalue())
         headers = _extract_headers(header.getvalue(), abspath)
         # handle_response will raise NoSuchFile, etc based on the response code
         return code, response.handle_response(abspath, code, headers, data)

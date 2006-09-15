@@ -31,6 +31,12 @@ class TestErrors(TestCaseWithTransport):
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1, str(error).find((dir.transport.clone('..').base)))
         self.assertEqual(-1, str(error).find((dir.transport.base)))
+        
+    def test_no_such_id(self):
+        error = errors.NoSuchId("atree", "anid")
+        self.assertEqualDiff("The file id anid is not present in the tree "
+            "atree.",
+            str(error))
 
     def test_up_to_date(self):
         error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
@@ -55,6 +61,10 @@ class PassThroughError(errors.BzrNewError):
         errors.BzrNewError.__init__(self, foo=foo, bar=bar)
 
 
+class ErrorWithBadFormat(errors.BzrNewError):
+    """One format specifier: %(thing)s"""
+
+
 class TestErrorFormatting(TestCase):
     
     def test_always_str(self):
@@ -66,3 +76,12 @@ class TestErrorFormatting(TestCase):
         # returned from e.__str__(), and it has non ascii characters
         s = str(e)
         self.assertEqual('Pass through \xc2\xb5 and bar', s)
+
+    def test_mismatched_format_args(self):
+        # Even though ErrorWithBadFormat's format string does not match the
+        # arguments we constructing it with, we can still stringify an instance
+        # of this exception. The resulting string will say its unprintable.
+        e = ErrorWithBadFormat(not_thing='x')
+        self.assertStartsWith(
+            str(e), 'Unprintable exception ErrorWithBadFormat(')
+

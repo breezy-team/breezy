@@ -93,7 +93,7 @@ error =     _bzr_logger.error
 def mutter(fmt, *args):
     if _trace_file is None:
         return
-    if hasattr(_trace_file, 'closed') and _trace_file.closed:
+    if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
         return
 
     if isinstance(fmt, unicode):

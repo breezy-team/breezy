@@ -18,8 +18,9 @@ import os
 
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.branch import Branch
+from bzrlib import inventory
 from bzrlib.revision import Revision
-import bzrlib.xml5
+import bzrlib.xml6
 
 
 class TestBasisInventory(TestCaseWithWorkingTree):
@@ -35,7 +36,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         t.add('a')
         t.commit('a', rev_id='r1')
 
-        t._control_files.get_utf8('basis-inventory')
+        t._control_files.get_utf8('basis-inventory-cache')
 
         basis_inv = t.basis_tree().inventory
         self.assertEquals('r1', basis_inv.revision_id)
@@ -47,28 +48,47 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         t.add('b')
         t.commit('b', rev_id='r2')
 
-        t._control_files.get_utf8('basis-inventory')
+        t._control_files.get_utf8('basis-inventory-cache')
 
         basis_inv_txt = t.read_basis_inventory()
-        basis_inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(basis_inv_txt)
-        basis_inv.root.revision = 'r2'
+        basis_inv = bzrlib.xml6.serializer_v6.read_inventory_from_string(basis_inv_txt)
         self.assertEquals('r2', basis_inv.revision_id)
         store_inv = b.repository.get_inventory('r2')
 
         self.assertEquals(store_inv._byid, basis_inv._byid)
 
+    def test_wrong_format(self):
+        """WorkingTree.basis safely ignores junk basis inventories"""
+        t = self.make_branch_and_tree('.')
+        b = t.branch
+        open('a', 'wb').write('a\n')
+        t.add('a')
+        t.commit('a', rev_id='r1')
+        t._control_files.put_utf8('basis-inventory-cache', 'booga')
+        t.basis_tree()
+        t._control_files.put_utf8('basis-inventory-cache', '<xml/>')
+        t.basis_tree()
+        t._control_files.put_utf8('basis-inventory-cache', '<inventory />')
+        t.basis_tree()
+        t._control_files.put_utf8('basis-inventory-cache', 
+                                  '<inventory format="pi"/>')
+        t.basis_tree()
+
     def test_basis_inv_gets_revision(self):
         """When the inventory of the basis tree has no revision id it gets set.
 
-        It gets set during set_last_revision.
+        It gets set during set_parent_trees() or set_parent_ids().
         """
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
+        # TODO change this to use CommitBuilder
+        inv = inventory.Inventory(revision_id='r1')
+        inv.root.revision = 'r1'
+        inv_lines = tree.branch.repository.serialise_inventory(inv).split('\n')
+        inv_lines = [(l + '\n') for l in inv_lines if l is not None]
         tree.branch.repository.control_weaves.get_weave('inventory',
             tree.branch.repository.get_transaction()
-            ).add_lines('r1', [], [
-                '<inventory format="5">\n',
-                '</inventory>\n'])
+            ).add_lines('r1', [], inv_lines)
         rev = Revision(timestamp=0,
                        timezone=None,
                        committer="Foo Bar <foo@example.com>",
@@ -79,11 +99,12 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         tree.branch.repository.add_revision('r1', rev)
         tree.unlock()
         tree.branch.append_revision('r1')
-        tree.set_last_revision('r1')
+        tree.set_parent_trees(
+            [('r1', tree.branch.repository.revision_tree('r1'))])
         # TODO: we should deserialise the file here, rather than peeking
         # without parsing, but to do this properly needs a serialiser on the
         # tree object that abstracts whether it is xml/rio/etc.
         self.assertContainsRe(
-            tree._control_files.get_utf8('basis-inventory').read(),
+            tree._control_files.get_utf8('basis-inventory-cache').read(),
             'revision_id="r1"')
         

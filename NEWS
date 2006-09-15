@@ -1,4 +1,120 @@
 IN DEVELOPMENT
+
+  IMPROVEMENTS:
+
+    * Knit files now wait to create their contents until the first data is
+      added. The old code used to create an empty .knit and a .kndx with just
+      the header. However, this caused a lot of extra round trips over sftp.
+      This can change the time for ``bzr push`` to create a new remote branch
+      from 160s down to 100s. This also affects ``bzr commit`` performance when
+      adding new files, ``bzr commit`` on a new kernel-like tree drops from 50s
+      down to 40s (John Arbash Meinel, #44692)
+
+    * When an entire subtree has been deleted, commit will now report that
+      just the top of the subtree has been deleted, rather than reporting
+      all the individual items. (Robert Collins)
+
+    * Commit performs one less XML parse. (Robert Collins)
+
+    * ``bzr checkout --lightweight`` now operates on readonly branches as well
+      as readwrite branches. This fixes bug #39542 for lightweight checkouts 
+      but not for heavyweight ones (the default). (Robert Collins)
+
+    * ``bzrlib.lazy_import.lazy_import`` function to create on-demand 
+      objects.  This allows all imports to stay at the global scope, but
+      modules will not actually be imported if they are not used.
+      (John Arbash Meinel)
+
+  BUG FIXES:
+
+    * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
+      (Vincent Ladeuil, #59835)
+
+    * Handle boundary="" lines properly to allow access through a Squid proxy.
+      (John Arbash Meinel, #57723)
+
+    * revert now removes newly-added directories (Aaron Bentley, #54172)
+
+    * ``bzr upgrade sftp://`` shouldn't fail to upgrade v6 branches if there 
+      isn't a working tree. (David Allouche, #40679)
+
+    * Give nicer error messages when a user supplies an invalid --revision
+      parameter. (John Arbash Meinel, #55420)
+
+    * Handle when LANG is not recognized by python. Emit a warning, but
+      just revert to using 'ascii'. (John Arbash Meinel, #35392)
+
+    * Don't use preexec_fn on win32, as it is not supported by subprocess.
+      (John Arbash Meinel)
+
+    * When trying to acquire a lock, don't fail immediately. Instead, try
+      a few times (up to 1 minute) before timing out. (John Arbash Meinel,
+      #49556)
+
+  INTERNALS:
+
+    * TestCaseInTempDir now creates a separate directory for HOME, rather
+      than having HOME set to the same location as the working directory.
+      (John Arbash Meinel)
+
+    * run_bzr_subprocess() can take an optional 'env_changes={}' parameter,
+      which will update os.environ inside the spawned child. It also can
+      take a 'universal_newlines=True', which helps when checking the output
+      of the command. (John Arbash Meinel)
+
+    * Refactor SFTP vendors to allow easier re-use when ssh is used. 
+      (Andrew Bennetts)
+
+    * Transport.list_dir() and Transport.iter_files_recursive() should always
+      return urlescaped paths. This is now tested (there were bugs in a few
+      of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
+
+    * New utility function symbol_versioning.deprecation_string. Returns the
+      formatted string for a callable, deprecation format pair. (Robert Collins)
+
+    * New TestCase helper applyDeprecated. This allows you to call a callable
+      which is deprecated without it spewing to the screen, just by supplying
+      the deprecation format string issued for it. (Robert Collins)
+
+    * Transport.append and Transport.put have been deprecated in favor of
+      .append_bytes, .append_file, .put_bytes, and .put_file. This removes the
+      ambiguity in what type of object the functions take.
+      Transport.non_atomic_put_{bytes,file} has also been added. Which works
+      similarly to Transport.append() except for SFTP, it doesn't have a round
+      trip when opening the file. Also, it provides functionality for creating
+      a parent directory when trying to create a file, rather than raise
+      NoSuchFile and forcing the caller to repeat their request.
+      (John Arbash Meinel)
+
+    * WorkingTree has a new api ``unversion`` which allow the unversioning of
+      entries by their file id. (Robert Collins)
+
+    * WorkingTree.pending_merges is deprecated.  Please use the get_parent_ids
+      (introduced in 0.10) method instead. (Robert Collins)
+
+    * WorkingTree has a new lock_tree_write method which locks the branch for
+      read rather than write. This is appropriate for actions which only need
+      the branch data for reference rather than mutation. A new decorator
+      needs_tree_write_lock is provided in the workingtree module. Like the
+      needs_read_lock and needs_write_lock decorators this allows static 
+      declaration of the locking requirements of a function to ensure that
+      a lock is taken out for casual scripts. (Robert Collins)
+
+    * All WorkingTree methods which write to the tree, but not to the branch
+      have been converted to use ``needs_tree_write_lock`` rather than 
+      ``needs_write_lock``. Also converted is the revert, conflicts and tree
+      transform modules. This provides a modest performance improvement on 
+      metadir style trees, due to the reduce lock-acquisition, and a more
+      significant performance improvement on lightweight checkouts from 
+      remote branches, where trivial operations used to pay a significant 
+      penalty. It also provides the basis for allowing readonly checkouts.
+      (Robert Collins)
+
+    * Special case importing the standard library 'copy' module. This shaves
+      off 40ms of startup time, while retaining compatibility. See:
+      ``bzrlib/inspect_for_copy.py`` for more details. (John Arbash Meinel)
+
+bzr 0.10  2006-08-29
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
@@ -23,9 +139,11 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
-    * When trying to acquire a lock, don't fail immediately. Instead, try
-      a few times (up to 1 minute) before timing out. (John Arbash Meinel,
-      #49556)
+    * Help diffutils 2.8.4 get along with binary tests (Marien Zwart: #57614)
+
+    * Change LockDir so that if the lock directory doesn't exist when
+      lock_write() is called, an attempt will be made to create it.
+      (John Arbash Meinel, #56974)
 
     * ``bzr uncommit`` preserves pending merges. (John Arbash Meinel, #57660)
 
@@ -54,6 +172,9 @@ IN DEVELOPMENT
     * Testament handles more cases when content is unicode. Specific bug was
       in handling of revision properties. (John Arbash Meinel, Holger Krekel,
       #54723)
+
+    * The bzr selftest was failing on installed versions due to a bug in a new
+      test helper. (John Arbash Meinel, Robert Collins, #58057)
 
   INTERNALS:
 

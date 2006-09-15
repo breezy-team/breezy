@@ -34,10 +34,11 @@ class TestCommitMerge(TestCaseWithTransport):
     def test_merge_commit_empty(self):
         """Simple commit of two-way merge of empty trees."""
         wtx = self.make_branch_and_tree('x')
+        base_rev = wtx.commit('common parent')
         bx = wtx.branch
-        wty = self.make_branch_and_tree('y')
+        wty = wtx.bzrdir.sprout('y').open_workingtree()
         by = wty.branch
-
+        
         wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
         wty.commit('commit two', rev_id='y@u-0-1', allow_pointless=True)
 
@@ -47,12 +48,12 @@ class TestCommitMerge(TestCaseWithTransport):
                           wty.commit,
                           'no changes yet', rev_id='y@u-0-2',
                           allow_pointless=False)
-        wty.add_pending_merge('x@u-0-1')
+        wty.merge_from_branch(bx)
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
 
-        self.assertEquals(by.revno(), 2)
+        self.assertEquals(by.revno(), 3)
         self.assertEquals(list(by.revision_history()),
-                          ['y@u-0-1', 'y@u-0-2'])
+                          [base_rev, 'y@u-0-1', 'y@u-0-2'])
         rev = by.repository.get_revision('y@u-0-2')
         self.assertEquals(rev.parent_ids,
                           ['y@u-0-1', 'x@u-0-1'])
@@ -60,8 +61,9 @@ class TestCommitMerge(TestCaseWithTransport):
     def test_merge_new_file(self):
         """Commit merge of two trees with no overlapping files."""
         wtx = self.make_branch_and_tree('x')
+        base_rev = wtx.commit('common parent')
         bx = wtx.branch
-        wty = self.make_branch_and_tree('y')
+        wty = wtx.bzrdir.sprout('y').open_workingtree()
         by = wty.branch
 
         self.build_tree(['x/ecks', 'y/why'])
@@ -72,11 +74,7 @@ class TestCommitMerge(TestCaseWithTransport):
         wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
         wty.commit('commit two', rev_id='y@u-0-1', allow_pointless=True)
 
-        by.fetch(bx)
-        # we haven't merged the texts, but let's fake it
-        shutil.copyfile('x/ecks', 'y/ecks')
-        wty.add(['ecks'], ['ecks-id'])
-        wty.add_pending_merge('x@u-0-1')
+        wty.merge_from_branch(bx)
 
         # partial commit of merges is currently not allowed, because
         # it would give different merge graphs for each file which

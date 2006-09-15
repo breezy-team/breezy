@@ -46,7 +46,7 @@ class TestUpgrade(TestCaseInTempDir):
         self.failUnlessExists('.bzr/README')
 
     def test_upgrade_simple(self):
-        """Upgrade simple v0.0.4 format to v6"""
+        """Upgrade simple v0.0.4 format to latest format"""
         eq = self.assertEquals
         self.build_tree_contents(_upgrade1_template)
         upgrade(u'.')
@@ -131,8 +131,33 @@ class TestUpgrade(TestCaseInTempDir):
         self.build_tree_contents(_upgrade_dir_template)
         upgrade('.', bzrdir.BzrDirMetaFormat1())
         tree = workingtree.WorkingTree.open('.')
-        self.assertEqual(tree.last_revision(),
-                         tree.branch.revision_history()[-1])
+        self.assertEqual([tree.branch.revision_history()[-1]],
+            tree.get_parent_ids())
+
+    def test_upgrade_v6_to_meta_no_workingtree(self):
+        # Some format6 branches do not have checkout files. Upgrading
+        # such a branch to metadir must not setup a working tree.
+        self.build_tree_contents(_upgrade1_template)
+        upgrade('.', bzrdir.BzrDirFormat6())
+        transport = get_transport('.')
+        transport.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
+        assert not transport.has('.bzr/stat-cache')
+        # XXX: upgrade fails if a .bzr.backup is already present
+        # -- David Allouche 2006-08-11
+        transport.delete_tree('.bzr.backup')
+        # At this point, we have a format6 branch without checkout files.
+        upgrade('.', bzrdir.BzrDirMetaFormat1())
+        # The upgrade should not have set up a working tree.
+        control = bzrdir.BzrDir.open('.')
+        self.assertFalse(control.has_workingtree())
+        # We have covered the scope of this test, we may as well check that
+        # upgrade has not eaten our data, even if it's a bit redundant with
+        # other tests.
+        self.failUnless(isinstance(control._format, bzrdir.BzrDirMetaFormat1))
+        branch = control.open_branch()
+        self.assertEquals(branch.revision_history(),
+           ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
+            'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
 
 _upgrade1_template = \

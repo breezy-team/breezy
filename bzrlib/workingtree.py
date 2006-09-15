@@ -96,6 +96,7 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
         DEPRECATED_PARAMETER,
         zero_eight,
+        zero_eleven,
         )
 from bzrlib.trace import mutter, note
 from bzrlib.transform import build_tree
@@ -156,6 +157,19 @@ def gen_file_id(name):
 def gen_root_id():
     """Return a new tree-root file id."""
     return gen_file_id('TREE_ROOT')
+
+
+def needs_tree_write_lock(unbound):
+    """Decorate unbound to take out and release a tree_write lock."""
+    def tree_write_locked(self, *args, **kwargs):
+        self.lock_tree_write()
+        try:
+            return unbound(self, *args, **kwargs)
+        finally:
+            self.unlock()
+    tree_write_locked.__doc__ = unbound.__doc__
+    tree_write_locked.__name__ = unbound.__name__
+    return tree_write_locked
 
 
 class TreeEntry(object):
@@ -394,20 +408,40 @@ class WorkingTree(bzrlib.tree.Tree):
         return pathjoin(self.basedir, filename)
     
     def basis_tree(self):
-        """Return RevisionTree for the current last revision."""
-        revision_id = self.last_revision()
-        if revision_id is not None:
+        """Return RevisionTree for the current last revision.
+        
+        If the left most parent is a ghost then the returned tree will be an
+        empty tree - one obtained by calling repository.revision_tree(None).
+        """
+        try:
+            revision_id = self.get_parent_ids()[0]
+        except IndexError:
+            # no parents, return an empty revision tree.
+            # in the future this should return the tree for
+            # 'empty:' - the implicit root empty tree.
+            return self.branch.repository.revision_tree(None)
+        else:
             try:
                 xml = self.read_basis_inventory()
-                inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
-                inv.root.revision = revision_id
-            except NoSuchFile:
-                inv = None
-            if inv is not None and inv.revision_id == revision_id:
-                return bzrlib.tree.RevisionTree(self.branch.repository, inv,
-                                                revision_id)
-        # FIXME? RBC 20060403 should we cache the inventory here ?
-        return self.branch.repository.revision_tree(revision_id)
+                inv = bzrlib.xml6.serializer_v6.read_inventory_from_string(xml)
+                if inv is not None and inv.revision_id == revision_id:
+                    return bzrlib.tree.RevisionTree(self.branch.repository, 
+                                                    inv, revision_id)
+            except (NoSuchFile, errors.BadInventoryFormat):
+                pass
+        # No cached copy available, retrieve from the repository.
+        # FIXME? RBC 20060403 should we cache the inventory locally
+        # at this point ?
+        try:
+            return self.branch.repository.revision_tree(revision_id)
+        except errors.RevisionNotPresent:
+            # the basis tree *may* be a ghost or a low level error may have
+            # occured. If the revision is present, its a problem, if its not
+            # its a ghost.
+            if self.branch.repository.has_revision(revision_id):
+                raise
+            # the basis tree is a ghost so return an empty tree.
+            return self.branch.repository.revision_tree(None)
 
     @staticmethod
     @deprecated_method(zero_eight)
@@ -473,13 +507,19 @@ class WorkingTree(bzrlib.tree.Tree):
         This implementation reads the pending merges list and last_revision
         value and uses that to decide what the parents list should be.
         """
-        last_rev = self.last_revision()
+        last_rev = self._last_revision()
         if last_rev is None:
             parents = []
         else:
             parents = [last_rev]
-        other_parents = self.pending_merges()
-        return parents + other_parents
+        try:
+            merges_file = self._control_files.get_utf8('pending-merges')
+        except NoSuchFile:
+            pass
+        else:
+            for l in merges_file.readlines():
+                parents.append(l.rstrip('\n'))
+        return parents
 
     def get_root_id(self):
         """Return the id of this trees root"""
@@ -519,9 +559,10 @@ class WorkingTree(bzrlib.tree.Tree):
         if revision_id is None:
             transform_tree(tree, self)
         else:
-            # TODO now merge from tree.last_revision to revision
+            # TODO now merge from tree.last_revision to revision (to preserve
+            # user local changes)
             transform_tree(tree, self)
-            tree.set_last_revision(revision_id)
+            tree.set_parent_ids([revision_id])
 
     @needs_write_lock
     def commit(self, message=None, revprops=None, *args, **kwargs):
@@ -537,7 +578,6 @@ class WorkingTree(bzrlib.tree.Tree):
         args = (DEPRECATED_PARAMETER, message, ) + args
         committed_id = Commit().commit( working_tree=self, revprops=revprops,
             *args, **kwargs)
-        self._set_inventory(self.read_working_inventory())
         return committed_id
 
     def id2abspath(self, file_id):
@@ -582,7 +622,7 @@ class WorkingTree(bzrlib.tree.Tree):
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def add(self, files, ids=None):
         """Make files versioned.
 
@@ -643,51 +683,169 @@ class WorkingTree(bzrlib.tree.Tree):
 
         self._write_inventory(inv)
 
-    @needs_write_lock
+    @needs_tree_write_lock
+    def add_parent_tree_id(self, revision_id, allow_leftmost_as_ghost=False):
+        """Add revision_id as a parent.
+
+        This is equivalent to retrieving the current list of parent ids
+        and setting the list to its value plus revision_id.
+
+        :param revision_id: The revision id to add to the parent list. It may
+        be a ghost revision as long as its not the first parent to be added,
+        or the allow_leftmost_as_ghost parameter is set True.
+        :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
+        """
+        parents = self.get_parent_ids() + [revision_id]
+        self.set_parent_ids(parents,
+            allow_leftmost_as_ghost=len(parents) > 1 or allow_leftmost_as_ghost)
+
+    @needs_tree_write_lock
+    def add_parent_tree(self, parent_tuple, allow_leftmost_as_ghost=False):
+        """Add revision_id, tree tuple as a parent.
+
+        This is equivalent to retrieving the current list of parent trees
+        and setting the list to its value plus parent_tuple. See also
+        add_parent_tree_id - if you only have a parent id available it will be
+        simpler to use that api. If you have the parent already available, using
+        this api is preferred.
+
+        :param parent_tuple: The (revision id, tree) to add to the parent list.
+            If the revision_id is a ghost, pass None for the tree.
+        :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
+        """
+        parent_ids = self.get_parent_ids() + [parent_tuple[0]]
+        if len(parent_ids) > 1:
+            # the leftmost may have already been a ghost, preserve that if it
+            # was.
+            allow_leftmost_as_ghost = True
+        self.set_parent_ids(parent_ids,
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
+    @needs_tree_write_lock
     def add_pending_merge(self, *revision_ids):
         # TODO: Perhaps should check at this point that the
         # history of the revision is actually present?
-        p = self.pending_merges()
+        parents = self.get_parent_ids()
         updated = False
         for rev_id in revision_ids:
-            if rev_id in p:
+            if rev_id in parents:
                 continue
-            p.append(rev_id)
+            parents.append(rev_id)
             updated = True
         if updated:
-            self.set_pending_merges(p)
+            self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
+    @deprecated_method(zero_eleven)
     @needs_read_lock
     def pending_merges(self):
         """Return a list of pending merges.
 
         These are revisions that have been merged into the working
         directory but not yet committed.
+
+        As of 0.11 this is deprecated. Please see WorkingTree.get_parent_ids()
+        instead - which is available on all tree objects.
         """
-        try:
-            merges_file = self._control_files.get_utf8('pending-merges')
-        except NoSuchFile:
-            return []
-        p = []
-        for l in merges_file.readlines():
-            p.append(l.rstrip('\n'))
-        return p
+        return self.get_parent_ids()[1:]
 
-    @needs_write_lock
+    @needs_tree_write_lock
+    def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
+        """Set the parent ids to revision_ids.
+        
+        See also set_parent_trees. This api will try to retrieve the tree data
+        for each element of revision_ids from the trees repository. If you have
+        tree data already available, it is more efficient to use
+        set_parent_trees rather than set_parent_ids. set_parent_ids is however
+        an easier API to use.
+
+        :param revision_ids: The revision_ids to set as the parent ids of this
+            working tree. Any of these may be ghosts.
+        """
+        if len(revision_ids) > 0:
+            leftmost_id = revision_ids[0]
+            if (not allow_leftmost_as_ghost and not
+                self.branch.repository.has_revision(leftmost_id)):
+                raise errors.GhostRevisionUnusableHere(leftmost_id)
+            self.set_last_revision(leftmost_id)
+        else:
+            self.set_last_revision(None)
+        merges = revision_ids[1:]
+        self._control_files.put_utf8('pending-merges', '\n'.join(merges))
+
+    @needs_tree_write_lock
+    def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
+        """Set the parents of the working tree.
+
+        :param parents_list: A list of (revision_id, tree) tuples. 
+            If tree is None, then that element is treated as an unreachable
+            parent tree - i.e. a ghost.
+        """
+        # parent trees are not used in current format trees, delegate to
+        # set_parent_ids
+        self.set_parent_ids([rev for (rev, tree) in parents_list],
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
+    @needs_tree_write_lock
     def set_pending_merges(self, rev_list):
-        self._control_files.put_utf8('pending-merges', '\n'.join(rev_list))
+        parents = self.get_parent_ids()
+        leftmost = parents[:1]
+        new_parents = leftmost + rev_list
+        self.set_parent_ids(new_parents)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_merge_modified(self, modified_hashes):
         def iter_stanzas():
             for file_id, hash in modified_hashes.iteritems():
                 yield Stanza(file_id=file_id, hash=hash)
         self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def _put_rio(self, filename, stanzas, header):
         my_file = rio_file(stanzas, header)
         self._control_files.put(filename, my_file)
+
+    @needs_write_lock # because merge pulls data into the branch.
+    def merge_from_branch(self, branch, to_revision=None):
+        """Merge from a branch into this working tree.
+
+        :param branch: The branch to merge from.
+        :param to_revision: If non-None, the merge will merge to to_revision, but 
+            not beyond it. to_revision does not need to be in the history of
+            the branch when it is supplied. If None, to_revision defaults to
+            branch.last_revision().
+        """
+        from bzrlib.merge import Merger, Merge3Merger
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            merger = Merger(self.branch, this_tree=self, pb=pb)
+            merger.pp = ProgressPhase("Merge phase", 5, pb)
+            merger.pp.next_phase()
+            # check that there are no
+            # local alterations
+            merger.check_basis(check_clean=True, require_commits=False)
+            if to_revision is None:
+                to_revision = branch.last_revision()
+            merger.other_rev_id = to_revision
+            if merger.other_rev_id is None:
+                raise error.NoCommits(branch)
+            self.branch.fetch(branch, last_revision=merger.other_rev_id)
+            merger.other_basis = merger.other_rev_id
+            merger.other_tree = self.branch.repository.revision_tree(
+                merger.other_rev_id)
+            merger.pp.next_phase()
+            merger.find_base()
+            if merger.base_rev_id == merger.other_rev_id:
+                raise errors.PointlessMerge
+            merger.backup_files = False
+            merger.merge_type = Merge3Merger
+            merger.set_interesting_files(None)
+            merger.show_base = False
+            merger.reprocess = False
+            conflicts = merger.do_merge()
+            merger.set_pending()
+        finally:
+            pb.finished()
+        return conflicts
 
     @needs_read_lock
     def merge_modified(self):
@@ -830,8 +988,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
-
-    @needs_write_lock
+    @needs_tree_write_lock
     def move(self, from_paths, to_name):
         """Rename files.
 
@@ -856,7 +1013,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if not self.has_filename(to_name):
             raise BzrError("destination %r not in working directory" % to_abs)
         to_dir_id = inv.path2id(to_name)
-        if to_dir_id == None and to_name != '':
+        if to_dir_id is None and to_name != '':
             raise BzrError("destination %r is not a versioned directory" % to_name)
         to_dir_ie = inv[to_dir_id]
         if to_dir_ie.kind != 'directory':
@@ -868,7 +1025,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if not self.has_filename(f):
                 raise BzrError("%r does not exist in working tree" % f)
             f_id = inv.path2id(f)
-            if f_id == None:
+            if f_id is None:
                 raise BzrError("%r is not versioned" % f)
             name_tail = splitpath(f)[-1]
             dest_path = pathjoin(to_name, name_tail)
@@ -900,7 +1057,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self._write_inventory(inv)
         return result
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel):
         """Rename one file.
 
@@ -913,7 +1070,7 @@ class WorkingTree(bzrlib.tree.Tree):
             raise BzrError("can't rename: new working file %r already exists" % to_rel)
 
         file_id = inv.path2id(from_rel)
-        if file_id == None:
+        if file_id is None:
             raise BzrError("can't rename: old name %r is not versioned" % from_rel)
 
         entry = inv[file_id]
@@ -925,7 +1082,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
         to_dir, to_tail = os.path.split(to_rel)
         to_dir_id = inv.path2id(to_dir)
-        if to_dir_id == None and to_dir != '':
+        if to_dir_id is None and to_dir != '':
             raise BzrError("can't determine destination directory id for %r" % to_dir)
 
         mutter("rename_one:")
@@ -958,7 +1115,33 @@ class WorkingTree(bzrlib.tree.Tree):
         for subp in self.extras():
             if not self.is_ignored(subp):
                 yield subp
+    
+    @needs_tree_write_lock
+    def unversion(self, file_ids):
+        """Remove the file ids in file_ids from the current versioned set.
 
+        When a file_id is unversioned, all of its children are automatically
+        unversioned.
+
+        :param file_ids: The file ids to stop versioning.
+        :raises: NoSuchId if any fileid is not currently versioned.
+        """
+        for file_id in file_ids:
+            if self._inventory.has_id(file_id):
+                self._inventory.remove_recursive_id(file_id)
+            else:
+                raise errors.NoSuchId(self, file_id)
+        if len(file_ids):
+            # in the future this should just set a dirty bit to wait for the 
+            # final unlock. However, until all methods of workingtree start
+            # with the current in -memory inventory rather than triggering 
+            # a read, it is more complex - we need to teach read_inventory
+            # to know when to read, and when to not read first... and possibly
+            # to save first when the in memory one may be corrupted.
+            # so for now, we just only write it if it is indeed dirty.
+            # - RBC 20060907
+            self._write_inventory(self._inventory)
+    
     @deprecated_method(zero_eight)
     def iter_conflicts(self):
         """List all files in the tree that have text or content conflicts.
@@ -996,14 +1179,26 @@ class WorkingTree(bzrlib.tree.Tree):
                 repository = self.branch.repository
                 pb = bzrlib.ui.ui_factory.nested_progress_bar()
                 try:
+                    new_basis_tree = self.branch.basis_tree()
                     merge_inner(self.branch,
-                                self.branch.basis_tree(),
-                                basis_tree, 
-                                this_tree=self, 
+                                new_basis_tree,
+                                basis_tree,
+                                this_tree=self,
                                 pb=pb)
                 finally:
                     pb.finished()
-                self.set_last_revision(self.branch.last_revision())
+                # TODO - dedup parents list with things merged by pull ?
+                # reuse the revisiontree we merged against to set the new
+                # tree data.
+                parent_trees = [(self.branch.last_revision(), new_basis_tree)]
+                # we have to pull the merge trees out again, because 
+                # merge_inner has set the ids. - this corner is not yet 
+                # layered well enough to prevent double handling.
+                merges = self.get_parent_ids()[1:]
+                parent_trees.extend([
+                    (parent, repository.revision_tree(parent)) for
+                     parent in merges])
+                self.set_parent_trees(parent_trees)
             return count
         finally:
             source.unlock()
@@ -1102,7 +1297,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """Yield list of PATH, IGNORE_PATTERN"""
         for subp in self.extras():
             pat = self.is_ignored(subp)
-            if pat != None:
+            if pat is not None:
                 yield subp, pat
 
     def get_ignore_list(self):
@@ -1163,8 +1358,8 @@ class WorkingTree(bzrlib.tree.Tree):
         for regex, mapping in rules:
             match = regex.match(filename)
             if match is not None:
-                # one or more of the groups in mapping will have a non-None group 
-                # match.
+                # one or more of the groups in mapping will have a non-None
+                # group match.
                 groups = match.groups()
                 rules = [mapping[group] for group in 
                     mapping if groups[group] is not None]
@@ -1174,14 +1369,21 @@ class WorkingTree(bzrlib.tree.Tree):
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
 
-    @needs_read_lock
     def last_revision(self):
         """Return the last revision id of this working tree.
 
-        In early branch formats this was == the branch last_revision,
+        In early branch formats this was the same as the branch last_revision,
         but that cannot be relied upon - for working tree operations,
-        always use tree.last_revision().
+        always use tree.last_revision(). This returns the left most parent id,
+        or None if there are no parents.
+
+        This was deprecated as of 0.11. Please use get_parent_ids instead.
         """
+        return self._last_revision()
+
+    @needs_read_lock
+    def _last_revision(self):
+        """helper for get_parent_ids."""
         return self.branch.last_revision()
 
     def is_locked(self):
@@ -1192,6 +1394,22 @@ class WorkingTree(bzrlib.tree.Tree):
         self.branch.lock_read()
         try:
             return self._control_files.lock_read()
+        except:
+            self.branch.unlock()
+            raise
+
+    def lock_tree_write(self):
+        """Lock the working tree for write, and the branch for read.
+
+        This is useful for operations which only need to mutate the working
+        tree. Taking out branch write locks is a relatively expensive process
+        and may fail if the branch is on read only media. So branch write locks
+        should only be taken out when we are modifying branch data - such as in
+        operations like commit, pull, uncommit and update.
+        """
+        self.branch.lock_read()
+        try:
+            return self._control_files.lock_write()
         except:
             self.branch.unlock()
             raise
@@ -1209,9 +1427,9 @@ class WorkingTree(bzrlib.tree.Tree):
         return self._control_files.get_physical_lock_status()
 
     def _basis_inventory_name(self):
-        return 'basis-inventory'
+        return 'basis-inventory-cache'
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
         if self._change_last_revision(new_revision):
@@ -1250,11 +1468,13 @@ class WorkingTree(bzrlib.tree.Tree):
             # root node id can legitimately look like 'revision_id' but cannot
             # contain a '"'.
             xml = self.branch.repository.get_inventory_xml(new_revision)
-            if not 'revision_id="' in xml.split('\n', 1)[0]:
+            firstline = xml.split('\n', 1)[0]
+            if (not 'revision_id="' in firstline or 
+                'format="6"' not in firstline):
                 inv = self.branch.repository.deserialise_inventory(
                     new_revision, xml)
                 inv.revision_id = new_revision
-                xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
+                xml = bzrlib.xml6.serializer_v6.write_inventory_to_string(inv)
             assert isinstance(xml, str), 'serialised xml must be bytestring.'
             path = self._basis_inventory_name()
             sio = StringIO(xml)
@@ -1277,7 +1497,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self._set_inventory(result)
         return result
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def remove(self, files, verbose=False, to_file=None):
         """Remove nominated files from the working inventory..
 
@@ -1317,7 +1537,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
         self._write_inventory(inv)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def revert(self, filenames, old_tree=None, backups=True, 
                pb=DummyProgress()):
         from transform import revert
@@ -1326,7 +1546,7 @@ class WorkingTree(bzrlib.tree.Tree):
             old_tree = self.basis_tree()
         conflicts = revert(self, old_tree, filenames, backups, pb)
         if not len(filenames):
-            self.set_pending_merges([])
+            self.set_parent_ids(self.get_parent_ids()[:1])
             resolve(self)
         else:
             resolve(self, filenames, ignore_misses=True)
@@ -1334,7 +1554,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
     # XXX: This method should be deprecated in favour of taking in a proper
     # new Inventory object.
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_inventory(self, new_inventory_list):
         from bzrlib.inventory import (Inventory,
                                       InventoryDirectory,
@@ -1357,7 +1577,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 raise BzrError("unknown kind %r" % kind)
         self._write_inventory(inv)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_root_id(self, file_id):
         """Set the root id for this tree."""
         inv = self.read_working_inventory()
@@ -1403,43 +1623,73 @@ class WorkingTree(bzrlib.tree.Tree):
         Do a 'normal' merge of the old branch basis if it is relevant.
         """
         old_tip = self.branch.update()
-        if old_tip is not None:
-            self.add_pending_merge(old_tip)
-        self.branch.lock_read()
+        # here if old_tip is not None, it is the old tip of the branch before
+        # it was updated from the master branch. This should become a pending
+        # merge in the working tree to preserve the user existing work.  we
+        # cant set that until we update the working trees last revision to be
+        # one from the new branch, because it will just get absorbed by the
+        # parent de-duplication logic.
+        # 
+        # We MUST save it even if an error occurs, because otherwise the users
+        # local work is unreferenced and will appear to have been lost.
+        # 
+        result = 0
         try:
-            result = 0
-            if self.last_revision() != self.branch.last_revision():
-                # merge tree state up to new branch tip.
-                basis = self.basis_tree()
-                to_tree = self.branch.basis_tree()
-                result += merge_inner(self.branch,
-                                      to_tree,
-                                      basis,
-                                      this_tree=self)
-                self.set_last_revision(self.branch.last_revision())
-            if old_tip and old_tip != self.last_revision():
-                # our last revision was not the prior branch last revision
-                # and we have converted that last revision to a pending merge.
-                # base is somewhere between the branch tip now
-                # and the now pending merge
-                from bzrlib.revision import common_ancestor
-                try:
-                    base_rev_id = common_ancestor(self.branch.last_revision(),
-                                                  old_tip,
-                                                  self.branch.repository)
-                except errors.NoCommonAncestor:
-                    base_rev_id = None
-                base_tree = self.branch.repository.revision_tree(base_rev_id)
-                other_tree = self.branch.repository.revision_tree(old_tip)
-                result += merge_inner(self.branch,
-                                      other_tree,
-                                      base_tree,
-                                      this_tree=self)
-            return result
-        finally:
-            self.branch.unlock()
+            last_rev = self.get_parent_ids()[0]
+        except IndexError:
+            last_rev = None
+        if last_rev != self.branch.last_revision():
+            # merge tree state up to new branch tip.
+            basis = self.basis_tree()
+            to_tree = self.branch.basis_tree()
+            result += merge_inner(self.branch,
+                                  to_tree,
+                                  basis,
+                                  this_tree=self)
+            # TODO - dedup parents list with things merged by pull ?
+            # reuse the tree we've updated to to set the basis:
+            parent_trees = [(self.branch.last_revision(), to_tree)]
+            merges = self.get_parent_ids()[1:]
+            # Ideally we ask the tree for the trees here, that way the working
+            # tree can decide whether to give us teh entire tree or give us a
+            # lazy initialised tree. dirstate for instance will have the trees
+            # in ram already, whereas a last-revision + basis-inventory tree
+            # will not, but also does not need them when setting parents.
+            for parent in merges:
+                parent_trees.append(
+                    (parent, self.branch.repository.revision_tree(parent)))
+            if old_tip is not None:
+                parent_trees.append(
+                    (old_tip, self.branch.repository.revision_tree(old_tip)))
+            self.set_parent_trees(parent_trees)
+            last_rev = parent_trees[0][0]
+        else:
+            # the working tree had the same last-revision as the master
+            # branch did. We may still have pivot local work from the local
+            # branch into old_tip:
+            if old_tip is not None:
+                self.add_parent_tree_id(old_tip)
+        if old_tip and old_tip != last_rev:
+            # our last revision was not the prior branch last revision
+            # and we have converted that last revision to a pending merge.
+            # base is somewhere between the branch tip now
+            # and the now pending merge
+            from bzrlib.revision import common_ancestor
+            try:
+                base_rev_id = common_ancestor(self.branch.last_revision(),
+                                              old_tip,
+                                              self.branch.repository)
+            except errors.NoCommonAncestor:
+                base_rev_id = None
+            base_tree = self.branch.repository.revision_tree(base_rev_id)
+            other_tree = self.branch.repository.revision_tree(old_tip)
+            result += merge_inner(self.branch,
+                                  other_tree,
+                                  base_tree,
+                                  this_tree=self)
+        return result
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
         sio = StringIO()
@@ -1489,6 +1739,19 @@ class WorkingTree2(WorkingTree):
      - uses the branch last-revision.
     """
 
+    def lock_tree_write(self):
+        """See WorkingTree.lock_tree_write().
+
+        In Format2 WorkingTrees we have a single lock for the branch and tree
+        so lock_tree_write() degrades to lock_write().
+        """
+        self.branch.lock_write()
+        try:
+            return self._control_files.lock_write()
+        except:
+            self.branch.unlock()
+            raise
+
     def unlock(self):
         # we share control files:
         if self._hashcache.needs_write and self._control_files._lock_count==3:
@@ -1511,8 +1774,8 @@ class WorkingTree3(WorkingTree):
     """
 
     @needs_read_lock
-    def last_revision(self):
-        """See WorkingTree.last_revision."""
+    def _last_revision(self):
+        """See WorkingTree._last_revision."""
         try:
             return self._control_files.get_utf8('last-revision').read()
         except NoSuchFile:
@@ -1530,12 +1793,12 @@ class WorkingTree3(WorkingTree):
             self._control_files.put_utf8('last-revision', revision_id)
             return True
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def set_conflicts(self, conflicts):
         self._put_rio('conflicts', conflicts.to_stanzas(), 
                       CONFLICT_HEADER_1)
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def add_conflicts(self, new_conflicts):
         conflict_set = set(self.conflicts())
         conflict_set.update(set(list(new_conflicts)))
@@ -1702,7 +1965,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             finally:
                 branch.unlock()
         revision = branch.last_revision()
-        inv = Inventory() 
+        inv = Inventory()
         wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
@@ -1711,9 +1974,9 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                          _bzrdir=a_bzrdir)
         wt._write_inventory(inv)
         wt.set_root_id(inv.root.file_id)
-        wt.set_last_revision(revision)
-        wt.set_pending_merges([])
-        build_tree(wt.basis_tree(), wt)
+        basis_tree = branch.repository.revision_tree(revision)
+        wt.set_parent_trees([(revision, basis_tree)])
+        build_tree(basis_tree, wt)
         return wt
 
     def __init__(self):
@@ -1789,13 +2052,16 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          _format=self,
                          _bzrdir=a_bzrdir,
                          _control_files=control_files)
-        wt.lock_write()
+        wt.lock_tree_write()
         try:
             wt._write_inventory(inv)
             wt.set_root_id(inv.root.file_id)
-            wt.set_last_revision(revision_id)
-            wt.set_pending_merges([])
-            build_tree(wt.basis_tree(), wt)
+            basis_tree = branch.repository.revision_tree(revision_id)
+            if revision_id == bzrlib.revision.NULL_REVISION:
+                wt.set_parent_trees([])
+            else:
+                wt.set_parent_trees([(revision_id, basis_tree)])
+            build_tree(basis_tree, wt)
         finally:
             wt.unlock()
             control_files.unlock()

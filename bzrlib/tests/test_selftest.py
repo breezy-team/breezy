@@ -34,10 +34,13 @@ from bzrlib.tests import (
                           TestSuite,
                           TextTestRunner,
                           )
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
 from bzrlib import symbol_versioning
+from bzrlib.symbol_versioning import zero_ten, zero_eleven
 from bzrlib.trace import note
+from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.version import _get_bzr_source_tree
 
 
@@ -419,6 +422,16 @@ class TestInterTreeProviderAdapter(TestCase):
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
+
+class TestTestCaseInTempDir(TestCaseInTempDir):
+
+    def test_home_is_not_working(self):
+        self.assertNotEqual(self.test_dir, self.test_home_dir)
+        cwd = osutils.getcwd()
+        self.assertEqual(self.test_dir, cwd)
+        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+
+
 class TestTestCaseWithTransport(TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
@@ -461,6 +474,21 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertIsDirectory('a_dir', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'a_file', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'not_here', t)
+
+
+class TestTestCaseTransports(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestTestCaseTransports, self).setUp()
+        self.transport_server = MemoryServer
+
+    def test_make_bzrdir_preserves_transport(self):
+        t = self.get_transport()
+        result_bzrdir = self.make_bzrdir('subdir')
+        self.assertIsInstance(result_bzrdir.transport, 
+                              MemoryTransport)
+        # should not be on disk, should only be in memory
+        self.failIfExists('subdir')
 
 
 class TestChrootedTest(ChrootedTestCase):
@@ -718,7 +746,7 @@ class TestRunner(TestCase):
         output_string = output.getvalue()
         self.assertContainsRe(output_string, "--date [0-9.]+")
         if workingtree is not None:
-            revision_id = workingtree.last_revision()
+            revision_id = workingtree.get_parent_ids()[0]
             self.assertEndsWith(output_string.rstrip(), revision_id)
 
 
@@ -798,6 +826,32 @@ class TestTestCase(TestCase):
         self.assertIsInstance(self._benchcalls[1][1], bzrlib.lsprof.Stats)
 
 
+@symbol_versioning.deprecated_function(zero_eleven)
+def sample_deprecated_function():
+    """A deprecated function to test applyDeprecated with."""
+    return 2
+
+
+def sample_undeprecated_function(a_param):
+    """A undeprecated function to test applyDeprecated with."""
+
+
+class ApplyDeprecatedHelper(object):
+    """A helper class for ApplyDeprecated tests."""
+
+    @symbol_versioning.deprecated_method(zero_eleven)
+    def sample_deprecated_method(self, param_one):
+        """A deprecated method for testing with."""
+        return param_one
+
+    def sample_normal_method(self):
+        """A undeprecated method."""
+
+    @symbol_versioning.deprecated_method(zero_ten)
+    def sample_nested_deprecation(self):
+        return sample_deprecated_function()
+
+
 class TestExtraAssertions(TestCase):
     """Tests for new test assertions in bzrlib test suite"""
 
@@ -811,6 +865,35 @@ class TestExtraAssertions(TestCase):
         self.assertEndsWith('foo', 'oo')
         self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
 
+    def test_applyDeprecated_not_deprecated(self):
+        sample_object = ApplyDeprecatedHelper()
+        # calling an undeprecated callable raises an assertion
+        self.assertRaises(AssertionError, self.applyDeprecated, zero_eleven,
+            sample_object.sample_normal_method)
+        self.assertRaises(AssertionError, self.applyDeprecated, zero_eleven,
+            sample_undeprecated_function, "a param value")
+        # calling a deprecated callable (function or method) with the wrong
+        # expected deprecation fails.
+        self.assertRaises(AssertionError, self.applyDeprecated, zero_ten,
+            sample_object.sample_deprecated_method, "a param value")
+        self.assertRaises(AssertionError, self.applyDeprecated, zero_ten,
+            sample_deprecated_function)
+        # calling a deprecated callable (function or method) with the right
+        # expected deprecation returns the functions result.
+        self.assertEqual("a param value", self.applyDeprecated(zero_eleven,
+            sample_object.sample_deprecated_method, "a param value"))
+        self.assertEqual(2, self.applyDeprecated(zero_eleven,
+            sample_deprecated_function))
+        # calling a nested deprecation with the wrong deprecation version
+        # fails even if a deeper nested function was deprecated with the 
+        # supplied version.
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            zero_eleven, sample_object.sample_nested_deprecation)
+        # calling a nested deprecation with the right deprecation value
+        # returns the calls result.
+        self.assertEqual(2, self.applyDeprecated(zero_ten,
+            sample_object.sample_nested_deprecation))
+
     def test_callDeprecated(self):
         def testfunc(be_deprecated, result=None):
             if be_deprecated is True:
@@ -821,8 +904,7 @@ class TestExtraAssertions(TestCase):
         self.assertIs(None, result)
         result = self.callDeprecated([], testfunc, False, 'result')
         self.assertEqual('result', result)
-        self.callDeprecated(['i am deprecated'], testfunc, 
-                              be_deprecated=True)
+        self.callDeprecated(['i am deprecated'], testfunc, be_deprecated=True)
         self.callDeprecated([], testfunc, be_deprecated=False)
 
 
@@ -837,6 +919,21 @@ class TestConvenienceMakers(TestCaseWithTransport):
                               bzrlib.bzrdir.BzrDirMetaFormat1)
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
                               bzrlib.bzrdir.BzrDirFormat6)
+
+
+class TestSFTPMakeBranchAndTree(TestCaseWithSFTPServer):
+
+    def test_make_tree_for_sftp_branch(self):
+        """Transports backed by local directories create local trees."""
+
+        tree = self.make_branch_and_tree('t1')
+        base = tree.bzrdir.root_transport.base
+        self.failIf(base.startswith('sftp'),
+                'base %r is on sftp but should be local' % base)
+        self.assertEquals(tree.bzrdir.root_transport,
+                tree.branch.bzrdir.root_transport)
+        self.assertEquals(tree.bzrdir.root_transport,
+                tree.branch.repository.bzrdir.root_transport)
 
 
 class TestSelftest(TestCase):

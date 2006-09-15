@@ -409,6 +409,30 @@ class TestLockDir(TestCaseWithTransport):
         finally:
             bzrlib.ui.ui_factory = orig_factory
 
+    def test_create_missing_base_directory(self):
+        """If LockDir.path doesn't exist, it can be created
+
+        Some people manually remove the entire lock/ directory trying
+        to unlock a stuck repository/branch/etc. Rather than failing
+        after that, just create the lock directory when needed.
+        """
+        t = self.get_transport()
+        lf1 = LockDir(t, 'test_lock')
+
+        lf1.create()
+        self.failUnless(t.has('test_lock'))
+
+        t.rmdir('test_lock')
+        self.failIf(t.has('test_lock'))
+
+        # This will create 'test_lock' if it needs to
+        lf1.lock_write()
+        self.failUnless(t.has('test_lock'))
+        self.failUnless(t.has('test_lock/held/info'))
+
+        lf1.unlock()
+        self.failIf(t.has('test_lock/held/info'))
+
     def test__format_lock_info(self):
         ld1 = self.get_lock()
         ld1.create()

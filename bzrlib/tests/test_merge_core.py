@@ -25,9 +25,11 @@ class MergeBuilder(object):
            path = pathjoin(self.dir, name)
            os.mkdir(path)
            wt = bzrlib.bzrdir.BzrDir.create_standalone_workingtree(path)
+           # the tests perform pulls, so need a branch that is writeable.
+           wt.lock_write()
            tt = TreeTransform(wt)
            return wt, tt
-        self.base, self.base_tt = wt('base') 
+        self.base, self.base_tt = wt('base')
         self.this, self.this_tt = wt('this')
         self.other, self.other_tt = wt('other')
 
@@ -50,8 +52,9 @@ class MergeBuilder(object):
         self.base_tt.apply()
         self.base.commit('base commit')
         for tt, wt in ((self.this_tt, self.this), (self.other_tt, self.other)):
+            # why does this not do wt.pull() ?
             wt.branch.pull(self.base.branch)
-            wt.set_last_revision(wt.branch.last_revision())
+            wt.set_parent_ids([wt.branch.last_revision()])
             tt.apply()
             wt.commit('branch commit')
             assert len(wt.branch.revision_history()) == 2
@@ -139,7 +142,7 @@ class MergeBuilder(object):
             return orig_inventory_by_path[parent_dir]
         
         def new_path(file_id):
-            if inventory_change.has_key(file_id):
+            if fild_id in inventory_change:
                 return inventory_change[file_id]
             else:
                 parent = parent_id(file_id)
@@ -156,12 +159,15 @@ class MergeBuilder(object):
             new_inventory[file_id] = path
 
         for file_id, path in inventory_change.iteritems():
-            if orig_inventory.has_key(file_id):
+            if file_id in orig_inventory:
                 continue
             new_inventory[file_id] = path
         return new_inventory
 
     def cleanup(self):
+        self.base.unlock()
+        self.this.unlock()
+        self.other.unlock()
         rmtree(self.dir)
 
 
@@ -194,6 +200,7 @@ class MergeTest(TestCaseWithTransport):
         builder.merge(interesting_ids=["1"])
         self.assertEqual(builder.this.get_file("1").read(), "text4" )
         self.assertEqual(builder.this.get_file("2").read(), "hello1" )
+        builder.cleanup()
         
     def test_file_moves(self):
         """Test moves"""
@@ -256,8 +263,7 @@ y
 >>>>>>> MERGE-SOURCE
 """
         self.assertEqualDiff(builder.this.get_file("a").read(), expected)
-
- 
+        builder.cleanup()
 
     def do_contents_test(self, merge_factory):
         """Test merging with specified ContentsChange factory"""
@@ -370,6 +376,7 @@ y
                          base=False)
         conflicts = builder.merge()
         self.assertEqual(conflicts, []) 
+        builder.cleanup()
 
 
 class FunctionalMergeTest(TestCaseWithTransport):
@@ -449,11 +456,10 @@ class FunctionalMergeTest(TestCaseWithTransport):
         b = wtb.branch
         file('b/b_file', 'wb').write('contents\n')
         wtb.add('b_file')
-        wtb.commit('b_revision', allow_pointless=False)
+        b_rev = wtb.commit('b_revision', allow_pointless=False)
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.lexists('a/b_file'))
-        self.assertEqual(wta.pending_merges(),
-                         [b.last_revision()]) 
+        self.assertEqual([b_rev], wta.get_parent_ids()[1:])
 
     def test_merge_unrelated_conflicting(self):
         """Sucessfully merges unrelated branches with common names"""
@@ -466,11 +472,11 @@ class FunctionalMergeTest(TestCaseWithTransport):
         b = wtb.branch
         file('b/file', 'wb').write('contents\n')
         wtb.add('file')
-        wtb.commit('b_revision', allow_pointless=False)
+        b_rev = wtb.commit('b_revision', allow_pointless=False)
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.lexists('a/file'))
         self.assert_(os.path.lexists('a/file.moved'))
-        self.assertEqual(wta.pending_merges(), [b.last_revision()])
+        self.assertEqual([b_rev], wta.get_parent_ids()[1:])
 
     def test_merge_deleted_conflicts(self):
         wta = self.make_branch_and_tree('a')
