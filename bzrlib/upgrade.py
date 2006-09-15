@@ -19,7 +19,7 @@
 # change upgrade from .bzr to create a '.bzr-new', then do a bait and switch.
 
 
-from bzrlib.bzrdir import ConvertBzrDir4To5, ConvertBzrDir5To6, BzrDir, BzrDirFormat4, BzrDirFormat5
+from bzrlib.bzrdir import ConvertBzrDir4To5, ConvertBzrDir5To6, BzrDir, BzrDirFormat4, BzrDirFormat5, BzrDirFormat
 import bzrlib.errors as errors
 from bzrlib.transport import get_transport
 import bzrlib.ui as ui
@@ -54,6 +54,11 @@ class Convert(object):
         if not self.bzrdir.can_convert_format():
             raise errors.BzrError("cannot upgrade from branch format %s" %
                            self.bzrdir._format)
+        if self.format is None:
+            target_format = BzrDirFormat.get_default_format()
+        else:
+            target_format = self.format
+        self.bzrdir.check_conversion_target(target_format)
         self.pb.note('starting upgrade of %s', self.transport.base)
         self._backup_control_dir()
         while self.bzrdir.needs_format_conversion(self.format):

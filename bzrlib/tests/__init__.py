@@ -899,6 +899,9 @@ class TestCase(unittest.TestCase):
                 osutils.set_or_unset_env(env_var, value)
 
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        if not os.path.isfile(bzr_path):
+            # We are probably installed. Assume sys.argv is the right file
+            bzr_path = sys.argv[0]
         args = list(args)
 
         try:
@@ -921,7 +924,11 @@ class TestCase(unittest.TestCase):
         retcode = process.wait()
         supplied_retcode = kwargs.get('retcode', 0)
         if supplied_retcode is not None:
-            assert supplied_retcode == retcode
+            if supplied_retcode != retcode:
+                mutter('Output of bzr %s:\n%s', args, out)
+                mutter('Error for bzr %s:\n%s', args, err)
+                self.fail('Command bzr %s failed with retcode %s != %s'
+                          % (args, supplied_retcode, retcode))
         return [out, err]
 
     def check_inventory_shape(self, inv, shape):
@@ -1214,7 +1221,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
         if relpath is not None and relpath != '.':
             if not base.endswith('/'):
                 base = base + '/'
-            base = base + urlutils.escape(relpath)
+            # XXX: Really base should be a url; we did after all call
+            # get_url()!  But sometimes it's just a path (from
+            # LocalAbspathServer), and it'd be wrong to append urlescaped data
+            # to a non-escaped local path.
+            if base.startswith('./') or base.startswith('/'):
+                base += relpath
+            else:
+                base += urlutils.escape(relpath)
         return base
 
     def get_transport(self):
@@ -1242,9 +1256,9 @@ class TestCaseWithTransport(TestCaseInTempDir):
         try:
             # might be a relative or absolute path
             maybe_a_url = self.get_url(relpath)
-            segments = maybe_a_url.split('/')
+            segments = maybe_a_url.rsplit('/', 1)
             t = get_transport(maybe_a_url)
-            if segments and segments[-1] not in ('', '.'):
+            if len(segments) > 1 and segments[-1] not in ('', '.'):
                 try:
                     t.mkdir('.')
                 except errors.FileExists:
@@ -1426,6 +1440,7 @@ def test_suite():
                    'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
+                   'bzrlib.tests.test_lazy_import',
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
