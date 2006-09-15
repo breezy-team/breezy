@@ -179,10 +179,9 @@ class SmartTCPTests(tests.TestCase):
         # we create a real connection not a loopback one, but it will use the
         # same server and pipes
         conn2 = self.transport.clone('.')
-        # XXX: shouldn't this assert something?
-        # assertIdentical(self.transport._client, conn2._client), perhaps?
+        self.assertTrue(self.transport._client is conn2._client)
 
-    def test_remote_path(self):
+    def test__remote_path(self):
         self.assertEquals('/foo/bar',
                           self.transport._remote_path('foo/bar'))
 
