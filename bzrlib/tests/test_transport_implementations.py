@@ -30,14 +30,14 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
-                           LockError, PathError,
+                           LockError, NoSmartServer, PathError,
                            TransportNotPossible, ConnectionError,
                            InvalidURL)
 from bzrlib.osutils import getcwd
 from bzrlib.symbol_versioning import zero_eleven
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
-from bzrlib.transport import memory
+from bzrlib.transport import memory, smart
 import bzrlib.transport
 
 
@@ -145,7 +145,9 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('file-like\ncontents\n', t, 'b')
 
         self.assertRaises(NoSuchFile,
-                          t.put, 'path/doesnt/exist/c', StringIO('contents'))
+            self.applyDeprecated,
+            zero_eleven,
+            t.put, 'path/doesnt/exist/c', StringIO('contents'))
 
     def test_put_bytes(self):
         t = self.get_transport()
@@ -1085,8 +1087,6 @@ class TransportTests(TestTransportImplementation):
         # specific test cases.
         transport = self.get_transport()
         
-        # disabled because some transports might normalize urls in generating
-        # the abspath - eg http+pycurl-> just http -- mbp 20060308 
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
 
@@ -1236,7 +1236,6 @@ class TransportTests(TestTransportImplementation):
             self.assertRaises(TransportNotPossible, transport.lock_write, 'foo')
             return
         transport.put_bytes('lock', '')
-        transport.put('lock', StringIO())
         try:
             lock = transport.lock_write('lock')
         except TransportNotPossible:
@@ -1289,3 +1288,18 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[2], (0, '0'))
         self.assertEqual(d[3], (3, '34'))
 
+    def test_get_smart_client(self):
+        """All transports must either give a smart client, or know they can't.
+
+        For some transports such as http this might depend on probing to see 
+        what's actually present on the other end.  (But we can adjust for that 
+        in the future.)
+        """
+        transport = self.get_transport()
+        try:
+            client = transport.get_smart_client()
+            # XXX: should be a more general class
+            self.assertIsInstance(client, smart.SmartStreamClient)
+        except NoSmartServer:
+            # as long as we got it we're fine
+            pass

@@ -2781,6 +2781,43 @@ class cmd_wait_until_signalled(Command):
         sys.stdin.readline()
 
 
+class cmd_serve(Command):
+    """Run the bzr server.
+    """
+    takes_options = [
+        Option('inet',
+               help='serve on stdin/out for use from inetd or sshd'),
+        Option('port',
+               help='listen for connections on nominated port of the form '
+                    '[hostname:]portnumber. Passing 0 as the port number will '
+                    'result in a dynamically allocated port.',
+               type=str),
+        Option('directory',
+               help='serve contents of directory',
+               type=unicode),
+        ]
+
+    def run(self, port=None, inet=False, directory=None):
+        from bzrlib.transport import smart
+        from bzrlib.transport import get_transport
+        if directory is None:
+            directory = os.getcwd()
+        t = get_transport(directory)
+        if inet:
+            server = smart.SmartStreamServer(sys.stdin, sys.stdout, t)
+        elif port is not None:
+            if ':' in port:
+                host, port = port.split(':')
+            else:
+                host = '127.0.0.1'
+            server = smart.SmartTCPServer(t, host=host, port=int(port))
+            print 'listening on port: ', server.port
+            sys.stdout.flush()
+        else:
+            raise BzrCommandError("bzr serve requires one of --inet or --port")
+        server.serve()
+
+
 # command-line interpretation helper for merge-related commands
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,

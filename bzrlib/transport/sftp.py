@@ -177,6 +177,14 @@ class SFTPUrlHandling(Transport):
             path = ''
         return (scheme, username, password, host, port, path)
 
+    def abspath(self, relpath):
+        """Return the full url to the given relative path.
+        
+        @param relpath: the relative path or path components
+        @type relpath: str or list
+        """
+        return self._unparse_url(self._remote_path(relpath))
+    
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
         
@@ -232,15 +240,6 @@ class SFTPTransport(SFTPUrlHandling):
         else:
             return SFTPTransport(self.abspath(offset), self)
 
-    def abspath(self, relpath):
-        """
-        Return the full url to the given relative path.
-        
-        @param relpath: the relative path or path components
-        @type relpath: str or list
-        """
-        return self._unparse_url(self._remote_path(relpath))
-    
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
         

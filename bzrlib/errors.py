@@ -791,6 +791,13 @@ class TransportError(BzrNewError):
         BzrNewError.__init__(self)
 
 
+class SmartProtocolError(TransportError):
+    """Generic bzr smart protocol error: %(details)s"""
+
+    def __init__(self, details):
+        self.details = details
+
+
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
     """Transport operation not possible: %(msg)s %(orig_error)%"""
@@ -1167,6 +1174,13 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
 
     def __init__(self, msg):
         BadInventoryFormat.__init__(self, msg=msg)
+
+
+class NoSmartServer(NotBranchError):
+    """No smart server available at %(url)s"""
+
+    def __init__(self, url):
+        self.url = url
 
 
 class UnknownSSH(BzrNewError):

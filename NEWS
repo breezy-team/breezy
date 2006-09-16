@@ -25,6 +25,12 @@ IN DEVELOPMENT
       modules will not actually be imported if they are not used.
       (John Arbash Meinel)
 
+    * Support bzr:// and bzr+ssh:// urls to work with the new RPC-based
+      transport which will be used with the upcoming high-performance smart
+      server. The new command ``bzr serve`` will invoke bzr in server mode,
+      which processes these requests. (Andrew Bennetts, Robert Collins, Martin
+      Pool)
+
   BUG FIXES:
 
     * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
@@ -123,6 +129,10 @@ IN DEVELOPMENT
     * Add start_bzr_subprocess and stop_bzr_subprocess to allow test code to
       continue running concurrently with a subprocess of bzr. (Andrew Bennetts,
       Robert Collins)
+
+    * Add a new method ``Transport.get_smart_client()``. This is provided to
+      allow upgrades to a richer interface than the VFS one provided by
+      Transport. (Andrew Bennetts, Martin Pool)
 
 bzr 0.10  2006-08-29
   

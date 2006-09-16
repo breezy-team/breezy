@@ -942,7 +942,7 @@ class TestCase(unittest.TestCase):
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
             process = Popen([sys.executable, bzr_path] + list(process_args),
-                             stdout=PIPE, stderr=PIPE)
+                             stdin=PIPE, stdout=PIPE, stderr=PIPE)
         finally:
             restore_environment()
         return process
@@ -1475,6 +1475,7 @@ def test_suite():
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
+                   'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
@@ -1512,8 +1513,8 @@ def test_suite():
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
-                   'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_smart_add',
+                   'bzrlib.tests.test_smart_transport',
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
