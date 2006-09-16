@@ -25,12 +25,12 @@ from bzrlib import bzrdir, conflicts, errors, workingtree
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.lockdir import LockDir
+from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import (
-    needs_tree_write_lock,
     TreeEntry,
     TreeDirectory,
     TreeFile,
