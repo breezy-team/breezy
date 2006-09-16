@@ -720,24 +720,43 @@ class SmartTransport(transport.Transport):
             return
 
         offsets = list(offsets)
+
+        sorted_offsets = sorted(offsets)
+        # turn the list of offsets into a stack
+        offset_stack = iter(offsets)
+        cur_offset_and_size = offset_stack.next()
+        coalesced = list(self._coalesce_offsets(sorted_offsets,
+                               limit=self._max_readv_combine,
+                               fudge_factor=self._bytes_to_read_before_seek))
+
+
         resp = self._client._call_with_upload(
             'readv',
             (self._remote_path(relpath),),
-            self._serialise_offsets(offsets))
+            self._serialise_offsets((c.start, c.length) for c in coalesced))
 
         if resp[0] != 'readv':
+            # This should raise an exception
             self._translate_error(resp)
-        else:
-            data = self._client._recv_bulk()
-            cur_pos = 0
-            for start, length in offsets:
-                next_pos = cur_pos + length
-                if len(data) < next_pos:
-                    raise errors.ShortReadvError(relpath, start, length,
-                                                 actual=len(data)-cur_pos)
-                cur_data = data[cur_pos:next_pos]
-                cur_pos = next_pos
-                yield start, cur_data
+            return
+
+        data = self._client._recv_bulk()
+        # Cache the results, but only until they have been fulfilled
+        data_map = {}
+        for c_offset in coalesced:
+            if len(data) < c_offset.length:
+                raise errors.ShortReadvError(relpath, c_offset.start,
+                            c_offset.length, actual=len(data))
+            for suboffset, subsize in c_offset.ranges:
+                key = (c_offset.start+suboffset, subsize)
+                data_map[key] = data[suboffset:suboffset+subsize]
+            data = data[c_offset.length:]
+
+            # Now that we've read some data, see if we can yield anything back
+            while cur_offset_and_size in data_map:
+                this_data = data_map.pop(cur_offset_and_size)
+                yield cur_offset_and_size[0], this_data
+                cur_offset_and_size = offset_stack.next()
 
     def rename(self, rel_from, rel_to):
         self._call('rename', 
