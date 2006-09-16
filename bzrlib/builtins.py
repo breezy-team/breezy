@@ -827,7 +827,7 @@ class cmd_update(Command):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_write()
         try:
-            existing_pending_merges = tree.pending_merges()
+            existing_pending_merges = tree.get_parent_ids()[1:]
             last_rev = tree.last_revision()
             if last_rev == tree.branch.last_revision():
                 # may be up to date, check master too.
@@ -839,7 +839,7 @@ class cmd_update(Command):
             conflicts = tree.update()
             revno = tree.branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
-            if tree.pending_merges() != existing_pending_merges:
+            if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
             if conflicts != 0:
