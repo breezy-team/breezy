@@ -421,6 +421,9 @@ class SmartServer(object):
             return SmartServerResponse(('FileExists', e.path))
         except errors.DirectoryNotEmpty, e:
             return SmartServerResponse(('DirectoryNotEmpty', e.path))
+        except errors.ShortReadvError, e:
+            return SmartServerResponse(('ShortReadvError',
+                e.path, str(e.offset), str(e.length), str(e.actual)))
         except UnicodeError, e:
             # If it is a DecodeError, than most likely we are starting
             # with a plain string
@@ -730,7 +733,8 @@ class SmartTransport(transport.Transport):
             for start, length in offsets:
                 next_pos = cur_pos + length
                 if len(data) < next_pos:
-                    pass # XXX: ShortReadv, raise an error once that is merged
+                    raise errors.ShortReadvError(relpath, start, length,
+                                                 actual=len(data)-cur_pos)
                 cur_data = data[cur_pos:next_pos]
                 cur_pos = next_pos
                 yield start, cur_data
@@ -769,6 +773,9 @@ class SmartTransport(transport.Transport):
             raise errors.FileExists(resp[1])
         elif what == 'DirectoryNotEmpty':
             raise errors.DirectoryNotEmpty(resp[1])
+        elif what == 'ShortReadvError':
+            raise errors.ShortReadvError(resp[1], int(resp[2]),
+                                         int(resp[3]), int(resp[4]))
         elif what in ('UnicodeEncodeError', 'UnicodeDecodeError'):
             encoding = str(resp[1]) # encoding must always be a string
             val = resp[2]
