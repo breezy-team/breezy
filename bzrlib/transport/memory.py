@@ -20,7 +20,6 @@ The contents of the transport will be lost when the object is discarded,
 so this is primarily useful for testing.
 """
 
-from copy import copy
 import os
 import errno
 import re
@@ -59,7 +58,9 @@ class MemoryTransport(Transport):
         if url[-1] != '/':
             url = url + '/'
         super(MemoryTransport, self).__init__(url)
-        self._cwd = url[url.find(':') + 3:]
+        split = url.find(':') + 3
+        self._scheme = url[:split]
+        self._cwd = url[split:]
         # dictionaries from absolute path to file mode
         self._dirs = {'/':None}
         self._files = {}
@@ -67,20 +68,10 @@ class MemoryTransport(Transport):
 
     def clone(self, offset=None):
         """See Transport.clone()."""
-        if offset is None or offset == '':
-            return copy(self)
-        segments = offset.split('/')
-        cwdsegments = self._cwd.split('/')[:-1]
-        while len(segments):
-            segment = segments.pop(0)
-            if segment == '.':
-                continue
-            if segment == '..':
-                if len(cwdsegments) > 1:
-                    cwdsegments.pop()
-                continue
-            cwdsegments.append(segment)
-        url = self.base[:self.base.find(':') + 3] + '/'.join(cwdsegments) + '/'
+        path = self._combine_paths(self._cwd, offset)
+        if len(path) == 0 or path[-1] != '/':
+            path += '/'
+        url = self._scheme + path
         result = MemoryTransport(url)
         result._dirs = self._dirs
         result._files = self._files
@@ -236,6 +227,8 @@ class MemoryTransport(Transport):
         relpath = urlutils.unescape(relpath)
         if relpath.find('..') != -1:
             raise AssertionError('relpath contains ..')
+        if relpath[0] == '/':
+            return relpath
         if relpath == '.':
             if (self._cwd == '/'):
                 return self._cwd

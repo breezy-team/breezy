@@ -34,11 +34,13 @@ from bzrlib.tests import (
                           TestSuite,
                           TextTestRunner,
                           )
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import zero_ten, zero_eleven
 from bzrlib.trace import note
+from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.version import _get_bzr_source_tree
 
 
@@ -474,6 +476,21 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertRaises(AssertionError, self.assertIsDirectory, 'not_here', t)
 
 
+class TestTestCaseTransports(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestTestCaseTransports, self).setUp()
+        self.transport_server = MemoryServer
+
+    def test_make_bzrdir_preserves_transport(self):
+        t = self.get_transport()
+        result_bzrdir = self.make_bzrdir('subdir')
+        self.assertIsInstance(result_bzrdir.transport, 
+                              MemoryTransport)
+        # should not be on disk, should only be in memory
+        self.failIfExists('subdir')
+
+
 class TestChrootedTest(ChrootedTestCase):
 
     def test_root_is_root(self):
@@ -902,6 +919,21 @@ class TestConvenienceMakers(TestCaseWithTransport):
                               bzrlib.bzrdir.BzrDirMetaFormat1)
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
                               bzrlib.bzrdir.BzrDirFormat6)
+
+
+class TestSFTPMakeBranchAndTree(TestCaseWithSFTPServer):
+
+    def test_make_tree_for_sftp_branch(self):
+        """Transports backed by local directories create local trees."""
+
+        tree = self.make_branch_and_tree('t1')
+        base = tree.bzrdir.root_transport.base
+        self.failIf(base.startswith('sftp'),
+                'base %r is on sftp but should be local' % base)
+        self.assertEquals(tree.bzrdir.root_transport,
+                tree.branch.bzrdir.root_transport)
+        self.assertEquals(tree.bzrdir.root_transport,
+                tree.branch.repository.bzrdir.root_transport)
 
 
 class TestSelftest(TestCase):

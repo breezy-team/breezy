@@ -21,7 +21,7 @@ import time
 
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
-from bzrlib.osutils import pathjoin, lexists
+from bzrlib.osutils import pathjoin, lexists, set_or_unset_env
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
 import bzrlib.transport
 import bzrlib.transport.http
@@ -192,8 +192,25 @@ class SFTPNonServerTest(TestCase):
                               clone_from=fake)
             self.fail('expected exception not raised')
         except TransportError, e:
-            self.assertEquals(str(e), 
-                    'Transport error: ~janneke: invalid port number ')
+            self.assertEquals(str(e),
+                    'Transport error: '
+                    'invalid port number ~janneke in url:\n'
+                    'sftp://lilypond.org:~janneke/public_html/bzr/gub ')
+
+    def test_get_paramiko_vendor(self):
+        """Test that if no 'ssh' is available we get builtin paramiko"""
+        from bzrlib.transport import ssh
+        # set '.' as the only location in the path, forcing no 'ssh' to exist
+        orig_vendor = ssh._ssh_vendor
+        orig_path = set_or_unset_env('PATH', '.')
+        try:
+            # No vendor defined yet, query for one
+            ssh._ssh_vendor = None
+            vendor = ssh._get_ssh_vendor()
+            self.assertIsInstance(vendor, ssh.ParamikoVendor)
+        finally:
+            set_or_unset_env('PATH', orig_path)
+            ssh._ssh_vendor = orig_vendor
 
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
@@ -403,6 +420,8 @@ class TestSocketDelay(TestCase):
 
     def setUp(self):
         TestCase.setUp(self)
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
 
     def test_delay(self):
         from bzrlib.transport.sftp import SocketDelay

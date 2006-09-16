@@ -827,7 +827,7 @@ class cmd_update(Command):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_write()
         try:
-            existing_pending_merges = tree.pending_merges()
+            existing_pending_merges = tree.get_parent_ids()[1:]
             last_rev = tree.last_revision()
             if last_rev == tree.branch.last_revision():
                 # may be up to date, check master too.
@@ -839,7 +839,7 @@ class cmd_update(Command):
             conflicts = tree.update()
             revno = tree.branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
-            if tree.pending_merges() != existing_pending_merges:
+            if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
             if conflicts != 0:
@@ -2766,6 +2766,56 @@ class cmd_break_lock(Command):
         except NotImplementedError:
             pass
         
+
+class cmd_wait_until_signalled(Command):
+    """Test helper for test_start_and_stop_bzr_subprocess_send_signal.
+
+    This just prints a line to signal when it is ready, then blocks on stdin.
+    """
+
+    hidden = True
+
+    def run(self):
+        sys.stdout.write("running\n")
+        sys.stdout.flush()
+        sys.stdin.readline()
+
+
+class cmd_serve(Command):
+    """Run the bzr server.
+    """
+    takes_options = [
+        Option('inet',
+               help='serve on stdin/out for use from inetd or sshd'),
+        Option('port',
+               help='listen for connections on nominated port of the form '
+                    '[hostname:]portnumber. Passing 0 as the port number will '
+                    'result in a dynamically allocated port.',
+               type=str),
+        Option('directory',
+               help='serve contents of directory',
+               type=unicode),
+        ]
+
+    def run(self, port=None, inet=False, directory=None):
+        from bzrlib.transport import smart
+        from bzrlib.transport import get_transport
+        if directory is None:
+            directory = os.getcwd()
+        t = get_transport(directory)
+        if inet:
+            server = smart.SmartStreamServer(sys.stdin, sys.stdout, t)
+        elif port is not None:
+            if ':' in port:
+                host, port = port.split(':')
+            else:
+                host = '127.0.0.1'
+            server = smart.SmartTCPServer(t, host=host, port=int(port))
+            print 'listening on port: ', server.port
+            sys.stdout.flush()
+        else:
+            raise BzrCommandError("bzr serve requires one of --inet or --port")
+        server.serve()
 
 
 # command-line interpretation helper for merge-related commands
