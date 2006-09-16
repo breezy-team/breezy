@@ -47,6 +47,13 @@ IN DEVELOPMENT
     * Don't use preexec_fn on win32, as it is not supported by subprocess.
       (John Arbash Meinel)
 
+    * Skip specific tests when the dependencies aren't met. This includes
+      some ``setup.py`` tests when ``python-dev`` is not available, and
+      some tests that depend on paramiko. (John Arbash Meinel, Mattheiu Moy)
+
+    * Fallback to Paramiko properly, if no ``ssh`` executable exists on
+      the system. (Andrew Bennetts, John Arbash Meinel)
+
   INTERNALS:
 
     * TestCaseInTempDir now creates a separate directory for HOME, rather
@@ -116,11 +123,18 @@ IN DEVELOPMENT
     * New methods mkdir and put_file_bytes_non_atomic on MutableTree that
       mutate the tree and its contents. (Robert Collins)
 
+    * Transport behaviour at the root of the URL is now defined and tested.
+      (Andrew Bennetts, Robert Collins)
+
   TESTING:
 
     * New test helper classs MemoryTree. This is typically accessed via
       ``self.make_branch_and_memory_tree()`` in test cases. (Robert Collins)
       
+    * Add start_bzr_subprocess and stop_bzr_subprocess to allow test code to
+      continue running concurrently with a subprocess of bzr. (Andrew Bennetts,
+      Robert Collins)
+
 bzr 0.10  2006-08-29
   
   IMPROVEMENTS:

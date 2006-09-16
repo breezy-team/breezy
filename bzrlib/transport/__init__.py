@@ -165,7 +165,8 @@ def split_url(url):
             port = int(port)
         except ValueError:
             # TODO: Should this be ConnectionError?
-            raise errors.TransportError('%s: invalid port number' % port)
+            raise errors.TransportError(
+                'invalid port number %s in url:\n%s' % (port, url))
     host = urllib.unquote(host)
 
     path = urllib.unquote(path)
@@ -306,12 +307,56 @@ class Transport(object):
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
-        This can be supplied with a string or a list
 
-        XXX: Robert Collins 20051016 - is this really needed in the public
-             interface ?
+        :param relpath: a string of a relative path
         """
+
+        # XXX: Robert Collins 20051016 - is this really needed in the public
+        # interface ?
         raise NotImplementedError(self.abspath)
+
+    def _combine_paths(self, base_path, relpath):
+        """Transform a Transport-relative path to a remote absolute path.
+
+        This does not handle substitution of ~ but does handle '..' and '.'
+        components.
+
+        Examples::
+
+            >>> t = Transport('/')
+            >>> t._combine_paths('/home/sarah', 'project/foo')
+            '/home/sarah/project/foo'
+            >>> t._combine_paths('/home/sarah', '../../etc')
+            '/etc'
+
+        :param base_path: urlencoded path for the transport root; typically a 
+             URL but need not contain scheme/host/etc.
+        :param relpath: relative url string for relative part of remote path.
+        :return: urlencoded string for final path.
+        """
+        # FIXME: share the common code across more transports; variants of
+        # this likely occur in http and sftp too.
+        #
+        # TODO: Also need to consider handling of ~, which might vary between
+        # transports?
+        if not isinstance(relpath, str):
+            raise errors.InvalidURL("not a valid url: %r" % relpath)
+        base_parts = base_path.split('/')
+        if len(base_parts) > 0 and base_parts[-1] == '':
+            base_parts = base_parts[:-1]
+        for p in relpath.split('/'):
+            if p == '..':
+                if len(base_parts) == 0:
+                    # In most filesystems, a request for the parent
+                    # of root, just returns root.
+                    continue
+                base_parts.pop()
+            elif p == '.':
+                continue # No-op
+            elif p != '':
+                base_parts.append(p)
+        path = '/'.join(base_parts)
+        return path
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
@@ -861,26 +906,37 @@ class Transport(object):
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
-        raise errors.TransportNotPossible("This transport has not "
+        raise errors.TransportNotPossible("Transport %r has not "
                                           "implemented list_dir "
                                           "(but must claim to be listable "
-                                          "to trigger this error).")
+                                          "to trigger this error)."
+                                          % (self))
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
-        WARNING: many transports do not support this, so trying avoid using it
+
+        WARNING: many transports do not support this, so trying avoid using it.
+        These methods may be removed in the future.
+
+        Transports may raise TransportNotPossible if OS-level locks cannot be
+        taken over this transport.  
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise NotImplementedError(self.lock_read)
+        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
-        WARNING: many transports do not support this, so trying avoid using it
+
+        WARNING: many transports do not support this, so trying avoid using it.
+        These methods may be removed in the future.
+
+        Transports may raise TransportNotPossible if OS-level locks cannot be
+        taken over this transport.
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise NotImplementedError(self.lock_write)
+        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
 
     def is_readonly(self):
         """Return true if this connection cannot be written to."""

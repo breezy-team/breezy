@@ -30,20 +30,18 @@ import random
 import select
 import socket
 import stat
-import subprocess
 import sys
 import time
 import urllib
 import urlparse
 import weakref
 
-from bzrlib.errors import (FileExists, 
+from bzrlib.errors import (FileExists,
                            NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError, 
+                           LockError,
                            PathError,
                            ParamikoNotPresent,
-                           UnknownSSH,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.trace import mutter, warning
@@ -133,7 +131,61 @@ class SFTPLock(object):
             pass
 
 
-class SFTPTransport(Transport):
+class SFTPUrlHandling(Transport):
+    """Mix-in that does common handling of SSH/SFTP URLs."""
+
+    def __init__(self, base):
+        self._parse_url(base)
+        base = self._unparse_url(self._path)
+        if base[-1] != '/':
+            base += '/'
+        super(SFTPUrlHandling, self).__init__(base)
+
+    def _parse_url(self, url):
+        (self._scheme,
+         self._username, self._password,
+         self._host, self._port, self._path) = self._split_url(url)
+
+    def _unparse_url(self, path):
+        """Return a URL for a path relative to this transport.
+        """
+        path = urllib.quote(path)
+        # handle homedir paths
+        if not path.startswith('/'):
+            path = "/~/" + path
+        netloc = urllib.quote(self._host)
+        if self._username is not None:
+            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
+        if self._port is not None:
+            netloc = '%s:%d' % (netloc, self._port)
+        return urlparse.urlunparse((self._scheme, netloc, path, '', '', ''))
+
+    def _split_url(self, url):
+        (scheme, username, password, host, port, path) = split_url(url)
+        ## assert scheme == 'sftp'
+
+        # the initial slash should be removed from the path, and treated
+        # as a homedir relative path (the path begins with a double slash
+        # if it is absolute).
+        # see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
+        # RBC 20060118 we are not using this as its too user hostile. instead
+        # we are following lftp and using /~/foo to mean '~/foo'.
+        # handle homedir paths
+        if path.startswith('/~/'):
+            path = path[3:]
+        elif path == '/~':
+            path = ''
+        return (scheme, username, password, host, port, path)
+
+    def _remote_path(self, relpath):
+        """Return the path to be passed along the sftp protocol for relpath.
+        
+        :param relpath: is a urlencoded string.
+        """
+        return self._combine_paths(self._path, relpath)
+
+
+class SFTPTransport(SFTPUrlHandling):
     """Transport implementation for SFTP access."""
 
     _do_prefetch = _default_do_prefetch
@@ -155,11 +207,6 @@ class SFTPTransport(Transport):
     _max_request_size = 32768
 
     def __init__(self, base, clone_from=None):
-        assert base.startswith('sftp://')
-        self._parse_url(base)
-        base = self._unparse_url()
-        if base[-1] != '/':
-            base += '/'
         super(SFTPTransport, self).__init__(base)
         if clone_from is None:
             self._sftp_connect()
@@ -198,32 +245,113 @@ class SFTPTransport(Transport):
         """Return the path to be passed along the sftp protocol for relpath.
         
         relpath is a urlencoded string.
+
+        :return: a path prefixed with / for regular abspath-based urls, or a
+            path that does not begin with / for urls which begin with /~/.
         """
-        # FIXME: share the common code across transports
+        # how does this work? 
+        # it processes relpath with respect to 
+        # our state:
+        # firstly we create a path to evaluate: 
+        # if relpath is an abspath or homedir path, its the entire thing
+        # otherwise we join our base with relpath
+        # then we eliminate all empty segments (double //'s) outside the first
+        # two elements of the list. This avoids problems with trailing 
+        # slashes, or other abnormalities.
+        # finally we evaluate the entire path in a single pass
+        # '.'s are stripped,
+        # '..' result in popping the left most already 
+        # processed path (which can never be empty because of the check for
+        # abspath and homedir meaning that its not, or that we've used our
+        # path. If the pop would pop the root, we ignore it.
+
+        # Specific case examinations:
+        # remove the special casefor ~: if the current root is ~/ popping of it
+        # = / thus our seed for a ~ based path is ['', '~']
+        # and if we end up with [''] then we had basically ('', '..') (which is
+        # '/..' so we append '' if the length is one, and assert that the first
+        # element is still ''. Lastly, if we end with ['', '~'] as a prefix for
+        # the output, we've got a homedir path, so we strip that prefix before
+        # '/' joining the resulting list.
+        #
+        # case one: '/' -> ['', ''] cannot shrink
+        # case two: '/' + '../foo' -> ['', 'foo'] (take '', '', '..', 'foo')
+        #           and pop the second '' for the '..', append 'foo'
+        # case three: '/~/' -> ['', '~', ''] 
+        # case four: '/~/' + '../foo' -> ['', '~', '', '..', 'foo'],
+        #           and we want to get '/foo' - the empty path in the middle
+        #           needs to be stripped, then normal path manipulation will 
+        #           work.
+        # case five: '/..' ['', '..'], we want ['', '']
+        #            stripping '' outside the first two is ok
+        #            ignore .. if its too high up
+        #
+        # lastly this code is possibly reusable by FTP, but not reusable by
+        # local paths: ~ is resolvable correctly, nor by HTTP or the smart
+        # server: ~ is resolved remotely.
+        # 
+        # however, a version of this that acts on self.base is possible to be
+        # written which manipulates the URL in canonical form, and would be
+        # reusable for all transports, if a flag for allowing ~/ at all was
+        # provided.
         assert isinstance(relpath, basestring)
-        relpath = urlutils.unescape(relpath).split('/')
-        basepath = self._path.split('/')
-        if len(basepath) > 0 and basepath[-1] == '':
-            basepath = basepath[:-1]
+        relpath = urlutils.unescape(relpath)
 
-        for p in relpath:
-            if p == '..':
-                if len(basepath) == 0:
-                    # In most filesystems, a request for the parent
-                    # of root, just returns root.
-                    continue
-                basepath.pop()
-            elif p == '.':
-                continue # No-op
+        # case 1)
+        if relpath.startswith('/'):
+            # abspath - normal split is fine.
+            current_path = relpath.split('/')
+        elif relpath.startswith('~/'):
+            # root is homedir based: normal split and prefix '' to remote the
+            # special case
+            current_path = [''].extend(relpath.split('/'))
+        else:
+            # root is from the current directory:
+            if self._path.startswith('/'):
+                # abspath, take the regular split
+                current_path = []
             else:
-                basepath.append(p)
+                # homedir based, add the '', '~' not present in self._path
+                current_path = ['', '~']
+            # add our current dir
+            current_path.extend(self._path.split('/'))
+            # add the users relpath
+            current_path.extend(relpath.split('/'))
+        # strip '' segments that are not in the first one - the leading /.
+        to_process = current_path[:1]
+        for segment in current_path[1:]:
+            if segment != '':
+                to_process.append(segment)
 
-        path = '/'.join(basepath)
-        # mutter('relpath => remotepath %s => %s', relpath, path)
+        # process '.' and '..' segments into output_path.
+        output_path = []
+        for segment in to_process:
+            if segment == '..':
+                # directory pop. Remove a directory 
+                # as long as we are not at the root
+                if len(output_path) > 1:
+                    output_path.pop()
+                # else: pass
+                # cannot pop beyond the root, so do nothing
+            elif segment == '.':
+                continue # strip the '.' from the output.
+            else:
+                # this will append '' to output_path for the root elements,
+                # which is appropriate: its why we strip '' in the first pass.
+                output_path.append(segment)
+
+        # check output special cases:
+        if output_path == ['']:
+            # [''] -> ['', '']
+            output_path = ['', '']
+        elif output_path[:2] == ['', '~']:
+            # ['', '~', ...] -> ...
+            output_path = output_path[2:]
+        path = '/'.join(output_path)
         return path
 
     def relpath(self, abspath):
-        username, password, host, port, path = self._split_url(abspath)
+        scheme, username, password, host, port, path = self._split_url(abspath)
         error = []
         if (username != self._username):
             error.append('username mismatch')
@@ -687,41 +815,6 @@ class SFTPTransport(Transport):
         # that we have taken the lock.
         return SFTPLock(relpath, self)
 
-    def _unparse_url(self, path=None):
-        if path is None:
-            path = self._path
-        path = urllib.quote(path)
-        # handle homedir paths
-        if not path.startswith('/'):
-            path = "/~/" + path
-        netloc = urllib.quote(self._host)
-        if self._username is not None:
-            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
-        if self._port is not None:
-            netloc = '%s:%d' % (netloc, self._port)
-        return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
-
-    def _split_url(self, url):
-        (scheme, username, password, host, port, path) = split_url(url)
-        assert scheme == 'sftp'
-
-        # the initial slash should be removed from the path, and treated
-        # as a homedir relative path (the path begins with a double slash
-        # if it is absolute).
-        # see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
-        # RBC 20060118 we are not using this as its too user hostile. instead
-        # we are following lftp and using /~/foo to mean '~/foo'.
-        # handle homedir paths
-        if path.startswith('/~/'):
-            path = path[3:]
-        elif path == '/~':
-            path = ''
-        return (username, password, host, port, path)
-
-    def _parse_url(self, url):
-        (self._username, self._password,
-         self._host, self._port, self._path) = self._split_url(url)
-
     def _sftp_connect(self):
         """Connect to the remote sftp server.
         After this, self._sftp should have a valid connection (or
@@ -1018,7 +1111,6 @@ class SFTPServerWithoutSSH(SFTPServer):
         # Re-import these as locals, so that they're still accessible during
         # interpreter shutdown (when all module globals get set to None, leading
         # to confusing errors like "'NoneType' object has no attribute 'error'".
-        import socket, errno
         class FakeChannel(object):
             def get_transport(self):
                 return self
