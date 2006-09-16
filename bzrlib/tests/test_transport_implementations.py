@@ -1321,4 +1321,3 @@ class TransportTests(TestTransportImplementation):
         # also raise a special error
         self.assertListRaises(errors.ShortReadvError,
                               transport.readv, 'a', [(12,2)])
-                        
