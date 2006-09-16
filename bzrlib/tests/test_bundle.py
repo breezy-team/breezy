@@ -19,7 +19,7 @@ import os
 import sys
 import tempfile
 
-from bzrlib import inventory
+from bzrlib import inventory, treebuilder
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
@@ -785,11 +785,14 @@ class BundleTester(TestCaseWithTransport):
         bundle = self.get_valid_bundle(None, 'white-4')
 
     def test_alt_timezone_bundle(self):
-        self.tree1 = self.make_branch_and_tree('b1')
+        self.tree1 = self.make_branch_and_memory_tree('b1')
         self.b1 = self.tree1.branch
+        builder = treebuilder.TreeBuilder()
 
-        self.build_tree(['b1/newfile'])
-        self.tree1.add(['newfile'])
+        self.tree1.lock_write()
+        builder.start_tree(self.tree1)
+        builder.build(['newfile'])
+        builder.finish_tree()
 
         # Asia/Colombo offset = 5 hours 30 minutes
         self.tree1.commit('non-hour offset timezone', rev_id='tz-1',
@@ -801,6 +804,7 @@ class BundleTester(TestCaseWithTransport):
         self.assertEqual('Mon 2006-07-10 20:51:26.000000000 +0530', rev.date)
         self.assertEqual(19800, rev.timezone)
         self.assertEqual(1152544886.0, rev.timestamp)
+        self.tree1.unlock()
 
     def test_bundle_root_id(self):
         self.tree1 = self.make_branch_and_tree('b1')
