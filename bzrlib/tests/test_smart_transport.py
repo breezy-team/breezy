@@ -124,6 +124,24 @@ class BasicSmartTests(tests.TestCase):
         returncode = child.wait()
         self.assertEquals(0, returncode)
 
+    def test_serialize_offsets(self):
+        def check(expected, offsets):
+            value = smart.SmartTransport._serialise_offsets(offsets)
+            self.assertEqual(expected, value)
+
+        check('1,2', [(1,2)])
+        check('1,2\n3,4', [(1,2), (3,4)])
+        check('1,2\n3,4\n100,200', [(1,2), (3,4), (100, 200)])
+
+    def test_deserialise_offsets(self):
+        def check(expected, text):
+            offsets = smart.SmartServer._deserialise_offsets(text)
+            self.assertEqual(expected, offsets)
+
+        check([(1,2)], '1,2')
+        check([(1,2), (3,4)], '1,2\n3,4')
+        check([(1,2), (3,4), (100, 200)], '1,2\n3,4\n100,200')
+
 
 class SmartTCPTests(tests.TestCase):
     """Tests for connection to TCP server.

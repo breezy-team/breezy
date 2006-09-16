@@ -369,6 +369,22 @@ class SmartServer(object):
                 self._recv_body(),
                 self._deserialise_optional_mode(mode))
 
+    @staticmethod
+    def _deserialise_offsets(text):
+        offsets = []
+        for line in text.split('\n'):
+            if not line:
+                continue
+            start, length = line.split(',')
+            offsets.append((int(start), int(length)))
+        return offsets
+
+    def do_readv(self, relpath):
+        offsets = self._deserialise_offsets(self._recv_body())
+        backing_bytes = ''.join(bytes for offset, bytes in
+                             self._backing_transport.readv(relpath, offsets))
+        return SmartServerResponse(('readv',), backing_bytes)
+        
     def do_rename(self, rel_from, rel_to):
         self._backing_transport.rename(rel_from, rel_to)
 
@@ -688,6 +704,36 @@ class SmartTransport(transport.Transport):
     def delete(self, relpath):
         resp = self._client._call('delete', self._remote_path(relpath))
         self._translate_error(resp)
+
+    @staticmethod
+    def _serialise_offsets(offsets):
+        txt = []
+        for start, length in offsets:
+            txt.append('%d,%d' % (start, length))
+        return '\n'.join(txt)
+
+    def readv(self, relpath, offsets):
+        if not offsets:
+            return
+
+        offsets = list(offsets)
+        resp = self._client._call_with_upload(
+            'readv',
+            (self._remote_path(relpath),),
+            self._serialise_offsets(offsets))
+
+        if resp[0] != 'readv':
+            self._translate_error(resp)
+        else:
+            data = self._client._recv_bulk()
+            cur_pos = 0
+            for start, length in offsets:
+                next_pos = cur_pos + length
+                if len(data) < next_pos:
+                    pass # XXX: ShortReadv, raise an error once that is merged
+                cur_data = data[cur_pos:next_pos]
+                cur_pos = next_pos
+                yield start, cur_data
 
     def rename(self, rel_from, rel_to):
         self._call('rename', 
