@@ -68,8 +68,9 @@ def extract_auth(url, password_manager):
         if password is not None:
             password = urllib.unquote(password)
         else:
-            password = ui_factory.get_password(prompt='HTTP %(user)@%(host) password',
-                                               user=username, host=host)
+            password = ui_factory.get_password(
+                prompt='HTTP %(user)s@%(host)s password',
+                user=username, host=host)
         password_manager.add_password(None, host, username, password)
     url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
     return url
