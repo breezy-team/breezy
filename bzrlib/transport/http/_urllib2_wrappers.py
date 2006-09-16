@@ -58,6 +58,9 @@ class Response(httplib.HTTPResponse):
     than using a custom object.
     """
 
+    # Some responses have bodies in which we have no interest
+    _body_ignored_responses = [301,302, 303, 307, 401,]
+
     def __init__(self, *args, **kwargs):
         httplib.HTTPResponse.__init__(self, *args, **kwargs)
 
@@ -70,10 +73,7 @@ class Response(httplib.HTTPResponse):
         try to workaround that.
         """
         httplib.HTTPResponse.begin(self)
-        if self.status in (999,
-                           301,
-                           302, 303, 307,
-                           401, ):
+        if self.status in self._body_ignored_responses:
             body = self.fp.read(self.length)
             #print "Consumed body: [%s]" % body
             self.close()

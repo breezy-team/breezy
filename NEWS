@@ -2,6 +2,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * urllib implements keep-alive connections and share them
+      (Vincent Ladeuil, #53654)
+
     * Knit files now wait to create their contents until the first data is
       added. The old code used to create an empty .knit and a .kndx with just
       the header. However, this caused a lot of extra round trips over sftp.
@@ -26,6 +29,10 @@ IN DEVELOPMENT
       (John Arbash Meinel)
 
   BUG FIXES:
+
+    * Handles user/passwords supplied in url from command
+      line. Don't request already known passwords (Vincent
+      Ladeuil, #42383, #44647, #48527)
 
     * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
       (Vincent Ladeuil, #59835)

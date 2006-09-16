@@ -82,16 +82,22 @@ class HttpTransport_urllib(HttpTransportBase):
     def ask_password(self, request):
         """Ask for a password if none is already provided in the request"""
         if request.password is None:
-            host = request.get_host()
-            http_pass = 'HTTP %(user)s@%(host)s password'
-            request.password = ui_factory.get_password(prompt=http_pass,
-                                                       user=request.user,
-                                                       host=host)
-            password_manager = self._opener.password_manager
-            # We can't predict realm, let's try None, we get a
+            # We can't predict realm, let's try None, we'll get a
             # 401 if we are wrong anyway
-            password_manager.add_password(None, host,
-                                          request.user, request.password)
+            realm = None
+            host = request.get_host()
+            password_manager = self._opener.password_manager
+            user, password = password_manager.find_user_password(None, host)
+            if user == request.user and password is not None:
+                request.password = password
+            else:
+                # Ask the user
+                http_pass = 'HTTP %(user)s@%(host)s password'
+                request.password = ui_factory.get_password(prompt=http_pass,
+                                                           user=request.user,
+                                                           host=host)
+                password_manager.add_password(None, host,
+                                              request.user, request.password)
 
 
     def _perform(self, request):
