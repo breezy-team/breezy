@@ -193,6 +193,8 @@ This is a little simpler to set up. Create the branch for the project.
 
 Now add all the project files to the branch, and add the to bzr.
 
+::
+
   $ cd project
   $ bzr add
   $ bzr ci
