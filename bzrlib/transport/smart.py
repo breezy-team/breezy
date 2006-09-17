@@ -179,10 +179,9 @@ def _decode_tuple(req_line):
     return tuple((a.decode('utf-8') for a in req_line[:-1].split('\x01')))
 
 
-def _send_tuple(to_file, args):
-    # XXX: this will be inefficient.  Just ask Robert.
-    to_file.write('\x01'.join((a.encode('utf-8') for a in args)) + '\n')
-    to_file.flush()
+def _encode_tuple(args):
+    """Encode the tuple args to a bytestream."""
+    return '\x01'.join((a.encode('utf-8') for a in args)) + '\n'
 
 
 class SmartProtocolBase(object):
@@ -191,10 +190,8 @@ class SmartProtocolBase(object):
     def _send_bulk_data(self, body):
         """Send chunked body data"""
         assert isinstance(body, str)
-        self._out.write('%d\n' % len(body))
-        self._out.write(body)
-        self._out.write('done\n')
-        self._out.flush()
+        bytes = ''.join(('%d\n' % len(body), body, 'done\n'))
+        self._write_and_flush(bytes)
 
     # TODO: this only actually accomodates a single block; possibly should support
     # multiple chunks?
@@ -219,6 +216,19 @@ class SmartProtocolBase(object):
             return
         else:
             self._translate_error(resp)
+
+    def _serialise_offsets(self, offsets):
+        """Serialise a readv offset list."""
+        txt = []
+        for start, length in offsets:
+            txt.append('%d,%d' % (start, length))
+        return '\n'.join(txt)
+
+    def _write_and_flush(self, bytes):
+        """Write bytes to self._out and flush it."""
+        # XXX: this will be inefficient.  Just ask Robert.
+        self._out.write(bytes)
+        self._out.flush()
 
 
 class SmartStreamServer(SmartProtocolBase):
@@ -257,11 +267,10 @@ class SmartStreamServer(SmartProtocolBase):
 
     def _send_tuple(self, args):
         """Send response header"""
-        return _send_tuple(self._out, args)
+        return self._write_and_flush(_encode_tuple(args))
 
     def _send_error_and_disconnect(self, exception):
         self._send_tuple(('error', str(exception)))
-        self._out.flush()
         ## self._out.close()
         ## self._in.close()
 
@@ -306,6 +315,11 @@ class SmartServerResponse(object):
         self.args = args
         self.body = body
 
+# XXX: TODO: Create a SmartServerRequest which will take the responsibility
+# for delivering the data for a request. This could be done with as the
+# StreamServer, though that would create conflation between request and response
+# which may be undesirable.
+
 
 class SmartServer(object):
     """Protocol logic for smart server.
@@ -313,6 +327,13 @@ class SmartServer(object):
     This doesn't handle serialization at all, it just processes requests and
     creates responses.
     """
+
+    # IMPORTANT FOR IMPLEMENTORS: It is important that SmartServer not contain
+    # encoding or decoding logic to allow the wire protocol to vary from the
+    # object protocol: we will want to tweak the wire protocol separate from
+    # the object model, and ideally we will be able to do that without having
+    # a SmartServer subclass for each wire protocol, rather just a Protocol
+    # subclass.
 
     # TODO: Better way of representing the body for commands that take it,
     # and allow it to be streamed into the server.
@@ -333,6 +354,7 @@ class SmartServer(object):
         return SmartServerResponse(('ok',), backing_bytes)
 
     def _deserialise_optional_mode(self, mode):
+        # XXX: FIXME this should be on the protocol object.
         if mode == '':
             return None
         else:
@@ -369,8 +391,8 @@ class SmartServer(object):
                 self._recv_body(),
                 self._deserialise_optional_mode(mode))
 
-    @staticmethod
-    def _deserialise_offsets(text):
+    def _deserialise_offsets(self, text):
+        # XXX: FIXME this should be on the protocol object.
         offsets = []
         for line in text.split('\n'):
             if not line:
@@ -564,6 +586,12 @@ class SmartTransport(transport.Transport):
     type: SmartTCPTransport, etc.
     """
 
+    # IMPORTANT FOR IMPLEMENTORS: SmartTransport MUST NOT be given encoding
+    # responsibilities: Put those on SmartClient or similar. This is vital for
+    # the ability to support multiple versions of the smart protocol over time:
+    # SmartTransport is an adapter from the Transport object model to the 
+    # SmartClient model, not an encoder.
+
     def __init__(self, url, clone_from=None, client=None):
         """Constructor.
 
@@ -708,13 +736,6 @@ class SmartTransport(transport.Transport):
         resp = self._client._call('delete', self._remote_path(relpath))
         self._translate_error(resp)
 
-    @staticmethod
-    def _serialise_offsets(offsets):
-        txt = []
-        for start, length in offsets:
-            txt.append('%d,%d' % (start, length))
-        return '\n'.join(txt)
-
     def readv(self, relpath, offsets):
         if not offsets:
             return
@@ -733,7 +754,7 @@ class SmartTransport(transport.Transport):
         resp = self._client._call_with_upload(
             'readv',
             (self._remote_path(relpath),),
-            self._serialise_offsets((c.start, c.length) for c in coalesced))
+            self._client._serialise_offsets((c.start, c.length) for c in coalesced))
 
         if resp[0] != 'readv':
             # This should raise an exception
@@ -881,7 +902,7 @@ class SmartStreamClient(SmartProtocolBase):
 
     def _send_tuple(self, args):
         self._ensure_connection()
-        _send_tuple(self._out, args)
+        return self._write_and_flush(_encode_tuple(args))
 
     def _send_bulk_data(self, body):
         self._ensure_connection()

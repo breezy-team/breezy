@@ -124,24 +124,6 @@ class BasicSmartTests(tests.TestCase):
         returncode = child.wait()
         self.assertEquals(0, returncode)
 
-    def test_serialize_offsets(self):
-        def check(expected, offsets):
-            value = smart.SmartTransport._serialise_offsets(offsets)
-            self.assertEqual(expected, value)
-
-        check('1,2', [(1,2)])
-        check('1,2\n3,4', [(1,2), (3,4)])
-        check('1,2\n3,4\n100,200', [(1,2), (3,4), (100, 200)])
-
-    def test_deserialise_offsets(self):
-        def check(expected, text):
-            offsets = smart.SmartServer._deserialise_offsets(text)
-            self.assertEqual(expected, offsets)
-
-        check([(1,2)], '1,2')
-        check([(1,2), (3,4)], '1,2\n3,4')
-        check([(1,2), (3,4), (100, 200)], '1,2\n3,4\n100,200')
-
 
 class SmartTCPTests(tests.TestCase):
     """Tests for connection to TCP server.
@@ -292,6 +274,87 @@ class TestSmartTransport(tests.TestCase):
         self.assertEqual('bar', transport.get_bytes('foo'))
         # The only call to _call should have been to get /foo.
         self.assertEqual([('_call', ('get', '/foo'))], client._calls)
+
+
+class InstrumentedClient(smart.SmartStreamClient):
+    """A smart client whose writes are stored to a supplied list."""
+
+    def __init__(self, write_output_list):
+        smart.SmartStreamClient.__init__(self, None)
+        self._write_output_list = write_output_list
+
+    def _ensure_connection(self):
+        """We are never strictly connected."""
+
+    def _write_and_flush(self, bytes):
+        self._write_output_list.append(bytes)
+
+
+class InstrumentedServerProtocol(smart.SmartStreamServer):
+    """A smart server which is backed by memory and saves its write requests."""
+
+    def __init__(self, write_output_list):
+        smart.SmartStreamServer.__init__(self, None, None,
+            memory.MemoryTransport())
+        self._write_output_list = write_output_list
+
+    def _write_and_flush(self, bytes):
+        self._write_output_list.append(bytes)
+
+
+class TestSmartProtocol(tests.TestCase):
+    """Tests for the smart protocol.
+
+    Each test case gets a smart_server and smart_client created during setUp().
+
+    It is planned that the client can be called with self.call_client() giving
+    it an expected server response, which will be fed into it when it tries to
+    read. Likewise, self.call_server will call a servers method with a canned
+    serialised client request. Output done by the client or server for these
+    calls will be captured to self.to_server and self.to_client. Each element
+    in the list is a write call from the client or server respectively.
+    """
+
+    def setUp(self):
+        super(TestSmartProtocol, self).setUp()
+        self.to_server = []
+        self.to_client = []
+        self.smart_client = InstrumentedClient(self.to_server)
+        self.smart_server = InstrumentedServerProtocol(self.to_client)
+
+    def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
+        client, server_protocol):
+        """Check that smart (de)serialises offsets as expected.
+        
+        We check both serialisation and deserialisation at the same time
+        to ensure that the round tripping cannot skew: both directions should
+        be as expected.
+        
+        :param expected_offsets: a readv offset list.
+        :param expected_seralised: an expected serial form of the offsets.
+        :param server: a SmartServer instance.
+        """
+        offsets = server_protocol.smart_server._deserialise_offsets(
+            expected_serialised)
+        self.assertEqual(expected_offsets, offsets)
+        serialised = client._serialise_offsets(offsets)
+        self.assertEqual(expected_serialised, serialised)
+
+    def test_server_offset_serialisation(self):
+        """The Smart protocol serialises offsets as a comma and \n string.
+
+        We check a number of boundary cases are as expected: empty, one offset,
+        one with the order of reads not increasing (an out of order read), and
+        one that should coalesce.
+        """
+        self.assertOffsetSerialisation([], '',
+            self.smart_client, self.smart_server)
+        self.assertOffsetSerialisation([(1,2)], '1,2',
+            self.smart_client, self.smart_server)
+        self.assertOffsetSerialisation([(10,40), (0,5)], '10,40\n0,5',
+            self.smart_client, self.smart_server)
+        self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
+            '1,2\n3,4\n100,200', self.smart_client, self.smart_server)
 
 
 # TODO: Client feature that does get_bundle and then installs that into a
