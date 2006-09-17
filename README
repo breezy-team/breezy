@@ -1,0 +1,259 @@
+bzr-builddeb
+============
+
+Overview
+--------
+
+This is bzr-builddeb, a plugin for `bzr`_ that allows you to build `Debian`_
+packages from a bzr branch. 
+
+.. _bzr: http://bazaar-vcs.org/
+.. _Debian: http://www.debian.org/
+
+I apologies for the lack of information in this README, I promise I will
+provide proper documentation soon.
+
+Installation
+------------
+
+This plugin requires `python-debian`_, and a version of bzr greater than 0.9.
+
+.. _python-debian: http://jameswestby.net/bzr/python-debian/
+
+This plugin can be installed in two ways. As you are probably using a Debian
+system you can probably just use the debian packages. The other way is to 
+branch it in to ``~/.bazaar/plugins/bzr-builddeb``, i.e::
+
+  bzr branch http://jameswestby.net/bzr/bzr-builddeb/ \
+    ~/.bazaar/plugins/bzr-buildeb
+
+This will give you a ``bzr builddeb`` command (alias ``bd``).
+
+Help for this plugin can be found by running ``bzr help builddeb``.
+
+Configuration
+-------------
+
+There are also configuration files that can be used, these are, in the order
+that values will be used if found::
+
+  * .bzr-builddeb/local.conf (in the package directory)
+  * ~/.bazaar/builddeb.conf
+  * .bzr-builddeb/default.conf (in the package directory)
+
+All configuration can be overriden on the command line.
+
+These files must start with::
+
+  [BUILDDEB]
+
+Configuration Options
+~~~~~~~~~~~~~~~~~~~~~
+
+Then can have the configuration options:
+
+  * ``build_dir = path``
+
+    The directory in which the build takes place. (Defaults to 
+    ``../build-area`` relative to the branch).
+
+  * ``result_dir = path``
+
+    The directory the resulting files will be placed in. (Defaults to whatever
+    is being used for ``build_dir``).
+
+  * ``merge = True``
+
+    Turns on merge mode. This is where only the ``debian/`` directory is 
+    versioned. It uses and orig.tar.gz for the upstream and combines the two 
+    before building. It works with both the ``debian/`` directory in the 
+    branch, or the contents of ``debian/`` (e.g. ``rules``, ``control``) 
+    directly in the top level directory of the branch. (Defaults to ``False``).
+
+  * ``orig_dir = path``
+
+    The directory to search for the ``.orig.tar.gz`` when in merge mode. 
+    (Defaults to ``../tarballs`` relative to the branch).
+
+  * ``builder = command``
+
+    The command to use to build the package. Defaults to ``dpkg-buildpackage 
+    -rfakeroot -uc -us``).
+
+  * ``quick_builder = command``
+
+    The command used to build the package if the ``--quick`` option is used. 
+    (Defaults to ``fakeroot debian/rules binary``).
+
+The idea is that certain options can be set in ``.bzr-builddeb/default.conf`` 
+that apply to the package on all systems, or that there is a default that is 
+wanted that differs from the default provided. ``merge = True`` is a perfect 
+example of this.
+
+Then the user can override this locally if they want for all of their packages
+(they prefer ``builder = pdebuild``), so they can set this in 
+``~/.bazaar/builddeb.conf``. They can override it for the package if they want 
+(e.g. they have a different location for upstream tarballs of a package if
+they are involved with upstream as well, so they set ``orig_dir = 
+/home/.../releases/``), this can be done in ``.bzr-builddeb/local.conf``). If
+the ``local.conf`` file is used it will be added to ``.bzrignore`` so that the
+changes don't affect other developers.
+
+
+Creating a package
+------------------
+
+Below are instructions for creating a package. These instructions differ 
+depending on whether you want to use merge mode or not.
+
+First the common start create a directory to hold your work. This is not
+absolutely necessary, but as you still get all the power of bzr when using 
+this plugin, so you might want to branch etc. and so this will be useful 
+later on.
+
+::
+
+  $ mkdir path/to/project
+
+If you are going to be using branches then the following is a good optimisation
+you can use
+
+::
+
+  $ bzr init-repo --trees path/to/project
+
+Now create your global config file if you want to change something like the
+builder in use, or have aglobal result directory or similar.
+
+::
+
+  $ echo "[BUILDDEB]" > ~/.bazaar/builddeb.conf
+  $ $EDITOR ~/.bazaar/builddeb.conf
+
+and any options that you want.
+
+I will describe creating a new project, but for existing projects you can
+copy the code over and call ``bzr init`` then continue in the same way.
+
+I will also describe the setup that conforms to the default options for
+directories. If you wish to use a different layout set up the options to 
+your liking and tweak the commands below as necessary.
+
+Using merge mode
+~~~~~~~~~~~~~~~~
+
+If you want to use merge mode you need to create a tarballs directory for
+the ``.orig.tar.gz`` files. 
+
+:: 
+
+  $ cd path/to/project
+  $ mkdir tarballs
+
+Then copy the ``.orig.tar.gz`` file for the current version in to this 
+directory.
+
+Now create the branch for the ``debian/`` directory. 
+
+::
+
+  $ bzr init project
+
+Now you can either create a ``project/debian/`` directory for all the files, 
+or add them in the ``project`` directory.
+    
+Now tell bzr-builddeb that this is a merge mode project.
+
+:: 
+
+  $ cd project/
+  $ mkdir .bzr-builddeb/
+  $ echo -e "[BUILDDEB]\nmerge = True" > .bzr-builddeb/default.conf
+
+Now you are ready to create the project. Create the usual files, and edit them 
+to your satisfaction. When you have the files run::
+
+  $ bzr add
+  $ bzr ci
+
+from the root of the project branch.
+
+You are now ready to build the project. See below for instructions on doing
+this.
+
+Non-merge mode
+~~~~~~~~~~~~~~
+
+This is a little simpler to set up. Create the branch for the project.
+
+::
+
+  $ cd path/to/project
+  $ bzr init project
+
+Now add all the project files to the branch, and add the to bzr.
+
+  $ cd project
+  $ bzr add
+  $ bzr ci
+
+Now you are ready to build using the plugin.
+
+
+Building a Package
+------------------
+
+Once your pacakge is set up then building it is easy. Run the following 
+command from the top-level of the project branch, after checking in all 
+changes::
+
+  $ bzr bd
+
+If you used the default options this should build the package and leave the
+resulting files in ``../build-area``. 
+
+Tips
+----
+
+If you are trying to solve a problem, and you are trying lots of different
+fixes you might not want to commit every time. If this is the case you can
+tell bzr-builddeb to build from the working tree, rather than the branch. This
+means that just editing files will be enough to change a build, rather than
+the default, which requires a check-in of all changes before building. To do 
+this use the ``--working-tree`` option, or more succinctly::
+
+  $ bzr bd -w
+
+If you also have a slow builder defined in your configuration (for instance 
+``pdebuild``, you can bypass this by using the ``--quick`` option. This uses
+whatever the ``quick_builder`` option is (defaults to ``fakeroot debian/rules
+binary``).
+
+If you are running in merge mode, and you have a large upstream tarball, and
+you do not want to unpack it at every build you can speed things up even more.
+This involves reusing the tarball each build, so saving the need to unpack it.
+To do this run
+
+::
+
+  $ bzr --export-only 
+
+once to create a build-dir to use. (``-e`` is the short option for this). Then 
+on the next builds you can use the ``--reuse`` and ``--dont-purge`` options to
+keep using this build directory. **N.B. This may cause build problems, 
+especially is files are removed**, it is advisable to run a build without 
+``--purge`` after removing any files.
+
+
+Workflow
+--------
+
+bzr-builddeb is designed to fit in with the workflow that bzr encourages. It
+is designed as a plugin, so that it just becomes one more ``bzr`` command that
+you run while working on the package.
+
+It also works fine with the frequent branching approach of bzr, so that you 
+can branch to test something new for the package, or for a bug fix, and then
+merge it back in to your main branch when it is done.
+
+
