@@ -401,6 +401,14 @@ class SmartServer(object):
             offsets.append((int(start), int(length)))
         return offsets
 
+    def do_put_non_atomic(self, relpath, mode, create_parent, dir_mode):
+        create_parent_dir = (create_parent == 'T')
+        self._backing_transport.put_bytes_non_atomic(relpath,
+                self._recv_body(),
+                mode=self._deserialise_optional_mode(mode),
+                create_parent_dir=create_parent_dir,
+                dir_mode=self._deserialise_optional_mode(dir_mode))
+
     def do_readv(self, relpath):
         offsets = self._deserialise_offsets(self._recv_body())
         backing_bytes = ''.join(bytes for offset, bytes in
@@ -710,6 +718,13 @@ class SmartTransport(transport.Transport):
             upload_file.seek(pos)
             raise
 
+    def put_file_non_atomic(self, relpath, f, mode=None,
+                            create_parent_dir=False,
+                            dir_mode=None):
+        return self.put_bytes_non_atomic(relpath, f.read(), mode=mode,
+                                         create_parent_dir=create_parent_dir,
+                                         dir_mode=dir_mode)
+
     def put_bytes(self, relpath, upload_contents, mode=None):
         # FIXME: upload_file is probably not safe for non-ascii characters -
         # should probably just pass all parameters as length-delimited
@@ -718,6 +733,20 @@ class SmartTransport(transport.Transport):
             'put',
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
             upload_contents)
+        self._translate_error(resp)
+
+    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+                             create_parent_dir=False,
+                             dir_mode=None):
+        create_parent_str = 'F'
+        if create_parent_dir:
+            create_parent_str = 'T'
+
+        resp = self._client._call_with_upload(
+            'put_non_atomic',
+            (self._remote_path(relpath), self._serialise_optional_mode(mode),
+             create_parent_str, self._serialise_optional_mode(dir_mode)),
+            bytes)
         self._translate_error(resp)
 
     def append_file(self, relpath, from_file, mode=None):
