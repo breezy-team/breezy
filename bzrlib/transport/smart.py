@@ -707,6 +707,32 @@ class SmartTransport(transport.Transport):
                                   self._serialise_optional_mode(mode))
         self._translate_error(resp)
 
+    def put_bytes(self, relpath, upload_contents, mode=None):
+        # FIXME: upload_file is probably not safe for non-ascii characters -
+        # should probably just pass all parameters as length-delimited
+        # strings?
+        resp = self._client._call_with_upload(
+            'put',
+            (self._remote_path(relpath), self._serialise_optional_mode(mode)),
+            upload_contents)
+        self._translate_error(resp)
+
+    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+                             create_parent_dir=False,
+                             dir_mode=None):
+        """See Transport.put_bytes_non_atomic."""
+        # FIXME: no encoding in the transport!
+        create_parent_str = 'F'
+        if create_parent_dir:
+            create_parent_str = 'T'
+
+        resp = self._client._call_with_upload(
+            'put_non_atomic',
+            (self._remote_path(relpath), self._serialise_optional_mode(mode),
+             create_parent_str, self._serialise_optional_mode(dir_mode)),
+            bytes)
+        self._translate_error(resp)
+
     def put_file(self, relpath, upload_file, mode=None):
         # its not ideal to seek back, but currently put_non_atomic_file depends
         # on transports not reading before failing - which is a faulty
@@ -724,30 +750,6 @@ class SmartTransport(transport.Transport):
         return self.put_bytes_non_atomic(relpath, f.read(), mode=mode,
                                          create_parent_dir=create_parent_dir,
                                          dir_mode=dir_mode)
-
-    def put_bytes(self, relpath, upload_contents, mode=None):
-        # FIXME: upload_file is probably not safe for non-ascii characters -
-        # should probably just pass all parameters as length-delimited
-        # strings?
-        resp = self._client._call_with_upload(
-            'put',
-            (self._remote_path(relpath), self._serialise_optional_mode(mode)),
-            upload_contents)
-        self._translate_error(resp)
-
-    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
-                             create_parent_dir=False,
-                             dir_mode=None):
-        create_parent_str = 'F'
-        if create_parent_dir:
-            create_parent_str = 'T'
-
-        resp = self._client._call_with_upload(
-            'put_non_atomic',
-            (self._remote_path(relpath), self._serialise_optional_mode(mode),
-             create_parent_str, self._serialise_optional_mode(dir_mode)),
-            bytes)
-        self._translate_error(resp)
 
     def append_file(self, relpath, from_file, mode=None):
         return self.append_bytes(relpath, from_file.read(), mode)
