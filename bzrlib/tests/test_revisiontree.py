@@ -47,3 +47,7 @@ class TestTreeWithCommits(TestCaseWithTransport):
             [self.rev_id],
             self.t.branch.repository.revision_tree(revid_2).get_parent_ids())
         # TODO commit a merge and check it is reported correctly.
+
+        # the parents for a revision_tree(None) are []:
+        self.assertEqual([],
+            self.t.branch.repository.revision_tree(None).get_parent_ids())

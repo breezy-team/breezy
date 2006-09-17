@@ -22,6 +22,12 @@ directories.
 
 # TODO: remove unittest dependency; put that stuff inside the test suite
 
+# TODO: The Format probe_transport seems a bit redundant with just trying to
+# open the bzrdir. -- mbp
+#
+# TODO: Can we move specific formats into separate modules to make this file
+# smaller?
+
 from copy import deepcopy
 from cStringIO import StringIO
 import os
@@ -298,7 +304,7 @@ class BzrDir(object):
         This will use the current default BzrDirFormat, and use whatever 
         repository format that that uses for bzrdirformat.create_repository.
 
-        ;param shared: Create a shared repository rather than a standalone
+        :param shared: Create a shared repository rather than a standalone
                        repository.
         The Repository object is returned.
 
@@ -319,7 +325,7 @@ class BzrDir(object):
         repository format that that uses for bzrdirformat.create_workingtree,
         create_branch and create_repository.
 
-        The WorkingTree object is returned.
+        :return: The WorkingTree object.
         """
         t = get_transport(safe_unicode(base))
         if not isinstance(t, LocalTransport):
@@ -466,10 +472,18 @@ class BzrDir(object):
         _unsupported is a private parameter to the BzrDir class.
         """
         t = get_transport(base)
-        # mutter("trying to open %r with transport %r", base, t)
-        format = BzrDirFormat.find_format(t)
+        return BzrDir.open_from_transport(t, _unsupported=_unsupported)
+
+    @staticmethod
+    def open_from_transport(transport, _unsupported=False):
+        """Open a bzrdir within a particular directory.
+
+        :param transport: Transport containing the bzrdir.
+        :param _unsupported: private.
+        """
+        format = BzrDirFormat.find_format(transport)
         BzrDir._check_supported(format, _unsupported)
-        return format.open(t, _found=True)
+        return format.open(transport, _found=True)
 
     def open_branch(self, unsupported=False):
         """Open the branch object at this BzrDir if one is present.
@@ -509,11 +523,9 @@ class BzrDir(object):
         url = a_transport.base
         while True:
             try:
-                format = BzrDirFormat.find_format(a_transport)
-                BzrDir._check_supported(format, False)
-                return format.open(a_transport), urlutils.unescape(a_transport.relpath(url))
+                result = BzrDir.open_from_transport(a_transport)
+                return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
-                ## mutter('not a branch in: %r %s', a_transport.base, e)
                 pass
             new_t = a_transport.clone('..')
             if new_t.base == a_transport.base:

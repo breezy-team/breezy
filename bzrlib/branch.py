@@ -294,7 +294,7 @@ class Branch(object):
 
     def revision_history(self):
         """Return sequence of revision hashes on to this branch."""
-        raise NotImplementedError('revision_history is abstract')
+        raise NotImplementedError(self.revision_history)
 
     def revno(self):
         """Return current revision number for this branch.
@@ -1185,7 +1185,7 @@ class BzrBranch(Branch):
         try:
             old_count = len(self.revision_history())
             try:
-                self.update_revisions(source,stop_revision)
+                self.update_revisions(source, stop_revision)
             except DivergedBranches:
                 if not overwrite:
                     raise

@@ -169,19 +169,17 @@ class HttpTransportBase(Transport):
         else:
             # TODO: Don't call this with an array - no magic interfaces
             relpath_parts = relpath[:]
-        if len(relpath_parts) > 1:
-            # TODO: Check that the "within branch" part of the
-            # error messages below is relevant in all contexts
-            if relpath_parts[0] == '':
-                raise ValueError("path %r within branch %r seems to be absolute"
-                                 % (relpath, self._path))
-            # read only transports never manipulate directories
-            if self.is_readonly() and relpath_parts[-1] == '':
+        if relpath.startswith('/'):
+            basepath = []
+        else:
+            # Except for the root, no trailing slashes are allowed
+            if len(relpath_parts) > 1 and relpath_parts[-1] == '':
                 raise ValueError("path %r within branch %r seems to be a directory"
                                  % (relpath, self._path))
-        basepath = self._path.split('/')
-        if len(basepath) > 0 and basepath[-1] == '':
-            basepath = basepath[:-1]
+            basepath = self._path.split('/')
+            if len(basepath) > 0 and basepath[-1] == '':
+                basepath = basepath[:-1]
+
         for p in relpath_parts:
             if p == '..':
                 if len(basepath) == 0:
@@ -254,7 +252,9 @@ class HttpTransportBase(Transport):
             f.seek(start, (start < 0) and 2 or 0)
             start = f.tell()
             data = f.read(size)
-            assert len(data) == size
+            if len(data) != size:
+                raise errors.ShortReadvError(relpath, start, size,
+                                             actual=len(data))
             yield start, data
 
     @staticmethod
