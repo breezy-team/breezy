@@ -26,7 +26,7 @@ clean:
 
 install: build $(PYVERS:%=install-python%)
 
-install-all: install-all-stamp
+install-all-stamp:
 	dh_testdir
 	dh_testroot
 	dh_clean
@@ -35,7 +35,7 @@ install-all: install-all-stamp
 
 
 
-install-python%: install-all
+install-python%: install-all-stamp
 	python$* setup.py install --root=$(CURDIR)/debian/bzr-builddeb --no-compile
 
 
@@ -62,4 +62,4 @@ binary-arch: build install
 # We have nothing to do by default.
 
 binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install install-all
+.PHONY: build clean binary-indep binary-arch binary install
