@@ -26,7 +26,7 @@ from debian_bundle import deb822
 from bdlogging import debug
 from errors import DebianError
 
-class DebianChanges(deb822.changes):
+class DebianChanges(deb822.Changes):
   """Abstraction of the .changes file. Use it to find out what files were 
   built."""
 
