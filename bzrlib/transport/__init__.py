@@ -341,7 +341,10 @@ class Transport(object):
         # transports?
         if not isinstance(relpath, str):
             raise errors.InvalidURL("not a valid url: %r" % relpath)
-        base_parts = base_path.split('/')
+        if relpath.startswith('/'):
+            base_parts = []
+        else:
+            base_parts = base_path.split('/')
         if len(base_parts) > 0 and base_parts[-1] == '':
             base_parts = base_parts[:-1]
         for p in relpath.split('/'):
@@ -427,6 +430,7 @@ class Transport(object):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
+        :rtype: File-like object.
         """
         raise NotImplementedError(self.get)
 
@@ -436,6 +440,13 @@ class Transport(object):
         :param relpath: The relative path to the file
         """
         return self.get(relpath).read()
+
+    def get_smart_client(self):
+        """Return a smart client for this transport if possible.
+
+        :raises NoSmartServer: if no smart server client is available.
+        """
+        raise errors.NoSmartServer(self.base)
 
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
@@ -447,9 +458,9 @@ class Transport(object):
             return
 
         fp = self.get(relpath)
-        return self._seek_and_read(fp, offsets)
+        return self._seek_and_read(fp, offsets, relpath)
 
-    def _seek_and_read(self, fp, offsets):
+    def _seek_and_read(self, fp, offsets, relpath='<unknown>'):
         """An implementation of readv that uses fp.seek and fp.read.
 
         This uses _coalesce_offsets to issue larger reads and fewer seeks.
@@ -477,6 +488,9 @@ class Transport(object):
             #       benchmarked.
             fp.seek(c_offset.start)
             data = fp.read(c_offset.length)
+            if len(data) < c_offset.length:
+                raise errors.ShortReadvError(relpath, c_offset.start,
+                            c_offset.length, actual=len(data))
             for suboffset, subsize in c_offset.ranges:
                 key = (c_offset.start+suboffset, subsize)
                 data_map[key] = data[suboffset:suboffset+subsize]
@@ -1152,6 +1166,12 @@ register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
-register_lazy_transport('vfat+', 
+register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
+register_lazy_transport('bzr://',
+                        'bzrlib.transport.smart',
+                        'SmartTCPTransport')
+register_lazy_transport('bzr+ssh://',
+                        'bzrlib.transport.smart',
+                        'SmartSSHTransport')

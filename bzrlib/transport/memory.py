@@ -20,7 +20,6 @@ The contents of the transport will be lost when the object is discarded,
 so this is primarily useful for testing.
 """
 
-from copy import copy
 import os
 import errno
 import re
@@ -228,6 +227,8 @@ class MemoryTransport(Transport):
         relpath = urlutils.unescape(relpath)
         if relpath.find('..') != -1:
             raise AssertionError('relpath contains ..')
+        if relpath == '':
+            return '/'
         if relpath[0] == '/':
             return relpath
         if relpath == '.':
