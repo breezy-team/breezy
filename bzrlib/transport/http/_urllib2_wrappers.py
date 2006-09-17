@@ -37,11 +37,8 @@ of request is being made.
 
 DEBUG = 0
 
-# TODO: Handle the user and password cleanly: do not force the
-# user to provide them in the url (at least for the
-# password). Have a look at the password_manager classes. Tip: it
-# may be possible to share the password_manager between across
-# all transports by prefixing the relm by the protocol used
+# TODO: It may be possible to share the password_manager across
+# all transports by prefixing the realm by the protocol used
 # (especially if other protocols do not use realms). See
 # PasswordManager below.
 
@@ -65,6 +62,7 @@ from bzrlib import (
 from bzrlib.errors import (
     BzrError,
     ConnectionError,
+    InvalidHttpResponse,
     NoSuchFile,
     )
 
@@ -202,24 +200,12 @@ class Request(urllib2.Request):
 
 # The urlib2.xxxAuthHandler handle the authentification of the
 # requests, to do that, they need an urllib2 PasswordManager *at
-# build time*.
-
-# We want to associate such PasswordManager objects to the
-# connection, so that they can be reused (otherwise we will have
-# to prompt the user for its password at each connection).
-
-# TODO: Is there a way to share the password manager with other
-# protocols ? By prefixing th realm with the protocol ? A
-# different password for the same user may be required on the
-# same host for different protocol/host/directories combination.
+# build time*. We also need one to reuse the passwords already
+# typed by the user.
 class PasswordManager(urllib2.HTTPPasswordMgrWithDefaultRealm):
 
     def __init__(self):
         urllib2.HTTPPasswordMgrWithDefaultRealm.__init__(self)
-
-    # TODO: jam 20060915 This manager should implement find_user_password
-    #       so that even if we don't supply username in the url, if the
-    #       site requests a password we prompt the user for one.
 
 
 class ConnectionHandler(urllib2.BaseHandler):
@@ -233,20 +219,6 @@ class ConnectionHandler(urllib2.BaseHandler):
     """
 
     handler_order = 1000 # after all pre-processings
-    _connection_of = {} # map connections by host
-
-    # TODO: We don't want a global cache that can interact badly
-    # with the test suite, but being able to share connections on
-    # the same (host IP, port) combination can be good even
-    # inside a single tranport (some redirections can benefit
-    # from it, bazaar-ng.org and bazaar-vcs.org are two virtual
-    # hosts on the same IP for example). So we may activate the
-    # cache as currently it is used inside one Transport at a
-    # time.
-    # jam 20060915: I think most of this get_key stuff can be removed
-    #               since we now properly share the connection between
-    #               clones of the same Transport.
-    _cache_activated = False
 
     def get_key(self, connection):
         """Returns the key for the connection in the cache"""
@@ -257,17 +229,8 @@ class ConnectionHandler(urllib2.BaseHandler):
         if not host:
             raise urllib2.URLError('no host given')
 
-        # We create a connection (but it will not connect yet) to
-        # be able to get host and take default port into account
-        # (request don't do that) to avoid having different
-        # connections for http://host and http://host:80
+        # We create a connection (but it will not connect yet)
         connection = http_connection_class(host)
-        if self._cache_activated:
-            key = self.get_key(connection)
-            if key not in self._connection_of:
-                self._connection_of[key] = connection
-            else:
-                connection = self._connection_of[key]
 
         return connection
 
@@ -289,12 +252,6 @@ class ConnectionHandler(urllib2.BaseHandler):
             # Create a new one
             connection = self.create_connection(request, http_connection_class)
             request.connection = connection
-        else:
-            if self._cache_activated:
-                # Capture the precioussss
-                key = self.get_key(connection)
-                if key not in self._connection_of:
-                    self._connection_of[key] = connection
 
         # All connections will pass here, propagate debug level
         connection.set_debuglevel(DEBUG)
@@ -441,7 +398,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
 #
 #        # When we get rid of addinfourl, we must ensure that bzr
 #        # always use titled headers and that any header received
-#        # from server is also titled
+#        # from server is also titled.
 #
 #        headers = {}
 #        for header, value in (response.getheaders()):
@@ -625,9 +582,9 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
                              extra=HTTPError(req.get_full_url(), code, msg,
                                              hdrs, fp))
         else:
-            raise InvalidHttpResponse(url,
+            raise InvalidHttpResponse(req.get_full_url(),
                                       'Unable to handle http code %d: %s'
-                                      % (response.code, response.reason))
+                                      % (code, msg))
 
 class Opener(object):
     """A wrapper around urllib2.build_opener
@@ -636,21 +593,11 @@ class Opener(object):
     """
     # TODO: Provides hooks for daugther classes.
 
-    # This is a global password manager object, intended to be shared
-    # by all instances of Opener. It is global so that users don't get
-    # prompted for their passwords more than once.
-    # TODO: jam 20060915 Consider making it only exist as long as the Opener 
-    #       is alive, or possibly as long as a living Transport group.
-    #       Consider a long-running gui: it may be better to prompt the
-    #       user for the password from time to time, rather than caching
-    #       the password indefinitely. At a minimum, the GUI should
-    #       be able to set policy.
-    password_manager = PasswordManager()
-
     def __init__(self,
                  connection=ConnectionHandler,
                  redirect=HTTPRedirectHandler,
                  error=HTTPErrorProcessor,):
+        self.password_manager = PasswordManager()
         # TODO: Implements the necessary wrappers for the handlers
         # commented out below
         self._opener = urllib2.build_opener( \
@@ -666,6 +613,9 @@ class Opener(object):
             )
         self.open = self._opener.open
         if DEBUG > 0:
+            # When dealing with handler order, it's easy to mess
+            # things up, the following will help understand which
+            # handler is used, when and for what.
             import pprint
             pprint.pprint(self._opener.__dict__)
 

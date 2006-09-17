@@ -45,6 +45,10 @@ from bzrlib.transport.http.response import (HttpMultipartRangeResponse,
 from bzrlib.ui import ui_factory
 
 
+# TODO: This is not used anymore by HttpTransport_urllib
+# (extracting the auth info and prompting the user for a password
+# have been split), only the tests still use it. It should be
+# deleted and the tests rewritten ASAP to stay in sync.
 def extract_auth(url, password_manager):
     """Extract auth parameters from am HTTP/HTTPS url and add them to the given
     password manager.  Return the url, minus those auth parameters (which

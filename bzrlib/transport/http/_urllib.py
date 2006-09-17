@@ -32,7 +32,7 @@ from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import (HttpTransportBase,
                                    HttpServer)
-# TODO: handle_response should integrated into the _urllib2_wrappers
+# TODO: handle_response should be integrated into the _urllib2_wrappers
 from bzrlib.transport.http.response import handle_response
 from bzrlib.transport.http._urllib2_wrappers import (
     Opener,
@@ -46,34 +46,22 @@ register_urlparse_netloc_protocol('http+urllib')
 class HttpTransport_urllib(HttpTransportBase):
     """Python urllib transport for http and https."""
 
-    # In order to debug we have to issue our traces in syc with
+    # In order to debug we have to issue our traces in sync with
     # httplib, which use print :(
     _debuglevel = 0
     
-    # TODO: jam 20060915 Rather than having a class-wide opener class
-    #       consider having a class-wide instance.
     _opener_class = Opener
 
     def __init__(self, base, from_transport=None):
         """Set the base path where files will be stored."""
         super(HttpTransport_urllib, self).__init__(base)
         if from_transport is not None:
-            # Tracing transport creations that use cloning process
-            # mutter('Cloning HttpTransport_urllib '
-            #       + 'for base : [%s], from base [%s]' % (base,
-            #                                              from_transport.base))
-            # import traceback
-            # mutter(''.join(traceback.format_stack()))
             self._accept_ranges = from_transport._accept_ranges
             self._connection = from_transport._connection
             self._user = from_transport._user
             self._password = from_transport._password
             self._opener = from_transport._opener
         else:
-            # Tracing transport creations that avoid cloning process
-            # mutter('Creating new HttpTransport_urllib for base : [%s]' % base)
-            # import traceback
-            # mutter(''.join(traceback.format_stack()))
             self._accept_ranges = True
             self._connection = None
             self._user = None
@@ -90,11 +78,12 @@ class HttpTransport_urllib(HttpTransportBase):
             realm = None
             host = request.get_host()
             password_manager = self._opener.password_manager
+            # Query the password manager first
             user, password = password_manager.find_user_password(None, host)
             if user == request.user and password is not None:
                 request.password = password
             else:
-                # Ask the user
+                # Ask the user if we MUST
                 http_pass = 'HTTP %(user)s@%(host)s password'
                 request.password = ui.ui_factory.get_password(prompt=http_pass,
                                                               user=request.user,
