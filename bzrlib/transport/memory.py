@@ -227,6 +227,8 @@ class MemoryTransport(Transport):
         relpath = urlutils.unescape(relpath)
         if relpath.find('..') != -1:
             raise AssertionError('relpath contains ..')
+        if relpath == '':
+            return '/'
         if relpath[0] == '/':
             return relpath
         if relpath == '.':

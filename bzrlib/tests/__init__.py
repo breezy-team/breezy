@@ -43,6 +43,7 @@ import unittest
 import time
 
 
+from bzrlib import memorytree
 import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 import bzrlib.commands
@@ -1318,6 +1319,11 @@ class TestCaseWithTransport(TestCaseInTempDir):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
+    def make_branch_and_memory_tree(self, relpath):
+        """Create a branch on the default transport and a MemoryTree for it."""
+        b = self.make_branch(relpath)
+        return memorytree.MemoryTree.create_on_branch(b)
+
     def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
 
@@ -1489,6 +1495,7 @@ def test_suite():
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
+                   'bzrlib.tests.test_memorytree',
                    'bzrlib.tests.test_merge',
                    'bzrlib.tests.test_merge3',
                    'bzrlib.tests.test_merge_core',
@@ -1527,6 +1534,7 @@ def test_suite():
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_tree',
+                   'bzrlib.tests.test_treebuilder',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',

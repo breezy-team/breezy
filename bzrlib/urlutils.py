@@ -129,6 +129,8 @@ def join(base, *args):
         if m:
             # Absolute URL
             scheme = m.group('scheme')
+            # this skips .. normalisation, making http://host/../../..
+            # be rather strange.
             path = m.group('path').split('/')
         else:
             for chunk in arg.split('/'):
