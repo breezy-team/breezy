@@ -791,6 +791,13 @@ class TransportError(BzrNewError):
         BzrNewError.__init__(self)
 
 
+class SmartProtocolError(TransportError):
+    """Generic bzr smart protocol error: %(details)s"""
+
+    def __init__(self, details):
+        self.details = details
+
+
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
     """Transport operation not possible: %(msg)s %(orig_error)%"""
@@ -991,6 +998,15 @@ class UninitializableFormat(BzrNewError):
         self.format = format
 
 
+class BadConversionTarget(BzrNewError):
+    """Cannot convert to format %(format)s.  %(problem)s"""
+
+    def __init__(self, problem, format):
+        BzrNewError.__init__(self)
+        self.problem = problem
+        self.format = format
+
+
 class NoDiff(BzrNewError):
     """Diff is not installed on this machine: %(msg)s"""
 
@@ -1149,6 +1165,17 @@ class UnsupportedEOLMarker(BadBundle):
         BzrNewError.__init__(self)
 
 
+class BadInventoryFormat(BzrNewError):
+    """Root class for inventory serialization errors"""
+
+
+class UnexpectedInventoryFormat(BadInventoryFormat):
+    """The inventory was not in the expected format:\n %(msg)s"""
+
+    def __init__(self, msg):
+        BadInventoryFormat.__init__(self, msg=msg)
+
+
 class NoSmartServer(NotBranchError):
     """No smart server available at %(url)s"""
 
@@ -1170,3 +1197,39 @@ class GhostRevisionUnusableHere(BzrNewError):
     def __init__(self, revision_id):
         BzrNewError.__init__(self)
         self.revision_id = revision_id
+
+
+class IllegalUseOfScopeReplacer(BzrNewError):
+    """ScopeReplacer object %(name)r was used incorrectly: %(msg)s%(extra)s"""
+
+    is_user_error = False
+
+    def __init__(self, name, msg, extra=None):
+        BzrNewError.__init__(self)
+        self.name = name
+        self.msg = msg
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
+
+
+class InvalidImportLine(BzrNewError):
+    """Not a valid import statement: %(msg)\n%(text)s"""
+
+    is_user_error = False
+
+    def __init__(self, text, msg):
+        BzrNewError.__init__(self)
+        self.text = text
+        self.msg = msg
+
+
+class ImportNameCollision(BzrNewError):
+    """Tried to import an object to the same name as an existing object. %(name)s"""
+
+    is_user_error = False
+
+    def __init__(self, name):
+        BzrNewError.__init__(self)
+        self.name = name

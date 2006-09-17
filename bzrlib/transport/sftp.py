@@ -21,7 +21,8 @@
 # then raise TransportNotPossible, which will break remote access to any
 # formats which rely on OS-level locks.  That should be fine as those formats
 # are pretty old, but these combinations may have to be removed from the test
-# suite.
+# suite.  Those formats all date back to 0.7; so we should be able to remove
+# these methods when we officially drop support for those formats.
 
 import errno
 import os

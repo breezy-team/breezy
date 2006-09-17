@@ -165,7 +165,8 @@ def split_url(url):
             port = int(port)
         except ValueError:
             # TODO: Should this be ConnectionError?
-            raise errors.TransportError('invalid port number %s in url %s' % (port, url))
+            raise errors.TransportError(
+                'invalid port number %s in url:\n%s' % (port, url))
     host = urllib.unquote(host)
 
     path = urllib.unquote(path)
@@ -306,7 +307,8 @@ class Transport(object):
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
-        This can be supplied with a string or a list
+
+        :param relpath: a string of a relative path
         """
 
         # XXX: Robert Collins 20051016 - is this really needed in the public

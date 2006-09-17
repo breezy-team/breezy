@@ -887,7 +887,40 @@ class TestCase(unittest.TestCase):
         :param universal_newlines: Convert CRLF => LF
         """
         env_changes = kwargs.get('env_changes', {})
+        process = self.start_bzr_subprocess(args, env_changes=env_changes)
+        # We distinguish between retcode=None and retcode not passed.
+        supplied_retcode = kwargs.get('retcode', 0)
+        return self.finish_bzr_subprocess(process, retcode=supplied_retcode,
+            universal_newlines=kwargs.get('universal_newlines', False),
+            process_args=args)
 
+    def start_bzr_subprocess(self, process_args, env_changes=None,
+                             skip_if_plan_to_signal=False):
+        """Start bzr in a subprocess for testing.
+
+        This starts a new Python interpreter and runs bzr in there.
+        This should only be used for tests that have a justifiable need for
+        this isolation: e.g. they are testing startup time, or signal
+        handling, or early startup code, etc.  Subprocess code can't be
+        profiled or debugged so easily.
+
+        :param process_args: a list of arguments to pass to the bzr executable,
+            for example `['--version']`.
+        :param env_changes: A dictionary which lists changes to environment
+            variables. A value of None will unset the env variable.
+            The values must be strings. The change will only occur in the
+            child, so you don't need to fix the environment after running.
+        :param skip_if_plan_to_signal: raise TestSkipped when true and os.kill
+            is not available.
+
+        :returns: Popen object for the started process.
+        """
+        if skip_if_plan_to_signal:
+            if not getattr(os, 'kill', None):
+                raise TestSkipped("os.kill not available.")
+
+        if env_changes is None:
+            env_changes = {}
         old_env = {}
 
         def cleanup_environment():
@@ -899,68 +932,48 @@ class TestCase(unittest.TestCase):
                 osutils.set_or_unset_env(env_var, value)
 
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
-        args = list(args)
+        if not os.path.isfile(bzr_path):
+            # We are probably installed. Assume sys.argv is the right file
+            bzr_path = sys.argv[0]
 
         try:
             # win32 subprocess doesn't support preexec_fn
             # so we will avoid using it on all platforms, just to
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
-            process = Popen([sys.executable, bzr_path]+args,
-                             stdout=PIPE, stderr=PIPE)
+            process = Popen([sys.executable, bzr_path] + list(process_args),
+                             stdin=PIPE, stdout=PIPE, stderr=PIPE)
         finally:
             restore_environment()
-            
-        out = process.stdout.read()
-        err = process.stderr.read()
-
-        if kwargs.get('universal_newlines', False):
-            out = out.replace('\r\n', '\n')
-            err = err.replace('\r\n', '\n')
-
-        retcode = process.wait()
-        supplied_retcode = kwargs.get('retcode', 0)
-        if supplied_retcode is not None:
-            assert supplied_retcode == retcode
-        return [out, err]
-
-    def start_bzr_subprocess(self, *args):
-        """Start bzr in a subprocess for testing.
-
-        This starts a new Python interpreter and runs bzr in there. 
-        This should only be used for tests that have a justifiable need for
-        this isolation: e.g. they are testing startup time, or signal
-        handling, or early startup code, etc.  Subprocess code can't be 
-        profiled or debugged so easily.
-
-        :returns: Popen object for the started process.
-        """
-        # TODO: this ought to remove BZR_PDB when running the subprocess- the
-        # user probably doesn't want to debug it, and anyhow since its files
-        # are redirected they can't usefully get at it.  It just makes the
-        # test suite hang.
-        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
-        args = list(args)
-        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
-                         stderr=PIPE)
         return process
 
-    def finish_bzr_subprocess(self, process, retcode=0, send_signal=None):
+    def finish_bzr_subprocess(self, process, retcode=0, send_signal=None,
+                              universal_newlines=False, process_args=None):
         """Finish the execution of process.
 
         :param process: the Popen object returned from start_bzr_subprocess.
-        :param retcode: the expected return code of the process, if None any
-            value is accepted, otherwise if there is a difference a failure will
-            be raised.
+        :param retcode: The status code that is expected.  Defaults to 0.  If
+            None is supplied, the status code is not checked.
         :param send_signal: an optional signal to send to the process.
+        :param universal_newlines: Convert CRLF => LF
         :returns: (stdout, stderr)
         """
         if send_signal is not None:
             os.kill(process.pid, send_signal)
-        result = process.communicate()
-        if retcode is not None:
-            self.assertEqual(retcode, process.returncode)
-        return result
+        out, err = process.communicate()
+
+        if universal_newlines:
+            out = out.replace('\r\n', '\n')
+            err = err.replace('\r\n', '\n')
+
+        if retcode is not None and retcode != process.returncode:
+            if process_args is None:
+                process_args = "(unknown args)"
+            mutter('Output of bzr %s:\n%s', process_args, out)
+            mutter('Error for bzr %s:\n%s', process_args, err)
+            self.fail('Command bzr %s failed with retcode %s != %s'
+                      % (process_args, retcode, process.returncode))
+        return [out, err]
 
     def check_inventory_shape(self, inv, shape):
         """Compare an inventory to a list of expected names.
@@ -1287,9 +1300,9 @@ class TestCaseWithTransport(TestCaseInTempDir):
         try:
             # might be a relative or absolute path
             maybe_a_url = self.get_url(relpath)
-            segments = maybe_a_url.split('/')
+            segments = maybe_a_url.rsplit('/', 1)
             t = get_transport(maybe_a_url)
-            if segments and segments[-1] not in ('', '.'):
+            if len(segments) > 1 and segments[-1] not in ('', '.'):
                 try:
                     t.mkdir('.')
                 except errors.FileExists:
@@ -1472,6 +1485,7 @@ def test_suite():
                    'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
+                   'bzrlib.tests.test_lazy_import',
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',

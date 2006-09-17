@@ -95,6 +95,11 @@ class BzrDir(object):
         """Return true if this bzrdir is one whose format we can convert from."""
         return True
 
+    def check_conversion_target(self, target_format):
+        target_repo_format = target_format.repository_format
+        source_repo_format = self._format.repository_format
+        source_repo_format.check_conversion_target(target_repo_format)
+
     @staticmethod
     def _check_supported(format, allow_unsupported):
         """Check whether format is a supported format.
@@ -578,6 +583,28 @@ class BzrDir(object):
         except errors.NoWorkingTree:
             return False
 
+    def cloning_metadir(self, basis=None):
+        """Produce a metadir suitable for cloning with"""
+        def related_repository(bzrdir):
+            try:
+                branch = bzrdir.open_branch()
+                return branch.repository
+            except errors.NotBranchError:
+                source_branch = None
+                return bzrdir.open_repository()
+        result_format = self._format.__class__()
+        try:
+            try:
+                source_repository = related_repository(self)
+            except errors.NoRepositoryPresent:
+                if basis is None:
+                    raise
+                source_repository = related_repository(self)
+            result_format.repository_format = source_repository._format
+        except errors.NoRepositoryPresent:
+            pass
+        return result_format
+
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
@@ -593,7 +620,8 @@ class BzrDir(object):
             itself to download less data.
         """
         self._make_tail(url)
-        result = self._format.initialize(url)
+        cloning_format = self.cloning_metadir(basis)
+        result = cloning_format.initialize(url)
         basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
         try:
             source_branch = self.open_branch()
@@ -1071,6 +1099,10 @@ class BzrDirFormat(object):
         """
         return True
 
+    def same_model(self, target_format):
+        return (self.repository_format.rich_root_data == 
+            target_format.rich_root_data)
+
     @classmethod
     def known_formats(klass):
         """Return all the known formats.
@@ -1192,7 +1224,7 @@ class BzrDirFormat4(BzrDirFormat):
     def __return_repository_format(self):
         """Circular import protection."""
         from bzrlib.repository import RepositoryFormat4
-        return RepositoryFormat4(self)
+        return RepositoryFormat4()
     repository_format = property(__return_repository_format)
 
 
@@ -1252,7 +1284,7 @@ class BzrDirFormat5(BzrDirFormat):
     def __return_repository_format(self):
         """Circular import protection."""
         from bzrlib.repository import RepositoryFormat5
-        return RepositoryFormat5(self)
+        return RepositoryFormat5()
     repository_format = property(__return_repository_format)
 
 
@@ -1311,7 +1343,7 @@ class BzrDirFormat6(BzrDirFormat):
     def __return_repository_format(self):
         """Circular import protection."""
         from bzrlib.repository import RepositoryFormat6
-        return RepositoryFormat6(self)
+        return RepositoryFormat6()
     repository_format = property(__return_repository_format)
 
 
@@ -1556,6 +1588,7 @@ class ConvertBzrDir4To5(Converter):
         assert rev_id not in self.converted_revs
         old_inv_xml = self.branch.repository.inventory_store.get(rev_id).read()
         inv = serializer_v4.read_inventory_from_string(old_inv_xml)
+        inv.revision_id = rev_id
         rev = self.revisions[rev_id]
         if rev.inventory_sha1:
             assert rev.inventory_sha1 == sha_string(old_inv_xml), \

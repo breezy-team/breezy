@@ -61,8 +61,7 @@ limited to a directory?
 
 # TODO: Standard marker at start of request/response lines?
 
-# TODO: Client and server warnings perhaps should contain some non-ascii bytes
-# to make sure the channel can carry them without trouble?  Test for this?
+# TODO: Make each request and response self-validatable, e.g. with checksums.
 #
 # TODO: get/put objects could be changed to gradually read back the data as it
 # comes across the network
@@ -73,6 +72,9 @@ limited to a directory?
 #
 # TODO: If we get an exception during transmission of bulk data we can't just
 # emit the exception because it won't be seen.
+#   John proposes:  I think it would be worthwhile to have a header on each
+#   chunk, that indicates it is another chunk. Then you can send an 'error'
+#   chunk as long as you finish the previous chunk.
 #
 # TODO: Clone method on Transport; should work up towards parent directory;
 # unclear how this should be stored or communicated to the server... maybe
@@ -121,10 +123,6 @@ limited to a directory?
 # iterator-like callback that will gradually yield data; it probably needs a
 # close() method that will always be closed to do any necessary cleanup.
 #
-# TODO: Transport should probably not implicitly connect from its constructor;
-# it's quite useful to be able to deal with Transports representing locations
-# without actually opening it.
-#
 # TODO: Split the actual smart server from the ssh encoding of it.
 #
 # TODO: Perhaps support file-level readwrite operations over the transport
@@ -144,22 +142,22 @@ import threading
 import urllib
 import urlparse
 
-from bzrlib import bzrdir, errors, revision, transport, trace, urlutils
-from bzrlib.transport import sftp, local
+from bzrlib import (
+    bzrdir,
+    errors,
+    revision,
+    transport,
+    trace,
+    urlutils,
+    )
 from bzrlib.bundle.serializer import write_bundle
 from bzrlib.trace import mutter
+from bzrlib.transport import local
 
 # must do this otherwise urllib can't parse the urls properly :(
 for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
-
-
-class BzrProtocolError(errors.TransportError):
-    """Generic bzr smart protocol error: %(details)s"""
-
-    def __init__(self, details):
-        self.details = details
 
 
 def _recv_tuple(from_file):
@@ -171,12 +169,13 @@ def _decode_tuple(req_line):
     if req_line == None or req_line == '':
         return None
     if req_line[-1] != '\n':
-        raise BzrProtocolError("request %r not terminated" % req_line)
-    return tuple((a.decode('utf-8') for a in req_line[:-1].split('\1')))
+        raise errors.SmartProtocolError("request %r not terminated" % req_line)
+    return tuple((a.decode('utf-8') for a in req_line[:-1].split('\x01')))
 
 
 def _send_tuple(to_file, args):
-    to_file.write('\1'.join((a.encode('utf-8') for a in args)) + '\n')
+    # XXX: this will be inefficient.  Just ask Robert.
+    to_file.write('\x01'.join((a.encode('utf-8') for a in args)) + '\n')
     to_file.flush()
 
 
@@ -198,10 +197,10 @@ class SmartProtocolBase(object):
         try:
             chunk_len = int(chunk_len)
         except ValueError:
-            raise BzrProtocolError("bad chunk length line %r" % chunk_len)
+            raise errors.SmartProtocolError("bad chunk length line %r" % chunk_len)
         bulk = self._in.read(chunk_len)
         if len(bulk) != chunk_len:
-            raise BzrProtocolError("short read fetching bulk data chunk")
+            raise errors.SmartProtocolError("short read fetching bulk data chunk")
         self._recv_trailer()
         return bulk
 
@@ -303,7 +302,7 @@ class SmartServerResponse(object):
 
 
 class SmartServer(object):
-    """Protocol logic for smart.
+    """Protocol logic for smart server.
     
     This doesn't handle serialization at all, it just processes requests and
     creates responses.
@@ -324,18 +323,18 @@ class SmartServer(object):
         return SmartServerResponse((r,))
 
     def do_get(self, relpath):
-        backing_file = self._backing_transport.get(relpath)
-        return SmartServerResponse(('ok',), backing_file.read())
+        backing_bytes = self._backing_transport.get_bytes(relpath)
+        return SmartServerResponse(('ok',), backing_bytes)
 
-    def _optional_mode(self, mode):
+    def _deserialise_optional_mode(self, mode):
         if mode == '':
             return None
         else:
             return int(mode)
 
     def do_append(self, relpath, mode):
-        old_length = self._backing_transport.append(relpath, StringIO(self._recv_body()),
-                self._optional_mode(mode))
+        old_length = self._backing_transport.append_bytes(
+            relpath, self._recv_body(), self._deserialise_optional_mode(mode))
         return SmartServerResponse(('appended', '%d' % old_length))
 
     def do_delete(self, relpath):
@@ -353,15 +352,16 @@ class SmartServer(object):
         return SmartServerResponse(('names',) + tuple(filenames))
 
     def do_mkdir(self, relpath, mode):
-        self._backing_transport.mkdir(relpath, self._optional_mode(mode))
+        self._backing_transport.mkdir(relpath,
+                                      self._deserialise_optional_mode(mode))
 
     def do_move(self, rel_from, rel_to):
         self._backing_transport.move(rel_from, rel_to)
 
     def do_put(self, relpath, mode):
-        self._backing_transport.put(relpath, 
-                StringIO(self._recv_body()), 
-                self._optional_mode(mode))
+        self._backing_transport.put_bytes(relpath,
+                self._recv_body(),
+                self._deserialise_optional_mode(mode))
 
     def do_rename(self, rel_from, rel_to):
         self._backing_transport.rename(rel_from, rel_to)
@@ -387,7 +387,7 @@ class SmartServer(object):
     def dispatch_command(self, cmd, args):
         func = getattr(self, 'do_' + cmd, None)
         if func is None:
-            raise BzrProtocolError("bad request %r" % (cmd,))
+            raise errors.SmartProtocolError("bad request %r" % (cmd,))
         try:
             result = func(*args)
             if result is None: 
@@ -511,7 +511,7 @@ class SmartStat(object):
         self.st_mode = mode
 
 
-class SmartTransport(sftp.SFTPUrlHandling):
+class SmartTransport(transport.Transport):
     """Connection to a smart server.
 
     The connection holds references to pipes that can be used to send requests
@@ -528,13 +528,24 @@ class SmartTransport(sftp.SFTPUrlHandling):
     type: SmartTCPTransport, etc.
     """
 
-    def __init__(self, server_url, clone_from=None):
+    def __init__(self, url, clone_from=None, client=None):
+        """Constructor.
+
+        :param client: ignored when clone_from is not None.
+        """
         ### Technically super() here is faulty because Transport's __init__
         ### fails to take 2 parameters, and if super were to choose a silly
         ### initialisation order things would blow up. 
-        super(SmartTransport, self).__init__(server_url)
+        if not url.endswith('/'):
+            url += '/'
+        super(SmartTransport, self).__init__(url)
+        self._scheme, self._username, self._password, self._host, self._port, self._path = \
+                transport.split_url(url)
         if clone_from is None:
-            self._client = SmartStreamClient(self._connect_to_server)
+            if client is None:
+                self._client = SmartStreamClient(self._connect_to_server)
+            else:
+                self._client = client
         else:
             # credentials may be stripped from the base in some circumstances
             # as yet to be clearly defined or documented, so copy them.
@@ -542,6 +553,14 @@ class SmartTransport(sftp.SFTPUrlHandling):
             # reuse same connection
             self._client = clone_from._client
 
+    def abspath(self, relpath):
+        """Return the full url to the given relative path.
+        
+        @param relpath: the relative path or path components
+        @type relpath: str or list
+        """
+        return self._unparse_url(self._remote_path(relpath))
+    
     def clone(self, relative_url):
         """Make a new SmartTransport related to me, sharing the same connection.
 
@@ -577,6 +596,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
         return urlparse.urlunparse((self._scheme, netloc, path, '', '', ''))
 
     def _remote_path(self, relpath):
+        """Returns the Unicode version of the absolute path for relpath."""
         return self._combine_paths(self._path, relpath)
 
     def has(self, relpath):
@@ -595,7 +615,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
     def get(self, relpath):
         """Return file-like object reading the contents of a remote file.
         
-        :see: Transport.get()
+        :see: Transport.get_bytes()/get_file()
         """
         remote = self._remote_path(relpath)
         resp = self._client._call('get', remote)
@@ -603,7 +623,7 @@ class SmartTransport(sftp.SFTPUrlHandling):
             self._translate_error(resp, relpath)
         return StringIO(self._client._recv_bulk())
 
-    def _optional_mode(self, mode):
+    def _serialise_optional_mode(self, mode):
         if mode is None:
             return ''
         else:
@@ -612,28 +632,38 @@ class SmartTransport(sftp.SFTPUrlHandling):
     def mkdir(self, relpath, mode=None):
         resp = self._client._call('mkdir', 
                                   self._remote_path(relpath), 
-                                  self._optional_mode(mode))
+                                  self._serialise_optional_mode(mode))
         self._translate_error(resp)
 
-    def put(self, relpath, upload_file, mode=None):
+    def put_file(self, relpath, upload_file, mode=None):
+        # its not ideal to seek back, but currently put_non_atomic_file depends
+        # on transports not reading before failing - which is a faulty
+        # assumption I think - RBC 20060915
+        pos = upload_file.tell()
+        try:
+            return self.put_bytes(relpath, upload_file.read(), mode)
+        except:
+            upload_file.seek(pos)
+            raise
+
+    def put_bytes(self, relpath, upload_contents, mode=None):
         # FIXME: upload_file is probably not safe for non-ascii characters -
         # should probably just pass all parameters as length-delimited
         # strings?
-        # XXX: wrap strings in a StringIO.  There should be a better way of
-        # handling this.
-        if isinstance(upload_file, str):
-            upload_file = StringIO(upload_file)
-        resp = self._client._call_with_upload('put', 
-                                              (self._remote_path(relpath), 
-                                               self._optional_mode(mode)),
-                                              upload_file.read())
+        resp = self._client._call_with_upload(
+            'put',
+            (self._remote_path(relpath), self._serialise_optional_mode(mode)),
+            upload_contents)
         self._translate_error(resp)
 
-    def append(self, relpath, from_file, mode=None):
-        resp = self._client._call_with_upload('append',
-                                              (self._remote_path(relpath), 
-                                               self._optional_mode(mode)),
-                                              from_file.read())
+    def append_file(self, relpath, from_file, mode=None):
+        return self.append_bytes(relpath, from_file.read(), mode)
+        
+    def append_bytes(self, relpath, bytes, mode=None):
+        resp = self._client._call_with_upload(
+            'append',
+            (self._remote_path(relpath), self._serialise_optional_mode(mode)),
+            bytes)
         if resp[0] == 'appended':
             return int(resp[1])
         self._translate_error(resp)
@@ -671,13 +701,13 @@ class SmartTransport(sftp.SFTPUrlHandling):
                 error_path = resp[1]
             raise errors.NoSuchFile(error_path)
         elif what == 'error':
-            raise BzrProtocolError(unicode(resp[1]))
+            raise errors.SmartProtocolError(unicode(resp[1]))
         elif what == 'FileExists':
             raise errors.FileExists(resp[1])
         elif what == 'DirectoryNotEmpty':
             raise errors.DirectoryNotEmpty(resp[1])
         else:
-            raise BzrProtocolError('unexpected smart server error: %r' % (resp,))
+            raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 
     def _send_tuple(self, args):
         self._client._send_tuple(args)
@@ -795,8 +825,7 @@ class SmartStreamClient(SmartProtocolBase):
         if resp == ('ok', '1'):
             return 1
         else:
-            raise BzrProtocolError("bad response %r" % (resp,))
-
+            raise errors.SmartProtocolError("bad response %r" % (resp,))
 
 
 class SmartTCPTransport(SmartTransport):
@@ -804,8 +833,6 @@ class SmartTCPTransport(SmartTransport):
 
     def __init__(self, url, clone_from=None):
         super(SmartTCPTransport, self).__init__(url, clone_from)
-        self._scheme, self._username, self._password, self._host, self._port, self._path = \
-                transport.split_url(url)
         try:
             self._port = int(self._port)
         except (ValueError, TypeError), e:
@@ -832,34 +859,37 @@ class SmartTCPTransport(SmartTransport):
         if self._socket is not None:
             self._socket.close()
 
+try:
+    from bzrlib.transport import sftp
+except errors.ParamikoNotPresent:
+    # no paramiko, no SSHTransport.
+    pass
+else:
+    class SmartSSHTransport(SmartTransport):
+        """Connection to smart server over SSH."""
 
-class SmartSSHTransport(SmartTransport):
-    """Connection to smart server over SSH."""
+        def __init__(self, url, clone_from=None):
+            # TODO: all this probably belongs in the parent class.
+            super(SmartSSHTransport, self).__init__(url, clone_from)
+            try:
+                if self._port is not None:
+                    self._port = int(self._port)
+            except (ValueError, TypeError), e:
+                raise errors.InvalidURL(path=url, extra="invalid port %s" % self._port)
 
-    def __init__(self, url, clone_from=None):
-        # TODO: all this probably belongs in the parent class.
-        super(SmartSSHTransport, self).__init__(url, clone_from)
-        self._scheme, self._username, self._password, self._host, self._port, self._path = \
-                transport.split_url(url)
-        try:
-            if self._port is not None:
-                self._port = int(self._port)
-        except (ValueError, TypeError), e:
-            raise errors.InvalidURL(path=url, extra="invalid port %s" % self._port)
+        def _connect_to_server(self):
+            # XXX: don't hardcode vendor
+            # XXX: cannot pass password to SSHSubprocess yet
+            if self._password is not None:
+                raise errors.InvalidURL("SSH smart transport doesn't handle passwords")
+            self._ssh_connection = sftp.SSHSubprocess(self._host, 'openssh',
+                    port=self._port, user=self._username,
+                    command=['bzr', 'serve', '--inet'])
+            return self._ssh_connection.get_filelike_channels()
 
-    def _connect_to_server(self):
-        # XXX: don't hardcode vendor
-        # XXX: cannot pass password to SSHSubprocess yet
-        if self._password is not None:
-            raise errors.InvalidURL("SSH smart transport doesn't handle passwords")
-        self._ssh_connection = sftp.SSHSubprocess(self._host, 'openssh',
-                port=self._port, user=self._username,
-                command=['bzr', 'serve', '--inet'])
-        return self._ssh_connection.get_filelike_channels()
-
-    def disconnect(self):
-        super(SmartSSHTransport, self).disconnect()
-        self._ssh_connection.close()
+        def disconnect(self):
+            super(SmartSSHTransport, self).disconnect()
+            self._ssh_connection.close()
 
 
 def get_test_permutations():
