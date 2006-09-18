@@ -143,6 +143,11 @@ IN DEVELOPMENT
 
   TESTING:
 
+    * New test base class TestCaseWithMemoryTransport offers memory-only
+      testing facilities: its not suitable for tests that need to mutate disk
+      state, but most tests should not need that and should be converted to
+      TestCaseWithMemoryTransport. (Robert Collins)
+
     * New test helper classs MemoryTree. This is typically accessed via
       ``self.make_branch_and_memory_tree()`` in test cases. (Robert Collins)
       

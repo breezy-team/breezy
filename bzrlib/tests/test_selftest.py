@@ -22,13 +22,14 @@ import time
 import unittest
 import warnings
 
-from bzrlib import osutils
+from bzrlib import osutils, memorytree
 import bzrlib
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
                           ChrootedTestCase,
                           TestCase,
                           TestCaseInTempDir,
+                          TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
                           TestSkipped,
                           TestSuite,
@@ -430,6 +431,37 @@ class TestTestCaseInTempDir(TestCaseInTempDir):
         cwd = osutils.getcwd()
         self.assertEqual(self.test_dir, cwd)
         self.assertEqual(self.test_home_dir, os.environ['HOME'])
+
+
+class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
+
+    def test_home_is_non_existant_dir_under_root(self):
+        """The test_home_dir for TestCaseWithMemoryTransport is missing.
+
+        This is because TestCaseWithMemoryTransport is for tests that do not
+        need any disk resources: they should be hooked into bzrlib in such a 
+        way that no global settings are being changed by the test (only a 
+        few tests should need to do that), and having a missing dir as home is
+        an effective way to ensure that this is the case.
+        """
+        self.assertEqual(self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
+            self.test_home_dir)
+        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        
+    def test_cwd_is_TEST_ROOT(self):
+        self.assertEqual(self.test_dir, self.TEST_ROOT)
+        cwd = osutils.getcwd()
+        self.assertEqual(self.test_dir, cwd)
+
+    def test_make_branch_and_memory_tree(self):
+        """In TestCaseWithMemoryTransport we should not make the branch on disk.
+
+        This is hard to comprehensively robustly test, so we settle for making
+        a branch and checking no directory was created at its relpath.
+        """
+        tree = self.make_branch_and_memory_tree('dir')
+        self.failIfExists('dir')
+        self.assertIsInstance(tree, memorytree.MemoryTree)
 
 
 class TestTestCaseWithTransport(TestCaseWithTransport):
