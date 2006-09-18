@@ -110,6 +110,7 @@ class TestBzrServe(TestCaseWithTransport):
             ['bzr serve requires one of --inet or --port'], 'serve')
 
     def test_bzr_connect_to_bzr_ssh(self):
+        """bzr+ssh should work in ordinary bzr commands without blowing up."""
         try:
             from bzrlib.transport.sftp import SFTPServer
         except ParamikoNotPresent:
@@ -173,8 +174,6 @@ class TestBzrServe(TestCaseWithTransport):
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
         # variable is used to tell bzr what command to run on the remote end.
-        # '~/path/to/branch' will be interpreted by the special server on
-        # the remote end to mean the branch we made earlier.
         path_to_branch = os.path.abspath('.')
         self.run_bzr_subprocess(
             'log', 'bzr+ssh://localhost:%d/%s' % (port, path_to_branch),
