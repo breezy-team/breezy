@@ -66,7 +66,6 @@ class DebBuild(object):
     info("Building the package in %s, using %s", source_dir, builder)
     os.chdir(source_dir)
     result = os.system(builder)
-    info("Result=%s", result)
     os.chdir(wd)
     if result > 0:
       raise BuildFailedError;
