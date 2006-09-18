@@ -16,9 +16,13 @@ IN DEVELOPMENT
 
     * Commit performs one less XML parse. (Robert Collins)
 
-    * ``bzr checkout --lightweight`` now operates on readonly branches as well
-      as readwrite branches. This fixes bug #39542 for lightweight checkouts 
-      but not for heavyweight ones (the default). (Robert Collins)
+    * ``bzr checkout`` now operates on readonly branches as well
+      as readwrite branches. This fixes bug #39542. (Robert Collins)
+
+    * ``bzr bind`` no longer synchronises history with the master branch.
+      Binding should be followed by an update or push to synchronise the 
+      two branches. This is closely related to the fix for bug #39542.
+      (Robert Collins)
 
     * ``bzrlib.lazy_import.lazy_import`` function to create on-demand 
       objects.  This allows all imports to stay at the global scope, but
@@ -59,6 +63,11 @@ IN DEVELOPMENT
 
     * Fallback to Paramiko properly, if no ``ssh`` executable exists on
       the system. (Andrew Bennetts, John Arbash Meinel)
+
+    * ``Branch.bind(other_branch)`` no longer takes a write lock on the
+      other branch, and will not push or pull between the two branches.
+      API users will need to perform a push or pull or update operation if they
+      require branch synchronisation to take place. (Robert Collins, #47344)
 
   INTERNALS:
 
