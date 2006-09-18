@@ -28,8 +28,10 @@ that accompanies this documentation is able to use the servers underlying
 protocol as a dumb server.  This is the first stage high performance server
 functionality to be delivered.
 
-The current high performance server **always** provides **read/write** access.
-It is not suitable for publishing of read-only mirrors.
+The current high performance server provides read only access by default for
+security. To enable read-write access, run it with --allow-writes. When using
+the SSH access method, bzr automatically runs with with the --allow-writes
+option.
 
 It can be configured to run in three different ways:
 
