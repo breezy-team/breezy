@@ -48,6 +48,10 @@ The `bzr+ssh://` URL scheme only supports absolute paths from the root of the
 filesystem.  Future versions are expected to support `~` in the same way as
 `sftp://` URLs.
 
+Currently, this only works when Bazaar uses the `ssh` executable from OpenSSH or
+SSH Corp.  This is the default if either of those is installed, unless
+overridden by the `BZR_SSH` environment variable.
+
 inetd
 -----
 

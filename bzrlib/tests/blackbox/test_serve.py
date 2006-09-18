@@ -110,7 +110,10 @@ class TestBzrServe(TestCaseWithTransport):
             ['bzr serve requires one of --inet or --port'], 'serve')
 
     def test_bzr_connect_to_bzr_ssh(self):
-        """bzr+ssh should work in ordinary bzr commands without blowing up."""
+        """User acceptance that get_transport of a bzr+ssh:// behaves correctly.
+
+        bzr+ssh:// should cause bzr to run a remote bzr smart server over SSH.
+        """
         try:
             from bzrlib.transport.sftp import SFTPServer
         except ParamikoNotPresent:
@@ -119,7 +122,8 @@ class TestBzrServe(TestCaseWithTransport):
         from bzrlib.tests.stub_sftp import StubServer
         from paramiko.common import AUTH_SUCCESSFUL
 
-        # XXX: Eventually, all SSH vendor classes should implement this.
+        # XXX: Eventually, all SSH vendor classes should implement connect_ssh,
+        # and this TestSkipped can be removed.
         from bzrlib.transport.ssh import _get_ssh_vendor, SSHVendor
         vendor = _get_ssh_vendor()
         if vendor.connect_ssh.im_func == SSHVendor.connect_ssh.im_func:
@@ -175,19 +179,34 @@ class TestBzrServe(TestCaseWithTransport):
                 return True
 
         ssh_server = SFTPServer(StubSSHServer)
+        # XXX: We *don't* want to override the default SSH vendor, so we set
+        # _vendor to what _get_ssh_vendor returns.
+        ssh_server._vendor = vendor
         ssh_server.setUp()
         self.addCleanup(ssh_server.tearDown)
         port = ssh_server._listener.port
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
         # variable is used to tell bzr what command to run on the remote end.
-        path_to_branch = os.path.abspath('.')
-        self.run_bzr_subprocess(
-            'log', 'bzr+ssh://localhost:%d/%s' % (port, path_to_branch),
-            env_changes={'BZR_REMOTE_PATH': self.get_bzr_path()})
+        path_to_branch = os.path.abspath('a_branch')
         
+        orig_bzr_remote_path = os.environ.get('BZR_REMOTE_PATH')
+        os.environ['BZR_REMOTE_PATH'] = self.get_bzr_path()
+        try:
+            branch = Branch.open(
+                'bzr+ssh://localhost:%d%s' % (port, path_to_branch))
+            
+            branch.repository.get_revision_graph()
+            self.assertEqual(None, branch.last_revision())
+        finally:
+            # Restore the BZR_REMOTE_PATH environment variable back to its
+            # original state.
+            if orig_bzr_remote_path is None:
+                del os.environ['BZR_REMOTE_PATH']
+            else:
+                os.environ['BZR_REMOTE_PATH'] = orig_bzr_remote_path
+
         self.assertEqual(
             '%s serve --inet --directory=/' % self.get_bzr_path(),
             self.command_executed)
-        
         
