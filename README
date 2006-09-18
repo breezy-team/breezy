@@ -52,12 +52,12 @@ Configuration Options
 
 Then can have the configuration options:
 
-  * ``build_dir = path``
+  * ``build-dir = path``
 
     The directory in which the build takes place. (Defaults to 
     ``../build-area`` relative to the branch).
 
-  * ``result_dir = path``
+  * ``result-dir = path``
 
     The directory the resulting files will be placed in. (Defaults to whatever
     is being used for ``build_dir``).
@@ -70,7 +70,7 @@ Then can have the configuration options:
     branch, or the contents of ``debian/`` (e.g. ``rules``, ``control``) 
     directly in the top level directory of the branch. (Defaults to ``False``).
 
-  * ``orig_dir = path``
+  * ``orig-dir = path``
 
     The directory to search for the ``.orig.tar.gz`` when in merge mode. 
     (Defaults to ``../tarballs`` relative to the branch).
@@ -80,7 +80,7 @@ Then can have the configuration options:
     The command to use to build the package. Defaults to ``dpkg-buildpackage 
     -rfakeroot -uc -us``).
 
-  * ``quick_builder = command``
+  * ``quick-builder = command``
 
     The command used to build the package if the ``--quick`` option is used. 
     (Defaults to ``fakeroot debian/rules binary``).
@@ -264,7 +264,7 @@ Copyright
 This README is Copyright (C) 2006 James Westby <jw+debian@jameswestby.net> and
 is distribted under the following terms.
 
-::
+..
 
    This file is part of bzr-builddeb.
 
@@ -282,4 +282,4 @@ is distribted under the following terms.
    along with bzr-builddeb; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-
+.. vim: set ft=rst :
