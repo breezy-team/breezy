@@ -271,11 +271,13 @@ class SmartStreamServer(SmartProtocolBase):
         :return: False if the server should terminate, otherwise None.
         """
         req_args = self._recv_tuple()
+        mutter('server received %r' % (req_args,))
         if req_args == None:
             # client closed connection
             return False  # shutdown server
         try:
             response = self.smart_server.dispatch_command(req_args[0], req_args[1:])
+            mutter('server sending %r' % (response.args,))
             self._send_tuple(response.args)
             if response.body is not None:
                 self._send_bulk_data(response.body)
@@ -708,7 +710,10 @@ class SmartTransport(transport.Transport):
 
     def _translate_error(self, resp, orig_path=None):
         """Raise an exception from a response"""
-        what = resp[0]
+        if resp is None:
+            what = None
+        else:
+            what = resp[0]
         if what == 'ok':
             return
         elif what == 'NoSuchFile':
@@ -891,7 +896,7 @@ class SmartTCPTransport(SmartTransport):
             self._socket.close()
 
 try:
-    from bzrlib.transport import sftp
+    from bzrlib.transport import sftp, ssh
 except errors.ParamikoNotPresent:
     # no paramiko, no SSHTransport.
     pass
@@ -913,9 +918,12 @@ else:
             # XXX: cannot pass password to SSHSubprocess yet
             if self._password is not None:
                 raise errors.InvalidURL("SSH smart transport doesn't handle passwords")
-            self._ssh_connection = sftp.SSHSubprocess(self._host, 'openssh',
-                    port=self._port, user=self._username,
-                    command=['bzr', 'serve', '--inet'])
+            executable = os.environ.get('BZR_REMOTE_PATH', 'bzr')
+            vendor = ssh._get_ssh_vendor()
+            self._ssh_connection = vendor.connect_ssh(self._username, None,
+                    self._host, self._port,
+                    command=[executable, 'serve', '--inet',
+                            '--directory=/'])
             return self._ssh_connection.get_filelike_channels()
 
         def disconnect(self):

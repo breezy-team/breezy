@@ -38,7 +38,7 @@ SSH
 
 Using Bazaar over SSH requires no special configuration on the server::
 
-    bzr log bzr+ssh://host/~/path/to/branch --remote-bzr-path="~/bin/bzr"
+    BZR_REMOTE_PATH=~/bin/bzr bzr log bzr+ssh://host/~/path/to/branch
 
 inetd
 -----

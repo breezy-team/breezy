@@ -2815,6 +2815,7 @@ class cmd_serve(Command):
             sys.stdout.flush()
         else:
             raise BzrCommandError("bzr serve requires one of --inet or --port")
+        mutter('starting to serve directory %s' % directory)
         server.serve()
 
 

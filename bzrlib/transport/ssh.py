@@ -254,6 +254,27 @@ class SubprocessVendor(SSHVendor):
             raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
                                   % (host, port, e))
 
+    def connect_ssh(self, username, password, host, port, command):
+        try:
+            argv = self._get_vendor_specific_argv(username, host, port,
+                                                  command=command)
+            proc = subprocess.Popen(argv,
+                                    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE,
+                                    **os_specific_subprocess_params())
+            return SSHSubprocess(proc)
+        except (EOFError, paramiko.SSHException), e:
+            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                  % (host, port, e))
+        except (OSError, IOError), e:
+            # If the machine is fast enough, ssh can actually exit
+            # before we try and send it the sftp request, which
+            # raises a Broken Pipe
+            if e.errno not in (errno.EPIPE,):
+                raise
+            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                  % (host, port, e))
+
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
         """Returns the argument list to run the subprocess with.
@@ -469,4 +490,6 @@ class SSHSubprocess(object):
         self.proc.stdout.close()
         self.proc.wait()
 
+    def get_filelike_channels(self):
+        return (self.proc.stdout, self.proc.stdin)
 

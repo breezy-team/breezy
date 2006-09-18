@@ -105,3 +105,75 @@ class TestBzrServe(TestCaseWithTransport):
         out, err = self.run_bzr_error(
             ['bzr serve requires one of --inet or --port'], 'serve')
 
+    def test_bzr_connect_to_bzr_ssh(self):
+        # Make a branch
+        self.make_branch('.')
+
+        # Start an SSH server
+        # XXX: This is horrible -- we define a really dumb SSH server that
+        # executes commands, and manage the hooking up of stdin/out/err to the
+        # SSH channel ourselves.  Surely this has already been implemented
+        # elsewhere?
+        import subprocess
+        import threading
+        from paramiko.common import AUTH_SUCCESSFUL
+        import bzrlib.tests.stub_sftp
+        import bzrlib.transport.sftp
+        class StubSSHServer(bzrlib.tests.stub_sftp.StubServer):
+            test = self
+
+            def get_allowed_auths(self, username):
+                return 'none'
+
+            def check_auth_none(self, username):
+                return AUTH_SUCCESSFUL
+            
+            def check_channel_exec_request(self, channel, command):
+                self.test.command_executed = command
+                proc = subprocess.Popen(
+                    command, shell=True, stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                
+                # XXX: horribly inefficient, not to mention ugly.
+                def do_stdin():
+                    # copy bytes from the channel to the subprocess's stdin
+                    while True:
+                        bytes = channel.recv(1)
+                        if bytes == '':
+                            proc.stdin.close()
+                            break
+                        proc.stdin.write(bytes)
+                        proc.stdin.flush()
+                threading.Thread(target=do_stdin).start()
+
+                def ferry_bytes(pipe):
+                    while True:
+                        bytes = pipe.read(1)
+                        if bytes == '':
+                            channel.close()
+                            break
+                        channel.sendall(bytes)
+                threading.Thread(target=ferry_bytes, args=(proc.stdout,)).start()
+                threading.Thread(target=ferry_bytes, args=(proc.stderr,)).start()
+
+                return True
+
+        ssh_server = bzrlib.transport.sftp.SFTPServer(StubSSHServer)
+        ssh_server.setUp()
+        self.addCleanup(ssh_server.tearDown)
+        port = ssh_server._listener.port
+
+        # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
+        # variable is used to tell bzr what command to run on the remote end.
+        # '~/path/to/branch' will be interpreted by the special server on
+        # the remote end to mean the branch we made earlier.
+        import os, sys
+        self.run_bzr_subprocess(
+            'log', 'bzr+ssh://localhost:%d/%s' % (port, os.path.abspath('.')),
+            env_changes={'BZR_REMOTE_PATH': self.get_bzr_path()})
+        
+        self.assertEqual(
+            '%s serve --inet --directory=/' % self.get_bzr_path(),
+            self.command_executed)
+        
+        
