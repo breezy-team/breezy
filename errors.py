@@ -49,3 +49,8 @@ class NotInBaseError(BzrNewError):
   def __init__(self):
     BzrNewError.__init__(self)
 
+class BuildFailedError(DebianError):
+  """The build failed."""
+  def __init__(self):
+    DebianError.__init__(self, None)
+

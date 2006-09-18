@@ -26,7 +26,9 @@ import os
 from bzrlib.export import export
 
 from changes import DebianChanges
-from errors import DebianError, NoSourceDirError
+from errors import (DebianError,
+                    NoSourceDirError,
+                    BuildFailedError)
 from bdlogging import info, debug
 from util import recursive_copy
 
@@ -63,8 +65,11 @@ class DebBuild(object):
     source_dir = self._properties.source_dir()
     info("Building the package in %s, using %s", source_dir, builder)
     os.chdir(source_dir)
-    os.system(builder)
+    result = os.system(builder)
+    info("Result=%s", result)
     os.chdir(wd)
+    if result > 0:
+      raise BuildFailedError;
 
   def clean(self):
     source_dir = self._properties.source_dir()
