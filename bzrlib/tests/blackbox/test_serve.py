@@ -120,15 +120,6 @@ class TestBzrServe(TestCaseWithTransport):
             raise TestSkipped('Paramiko not installed')
         
         from bzrlib.tests.stub_sftp import StubServer
-        from paramiko.common import AUTH_SUCCESSFUL
-
-        # XXX: Eventually, all SSH vendor classes should implement connect_ssh,
-        # and this TestSkipped can be removed.
-        from bzrlib.transport.ssh import _get_ssh_vendor, SSHVendor
-        vendor = _get_ssh_vendor()
-        if vendor.connect_ssh.im_func == SSHVendor.connect_ssh.im_func:
-            raise TestSkipped(
-                'connect_ssh is not yet implemented on %r' % vendor)
 
         # Make a branch
         self.make_branch('a_branch')
@@ -142,12 +133,6 @@ class TestBzrServe(TestCaseWithTransport):
 
             test = self
 
-            def get_allowed_auths(self, username):
-                return 'none'
-
-            def check_auth_none(self, username):
-                return AUTH_SUCCESSFUL
-            
             def check_channel_exec_request(self, channel, command):
                 self.test.command_executed = command
                 proc = subprocess.Popen(
@@ -181,7 +166,6 @@ class TestBzrServe(TestCaseWithTransport):
         ssh_server = SFTPServer(StubSSHServer)
         # XXX: We *don't* want to override the default SSH vendor, so we set
         # _vendor to what _get_ssh_vendor returns.
-        ssh_server._vendor = vendor
         ssh_server.setUp()
         self.addCleanup(ssh_server.tearDown)
         port = ssh_server._listener.port
@@ -194,7 +178,7 @@ class TestBzrServe(TestCaseWithTransport):
         os.environ['BZR_REMOTE_PATH'] = self.get_bzr_path()
         try:
             branch = Branch.open(
-                'bzr+ssh://localhost:%d%s' % (port, path_to_branch))
+                'bzr+ssh://fred:secret@localhost:%d%s' % (port, path_to_branch))
             
             branch.repository.get_revision_graph()
             self.assertEqual(None, branch.last_revision())

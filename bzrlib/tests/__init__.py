@@ -946,7 +946,7 @@ class TestCase(unittest.TestCase):
         return process
 
     def get_bzr_path(self):
-        """Return the path of the 'bzr' executable."""
+        """Return the path of the 'bzr' executable for this test suite."""
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         if not os.path.isfile(bzr_path):
             # We are probably installed. Assume sys.argv is the right file
