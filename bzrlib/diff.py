@@ -22,12 +22,14 @@ import sys
 import tempfile
 import time
 
+from bzrlib import (
+    errors,
+    osutils,
+    )
 # compatability - plugins import compare_trees from diff!!!
 # deprecated as of 0.10
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
-import bzrlib.errors as errors
-import bzrlib.osutils
 from bzrlib.patiencediff import unified_diff
 import bzrlib.patiencediff
 from bzrlib.symbol_versioning import (deprecated_function,
@@ -90,7 +92,10 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 
 def _set_lang_C():
     """Set the env var LANG=C"""
-    os.environ['LANG'] = 'C'
+    osutils.set_or_unset_env('LANG', 'C')
+    osutils.set_or_unset_env('LC_ALL', None)
+    osutils.set_or_unset_env('LC_CTYPE', None)
+    osutils.set_or_unset_env('LANGUAGE', None)
 
 
 def _spawn_external_diff(diffcmd, capture_errors=True):

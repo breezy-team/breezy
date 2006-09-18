@@ -17,7 +17,7 @@
 
 """Tests for versioning of bzrlib."""
 
-from bzrlib import version
+from bzrlib import version, workingtree
 from bzrlib.tests import TestCase, TestSkipped
 
 class TestBzrlibVersioning(TestCase):
@@ -32,4 +32,5 @@ class TestBzrlibVersioning(TestCase):
         if src_tree is None:
             raise TestSkipped("bzr tests aren't run from a bzr working tree")
         else:
-            source_version = src_tree.last_revision()
+            # ensure that what we got was in fact a working tree instance.
+            self.assertIsInstance(src_tree, workingtree.WorkingTree)

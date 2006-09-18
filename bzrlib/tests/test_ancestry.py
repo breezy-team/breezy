@@ -19,12 +19,12 @@ from cStringIO import StringIO
 import os
 import sys
 
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.branch import Branch
 from bzrlib.revision import is_ancestor
 
 
-class TestAncestry(TestCaseWithTransport):
+class TestAncestry(TestCaseWithMemoryTransport):
 
     def assertAncestryEqual(self, expected, revision_id, branch):
         """Assert that the ancestry of revision_id in branch is as expected."""

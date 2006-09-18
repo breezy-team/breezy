@@ -25,6 +25,7 @@ from copy import deepcopy
 from bzrlib import errors, mutabletree
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.osutils import sha_file
+from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.transport.memory import MemoryTransport
 
 
@@ -44,7 +45,7 @@ class MemoryTree(mutabletree.MutableTree):
         self._locks = 0
         self._lock_mode = None
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def _add(self, files, ids, kinds):
         """See MutableTree._add."""
         for f, file_id, kind in zip(files, ids, kinds):
@@ -126,6 +127,20 @@ class MemoryTree(mutabletree.MutableTree):
             self._locks -= 1
             raise
 
+    def lock_tree_write(self):
+        """See MutableTree.lock_tree_write()."""
+        self._locks += 1
+        try:
+            if self._locks == 1:
+                self.branch.lock_read()
+                self._lock_mode = "w"
+                self._populate_from_branch()
+            elif self._lock_mode == "r":
+                raise errors.ReadOnlyError(self)
+        except:
+            self._locks -= 1
+            raise
+
     def lock_write(self):
         """See MutableTree.lock_write()."""
         self._locks += 1
@@ -184,7 +199,7 @@ class MemoryTree(mutabletree.MutableTree):
         else:
             self._locks -= 1
 
-    @needs_write_lock
+    @needs_tree_write_lock
     def unversion(self, file_ids):
         """Remove the file ids in file_ids from the current versioned set.
 

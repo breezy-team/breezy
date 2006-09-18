@@ -61,6 +61,8 @@
 
 # TODO: If commit fails, leave the message in a file somewhere.
 
+# TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
+# the rest of the code; add a deprecation of the old name.
 
 import os
 import re
@@ -245,11 +247,17 @@ class Commit(object):
             self._check_bound_branch()
 
             # check for out of date working trees
-            # if we are bound, then self.branch is the master branch and this
-            # test is thus all we need.
+            try:
+                first_tree_parent = self.work_tree.get_parent_ids()[0]
+            except IndexError:
+                # if there are no parents, treat our parent as 'None'
+                # this is so that we still consier the master branch
+                # - in a checkout scenario the tree may have no
+                # parents but the branch may do.
+                first_tree_parent = None
             master_last = self.master_branch.last_revision()
-            if (master_last is not None and 
-                master_last != self.work_tree.last_revision()):
+            if (master_last is not None and
+                master_last != first_tree_parent):
                 raise errors.OutOfDateTree(self.work_tree)
     
             if strict:
@@ -289,10 +297,7 @@ class Commit(object):
             self._populate_new_inv()
             self._report_deletes()
 
-            if not (self.allow_pointless
-                    or len(self.parents) > 1
-                    or self.builder.new_inventory != self.basis_inv):
-                raise PointlessCommit()
+            self._check_pointless()
 
             self._emit_progress_update()
             # TODO: Now the new inventory is known, check for conflicts and
@@ -339,6 +344,21 @@ class Commit(object):
         finally:
             self._cleanup()
         return self.rev_id
+
+    def _check_pointless(self):
+        if self.allow_pointless:
+            return
+        # A merge with no effect on files
+        if len(self.parents) > 1:
+            return
+        # work around the fact that a newly-initted tree does differ from its
+        # basis
+        if len(self.builder.new_inventory) != len(self.basis_inv):
+            return
+        if (len(self.builder.new_inventory) != 1 and
+            self.builder.new_inventory != self.basis_inv):
+            return
+        raise PointlessCommit()
 
     def _check_bound_branch(self):
         """Check to see if the local branch is bound.

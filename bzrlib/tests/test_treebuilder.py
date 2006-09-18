@@ -29,8 +29,8 @@ class FakeTree(object):
     def __init__(self):
         self._calls = []
 
-    def lock_write(self):
-        self._calls.append("lock_write")
+    def lock_tree_write(self):
+        self._calls.append("lock_tree_write")
 
     def unlock(self):
         self._calls.append("unlock")
@@ -42,10 +42,10 @@ class TestFakeTree(TestCaseWithTransport):
         """Check that FakeTree works as required for the TreeBuilder tests."""
         tree = FakeTree()
         self.assertEqual([], tree._calls)
-        tree.lock_write()
-        self.assertEqual(["lock_write"], tree._calls)
+        tree.lock_tree_write()
+        self.assertEqual(["lock_tree_write"], tree._calls)
         tree.unlock()
-        self.assertEqual(["lock_write", "unlock"], tree._calls)
+        self.assertEqual(["lock_tree_write", "unlock"], tree._calls)
 
 
 class TestTreeBuilder(TestCaseWithTransport):
@@ -57,7 +57,7 @@ class TestTreeBuilder(TestCaseWithTransport):
         builder = TreeBuilder()
         tree = FakeTree()
         builder.start_tree(tree)
-        self.assertEqual(["lock_write"], tree._calls)
+        self.assertEqual(["lock_tree_write"], tree._calls)
 
     def test_start_tree_when_started_fails(self):
         builder = TreeBuilder()
@@ -74,7 +74,7 @@ class TestTreeBuilder(TestCaseWithTransport):
         tree = FakeTree()
         builder.start_tree(tree)
         builder.finish_tree()
-        self.assertEqual(["lock_write", "unlock"], tree._calls)
+        self.assertEqual(["lock_tree_write", "unlock"], tree._calls)
 
     def test_build_tree_not_started_errors(self):
         builder = TreeBuilder()

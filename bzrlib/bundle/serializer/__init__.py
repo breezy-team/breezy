@@ -37,9 +37,7 @@ _serializers = {}
 
 
 def _get_filename(f):
-    if hasattr(f, 'name'):
-        return f.name
-    return '<unknown>'
+    return getattr(f, 'name', '<unknown>')
 
 
 def read_bundle(f):
@@ -108,6 +106,14 @@ def write_bundle(repository, revision_id, base_revision_id, out):
 
 
 def _write_bundle(repository, revision_id, base_revision_id, out):
+    """Write a bundle of revisions.
+
+    :param repository: Repository containing revisions to serialize.
+    :param revision_id: Head revision_id of the bundle.
+    :param base_revision_id: Revision assumed to be present in repositories
+         applying the bundle.
+    :param out: Output file.
+    """
     if base_revision_id is NULL_REVISION:
         base_revision_id = None
     base_ancestry = set(repository.get_ancestry(base_revision_id))
@@ -151,7 +157,7 @@ def format_highres_date(t, offset=0):
     
     # This has to be formatted for "original" date, so that the
     # revision XML entry will be reproduced faithfully.
-    if offset == None:
+    if offset is None:
         offset = 0
     tt = time.gmtime(t + offset)
 
