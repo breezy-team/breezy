@@ -179,10 +179,9 @@ def _decode_tuple(req_line):
     return tuple((a.decode('utf-8') for a in req_line[:-1].split('\x01')))
 
 
-def _send_tuple(to_file, args):
-    # XXX: this will be inefficient.  Just ask Robert.
-    to_file.write('\x01'.join((a.encode('utf-8') for a in args)) + '\n')
-    to_file.flush()
+def _encode_tuple(args):
+    """Encode the tuple args to a bytestream."""
+    return '\x01'.join((a.encode('utf-8') for a in args)) + '\n'
 
 
 class SmartProtocolBase(object):
@@ -191,10 +190,8 @@ class SmartProtocolBase(object):
     def _send_bulk_data(self, body):
         """Send chunked body data"""
         assert isinstance(body, str)
-        self._out.write('%d\n' % len(body))
-        self._out.write(body)
-        self._out.write('done\n')
-        self._out.flush()
+        bytes = ''.join(('%d\n' % len(body), body, 'done\n'))
+        self._write_and_flush(bytes)
 
     # TODO: this only actually accomodates a single block; possibly should support
     # multiple chunks?
@@ -219,6 +216,19 @@ class SmartProtocolBase(object):
             return
         else:
             self._translate_error(resp)
+
+    def _serialise_offsets(self, offsets):
+        """Serialise a readv offset list."""
+        txt = []
+        for start, length in offsets:
+            txt.append('%d,%d' % (start, length))
+        return '\n'.join(txt)
+
+    def _write_and_flush(self, bytes):
+        """Write bytes to self._out and flush it."""
+        # XXX: this will be inefficient.  Just ask Robert.
+        self._out.write(bytes)
+        self._out.flush()
 
 
 class SmartStreamServer(SmartProtocolBase):
@@ -257,11 +267,10 @@ class SmartStreamServer(SmartProtocolBase):
 
     def _send_tuple(self, args):
         """Send response header"""
-        return _send_tuple(self._out, args)
+        return self._write_and_flush(_encode_tuple(args))
 
     def _send_error_and_disconnect(self, exception):
         self._send_tuple(('error', str(exception)))
-        self._out.flush()
         ## self._out.close()
         ## self._in.close()
 
@@ -306,6 +315,11 @@ class SmartServerResponse(object):
         self.args = args
         self.body = body
 
+# XXX: TODO: Create a SmartServerRequest which will take the responsibility
+# for delivering the data for a request. This could be done with as the
+# StreamServer, though that would create conflation between request and response
+# which may be undesirable.
+
 
 class SmartServer(object):
     """Protocol logic for smart server.
@@ -313,6 +327,13 @@ class SmartServer(object):
     This doesn't handle serialization at all, it just processes requests and
     creates responses.
     """
+
+    # IMPORTANT FOR IMPLEMENTORS: It is important that SmartServer not contain
+    # encoding or decoding logic to allow the wire protocol to vary from the
+    # object protocol: we will want to tweak the wire protocol separate from
+    # the object model, and ideally we will be able to do that without having
+    # a SmartServer subclass for each wire protocol, rather just a Protocol
+    # subclass.
 
     # TODO: Better way of representing the body for commands that take it,
     # and allow it to be streamed into the server.
@@ -333,6 +354,7 @@ class SmartServer(object):
         return SmartServerResponse(('ok',), backing_bytes)
 
     def _deserialise_optional_mode(self, mode):
+        # XXX: FIXME this should be on the protocol object.
         if mode == '':
             return None
         else:
@@ -369,6 +391,30 @@ class SmartServer(object):
                 self._recv_body(),
                 self._deserialise_optional_mode(mode))
 
+    def _deserialise_offsets(self, text):
+        # XXX: FIXME this should be on the protocol object.
+        offsets = []
+        for line in text.split('\n'):
+            if not line:
+                continue
+            start, length = line.split(',')
+            offsets.append((int(start), int(length)))
+        return offsets
+
+    def do_put_non_atomic(self, relpath, mode, create_parent, dir_mode):
+        create_parent_dir = (create_parent == 'T')
+        self._backing_transport.put_bytes_non_atomic(relpath,
+                self._recv_body(),
+                mode=self._deserialise_optional_mode(mode),
+                create_parent_dir=create_parent_dir,
+                dir_mode=self._deserialise_optional_mode(dir_mode))
+
+    def do_readv(self, relpath):
+        offsets = self._deserialise_offsets(self._recv_body())
+        backing_bytes = ''.join(bytes for offset, bytes in
+                             self._backing_transport.readv(relpath, offsets))
+        return SmartServerResponse(('readv',), backing_bytes)
+        
     def do_rename(self, rel_from, rel_to):
         self._backing_transport.rename(rel_from, rel_to)
 
@@ -405,6 +451,9 @@ class SmartServer(object):
             return SmartServerResponse(('FileExists', e.path))
         except errors.DirectoryNotEmpty, e:
             return SmartServerResponse(('DirectoryNotEmpty', e.path))
+        except errors.ShortReadvError, e:
+            return SmartServerResponse(('ShortReadvError',
+                e.path, str(e.offset), str(e.length), str(e.actual)))
         except UnicodeError, e:
             # If it is a DecodeError, than most likely we are starting
             # with a plain string
@@ -545,6 +594,12 @@ class SmartTransport(transport.Transport):
     type: SmartTCPTransport, etc.
     """
 
+    # IMPORTANT FOR IMPLEMENTORS: SmartTransport MUST NOT be given encoding
+    # responsibilities: Put those on SmartClient or similar. This is vital for
+    # the ability to support multiple versions of the smart protocol over time:
+    # SmartTransport is an adapter from the Transport object model to the 
+    # SmartClient model, not an encoder.
+
     def __init__(self, url, clone_from=None, client=None):
         """Constructor.
 
@@ -652,6 +707,32 @@ class SmartTransport(transport.Transport):
                                   self._serialise_optional_mode(mode))
         self._translate_error(resp)
 
+    def put_bytes(self, relpath, upload_contents, mode=None):
+        # FIXME: upload_file is probably not safe for non-ascii characters -
+        # should probably just pass all parameters as length-delimited
+        # strings?
+        resp = self._client._call_with_upload(
+            'put',
+            (self._remote_path(relpath), self._serialise_optional_mode(mode)),
+            upload_contents)
+        self._translate_error(resp)
+
+    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+                             create_parent_dir=False,
+                             dir_mode=None):
+        """See Transport.put_bytes_non_atomic."""
+        # FIXME: no encoding in the transport!
+        create_parent_str = 'F'
+        if create_parent_dir:
+            create_parent_str = 'T'
+
+        resp = self._client._call_with_upload(
+            'put_non_atomic',
+            (self._remote_path(relpath), self._serialise_optional_mode(mode),
+             create_parent_str, self._serialise_optional_mode(dir_mode)),
+            bytes)
+        self._translate_error(resp)
+
     def put_file(self, relpath, upload_file, mode=None):
         # its not ideal to seek back, but currently put_non_atomic_file depends
         # on transports not reading before failing - which is a faulty
@@ -663,15 +744,12 @@ class SmartTransport(transport.Transport):
             upload_file.seek(pos)
             raise
 
-    def put_bytes(self, relpath, upload_contents, mode=None):
-        # FIXME: upload_file is probably not safe for non-ascii characters -
-        # should probably just pass all parameters as length-delimited
-        # strings?
-        resp = self._client._call_with_upload(
-            'put',
-            (self._remote_path(relpath), self._serialise_optional_mode(mode)),
-            upload_contents)
-        self._translate_error(resp)
+    def put_file_non_atomic(self, relpath, f, mode=None,
+                            create_parent_dir=False,
+                            dir_mode=None):
+        return self.put_bytes_non_atomic(relpath, f.read(), mode=mode,
+                                         create_parent_dir=create_parent_dir,
+                                         dir_mode=dir_mode)
 
     def append_file(self, relpath, from_file, mode=None):
         return self.append_bytes(relpath, from_file.read(), mode)
@@ -688,6 +766,49 @@ class SmartTransport(transport.Transport):
     def delete(self, relpath):
         resp = self._client._call('delete', self._remote_path(relpath))
         self._translate_error(resp)
+
+    def readv(self, relpath, offsets):
+        if not offsets:
+            return
+
+        offsets = list(offsets)
+
+        sorted_offsets = sorted(offsets)
+        # turn the list of offsets into a stack
+        offset_stack = iter(offsets)
+        cur_offset_and_size = offset_stack.next()
+        coalesced = list(self._coalesce_offsets(sorted_offsets,
+                               limit=self._max_readv_combine,
+                               fudge_factor=self._bytes_to_read_before_seek))
+
+
+        resp = self._client._call_with_upload(
+            'readv',
+            (self._remote_path(relpath),),
+            self._client._serialise_offsets((c.start, c.length) for c in coalesced))
+
+        if resp[0] != 'readv':
+            # This should raise an exception
+            self._translate_error(resp)
+            return
+
+        data = self._client._recv_bulk()
+        # Cache the results, but only until they have been fulfilled
+        data_map = {}
+        for c_offset in coalesced:
+            if len(data) < c_offset.length:
+                raise errors.ShortReadvError(relpath, c_offset.start,
+                            c_offset.length, actual=len(data))
+            for suboffset, subsize in c_offset.ranges:
+                key = (c_offset.start+suboffset, subsize)
+                data_map[key] = data[suboffset:suboffset+subsize]
+            data = data[c_offset.length:]
+
+            # Now that we've read some data, see if we can yield anything back
+            while cur_offset_and_size in data_map:
+                this_data = data_map.pop(cur_offset_and_size)
+                yield cur_offset_and_size[0], this_data
+                cur_offset_and_size = offset_stack.next()
 
     def rename(self, rel_from, rel_to):
         self._call('rename', 
@@ -723,6 +844,9 @@ class SmartTransport(transport.Transport):
             raise errors.FileExists(resp[1])
         elif what == 'DirectoryNotEmpty':
             raise errors.DirectoryNotEmpty(resp[1])
+        elif what == 'ShortReadvError':
+            raise errors.ShortReadvError(resp[1], int(resp[2]),
+                                         int(resp[3]), int(resp[4]))
         elif what in ('UnicodeEncodeError', 'UnicodeDecodeError'):
             encoding = str(resp[1]) # encoding must always be a string
             val = resp[2]
@@ -809,7 +933,7 @@ class SmartStreamClient(SmartProtocolBase):
 
     def _send_tuple(self, args):
         self._ensure_connection()
-        _send_tuple(self._out, args)
+        return self._write_and_flush(_encode_tuple(args))
 
     def _send_bulk_data(self, body):
         self._ensure_connection()
