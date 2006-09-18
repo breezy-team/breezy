@@ -114,13 +114,13 @@ class Config(object):
     def _get_signing_policy(self):
         """Template method to override signature creation policy."""
 
-    def _get_user_option(self, option_name):
+    def _get_user_option(self, option_name, recurse=True):
         """Template method to provide a user option."""
         return None
 
-    def get_user_option(self, option_name):
+    def get_user_option(self, option_name, recurse=True):
         """Get a generic option - no special process, no default."""
-        return self._get_user_option(option_name)
+        return self._get_user_option(option_name, recurse=recurse)
 
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
@@ -255,6 +255,18 @@ class IniBasedConfig(Config):
             raise errors.ParseConfigError(e.errors, e.config.filename)
         return self._parser
 
+    def _get_matching_sections(self):
+        """Return an ordered list of (section_name, extra_path) pairs.
+
+        If the section contains inherited configuration, extra_path is
+        a string containing the additional path components.
+        """
+        section = self._get_section()
+        if section is not None:
+            return [(section, '')]
+        else:
+            return []
+
     def _get_section(self):
         """Override this to define the section used by the config."""
         return "DEFAULT"
@@ -275,12 +287,16 @@ class IniBasedConfig(Config):
         """Get the user id from the 'email' key in the current section."""
         return self._get_user_option('email')
 
-    def _get_user_option(self, option_name):
+    def _get_user_option(self, option_name, recurse=True):
         """See Config._get_user_option."""
-        try:
-            return self._get_parser().get_value(self._get_section(),
-                                                option_name)
-        except KeyError:
+        for (section, extra_path) in self._get_matching_sections():
+            if not recurse and extra_path != '':
+                continue
+            try:
+                return self._get_parser().get_value(section, option_name)
+            except KeyError:
+                pass
+        else:
             return None
 
     def _gpg_signing_command(self):
@@ -410,26 +426,19 @@ class LocationConfig(IniBasedConfig):
             # if section is longer, no match.
             if len(section_names) > len(location_names):
                 continue
-            # if path is longer, and recurse is not true, no match
-            if len(section_names) < len(location_names):
-                try:
-                    if not self._get_parser()[section].as_bool('recurse'):
-                        continue
-                except KeyError:
-                    pass
-            matches.append((len(section_names), section))
+            matches.append((len(section_names), section,
+                            '/'.join(location_names[len(section_names):])))
         matches.sort(reverse=True)
-        return [section for (length, section) in matches]
-
-    def _get_user_option(self, option_name):
-        """See Config._get_user_option."""
-        for section in self._get_matching_sections():
+        sections = []
+        for (length, section, extra_path) in matches:
+            sections.append((section, extra_path))
+            # should we stop looking for parent configs here?
             try:
-                return self._get_parser().get_value(section, option_name)
+                if self._get_parser()[section].as_bool('ignore_parents'):
+                    break
             except KeyError:
                 pass
-        else:
-            return None
+        return sections
 
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
@@ -518,10 +527,10 @@ class BranchConfig(Config):
         """See Config._get_signing_policy."""
         return self._get_best_value('_get_signing_policy')
 
-    def _get_user_option(self, option_name):
+    def _get_user_option(self, option_name, recurse=True):
         """See Config._get_user_option."""
         for source in self.option_sources:
-            value = source()._get_user_option(option_name)
+            value = source()._get_user_option(option_name, recurse=recurse)
             if value is not None:
                 return value
         return None
