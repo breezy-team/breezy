@@ -38,7 +38,15 @@ SSH
 
 Using Bazaar over SSH requires no special configuration on the server::
 
-    BZR_REMOTE_PATH=~/bin/bzr bzr log bzr+ssh://host/~/path/to/branch
+    BZR_REMOTE_PATH=~/bin/bzr bzr log bzr+ssh://host/path/to/branch
+
+The `BZR_REMOTE_PATH` environment variable adjusts how `bzr` will be invoked on
+the remote system.  By default, just `bzr` will be invoked, which requires the
+`bzr` executable to be on the default search path.
+
+The `bzr+ssh://` URL scheme only supports absolute paths from the root of the
+filesystem.  Future versions are expected to support `~` in the same way as
+`sftp://` URLs.
 
 inetd
 -----
