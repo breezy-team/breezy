@@ -41,7 +41,7 @@ class TestPull(TestCaseWithWorkingTree):
         tree_a, tree_b = self.get_pullable_trees()
         tree_b.pull(tree_a.branch)
         self.failUnless(tree_b.branch.repository.has_revision('A'))
-        self.assertEqual('A', tree_b.last_revision())
+        self.assertEqual(['A'], tree_b.get_parent_ids())
 
     def test_pull_overwrites(self):
         tree_a, tree_b = self.get_pullable_trees()
@@ -50,7 +50,7 @@ class TestPull(TestCaseWithWorkingTree):
         tree_b.pull(tree_a.branch, overwrite=True)
         self.failUnless(tree_b.branch.repository.has_revision('A'))
         self.failUnless(tree_b.branch.repository.has_revision('B'))
-        self.assertEqual('A', tree_b.last_revision())
+        self.assertEqual(['A'], tree_b.get_parent_ids())
 
     def test_pull_merges_tree_content(self):
         tree_a, tree_b = self.get_pullable_trees()

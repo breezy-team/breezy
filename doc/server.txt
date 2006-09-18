@@ -1,0 +1,72 @@
+=======================
+Running a Bazaar Server
+=======================
+
+Bazaar does not require a specialised server because it operates over HTTP, FTP
+or SFTP.  There is an optional smart server that can be invoked over SSH, from
+inetd, or in a dedicated mode.
+
+Dumb servers
+============
+
+We describe HTTP, FTP, SFTP and HTTP-WebDAV as "dumb" servers because they do
+not offer any assistance to Bazaar.  If you make a Bazaar repository available
+over any of these protocols, Bazaar will allow you to read it remotely.  Just
+enter the URL to the branch in the Bazaar command you are running.::
+
+    bzr log http://bazaar-vcs.org/bzr/bzr.dev
+
+Bazaar supports writing over FTP, SFTP and via a plugin over HTTP-WebDAV.
+
+High performance server
+=======================
+
+**In development**
+
+The high performance server is currently in development.  The version of Bazaar
+that accompanies this documentation is able to use the servers underlying
+protocol as a dumb server.  This is the first stage high performance server
+functionality to be delivered.
+
+The current high performance server **always** provides **read/write** access.
+It is not suitable for publishing of read-only mirrors.
+
+It can be configured to run in three different ways:
+
+SSH
+---
+
+Using Bazaar over SSH requires no special configuration on the server::
+
+    bzr log bzr+ssh://host/~/path/to/branch --remote-bzr-path="~/bin/bzr"
+
+inetd
+-----
+
+This example shows how to run `bzr` with a dedicated user `bzruser` for a shared
+repository in `/srv/bzr/repo` which has a branch at `/srv/bzr/repo/branchname`
+
+Running a Bazaar server from inetd requires an inetd.conf entry::
+
+    1234  stream  tcp  nowait  bzruser  /usr/bin/bzr serve --inet --directory=/srv/bzr/repo
+
+When running client commands, the URL you supply is a `bzr://` URL relative to
+the `--directory` option given in inetd.conf::
+
+    bzr log bzr://host:1234/branchname
+
+Dedicated
+---------
+
+This mode has the same path and URL behaviour as the inetd mode.  To run as a
+specific, you should use `su` or login as that user.  This example runs bzr
+serve on `localhost` port `1234`.
+
+server::
+
+    bzr serve --port=localhost:1234 --directory=/srv/bzr/repo
+    
+client::
+
+    bzr log bzr://host:1234/branchname
+

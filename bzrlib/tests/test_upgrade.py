@@ -131,8 +131,8 @@ class TestUpgrade(TestCaseInTempDir):
         self.build_tree_contents(_upgrade_dir_template)
         upgrade('.', bzrdir.BzrDirMetaFormat1())
         tree = workingtree.WorkingTree.open('.')
-        self.assertEqual(tree.last_revision(),
-                         tree.branch.revision_history()[-1])
+        self.assertEqual([tree.branch.revision_history()[-1]],
+            tree.get_parent_ids())
 
     def test_upgrade_v6_to_meta_no_workingtree(self):
         # Some format6 branches do not have checkout files. Upgrading

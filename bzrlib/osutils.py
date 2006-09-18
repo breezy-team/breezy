@@ -84,7 +84,7 @@ def quotefn(f):
     Windows."""
     # TODO: I'm not really sure this is the best format either.x
     global _QUOTE_RE
-    if _QUOTE_RE == None:
+    if _QUOTE_RE is None:
         _QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/\\_~-])')
         
     if _QUOTE_RE.search(f):
@@ -150,7 +150,7 @@ lexists = getattr(os.path, 'lexists', None)
 if lexists is None:
     def lexists(f):
         try:
-            if hasattr(os, 'lstat'):
+            if getattr(os, 'lstat') is not None:
                 os.lstat(f)
             else:
                 os.stat(f)
@@ -190,12 +190,12 @@ def fancy_rename(old, new, rename_func, unlink_func):
         pass
     except IOError, e:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
-        # function raises an IOError with errno == None when a rename fails.
+        # function raises an IOError with errno is None when a rename fails.
         # This then gets caught here.
         if e.errno not in (None, errno.ENOENT, errno.ENOTDIR):
             raise
     except Exception, e:
-        if (not hasattr(e, 'errno') 
+        if (getattr(e, 'errno', None) is None
             or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
             raise
     else:
@@ -370,7 +370,7 @@ def get_terminal_encoding():
 
 
 def normalizepath(f):
-    if hasattr(os.path, 'realpath'):
+    if getattr(os.path, 'realpath', None) is not None:
         F = realpath
     else:
         F = abspath
@@ -505,7 +505,7 @@ def file_iterator(input_file, readsize=32768):
 
 
 def sha_file(f):
-    if hasattr(f, 'tell'):
+    if getattr(f, 'tell', None) is not None:
         assert f.tell() == 0
     s = sha.new()
     BUFSIZE = 128<<10
@@ -555,7 +555,7 @@ def compare_files(a, b):
 def local_time_offset(t=None):
     """Return offset of local zone from GMT, either at present or at time t."""
     # python2.3 localtime() can't take None
-    if t == None:
+    if t is None:
         t = time.time()
         
     if time.localtime(t).tm_isdst and time.daylight:
@@ -574,7 +574,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         tt = time.gmtime(t)
         offset = 0
     elif timezone == 'original':
-        if offset == None:
+        if offset is None:
             offset = 0
         tt = time.gmtime(t + offset)
     elif timezone == 'local':
@@ -676,7 +676,7 @@ def splitpath(p):
 def joinpath(p):
     assert isinstance(p, list)
     for f in p:
-        if (f == '..') or (f == None) or (f == ''):
+        if (f == '..') or (f is None) or (f == ''):
             raise BzrError("sorry, %r not allowed in path" % f)
     return pathjoin(*p)
 
@@ -726,7 +726,7 @@ def delete_any(full_path):
 
 
 def has_symlinks():
-    if hasattr(os, 'symlink'):
+    if getattr(os, 'symlink', None) is not None:
         return True
     else:
         return False
@@ -1052,7 +1052,7 @@ def get_user_encoding():
         _cached_user_encoding = locale.getpreferredencoding()
     except locale.Error, e:
         sys.stderr.write('bzr: warning: %s\n'
-                         '  Could not what text encoding to use.\n'
+                         '  Could not determine what text encoding to use.\n'
                          '  This error usually means your Python interpreter\n'
                          '  doesn\'t support the locale set by $LANG (%s)\n'
                          "  Continuing with ascii encoding.\n"

@@ -73,13 +73,13 @@ class TreeTransform(object):
      * set_executability
     """
     def __init__(self, tree, pb=DummyProgress()):
-        """Note: a write lock is taken on the tree.
+        """Note: a tree_write lock is taken on the tree.
         
         Use TreeTransform.finalize() to release the lock
         """
         object.__init__(self)
         self._tree = tree
-        self._tree.lock_write()
+        self._tree.lock_tree_write()
         try:
             control_files = self._tree._control_files
             self._limbodir = urlutils.local_path_from_url(
@@ -1086,7 +1086,7 @@ def new_by_entry(tt, entry, parent_id, tree):
 def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
     """Create new file contents according to an inventory entry."""
     if entry.kind == "file":
-        if lines == None:
+        if lines is None:
             lines = tree.get_file(entry.file_id).readlines()
         tt.create_file(lines, trans_id, mode_id=mode_id)
     elif entry.kind == "symlink":

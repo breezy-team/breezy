@@ -234,7 +234,7 @@ class TestCommonAncestor(TestCaseWithTransport):
         """
         br1, br2 = make_branches(self)
         source = MultipleRevisionSources(br1.repository, br2.repository)
-        combined_1 = combined_graph(br1.last_revision(), 
+        combined_1 = combined_graph(br1.last_revision(),
                                     br2.last_revision(), source)
         combined_2 = combined_graph(br2.last_revision(),
                                     br1.last_revision(), source)
