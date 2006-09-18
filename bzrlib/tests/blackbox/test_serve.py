@@ -17,11 +17,15 @@
 
 """Tests of the bzr serve command."""
 
+import os
 import signal
+import subprocess
+import threading
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.errors import ParamikoNotPresent
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.transport import smart
 
 
@@ -106,20 +110,24 @@ class TestBzrServe(TestCaseWithTransport):
             ['bzr serve requires one of --inet or --port'], 'serve')
 
     def test_bzr_connect_to_bzr_ssh(self):
+        try:
+            from bzrlib.transport.sftp import SFTPServer
+        except ParamikoNotPresent:
+            raise TestSkipped('Paramiko not installed')
+        
+        from bzrlib.tests.stub_sftp import StubServer
+        from paramiko.common import AUTH_SUCCESSFUL
+
         # Make a branch
-        self.make_branch('.')
+        self.make_branch('a_branch')
 
         # Start an SSH server
         # XXX: This is horrible -- we define a really dumb SSH server that
         # executes commands, and manage the hooking up of stdin/out/err to the
         # SSH channel ourselves.  Surely this has already been implemented
         # elsewhere?
-        import subprocess
-        import threading
-        from paramiko.common import AUTH_SUCCESSFUL
-        import bzrlib.tests.stub_sftp
-        import bzrlib.transport.sftp
-        class StubSSHServer(bzrlib.tests.stub_sftp.StubServer):
+        class StubSSHServer(StubServer):
+
             test = self
 
             def get_allowed_auths(self, username):
@@ -158,7 +166,7 @@ class TestBzrServe(TestCaseWithTransport):
 
                 return True
 
-        ssh_server = bzrlib.transport.sftp.SFTPServer(StubSSHServer)
+        ssh_server = SFTPServer(StubSSHServer)
         ssh_server.setUp()
         self.addCleanup(ssh_server.tearDown)
         port = ssh_server._listener.port
@@ -167,9 +175,9 @@ class TestBzrServe(TestCaseWithTransport):
         # variable is used to tell bzr what command to run on the remote end.
         # '~/path/to/branch' will be interpreted by the special server on
         # the remote end to mean the branch we made earlier.
-        import os, sys
+        path_to_branch = os.path.abspath('.')
         self.run_bzr_subprocess(
-            'log', 'bzr+ssh://localhost:%d/%s' % (port, os.path.abspath('.')),
+            'log', 'bzr+ssh://localhost:%d/%s' % (port, path_to_branch),
             env_changes={'BZR_REMOTE_PATH': self.get_bzr_path()})
         
         self.assertEqual(
