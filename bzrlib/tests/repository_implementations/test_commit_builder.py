@@ -19,6 +19,7 @@
 from bzrlib import inventory
 from bzrlib.errors import UnsupportedOperation
 from bzrlib.repository import CommitBuilder
+from bzrlib import tests
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 
 
@@ -33,7 +34,7 @@ class TestCommitBuilder(TestCaseWithRepository):
         if builder.record_root_entry is True:
             ie = tree.inventory.root
             parent_tree = tree.branch.repository.revision_tree(None)
-            parent_invs = [parent_tree.inventory]
+            parent_invs = []
             builder.record_entry_contents(ie, parent_invs, '', tree)
 
     def test_finish_inventory(self):
@@ -70,6 +71,8 @@ class TestCommitBuilder(TestCaseWithRepository):
     def test_commit_without_root(self):
         """This should cause a deprecation warning, not an assertion failure"""
         tree = self.make_branch_and_tree(".")
+        if tree.branch.repository._format.rich_root_data:
+            raise tests.TestSkipped('Format requires root')
         self.build_tree(['foo'])
         tree.add('foo', 'foo-id')
         entry = tree.inventory['foo-id']

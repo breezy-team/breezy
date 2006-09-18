@@ -83,7 +83,7 @@ class TestCommit(TestCaseWithWorkingTree):
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
         committed_id = tree.commit('foo', rev_id='foo', allow_pointless=True)
-        self.assertEqual('foo', tree.last_revision())
+        self.assertEqual(['foo'], tree.get_parent_ids())
         # the commit should have returned the same id we asked for.
         self.assertEqual('foo', committed_id)
 

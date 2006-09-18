@@ -584,7 +584,7 @@ def display_command(func):
             sys.stdout.flush()
             return result
         except IOError, e:
-            if not hasattr(e, 'errno'):
+            if getattr(e, 'errno', None) is None:
                 raise
             if e.errno != errno.EPIPE:
                 # Win32 raises IOError with errno=0 on a broken pipe

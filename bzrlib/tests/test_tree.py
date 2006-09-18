@@ -79,7 +79,7 @@ class TestTree(TestCaseWithTransport):
         """This test tests the way Tree.compare() uses InterTree."""
         old_optimisers = InterTree._optimisers
         try:
-            InterTree._optimisers = set()
+            InterTree._optimisers = []
             RecordingOptimiser.calls = []
             InterTree.register_optimiser(RecordingOptimiser)
             tree = self.make_branch_and_tree('1')

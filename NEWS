@@ -16,7 +16,29 @@ IN DEVELOPMENT
 
     * Commit performs one less XML parse. (Robert Collins)
 
+    * ``bzr checkout`` now operates on readonly branches as well
+      as readwrite branches. This fixes bug #39542. (Robert Collins)
+
+    * ``bzr bind`` no longer synchronises history with the master branch.
+      Binding should be followed by an update or push to synchronise the 
+      two branches. This is closely related to the fix for bug #39542.
+      (Robert Collins)
+
+    * ``bzrlib.lazy_import.lazy_import`` function to create on-demand 
+      objects.  This allows all imports to stay at the global scope, but
+      modules will not actually be imported if they are not used.
+      (John Arbash Meinel)
+
+    * Support bzr:// and bzr+ssh:// urls to work with the new RPC-based
+      transport which will be used with the upcoming high-performance smart
+      server. The new command ``bzr serve`` will invoke bzr in server mode,
+      which processes these requests. (Andrew Bennetts, Robert Collins, Martin
+      Pool)
+
   BUG FIXES:
+
+    * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
+      (Vincent Ladeuil, #59835)
 
     * Handle boundary="" lines properly to allow access through a Squid proxy.
       (John Arbash Meinel, #57723)
@@ -34,6 +56,18 @@ IN DEVELOPMENT
 
     * Don't use preexec_fn on win32, as it is not supported by subprocess.
       (John Arbash Meinel)
+
+    * Skip specific tests when the dependencies aren't met. This includes
+      some ``setup.py`` tests when ``python-dev`` is not available, and
+      some tests that depend on paramiko. (John Arbash Meinel, Mattheiu Moy)
+
+    * Fallback to Paramiko properly, if no ``ssh`` executable exists on
+      the system. (Andrew Bennetts, John Arbash Meinel)
+
+    * ``Branch.bind(other_branch)`` no longer takes a write lock on the
+      other branch, and will not push or pull between the two branches.
+      API users will need to perform a push or pull or update operation if they
+      require branch synchronisation to take place. (Robert Collins, #47344)
 
   INTERNALS:
 
@@ -73,18 +107,54 @@ IN DEVELOPMENT
     * WorkingTree has a new api ``unversion`` which allow the unversioning of
       entries by their file id. (Robert Collins)
 
+    * WorkingTree.pending_merges is deprecated.  Please use the get_parent_ids
+      (introduced in 0.10) method instead. (Robert Collins)
+
+    * WorkingTree has a new lock_tree_write method which locks the branch for
+      read rather than write. This is appropriate for actions which only need
+      the branch data for reference rather than mutation. A new decorator
+      needs_tree_write_lock is provided in the workingtree module. Like the
+      needs_read_lock and needs_write_lock decorators this allows static 
+      declaration of the locking requirements of a function to ensure that
+      a lock is taken out for casual scripts. (Robert Collins)
+
+    * All WorkingTree methods which write to the tree, but not to the branch
+      have been converted to use ``needs_tree_write_lock`` rather than 
+      ``needs_write_lock``. Also converted is the revert, conflicts and tree
+      transform modules. This provides a modest performance improvement on 
+      metadir style trees, due to the reduce lock-acquisition, and a more
+      significant performance improvement on lightweight checkouts from 
+      remote branches, where trivial operations used to pay a significant 
+      penalty. It also provides the basis for allowing readonly checkouts.
+      (Robert Collins)
+
+    * Special case importing the standard library 'copy' module. This shaves
+      off 40ms of startup time, while retaining compatibility. See:
+      ``bzrlib/inspect_for_copy.py`` for more details. (John Arbash Meinel)
+
     * WorkingTree has a new parent class MutableTree which represents the 
       specialisations of Tree which are able to be altered. (Robert Collins)
 
     * New methods mkdir and put_file_bytes_non_atomic on MutableTree that
       mutate the tree and its contents. (Robert Collins)
 
+    * Transport behaviour at the root of the URL is now defined and tested.
+      (Andrew Bennetts, Robert Collins)
+
   TESTING:
 
     * New test helper classs MemoryTree. This is typically accessed via
       ``self.make_branch_and_memory_tree()`` in test cases. (Robert Collins)
       
-bzr 0.10.0RC1  2006-08-28
+    * Add start_bzr_subprocess and stop_bzr_subprocess to allow test code to
+      continue running concurrently with a subprocess of bzr. (Andrew Bennetts,
+      Robert Collins)
+
+    * Add a new method ``Transport.get_smart_client()``. This is provided to
+      allow upgrades to a richer interface than the VFS one provided by
+      Transport. (Andrew Bennetts, Martin Pool)
+
+bzr 0.10  2006-08-29
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
@@ -142,6 +212,9 @@ bzr 0.10.0RC1  2006-08-28
     * Testament handles more cases when content is unicode. Specific bug was
       in handling of revision properties. (John Arbash Meinel, Holger Krekel,
       #54723)
+
+    * The bzr selftest was failing on installed versions due to a bug in a new
+      test helper. (John Arbash Meinel, Robert Collins, #58057)
 
   INTERNALS:
 
