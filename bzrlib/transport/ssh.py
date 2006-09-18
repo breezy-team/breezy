@@ -232,15 +232,18 @@ register_ssh_vendor('paramiko', ParamikoVendor())
 class SubprocessVendor(SSHVendor):
     """Abstract base class for vendors that use pipes to a subprocess."""
     
+    def _connect(self, argv):
+        proc = subprocess.Popen(argv,
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
+                                **os_specific_subprocess_params())
+        return SSHSubprocess(proc)
+
     def connect_sftp(self, username, password, host, port):
         try:
             argv = self._get_vendor_specific_argv(username, host, port,
                                                   subsystem='sftp')
-            proc = subprocess.Popen(argv,
-                                    stdin=subprocess.PIPE,
-                                    stdout=subprocess.PIPE,
-                                    **os_specific_subprocess_params())
-            sock = SSHSubprocess(proc)
+            sock = self._connect(argv)
             return SFTPClient(sock)
         except (EOFError, paramiko.SSHException), e:
             raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
@@ -258,12 +261,8 @@ class SubprocessVendor(SSHVendor):
         try:
             argv = self._get_vendor_specific_argv(username, host, port,
                                                   command=command)
-            proc = subprocess.Popen(argv,
-                                    stdin=subprocess.PIPE,
-                                    stdout=subprocess.PIPE,
-                                    **os_specific_subprocess_params())
-            return SSHSubprocess(proc)
-        except (EOFError, paramiko.SSHException), e:
+            return self._connect(argv)
+        except (EOFError), e:
             raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
                                   % (host, port, e))
         except (OSError, IOError), e:
