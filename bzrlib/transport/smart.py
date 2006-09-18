@@ -49,6 +49,8 @@ limited to a directory?
 """
 
 
+# TODO: _translate_error should be on the client, not the transport because
+#     error coding is wire protocol specific.
 
 # TODO: A plain integer from query_version is too simple; should give some
 # capabilities too?
@@ -465,6 +467,11 @@ class SmartServer(object):
             # This handles UnicodeEncodeError or UnicodeDecodeError
             return SmartServerResponse((e.__class__.__name__,
                     e.encoding, val, str(e.start), str(e.end), e.reason))
+        except errors.TransportNotPossible, e:
+            if e.msg == "readonly transport":
+                return SmartServerResponse(('ReadOnlyError', ))
+            else:
+                raise
 
 
 class SmartTCPServer(object):
@@ -864,6 +871,8 @@ class SmartTransport(transport.Transport):
                 raise UnicodeDecodeError(encoding, val, start, end, reason)
             elif what == 'UnicodeEncodeError':
                 raise UnicodeEncodeError(encoding, val, start, end, reason)
+        elif what == "ReadOnlyError":
+            raise errors.TransportNotPossible('readonly transport')
         else:
             raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 
@@ -1040,7 +1049,8 @@ else:
             vendor = ssh._get_ssh_vendor()
             self._ssh_connection = vendor.connect_ssh(self._username,
                     self._password, self._host, self._port,
-                    command=[executable, 'serve', '--inet', '--directory=/'])
+                    command=[executable, 'serve', '--inet', '--directory=/',
+                             '--allow-writes'])
             return self._ssh_connection.get_filelike_channels()
 
         def disconnect(self):
