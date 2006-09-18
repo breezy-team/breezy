@@ -119,6 +119,13 @@ class TestBzrServe(TestCaseWithTransport):
         from bzrlib.tests.stub_sftp import StubServer
         from paramiko.common import AUTH_SUCCESSFUL
 
+        # XXX: Eventually, all SSH vendor classes should implement this.
+        from bzrlib.transport.ssh import _get_ssh_vendor, SSHVendor
+        vendor = _get_ssh_vendor()
+        if vendor.connect_ssh.im_func == SSHVendor.connect_ssh.im_func:
+            raise TestSkipped(
+                'connect_ssh is not yet implemented on %r' % vendor)
+
         # Make a branch
         self.make_branch('a_branch')
 
