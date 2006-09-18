@@ -1,35 +1,21 @@
-- construct working area:
-   packages/
-    configs/  - for each package
-
-
-    $package ...
-
-    $package/$debian
-
-  ye olde arch-buildpackage layout
-
 - create new package
-  import from old source debs
+  import from old source debs -- Does dato's tool cover this?
 
 - record a version
-
-- build package
 
 - new upstream
 
 - migrate from arch-buildpackage?  use baz-import?
 
-- make --merge work with different layouts of upstream tarballs.
-
-- remove the need to specify the merge flag
+- make --merge work with different layouts of upstream tarballs. -- Works? 
+    Need some examples of strange layouts.
 
 - import of NMU diffs
 
-- WRITE SOME TESTS
+- WRITE SOME MORE TESTS
 
 - Add tagging packages, or at least a reminder to tag packages. Maybe with 
-dput/dupload as well.
+    dput/dupload as well.
 
 - New changelog stanza command for after tagging.
 
