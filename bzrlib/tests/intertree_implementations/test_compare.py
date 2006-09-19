@@ -16,6 +16,8 @@
 
 """Tests for the InterTree.compare() function."""
 
+import os
+
 from bzrlib import errors
 from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 
@@ -44,6 +46,22 @@ class TestCompare(TestCaseWithTwoTrees):
                           ('b', 'b-id', 'directory'),
                           ('b/c', 'c-id', 'file'),
                          ], d.added)
+        self.assertEqual([], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
+
+    def test_dangling(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_branch_and_tree('2')
+        self.build_tree(['2/a'])
+        tree2.add('a')
+        os.unlink('2/a')
+        self.build_tree(['1/b'])
+        tree1.add('b')
+        os.unlink('1/b')
+        d = self.intertree_class(tree1, tree2).compare()
+        self.assertEqual([], d.added)
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
@@ -232,20 +250,55 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.get_to_tree_no_parents_no_content(tree2)
         self.assertEqual([], list(tree2.iter_changes(tree1)))
 
+    def added(self, tree, file_id):
+        entry = tree.inventory[file_id]
+        path = tree.id2path(file_id)
+        return (file_id, path, True, (False, True), (None, entry.parent_id),
+                (None, entry.name), (None, entry.kind), 
+                (None, entry.executable))
+
+    def deleted(self, tree, file_id):
+        entry = tree.inventory[file_id]
+        path = tree.id2path(file_id)
+        return (file_id, path, True, (True, False), (entry.parent_id, None),
+                (entry.name, None), (entry.kind, None), 
+                (entry.executable, None))
+
     def test_empty_to_abc_content(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_to_tree_no_parents_abc_content(tree2)
-        def added(file_id):
-            entry = tree2.inventory[file_id]
-            path = tree2.id2path(file_id)
-            return (file_id, path, True, (False, True), (None, entry.parent_id),
-                    (None, entry.name), (None, entry.kind), 
-                    (None, entry.executable))
             
-        self.assertEqual([added('a-id'), added('b-id'), added('c-id')],
+        self.assertEqual([self.added(tree2, 'a-id'), 
+                          self.added(tree2, 'b-id'), 
+                          self.added(tree2, 'c-id')],
                          list(tree2.iter_changes(tree1)))
+
+    def test_empty_to_abc_content_a_only(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+        self.assertEqual([self.added(tree2, 'a-id')],
+                         list(tree2.iter_changes(tree1, 
+                                                 specific_file_ids=['a-id'])))
+        self.assertEqual([self.deleted(tree2, 'a-id')],
+                         list(tree1.iter_changes(tree2, 
+                                                 specific_file_ids=['a-id'])))
+
+    def test_empty_to_abc_content_a_and_c_only(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_to_tree_no_parents_abc_content(tree2)
+        self.assertEqual([self.added(tree2, 'a-id'),
+                          self.added(tree2, 'c-id')],
+                         list(tree2.iter_changes(tree1, 
+                                                 specific_file_ids=['a-id', 
+                                                                    'c-id'])))
+        d = self.intertree_class(tree1, tree2).compare(
+            specific_files=['a', 'b/c'])
 
     def test_abc_content(self):
         tree1 = self.make_branch_and_tree('1')

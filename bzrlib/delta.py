@@ -162,24 +162,24 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
     # mutter('start compare_trees')
 
     root_id = new_tree.inventory.root.file_id
-    # TODO: Rather than iterating over the whole tree and then filtering, we
-    # could diff just the specified files (if any) and their subtrees.  
-
     for (file_id, path, content_change, versioned, parent_id, name, kind,
-         executable) in new_tree.iter_changes(old_tree, want_unchanged):
-        if specific_file_ids and file_id not in specific_file_ids:
-            continue
+         executable) in new_tree.iter_changes(old_tree, want_unchanged, 
+                                              specific_file_ids):
         if file_id == root_id:
             continue
         assert kind[0] == kind[1] or None in kind
         # the only 'kind change' permitted is creation/deletion
         fully_present = tuple((versioned[x] and kind[x] is not None) for
                               x in range(2))
-        if fully_present[1] and not fully_present[0]:
-            delta.added.append((path, file_id, kind[1]))
-        elif fully_present[0] and not fully_present[1]:
-            old_path = old_tree.id2path(file_id)
-            delta.removed.append((old_path, file_id, kind[0]))
+        if fully_present[0] != fully_present[1]:
+            if fully_present[1] is True:
+                delta.added.append((path, file_id, kind[1]))
+            else:
+                assert fully_present[0] is True
+                old_path = old_tree.id2path(file_id)
+                delta.removed.append((old_path, file_id, kind[0]))
+        elif fully_present[0] is False:
+            continue
         elif name[0] != name[1] or parent_id[0] != parent_id[1]:
             # If the name changes, or the parent_id changes, we have a rename
             # (if we move a parent, that doesn't count as a rename for the

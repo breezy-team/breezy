@@ -83,9 +83,11 @@ class Tree(object):
             require_versioned=require_versioned,
             )
 
-    def iter_changes(self, from_tree, include_unchanged=False):
-        return InterTree.get(from_tree, self).iter_changes(from_tree, self,
-                                                           include_unchanged)
+    def iter_changes(self, from_tree, include_unchanged=False, 
+                     specific_file_ids=None):
+        intertree = InterTree.get(from_tree, self)
+        return intertree.iter_changes(from_tree, self, include_unchanged, 
+                                      specific_file_ids)
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -413,7 +415,8 @@ class InterTree(InterObject):
         return delta._compare_trees(self.source, self.target, want_unchanged,
             specific_file_ids)
 
-    def iter_changes(self, from_tree, to_tree, include_unchanged):
+    def iter_changes(self, from_tree, to_tree, include_unchanged, 
+                     specific_file_ids):
         """Generate an iterator of changes between trees.
 
         A tuple is returned:
@@ -436,9 +439,14 @@ class InterTree(InterObject):
                 return None
 
         to_paths = {}
+        if specific_file_ids is not None:
+            specific_file_ids = set(specific_file_ids)
         for path, to_entry in to_tree.iter_entries_by_dir():
             file_id = to_entry.file_id
             to_paths[file_id] = path
+            if (specific_file_ids is not None and 
+                file_id not in specific_file_ids):
+                continue
             changed_content = False
             from_versioned = (file_id in from_tree)
             versioned = (from_versioned, True)
@@ -487,17 +495,23 @@ class InterTree(InterObject):
             file_id = from_entry.file_id
             if file_id in to_paths:
                 continue
+            to_path = osutils.pathjoin(to_paths[from_entry.parent_id],
+                                       from_entry.name)
+            to_paths[file_id] = to_path
+            if (specific_file_ids is not None and 
+                file_id not in specific_file_ids):
+                continue
             versioned = (True, False)
             parent = (from_entry.parent_id, None)
             name = (from_entry.name, None)
             kind = (get_versioned_kind(from_tree, file_id), None)
-            from_executable = (from_tree.is_executable(file_id) not in 
-                               (False, None))
+            if kind[0] is not None:
+                from_executable = (from_tree.is_executable(file_id) not in 
+                                   (False, None))
+            else:
+                from_executable = False
             executable = (from_executable, None)
             changed_content = True
             # the parent's path is necessarily known at this point.
-            to_path = osutils.pathjoin(to_paths[from_entry.parent_id],
-                                       from_entry.name)
-            to_paths[file_id] = to_path
             yield(file_id, to_path, changed_content, versioned, parent,
                   name, kind, executable)
