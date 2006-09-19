@@ -115,12 +115,15 @@ def timed_import(name, globals, locals, fromlist):
     frame = sys._getframe(1)
     frame_name = frame.f_globals.get('__name__', '<unknown>')
     extra = ''
-    cur_frame = 1
     if frame_name.endswith('demandload'):
         # If this was demandloaded, we have 3 frames to ignore
         extra = ' (demandload)'
         frame = sys._getframe(4)
-        cur_frame = 4
+        frame_name = frame.f_globals.get('__name__', '<unknown>')
+    elif frame_name.endswith('lazy_import'):
+        # If this was lazily imported, we have 3 frames to ignore
+        extra = ' (lazy)'
+        frame = sys._getframe(4)
         frame_name = frame.f_globals.get('__name__', '<unknown>')
     frame_lineno = frame.f_lineno
 

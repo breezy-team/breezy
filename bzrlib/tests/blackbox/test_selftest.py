@@ -16,6 +16,7 @@
 """UI tests for the test framework."""
 
 import os
+import signal
 import sys
 
 import bzrlib
@@ -185,7 +186,7 @@ class TestRunBzrCaptured(ExternalBase):
         self.assertEqual(None, os.environ.get('BZR_EMAIL'))
         out, err = self.run_bzr_subprocess('whoami', env_changes={
                                             'BZR_EMAIL':'Joe Foo <joe@foo.com>'
-                                          })
+                                          }, universal_newlines=True)
         self.assertEqual('', err)
         self.assertEqual('Joe Foo <joe@foo.com>\n', out)
         # And it should not be modified
@@ -195,7 +196,7 @@ class TestRunBzrCaptured(ExternalBase):
         # it is actually changing
         out, err = self.run_bzr_subprocess('whoami', env_changes={
                                             'BZR_EMAIL':'Barry <bar@foo.com>'
-                                          })
+                                          }, universal_newlines=True)
         self.assertEqual('', err)
         self.assertEqual('Barry <bar@foo.com>\n', out)
         self.assertEqual(None, os.environ.get('BZR_EMAIL'))
@@ -209,20 +210,22 @@ class TestRunBzrCaptured(ExternalBase):
         os.environ['EMAIL'] = rand_email
         try:
             # By default, the child will inherit the current env setting
-            out, err = self.run_bzr_subprocess('whoami')
+            out, err = self.run_bzr_subprocess('whoami', universal_newlines=True)
             self.assertEqual('', err)
             self.assertEqual(rand_bzr_email + '\n', out)
 
             # Now that BZR_EMAIL is not set, it should fall back to EMAIL
             out, err = self.run_bzr_subprocess('whoami',
-                                               env_changes={'BZR_EMAIL':None})
+                                               env_changes={'BZR_EMAIL':None},
+                                               universal_newlines=True)
             self.assertEqual('', err)
             self.assertEqual(rand_email + '\n', out)
 
             # This switches back to the default email guessing logic
             # Which shouldn't match either of the above addresses
             out, err = self.run_bzr_subprocess('whoami',
-                           env_changes={'BZR_EMAIL':None, 'EMAIL':None})
+                           env_changes={'BZR_EMAIL':None, 'EMAIL':None},
+                           universal_newlines=True)
 
             self.assertEqual('', err)
             self.assertNotEqual(rand_bzr_email + '\n', out)
@@ -231,6 +234,60 @@ class TestRunBzrCaptured(ExternalBase):
             # TestCase cleans up BZR_EMAIL, and EMAIL at startup
             del os.environ['BZR_EMAIL']
             del os.environ['EMAIL']
+
+    def test_run_bzr_subprocess_env_del_missing(self):
+        """run_bzr_subprocess won't fail if deleting a nonexistant env var"""
+        self.failIf('NON_EXISTANT_ENV_VAR' in os.environ)
+        out, err = self.run_bzr_subprocess('rocks',
+                        env_changes={'NON_EXISTANT_ENV_VAR':None},
+                        universal_newlines=True)
+        self.assertEqual('it sure does!\n', out)
+        self.assertEqual('', err)
+
+    def test_start_and_stop_bzr_subprocess(self):
+        """We can start and perform other test actions while that process is
+        still alive.
+        """
+        process = self.start_bzr_subprocess(['--version'])
+        result = self.finish_bzr_subprocess(process)
+        self.assertContainsRe(result[0], 'is free software')
+        self.assertEqual('', result[1])
+
+    def test_start_and_stop_bzr_subprocess_with_error(self):
+        """finish_bzr_subprocess allows specification of the desired exit code.
+        """
+        process = self.start_bzr_subprocess(['--versionn'])
+        result = self.finish_bzr_subprocess(process, retcode=3)
+        self.assertEqual('', result[0])
+        self.assertContainsRe(result[1], 'unknown command')
+
+    def test_start_and_stop_bzr_subprocess_ignoring_retcode(self):
+        """finish_bzr_subprocess allows the exit code to be ignored."""
+        process = self.start_bzr_subprocess(['--versionn'])
+        result = self.finish_bzr_subprocess(process, retcode=None)
+        self.assertEqual('', result[0])
+        self.assertContainsRe(result[1], 'unknown command')
+
+    def test_start_and_stop_bzr_subprocess_with_unexpected_retcode(self):
+        """finish_bzr_subprocess raises self.failureException if the retcode is
+        not the expected one.
+        """
+        process = self.start_bzr_subprocess(['--versionn'])
+        self.assertRaises(self.failureException, self.finish_bzr_subprocess,
+                          process, retcode=0)
+        
+    def test_start_and_stop_bzr_subprocess_send_signal(self):
+        """finish_bzr_subprocess raises self.failureException if the retcode is
+        not the expected one.
+        """
+        process = self.start_bzr_subprocess(['wait-until-signalled'],
+                                            skip_if_plan_to_signal=True)
+        self.assertEqual('running\n', process.stdout.readline())
+        result = self.finish_bzr_subprocess(process, send_signal=signal.SIGINT,
+                                            retcode=3)
+        self.assertEqual('', result[0])
+        self.assertEqual('bzr: interrupted\n', result[1])
+        
 
 class TestRunBzrError(ExternalBase):
 

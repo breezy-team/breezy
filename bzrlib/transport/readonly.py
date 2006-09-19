@@ -26,8 +26,12 @@ class ReadonlyTransportDecorator(TransportDecorator):
     This is requested via the 'readonly+' prefix to get_transport().
     """
 
-    def append(self, relpath, f):
-        """See Transport.append()."""
+    def append_file(self, relpath, f, mode=None):
+        """See Transport.append_file()."""
+        raise TransportNotPossible('readonly transport')
+    
+    def append_bytes(self, relpath, bytes, mode=None):
+        """See Transport.append_bytes()."""
         raise TransportNotPossible('readonly transport')
     
     @classmethod
@@ -43,8 +47,12 @@ class ReadonlyTransportDecorator(TransportDecorator):
         """See Transport.delete_tree()."""
         raise TransportNotPossible('readonly transport')
 
-    def put(self, relpath, f, mode=None):
-        """See Transport.put()."""
+    def put_file(self, relpath, f, mode=None):
+        """See Transport.put_file()."""
+        raise TransportNotPossible('readonly transport')
+
+    def put_bytes(self, relpath, bytes, mode=None):
+        """See Transport.put_bytes()."""
         raise TransportNotPossible('readonly transport')
 
     def mkdir(self, relpath, mode=None):

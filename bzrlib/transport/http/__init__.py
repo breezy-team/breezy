@@ -169,19 +169,17 @@ class HttpTransportBase(Transport):
         else:
             # TODO: Don't call this with an array - no magic interfaces
             relpath_parts = relpath[:]
-        if len(relpath_parts) > 1:
-            # TODO: Check that the "within branch" part of the
-            # error messages below is relevant in all contexts
-            if relpath_parts[0] == '':
-                raise ValueError("path %r within branch %r seems to be absolute"
-                                 % (relpath, self._path))
-            # read only transports never manipulate directories
-            if self.is_readonly() and relpath_parts[-1] == '':
+        if relpath.startswith('/'):
+            basepath = []
+        else:
+            # Except for the root, no trailing slashes are allowed
+            if len(relpath_parts) > 1 and relpath_parts[-1] == '':
                 raise ValueError("path %r within branch %r seems to be a directory"
                                  % (relpath, self._path))
-        basepath = self._path.split('/')
-        if len(basepath) > 0 and basepath[-1] == '':
-            basepath = basepath[:-1]
+            basepath = self._path.split('/')
+            if len(basepath) > 0 and basepath[-1] == '':
+                basepath = basepath[:-1]
+
         for p in relpath_parts:
             if p == '..':
                 if len(basepath) == 0:
@@ -254,7 +252,9 @@ class HttpTransportBase(Transport):
             f.seek(start, (start < 0) and 2 or 0)
             start = f.tell()
             data = f.read(size)
-            assert len(data) == size
+            if len(data) != size:
+                raise errors.ShortReadvError(relpath, start, size,
+                                             actual=len(data))
             yield start, data
 
     @staticmethod
@@ -284,11 +284,11 @@ class HttpTransportBase(Transport):
 
         return combined
 
-    def put(self, relpath, f, mode=None):
-        """Copy the file-like or string object into the location.
+    def put_file(self, relpath, f, mode=None):
+        """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
         """
         raise TransportNotPossible('http PUT not supported')
 
@@ -300,7 +300,7 @@ class HttpTransportBase(Transport):
         """See Transport.rmdir."""
         raise TransportNotPossible('http does not support rmdir()')
 
-    def append(self, relpath, f):
+    def append_file(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """
@@ -449,7 +449,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if not self.parse_request(): # An error code has been sent, just exit
             return
         mname = 'do_' + self.command
-        if not hasattr(self, mname):
+        if getattr(self, mname, None) is None:
             self.send_error(501, "Unsupported method (%r)" % self.command)
             return
         method = getattr(self, mname)
