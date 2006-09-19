@@ -20,6 +20,7 @@
 from cStringIO import StringIO
 import subprocess
 import sys
+import urllib2
 
 import bzrlib
 from bzrlib import (
@@ -33,6 +34,7 @@ from bzrlib.transport import (
         memory,
         smart,
         )
+from bzrlib.transport.http import HTTPServerWithSmarts, SmartRequestHandler
 
 
 class SmartClientTests(tests.TestCase):
@@ -70,9 +72,10 @@ class BasicSmartTests(tests.TestCase):
     
     def test_smart_query_version(self):
         """Feed a canned query version to a server"""
+        # wire-to-wire, using the whole stack
         to_server = StringIO('hello\n')
         from_server = StringIO()
-        server = smart.SmartStreamServer(to_server, from_server, local.LocalTransport('file:///'))
+        server = smart.SmartServerStreamMedium(to_server, from_server, local.LocalTransport('file:///'))
         server._serve_one_request()
         self.assertEqual('ok\0011\n',
                          from_server.getvalue())
@@ -82,7 +85,7 @@ class BasicSmartTests(tests.TestCase):
         transport.put_bytes('testfile', 'contents\nof\nfile\n')
         to_server = StringIO('get\001./testfile\n')
         from_server = StringIO()
-        server = smart.SmartStreamServer(to_server, from_server, transport)
+        server = smart.SmartServerStreamMedium(to_server, from_server, transport)
         server._serve_one_request()
         self.assertEqual('ok\n'
                          '17\n'
@@ -241,14 +244,19 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
             'foo')
         
 
-class SmartServerTests(tests.TestCaseWithTransport):
-    """Test that call directly into the server logic, bypassing the network."""
+class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
+    """Test that call directly into the handler logic, bypassing the network."""
+
+    def test_construct_request_handler(self):
+        """Constructing a request handler should be easy and set defaults."""
+        handler = smart.SmartServerRequestHandler(None)
+        self.assertFalse(handler.finished_reading)
 
     def test_hello(self):
-        server = smart.SmartServer(None)
-        response = server.dispatch_command('hello', ())
-        self.assertEqual(('ok', '1'), response.args)
-        self.assertEqual(None, response.body)
+        handler = smart.SmartServerRequestHandler(None)
+        handler.dispatch_command('hello', ())
+        self.assertEqual(('ok', '1'), handler.response.args)
+        self.assertEqual(None, handler.response.body)
         
     def test_get_bundle(self):
         from bzrlib.bundle import serializer
@@ -257,21 +265,70 @@ class SmartServerTests(tests.TestCaseWithTransport):
         wt.add('hello')
         rev_id = wt.commit('add hello')
         
-        server = smart.SmartServer(self.get_transport())
-        response = server.dispatch_command('get_bundle', ('.', rev_id))
-        bundle = serializer.read_bundle(StringIO(response.body))
+        handler = smart.SmartServerRequestHandler(self.get_transport())
+        handler.dispatch_command('get_bundle', ('.', rev_id))
+        bundle = serializer.read_bundle(StringIO(handler.response.body))
+        self.assertEqual((), handler.response.args)
 
     def test_readonly_exception_becomes_transport_not_possible(self):
         """The response for a read-only error is ('ReadOnlyError')."""
-        server = smart.SmartServer(self.get_readonly_transport())
+        handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
         # send a mkdir for foo, with no explicit mode - should fail.
-        response = server.dispatch_command('mkdir', ('foo', ''))
+        handler.dispatch_command('mkdir', ('foo', ''))
         # and the failure should be an explicit ReadOnlyError
-        self.assertEqual(("ReadOnlyError", ), response.args)
+        self.assertEqual(("ReadOnlyError", ), handler.response.args)
         # XXX: TODO: test that other TransportNotPossible errors are
         # presented as TransportNotPossible - not possible to do that
         # until I figure out how to trigger that relatively cleanly via
         # the api. RBC 20060918
+
+    def test_hello_has_finished_body_on_dispatch(self):
+        """The 'hello' command should set finished_reading."""
+        handler = smart.SmartServerRequestHandler(None)
+        handler.dispatch_command('hello', ())
+        self.assertTrue(handler.finished_reading)
+        self.assertNotEqual(None, handler.response)
+
+    def test_put_bytes_non_atomic(self):
+        """'put_...' should set finished_reading after reading the bytes."""
+        handler = smart.SmartServerRequestHandler(self.get_transport())
+        handler.dispatch_command('put_non_atomic', ('a-file', '', 'F', ''))
+        self.assertFalse(handler.finished_reading)
+        handler.accept_body('1234')
+        self.assertFalse(handler.finished_reading)
+        handler.accept_body('5678')
+        handler.end_of_body()
+        self.assertTrue(handler.finished_reading)
+        self.assertEqual(('ok', ), handler.response.args)
+        self.assertEqual(None, handler.response.body)
+        
+    def test_readv_accept_body(self):
+        """'readv' should set finished_reading after reading offsets."""
+        self.build_tree(['a-file'])
+        handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
+        handler.dispatch_command('readv', ('a-file', ))
+        self.assertFalse(handler.finished_reading)
+        handler.accept_body('2,')
+        self.assertFalse(handler.finished_reading)
+        handler.accept_body('3')
+        handler.end_of_body()
+        self.assertTrue(handler.finished_reading)
+        self.assertEqual(('readv', ), handler.response.args)
+        # co - nte - nt of a-file is the file contents we are extracting from.
+        self.assertEqual('nte', handler.response.body)
+
+    def test_readv_short_read_response_contents(self):
+        """'readv' when a short read occurs sets the response appropriately."""
+        self.build_tree(['a-file'])
+        handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
+        handler.dispatch_command('readv', ('a-file', ))
+        # read beyond the end of the file.
+        handler.accept_body('100,1')
+        handler.end_of_body()
+        self.assertTrue(handler.finished_reading)
+        self.assertEqual(('ShortReadvError', 'a-file', '100', '1', '0'),
+            handler.response.args)
+        self.assertEqual(None, handler.response.body)
 
 
 class SmartTransportRegistration(tests.TestCase):
@@ -335,11 +392,11 @@ class InstrumentedClient(smart.SmartStreamClient):
         self._write_output_list.append(bytes)
 
 
-class InstrumentedServerProtocol(smart.SmartStreamServer):
+class InstrumentedServerProtocol(smart.SmartServerStreamMedium):
     """A smart server which is backed by memory and saves its write requests."""
 
     def __init__(self, write_output_list):
-        smart.SmartStreamServer.__init__(self, None, None,
+        smart.SmartServerStreamMedium.__init__(self, None, None,
             memory.MemoryTransport())
         self._write_output_list = write_output_list
 
@@ -366,9 +423,10 @@ class TestSmartProtocol(tests.TestCase):
         self.to_client = []
         self.smart_client = InstrumentedClient(self.to_server)
         self.smart_server = InstrumentedServerProtocol(self.to_client)
+        self.smart_server_request = smart.SmartServerRequestHandler(None)
 
     def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
-        client, server_protocol):
+        client, smart_server_request):
         """Check that smart (de)serialises offsets as expected.
         
         We check both serialisation and deserialisation at the same time
@@ -377,13 +435,19 @@ class TestSmartProtocol(tests.TestCase):
         
         :param expected_offsets: a readv offset list.
         :param expected_seralised: an expected serial form of the offsets.
-        :param server: a SmartServer instance.
+        :param smart_server_request: a SmartServerRequestHandler instance.
         """
-        offsets = server_protocol.smart_server._deserialise_offsets(
-            expected_serialised)
+        # XXX: 'smart_server_request' should be a SmartServerRequestProtocol in
+        # future.
+        offsets = smart_server_request._deserialise_offsets(expected_serialised)
         self.assertEqual(expected_offsets, offsets)
         serialised = client._serialise_offsets(offsets)
         self.assertEqual(expected_serialised, serialised)
+
+    def test_protocol_construction(self):
+        protocol = smart.SmartServerRequestProtocolOne(None, None)
+        self.assertFalse(protocol.finished_reading)
+        self.assertEqual(None, protocol.request)
 
     def test_server_offset_serialisation(self):
         """The Smart protocol serialises offsets as a comma and \n string.
@@ -393,15 +457,185 @@ class TestSmartProtocol(tests.TestCase):
         one that should coalesce.
         """
         self.assertOffsetSerialisation([], '',
-            self.smart_client, self.smart_server)
+            self.smart_client, self.smart_server_request)
         self.assertOffsetSerialisation([(1,2)], '1,2',
-            self.smart_client, self.smart_server)
+            self.smart_client, self.smart_server_request)
         self.assertOffsetSerialisation([(10,40), (0,5)], '10,40\n0,5',
-            self.smart_client, self.smart_server)
+            self.smart_client, self.smart_server_request)
         self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
-            '1,2\n3,4\n100,200', self.smart_client, self.smart_server)
+            '1,2\n3,4\n100,200', self.smart_client, self.smart_server_request)
+
+    def test_construct_version_one_protocol(self):
+        protocol = smart.SmartServerRequestProtocolOne(None, None)
+        self.assertEqual('', protocol.in_buffer)
+        self.assertFalse(protocol.has_dispatched)
+        # Once refactoring is complete, we don't need these assertions
+        self.assertFalse(hasattr(protocol, '_in'))
+        self.assertFalse(hasattr(protocol, '_out'))
+
+    def test_accept_bytes_to_protocol(self):
+        out_stream = StringIO()
+        protocol = smart.SmartServerRequestProtocolOne(out_stream, None)
+        protocol.accept_bytes('abc')
+        self.assertEqual('abc', protocol.in_buffer)
+        protocol.accept_bytes('\n')
+        self.assertEqual("error\x01Generic bzr smart protocol error: bad request"
+            " u'abc'\n", out_stream.getvalue())
+        self.assertTrue(protocol.has_dispatched)
+
+    def test_accept_body_bytes_to_protocol(self):
+        out_stream = StringIO()
+        protocol = smart.SmartServerRequestProtocolOne(out_stream, None)
+        protocol.has_dispatched = True
+        protocol.request = smart.SmartServerRequestHandler(None)
+        def handle_end_of_bytes():
+            self.end_received = True
+            self.assertEqual('abcdefg', protocol.request._body_bytes)
+            protocol.request.response = smart.SmartServerResponse(('ok', ))
+        protocol.request._end_of_body_handler = handle_end_of_bytes
+        protocol.accept_bytes('7\nabc')
+        protocol.accept_bytes('defgd')
+        protocol.accept_bytes('one\n')
+        self.assertTrue(self.end_received)
+
+    def test_sync_with_request_sets_finished_reading(self):
+        protocol = smart.SmartServerRequestProtocolOne(None, None)
+        request = smart.SmartServerRequestHandler(None)
+        protocol.sync_with_request(request)
+        self.assertFalse(protocol.finished_reading)
+        request.finished_reading = True
+        protocol.sync_with_request(request)
+        self.assertTrue(protocol.finished_reading)
 
 
+class LengthPrefixedBodyDecoder(tests.TestCase):
+
+    def test_construct(self):
+        decoder = smart.LengthPrefixedBodyDecoder()
+        self.assertFalse(decoder.finished_reading)
+        self.assertEqual('', decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+
+    def test_accept_bytes(self):
+        decoder = smart.LengthPrefixedBodyDecoder()
+        decoder.accept_bytes('')
+        self.assertFalse(decoder.finished_reading)
+        self.assertEqual('', decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+        decoder.accept_bytes('7')
+        self.assertFalse(decoder.finished_reading)
+        self.assertEqual('', decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+        decoder.accept_bytes('\na')
+        self.assertFalse(decoder.finished_reading)
+        self.assertEqual('a', decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+        decoder.accept_bytes('bcdefgd')
+        self.assertFalse(decoder.finished_reading)
+        self.assertEqual('bcdefg', decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+        decoder.accept_bytes('one')
+        self.assertFalse(decoder.finished_reading)
+        self.assertEqual('', decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+        decoder.accept_bytes('\nblarg')
+        self.assertTrue(decoder.finished_reading)
+        self.assertEqual('', decoder.read_pending_data())
+        self.assertEqual('blarg', decoder.unused_data)
+        
+    def test_accept_bytes_all_at_once_with_excess(self):
+        decoder = smart.LengthPrefixedBodyDecoder()
+        decoder.accept_bytes('1\nadone\nunused')
+        self.assertTrue(decoder.finished_reading)
+        self.assertEqual('a', decoder.read_pending_data())
+        self.assertEqual('unused', decoder.unused_data)
+
+    def test_accept_bytes_exact_end_of_body(self):
+        decoder = smart.LengthPrefixedBodyDecoder()
+        decoder.accept_bytes('1\na')
+        self.assertFalse(decoder.finished_reading)
+        self.assertEqual('a', decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+        decoder.accept_bytes('done\n')
+        self.assertTrue(decoder.finished_reading)
+        self.assertEqual('', decoder.read_pending_data())
+        self.assertEqual('', decoder.unused_data)
+
+
+class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
+    
+    def test_bulk_data(self):
+        # We should be able to send and receive bulk data in a single message
+        self.build_tree(['data-file'])
+        http_server = HTTPServerWithSmarts()
+        http_server.setUp()
+        self.addCleanup(http_server.tearDown)
+
+        http_transport = get_transport(http_server.get_url())
+        client = http_transport.get_smart_client()
+        answer = client._call_with_upload(
+            'readv', ('data-file',), '0,1')
+        answer_body = client._recv_bulk()
+
+        self.assertEqual(('readv',), answer)
+        self.assertEqual('c', answer_body)
+        
+    def test_http_server_with_smarts(self):
+        http_server = HTTPServerWithSmarts()
+        http_server.setUp()
+        self.addCleanup(http_server.tearDown)
+
+        post_body = 'hello\n'
+        expected_reply_body = 'ok\x011\n'
+
+        smart_server_url = http_server.get_url() + '.bzr/smart'
+        reply = urllib2.urlopen(smart_server_url, post_body).read()
+
+        self.assertEqual(expected_reply_body, reply)
+
+    def test_smart_http_post_request_handler(self):
+        http_server = HTTPServerWithSmarts()
+        http_server.setUp()
+        self.addCleanup(http_server.tearDown)
+        httpd = http_server._get_httpd()
+
+        socket = SampleSocket(
+            'POST /.bzr/smart HTTP/1.0\r\n'
+            # HTTP/1.0 posts must have a Content-Length.
+            'Content-Length: 6\r\n'
+            '\r\n'
+            'hello\n')
+        request_handler = SmartRequestHandler(
+            socket, ('localhost', 80), httpd)
+        response = socket.writefile.getvalue()
+        self.assertStartsWith(response, 'HTTP/1.0 200 ')
+        # This includes the end of the HTTP headers, and all the body.
+        expected_end_of_response = '\r\n\r\nok\x011\n'
+        self.assertEndsWith(response, expected_end_of_response)
+
+
+class SampleSocket(object):
+    """A socket-like object for use in testing the HTTP request handler."""
+    
+    def __init__(self, socket_read_content):
+        """Constructs a sample socket.
+
+        :param socket_read_content: a byte sequence
+        """
+        # Use plain python StringIO so we can monkey-patch the close method to
+        # not discard the contents.
+        from StringIO import StringIO
+        self.readfile = StringIO(socket_read_content)
+        self.writefile = StringIO()
+        self.writefile.close = lambda: None
+        
+    def makefile(self, mode='r', bufsize=None):
+        if 'r' in mode:
+            return self.readfile
+        else:
+            return self.writefile
+
+        
 # TODO: Client feature that does get_bundle and then installs that into a
 # branch; this can be used in place of the regular pull/fetch operation when
 # coming from a smart server.

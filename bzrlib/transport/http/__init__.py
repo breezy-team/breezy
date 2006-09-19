@@ -39,7 +39,13 @@ from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError, InvalidURL)
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport, register_transport, Server
+from bzrlib.transport import (
+    get_transport,
+    register_transport,
+    Server,
+    smart,
+    Transport,
+    )
 from bzrlib.transport.http.response import (HttpMultipartRangeResponse,
                                             HttpRangeResponse)
 from bzrlib.ui import ui_factory
@@ -502,11 +508,13 @@ class HttpServer(Server):
         Server.__init__(self)
         self.request_handler = request_handler
 
-    def _http_start(self):
-        httpd = None
-        httpd = TestingHTTPServer(('localhost', 0),
+    def _get_httpd(self):
+        return TestingHTTPServer(('localhost', 0),
                                   self.request_handler,
                                   self)
+
+    def _http_start(self):
+        httpd = self._get_httpd()
         host, port = httpd.socket.getsockname()
         self._http_base_url = '%s://localhost:%s/' % (self._url_protocol, port)
         self._http_starting.release()
@@ -569,4 +577,39 @@ class HttpServer(Server):
         # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
         return 'http://127.0.0.1:1/'
+
+
+class HTTPServerWithSmarts(HttpServer):
+    """HTTPServerWithSmarts extends the HttpServer with POST methods that will
+    trigger a smart server to execute with a transport rooted at the rootdir of
+    the HTTP server.
+    """
+
+    def __init__(self):
+        HttpServer.__init__(self, SmartRequestHandler)
+
+
+class SmartRequestHandler(TestingHTTPRequestHandler):
+    """Extend TestingHTTPRequestHandler to support smart client POSTs."""
+
+    def do_POST(self):
+        """Hand the request off to a smart server instance."""
+        self.send_response(200)
+        self.send_header("Content-type", "application/octet-stream")
+        transport = get_transport(self.server.test_case._home_dir)
+        out_buffer = StringIO()
+        smart_protocol_request = smart.SmartServerRequestProtocolOne(out_buffer,
+                transport)
+        # if this fails, we should return 400 bad request, but failure is
+        # failure for now - RBC 20060919
+        data_length = int(self.headers['Content-Length'])
+        first_line = self.rfile.readline()
+        data = self.rfile.read(data_length - len(first_line))
+        smart_protocol_request.accept_bytes(first_line)
+        smart_protocol_request.accept_bytes(data)
+        assert smart_protocol_request.finished_reading, \
+            "not finished reading, but all data sent to protocol."
+        self.send_header("Content-Length", str(len(out_buffer.getvalue())))
+        self.end_headers()
+        self.wfile.write(out_buffer.getvalue())
 
