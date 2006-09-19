@@ -173,28 +173,17 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
             continue
         assert kind[0] == kind[1] or None in kind
         # the only 'kind change' permitted is creation/deletion
-
-        # If the name changes, or the parent_id changes, we have a rename
-        # (if we move a parent, that doesn't count as a rename for the file)
-        if versioned[0] != versioned[1]:
-            if versioned == (False, True) and (kind[0] != kind[1]
-                                               and kind[1] is not None):
-                delta.added.append((path, file_id, kind[1]))
-            else:
-                assert versioned == (True, False)
-                old_path = old_tree.id2path(file_id)
-                old_kind = old_tree.kind(file_id)
-                delta.removed.append((old_path, file_id, old_kind))
-        elif kind[0] != kind[1]:
-            if kind[0] is None:
-                delta.added.append((path, file_id, kind[1]))
-            else:
-                assert kind[1] is None
-                old_path = old_tree.id2path(file_id)
-                old_kind = old_tree.kind(file_id)
-                delta.removed.append((old_path, file_id, old_kind))
-                
+        fully_present = tuple((versioned[x] and kind[x] is not None) for
+                              x in range(2))
+        if fully_present[1] and not fully_present[0]:
+            delta.added.append((path, file_id, kind[1]))
+        elif fully_present[0] and not fully_present[1]:
+            old_path = old_tree.id2path(file_id)
+            delta.removed.append((old_path, file_id, kind[0]))
         elif name[0] != name[1] or parent_id[0] != parent_id[1]:
+            # If the name changes, or the parent_id changes, we have a rename
+            # (if we move a parent, that doesn't count as a rename for the
+            # file)
             old_path = old_tree.id2path(file_id)
             delta.renamed.append((old_path,
                                   path,
