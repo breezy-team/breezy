@@ -32,6 +32,16 @@ from errors import (DebianError,
 from bdlogging import info, debug
 from util import recursive_copy
 
+
+def remove_bzrbuilddeb_dir(dir):
+  """Removes the .bzr-builddeb dir from the specfied directory."""
+
+  #Is this what we want??
+  bzr_builddeb_dir = os.path.join(dir, ".bzr-builddeb")
+  if os.path.exists(bzr_builddeb_dir) and os.path.isdir(bzr_builddeb_dir):
+    shutil.rmtree(bzr_builddeb_dir)
+
+
 class DebBuild(object):
   """The object that does the building work."""
 
@@ -59,6 +69,7 @@ class DebBuild(object):
     source_dir = self._properties.source_dir()
     info("Exporting to %s", source_dir)
     export(self._tree,source_dir,None,None)
+    remove_bzrbuilddeb_dir(source_dir)
 
   def build(self, builder):
     wd = os.getcwdu()
@@ -139,6 +150,7 @@ class DebMergeBuild(DebBuild):
     export(self._tree,export_dir,None,None)
     recursive_copy(tempdir, source_dir)
     shutil.rmtree(basetempdir)
+    remove_bzrbuilddeb_dir(os.path.join(source_dir, "debian"))
 
 
 
