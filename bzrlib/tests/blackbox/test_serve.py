@@ -164,13 +164,13 @@ class TestBzrServe(TestCaseWithTransport):
             from bzrlib.transport.sftp import SFTPServer
         except ParamikoNotPresent:
             raise TestSkipped('Paramiko not installed')
-        
         from bzrlib.tests.stub_sftp import StubServer
-
+        
         # Make a branch
         self.make_branch('a_branch')
 
         # Start an SSH server
+        self.command_executed = []
         # XXX: This is horrible -- we define a really dumb SSH server that
         # executes commands, and manage the hooking up of stdin/out/err to the
         # SSH channel ourselves.  Surely this has already been implemented
@@ -180,32 +180,30 @@ class TestBzrServe(TestCaseWithTransport):
             test = self
 
             def check_channel_exec_request(self, channel, command):
-                self.test.command_executed = command
+                self.test.command_executed.append(command)
                 proc = subprocess.Popen(
                     command, shell=True, stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 
                 # XXX: horribly inefficient, not to mention ugly.
-                def do_stdin():
-                    # copy bytes from the channel to the subprocess's stdin
+                # Start a thread for each of stdin/out/err, and relay bytes from
+                # the subprocess to channel and vice versa.
+                def ferry_bytes(read, write, close):
                     while True:
-                        bytes = channel.recv(1)
+                        bytes = read(1)
                         if bytes == '':
-                            proc.stdin.close()
+                            close()
                             break
-                        proc.stdin.write(bytes)
-                        proc.stdin.flush()
-                threading.Thread(target=do_stdin).start()
+                        write(bytes)
 
-                def ferry_bytes(pipe):
-                    while True:
-                        bytes = pipe.read(1)
-                        if bytes == '':
-                            channel.close()
-                            break
-                        channel.sendall(bytes)
-                threading.Thread(target=ferry_bytes, args=(proc.stdout,)).start()
-                threading.Thread(target=ferry_bytes, args=(proc.stderr,)).start()
+                file_functions = [
+                    (channel.recv, proc.stdin.write, proc.stdin.close),
+                    (proc.stdout.read, channel.sendall, channel.close),
+                    (proc.stderr.read, channel.sendall_stderr, channel.close)]
+                for read, write, close in file_functions:
+                    t = threading.Thread(
+                        target=ferry_bytes, args=(read, write, close))
+                    t.start()
 
                 return True
 
@@ -239,7 +237,7 @@ class TestBzrServe(TestCaseWithTransport):
                 os.environ['BZR_REMOTE_PATH'] = orig_bzr_remote_path
 
         self.assertEqual(
-            '%s serve --inet --directory=/ --allow-writes'
-            % self.get_bzr_path(),
+            ['%s serve --inet --directory=/ --allow-writes'
+             % self.get_bzr_path()],
             self.command_executed)
         
