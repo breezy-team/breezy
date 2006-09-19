@@ -2782,8 +2782,10 @@ class cmd_wait_until_signalled(Command):
 
 
 class cmd_serve(Command):
-    """Run the bzr server.
-    """
+    """Run the bzr server."""
+
+    aliases = ['server']
+
     takes_options = [
         Option('inet',
                help='serve on stdin/out for use from inetd or sshd'),
@@ -2795,14 +2797,22 @@ class cmd_serve(Command):
         Option('directory',
                help='serve contents of directory',
                type=unicode),
+        Option('allow-writes',
+               help='By default the server is a readonly server. Supplying '
+                    '--allow-writes enables write access to the contents of '
+                    'the served directory and below. '
+                ),
         ]
 
-    def run(self, port=None, inet=False, directory=None):
+    def run(self, port=None, inet=False, directory=None, allow_writes=False):
         from bzrlib.transport import smart
         from bzrlib.transport import get_transport
         if directory is None:
             directory = os.getcwd()
-        t = get_transport(directory)
+        url = 'file://' + urlutils.escape(directory)
+        if not allow_writes:
+            url = 'readonly+' + url
+        t = get_transport(url)
         if inet:
             server = smart.SmartStreamServer(sys.stdin, sys.stdout, t)
         elif port is not None:

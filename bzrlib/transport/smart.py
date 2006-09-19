@@ -49,6 +49,8 @@ limited to a directory?
 """
 
 
+# TODO: _translate_error should be on the client, not the transport because
+#     error coding is wire protocol specific.
 
 # TODO: A plain integer from query_version is too simple; should give some
 # capabilities too?
@@ -465,6 +467,11 @@ class SmartServer(object):
             # This handles UnicodeEncodeError or UnicodeDecodeError
             return SmartServerResponse((e.__class__.__name__,
                     e.encoding, val, str(e.start), str(e.end), e.reason))
+        except errors.TransportNotPossible, e:
+            if e.msg == "readonly transport":
+                return SmartServerResponse(('ReadOnlyError', ))
+            else:
+                raise
 
 
 class SmartTCPServer(object):
@@ -829,7 +836,10 @@ class SmartTransport(transport.Transport):
 
     def _translate_error(self, resp, orig_path=None):
         """Raise an exception from a response"""
-        what = resp[0]
+        if resp is None:
+            what = None
+        else:
+            what = resp[0]
         if what == 'ok':
             return
         elif what == 'NoSuchFile':
@@ -861,6 +871,8 @@ class SmartTransport(transport.Transport):
                 raise UnicodeDecodeError(encoding, val, start, end, reason)
             elif what == 'UnicodeEncodeError':
                 raise UnicodeEncodeError(encoding, val, start, end, reason)
+        elif what == "ReadOnlyError":
+            raise errors.TransportNotPossible('readonly transport')
         else:
             raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 
@@ -1015,7 +1027,7 @@ class SmartTCPTransport(SmartTransport):
             self._socket.close()
 
 try:
-    from bzrlib.transport import sftp
+    from bzrlib.transport import sftp, ssh
 except errors.ParamikoNotPresent:
     # no paramiko, no SSHTransport.
     pass
@@ -1033,13 +1045,12 @@ else:
                 raise errors.InvalidURL(path=url, extra="invalid port %s" % self._port)
 
         def _connect_to_server(self):
-            # XXX: don't hardcode vendor
-            # XXX: cannot pass password to SSHSubprocess yet
-            if self._password is not None:
-                raise errors.InvalidURL("SSH smart transport doesn't handle passwords")
-            self._ssh_connection = sftp.SSHSubprocess(self._host, 'openssh',
-                    port=self._port, user=self._username,
-                    command=['bzr', 'serve', '--inet'])
+            executable = os.environ.get('BZR_REMOTE_PATH', 'bzr')
+            vendor = ssh._get_ssh_vendor()
+            self._ssh_connection = vendor.connect_ssh(self._username,
+                    self._password, self._host, self._port,
+                    command=[executable, 'serve', '--inet', '--directory=/',
+                             '--allow-writes'])
             return self._ssh_connection.get_filelike_channels()
 
         def disconnect(self):
