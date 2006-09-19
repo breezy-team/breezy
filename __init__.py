@@ -140,6 +140,13 @@ class cmd_builddeb(Command):
     if merge:
       info("Running in merge mode")
 
+    if not ignore_unknowns:
+      ignore_unknowns = config.ignore_unknowns()
+
+    if ignore_unknowns:
+      info("Not stopping the build if there are any unknown files. If you "
+          +"have just created a file, make sure you have added it.")
+
     if result is None:
       result = config.result_dir()
     if result is not None:

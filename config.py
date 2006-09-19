@@ -108,6 +108,9 @@ class DebBuildConfig(object):
   def quick_builder(self):
     return self._get_best_opt('quick-builder')
 
+  def ignore_unknowns(self):
+    return self._get_best_bool('ignore-unknowns', False)
+
 def _test():
   import doctest
   doctest.testmod()
