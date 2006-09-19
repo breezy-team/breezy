@@ -30,20 +30,22 @@ import random
 import select
 import socket
 import stat
-import subprocess
 import sys
 import time
 import urllib
 import urlparse
 import weakref
 
-from bzrlib.errors import (FileExists, 
+from bzrlib import (
+    errors,
+    urlutils,
+    )
+from bzrlib.errors import (FileExists,
                            NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError, 
+                           LockError,
                            PathError,
                            ParamikoNotPresent,
-                           UnknownSSH,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.trace import mutter, warning
@@ -54,7 +56,6 @@ from bzrlib.transport import (
     ssh,
     Transport,
     )
-import bzrlib.urlutils as urlutils
 
 try:
     import paramiko
@@ -179,6 +180,14 @@ class SFTPUrlHandling(Transport):
             path = ''
         return (scheme, username, password, host, port, path)
 
+    def abspath(self, relpath):
+        """Return the full url to the given relative path.
+        
+        @param relpath: the relative path or path components
+        @type relpath: str or list
+        """
+        return self._unparse_url(self._remote_path(relpath))
+    
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
         
@@ -234,15 +243,6 @@ class SFTPTransport(SFTPUrlHandling):
         else:
             return SFTPTransport(self.abspath(offset), self)
 
-    def abspath(self, relpath):
-        """
-        Return the full url to the given relative path.
-        
-        @param relpath: the relative path or path components
-        @type relpath: str or list
-        """
-        return self._unparse_url(self._remote_path(relpath))
-    
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
         
@@ -251,29 +251,105 @@ class SFTPTransport(SFTPUrlHandling):
         :return: a path prefixed with / for regular abspath-based urls, or a
             path that does not begin with / for urls which begin with /~/.
         """
-        # FIXME: share the common code across transports
+        # how does this work? 
+        # it processes relpath with respect to 
+        # our state:
+        # firstly we create a path to evaluate: 
+        # if relpath is an abspath or homedir path, its the entire thing
+        # otherwise we join our base with relpath
+        # then we eliminate all empty segments (double //'s) outside the first
+        # two elements of the list. This avoids problems with trailing 
+        # slashes, or other abnormalities.
+        # finally we evaluate the entire path in a single pass
+        # '.'s are stripped,
+        # '..' result in popping the left most already 
+        # processed path (which can never be empty because of the check for
+        # abspath and homedir meaning that its not, or that we've used our
+        # path. If the pop would pop the root, we ignore it.
+
+        # Specific case examinations:
+        # remove the special casefor ~: if the current root is ~/ popping of it
+        # = / thus our seed for a ~ based path is ['', '~']
+        # and if we end up with [''] then we had basically ('', '..') (which is
+        # '/..' so we append '' if the length is one, and assert that the first
+        # element is still ''. Lastly, if we end with ['', '~'] as a prefix for
+        # the output, we've got a homedir path, so we strip that prefix before
+        # '/' joining the resulting list.
+        #
+        # case one: '/' -> ['', ''] cannot shrink
+        # case two: '/' + '../foo' -> ['', 'foo'] (take '', '', '..', 'foo')
+        #           and pop the second '' for the '..', append 'foo'
+        # case three: '/~/' -> ['', '~', ''] 
+        # case four: '/~/' + '../foo' -> ['', '~', '', '..', 'foo'],
+        #           and we want to get '/foo' - the empty path in the middle
+        #           needs to be stripped, then normal path manipulation will 
+        #           work.
+        # case five: '/..' ['', '..'], we want ['', '']
+        #            stripping '' outside the first two is ok
+        #            ignore .. if its too high up
+        #
+        # lastly this code is possibly reusable by FTP, but not reusable by
+        # local paths: ~ is resolvable correctly, nor by HTTP or the smart
+        # server: ~ is resolved remotely.
+        # 
+        # however, a version of this that acts on self.base is possible to be
+        # written which manipulates the URL in canonical form, and would be
+        # reusable for all transports, if a flag for allowing ~/ at all was
+        # provided.
         assert isinstance(relpath, basestring)
-        basepath = self._path.split('/')
+        relpath = urlutils.unescape(relpath)
+
+        # case 1)
         if relpath.startswith('/'):
-            basepath = ['', '']
-        relpath = urlutils.unescape(relpath).split('/')
-        if len(basepath) > 0 and basepath[-1] == '':
-            basepath = basepath[:-1]
+            # abspath - normal split is fine.
+            current_path = relpath.split('/')
+        elif relpath.startswith('~/'):
+            # root is homedir based: normal split and prefix '' to remote the
+            # special case
+            current_path = [''].extend(relpath.split('/'))
+        else:
+            # root is from the current directory:
+            if self._path.startswith('/'):
+                # abspath, take the regular split
+                current_path = []
+            else:
+                # homedir based, add the '', '~' not present in self._path
+                current_path = ['', '~']
+            # add our current dir
+            current_path.extend(self._path.split('/'))
+            # add the users relpath
+            current_path.extend(relpath.split('/'))
+        # strip '' segments that are not in the first one - the leading /.
+        to_process = current_path[:1]
+        for segment in current_path[1:]:
+            if segment != '':
+                to_process.append(segment)
 
-        for p in relpath:
-            if p == '..':
-                if len(basepath) == 0:
-                    # In most filesystems, a request for the parent
-                    # of root, just returns root.
-                    continue
-                basepath.pop()
-            elif p == '.':
-                continue # No-op
-            elif p != '':
-                basepath.append(p)
+        # process '.' and '..' segments into output_path.
+        output_path = []
+        for segment in to_process:
+            if segment == '..':
+                # directory pop. Remove a directory 
+                # as long as we are not at the root
+                if len(output_path) > 1:
+                    output_path.pop()
+                # else: pass
+                # cannot pop beyond the root, so do nothing
+            elif segment == '.':
+                continue # strip the '.' from the output.
+            else:
+                # this will append '' to output_path for the root elements,
+                # which is appropriate: its why we strip '' in the first pass.
+                output_path.append(segment)
 
-        path = '/'.join(basepath)
-        # mutter('relpath => remotepath %s => %s', relpath, path)
+        # check output special cases:
+        if output_path == ['']:
+            # [''] -> ['', '']
+            output_path = ['', '']
+        elif output_path[:2] == ['', '~']:
+            # ['', '~', ...] -> ...
+            output_path = output_path[2:]
+        path = '/'.join(output_path)
         return path
 
     def relpath(self, abspath):
@@ -331,13 +407,13 @@ class SFTPTransport(SFTPUrlHandling):
             fp = self._sftp.file(path, mode='rb')
             readv = getattr(fp, 'readv', None)
             if readv:
-                return self._sftp_readv(fp, offsets)
+                return self._sftp_readv(fp, offsets, relpath)
             mutter('seek and read %s offsets', len(offsets))
-            return self._seek_and_read(fp, offsets)
+            return self._seek_and_read(fp, offsets, relpath)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
 
-    def _sftp_readv(self, fp, offsets):
+    def _sftp_readv(self, fp, offsets, relpath='<unknown>'):
         """Use the readv() member of fp to do async readv.
 
         And then read them using paramiko.readv(). paramiko.readv()
@@ -430,9 +506,15 @@ class SFTPTransport(SFTPUrlHandling):
                 yield cur_offset_and_size[0], this_data
                 cur_offset_and_size = offset_stack.next()
 
+            # We read a coalesced entry, so mark it as done
+            cur_coalesced = None
             # Now that we've read all of the data for this coalesced section
             # on to the next
             cur_coalesced = cur_coalesced_stack.next()
+
+        if cur_coalesced is not None:
+            raise errors.ShortReadvError(relpath, cur_coalesced.start,
+                cur_coalesced.length, len(data))
 
     def put_file(self, relpath, f, mode=None):
         """
@@ -940,13 +1022,14 @@ class SocketDelay(object):
 class SFTPServer(Server):
     """Common code for SFTP server facilities."""
 
-    def __init__(self):
+    def __init__(self, server_interface=StubServer):
         self._original_vendor = None
         self._homedir = None
         self._server_homedir = None
         self._listener = None
         self._root = None
         self._vendor = ssh.ParamikoVendor()
+        self._server_interface = server_interface
         # sftp server logs
         self.logs = []
         self.add_latency = 0
@@ -977,7 +1060,7 @@ class SFTPServer(Server):
         f.close()
         host_key = paramiko.RSAKey.from_private_key_file(key_file)
         ssh_server.add_server_key(host_key)
-        server = StubServer(self)
+        server = self._server_interface(self)
         ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer,
                                          StubSFTPServer, root=self._root,
                                          home=self._server_homedir)
@@ -1037,7 +1120,6 @@ class SFTPServerWithoutSSH(SFTPServer):
         # Re-import these as locals, so that they're still accessible during
         # interpreter shutdown (when all module globals get set to None, leading
         # to confusing errors like "'NoneType' object has no attribute 'error'".
-        import socket, errno
         class FakeChannel(object):
             def get_transport(self):
                 return self
