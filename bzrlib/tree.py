@@ -420,13 +420,12 @@ class InterTree(InterObject):
         (file_id, path, changed_content, versioned, parent, name, kind,
          executable)
 
-        file_id and path are always returned.  Path is relative to the to_tree.
-        changed_content is True if the file's content has changed.  This
-        includes changes to its kind.
+        Path is relative to the to_tree.  changed_content is True if the file's
+        content has changed.  This includes changes to its kind, and to
+        a symlink's target.
 
-        versioned, parent, name, kind, executable are None if unchanged, or
-        tuples of (from, to) if changed.  If a file is missing in a tree, its
-        kind is None.
+        versioned, parent, name, kind, executable are tuples of (from, to) if
+        changed.  If a file is missing in a tree, its kind is None.
 
         Iteration is done in parent-to-child order, relative to the to_tree.
         """
@@ -436,19 +435,13 @@ class InterTree(InterObject):
             except errors.NoSuchFile:
                 return None
 
-        def compared(from_value, to_value):
-            if from_value != to_value:
-                return (from_value, to_value)
-            else:
-                return None
-
         to_paths = {}
         for path, to_entry in to_tree.iter_entries_by_dir():
             file_id = to_entry.file_id
             to_paths[file_id] = path
             changed_content = False
             from_versioned = (file_id in from_tree)
-            versioned = compared(from_versioned, True)
+            versioned = (from_versioned, True)
             if from_versioned:
                 from_kind = get_versioned_kind(from_tree, file_id)
                 if from_kind is not None:
@@ -465,8 +458,8 @@ class InterTree(InterObject):
                 from_name = None
                 from_executable = None
             to_kind = get_versioned_kind(to_tree, file_id)
-            kind = compared(from_kind, to_kind)
-            if kind is not None:
+            kind = (from_kind, to_kind)
+            if kind[0] != kind[1]:
                 changed_content = True
             elif from_kind == 'file':
                 if (from_tree.get_file_sha1(file_id) !=
@@ -476,17 +469,17 @@ class InterTree(InterObject):
                 if (from_tree.get_symlink_target(file_id) != 
                     to_tree.get_symlink_target(file_id)):
                     changed_content = True
-            parent = compared(from_parent, to_entry.parent_id)
-            name = compared(from_name, to_entry.name)
+            parent = (from_parent, to_entry.parent_id)
+            name = (from_name, to_entry.name)
             if to_kind is not None:
                 to_executable = (to_tree.is_executable(file_id) not in 
                                  (False, None))
             else:
                 to_executable = None
-            executable = compared(from_executable, to_executable)
-            if (changed_content is not False or versioned is not None or
-                parent is not None or name is not None or executable is not
-                None or include_unchanged):
+            executable = (from_executable, to_executable)
+            if (changed_content is not False or versioned[0] != versioned[1] 
+                or parent[0] != parent[1] or name[0] != name[1] or 
+                executable[0] != executable[1] or include_unchanged):
                 yield (file_id, path, changed_content, versioned, parent,
                        name, kind, executable)
 

@@ -171,48 +171,43 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
             continue
         if file_id == root_id:
             continue
-        assert kind is None or None in kind
+        assert kind[0] == kind[1] or None in kind
         # the only 'kind change' permitted is creation/deletion
-        if kind is not None:
-            new_kind = kind[1]
-        else:
-            try:
-                new_kind = new_tree.kind(file_id)
-            except errors.NoSuchFile:
-                new_kind = None
 
         # If the name changes, or the parent_id changes, we have a rename
         # (if we move a parent, that doesn't count as a rename for the file)
-        if versioned is not None:
-            if versioned == (False, True) and (kind is not None 
+        if versioned[0] != versioned[1]:
+            if versioned == (False, True) and (kind[0] != kind[1]
                                                and kind[1] is not None):
-                delta.added.append((path, file_id, new_kind))
+                delta.added.append((path, file_id, kind[1]))
             else:
                 assert versioned == (True, False)
                 old_path = old_tree.id2path(file_id)
                 old_kind = old_tree.kind(file_id)
                 delta.removed.append((old_path, file_id, old_kind))
-        elif kind is not None:
+        elif kind[0] != kind[1]:
             if kind[0] is None:
-                delta.added.append((path, file_id, new_kind))
+                delta.added.append((path, file_id, kind[1]))
             else:
                 assert kind[1] is None
                 old_path = old_tree.id2path(file_id)
                 old_kind = old_tree.kind(file_id)
                 delta.removed.append((old_path, file_id, old_kind))
                 
-        elif name is not None or parent_id is not None:
+        elif name[0] != name[1] or parent_id[0] != parent_id[1]:
             old_path = old_tree.id2path(file_id)
             delta.renamed.append((old_path,
                                   path,
                                   file_id, 
-                                  new_kind,
-                                  content_change, (executable is not None)))
-        elif content_change is True or executable is not None:
-            delta.modified.append((path, file_id, new_kind,
-                                   content_change, (executable is not None)))
+                                  kind[1],
+                                  content_change, 
+                                  (executable[0] != executable[1])))
+        elif content_change is True or executable[0] != executable[1]:
+            delta.modified.append((path, file_id, kind[1],
+                                   content_change, 
+                                   (executable[0] != executable[1])))
         else:
-            delta.unchanged.append((path, file_id, new_kind))
+            delta.unchanged.append((path, file_id, kind[1]))
 
     delta.removed.sort()
     delta.added.sort()
