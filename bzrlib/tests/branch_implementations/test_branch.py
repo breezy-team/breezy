@@ -391,22 +391,26 @@ class TestBranch(TestCaseWithBranch):
         tree_a = self.make_branch_and_tree('a')
         branch_a = tree_a.branch
         checkout_b = branch_a.create_checkout('b')
+        self.assertEqual(None, checkout_b.last_revision())
         checkout_b.commit('rev1', rev_id='rev1')
         self.assertEqual('rev1', branch_a.last_revision())
         self.assertNotEqual(checkout_b.branch.base, branch_a.base)
 
         checkout_c = branch_a.create_checkout('c', lightweight=True)
+        self.assertEqual('rev1', checkout_c.last_revision())
         checkout_c.commit('rev2', rev_id='rev2')
         self.assertEqual('rev2', branch_a.last_revision())
         self.assertEqual(checkout_c.branch.base, branch_a.base)
 
         os.mkdir('d')
         checkout_d = branch_a.create_checkout('d', lightweight=True)
+        self.assertEqual('rev2', checkout_d.last_revision())
         os.mkdir('e')
         checkout_e = branch_a.create_checkout('e')
+        self.assertEqual('rev2', checkout_e.last_revision())
 
     def test_create_anonymous_lightweight_checkout(self):
-        """A checkout from a readonly branch should succeed."""
+        """A lightweight checkout from a readonly branch should succeed."""
         tree_a = self.make_branch_and_tree('a')
         rev_id = tree_a.commit('put some content in the branch')
         source_branch = bzrlib.branch.Branch.open(
@@ -415,6 +419,18 @@ class TestBranch(TestCaseWithBranch):
         self.assertRaises((errors.LockError, errors.TransportNotPossible),
             source_branch.lock_write)
         checkout = source_branch.create_checkout('c', lightweight=True)
+        self.assertEqual(rev_id, checkout.last_revision())
+
+    def test_create_anonymous_heavyweight_checkout(self):
+        """A regular checkout from a readonly branch should succeed."""
+        tree_a = self.make_branch_and_tree('a')
+        rev_id = tree_a.commit('put some content in the branch')
+        source_branch = bzrlib.branch.Branch.open(
+            'readonly+' + tree_a.bzrdir.root_transport.base)
+        # sanity check that the test will be valid
+        self.assertRaises((errors.LockError, errors.TransportNotPossible),
+            source_branch.lock_write)
+        checkout = source_branch.create_checkout('c')
         self.assertEqual(rev_id, checkout.last_revision())
 
 

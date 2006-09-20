@@ -932,10 +932,7 @@ class TestCase(unittest.TestCase):
             for env_var, value in old_env.iteritems():
                 osutils.set_or_unset_env(env_var, value)
 
-        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
-        if not os.path.isfile(bzr_path):
-            # We are probably installed. Assume sys.argv is the right file
-            bzr_path = sys.argv[0]
+        bzr_path = self.get_bzr_path()
 
         try:
             # win32 subprocess doesn't support preexec_fn
@@ -947,6 +944,14 @@ class TestCase(unittest.TestCase):
         finally:
             restore_environment()
         return process
+
+    def get_bzr_path(self):
+        """Return the path of the 'bzr' executable for this test suite."""
+        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        if not os.path.isfile(bzr_path):
+            # We are probably installed. Assume sys.argv is the right file
+            bzr_path = sys.argv[0]
+        return bzr_path
 
     def finish_bzr_subprocess(self, process, retcode=0, send_signal=None,
                               universal_newlines=False, process_args=None):

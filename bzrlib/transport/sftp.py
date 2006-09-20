@@ -1022,13 +1022,14 @@ class SocketDelay(object):
 class SFTPServer(Server):
     """Common code for SFTP server facilities."""
 
-    def __init__(self):
+    def __init__(self, server_interface=StubServer):
         self._original_vendor = None
         self._homedir = None
         self._server_homedir = None
         self._listener = None
         self._root = None
         self._vendor = ssh.ParamikoVendor()
+        self._server_interface = server_interface
         # sftp server logs
         self.logs = []
         self.add_latency = 0
@@ -1059,7 +1060,7 @@ class SFTPServer(Server):
         f.close()
         host_key = paramiko.RSAKey.from_private_key_file(key_file)
         ssh_server.add_server_key(host_key)
-        server = StubServer(self)
+        server = self._server_interface(self)
         ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer,
                                          StubSFTPServer, root=self._root,
                                          home=self._server_homedir)
