@@ -85,6 +85,15 @@ Then can have the configuration options:
     The command used to build the package if the ``--quick`` option is used. 
     (Defaults to ``fakeroot debian/rules binary``).
 
+  * ``ignore-unknowns = True``
+
+    Don't count unknown files in the tree as changes, and so allow the build
+    to proceed with them. Note that the unknown files will not be used in the
+    build and so you must ``bzr add`` them if you want to use them. If they
+    are not wanted in the build then a better solution is probably to add
+    an ignore for them or delete them. (Defaults to False, as I am forgetful,
+    and it helps to remind me to add files after I create them.)
+
 The idea is that certain options can be set in ``.bzr-builddeb/default.conf`` 
 that apply to the package on all systems, or that there is a default that is 
 wanted that differs from the default provided. ``merge = True`` is a perfect 
