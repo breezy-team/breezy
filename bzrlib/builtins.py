@@ -2325,11 +2325,19 @@ class cmd_remerge(Command):
             return 0
 
 class cmd_revert(Command):
-    """Reverse all changes since the last commit.
+    """Revert files to the last-committed version.
 
     Only versioned files are affected.  Specify filenames to revert only 
-    those files.  By default, any files that are changed will be backed up
-    first.  Backup files have a '~' appended to their name.
+    those files.  To revert files to a different revision, specify --revision.
+
+    To remove only some changes, without reverting to a prior version, use
+    merge instead.  For example, "merge . --r-2..-3" will remove the changes
+    introduced by -2, without affecting the changes introduced by -1.  Or
+    to remove certain changes on a hunk-by-hunk basis, see the Shelf plugin.
+    
+    By default, any files that have been manually changed will be backed up
+    first.  (Files changed only by merge are not backed up.)  Backup files have
+    '~#~' appended to their name, where # is a number.
     """
     takes_options = ['revision', 'no-backup']
     takes_args = ['file*']
