@@ -363,19 +363,26 @@ class LockDir(object):
         # XXX: the transport interface doesn't let us guard 
         # against operations there taking a long time.
         deadline = time.time() + timeout
-        commented = False
+        last_info = None
         while True:
             try:
                 self.attempt_lock()
                 return
             except LockContention:
                 pass
-            if not commented:
-                commented = True
-                self._report_function('Unable to obtain lock on %s\n'
+            new_info = self.peek()
+            mutter('last_info: %s, new info: %s', last_info, new_info)
+            if new_info is not None and new_info != last_info:
+                last_info = new_info
+                formatted_info = self._format_lock_info(new_info)
+                self._report_function('Unable to obtain %s\n'
+                                      '%s\n' # held by
+                                      '%s\n' # locked ... ago
                                       'Will continue to try for %s seconds\n',
-                                      self.transport.abspath(self.path),
-                                      timeout)
+                                      formatted_info[0],
+                                      formatted_info[1],
+                                      formatted_info[2],
+                                      deadline - time.time())
 
             if time.time() + poll < deadline:
                 time.sleep(poll)
