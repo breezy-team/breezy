@@ -43,11 +43,17 @@ class TestVersionInfo(TestCaseWithTransport):
 
         self.revisions = wt.branch.revision_history()
 
+    def test_default(self):
+        # smoketest that not supplying a --format still works
+        self.create_branch()
+
+        info = self.run_bzr('version-info', 'branch')[0]
+
     def test_rio(self):
         self.create_branch()
 
         def regen(*args):
-            return self.run_bzr('version-info', '--format', 'rio', 
+            return self.run_bzr('version-info', '--format', 'rio',
                                 'branch', *args)[0]
 
         txt = regen()

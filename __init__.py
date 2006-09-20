@@ -62,7 +62,7 @@ class cmd_version_info(Command):
             location = u'.'
 
         if format is None:
-            format = version_formats[None]
+            format = version_info_formats.get_builder(None)
 
         wt = None
         try:
