@@ -1203,7 +1203,7 @@ Revision store:
         transport.mkdir('tree')
         transport.mkdir('tree/checkout')
         co_branch = bzrlib.bzrdir.BzrDir.create_branch_convenience('tree/checkout',
-                                    format=bzrlib.bzrdir.BzrDirMetaFormat1())
+            format=bzrlib.bzrdir.BzrDirMetaFormat1())
         co_branch.bind(repo_branch)
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')
