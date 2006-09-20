@@ -37,6 +37,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Raise WeaveFormatError rather than StopIteration when trying to read
+      an empty Weave file. (John Arbash Meinel, #46871)
+
     * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
       (Vincent Ladeuil, #59835)
 
