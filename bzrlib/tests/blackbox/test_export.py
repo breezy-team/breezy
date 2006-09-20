@@ -29,21 +29,20 @@ from bzrlib.tests.blackbox import ExternalBase
 class TestExport(ExternalBase):
 
     def test_tar_export(self):
+        tree = self.make_branch_and_tree('tar')
+        self.build_tree(['tar/a'])
+        tree.add('a')
 
-        os.mkdir('tar')
         os.chdir('tar')
+        self.run_bzr('ignore', 'something')
+        tree.commit('1')
 
-        self.runbzr('init')
-        open('a', 'wb').write('foo\n')
-        self.runbzr('add a')
-        self.runbzr('ignore something')
-        self.runbzr('commit -m 1')
-        self.runbzr('export test.tar.gz')
+        self.failUnless(tree.has_filename('.bzrignore'))
+        self.run_bzr('export', 'test.tar.gz')
         ball = tarfile.open('test.tar.gz')
-        for m in ball.getnames():
-            #print m
-            self.failIf(os.path.basename(m) == '.bzrignore',
-                        'tar export contains .bzrignore')
+        # Make sure the tarball contains 'a', but does not contain
+        # '.bzrignore'.
+        self.assertEqual(['test/a'], sorted(ball.getnames()))
 
     def test_tar_export_unicode(self):
         tree = self.make_branch_and_tree('tar')
@@ -63,21 +62,21 @@ class TestExport(ExternalBase):
                          sorted(ball.getnames()))
 
     def test_zip_export(self):
+        tree = self.make_branch_and_tree('zip')
+        self.build_tree(['zip/a'])
+        tree.add('a')
 
-        os.mkdir('zip')
         os.chdir('zip')
+        self.run_bzr('ignore', 'something')
+        tree.commit('1')
 
-        self.runbzr('init')
-        open('a', 'wb').write('foo\n')
-        self.runbzr('add a')
-        self.runbzr('ignore something')
-        self.runbzr('commit -m 1')
-        self.runbzr('export test.zip')
-        ball = zipfile.ZipFile('test.zip')
-        for m in ball.namelist():
-            #print m
-            self.failIf(os.path.basename(m) == '.bzrignore',
-                        'zip export contains .bzrignore')
+        self.failUnless(tree.has_filename('.bzrignore'))
+        self.run_bzr('export', 'test.zip')
+
+        zfile = zipfile.ZipFile('test.zip')
+        # Make sure the zipfile contains 'a', but does not contain
+        # '.bzrignore'.
+        self.assertEqual(['test/a'], sorted(zfile.namelist()))
 
     def test_zip_export_unicode(self):
         tree = self.make_branch_and_tree('zip')
@@ -97,16 +96,18 @@ class TestExport(ExternalBase):
                          sorted(zfile.namelist()))
 
     def test_dir_export(self):
+        tree = self.make_branch_and_tree('dir')
+        self.build_tree(['dir/a'])
+        tree.add('a')
 
-        os.mkdir('dir')
         os.chdir('dir')
+        self.run_bzr('ignore', 'something')
+        tree.commit('1')
 
-        self.runbzr('init')
-        open('a', 'wb').write('foo\n')
-        self.runbzr('add a')
-        self.runbzr('ignore something')
-        self.runbzr('commit -m 1')
-        self.runbzr('export direxport')
+        self.failUnless(tree.has_filename('.bzrignore'))
+        self.run_bzr('export', 'direxport')
 
         files = sorted(os.listdir('direxport'))
-        self.assertEqual(['a'], files, 'dir contains .bzrignore')
+        # Make sure the exported directory contains 'a', but does not contain
+        # '.bzrignore'.
+        self.assertEqual(['a'], files)
