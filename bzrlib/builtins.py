@@ -2325,10 +2325,11 @@ class cmd_remerge(Command):
             return 0
 
 class cmd_revert(Command):
-    """Revert files to the last-committed version.
+    """Revert files to a previous revision.
 
-    Only versioned files are affected.  Specify filenames to revert only 
-    those files.  To revert files to a different revision, specify --revision.
+    Giving a list of files will revert only those files.  Otherwise, all files
+    will be reverted.  If the revision is not specified with '--revision', the
+    last committed revision is used.
 
     To remove only some changes, without reverting to a prior version, use
     merge instead.  For example, "merge . --r-2..-3" will remove the changes
@@ -2337,7 +2338,12 @@ class cmd_revert(Command):
     
     By default, any files that have been manually changed will be backed up
     first.  (Files changed only by merge are not backed up.)  Backup files have
-    '~#~' appended to their name, where # is a number.
+    '.~#~' appended to their name, where # is a number.
+
+    When you provide files, you can use their current pathname or the pathname
+    from the target revision.  So you can use revert to "undelete" a file by
+    name.  If you name a directory, all the contents of that directory will be
+    reverted.
     """
     takes_options = ['revision', 'no-backup']
     takes_args = ['file*']
