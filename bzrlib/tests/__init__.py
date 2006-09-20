@@ -1547,6 +1547,7 @@ def test_suite():
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_version',
+                   'bzrlib.tests.test_version_info',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',

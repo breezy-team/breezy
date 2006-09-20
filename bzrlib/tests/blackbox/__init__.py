@@ -88,6 +88,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_uncommit',
                      'bzrlib.tests.blackbox.test_update',
                      'bzrlib.tests.blackbox.test_upgrade',
+                     'bzrlib.tests.blackbox.test_version_info',
                      'bzrlib.tests.blackbox.test_versioning',
                      'bzrlib.tests.blackbox.test_whoami',
                      ]
