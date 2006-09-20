@@ -99,18 +99,23 @@ class cmd_builddeb(Command):
       help="Ignore any changes that are in the working tree when building the"
          +" branch. You may also want --working to use these uncommited "
          + "changes")
+  ignore_unknowns_opt = Option('ignore-unknowns',
+      help="Ignore any unknown files, but still fail if there are any changes"
+         +", the default is to fail if there are unknowns as well.")
   quick_opt = Option('quick', help="Quickly build the package, uses quick-builder, which defaults to \"fakeroot debian/rules binary\"")
   reuse_opt = Option('reuse', help="Try to avoid expoting too much on each build. Only works in merge mode; it saves unpacking the upstream tarball each time. Implies --dont-purge and --use-existing")
   takes_args = ['branch?']
   aliases = ['bd']
-  takes_options = ['verbose', working_tree_opt, export_only_opt, 
-      dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt, 
-      build_dir_opt, orig_dir_opt, ignore_changes_opt, quick_opt, reuse_opt]
+  takes_options = ['verbose', working_tree_opt, export_only_opt,
+      dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
+      build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
+      quick_opt, reuse_opt]
 
-  def run(self, branch=None, verbose=False, working_tree=False, 
-          export_only=False, dont_purge=False, use_existing=False, 
-          result=None, builder=None, merge=False, build_dir=None, 
-          orig_dir=None, ignore_changes=False, quick=False, reuse=False):
+  def run(self, branch=None, verbose=False, working_tree=False,
+          export_only=False, dont_purge=False, use_existing=False,
+          result=None, builder=None, merge=False, build_dir=None,
+          orig_dir=None, ignore_changes=False, ignore_unknowns=False,
+          quick=False, reuse=False):
     retcode = 0
 
     set_verbose(verbose)
@@ -135,6 +140,13 @@ class cmd_builddeb(Command):
     if merge:
       info("Running in merge mode")
 
+    if not ignore_unknowns:
+      ignore_unknowns = config.ignore_unknowns()
+
+    if ignore_unknowns:
+      info("Not stopping the build if there are any unknown files. If you "
+          +"have just created a file, make sure you have added it.")
+
     if result is None:
       result = config.result_dir()
     if result is not None:
@@ -155,7 +167,7 @@ class cmd_builddeb(Command):
       rev_id = b.last_revision()
       debug("Building branch from revision %s", rev_id)
       t = b.repository.revision_tree(rev_id)
-      if not ignore_changes and not is_clean(t, tree):
+      if not ignore_changes and not is_clean(t, tree, ignore_unknowns):
         raise ChangedError
     else:
       info("Building using working tree")
