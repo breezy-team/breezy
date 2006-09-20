@@ -402,7 +402,7 @@ class TestLockDir(TestCaseWithTransport):
             # Start the other thread
             time.sleep(0.1)
             # wait and then lock
-            lf2.wait_lock(timeout=2.0, poll=0.2)
+            lf2.wait_lock(timeout=1.0, poll=0.1)
         finally:
             unlocker.join()
         lf2.unlock()
