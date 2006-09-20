@@ -35,6 +35,10 @@ IN DEVELOPMENT
       which processes these requests. (Andrew Bennetts, Robert Collins, Martin
       Pool)
 
+    * Added help topics to the bzr help system
+
+    * On line documentation of the revision spec (see bzr help revisionspec)
+
   BUG FIXES:
 
     * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
