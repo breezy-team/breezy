@@ -128,12 +128,12 @@ class HashCache(object):
                 self.needs_write = True
                 del self._cache[path]
 
-    def get_sha1(self, path):
+    def get_sha1(self, path, stat_value=None):
         """Return the sha1 of a file.
         """
         abspath = pathjoin(self.root, path)
         self.stat_count += 1
-        file_fp = self._fingerprint(abspath)
+        file_fp = self._fingerprint(abspath, stat_value)
         
         if not file_fp:
             # not a regular file or not existing
@@ -277,12 +277,13 @@ class HashCache(object):
         """
         return int(time.time()) - 3
            
-    def _fingerprint(self, abspath):
-        try:
-            fs = os.lstat(abspath)
-        except OSError:
-            # might be missing, etc
-            return None
+    def _fingerprint(self, abspath, fs=None):
+        if fs is None:
+            try:
+                fs = os.lstat(abspath)
+            except OSError:
+                # might be missing, etc
+                return None
         if stat.S_ISDIR(fs.st_mode):
             return None
         # we discard any high precision because it's not reliable; perhaps we
