@@ -182,15 +182,16 @@ class TestLockDir(TestCaseWithTransport):
             lf1.unlock()
         lock_base = lf2.transport.abspath(lf2.path)
         self.assertEqual(1, len(self._logged_reports))
-        self.assertEqual('Unable to obtain %s\n'
+        self.assertEqual('%s %s\n'
                          '%s\n%s\n'
                          'Will continue to try for %s seconds\n',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
-        self.assertEqual('lock %s' % (lock_base,), args[0])
-        self.assertStartsWith(args[1], 'held by ')
-        self.assertStartsWith(args[2], 'locked ')
-        self.assertEndsWith(args[2], ' ago')
+        self.assertEqual('Unable to obtain', args[0])
+        self.assertEqual('lock %s' % (lock_base,), args[1])
+        self.assertStartsWith(args[2], 'held by ')
+        self.assertStartsWith(args[3], 'locked ')
+        self.assertEndsWith(args[3], ' ago')
 
     def test_31_lock_wait_easy(self):
         """Succeed when waiting on a lock with no contention.
@@ -239,15 +240,16 @@ class TestLockDir(TestCaseWithTransport):
         # wait for a while
         lock_base = lf2.transport.abspath(lf2.path)
         self.assertEqual(1, len(self._logged_reports))
-        self.assertEqual('Unable to obtain %s\n'
+        self.assertEqual('%s %s\n'
                          '%s\n%s\n'
                          'Will continue to try for %s seconds\n',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
-        self.assertEqual('lock %s' % (lock_base,), args[0])
-        self.assertStartsWith(args[1], 'held by ')
-        self.assertStartsWith(args[2], 'locked ')
-        self.assertEndsWith(args[2], ' ago')
+        self.assertEqual('Unable to obtain', args[0])
+        self.assertEqual('lock %s' % (lock_base,), args[1])
+        self.assertStartsWith(args[2], 'held by ')
+        self.assertStartsWith(args[3], 'locked ')
+        self.assertEndsWith(args[3], ' ago')
 
     def test_33_wait(self):
         """Succeed when waiting on a lock that gets released
@@ -295,7 +297,6 @@ class TestLockDir(TestCaseWithTransport):
             # wait and then lock
             lf2.lock_write()
             after = time.time()
-            self.assertTrue(after - before <= 1.0)
         finally:
             unlocker.join()
 
@@ -303,15 +304,16 @@ class TestLockDir(TestCaseWithTransport):
         # wait for a while
         lock_base = lf2.transport.abspath(lf2.path)
         self.assertEqual(1, len(self._logged_reports))
-        self.assertEqual('Unable to obtain %s\n'
+        self.assertEqual('%s %s\n'
                          '%s\n%s\n'
                          'Will continue to try for %s seconds\n',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
-        self.assertEqual('lock %s' % (lock_base,), args[0])
-        self.assertStartsWith(args[1], 'held by ')
-        self.assertStartsWith(args[2], 'locked ')
-        self.assertEndsWith(args[2], ' ago')
+        self.assertEqual('Unable to obtain', args[0])
+        self.assertEqual('lock %s' % (lock_base,), args[1])
+        self.assertStartsWith(args[2], 'held by ')
+        self.assertStartsWith(args[3], 'locked ')
+        self.assertEndsWith(args[3], ' ago')
 
     def test_35_wait_lock_changing(self):
         """LockDir.wait_lock() will report if the lock changes underneath.
@@ -400,9 +402,9 @@ class TestLockDir(TestCaseWithTransport):
         unlocker.start()
         try:
             # Start the other thread
-            time.sleep(0.1)
+            time.sleep(0.2)
             # wait and then lock
-            lf2.wait_lock(timeout=1.0, poll=0.1)
+            lf2.wait_lock(timeout=2.0, poll=0.1)
         finally:
             unlocker.join()
         lf2.unlock()
@@ -410,18 +412,19 @@ class TestLockDir(TestCaseWithTransport):
         # There should be 2 reports, because the lock changed
         lock_base = lf2.transport.abspath(lf2.path)
         self.assertEqual(2, len(self._logged_reports))
-        def check_one(index):
-            self.assertEqual('Unable to obtain %s\n'
+        def check_one(index, msg):
+            self.assertEqual('%s %s\n'
                              '%s\n%s\n'
                              'Will continue to try for %s seconds\n',
                              self._logged_reports[index][0])
             args = self._logged_reports[index][1]
-            self.assertEqual('lock %s' % (lock_base,), args[0])
-            self.assertStartsWith(args[1], 'held by ')
-            self.assertStartsWith(args[2], 'locked ')
-            self.assertEndsWith(args[2], ' ago')
-        check_one(0)
-        check_one(1)
+            self.assertEqual(msg, args[0])
+            self.assertEqual('lock %s' % (lock_base,), args[1])
+            self.assertStartsWith(args[2], 'held by ')
+            self.assertStartsWith(args[3], 'locked ')
+            self.assertEndsWith(args[3], ' ago')
+        check_one(0, 'Unable to obtain')
+        check_one(1, 'Lock owner changed for')
 
     def test_40_confirm_easy(self):
         """Confirm a lock that's already held"""

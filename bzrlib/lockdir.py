@@ -130,8 +130,8 @@ from bzrlib.rio import read_stanza, Stanza
 # TODO: Make sure to pass the right file and directory mode bits to all
 # files/dirs created.
 
-_DEFAULT_TIMEOUT_SECONDS = 60
-_DEFAULT_POLL_SECONDS = 0.5
+_DEFAULT_TIMEOUT_SECONDS = 3600
+_DEFAULT_POLL_SECONDS = 1.0
 
 class LockDir(object):
     """Write-lock guarding access to data."""
@@ -373,16 +373,21 @@ class LockDir(object):
             new_info = self.peek()
             mutter('last_info: %s, new info: %s', last_info, new_info)
             if new_info is not None and new_info != last_info:
+                if last_info is None:
+                    start = 'Unable to obtain'
+                else:
+                    start = 'Lock owner changed for'
                 last_info = new_info
                 formatted_info = self._format_lock_info(new_info)
-                self._report_function('Unable to obtain %s\n'
+                self._report_function('%s %s\n'
                                       '%s\n' # held by
                                       '%s\n' # locked ... ago
                                       'Will continue to try for %s seconds\n',
+                                      start,
                                       formatted_info[0],
                                       formatted_info[1],
                                       formatted_info[2],
-                                      deadline - time.time())
+                                      int(deadline - time.time()))
 
             if time.time() + poll < deadline:
                 time.sleep(poll)
