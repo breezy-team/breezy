@@ -1157,6 +1157,15 @@ class UnsupportedEOLMarker(BadBundle):
         BzrNewError.__init__(self)
 
 
+class IncompatibleFormat(BzrNewError):
+    """Bundle format %(bundle_format)s is incompatible with %(other)s"""
+
+    def __init__(self, bundle_format, other):
+        BzrNewError.__init__(self)
+        self.bundle_format = bundle_format
+        self.other = other
+
+
 class BadInventoryFormat(BzrNewError):
     """Root class for inventory serialization errors"""
 

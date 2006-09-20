@@ -19,12 +19,13 @@ import os
 import sys
 import tempfile
 
-from bzrlib import inventory
+from bzrlib import bzrdir, errors, inventory, repository
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
+from bzrlib.bundle.serializer.v08 import BundleSerializerV08
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
 from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle, 
@@ -300,6 +301,16 @@ class BTreeTester(TestCase):
         self.assertEqual(self.sorted_ids(btree),
             [inventory.ROOT_ID, 'a', 'b', 'd', 'e'])
 
+
+class BundleTester1(TestCaseWithTransport):
+
+    def test_mismatched_bundle(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        serializer = BundleSerializerV08('0.8')
+        b = self.make_branch('.', format=format)
+        self.assertRaises(errors.IncompatibleFormat, serializer.write, 
+                          b.repository, [], {}, StringIO())
 
 class BundleTester(TestCaseWithTransport):
 
