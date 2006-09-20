@@ -20,7 +20,7 @@ import imp
 import os
 import sys
 
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport
 
 
 class TestVersionInfo(TestCaseWithTransport):

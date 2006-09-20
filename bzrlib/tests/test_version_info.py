@@ -21,8 +21,7 @@ import imp
 import os
 import sys
 
-from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.branch import Branch
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.rio import read_stanzas
 
 # TODO: jam 20051228 When part of bzrlib, this should become

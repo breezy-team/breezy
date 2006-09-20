@@ -18,7 +18,7 @@
 
 from cStringIO import StringIO
 
-from bzrlib.rio import RioReader, RioWriter, Stanza
+from bzrlib.rio import RioWriter, Stanza
 
 from bzrlib.version_info_formats import (
     create_date_str,

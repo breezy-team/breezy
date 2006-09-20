@@ -16,18 +16,14 @@
 
 """Commands for generating snapshot information about a bzr tree."""
 
-import sys
-import codecs
-
 from bzrlib import (
+    branch,
     version_info_formats,
+    workingtree,
     )
-from bzrlib.branch import Branch
 from bzrlib.commands import Command
 from bzrlib.errors import BzrCommandError
 from bzrlib.option import Option
-from bzrlib.workingtree import WorkingTree
-
 
 
 def _parse_version_info_format(format):
@@ -68,9 +64,9 @@ class cmd_version_info(Command):
 
         wt = None
         try:
-            wt = WorkingTree.open_containing(location)[0]
+            wt = workingtree.WorkingTree.open_containing(location)[0]
         except NoWorkingTree:
-            b = Branch.open(location)
+            b = branch.Branch.open(location)
         else:
             b = wt.branch
 
