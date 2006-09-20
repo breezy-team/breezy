@@ -34,7 +34,7 @@ def _parse_version_info_format(format):
     except KeyError:
         formats = version_info_formats.get_builder_formats()
         raise BzrCommandError('No known version info format %s.'
-                              ' Supported types are: %s' 
+                              ' Supported types are: %s'
                               % (format, formats))
 
 

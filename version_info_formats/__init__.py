@@ -27,7 +27,7 @@ _version_formats = {}
 
 def create_date_str(timestamp=None, offset=None):
     """Just a wrapper around format_date to provide the right format.
-    
+
     We don't want to use '%a' in the time string, because it is locale
     dependant. We also want to force timezone original, and show_offset
 
@@ -42,7 +42,7 @@ def create_date_str(timestamp=None, offset=None):
 
 
 class VersionInfoBuilder(object):
-    """A class which lets you build up information about a revision.""" 
+    """A class which lets you build up information about a revision."""
 
     def __init__(self, branch, working_tree=None,
                 check_for_clean=False,
@@ -172,7 +172,7 @@ def register_builder(format, module, class_name):
 
     :param format: The short name of the format, this will be used as the
         lookup key.
-    :param module: The string name to the module where the format class 
+    :param module: The string name to the module where the format class
         can be found
     :param class_name: The string name of the class to instantiate
     """
@@ -201,7 +201,9 @@ def get_builder_formats():
     return formats
 
 
-register_builder('rio', 'bzrlib.plugins.version_info.version_info_formats.format_rio',
-                 'RioVersionInfoBuilder')
-register_builder('python', 'bzrlib.plugins.version_info.version_info_formats.format_python',
-                 'PythonVersionInfoBuilder')
+register_builder('rio',
+             'bzrlib.plugins.version_info.version_info_formats.format_rio',
+             'RioVersionInfoBuilder')
+register_builder('python',
+             'bzrlib.plugins.version_info.version_info_formats.format_python',
+             'PythonVersionInfoBuilder')

@@ -36,7 +36,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
     def create_branch(self):
         wt = self.make_branch_and_tree('branch')
-        
+
         self.build_tree(['branch/a'])
         wt.add('a')
         wt.commit('a', rev_id='r1')
@@ -55,7 +55,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
         def regen(**kwargs):
             sio = StringIO()
-            builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, 
+            builder = RioVersionInfoBuilder(wt.branch, working_tree=wt,
                                             **kwargs)
             builder.generate(sio)
             val = sio.getvalue()
@@ -88,7 +88,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
         def regen(**kwargs):
             sio = StringIO()
-            builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, 
+            builder = RioVersionInfoBuilder(wt.branch, working_tree=wt,
                                             **kwargs)
             builder.generate(sio)
             sio.seek(0)
@@ -150,7 +150,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
         def regen(**kwargs):
             outf = open('test_version_information.py', 'wb')
-            builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt, 
+            builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt,
                                                **kwargs)
             builder.generate(outf)
             outf.close()
@@ -190,8 +190,8 @@ class TestVersionInfo(TestCaseWithTransport):
 
         tvi = regen(include_revision_history=True)
 
-        rev_info = [(rev, message) for rev, message, timestamp, timezone 
-                                   in tvi.revisions] 
+        rev_info = [(rev, message) for rev, message, timestamp, timezone
+                                   in tvi.revisions]
         self.assertEqual([('r1', 'a'), ('r2', 'b'), ('r3', 'a2')], rev_info)
 
         # a was modified, so it should show up modified again

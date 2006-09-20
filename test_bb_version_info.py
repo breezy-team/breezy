@@ -32,7 +32,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
     def create_branch(self):
         wt = self.make_branch_and_tree('branch')
-        
+
         self.build_tree(['branch/a'])
         wt.add('a')
         wt.commit('adding a', rev_id='r1')
@@ -128,8 +128,8 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqual({}, tvi.file_revisions)
 
         tvi = regen('--all')
-        rev_info = [(rev, message) for rev, message, timestamp, timezone 
-                                   in tvi.revisions] 
+        rev_info = [(rev, message) for rev, message, timestamp, timezone
+                                   in tvi.revisions]
         self.assertEqual([(self.revisions[0], 'adding a'),
                           (self.revisions[1], 'adding b')],
                          rev_info)
