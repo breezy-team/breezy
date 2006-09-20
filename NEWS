@@ -49,7 +49,7 @@ IN DEVELOPMENT
 
     * When trying to acquire a lock, don't fail immediately. Instead, try
       a few times (up to 1 hour) before timing out. Also, report why the
-      lock is unavailable (John Arbash Meinel, #49556)
+      lock is unavailable (John Arbash Meinel, #43521, #49556)
 
   INTERNALS:
 
