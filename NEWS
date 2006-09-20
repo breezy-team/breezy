@@ -69,6 +69,10 @@ IN DEVELOPMENT
       API users will need to perform a push or pull or update operation if they
       require branch synchronisation to take place. (Robert Collins, #47344)
 
+    * When creating a tarball or zipfile export, export unicode names as utf-8
+      paths. This may not work perfectly on all platforms, but has the best
+      chance of working in the common case. (John Arbash Meinel, #56816)
+
   INTERNALS:
 
     * TestCaseInTempDir now creates a separate directory for HOME, rather

@@ -19,10 +19,12 @@
 """
 
 import os
+import tarfile
+import zipfile
 
-from bzrlib.branch import Branch
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
-import tarfile, zipfile
+
 
 class TestExport(ExternalBase):
 
@@ -40,7 +42,25 @@ class TestExport(ExternalBase):
         ball = tarfile.open('test.tar.gz')
         for m in ball.getnames():
             #print m
-            self.failIf(os.path.basename(m) == '.bzrignore', 'tar export contains .bzrignore')
+            self.failIf(os.path.basename(m) == '.bzrignore',
+                        'tar export contains .bzrignore')
+
+    def test_tar_export_unicode(self):
+        tree = self.make_branch_and_tree('tar')
+        fname = u'\xe5.txt'
+        try:
+            self.build_tree(['tar/' + fname])
+        except UnicodeError:
+            raise TestSkipped('Unable to represent path %r' % (fname,))
+        tree.add([fname])
+        tree.commit('first')
+
+        os.chdir('tar')
+        self.run_bzr('export', 'test.tar')
+        ball = tarfile.open('test.tar')
+        # all paths are prefixed with the base name of the tarball
+        self.assertEqual(['test/' + fname.encode('utf8')],
+                         sorted(ball.getnames()))
 
     def test_zip_export(self):
 
@@ -56,7 +76,25 @@ class TestExport(ExternalBase):
         ball = zipfile.ZipFile('test.zip')
         for m in ball.namelist():
             #print m
-            self.failIf(os.path.basename(m) == '.bzrignore', 'zip export contains .bzrignore')
+            self.failIf(os.path.basename(m) == '.bzrignore',
+                        'zip export contains .bzrignore')
+
+    def test_zip_export_unicode(self):
+        tree = self.make_branch_and_tree('zip')
+        fname = u'\xe5.txt'
+        try:
+            self.build_tree(['zip/' + fname])
+        except UnicodeError:
+            raise TestSkipped('Unable to represent path %r' % (fname,))
+        tree.add([fname])
+        tree.commit('first')
+
+        os.chdir('zip')
+        self.run_bzr('export', 'test.zip')
+        zfile = zipfile.ZipFile('test.zip')
+        # all paths are prefixed with the base name of the zipfile
+        self.assertEqual(['test/' + fname.encode('utf8')],
+                         sorted(zfile.namelist()))
 
     def test_dir_export(self):
 
