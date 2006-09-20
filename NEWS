@@ -48,8 +48,8 @@ IN DEVELOPMENT
       (John Arbash Meinel)
 
     * When trying to acquire a lock, don't fail immediately. Instead, try
-      a few times (up to 1 minute) before timing out. (John Arbash Meinel,
-      #49556)
+      a few times (up to 1 hour) before timing out. Also, report why the
+      lock is unavailable (John Arbash Meinel, #49556)
 
   INTERNALS:
 
