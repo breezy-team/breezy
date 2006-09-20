@@ -324,23 +324,23 @@ class TestLockDir(TestCaseWithTransport):
         1) Lock1 obtains the lockdir, and releases the 'check' lock.
         2) Lock2 grabs the 'check' lock, and checks the lockdir.
            It sees the lockdir is already acquired, reports the fact, 
-           and unsets the 'peek' lock.
-        3) Thread1 blocks on acquiring the 'peek' lock, and then tells
+           and unsets the 'checked' lock.
+        3) Thread1 blocks on acquiring the 'checked' lock, and then tells
            Lock1 to release and acquire the lockdir. This resets the 'check'
            lock.
         4) Lock2 acquires the 'check' lock, and checks again. It notices
            that the holder of the lock has changed, and so reports a new 
            lock holder.
-        5) Thread1 blocks on the 'peek' lock, this time, it completely
+        5) Thread1 blocks on the 'checked' lock, this time, it completely
            unlocks the lockdir, allowing Lock2 to acquire the lock.
         """
 
         wait_to_check_lock = Lock()
-        wait_until_peek_lock = Lock()
+        wait_until_checked_lock = Lock()
 
         wait_to_check_lock.acquire()
-        wait_until_peek_lock.acquire()
-        note('locked check and peek locks')
+        wait_until_checked_lock.acquire()
+        note('locked check and checked locks')
 
         class LockDir1(LockDir):
             """Use the synchronization points for the first lock."""
@@ -357,15 +357,15 @@ class TestLockDir(TestCaseWithTransport):
         class LockDir2(LockDir):
             """Use the synchronization points for the second lock."""
 
-            def peek(self):
+            def attempt_lock(self):
                 note('lock2: waiting for check lock')
                 wait_to_check_lock.acquire()
                 note('lock2: acquired check lock')
                 try:
-                    return super(LockDir2, self).peek()
+                    return super(LockDir2, self).attempt_lock()
                 finally:
-                    note('lock2: releasing peek lock')
-                    wait_until_peek_lock.release()
+                    note('lock2: releasing checked lock')
+                    wait_until_checked_lock.release()
 
         t = self.get_transport()
         lf1 = LockDir1(t, 'test_lock')
@@ -376,10 +376,10 @@ class TestLockDir(TestCaseWithTransport):
 
         def wait_and_switch():
             lf1.attempt_lock()
-            # Block until lock2 has had a chance to peek
-            note('lock1: waiting 1 for peek lock')
-            wait_until_peek_lock.acquire()
-            note('lock1: acquired for peek lock')
+            # Block until lock2 has had a chance to check
+            note('lock1: waiting 1 for checked lock')
+            wait_until_checked_lock.acquire()
+            note('lock1: acquired for checked lock')
             note('lock1: released lockdir')
             lf1.unlock()
             note('lock1: acquiring lockdir')
@@ -389,22 +389,18 @@ class TestLockDir(TestCaseWithTransport):
             note('lock1: acquired lockdir')
 
             # Block until lock2 has peeked again
-            note('lock1: waiting 2 for peek lock')
-            wait_until_peek_lock.acquire()
-            note('lock1: acquired for peek lock')
+            note('lock1: waiting 2 for checked lock')
+            wait_until_checked_lock.acquire()
+            note('lock1: acquired for checked lock')
+            # Now unlock, and let lock 2 grab the lock
             lf1.unlock()
-            # We need to allow check 2 times
-            wait_to_check_lock.release()
-            wait_until_peek_lock.acquire()
             wait_to_check_lock.release()
 
         unlocker = Thread(target=wait_and_switch)
         unlocker.start()
         try:
-            # Start the other thread
-            time.sleep(0.2)
-            # wait and then lock
-            lf2.wait_lock(timeout=2.0, poll=0.1)
+            # Wait and play against the other thread
+            lf2.wait_lock(timeout=1.0, poll=0.01)
         finally:
             unlocker.join()
         lf2.unlock()
