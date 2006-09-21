@@ -857,13 +857,23 @@ class V08BundleTester(TestCaseWithTransport):
         self.assertEqual('revid1', tree.inventory.root.revision)
 
 
-class V09BundleTester(V08BundleTester):
+class V09BundleKnit2Tester(V08BundleTester):
 
     format = '0.9'
 
     def bzrdir_format(self):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = repository.RepositoryFormatKnit2()
+        return format
+
+
+class V09BundleKnit1Tester(V08BundleTester):
+
+    format = '0.9'
+
+    def bzrdir_format(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit1()
         return format
 
 
