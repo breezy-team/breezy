@@ -106,8 +106,6 @@ class Registry(object):
         else:
             return self.default_key
 
-    __getitem__ = get
-
     def _get_one(self, key):
         """Attempt to return a single entry.
 
@@ -147,43 +145,16 @@ class Registry(object):
         """
         del self._dict[key]
 
-    __delitem__ = remove
-
     def __contains__(self, key):
         return key in self._dict
-
-    def __len__(self):
-        return len(self._dict)
 
     def keys(self):
         """Get a list of registered entries"""
         return sorted(self._dict.keys())
 
-    def iterkeys(self):
-        return self._dict.iterkeys()
-
     def iteritems(self):
         for key in self._dict.iterkeys():
             yield key, self._get_one(key)
-
-    def items(self):
-        return list(self.iteritems())
-
-    def itervalues(self):
-        for key in self._dict.iterkeys():
-            yield self._get_one(key)
-
-    def values(self):
-        return list(self.itervalues())
-
-    def iterhelp(self):
-        """Iterate over all items, returning the key and help value"""
-        for key in self._help_dict.iterkeys():
-            yield key, self.get_help(key)
-
-    def iterinfo(self):
-        """Iterate over all items, returning the key and info value"""
-        return self._info_dict.iteritems()
 
     def _set_default_key(self, key):
         if not self._dict.has_key(key):

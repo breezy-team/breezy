@@ -60,41 +60,22 @@ class TestRegistry(TestCase):
         # test keys()
         self.assertEqual(['five', 'four', 'one', 'two'], a_registry.keys())
 
-    def test_registry_like_dict(self):
+    def test_registry_funcs(self):
         a_registry = registry.Registry()
         self.register_stuff(a_registry)
 
         self.failUnless('one' in a_registry)
-        del a_registry['one']
+        a_registry.remove('one')
         self.failIf('one' in a_registry)
         self.assertRaises(KeyError, a_registry.get, 'one')
 
-        # We intentionally don't implement __setitem__, because
-        # register() is a much richer function, that doesn't translate
-        # well into foo[x] = y
-        def set_one():
-            a_registry['one'] = 'one'
-        self.assertRaises(AttributeError, set_one)
-
         a_registry.register('one', 'one')
-        self.assertEqual('one', a_registry['one'])
-        self.assertEqual(4, len(a_registry))
-
-        self.assertEqual(['five', 'four', 'one', 'two'],
-                         sorted(a_registry.iterkeys()))
-        self.assertEqual([('five', 5), ('four', 4),
-                          ('one', 'one'), ('two', 2)],
-                         sorted(a_registry.iteritems()))
-        self.assertEqual([2, 4, 5, 'one'],
-                         sorted(a_registry.itervalues()))
 
         self.assertEqual(['five', 'four', 'one', 'two'],
                          sorted(a_registry.keys()))
         self.assertEqual([('five', 5), ('four', 4),
                           ('one', 'one'), ('two', 2)],
-                         sorted(a_registry.items()))
-        self.assertEqual([2, 4, 5, 'one'],
-                         sorted(a_registry.values()))
+                         sorted(a_registry.iteritems()))
 
     def test_register_override(self):
         a_registry = registry.Registry()
@@ -163,7 +144,9 @@ class TestRegistry(TestCase):
                           ('six', 'this is my help'),
                           ('three', 'generic help for three'),
                           ('two', 'help text for two'),
-                         ], sorted(a_registry.iterhelp()))
+                         ], sorted((key, a_registry.get_help(key))
+                                    for key in a_registry.keys()))
+
         # We don't know what order it was called in, but we should get
         # 2 more calls to three and four
         self.assertEqual(['four', 'four', 'three', 'three'],
@@ -201,7 +184,9 @@ class TestRegistry(TestCase):
                           ('one', 'string info'),
                           ('three', ['a', 'list']),
                           ('two', 2),
-                         ], sorted(a_registry.iterinfo()))
+                         ], sorted((key, a_registry.get_info(key))
+                                    for key in a_registry.keys()))
+
 
 class TestRegistryWithDirs(TestCaseInTempDir):
     """Registry tests that require temporary dirs"""
@@ -274,5 +259,4 @@ class TestRegistryWithDirs(TestCaseInTempDir):
             self.assertIs(klass, module.MyClass)
         finally:
             sys.path.remove(plugin_path)
-
 
