@@ -22,7 +22,7 @@ import os
 from sha import sha
 
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.testament import Testament, StrictTestament
+from bzrlib.testament import Testament, StrictTestament, StrictTestament2
 from bzrlib.transform import TreeTransform
 from bzrlib.osutils import has_symlinks
 
@@ -57,9 +57,18 @@ class TestamentSetup(TestCaseWithTransport):
 
 class TestamentTests(TestamentSetup):
 
+    def testament_class(self):
+        return Testament
+
+    def expected(self, key):
+        return texts[self.testament_class()][key]
+
+    def from_revision(self, repository, revision_id):
+        return self.testament_class().from_revision(repository, revision_id)
+
     def test_null_testament(self):
         """Testament for a revision with no contents."""
-        t = Testament.from_revision(self.b.repository, 'test@user-1')
+        t = self.from_revision(self.b.repository, 'test@user-1')
         ass = self.assertTrue
         eq = self.assertEqual
         ass(isinstance(t, Testament))
@@ -70,35 +79,21 @@ class TestamentTests(TestamentSetup):
 
     def test_testment_text_form(self):
         """Conversion of testament to canonical text form."""
-        t = Testament.from_revision(self.b.repository, 'test@user-1')
+        t = self.from_revision(self.b.repository, 'test@user-1')
         text_form = t.as_text()
         self.log('testament text form:\n' + text_form)
-        self.assertEqual(text_form, REV_1_TESTAMENT)
-
-    def test_strict_testment_text_form(self):
-        """Conversion of testament to canonical text form."""
-        t = StrictTestament.from_revision(self.b.repository, 'test@user-1')
-        text_form = t.as_text()
-        self.log('testament text form:\n' + text_form)
-        self.assertEqualDiff(text_form, REV_1_STRICT_TESTAMENT)
+        self.assertEqualDiff(text_form, self.expected('rev_1'))
+        short_text_form = t.as_short_text()
+        self.assertEqualDiff(short_text_form, self.expected('rev_1_short'))
 
     def test_testament_with_contents(self):
         """Testament containing a file and a directory."""
-        t = Testament.from_revision(self.b.repository, 'test@user-2')
+        t = self.from_revision(self.b.repository, 'test@user-2')
         text_form = t.as_text()
         self.log('testament text form:\n' + text_form)
-        self.assertEqualDiff(text_form, REV_2_TESTAMENT)
+        self.assertEqualDiff(text_form, self.expected('rev_2'))
         actual_short = t.as_short_text()
-        self.assertEqualDiff(actual_short, REV_2_SHORT)
-
-    def test_strict_testament_with_contents(self):
-        """Testament containing a file and a directory."""
-        t = StrictTestament.from_revision(self.b.repository, 'test@user-2')
-        text_form = t.as_text()
-        self.log('testament text form:\n' + text_form)
-        self.assertEqualDiff(text_form, REV_2_STRICT_TESTAMENT)
-        actual_short = t.as_short_text()
-        self.assertEqualDiff(actual_short, REV_2_SHORT_STRICT)
+        self.assertEqualDiff(actual_short, self.expected('rev_2_short'))
 
     def test_testament_symlinks(self):
         """Testament containing symlink (where possible)"""
@@ -111,8 +106,8 @@ class TestamentTests(TestamentSetup):
                  timezone=36000,
                  rev_id='test@user-3',
                  committer='test@user')
-        t = Testament.from_revision(self.b.repository, 'test@user-3')
-        self.assertEqualDiff(t.as_text(), REV_3_TESTAMENT)
+        t = self.from_revision(self.b.repository, 'test@user-3')
+        self.assertEqualDiff(t.as_text(), self.expected('rev_3'))
 
     def test_testament_revprops(self):
         """Testament to revision with extra properties"""
@@ -126,8 +121,8 @@ class TestamentTests(TestamentSetup):
                       rev_id='test@user-3',
                       committer='test@user',
                       revprops=props)
-        t = Testament.from_revision(self.b.repository, 'test@user-3')
-        self.assertEqualDiff(t.as_text(), REV_PROPS_TESTAMENT)
+        t = self.from_revision(self.b.repository, 'test@user-3')
+        self.assertEqualDiff(t.as_text(), self.expected('rev_props'))
 
     def test_testament_unicode_commit_message(self):
         self.wt.commit(
@@ -138,18 +133,30 @@ class TestamentTests(TestamentSetup):
             committer='Erik B\xe5gfors <test@user>',
             revprops={'uni':u'\xb5'}
             )
-        t = Testament.from_revision(self.b.repository, 'test@user-3')
+        t = self.from_revision(self.b.repository, 'test@user-3')
         self.assertEqualDiff(
-            SAMPLE_UNICODE_TESTAMENT.encode('utf-8'), t.as_text())
+            self.expected('sample_unicode').encode('utf-8'), t.as_text())
 
     def test___init__(self):
         revision = self.b.repository.get_revision('test@user-2')
         inventory = self.b.repository.get_inventory('test@user-2')
-        testament_1 = Testament(revision, inventory).as_short_text()
-        testament_2 = Testament.from_revision(self.b.repository, 
+        testament_1 = self.testament_class()(revision, inventory).as_short_text()
+        testament_2 = self.from_revision(self.b.repository, 
                                               'test@user-2').as_short_text()
         self.assertEqual(testament_1, testament_2)
                     
+
+class TestamentTestsStrict(TestamentTests):
+    
+    def testament_class(self):
+        return StrictTestament
+
+
+class TestamentTestsStrict2(TestamentTests):
+    
+    def testament_class(self):
+        return StrictTestament2
+
 
 REV_1_TESTAMENT = """\
 bazaar-ng testament version 1
@@ -181,6 +188,21 @@ properties:
     test branch
 """
 
+REV_1_STRICT_TESTAMENT2 = """\
+bazaar-ng testament version 3 strict
+revision-id: test@user-1
+committer: test@user
+timestamp: 1129025423
+timezone: 0
+parents:
+message:
+  initial null commit
+inventory:
+  directory . TREE_ROOT test@user-1 no
+properties:
+  branch-nick:
+    test branch
+"""
 
 REV_1_SHORT = """\
 bazaar-ng testament short form 1
@@ -194,6 +216,13 @@ bazaar-ng testament short form 2.1
 revision-id: test@user-1
 sha1: %s
 """ % sha(REV_1_STRICT_TESTAMENT).hexdigest()
+
+
+REV_1_SHORT_STRICT2 = """\
+bazaar-ng testament short form 3 strict
+revision-id: test@user-1
+sha1: %s
+""" % sha(REV_1_STRICT_TESTAMENT2).hexdigest()
 
 
 REV_2_TESTAMENT = """\
@@ -236,6 +265,26 @@ properties:
 """
 
 
+REV_2_STRICT_TESTAMENT2 = """\
+bazaar-ng testament version 3 strict
+revision-id: test@user-2
+committer: test@user
+timestamp: 1129025483
+timezone: 36000
+parents:
+  test@user-1
+message:
+  add files and directories
+inventory:
+  directory . TREE_ROOT test@user-2 no
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
+  directory src src-id test@user-2 no
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24 test@user-2 no
+properties:
+  branch-nick:
+    test branch
+"""
+
 REV_2_SHORT = """\
 bazaar-ng testament short form 1
 revision-id: test@user-2
@@ -248,6 +297,13 @@ bazaar-ng testament short form 2.1
 revision-id: test@user-2
 sha1: %s
 """ % sha(REV_2_STRICT_TESTAMENT).hexdigest()
+
+
+REV_2_SHORT_STRICT2 = """\
+bazaar-ng testament short form 3 strict
+revision-id: test@user-2
+sha1: %s
+""" % sha(REV_2_STRICT_TESTAMENT2).hexdigest()
 
 
 REV_PROPS_TESTAMENT = """\
@@ -264,6 +320,59 @@ inventory:
   file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73
   directory src src-id
   file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
+properties:
+  branch-nick:
+    test branch
+  empty:
+  flavor:
+    sour cherry
+    cream cheese
+  size:
+    medium
+"""
+
+
+REV_PROPS_TESTAMENT_STRICT = """\
+bazaar-ng testament version 2.1
+revision-id: test@user-3
+committer: test@user
+timestamp: 1129025493
+timezone: 36000
+parents:
+  test@user-2
+message:
+  revision with properties
+inventory:
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
+  directory src src-id test@user-2 no
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24 test@user-2 no
+properties:
+  branch-nick:
+    test branch
+  empty:
+  flavor:
+    sour cherry
+    cream cheese
+  size:
+    medium
+"""
+
+
+REV_PROPS_TESTAMENT_STRICT2 = """\
+bazaar-ng testament version 3 strict
+revision-id: test@user-3
+committer: test@user
+timestamp: 1129025493
+timezone: 36000
+parents:
+  test@user-2
+message:
+  revision with properties
+inventory:
+  directory . TREE_ROOT test@user-3 no
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
+  directory src src-id test@user-2 no
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24 test@user-2 no
 properties:
   branch-nick:
     test branch
@@ -297,6 +406,48 @@ properties:
 """
 
 
+REV_3_TESTAMENT_STRICT = """\
+bazaar-ng testament version 2.1
+revision-id: test@user-3
+committer: test@user
+timestamp: 1129025493
+timezone: 36000
+parents:
+  test@user-2
+message:
+  add symlink
+inventory:
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
+  symlink link link-id wibble/linktarget test@user-3 no
+  directory src src-id test@user-2 no
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24 test@user-2 no
+properties:
+  branch-nick:
+    test branch
+"""
+
+
+REV_3_TESTAMENT_STRICT2 = """\
+bazaar-ng testament version 3 strict
+revision-id: test@user-3
+committer: test@user
+timestamp: 1129025493
+timezone: 36000
+parents:
+  test@user-2
+message:
+  add symlink
+inventory:
+  directory . TREE_ROOT test@user-3 no
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
+  symlink link link-id wibble/linktarget test@user-3 no
+  directory src src-id test@user-2 no
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24 test@user-2 no
+properties:
+  branch-nick:
+    test branch
+"""
+
 SAMPLE_UNICODE_TESTAMENT = u"""\
 bazaar-ng testament version 1
 revision-id: test@user-3
@@ -317,3 +468,76 @@ properties:
   uni:
     \xb5
 """
+
+
+SAMPLE_UNICODE_TESTAMENT_STRICT = u"""\
+bazaar-ng testament version 2.1
+revision-id: test@user-3
+committer: Erik B\xe5gfors <test@user>
+timestamp: 1129025493
+timezone: 36000
+parents:
+  test@user-2
+message:
+  non-ascii commit \N{COPYRIGHT SIGN} me
+inventory:
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
+  directory src src-id test@user-2 no
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24 test@user-2 no
+properties:
+  branch-nick:
+    test branch
+  uni:
+    \xb5
+"""
+
+
+SAMPLE_UNICODE_TESTAMENT_STRICT2 = u"""\
+bazaar-ng testament version 3 strict
+revision-id: test@user-3
+committer: Erik B\xe5gfors <test@user>
+timestamp: 1129025493
+timezone: 36000
+parents:
+  test@user-2
+message:
+  non-ascii commit \N{COPYRIGHT SIGN} me
+inventory:
+  directory . TREE_ROOT test@user-3 no
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
+  directory src src-id test@user-2 no
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24 test@user-2 no
+properties:
+  branch-nick:
+    test branch
+  uni:
+    \xb5
+"""
+
+
+texts = {
+    Testament: { 'rev_1': REV_1_TESTAMENT,
+                 'rev_1_short': REV_1_SHORT,
+                 'rev_2': REV_2_TESTAMENT,
+                 'rev_2_short': REV_2_SHORT,
+                 'rev_3': REV_3_TESTAMENT,
+                 'rev_props': REV_PROPS_TESTAMENT,
+                 'sample_unicode': SAMPLE_UNICODE_TESTAMENT,
+    },
+    StrictTestament: {'rev_1': REV_1_STRICT_TESTAMENT,
+                      'rev_1_short': REV_1_SHORT_STRICT,
+                      'rev_2': REV_2_STRICT_TESTAMENT,
+                      'rev_2_short': REV_2_SHORT_STRICT,
+                      'rev_3': REV_3_TESTAMENT_STRICT,
+                      'rev_props': REV_PROPS_TESTAMENT_STRICT,
+                      'sample_unicode': SAMPLE_UNICODE_TESTAMENT_STRICT,
+    },
+    StrictTestament2: {'rev_1': REV_1_STRICT_TESTAMENT2,
+                      'rev_1_short': REV_1_SHORT_STRICT2,
+                      'rev_2': REV_2_STRICT_TESTAMENT2,
+                      'rev_2_short': REV_2_SHORT_STRICT2,
+                      'rev_3': REV_3_TESTAMENT_STRICT2,
+                      'rev_props': REV_PROPS_TESTAMENT_STRICT2,
+                      'sample_unicode': SAMPLE_UNICODE_TESTAMENT_STRICT2,
+    },
+}
