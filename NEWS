@@ -37,6 +37,8 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Don't abort when annotating empty files (John Arbash Meinel, #56814)
+
     * Raise WeaveFormatError rather than StopIteration when trying to read
       an empty Weave file. (John Arbash Meinel, #46871)
 
