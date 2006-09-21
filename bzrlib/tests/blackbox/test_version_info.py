@@ -16,9 +16,7 @@
 
 """Blackbox tests for version_info"""
 
-import imp
 import os
-import sys
 
 from bzrlib.tests import TestCaseWithTransport
 
@@ -91,8 +89,11 @@ class TestVersionInfo(TestCaseWithTransport):
         """Test that bzr defaults to the local working directory"""
         self.create_branch()
 
+        txt1 = self.run_bzr('version-info', 'branch')[0]
+
         os.chdir('branch')
-        txt = self.run_bzr('version-info')[0]
+        txt2 = self.run_bzr('version-info')[0]
+        self.assertEqual(txt1, txt2)
 
     def test_rio(self):
         """Test that we can pass --format=rio"""
@@ -110,4 +111,4 @@ class TestVersionInfo(TestCaseWithTransport):
 
         txt = self.run_bzr('version-info', '--format', 'python', 'branch')[0]
 
-        self.assertContainsRe(txt, 'revisions = {')
+        self.assertContainsRe(txt, 'version_info = {')
