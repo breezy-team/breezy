@@ -125,7 +125,7 @@ def _extract_headers(header_text, url):
     return m
 
 
-class HttpTransportBase(Transport):
+class HttpTransportBase(Transport, smart.SmartClientMedium):
     """Base class for http implementations.
 
     Does URL parsing, etc, but not any network IO.
@@ -243,6 +243,14 @@ class HttpTransportBase(Transport):
         a time through this call.
         """
         raise NotImplementedError(self._get)
+
+    def get_smart_medium(self):
+        """See Transport.get_smart_medium.
+
+        HttpTransportBase directly implements the minimal interface of
+        SmartMediumClient, so this returns self.
+        """
+        return self
 
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.

@@ -18,14 +18,18 @@
 
 # all of this deals with byte strings so this is safe
 from cStringIO import StringIO
+import os
+import socket
 import subprocess
 import sys
+import threading
 import urllib2
 
 import bzrlib
 from bzrlib import (
         bzrdir,
         errors,
+        osutils,
         tests,
         )
 from bzrlib.transport import (
@@ -37,18 +41,303 @@ from bzrlib.transport import (
 from bzrlib.transport.http import HTTPServerWithSmarts, SmartRequestHandler
 
 
-class SmartClientTests(tests.TestCase):
+class StringIOSSHVendor(object):
+    """A SSH vendor that uses StringIO to buffer writes and answer reads."""
 
-    def test_construct_smart_stream_client(self):
+    def __init__(self, read_from, write_to):
+        self.read_from = read_from
+        self.write_to = write_to
+        self.calls = []
+
+    def connect_ssh(self, username, password, host, port, command):
+        self.calls.append(('connect_ssh', username, password, host, port,
+            command))
+        return StringIOSSHConnection(self)
+
+
+class StringIOSSHConnection(object):
+    """A SSH connection that uses StringIO to buffer writes and answer reads."""
+
+    def __init__(self, vendor):
+        self.vendor = vendor
+    
+    def close(self):
+        self.vendor.calls.append(('close', ))
+        
+    def get_filelike_channels(self):
+        return self.vendor.read_from, self.vendor.write_to
+
+
+
+class SmartClientMediumTests(tests.TestCase):
+    """Tests for SmartClientMedium.
+
+    We should create a test scenario for this: we need a server module that
+    construct the test-servers (like make_loopsocket_and_medium), and the list
+    of SmartClientMedium classes to test.
+    """
+
+    def make_loopsocket_and_medium(self):
+        """Create a loopback socket for testing, and a medium aimed at it."""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(('127.0.0.1', 0))
+        sock.listen(1)
+        port = sock.getsockname()[1]
+        medium = smart.SmartTCPClientMedium('127.0.0.1', port)
+        return sock, medium
+
+    def receive_bytes_on_server(self, sock, bytes):
+        """Accept a connection on sock and read 3 bytes.
+
+        The bytes are appended to the list bytes.
+
+        :return: a Thread which is running to do the accept and recv.
+        """
+        def _receive_bytes_on_server():
+            connection, address = sock.accept()
+            bytes.append(connection.recv(3, socket.MSG_WAITALL))
+            connection.close()
+        t = threading.Thread(target=_receive_bytes_on_server)
+        t.start()
+        return t
+    
+    def test_construct_smart_stream_medium_client(self):
         # make a new client; this really wants a connector function that returns
         # two fifos or sockets but the constructor should not do any IO
-        client = smart.SmartStreamClient(None)
+        medium = smart.SmartStreamMediumClient()
 
+    def test_construct_smart_client_medium(self):
+        # the base client medium takes no parameters
+        medium = smart.SmartClientMedium()
+    
+    def test_construct_smart_simple_pipes_client_medium(self):
+        # the SimplePipes client medium takes two pipes:
+        # readable pipe, writeable pipe.
+        # Constructing one should just save these and do nothing.
+        # We test this by passing in None.
+        medium = smart.SmartSimplePipesClientMedium(None, None)
 
-class TCPClientTests(tests.TestCaseWithTransport):
+    def test_simple_pipes_client_accept_bytes_writes_to_writable(self):
+        # accept_bytes writes to the writeable pipe.
+        output = StringIO()
+        medium = smart.SmartSimplePipesClientMedium(None, output)
+        medium.accept_bytes('abc')
+        self.assertEqual('abc', output.getvalue())
+    
+    def test_simple_pipes_client_disconnect_does_nothing(self):
+        # calling disconnect does nothing.
+        input = StringIO()
+        output = StringIO()
+        medium = smart.SmartSimplePipesClientMedium(input, output)
+        # send some bytes to ensure disconnecting after activity still does not
+        # close.
+        medium.accept_bytes('abc')
+        medium.disconnect()
+        self.assertFalse(input.closed)
+        self.assertFalse(output.closed)
+
+    def test_simple_pipes_client_accept_bytes_after_disconnect(self):
+        # calling disconnect on the client does not alter the pipe that
+        # accept_bytes writes to.
+        input = StringIO()
+        output = StringIO()
+        medium = smart.SmartSimplePipesClientMedium(input, output)
+        medium.accept_bytes('abc')
+        medium.disconnect()
+        medium.accept_bytes('abc')
+        self.assertFalse(input.closed)
+        self.assertFalse(output.closed)
+        self.assertEqual('abcabc', output.getvalue())
+    
+    def test_simple_pipes_client_ignores_disconnect_when_not_connected(self):
+        # Doing a disconnect on a new (and thus unconnected) SimplePipes medium
+        # does nothing.
+        medium = smart.SmartSimplePipesClientMedium(None, None)
+        medium.disconnect()
+
+    def test_simple_pipes_client_can_always_read(self):
+        # SmartSimplePipesClientMedium is never disconnected, so read_bytes
+        # always tries to read from the underlying pipe.
+        input = StringIO('abcdef')
+        medium = smart.SmartSimplePipesClientMedium(input, None)
+        self.assertEqual('abc', medium.read_bytes(3))
+        medium.disconnect()
+        self.assertEqual('def', medium.read_bytes(3))
+
+    def test_construct_smart_ssh_client_medium(self):
+        # the SSH client medium takes:
+        # host, port, username, password, vendor
+        # Constructing one should just save these and do nothing.
+        # we test this by creating a empty bound socket and constructing
+        # a medium.
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(('127.0.0.1', 0))
+        unopen_port = sock.getsockname()[1]
+        # having vendor be invalid means that if it tries to connect via the
+        # vendor it will blow up.
+        medium = smart.SmartSSHClientMedium('127.0.0.1', unopen_port,
+            username=None, password=None, vendor="not a vendor")
+        sock.close()
+
+    def test_ssh_client_connects_on_first_use(self):
+        # The only thing that initiates a connection from the medium is giving
+        # it bytes.
+        output = StringIO()
+        vendor = StringIOSSHVendor(StringIO(), output)
+        medium = smart.SmartSSHClientMedium('a hostname', 'a port', 'a username',
+            'a password', vendor)
+        medium.accept_bytes('abc')
+        self.assertEqual('abc', output.getvalue())
+        self.assertEqual([('connect_ssh', 'a username', 'a password',
+            'a hostname', 'a port',
+            ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes'])],
+            vendor.calls)
+    
+    def test_ssh_client_changes_command_when_BZR_REMOTE_PATH_is_set(self):
+        # The only thing that initiates a connection from the medium is giving
+        # it bytes.
+        output = StringIO()
+        vendor = StringIOSSHVendor(StringIO(), output)
+        orig_bzr_remote_path = os.environ.get('BZR_REMOTE_PATH')
+        def cleanup_environ():
+            osutils.set_or_unset_env('BZR_REMOTE_PATH', orig_bzr_remote_path)
+        self.addCleanup(cleanup_environ)
+        os.environ['BZR_REMOTE_PATH'] = 'fugly'
+        medium = smart.SmartSSHClientMedium('a hostname', 'a port', 'a username',
+            'a password', vendor)
+        medium.accept_bytes('abc')
+        self.assertEqual('abc', output.getvalue())
+        self.assertEqual([('connect_ssh', 'a username', 'a password',
+            'a hostname', 'a port',
+            ['fugly', 'serve', '--inet', '--directory=/', '--allow-writes'])],
+            vendor.calls)
+    
+    def test_ssh_client_disconnect_does_so(self):
+        # calling disconnect should disconnect both the read_from and write_to
+        # file-like object it from the ssh connection.
+        input = StringIO()
+        output = StringIO()
+        vendor = StringIOSSHVendor(input, output)
+        medium = smart.SmartSSHClientMedium('a hostname', vendor=vendor)
+        medium.accept_bytes('abc')
+        medium.disconnect()
+        self.assertTrue(input.closed)
+        self.assertTrue(output.closed)
+        self.assertEqual([
+            ('connect_ssh', None, None, 'a hostname', None,
+            ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+            ('close', ),
+            ],
+            vendor.calls)
+
+    def test_ssh_client_disconnect_allows_reconnection(self):
+        # calling disconnect on the client terminates the connection, but should
+        # not prevent additional connections occuring.
+        # we test this by initiating a second connection after doing a
+        # disconnect.
+        input = StringIO()
+        output = StringIO()
+        vendor = StringIOSSHVendor(input, output)
+        medium = smart.SmartSSHClientMedium('a hostname', vendor=vendor)
+        medium.accept_bytes('abc')
+        medium.disconnect()
+        # the disconnect has closed output, so we need a new output for the
+        # new connection to write to.
+        input2 = StringIO()
+        output2 = StringIO()
+        vendor.read_from = input2
+        vendor.write_to = output2
+        medium.accept_bytes('abc')
+        medium.disconnect()
+        self.assertTrue(input.closed)
+        self.assertTrue(output.closed)
+        self.assertTrue(input2.closed)
+        self.assertTrue(output2.closed)
+        self.assertEqual([
+            ('connect_ssh', None, None, 'a hostname', None,
+            ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+            ('close', ),
+            ('connect_ssh', None, None, 'a hostname', None,
+            ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes']),
+            ('close', ),
+            ],
+            vendor.calls)
+    
+    def test_ssh_client_ignores_disconnect_when_not_connected(self):
+        # Doing a disconnect on a new (and thus unconnected) SSH medium
+        # does nothing.
+        medium = smart.SmartSSHClientMedium(None)
+        medium.disconnect()
+
+    def test_ssh_client_raises_on_read_when_not_connected(self):
+        # Doing a read on a new (and thus unconnected) SSH medium raises
+        # MediumNotConnectedError.
+        medium = smart.SmartSSHClientMedium(None)
+        self.assertRaises(errors.MediumNotConnected, medium.read_bytes, 0)
+        self.assertRaises(errors.MediumNotConnected, medium.read_bytes, 1)
+
+    def test_construct_smart_tcp_client_medium(self):
+        # the TCP client medium takes a host and a port.  Constructing it won't
+        # connect to anything.
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(('127.0.0.1', 0))
+        unopen_port = sock.getsockname()[1]
+        medium = smart.SmartTCPClientMedium('127.0.0.1', unopen_port)
+        sock.close()
+
+    def test_tcp_client_connects_on_first_use(self):
+        # The only thing that initiates a connection from the medium is giving
+        # it bytes.
+        sock, medium = self.make_loopsocket_and_medium()
+        bytes = []
+        t = self.receive_bytes_on_server(sock, bytes)
+        medium.accept_bytes('abc')
+        t.join()
+        sock.close()
+        self.assertEqual(['abc'], bytes)
+    
+    def test_tcp_client_disconnect_does_so(self):
+        # calling disconnect on the client terminates the connection.
+        # we test this by forcing a short read during a socket.MSG_WAITALL
+        # call : write 2 bytes, try to read 3, and then the client disconnects.
+        sock, medium = self.make_loopsocket_and_medium()
+        bytes = []
+        t = self.receive_bytes_on_server(sock, bytes)
+        medium.accept_bytes('ab')
+        medium.disconnect()
+        t.join()
+        sock.close()
+        self.assertEqual(['ab'], bytes)
+        # now disconnect again : this should not do anything, if disconnection
+        # really did disconnect.
+        medium.disconnect()
+    
+    def test_tcp_client_ignores_disconnect_when_not_connected(self):
+        # Doing a disconnect on a new (and thus unconnected) TCP medium
+        # does nothing.
+        medium = smart.SmartTCPClientMedium(None, None)
+        medium.disconnect()
+
+    def test_tcp_client_raises_on_read_when_not_connected(self):
+        # Doing a read on a new (and thus unconnected) TCP medium raises
+        # MediumNotConnectedError.
+        medium = smart.SmartTCPClientMedium(None, None)
+        self.assertRaises(errors.MediumNotConnected, medium.read_bytes, 0)
+        self.assertRaises(errors.MediumNotConnected, medium.read_bytes, 1)
+        
+    def test_get_request_from_medium(self):
+        # get a request and then call "I'm finished reading" method, then call
+        # "I'm finished writing" one.
+        medium = smart.SmartSimplePipesClientMedium(None, None)
+        request = medium.get_request()
+        request.finished_writing()
+        request.finished_reading()
+        
+
+class RemoteTransportTests(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TCPClientTests, self).setUp()
+        super(RemoteTransportTests, self).setUp()
         # We're allowed to set  the transport class here, so that we don't use
         # the default or a parameterized class, but rather use the
         # TestCaseWithTransport infrastructure to set up a smart server and
@@ -66,6 +355,12 @@ class TCPClientTests(tests.TestCaseWithTransport):
         t = self.get_transport()
         client = t.get_smart_client()
         self.assertIsInstance(client, smart.SmartStreamClient)
+
+    def test_get_medium_from_transport(self):
+        """Remote transport has a medium always, which it can return."""
+        t = self.get_transport()
+        medium = t.get_smart_medium()
+        self.assertIsInstance(medium, smart.SmartClientMedium)
 
 
 class BasicSmartTests(tests.TestCase):
@@ -110,22 +405,6 @@ class BasicSmartTests(tests.TestCase):
                 self.fail("get did not raise expected error")
         finally:
             server.stop_background_thread()
-
-    def test_server_subprocess(self):
-        """Talk to a server started as a subprocess
-        
-        This is similar to running it over ssh, except that it runs in the same machine 
-        without ssh intermediating.
-        """
-        args = [sys.executable, sys.argv[0], 'serve', '--inet']
-        child = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                 close_fds=True)
-        conn = smart.SmartStreamClient(lambda: (child.stdout, child.stdin))
-        conn.query_version()
-        conn.query_version()
-        conn.disconnect()
-        returncode = child.wait()
-        self.assertEquals(0, returncode)
 
 
 class SmartTCPTests(tests.TestCase):
@@ -359,7 +638,7 @@ class TestSmartTransport(tests.TestCase):
     def test_use_connection_factory(self):
         # We want to be able to pass a client as a parameter to SmartTransport.
         client = FakeClient()
-        transport = smart.SmartTransport('bzr://localhost/', client=client)
+        transport = smart.SmartTransport('bzr://localhost/', medium=client)
 
         # We want to make sure the client is used when the first remote
         # method is called.  No method should have been called yet.
@@ -373,7 +652,7 @@ class TestSmartTransport(tests.TestCase):
     def test__translate_error_readonly(self):
         """Sending a ReadOnlyError to _translate_error raises TransportNotPossible."""
         client = FakeClient()
-        transport = smart.SmartTransport('bzr://localhost/', client=client)
+        transport = smart.SmartTransport('bzr://localhost/', medium=client)
         self.assertRaises(errors.TransportNotPossible,
             transport._translate_error, ("ReadOnlyError", ))
 
@@ -507,6 +786,24 @@ class TestSmartProtocol(tests.TestCase):
         protocol.sync_with_request(request)
         self.assertTrue(protocol.finished_reading)
 
+    def test_query_version(self):
+        """query_version on a SmartClientProtocolOne should return a number.
+        
+        XXX: SmartClientProtocolOne doesn't exist yet, so we pretend.
+        """
+        # What we really want to test here is that SmartClientProtocolOne calls
+        # accept_bytes(tuple_based_encoding_of_hello) and reads and parses the
+        # response of tuple-encoded (ok, 1).  Also, seperately we should test
+        # the error if the response a non-understood version.
+        input = StringIO('ok\x011\n' * 2)
+        output = StringIO()
+        medium = smart.SmartSimplePipesClientMedium(input, output)
+        # medium should really be a protocol eventually.
+        # protocol = smart.SmartClientProtocolOne(medium)
+        protocol = medium
+        self.assertEqual(1, protocol.query_version())
+        self.assertEqual(1, protocol.query_version())
+
 
 class LengthPrefixedBodyDecoder(tests.TestCase):
 
@@ -572,13 +869,21 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
         self.addCleanup(http_server.tearDown)
 
         http_transport = get_transport(http_server.get_url())
-        client = http_transport.get_smart_client()
-        answer = client._call_with_upload(
-            'readv', ('data-file',), '0,1')
-        answer_body = client._recv_bulk()
 
-        self.assertEqual(('readv',), answer)
-        self.assertEqual('c', answer_body)
+        medium = http_transport.get_smart_medium()
+        remote_transport = RemoteTransport('fake_url', medium)
+        self.assertEqual("c", remote_transport.readv("data-file", [(0,1)]))
+
+        
+##        client = http_transport.get_smart_client()
+##        # XXX: this should be a domain method, not a call to a structured data
+##        # method, e.g. "client.read_bundle(...)"
+##        answer = client._call_with_upload(
+##            'readv', ('data-file',), '0,1')
+##        answer_body = client._recv_bulk()
+##
+##        self.assertEqual(('readv',), answer)
+##        self.assertEqual('c', answer_body)
         
     def test_http_server_with_smarts(self):
         http_server = HTTPServerWithSmarts()

@@ -125,6 +125,13 @@ class TestHttpMixins(object):
         self.assertTrue(server.logs[0].find(
             '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s' % bzrlib.__version__) > -1)
 
+    def test_get_smart_medium(self):
+        # For HTTP, get_smart_medium should return the transport object.
+        server = self.get_readonly_server()
+        http_transport = self._transport(server.get_url())
+        medium = http_transport.get_smart_medium()
+        self.assertTrue(medium is http_transport)
+
 
 class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
 

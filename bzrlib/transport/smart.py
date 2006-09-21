@@ -57,7 +57,10 @@ So we need a wrapper around pipes and sockets to seperate out reqeusts from
 substrate and this will give us a single model which is consist for HTTP,
 sockets and pipes.
 
- WIRE    (factory for protocol, reads bytes & pushes to protocol,
+Server-side
+-----------
+
+ MEDIUM  (factory for protocol, reads bytes & pushes to protocol,
           uses protocol to detect end-of-request, sends written
           bytes to client) e.g. socket, pipe, HTTP request handler.
   ^
@@ -67,7 +70,7 @@ sockets and pipes.
 PROTOCOL  (serialisation, deserialisation)  accepts bytes for one
           request, decodes according to internal state, pushes
           structured data to handler.  accepts structured data from
-          handler and encodes and writes to the wire.  factory for
+          handler and encodes and writes to the medium.  factory for
           handler.
   ^
   | structured data
@@ -76,6 +79,33 @@ PROTOCOL  (serialisation, deserialisation)  accepts bytes for one
 HANDLER   (domain logic) accepts structured data, operates state
           machine until the request can be satisfied,
           sends structured data to the protocol.
+
+
+Client-side
+-----------
+
+ CLIENT             domain logic, accepts domain requests, generated structured
+                    data, reads structured data from responses and turns into
+                    domain data.  Sends structured data to the protocol.
+                    Operates state machines until the request can be delivered
+                    (e.g. reading from a bundle generated in bzrlib to deliver a
+                    complete request).
+
+                    Possibly this should just be RemoteBzrDir, RemoteTransport,
+                    ...
+  ^
+  | structured data
+  v
+
+PROTOCOL  (serialisation, deserialisation)  accepts structured data for one
+          request, encodes and writes to the medium.  Reads bytes from the
+          medium, decodes and allows the client to read structured data.
+  ^
+  | bytes.
+  v
+
+ MEDIUM  (accepts bytes from the protocol & delivers to the remote server.
+          Allows the potocol to read bytes e.g. socket, pipe, HTTP request.
 """
 
 
@@ -222,8 +252,12 @@ class SmartProtocolBase(object):
     def _send_bulk_data(self, body, a_file=None):
         """Send chunked body data"""
         assert isinstance(body, str)
-        bytes = ''.join(('%d\n' % len(body), body, 'done\n'))
+        bytes = self._encode_bulk_data(body)
         self._write_and_flush(bytes, a_file)
+
+    def _encode_bulk_data(self, body):
+        """Encode body as a bulk data chunk."""
+        return ''.join(('%d\n' % len(body), body, 'done\n'))
 
     # TODO: this only actually accomodates a single block; possibly should support
     # multiple chunks?
@@ -883,10 +917,11 @@ class SmartTransport(transport.Transport):
     # SmartTransport is an adapter from the Transport object model to the 
     # SmartClient model, not an encoder.
 
-    def __init__(self, url, clone_from=None, client=None):
+    def __init__(self, url, clone_from=None, medium=None):
         """Constructor.
 
-        :param client: ignored when clone_from is not None.
+        :param medium: The medium to use for this RemoteTransport. This must be
+            supplied if clone_from is None.
         """
         ### Technically super() here is faulty because Transport's __init__
         ### fails to take 2 parameters, and if super were to choose a silly
@@ -897,16 +932,14 @@ class SmartTransport(transport.Transport):
         self._scheme, self._username, self._password, self._host, self._port, self._path = \
                 transport.split_url(url)
         if clone_from is None:
-            if client is None:
-                self._client = SmartStreamClient(self._connect_to_server)
-            else:
-                self._client = client
+            self._client = medium
         else:
             # credentials may be stripped from the base in some circumstances
             # as yet to be clearly defined or documented, so copy them.
             self._username = clone_from._username
             # reuse same connection
             self._client = clone_from._client
+        assert self._client is not None
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -922,15 +955,18 @@ class SmartTransport(transport.Transport):
         This essentially opens a handle on a different remote directory.
         """
         if relative_url is None:
-            return self.__class__(self.base, self)
+            return SmartTransport(self.base, self)
         else:
-            return self.__class__(self.abspath(relative_url), self)
+            return SmartTransport(self.abspath(relative_url), self)
 
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
         return False
                                                    
     def get_smart_client(self):
+        return self._client
+
+    def get_smart_medium(self):
         return self._client
                                                    
     def _unparse_url(self, path):
@@ -1153,7 +1189,7 @@ class SmartTransport(transport.Transport):
             raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 
     def _send_tuple(self, args):
-        self._client._send_tuple(args)
+        self._client.accept_bytes(_encode_tuple(args))
 
     def _recv_tuple(self):
         return self._client._recv_tuple()
@@ -1207,46 +1243,20 @@ class SmartTransport(transport.Transport):
 class SmartStreamClient(SmartProtocolBase):
     """Connection to smart server over two streams"""
 
-    def __init__(self, connect_func):
-        self._connect_func = connect_func
-        self._connected = False
-
-    def __del__(self):
-        self.disconnect()
-
-    def _ensure_connection(self):
-        if not self._connected:
-            self._in, self._out = self._connect_func()
-            self._connected = True
-
-    def _send_tuple(self, args):
-        self._ensure_connection()
-        return self._write_and_flush(_encode_tuple(args))
-
     def _send_bulk_data(self, body):
         self._ensure_connection()
         SmartProtocolBase._send_bulk_data(self, body)
         
-    def _recv_bulk(self):
-        self._ensure_connection()
-        return SmartProtocolBase._recv_bulk(self)
-
-    def _recv_tuple(self):
-        self._ensure_connection()
-        return SmartProtocolBase._recv_tuple(self)
-
-    def _recv_trailer(self):
-        self._ensure_connection()
-        return SmartProtocolBase._recv_trailer(self)
-
     def disconnect(self):
-        """Close connection to the server"""
-        if self._connected:
-            self._out.close()
-            self._in.close()
-
+        """If this medium maintains a persistent connection, close it.
+        
+        The default implementation does nothing.
+        """
+        
     def _call(self, *args):
-        self._send_tuple(args)
+        bytes = _encode_tuple(args)
+        # should be self.medium.accept_bytes(bytes) XXX
+        self.accept_bytes(bytes)
         return self._recv_tuple()
 
     def _call_with_upload(self, method, args, body):
@@ -1256,51 +1266,221 @@ class SmartStreamClient(SmartProtocolBase):
         :param args: parameter args tuple
         :param body: upload body as a byte string
         """
-        self._send_tuple((method,) + args)
-        self._send_bulk_data(body)
+        bytes = _encode_tuple((method,) + args)
+        bytes += self._encode_bulk_data(body)
+        # should be self.medium.accept_bytes XXX
+        self.accept_bytes(bytes)
         return self._recv_tuple()
 
     def query_version(self):
         """Return protocol version number of the server."""
-        # XXX: should make sure it's empty
-        self._send_tuple(('hello',))
-        resp = self._recv_tuple()
+        resp = self._call('hello')
         if resp == ('ok', '1'):
             return 1
         else:
             raise errors.SmartProtocolError("bad response %r" % (resp,))
 
 
-class SmartTCPTransport(SmartTransport):
-    """Connection to smart server over plain tcp"""
+class SmartClientMedium(SmartStreamClient):
+    """Smart client is a medium for sending smart protocol requests over.
 
-    def __init__(self, url, clone_from=None):
-        super(SmartTCPTransport, self).__init__(url, clone_from)
+    XXX: we want explicit finalisation
+    """
+
+
+class SmartStreamMediumClient(SmartClientMedium):
+    """The SmartStreamMediumClient knows how to close the stream when it is
+    finished with it.
+    """
+
+    def __del__(self):
+        self.disconnect()
+
+
+class SmartSimplePipesClientMedium(SmartClientMedium):
+    """A client medium using simple pipes.
+    
+    This client does not manage the pipes: it assumes they will always be open.
+    """
+
+    def __init__(self, readable_pipe, writeable_pipe):
+        self._readable_pipe = readable_pipe
+        self._writeable_pipe = writeable_pipe
+
+    def accept_bytes(self, bytes):
+        """See SmartClientMedium.accept_bytes."""
+        self._writeable_pipe.write(bytes)
+
+    def read_bytes(self, count):
+        """See SmartClientMedium.read_bytes."""
+        return self._readable_pipe.read(count)
+
+    def _recv_bulk(self):
+        """transitional api from 'client' to 'medium'."""
+        self._in = self._readable_pipe
         try:
-            self._port = int(self._port)
-        except (ValueError, TypeError), e:
-            raise errors.InvalidURL(path=url, extra="invalid port %s" % self._port)
+            return SmartClientMedium._recv_bulk(self)
+        finally:
+            self._in = None
+
+    def _recv_tuple(self):
+        """transitional api from 'client' to 'medium'."""
+        return _recv_tuple(self._readable_pipe)
+
+    def _write_and_flush(self, bytes, file=None):
+        """Thunk from the 'client' api to the 'Medium' api."""
+        assert file is None
+        self.accept_bytes(bytes)
+
+
+class SmartSSHClientMedium(SmartStreamMediumClient):
+    """A client medium using SSH."""
+    
+    def __init__(self, host, port=None, username=None, password=None,
+            vendor=None):
+        """Creates a client that will connect on the first use.
+        
+        :param vendor: An optional override for the ssh vendor to use. See
+            bzrlib.transport.ssh for details on ssh vendors.
+        """
+        self._connected = False
+        self._host = host
+        self._password = password
+        self._port = port
+        self._username = username
+        self._read_from = None
+        self._ssh_connection = None
+        self._vendor = vendor
+        self._write_to = None
+
+    def accept_bytes(self, bytes):
+        """See SmartClientMedium.accept_bytes."""
+        self._ensure_connection()
+        self._write_to.write(bytes)
+        self._write_to.flush()
+
+    def disconnect(self):
+        """See SmartClientMedium.disconnect()."""
+        if not self._connected:
+            return
+        self._read_from.close()
+        self._write_to.close()
+        self._ssh_connection.close()
+        self._connected = False
+
+    def _ensure_connection(self):
+        """Connect this medium if not already connected."""
+        if self._connected:
+            return
+        executable = os.environ.get('BZR_REMOTE_PATH', 'bzr')
+        if self._vendor is None:
+            vendor = ssh._get_ssh_vendor()
+        else:
+            vendor = self._vendor
+        self._ssh_connection = vendor.connect_ssh(self._username,
+                self._password, self._host, self._port,
+                command=[executable, 'serve', '--inet', '--directory=/',
+                         '--allow-writes'])
+        self._read_from, self._write_to = \
+            self._ssh_connection.get_filelike_channels()
+        self._connected = True
+
+    def read_bytes(self, count):
+        """See SmartClientMedium.read_bytes."""
+        raise errors.MediumNotConnected(self)
+
+    def _recv_bulk(self):
+        """transitional api from 'client' to 'medium'."""
+        self._in = self._read_from
+        try:
+            return SmartStreamMediumClient._recv_bulk(self)
+        finally:
+            self._in = None
+
+    def _recv_tuple(self):
+        """transitional api from 'client' to 'medium'."""
+        return _recv_tuple(self._read_from)
+
+    def _write_and_flush(self, bytes, file=None):
+        """Thunk from the 'client' api to the 'Medium' api."""
+        assert file is None
+        self.accept_bytes(bytes)
+
+
+class SmartTCPClientMedium(SmartStreamMediumClient):
+    """A client medium using TCP."""
+    
+    def __init__(self, host, port):
+        """Creates a client that will connect on the first use."""
+        self._connected = False
+        self._host = host
+        self._port = port
         self._socket = None
 
-    def _connect_to_server(self):
+    def accept_bytes(self, bytes):
+        """See SmartClientMedium.accept_bytes."""
+        self._ensure_connection()
+        self._socket.sendall(bytes)
+
+    def disconnect(self):
+        """See SmartClientMedium.disconnect()."""
+        if not self._connected:
+            return
+        self._socket.close()
+        self._socket = None
+        self._connected = False
+
+    def _ensure_connection(self):
+        """Connect this medium if not already connected."""
+        if self._connected:
+            return
         self._socket = socket.socket()
         self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         result = self._socket.connect_ex((self._host, int(self._port)))
         if result:
             raise errors.ConnectionError("failed to connect to %s:%d: %s" %
                     (self._host, self._port, os.strerror(result)))
-        # TODO: May be more efficient to just treat them as sockets
-        # throughout?  But what about pipes to ssh?...
-        to_server = self._socket.makefile('w')
-        from_server = self._socket.makefile('r')
-        return from_server, to_server
+        self._connected = True
 
-    def disconnect(self):
-        super(SmartTCPTransport, self).disconnect()
-        # XXX: Is closing the socket as well as closing the files really
-        # necessary?
-        if self._socket is not None:
-            self._socket.close()
+    def read_bytes(self, count):
+        """See SmartClientMedium.read_bytes."""
+        raise errors.MediumNotConnected(self)
+
+    def _recv_bulk(self):
+        """transitional api from 'client' to 'medium'."""
+        self._in = self._socket.makefile('r', 0)
+        try:
+            return SmartStreamMediumClient._recv_bulk(self)
+        finally:
+            self._in = None
+
+    def _recv_tuple(self):
+        """transitional api from 'client' to 'medium'."""
+        return _recv_tuple(self._socket.makefile('r', 0))
+
+    def _write_and_flush(self, bytes, file=None):
+        """Thunk from the 'client' api to the 'Medium' api."""
+        assert file is None
+        self.accept_bytes(bytes)
+
+
+class SmartTCPTransport(SmartTransport):
+    """Connection to smart server over plain tcp.
+    
+    This is essentially just a factory to get 'RemoteTransport(url,
+        SmartTCPClientMedium).
+    """
+
+    def __init__(self, url):
+        _scheme, _username, _password, _host, _port, _path = \
+            transport.split_url(url)
+        try:
+            _port = int(_port)
+        except (ValueError, TypeError), e:
+            raise errors.InvalidURL(path=url, extra="invalid port %s" % _port)
+        medium = SmartTCPClientMedium(_host, _port)
+        super(SmartTCPTransport, self).__init__(url, medium=medium)
+
 
 try:
     from bzrlib.transport import sftp, ssh
@@ -1309,31 +1489,27 @@ except errors.ParamikoNotPresent:
     pass
 else:
     class SmartSSHTransport(SmartTransport):
-        """Connection to smart server over SSH."""
+        """Connection to smart server over SSH.
 
-        def __init__(self, url, clone_from=None):
-            # TODO: all this probably belongs in the parent class.
-            super(SmartSSHTransport, self).__init__(url, clone_from)
+        This is essentially just a factory to get 'RemoteTransport(url,
+            SmartSSHClientMedium).
+        """
+
+        def __init__(self, url):
+            _scheme, _username, _password, _host, _port, _path = \
+                transport.split_url(url)
             try:
-                if self._port is not None:
-                    self._port = int(self._port)
+                if _port is not None:
+                    _port = int(_port)
             except (ValueError, TypeError), e:
-                raise errors.InvalidURL(path=url, extra="invalid port %s" % self._port)
-
-        def _connect_to_server(self):
-            executable = os.environ.get('BZR_REMOTE_PATH', 'bzr')
-            vendor = ssh._get_ssh_vendor()
-            self._ssh_connection = vendor.connect_ssh(self._username,
-                    self._password, self._host, self._port,
-                    command=[executable, 'serve', '--inet', '--directory=/',
-                             '--allow-writes'])
-            return self._ssh_connection.get_filelike_channels()
-
-        def disconnect(self):
-            super(SmartSSHTransport, self).disconnect()
-            self._ssh_connection.close()
+                raise errors.InvalidURL(path=url, extra="invalid port %s" % 
+                    _port)
+            medium = SmartSSHClientMedium(_host, _port, _username, _password)
+            super(SmartSSHTransport, self).__init__(url, medium=medium)
 
 
 def get_test_permutations():
-    """Return (transport, server) permutations for testing"""
+    """Return (transport, server) permutations for testing."""
+    ### We may need a little more test framework support to construct an
+    ### appropriate RemoteTransport in the future.
     return [(SmartTCPTransport, SmartTCPServer_for_testing)]

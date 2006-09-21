@@ -912,6 +912,14 @@ class NotConflicted(BzrNewError):
         self.filename = filename
 
 
+class MediumNotConnected(BzrNewError):
+    """The medium '%(medium)s' is not connected."""
+
+    def __init__(self, medium):
+        BzrNewError.__init__(self)
+        self.medium = medium
+
+
 class MustUseDecorated(Exception):
     """A decorating function has requested its original command be used.
     
@@ -1194,6 +1202,14 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
 
     def __init__(self, msg):
         BadInventoryFormat.__init__(self, msg=msg)
+
+
+class NoSmartMedium(BzrNewError):
+    """The transport '%(transport)s' cannot tunnel the smart protocol."""
+
+    def __init__(self, transport):
+        BzrNewError.__init__(self)
+        self.transport = transport
 
 
 class NoSmartServer(NotBranchError):

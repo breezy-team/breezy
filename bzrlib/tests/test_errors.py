@@ -26,12 +26,23 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_medium_not_connected(self):
+        error = errors.MediumNotConnected("a medium")
+        self.assertEqualDiff(
+            "The medium 'a medium' is not connected.", str(error))
+        
     def test_no_repo(self):
         dir = bzrdir.BzrDir.create(self.get_url())
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1, str(error).find((dir.transport.clone('..').base)))
         self.assertEqual(-1, str(error).find((dir.transport.base)))
         
+    def test_no_smart_medium(self):
+        error = errors.NoSmartMedium("a transport")
+        self.assertEqualDiff("The transport 'a transport' cannot tunnel the "
+            "smart protocol.",
+            str(error))
+
     def test_no_such_id(self):
         error = errors.NoSuchId("atree", "anid")
         self.assertEqualDiff("The file id anid is not present in the tree "

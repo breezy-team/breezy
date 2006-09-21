@@ -897,6 +897,8 @@ class TransportTests(TestTransportImplementation):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
+        # This should be:  but SSH still connects on construction. No COOKIE!
+        # self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
         try:
             t = bzrlib.transport.get_transport(url)
             t.get('.bzr/branch')
@@ -1322,6 +1324,17 @@ class TransportTests(TestTransportImplementation):
             # XXX: should be a more general class
             self.assertIsInstance(client, smart.SmartStreamClient)
         except NoSmartServer:
+            # as long as we got it we're fine
+            pass
+
+    def test_get_smart_medium(self):
+        """All transports must either give a smart medium, or know they can't.
+        """
+        transport = self.get_transport()
+        try:
+            medium = transport.get_smart_medium()
+            self.assertIsInstance(medium, smart.SmartClientMedium)
+        except errors.NoSmartMedium:
             # as long as we got it we're fine
             pass
 
