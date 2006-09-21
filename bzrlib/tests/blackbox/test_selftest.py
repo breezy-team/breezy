@@ -86,8 +86,47 @@ class TestOptions(TestCase):
 
 class TestRunBzr(ExternalBase):
 
-    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None):
+    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
+                         working_dir=None):
+        self.argv = argv
+        self.retcode = retcode
+        self.encoding = encoding
         self.stdin = stdin
+        self.working_dir = working_dir
+
+    def test_args(self):
+        """Test that run_bzr passes args correctly to run_bzr_captured"""
+        self.run_bzr('arg1', 'arg2', 'arg3', retcode=1)
+        self.assertEqual(('arg1', 'arg2', 'arg3'), self.argv)
+
+    def test_encoding(self):
+        """Test that run_bzr passes encoding to run_bzr_captured"""
+        self.run_bzr('foo', 'bar')
+        self.assertEqual(None, self.encoding)
+        self.assertEqual(('foo', 'bar'), self.argv)
+
+        self.run_bzr('foo', 'bar', encoding='baz')
+        self.assertEqual('baz', self.encoding)
+        self.assertEqual(('foo', 'bar'), self.argv)
+
+    def test_retcode(self):
+        """Test that run_bzr passes retcode to run_bzr_captured"""
+        # Default is retcode == 0
+        self.run_bzr('foo', 'bar')
+        self.assertEqual(0, self.retcode)
+        self.assertEqual(('foo', 'bar'), self.argv)
+
+        self.run_bzr('foo', 'bar', retcode=1)
+        self.assertEqual(1, self.retcode)
+        self.assertEqual(('foo', 'bar'), self.argv)
+
+        self.run_bzr('foo', 'bar', retcode=None)
+        self.assertEqual(None, self.retcode)
+        self.assertEqual(('foo', 'bar'), self.argv)
+
+        self.run_bzr('foo', 'bar', retcode=3)
+        self.assertEqual(3, self.retcode)
+        self.assertEqual(('foo', 'bar'), self.argv)
 
     def test_stdin(self):
         # test that the stdin keyword to run_bzr is passed through to
@@ -97,8 +136,21 @@ class TestRunBzr(ExternalBase):
         # should invoke it.
         self.run_bzr('foo', 'bar', stdin='gam')
         self.assertEqual('gam', self.stdin)
+        self.assertEqual(('foo', 'bar'), self.argv)
+
         self.run_bzr('foo', 'bar', stdin='zippy')
         self.assertEqual('zippy', self.stdin)
+        self.assertEqual(('foo', 'bar'), self.argv)
+
+    def test_working_dir(self):
+        """Test that run_bzr passes working_dir to run_bzr_captured"""
+        self.run_bzr('foo', 'bar')
+        self.assertEqual(None, self.working_dir)
+        self.assertEqual(('foo', 'bar'), self.argv)
+
+        self.run_bzr('foo', 'bar', working_dir='baz')
+        self.assertEqual('baz', self.working_dir)
+        self.assertEqual(('foo', 'bar'), self.argv)
 
 
 class TestBenchmarkTests(TestCaseWithTransport):
@@ -133,6 +185,7 @@ class TestRunBzrCaptured(ExternalBase):
         self.stdin = stdin
         self.factory_stdin = getattr(bzrlib.ui.ui_factory, "stdin", None)
         self.factory = bzrlib.ui.ui_factory
+        self.working_dir = osutils.getcwd()
         stdout.write('foo\n')
         stderr.write('bar\n')
         return 0
@@ -162,6 +215,28 @@ class TestRunBzrCaptured(ExternalBase):
         self.assertEqual('foo\n', self.factory.stdout.getvalue())
         self.assertEqual('bar\n', self.factory.stderr.getvalue())
         self.assertIsInstance(self.factory, bzrlib.tests.blackbox.TestUIFactory)
+
+    def test_working_dir(self):
+        self.build_tree(['one/', 'two/'])
+        cwd = osutils.getcwd()
+
+        # Default is to work in the current directory
+        self.run_bzr_captured(['foo', 'bar'])
+        self.assertEqual(cwd, self.working_dir)
+
+        self.run_bzr_captured(['foo', 'bar'], working_dir=None)
+        self.assertEqual(cwd, self.working_dir)
+
+        self.run_bzr_captured(['foo', 'bar'], working_dir='one')
+        self.assertNotEqual(cwd, self.working_dir)
+        self.assertEndsWith(self.working_dir, 'one')
+
+        self.run_bzr_captured(['foo', 'bar'], working_dir='two')
+        self.assertNotEqual(cwd, self.working_dir)
+        self.assertEndsWith(self.working_dir, 'two')
+
+
+class TestRunBzrSubprocess(TestCaseWithTransport):
 
     def test_run_bzr_subprocess(self):
         """The run_bzr_helper_external comand behaves nicely."""
@@ -244,6 +319,24 @@ class TestRunBzrCaptured(ExternalBase):
         self.assertEqual('it sure does!\n', out)
         self.assertEqual('', err)
 
+    def test_run_bzr_subprocess_working_dir(self):
+        cwd = osutils.getcwd()
+
+        self.make_branch_and_tree('.')
+        self.make_branch_and_tree('one')
+        self.make_branch_and_tree('two')
+
+        self.assertEqual(cwd, self.run_bzr_subprocess('root')[0].rstrip())
+        self.assertEqual(cwd,
+                 self.run_bzr_subprocess('root', working_dir=None)[0].rstrip())
+        dir1 = self.run_bzr_subprocess('root', working_dir='one')[0].rstrip()
+        self.assertEndsWith(dir1, 'one')
+        dir2 = self.run_bzr_subprocess('root', working_dir='two')[0].rstrip()
+        self.assertEndsWith(dir2, 'two')
+
+
+class TestBzrSubprocess(TestCaseWithTransport):
+
     def test_start_and_stop_bzr_subprocess(self):
         """We can start and perform other test actions while that process is
         still alive.
@@ -287,6 +380,16 @@ class TestRunBzrCaptured(ExternalBase):
                                             retcode=3)
         self.assertEqual('', result[0])
         self.assertEqual('bzr: interrupted\n', result[1])
+
+    def test_start_and_stop_working_dir(self):
+        cwd = osutils.getcwd()
+
+        self.make_branch_and_tree('one')
+
+        process = self.start_bzr_subprocess(['root'], working_dir='one')
+        result = self.finish_bzr_subprocess(process)
+        self.assertEndsWith(result[0], 'one\n')
+        self.assertEqual('', result[1])
         
 
 class TestRunBzrError(ExternalBase):

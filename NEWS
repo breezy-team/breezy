@@ -78,6 +78,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * TestCase.run_bzr, run_bzr_captured, and run_bzr_subprocess can take a
+      working_dir='foo' parameter, which will change directory for the
+      command. (John Arbash Meinel)
+
     * TestCaseInTempDir now creates a separate directory for HOME, rather
       than having HOME set to the same location as the working directory.
       (John Arbash Meinel)
