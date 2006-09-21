@@ -2002,6 +2002,7 @@ class cmd_selftest(Command):
                 test_suite_factory = benchmarks.test_suite
                 if verbose is None:
                     verbose = True
+                # TODO: should possibly lock the history file...
                 benchfile = open(".perf_history", "at")
             else:
                 test_suite_factory = None
