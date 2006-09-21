@@ -91,14 +91,7 @@ class VersionInfoBuilder(object):
         if not self._check or self._working_tree is None:
             return
 
-        # We have both a working tree, and we are checking
-        # COMPATIBILITY:
-        # bzr < 0.9 did not have Tree.changes_from
-        try:
-            delta = self._working_tree.changes_from(basis_tree)
-        except AttributeError:
-            import bzrlib.delta
-            delta = bzrlib.delta.compare_trees(basis_tree, self._working_tree)
+        delta = self._working_tree.changes_from(basis_tree)
 
         # Using a 2-pass algorithm for renames. This is because you might have
         # renamed something out of the way, and then created a new file

@@ -26,9 +26,7 @@ from bzrlib.tests import TestCaseWithTransport
 class TestVersionInfo(TestCaseWithTransport):
 
     def test_invalid_format(self):
-        bzr = self.run_bzr
-
-        bzr('version-info', '--format', 'quijibo', retcode=3)
+        self.run_bzr('version-info', '--format', 'quijibo', retcode=3)
 
     def create_branch(self):
         wt = self.make_branch_and_tree('branch')
@@ -46,7 +44,6 @@ class TestVersionInfo(TestCaseWithTransport):
     def test_default(self):
         # smoketest that not supplying a --format still works
         self.create_branch()
-
         info = self.run_bzr('version-info', 'branch')[0]
 
     def test_rio(self):
@@ -79,7 +76,7 @@ class TestVersionInfo(TestCaseWithTransport):
         txt = regen('--check-clean')
         self.assertContainsRe(txt, 'clean: True')
 
-        open('branch/c', 'wb').write('now unclean\n')
+        self.build_tree_contents([('branch/c', 'now unclean\n')])
         txt = regen('--check-clean')
         self.assertContainsRe(txt, 'clean: False')
 
@@ -93,15 +90,11 @@ class TestVersionInfo(TestCaseWithTransport):
         txt = self.run_bzr('version-info', '--format', 'rio')
 
     def test_python(self):
-        def bzr(*args, **kwargs):
-            return self.run_bzr(*args, **kwargs)[0]
-
         def regen(*args):
+            """Create a test version module and import it."""
             txt = self.run_bzr('version-info', '--format', 'python',
                                'branch', *args)[0]
-            outf = open('test_version_information.py', 'wb')
-            outf.write(txt)
-            outf.close()
+            self.build_tree_contents([('test_version_information.py', txt)])
             module_info = imp.find_module('test_version_information',
                                           [os.getcwdu()])
             tvi = imp.load_module('tvi', *module_info)
@@ -140,7 +133,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqual([('a', self.revisions[0]), ('b', self.revisions[1])],
             file_revisions)
 
-        open('branch/c', 'wb').write('now unclean\n')
+        self.build_tree_contents([('branch/c', 'now unclean\n')])
         tvi = regen('--check-clean', '--include-file-revisions')
         self.assertEqual(False, tvi.version_info['clean'])
         self.assertEqual('unversioned', tvi.file_revisions['c'])

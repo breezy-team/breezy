@@ -24,9 +24,6 @@ import sys
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.rio import read_stanzas
 
-# TODO: jam 20051228 When part of bzrlib, this should become
-#       from bzrlib.generate_version_info import foo
-
 from bzrlib.version_info_formats.format_rio import RioVersionInfoBuilder
 from bzrlib.version_info_formats.format_python import PythonVersionInfoBuilder
 
@@ -44,7 +41,7 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.add('b')
         wt.commit('b', rev_id='r2')
 
-        open('branch/a', 'wb').write('new contents\n')
+        self.build_tree_contents([('branch/a', 'new contents\n')])
         wt.commit('a2', rev_id='r3')
 
         return wt
@@ -149,11 +146,14 @@ class TestVersionInfo(TestCaseWithTransport):
         wt = self.create_branch()
 
         def regen(**kwargs):
+            """Create a test module, import and return it"""
             outf = open('test_version_information.py', 'wb')
-            builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt,
-                                               **kwargs)
-            builder.generate(outf)
-            outf.close()
+            try:
+                builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt,
+                                                   **kwargs)
+                builder.generate(outf)
+            finally:
+                outf.close()
             module_info = imp.find_module('test_version_information',
                                           [os.getcwdu()])
             tvi = imp.load_module('tvi', *module_info)

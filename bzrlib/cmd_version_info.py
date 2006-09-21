@@ -27,6 +27,11 @@ from bzrlib.option import Option
 
 
 def _parse_version_info_format(format):
+    """Convert a string passed by the user into a VersionInfoFormat.
+
+    This looks in the version info format registry, and if the format
+    cannot be found, generates a useful error exception.
+    """
     try:
         return version_info_formats.get_builder(format)
     except KeyError:
@@ -57,7 +62,7 @@ class cmd_version_info(Command):
             include_file_revisions=False):
 
         if location is None:
-            location = u'.'
+            location = '.'
 
         if format is None:
             format = version_info_formats.get_builder(None)
