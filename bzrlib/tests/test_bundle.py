@@ -26,6 +26,7 @@ from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
 from bzrlib.bundle.serializer.v08 import BundleSerializerV08
+from bzrlib.bundle.serializer.v09 import BundleSerializerV09
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
 from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle, 
@@ -312,6 +313,15 @@ class BundleTester1(TestCaseWithTransport):
         self.assertRaises(errors.IncompatibleFormat, serializer.write, 
                           b.repository, [], {}, StringIO())
 
+    def test_matched_bundle(self):
+        """Don't raise IncompatibleFormat for knit2 and bundle0.9"""
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        serializer = BundleSerializerV09('0.9')
+        b = self.make_branch('.', format=format)
+        serializer.write(b.repository, [], {}, StringIO())
+
+
 class V08BundleTester(TestCaseWithTransport):
 
     format = '0.8'
@@ -337,7 +347,7 @@ class V08BundleTester(TestCaseWithTransport):
                                bundle_txt, format=self.format)
         bundle_txt.seek(0)
         self.assertEqual(bundle_txt.readline(), 
-                         '# Bazaar revision bundle v0.8\n')
+                         '# Bazaar revision bundle v%s\n' % self.format)
         self.assertEqual(bundle_txt.readline(), '#\n')
 
         rev = self.b1.repository.get_revision(rev_id)
@@ -722,7 +732,7 @@ class V08BundleTester(TestCaseWithTransport):
         self.tree1.commit('modify', rev_id='a@cset-0-3')
         bundle_file = StringIO()
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
-                               'a@cset-0-1', bundle_file)
+                               'a@cset-0-1', bundle_file, format=self.format)
         self.assertNotContainsRe(bundle_file.getvalue(), 'two')
         self.assertContainsRe(bundle_file.getvalue(), 'one')
         self.assertContainsRe(bundle_file.getvalue(), 'three')

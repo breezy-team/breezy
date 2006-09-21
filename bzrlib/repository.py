@@ -777,10 +777,10 @@ def install_revision(repository, rev, revision_tree):
             parent_trees[p_id] = repository.revision_tree(None)
 
     inv = revision_tree.inventory
-    
-    # backwards compatability hack: skip the root id.
     entries = inv.iter_entries()
-    entries.next()
+    # backwards compatability hack: skip the root id.
+    if not repository._format.rich_root_data:
+        entries.next()
     # Add the texts that are not already present
     for path, ie in entries:
         w = repository.weave_store.get_weave_or_empty(ie.file_id,
