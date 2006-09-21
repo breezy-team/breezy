@@ -49,6 +49,7 @@ import bzrlib.bzrdir as bzrdir
 import bzrlib.commands
 import bzrlib.bundle.serializer
 import bzrlib.errors as errors
+import bzrlib.export
 import bzrlib.inventory
 import bzrlib.iterablefile
 import bzrlib.lockdir
@@ -89,6 +90,7 @@ MODULES_TO_DOCTEST = [
                       bzrlib.bundle.serializer,
                       bzrlib.commands,
                       bzrlib.errors,
+                      bzrlib.export,
                       bzrlib.inventory,
                       bzrlib.iterablefile,
                       bzrlib.lockdir,
