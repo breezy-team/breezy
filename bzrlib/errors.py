@@ -789,6 +789,14 @@ class KnitCorrupt(KnitError):
         self.how = how
 
 
+class KnitTextsDiffer(KnitError):
+    """Knit texts for version %(version) differ"""
+
+    def __init__(self, version_id):
+        KnitError.__init__(self)
+        self.version_id = version_id
+
+
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""
     def __init__(self, format):
