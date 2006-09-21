@@ -37,6 +37,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Transform._set_mode() needs to stat the right file. 
+      (John Arbash Meinel, #56549)
+
     * Raise WeaveFormatError rather than StopIteration when trying to read
       an empty Weave file. (John Arbash Meinel, #46871)
 
