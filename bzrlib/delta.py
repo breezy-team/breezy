@@ -155,7 +155,8 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
         require_versioned=require_versioned)
 
 
-def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
+def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids, 
+                   include_root):
 
     from osutils import is_inside_any
     
@@ -167,8 +168,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
     # TODO: Rather than iterating over the whole tree and then filtering, we
     # could diff just the specified files (if any) and their subtrees.  
 
-    old_files = old_tree.list_files()
-    new_files = new_tree.list_files()
+    old_files = old_tree.list_files(include_root)
+    new_files = new_tree.list_files(include_root)
 
     more_old = True
     more_new = True

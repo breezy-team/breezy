@@ -37,6 +37,7 @@ class BundleInfo09(BundleInfo):
     def _testament_sha1(self, revision, inventory):
         return StrictTestament2(revision, inventory).as_sha1()
 
+
 class BundleReaderV09(BundleReader):
     
     def _get_info(self):
