@@ -578,7 +578,8 @@ class BundleTree(Tree):
                 then be cached.
         """
         base_id = self.old_contents_id(file_id)
-        if base_id is not None and self.base_tree.get_revision_id() != 'null:':
+        if (base_id is not None and 
+            base_id != self.base_tree.inventory.root.file_id):
             patch_original = self.base_tree.get_file(base_id)
         else:
             patch_original = None
