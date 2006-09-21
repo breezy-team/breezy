@@ -44,7 +44,7 @@ This means that exceptions can used like this:
 >>> try:
 ...   raise NotBranchError(path='/foo/bar')
 ... except:
-...   print sys.exc_type
+...   print '%s.%s' % (sys.exc_type.__module__, sys.exc_type.__name__)
 ...   print sys.exc_value
 ...   path = getattr(sys.exc_value, 'path', None)
 ...   if path is not None:
@@ -283,8 +283,7 @@ class InvalidURLJoin(PathError):
 
     def __init__(self, msg, base, args):
         PathError.__init__(self, base, msg)
-        self.args = [base]
-        self.args.extend(args)
+        self.args = [base] + list(args)
 
 
 class UnsupportedProtocol(PathError):

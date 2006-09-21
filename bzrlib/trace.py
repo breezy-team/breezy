@@ -288,7 +288,8 @@ def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
     import traceback
     exc_type, exc_object, exc_tb = exc_info
-    print >>err_file, "bzr: ERROR: %s: %s" % (exc_type, exc_object)
+    print >>err_file, "bzr: ERROR: %s.%s: %s" % (
+        exc_type.__module__, exc_type.__name__, exc_object)
     print >>err_file
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
     print >>err_file
