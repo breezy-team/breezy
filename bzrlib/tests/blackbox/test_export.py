@@ -114,19 +114,11 @@ class TestExport(ExternalBase):
 
     def example_branch(self):
         tree = self.make_branch_and_tree('branch')
-        f = open('branch/hello', 'wb')
-        try:
-            f.write('foo')
-        finally:
-            f.close()
+        self.build_tree_contents([('branch/hello', 'foo')])
         tree.add('hello')
         tree.commit('setup')
 
-        f = open('branch/goodbye', 'wb')
-        try:
-            f.write('baz')
-        finally:
-            f.close()
+        self.build_tree_contents([('branch/goodbye', 'baz')])
         tree.add('goodbye')
         tree.commit('setup')
         return tree
