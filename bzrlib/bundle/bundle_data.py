@@ -223,7 +223,8 @@ class BundleInfo(object):
             if repository.has_revision(revision_id):
                 testament = StrictTestament.from_revision(repository, 
                                                           revision_id)
-                local_sha1 = testament.as_sha1()
+                local_sha1 = self._testament_sha1_from_revision(repository,
+                                                                revision_id)
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For revision id {%s}' 
                             'local: %s, bundle: %s' % (revision_id, local_sha1, sha1))
@@ -281,7 +282,7 @@ class BundleInfo(object):
         rev_info = self.get_revision_info(revision_id)
         assert rev.revision_id == rev_info.revision_id
         assert rev.revision_id == revision_id
-        sha1 = StrictTestament(rev, inventory).as_sha1()
+        sha1 = self._testament_sha1(rev, inventory)
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev.revision_id in rev_to_sha1:

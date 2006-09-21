@@ -210,6 +210,7 @@ class StrictTestament(Testament):
         l += {True: ' yes\n', False: ' no\n'}[ie.executable]
         return l
 
+
 class StrictTestament2(StrictTestament):
     """This testament format is for use as a checksum in bundle format 0.9+
     
