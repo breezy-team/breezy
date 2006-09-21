@@ -790,7 +790,7 @@ class KnitCorrupt(KnitError):
 
 
 class KnitTextsDiffer(KnitError):
-    """Knit texts for version %(version) differ"""
+    """Knit texts for version %(version_id)s differ"""
 
     def __init__(self, version_id):
         KnitError.__init__(self)
