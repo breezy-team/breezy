@@ -227,13 +227,17 @@ class TestRunBzrCaptured(ExternalBase):
         self.run_bzr_captured(['foo', 'bar'], working_dir=None)
         self.assertEqual(cwd, self.working_dir)
 
+        # The function should be run in the alternative directory
+        # but afterwards the current working dir shouldn't be changed
         self.run_bzr_captured(['foo', 'bar'], working_dir='one')
         self.assertNotEqual(cwd, self.working_dir)
         self.assertEndsWith(self.working_dir, 'one')
+        self.assertEqual(cwd, osutils.getcwd())
 
         self.run_bzr_captured(['foo', 'bar'], working_dir='two')
         self.assertNotEqual(cwd, self.working_dir)
         self.assertEndsWith(self.working_dir, 'two')
+        self.assertEqual(cwd, osutils.getcwd())
 
 
 class TestRunBzrSubprocess(TestCaseWithTransport):
@@ -320,19 +324,33 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         self.assertEqual('', err)
 
     def test_run_bzr_subprocess_working_dir(self):
+        """Test that we can specify the working dir for the child"""
         cwd = osutils.getcwd()
 
         self.make_branch_and_tree('.')
         self.make_branch_and_tree('one')
         self.make_branch_and_tree('two')
 
-        self.assertEqual(cwd, self.run_bzr_subprocess('root')[0].rstrip())
-        self.assertEqual(cwd,
-                 self.run_bzr_subprocess('root', working_dir=None)[0].rstrip())
-        dir1 = self.run_bzr_subprocess('root', working_dir='one')[0].rstrip()
+        def get_root(**kwargs):
+            """Spawn a process to get the 'root' of the tree.
+
+            You can pass in arbitrary new arguments. This just makes
+            sure that the returned path doesn't have trailing whitespace.
+            """
+            return self.run_bzr_subprocess('root', **kwargs)[0].rstrip()
+
+        self.assertEqual(cwd, get_root())
+        self.assertEqual(cwd, get_root(working_dir=None))
+        # Has our path changed?
+        self.assertEqual(cwd, osutils.getcwd())
+
+        dir1 = get_root(working_dir='one')
         self.assertEndsWith(dir1, 'one')
-        dir2 = self.run_bzr_subprocess('root', working_dir='two')[0].rstrip()
+        self.assertEqual(cwd, osutils.getcwd())
+
+        dir2 = get_root(working_dir='two')
         self.assertEndsWith(dir2, 'two')
+        self.assertEqual(cwd, osutils.getcwd())
 
 
 class TestBzrSubprocess(TestCaseWithTransport):
