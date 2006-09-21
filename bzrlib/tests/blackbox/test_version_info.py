@@ -41,25 +41,20 @@ class TestVersionInfo(TestCaseWithTransport):
 
         self.revisions = wt.branch.revision_history()
 
-    def test_default(self):
-        # smoketest that not supplying a --format still works
-        self.create_branch()
-        info = self.run_bzr('version-info', 'branch')[0]
-
-    def test_rio(self):
+    def test_basic(self):
         self.create_branch()
 
-        def regen(*args):
-            return self.run_bzr('version-info', '--format', 'rio',
-                                'branch', *args)[0]
-
-        txt = regen()
+        txt = self.run_bzr('version-info', 'branch')[0]
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'build-date:')
         self.assertContainsRe(txt, 'revno: 2')
         self.assertContainsRe(txt, 'revision-id: ' + self.revisions[-1])
 
-        txt = regen('--all')
+    def test_all(self):
+        """'--all' includes clean, revision history, and file revisions"""
+        self.create_branch()
+        txt = self.run_bzr('version-info', 'branch',
+                           '--all')[0]
         self.assertContainsRe(txt, 'date:')
         self.assertContainsRe(txt, 'revno: 2')
         self.assertContainsRe(txt, 'revision-id: ' + self.revisions[-1])
@@ -73,70 +68,46 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(txt, 'path: a')
         self.assertContainsRe(txt, 'path: b')
 
-        txt = regen('--check-clean')
+    def test_clean(self):
+        """Test that --check-clean includes the right info"""
+        self.create_branch()
+
+        txt = self.run_bzr('version-info', 'branch',
+                           '--check-clean')[0]
         self.assertContainsRe(txt, 'clean: True')
 
         self.build_tree_contents([('branch/c', 'now unclean\n')])
-        txt = regen('--check-clean')
+        txt = self.run_bzr('version-info', 'branch',
+                           '--check-clean')[0]
         self.assertContainsRe(txt, 'clean: False')
 
-        txt = regen('--check-clean', '--include-file-revisions')
+        txt = self.run_bzr('version-info', 'branch',
+                           '--check-clean', '--include-file-revisions')[0]
         self.assertContainsRe(txt, 'revision: unversioned')
 
         os.remove('branch/c')
 
-        # Make sure it works without a directory
-        os.chdir('branch')
-        txt = self.run_bzr('version-info', '--format', 'rio')
-
-    def test_python(self):
-        def regen(*args):
-            """Create a test version module and import it."""
-            txt = self.run_bzr('version-info', '--format', 'python',
-                               'branch', *args)[0]
-            self.build_tree_contents([('test_version_information.py', txt)])
-            module_info = imp.find_module('test_version_information',
-                                          [os.getcwdu()])
-            tvi = imp.load_module('tvi', *module_info)
-            # Make sure the module isn't cached
-            sys.modules.pop('tvi', None)
-            sys.modules.pop('test_version_information', None)
-            # Delete the compiled versions, because we are generating
-            # a new file fast enough that python doesn't detect it
-            # needs to recompile, and using sleep() just makes the
-            # test slow
-            if os.path.exists('test_version_information.pyc'):
-                os.remove('test_version_information.pyc')
-            if os.path.exists('test_version_information.pyo'):
-                os.remove('test_version_information.pyo')
-            return tvi
-
+    def test_no_branch(self):
+        """Test that bzr defaults to the local working directory"""
         self.create_branch()
 
-        tvi = regen()
-        self.assertEqual(tvi.version_info['revno'], 2)
-        self.failUnless(tvi.version_info.has_key('date'))
-        self.assertEqual(self.revisions[-1], tvi.version_info['revision_id'])
-        self.assertEqual({}, tvi.revisions)
-        self.assertEqual({}, tvi.file_revisions)
+        os.chdir('branch')
+        txt = self.run_bzr('version-info')[0]
 
-        tvi = regen('--all')
-        rev_info = [(rev, message) for rev, message, timestamp, timezone
-                                   in tvi.revisions]
-        self.assertEqual([(self.revisions[0], 'adding a'),
-                          (self.revisions[1], 'adding b')],
-                         rev_info)
-        self.assertEqual(True, tvi.version_info['clean'])
-        file_revisions = []
-        for path in sorted(tvi.file_revisions.keys()):
-            file_revisions.append((path, tvi.file_revisions[path]))
-        self.assertEqual([('a', self.revisions[0]), ('b', self.revisions[1])],
-            file_revisions)
+    def test_rio(self):
+        """Test that we can pass --format=rio"""
+        self.create_branch()
 
-        self.build_tree_contents([('branch/c', 'now unclean\n')])
-        tvi = regen('--check-clean', '--include-file-revisions')
-        self.assertEqual(False, tvi.version_info['clean'])
-        self.assertEqual('unversioned', tvi.file_revisions['c'])
-        os.remove('branch/c')
+        txt = self.run_bzr('version-info', 'branch')[0]
+        txt1 = self.run_bzr('version-info', '--format', 'rio', 'branch')[0]
+        txt2 = self.run_bzr('version-info', '--format=rio', 'branch')[0]
+        self.assertEqual(txt, txt1)
+        self.assertEqual(txt, txt2)
 
+    def test_python(self):
+        """Test that we can do --format=python"""
+        self.create_branch()
 
+        txt = self.run_bzr('version-info', '--format', 'python', 'branch')[0]
+
+        self.assertContainsRe(txt, 'revisions = {')
