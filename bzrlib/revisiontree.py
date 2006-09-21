@@ -100,7 +100,6 @@ class RevisionTree(Tree):
     def list_files(self, include_root=False):
         # The only files returned by this are those from the version
         entries = self.inventory.iter_entries()
-        import pdb; pdb.set_trace()
         if not include_root:
             # skip the root for compatability with the current apis.
             entries.next()
