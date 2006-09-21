@@ -37,6 +37,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * 'bzr inventory [FILE...]' allows restricting the file list to a
+      specific set of files. (John Arbash Meinel, #3631)
+
     * Raise WeaveFormatError rather than StopIteration when trying to read
       an empty Weave file. (John Arbash Meinel, #46871)
 

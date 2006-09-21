@@ -361,13 +361,17 @@ class cmd_inventory(Command):
     """Show inventory of the current working copy or a revision.
 
     It is possible to limit the output to a particular entry
-    type using the --kind option.  For example; --kind file.
+    type using the --kind option.  For example: --kind file.
+
+    It is also possible to restrict the list of files to a specific
+    set. For example: bzr inventory --show-ids this/file
     """
 
     takes_options = ['revision', 'show-ids', 'kind']
-    
+    takes_args = ['file*']
+
     @display_command
-    def run(self, revision=None, show_ids=False, kind=None):
+    def run(self, revision=None, show_ids=False, kind=None, file_list=None):
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise BzrCommandError('invalid kind specified')
         tree = WorkingTree.open_containing(u'.')[0]
@@ -380,7 +384,12 @@ class cmd_inventory(Command):
             inv = tree.branch.repository.get_revision_inventory(
                 revision[0].in_history(tree.branch).rev_id)
 
-        for path, entry in inv.entries():
+        if file_list:
+            entries = [(path, inv[inv.path2id(path)]) for path in file_list]
+        else:
+            entries = inv.entries()
+
+        for path, entry in entries:
             if kind and kind != entry.kind:
                 continue
             if show_ids:
