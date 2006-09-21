@@ -37,6 +37,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Leave HttpTransportBase daughter classes decides how they
+      implement cloning. (Vincent Ladeuil, #61606)
+
     * Raise WeaveFormatError rather than StopIteration when trying to read
       an empty Weave file. (John Arbash Meinel, #46871)
 
