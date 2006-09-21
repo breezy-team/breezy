@@ -1,15 +1,15 @@
 # Copyright (C) 2004, 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -25,14 +25,15 @@ from bzrlib.errors import (NoSuchFile, FileExists,
                            TransportNotPossible,
                            ConnectionError,
                            DependencyNotPresent,
+                           UnsupportedProtocol,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
-from bzrlib.transport import (_get_protocol_handlers,
+from bzrlib.transport import (_CoalescedOffset,
+                              _get_protocol_handlers,
                               _get_transport_modules,
                               get_transport,
                               register_lazy_transport,
                               _set_protocol_handlers,
-                              urlescape,
                               Transport,
                               )
 from bzrlib.transport.memory import MemoryTransport
@@ -41,9 +42,6 @@ from bzrlib.transport.local import LocalTransport
 
 class TestTransport(TestCase):
     """Test the non transport-concrete class functionality."""
-
-    def test_urlescape(self):
-        self.assertEqual('%25', urlescape('%'))
 
     def test__get_set_protocol_handlers(self):
         handlers = _get_protocol_handlers()
@@ -74,9 +72,16 @@ class TestTransport(TestCase):
         try:
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
                     'BadTransportHandler')
-            t = get_transport('foo://fooserver/foo')
-            # because we failed to load the transport
-            self.assertTrue(isinstance(t, LocalTransport))
+            try:
+                get_transport('foo://fooserver/foo')
+            except UnsupportedProtocol, e:
+                e_str = str(e)
+                self.assertEquals('Unsupported protocol'
+                                  ' for url "foo://fooserver/foo":'
+                                  ' Unable to import library "some_lib":'
+                                  ' testing missing dependency', str(e))
+            else:
+                self.fail('Did not raise UnsupportedProtocol')
         finally:
             # restore original values
             _set_protocol_handlers(saved_handlers)
@@ -94,7 +99,66 @@ class TestTransport(TestCase):
             self.assertTrue(isinstance(t, BackupTransportHandler))
         finally:
             _set_protocol_handlers(saved_handlers)
+
+
+class TestCoalesceOffsets(TestCase):
+    
+    def check(self, expected, offsets, limit=0, fudge=0):
+        coalesce = Transport._coalesce_offsets
+        exp = [_CoalescedOffset(*x) for x in expected]
+        out = list(coalesce(offsets, limit=limit, fudge_factor=fudge))
+        self.assertEqual(exp, out)
+
+    def test_coalesce_empty(self):
+        self.check([], [])
+
+    def test_coalesce_simple(self):
+        self.check([(0, 10, [(0, 10)])], [(0, 10)])
+
+    def test_coalesce_unrelated(self):
+        self.check([(0, 10, [(0, 10)]),
+                    (20, 10, [(0, 10)]),
+                   ], [(0, 10), (20, 10)])
             
+    def test_coalesce_unsorted(self):
+        self.check([(20, 10, [(0, 10)]),
+                    (0, 10, [(0, 10)]),
+                   ], [(20, 10), (0, 10)])
+
+    def test_coalesce_nearby(self):
+        self.check([(0, 20, [(0, 10), (10, 10)])],
+                   [(0, 10), (10, 10)])
+
+    def test_coalesce_overlapped(self):
+        self.check([(0, 15, [(0, 10), (5, 10)])],
+                   [(0, 10), (5, 10)])
+
+    def test_coalesce_limit(self):
+        self.check([(10, 50, [(0, 10), (10, 10), (20, 10),
+                              (30, 10), (40, 10)]),
+                    (60, 50, [(0, 10), (10, 10), (20, 10),
+                              (30, 10), (40, 10)]),
+                   ], [(10, 10), (20, 10), (30, 10), (40, 10),
+                       (50, 10), (60, 10), (70, 10), (80, 10),
+                       (90, 10), (100, 10)],
+                    limit=5)
+
+    def test_coalesce_no_limit(self):
+        self.check([(10, 100, [(0, 10), (10, 10), (20, 10),
+                               (30, 10), (40, 10), (50, 10),
+                               (60, 10), (70, 10), (80, 10),
+                               (90, 10)]),
+                   ], [(10, 10), (20, 10), (30, 10), (40, 10),
+                       (50, 10), (60, 10), (70, 10), (80, 10),
+                       (90, 10), (100, 10)])
+
+    def test_coalesce_fudge(self):
+        self.check([(10, 30, [(0, 10), (20, 10)]),
+                    (100, 10, [(0, 10),]),
+                   ], [(10, 10), (30, 10), (100, 10)],
+                   fudge=10
+                  )
+
 
 class TestMemoryTransport(TestCase):
 
@@ -104,37 +168,43 @@ class TestMemoryTransport(TestCase):
     def test_clone(self):
         transport = MemoryTransport()
         self.assertTrue(isinstance(transport, MemoryTransport))
+        self.assertEqual("memory:///", transport.clone("/").base)
 
     def test_abspath(self):
         transport = MemoryTransport()
-        self.assertEqual("memory:/relpath", transport.abspath('relpath'))
+        self.assertEqual("memory:///relpath", transport.abspath('relpath'))
+
+    def test_abspath_of_root(self):
+        transport = MemoryTransport()
+        self.assertEqual("memory:///", transport.base)
+        self.assertEqual("memory:///", transport.abspath('/'))
 
     def test_relpath(self):
         transport = MemoryTransport()
 
     def test_append_and_get(self):
         transport = MemoryTransport()
-        transport.append('path', StringIO('content'))
+        transport.append_bytes('path', 'content')
         self.assertEqual(transport.get('path').read(), 'content')
-        transport.append('path', StringIO('content'))
+        transport.append_file('path', StringIO('content'))
         self.assertEqual(transport.get('path').read(), 'contentcontent')
 
     def test_put_and_get(self):
         transport = MemoryTransport()
-        transport.put('path', StringIO('content'))
+        transport.put_file('path', StringIO('content'))
         self.assertEqual(transport.get('path').read(), 'content')
-        transport.put('path', StringIO('content'))
+        transport.put_bytes('path', 'content')
         self.assertEqual(transport.get('path').read(), 'content')
 
     def test_append_without_dir_fails(self):
         transport = MemoryTransport()
         self.assertRaises(NoSuchFile,
-                          transport.append, 'dir/path', StringIO('content'))
+                          transport.append_bytes, 'dir/path', 'content')
 
     def test_put_without_dir_fails(self):
         transport = MemoryTransport()
         self.assertRaises(NoSuchFile,
-                          transport.put, 'dir/path', StringIO('content'))
+                          transport.put_file, 'dir/path', StringIO('content'))
 
     def test_get_missing(self):
         transport = MemoryTransport()
@@ -146,13 +216,13 @@ class TestMemoryTransport(TestCase):
 
     def test_has_present(self):
         transport = MemoryTransport()
-        transport.append('foo', StringIO('content'))
+        transport.append_bytes('foo', 'content')
         self.assertEquals(True, transport.has('foo'))
 
     def test_mkdir(self):
         transport = MemoryTransport()
         transport.mkdir('dir')
-        transport.append('dir/path', StringIO('content'))
+        transport.append_bytes('dir/path', 'content')
         self.assertEqual(transport.get('dir/path').read(), 'content')
 
     def test_mkdir_missing_parent(self):
@@ -174,16 +244,16 @@ class TestMemoryTransport(TestCase):
     def test_iter_files_recursive(self):
         transport = MemoryTransport()
         transport.mkdir('dir')
-        transport.put('dir/foo', StringIO('content'))
-        transport.put('dir/bar', StringIO('content'))
-        transport.put('bar', StringIO('content'))
+        transport.put_bytes('dir/foo', 'content')
+        transport.put_bytes('dir/bar', 'content')
+        transport.put_bytes('bar', 'content')
         paths = set(transport.iter_files_recursive())
         self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
 
     def test_stat(self):
         transport = MemoryTransport()
-        transport.put('foo', StringIO('content'))
-        transport.put('bar', StringIO('phowar'))
+        transport.put_bytes('foo', 'content')
+        transport.put_bytes('bar', 'phowar')
         self.assertEqual(7, transport.stat('foo').st_size)
         self.assertEqual(6, transport.stat('bar').st_size)
 
@@ -307,3 +377,46 @@ class BadTransportHandler(Transport):
 class BackupTransportHandler(Transport):
     """Test transport that works as a backup for the BadTransportHandler"""
     pass
+
+
+class TestTransportImplementation(TestCaseInTempDir):
+    """Implementation verification for transports.
+    
+    To verify a transport we need a server factory, which is a callable
+    that accepts no parameters and returns an implementation of
+    bzrlib.transport.Server.
+    
+    That Server is then used to construct transport instances and test
+    the transport via loopback activity.
+
+    Currently this assumes that the Transport object is connected to the 
+    current working directory.  So that whatever is done 
+    through the transport, should show up in the working 
+    directory, and vice-versa. This is a bug, because its possible to have
+    URL schemes which provide access to something that may not be 
+    result in storage on the local disk, i.e. due to file system limits, or 
+    due to it being a database or some other non-filesystem tool.
+
+    This also tests to make sure that the functions work with both
+    generators and lists (assuming iter(list) is effectively a generator)
+    """
+    
+    def setUp(self):
+        super(TestTransportImplementation, self).setUp()
+        self._server = self.transport_server()
+        self._server.setUp()
+
+    def tearDown(self):
+        super(TestTransportImplementation, self).tearDown()
+        self._server.tearDown()
+        
+    def get_transport(self):
+        """Return a connected transport to the local directory."""
+        base_url = self._server.get_url()
+        # try getting the transport via the regular interface:
+        t = get_transport(base_url)
+        if not isinstance(t, self.transport_class): 
+            # we did not get the correct transport class type. Override the
+            # regular connection behaviour by direct construction.
+            t = self.transport_class(base_url)
+        return t

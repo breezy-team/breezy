@@ -2,12 +2,12 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -27,12 +27,14 @@ from bzrlib.errors import BzrError
 class _Serializer_v4(Serializer):
     """Version 0.0.4 serializer
 
-    You should use the serialzer_v4 singleton."""
+    You should use the serializer_v4 singleton."""
     
     __slots__ = []
     
     def _pack_inventory(self, inv):
         """Convert to XML Element"""
+        # v4 serialization is not used any more.
+        raise NotImplementedError(self._pack_inventory)
         e = Element('inventory')
         e.text = '\n'
         if inv.root.file_id not in (None, ROOT_ID):
@@ -49,12 +51,12 @@ class _Serializer_v4(Serializer):
         e.set('file_id', ie.file_id)
         e.set('kind', ie.kind)
 
-        if ie.text_size != None:
+        if ie.text_size is not None:
             e.set('text_size', '%d' % ie.text_size)
 
         for f in ['text_id', 'text_sha1', 'symlink_target']:
             v = getattr(ie, f)
-            if v != None:
+            if v is not None:
                 e.set(f, v)
 
         # to be conservative, we don't externalize the root pointers
@@ -90,7 +92,7 @@ class _Serializer_v4(Serializer):
         ## nodes in the root directory, but it's cleaner to use one
         ## internally.
         parent_id = elt.get('parent_id')
-        if parent_id == None:
+        if parent_id is None:
             parent_id = ROOT_ID
 
         kind = elt.get('kind')

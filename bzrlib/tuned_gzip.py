@@ -17,6 +17,8 @@
 
 """Bzrlib specific gzip tunings. We plan to feed these to the upstream gzip."""
 
+from cStringIO import StringIO
+
 # make GzipFile faster:
 import gzip
 from gzip import U32, LOWU32, FEXTRA, FCOMMENT, FNAME, FHCRC
@@ -62,6 +64,30 @@ class GzipFile(gzip.GzipFile):
         self.extrabuf += data
         self.extrasize += len_data
         self.size += len_data
+
+    def _write_gzip_header(self):
+        """A tuned version of gzip._write_gzip_header
+
+        We have some extra constrains that plain Gzip does not.
+        1) We want to write the whole blob at once. rather than multiple 
+           calls to fileobj.write().
+        2) We never have a filename
+        3) We don't care about the time
+        """
+        self.fileobj.write(
+           '\037\213'   # self.fileobj.write('\037\213')  # magic header
+            '\010'      # self.fileobj.write('\010')      # compression method
+                        # fname = self.filename[:-3]
+                        # flags = 0
+                        # if fname:
+                        #     flags = FNAME
+            '\x00'      # self.fileobj.write(chr(flags))
+            '\0\0\0\0'  # write32u(self.fileobj, long(time.time()))
+            '\002'      # self.fileobj.write('\002')
+            '\377'      # self.fileobj.write('\377')
+                        # if fname:
+            ''          #     self.fileobj.write(fname + '\000')
+            )
 
     def _read(self, size=1024):
         # various optimisations:
@@ -139,7 +165,7 @@ class GzipFile(gzip.GzipFile):
         4168 in 200
         """
         # We've read to the end of the file, so we should have 8 bytes of 
-        # unused data in the decompressor. If we dont, there is a corrupt file.
+        # unused data in the decompressor. If we don't, there is a corrupt file.
         # We use these 8 bytes to calculate the CRC and the recorded file size.
         # We then check the that the computed CRC and size of the
         # uncompressed data matches the stored values.  Note that the size
@@ -255,10 +281,16 @@ class GzipFile(gzip.GzipFile):
         # to :
         # 4168 calls in 417.
         # Negative numbers result in reading all the lines
-        if sizehint <= 0:
-            sizehint = -1
-        content = self.read(sizehint)
-        return bzrlib.osutils.split_lines(content)
+        
+        # python's gzip routine uses sizehint. This is a more efficient way
+        # than python uses to honor it. But it is even more efficient to
+        # just read the entire thing and use cStringIO to split into lines.
+        # if sizehint <= 0:
+        #     sizehint = -1
+        # content = self.read(sizehint)
+        # return bzrlib.osutils.split_lines(content)
+        content = StringIO(self.read(-1))
+        return content.readlines()
 
     def _unread(self, buf, len_buf=None):
         """tuned to remove unneeded len calls.

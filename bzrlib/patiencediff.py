@@ -17,14 +17,15 @@
 
 
 from bisect import bisect
-from copy import copy
 import difflib
 import os
 import sys
 import time
 
+from bzrlib.trace import mutter
 
-__all__ = ['SequenceMatcher', 'unified_diff', 'unified_diff_files']
+
+__all__ = ['PatienceSequenceMatcher', 'unified_diff', 'unified_diff_files']
 
 
 def unique_lcs(a, b):
@@ -105,50 +106,55 @@ def unique_lcs(a, b):
     return result
 
 
-def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
+def recurse_matches(a, b, alo, blo, ahi, bhi, answer, maxrecursion):
     """Find all of the matching text in the lines of a and b.
 
     :param a: A sequence
     :param b: Another sequence
+    :param alo: The start location of a to check, typically 0
+    :param ahi: The start location of b to check, typically 0
     :param ahi: The maximum length of a to check, typically len(a)
     :param bhi: The maximum length of b to check, typically len(b)
     :param answer: The return array. Will be filled with tuples
-                   indicating [(line_in_a), (line_in_b)]
+                   indicating [(line_in_a, line_in_b)]
     :param maxrecursion: The maximum depth to recurse.
                          Must be a positive integer.
     :return: None, the return value is in the parameter answer, which
              should be a list
 
     """
-    oldlen = len(answer)
     if maxrecursion < 0:
+        mutter('max recursion depth reached')
         # this will never happen normally, this check is to prevent DOS attacks
         return
     oldlength = len(answer)
-    if len(answer) == 0:
-        alo, blo = 0, 0
-    else:
-        alo, blo = answer[-1]
-        alo += 1
-        blo += 1
     if alo == ahi or blo == bhi:
         return
+    last_a_pos = alo-1
+    last_b_pos = blo-1
     for apos, bpos in unique_lcs(a[alo:ahi], b[blo:bhi]):
         # recurse between lines which are unique in each file and match
         apos += alo
         bpos += blo
-        recurse_matches(a, b, apos, bpos, answer, maxrecursion - 1)
+        # Most of the time, you will have a sequence of similar entries
+        if last_a_pos+1 != apos or last_b_pos+1 != bpos:
+            recurse_matches(a, b, last_a_pos+1, last_b_pos+1,
+                apos, bpos, answer, maxrecursion - 1)
+        last_a_pos = apos
+        last_b_pos = bpos
         answer.append((apos, bpos))
     if len(answer) > oldlength:
         # find matches between the last match and the end
-        recurse_matches(a, b, ahi, bhi, answer, maxrecursion - 1)
+        recurse_matches(a, b, last_a_pos+1, last_b_pos+1,
+                        ahi, bhi, answer, maxrecursion - 1)
     elif a[alo] == b[blo]:
         # find matching lines at the very beginning
         while alo < ahi and blo < bhi and a[alo] == b[blo]:
             answer.append((alo, blo))
             alo += 1
             blo += 1
-        recurse_matches(a, b, ahi, bhi, answer, maxrecursion - 1)
+        recurse_matches(a, b, alo, blo,
+                        ahi, bhi, answer, maxrecursion - 1)
     elif a[ahi - 1] == b[bhi - 1]:
         # find matching lines at the very end
         nahi = ahi - 1
@@ -156,13 +162,54 @@ def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
         while nahi > alo and nbhi > blo and a[nahi - 1] == b[nbhi - 1]:
             nahi -= 1
             nbhi -= 1
-        recurse_matches(a, b, nahi, nbhi, answer, maxrecursion - 1)
+        recurse_matches(a, b, last_a_pos+1, last_b_pos+1,
+                        nahi, nbhi, answer, maxrecursion - 1)
         for i in xrange(ahi - nahi):
             answer.append((nahi + i, nbhi + i))
 
 
-class SequenceMatcher(difflib.SequenceMatcher):
+def _collapse_sequences(matches):
+    """Find sequences of lines.
+
+    Given a sequence of [(line_in_a, line_in_b),]
+    find regions where they both increment at the same time
+    """
+    answer = []
+    start_a = start_b = None
+    length = 0
+    for i_a, i_b in matches:
+        if (start_a is not None
+            and (i_a == start_a + length) 
+            and (i_b == start_b + length)):
+            length += 1
+        else:
+            if start_a is not None:
+                answer.append((start_a, start_b, length))
+            start_a = i_a
+            start_b = i_b
+            length = 1
+
+    if length != 0:
+        answer.append((start_a, start_b, length))
+
+    return answer
+
+
+def _check_consistency(answer):
+    # For consistency sake, make sure all matches are only increasing
+    next_a = -1
+    next_b = -1
+    for a,b,match_len in answer:
+        assert a >= next_a, 'Non increasing matches for a'
+        assert b >= next_b, 'Not increasing matches for b'
+        next_a = a + match_len
+        next_b = b + match_len
+
+
+class PatienceSequenceMatcher(difflib.SequenceMatcher):
     """Compare a pair of sequences using longest common subset."""
+
+    _do_check_consistency = True
 
     def __init__(self, isjunk=None, a='', b=''):
         if isjunk is not None:
@@ -170,90 +217,40 @@ class SequenceMatcher(difflib.SequenceMatcher):
                                       ' isjunk for sequence matching')
         difflib.SequenceMatcher.__init__(self, isjunk, a, b)
 
-    def _check_with_diff(self, alo, ahi, blo, bhi, answer):
-        """Use the original diff algorithm on an unmatched section.
+    def get_matching_blocks(self):
+        """Return list of triples describing matching subsequences.
 
-        This will check to make sure the range is worth checking,
-        before doing any work.
+        Each triple is of the form (i, j, n), and means that
+        a[i:i+n] == b[j:j+n].  The triples are monotonically increasing in
+        i and in j.
 
-        :param alo: The last line that actually matched
-        :param ahi: The next line that actually matches
-        :param blo: Same as alo, only for the 'b' set
-        :param bhi: Same as ahi
-        :param answer: An array which will have the new ranges appended to it
-        :return: None
+        The last triple is a dummy, (len(a), len(b), 0), and is the only
+        triple with n==0.
+
+        >>> s = PatienceSequenceMatcher(None, "abxcd", "abcd")
+        >>> s.get_matching_blocks()
+        [(0, 0, 2), (3, 2, 2), (5, 4, 0)]
         """
-        # WORKAROUND
-        # recurse_matches has an implementation design
-        # which does not match non-unique lines in the
-        # if they do not touch matching unique lines
-        # so we rerun the regular diff algorithm
-        # if find a large enough chunk.
+        # jam 20060525 This is the python 2.4.1 difflib get_matching_blocks 
+        # implementation which uses __helper. 2.4.3 got rid of helper for
+        # doing it inline with a queue.
+        # We should consider doing the same for recurse_matches
 
-        # recurse_matches already looked at the direct
-        # neighbors, so we only need to run if there is
-        # enough space to do so
-        if ahi - alo > 2 and bhi - blo > 2:
-            a = self.a[alo+1:ahi-1]
-            b = self.b[blo+1:bhi-1]
-            m = difflib.SequenceMatcher(None, a, b)
-            new_blocks = m.get_matching_blocks()
-            # difflib always adds a final match
-            new_blocks.pop()
-            for blk in new_blocks:
-                answer.append((blk[0]+alo+1,
-                               blk[1]+blo+1,
-                               blk[2]))
+        if self.matching_blocks is not None:
+            return self.matching_blocks
 
-    def __helper(self, alo, ahi, blo, bhi, answer):
         matches = []
-        a = self.a[alo:ahi]
-        b = self.b[blo:bhi]
-        recurse_matches(a, b, len(a), len(b), matches, 10)
+        recurse_matches(self.a, self.b, 0, 0,
+                        len(self.a), len(self.b), matches, 10)
         # Matches now has individual line pairs of
         # line A matches line B, at the given offsets
+        self.matching_blocks = _collapse_sequences(matches)
+        self.matching_blocks.append( (len(self.a), len(self.b), 0) )
+        if PatienceSequenceMatcher._do_check_consistency:
+            if __debug__:
+                _check_consistency(self.matching_blocks)
 
-        start_a = start_b = None
-        length = 0
-        for i_a, i_b in matches:
-            if (start_a is not None
-                and (i_a == start_a + length) 
-                and (i_b == start_b + length)):
-                length += 1
-            else:
-                # New block
-                if start_a is None:
-                    # We need to check from 0,0 until the current match
-                    self._check_with_diff(alo-1, i_a+alo, blo-1, i_b+blo, 
-                                          answer)
-                else:
-                    answer.append((start_a+alo, start_b+blo, length))
-                    self._check_with_diff(start_a+alo+length, i_a+alo,
-                                          start_b+blo+length, i_b+blo,
-                                          answer)
-
-                start_a = i_a
-                start_b = i_b
-                length = 1
-
-        if length != 0:
-            answer.append((start_a+alo, start_b+blo, length))
-            self._check_with_diff(start_a+alo+length, ahi+1,
-                                  start_b+blo+length, bhi+1,
-                                  answer)
-        if not matches:
-            # Nothing matched, so we need to send the complete text
-            self._check_with_diff(alo-1, ahi+1, blo-1, bhi+1, answer)
-
-        # For consistency sake, make sure all matches are only increasing
-        if __debug__:
-            next_a = -1
-            next_b = -1
-            for a,b,match_len in answer:
-                assert a >= next_a, 'Non increasing matches for a'
-                assert b >= next_b, 'Not increasing matches for b'
-                next_a = a + match_len
-                next_b = b + match_len
+        return self.matching_blocks
 
 
 # This is a version of unified_diff which only adds a factory parameter
@@ -354,12 +351,12 @@ def main(args):
     import optparse
     p = optparse.OptionParser(usage='%prog [options] file_a file_b'
                                     '\nFiles can be "-" to read from stdin')
-    p.add_option('--cdv', dest='matcher', action='store_const', const='cdv',
-                 default='cdv', help='Use the cdv difference algorithm')
+    p.add_option('--patience', dest='matcher', action='store_const', const='patience',
+                 default='patience', help='Use the patience difference algorithm')
     p.add_option('--difflib', dest='matcher', action='store_const', const='difflib',
-                 default='cdv', help='Use python\'s difflib algorithm')
+                 default='patience', help='Use python\'s difflib algorithm')
 
-    algorithms = {'cdv':SequenceMatcher, 'difflib':difflib.SequenceMatcher}
+    algorithms = {'patience':PatienceSequenceMatcher, 'difflib':difflib.SequenceMatcher}
 
     (opts, args) = p.parse_args(args)
     matcher = algorithms[opts.matcher]

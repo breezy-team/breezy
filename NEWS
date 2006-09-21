@@ -2,6 +2,278 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Knit files now wait to create their contents until the first data is
+      added. The old code used to create an empty .knit and a .kndx with just
+      the header. However, this caused a lot of extra round trips over sftp.
+      This can change the time for ``bzr push`` to create a new remote branch
+      from 160s down to 100s. This also affects ``bzr commit`` performance when
+      adding new files, ``bzr commit`` on a new kernel-like tree drops from 50s
+      down to 40s (John Arbash Meinel, #44692)
+
+    * When an entire subtree has been deleted, commit will now report that
+      just the top of the subtree has been deleted, rather than reporting
+      all the individual items. (Robert Collins)
+
+    * Commit performs one less XML parse. (Robert Collins)
+
+    * ``bzr checkout`` now operates on readonly branches as well
+      as readwrite branches. This fixes bug #39542. (Robert Collins)
+
+    * ``bzr bind`` no longer synchronises history with the master branch.
+      Binding should be followed by an update or push to synchronise the 
+      two branches. This is closely related to the fix for bug #39542.
+      (Robert Collins)
+
+    * ``bzrlib.lazy_import.lazy_import`` function to create on-demand 
+      objects.  This allows all imports to stay at the global scope, but
+      modules will not actually be imported if they are not used.
+      (John Arbash Meinel)
+
+    * Support bzr:// and bzr+ssh:// urls to work with the new RPC-based
+      transport which will be used with the upcoming high-performance smart
+      server. The new command ``bzr serve`` will invoke bzr in server mode,
+      which processes these requests. (Andrew Bennetts, Robert Collins, Martin
+      Pool)
+
+  BUG FIXES:
+
+    * Transform._set_mode() needs to stat the right file. 
+      (John Arbash Meinel, #56549)
+
+    * Raise WeaveFormatError rather than StopIteration when trying to read
+      an empty Weave file. (John Arbash Meinel, #46871)
+
+    * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
+      (Vincent Ladeuil, #59835)
+
+    * Handle boundary="" lines properly to allow access through a Squid proxy.
+      (John Arbash Meinel, #57723)
+
+    * revert now removes newly-added directories (Aaron Bentley, #54172)
+
+    * ``bzr upgrade sftp://`` shouldn't fail to upgrade v6 branches if there 
+      isn't a working tree. (David Allouche, #40679)
+
+    * Give nicer error messages when a user supplies an invalid --revision
+      parameter. (John Arbash Meinel, #55420)
+
+    * Handle when LANG is not recognized by python. Emit a warning, but
+      just revert to using 'ascii'. (John Arbash Meinel, #35392)
+
+    * Don't use preexec_fn on win32, as it is not supported by subprocess.
+      (John Arbash Meinel)
+
+    * Skip specific tests when the dependencies aren't met. This includes
+      some ``setup.py`` tests when ``python-dev`` is not available, and
+      some tests that depend on paramiko. (John Arbash Meinel, Mattheiu Moy)
+
+    * Fallback to Paramiko properly, if no ``ssh`` executable exists on
+      the system. (Andrew Bennetts, John Arbash Meinel)
+
+    * ``Branch.bind(other_branch)`` no longer takes a write lock on the
+      other branch, and will not push or pull between the two branches.
+      API users will need to perform a push or pull or update operation if they
+      require branch synchronisation to take place. (Robert Collins, #47344)
+
+    * When creating a tarball or zipfile export, export unicode names as utf-8
+      paths. This may not work perfectly on all platforms, but has the best
+      chance of working in the common case. (John Arbash Meinel, #56816)
+
+  INTERNALS:
+
+    * TestCaseInTempDir now creates a separate directory for HOME, rather
+      than having HOME set to the same location as the working directory.
+      (John Arbash Meinel)
+
+    * run_bzr_subprocess() can take an optional 'env_changes={}' parameter,
+      which will update os.environ inside the spawned child. It also can
+      take a 'universal_newlines=True', which helps when checking the output
+      of the command. (John Arbash Meinel)
+
+    * Refactor SFTP vendors to allow easier re-use when ssh is used. 
+      (Andrew Bennetts)
+
+    * Transport.list_dir() and Transport.iter_files_recursive() should always
+      return urlescaped paths. This is now tested (there were bugs in a few
+      of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
+
+    * New utility function symbol_versioning.deprecation_string. Returns the
+      formatted string for a callable, deprecation format pair. (Robert Collins)
+
+    * New TestCase helper applyDeprecated. This allows you to call a callable
+      which is deprecated without it spewing to the screen, just by supplying
+      the deprecation format string issued for it. (Robert Collins)
+
+    * Transport.append and Transport.put have been deprecated in favor of
+      .append_bytes, .append_file, .put_bytes, and .put_file. This removes the
+      ambiguity in what type of object the functions take.
+      Transport.non_atomic_put_{bytes,file} has also been added. Which works
+      similarly to Transport.append() except for SFTP, it doesn't have a round
+      trip when opening the file. Also, it provides functionality for creating
+      a parent directory when trying to create a file, rather than raise
+      NoSuchFile and forcing the caller to repeat their request.
+      (John Arbash Meinel)
+
+    * WorkingTree has a new api ``unversion`` which allow the unversioning of
+      entries by their file id. (Robert Collins)
+
+    * WorkingTree.pending_merges is deprecated.  Please use the get_parent_ids
+      (introduced in 0.10) method instead. (Robert Collins)
+
+    * WorkingTree has a new lock_tree_write method which locks the branch for
+      read rather than write. This is appropriate for actions which only need
+      the branch data for reference rather than mutation. A new decorator
+      needs_tree_write_lock is provided in the workingtree module. Like the
+      needs_read_lock and needs_write_lock decorators this allows static 
+      declaration of the locking requirements of a function to ensure that
+      a lock is taken out for casual scripts. (Robert Collins)
+
+    * All WorkingTree methods which write to the tree, but not to the branch
+      have been converted to use ``needs_tree_write_lock`` rather than 
+      ``needs_write_lock``. Also converted is the revert, conflicts and tree
+      transform modules. This provides a modest performance improvement on 
+      metadir style trees, due to the reduce lock-acquisition, and a more
+      significant performance improvement on lightweight checkouts from 
+      remote branches, where trivial operations used to pay a significant 
+      penalty. It also provides the basis for allowing readonly checkouts.
+      (Robert Collins)
+
+    * Special case importing the standard library 'copy' module. This shaves
+      off 40ms of startup time, while retaining compatibility. See:
+      ``bzrlib/inspect_for_copy.py`` for more details. (John Arbash Meinel)
+
+    * WorkingTree has a new parent class MutableTree which represents the 
+      specialisations of Tree which are able to be altered. (Robert Collins)
+
+    * New methods mkdir and put_file_bytes_non_atomic on MutableTree that
+      mutate the tree and its contents. (Robert Collins)
+
+    * Transport behaviour at the root of the URL is now defined and tested.
+      (Andrew Bennetts, Robert Collins)
+
+  TESTING:
+
+    * New test helper classs MemoryTree. This is typically accessed via
+      ``self.make_branch_and_memory_tree()`` in test cases. (Robert Collins)
+      
+    * Add start_bzr_subprocess and stop_bzr_subprocess to allow test code to
+      continue running concurrently with a subprocess of bzr. (Andrew Bennetts,
+      Robert Collins)
+
+    * Add a new method ``Transport.get_smart_client()``. This is provided to
+      allow upgrades to a richer interface than the VFS one provided by
+      Transport. (Andrew Bennetts, Martin Pool)
+
+bzr 0.10  2006-08-29
+  
+  IMPROVEMENTS:
+    * 'merge' now takes --uncommitted, to apply uncommitted changes from a
+      tree.  (Aaron Bentley)
+  
+    * 'bzr add --file-ids-from' can be used to specify another path to use
+      for creating file ids, rather than generating all new ones. Internally,
+      the 'action' passed to smart_add_tree() can return file_ids that
+      will be used, rather than having bzrlib generate new ones.
+      (John Arbash Meinel, #55781)
+
+    * ``bzr selftest --benchmark`` now allows a ``--cache-dir`` parameter.
+      This will cache some of the intermediate trees, and decrease the
+      setup time for benchmark tests. (John Arbash Meinel)
+
+    * Inverse forms are provided for all boolean options.  For example,
+      --strict has --no-strict, --no-recurse has --recurse (Aaron Bentley)
+
+    * Serialize out Inventories directly, rather than using ElementTree.
+      Writing out a kernel sized inventory drops from 2s down to ~350ms.
+      (Robert Collins, John Arbash Meinel)
+
+  BUG FIXES:
+
+    * Help diffutils 2.8.4 get along with binary tests (Marien Zwart: #57614)
+
+    * Change LockDir so that if the lock directory doesn't exist when
+      lock_write() is called, an attempt will be made to create it.
+      (John Arbash Meinel, #56974)
+
+    * ``bzr uncommit`` preserves pending merges. (John Arbash Meinel, #57660)
+
+    * Active FTP transport now works as intended. (ghozzy, #56472)
+
+    * Really fix mutter() so that it won't ever raise a UnicodeError.
+      It means it is possible for ~/.bzr.log to contain non UTF-8 characters.
+      But it is a debugging log, not a real user file.
+      (John Arbash Meinel, #56947, #53880)
+
+    * Change Command handle to allow Unicode command and options.
+      At present we cannot register Unicode command names, so we will get
+      BzrCommandError('unknown command'), or BzrCommandError('unknown option')
+      But that is better than a UnicodeError + a traceback.
+      (John Arbash Meinel, #57123)
+
+    * Handle TZ=UTC properly when reading/writing revisions.
+      (John Arbash Meinel, #55783, #56290)
+
+    * Use GPG_TTY to allow gpg --cl to work with gpg-agent in a pipeline,
+      (passing text to sign in on stdin). (John Arbash Meinel, #54468)
+
+    * External diff does the right thing for binaries even in foreign 
+      languages. (John Arbash Meinel, #56307)
+
+    * Testament handles more cases when content is unicode. Specific bug was
+      in handling of revision properties. (John Arbash Meinel, Holger Krekel,
+      #54723)
+
+    * The bzr selftest was failing on installed versions due to a bug in a new
+      test helper. (John Arbash Meinel, Robert Collins, #58057)
+
+  INTERNALS:
+
+    * ``bzrlib.cache_utf8`` contains ``encode()`` and ``decode()`` functions
+      which can be used to cache the conversion between utf8 and Unicode.
+      Especially helpful for some of the knit annotation code, which has to
+      convert revision ids to utf8 to annotate lines in storage.
+      (John Arbash Meinel)
+
+    * ``setup.py`` now searches the filesystem to find all packages which
+      need to be installed. This should help make the life of packagers
+      easier. (John Arbash Meinel)
+
+bzr 0.9.0  2006-08-11
+
+  SURPRISES:
+
+   * The hard-coded built-in ignore rules have been removed. There are
+     now two rulesets which are enforced. A user global one in 
+     ~/.bazaar/ignore which will apply to every tree, and the tree
+     specific one '.bzrignore'.
+     ~/.bazaar/ignore will be created if it does not exist, but with
+     a more conservative list than the old default.
+     This fixes bugs with default rules being enforced no matter what. 
+     The old list of ignore rules from bzr is available by
+     running 'bzr ignore --old-default-rules'.
+     (Robert Collins, Martin Pool, John Arbash Meinel)
+
+   * 'branches.conf' has been changed to 'locations.conf', since it can apply
+     to more locations than just branch locations.
+     (Aaron Bentley)
+   
+  IMPROVEMENTS:
+
+   * The revision specifier "revno:" is extended to accept the syntax
+     revno:N:branch. For example,
+     revno:42:http://bazaar-vcs.org/bzr/bzr.dev/ means revision 42 in
+     bzr.dev.  (Matthieu Moy)
+
+   * Tests updates to ensure proper URL handling, UNICODE support, and
+     proper printing when the user's terminal encoding cannot display 
+     the path of a file that has been versioned.
+     ``bzr branch`` can take a target URL rather than only a local directory.
+     Branch.get_parent()/set_parent() now save a relative path if possible,
+     and normalize the parent based on root, allowing access across
+     different transports. (John Arbash Meinel, Wouter van Heyst, Martin Pool)
+     (Malone #48906, #42699, #40675, #5281, #3980, #36363, #43689,
+      #42517, #42514)
+
    * On Unix, detect terminal width using an ioctl not just $COLUMNS.
      Use terminal width for single-line logs from ``bzr log --line`` and
      pending-merge display.  (Robert Widhopf-Fenk, Gustavo Niemeyer)
@@ -18,8 +290,14 @@ IN DEVELOPMENT
    * 'bzr selftest' now shows a progress bar with the number of tests, and 
      progress made. 'make check' shows tests in -v mode, to be more useful
      for the PQM status window. (Robert Collins).
+     When using a progress bar, failed tests are printed out, rather than
+     being overwritten by the progress bar until the suite finishes.
+     (John Arbash Meinel)
 
    * 'bzr selftest --benchmark' will run a new benchmarking selftest.
+     'bzr selftest --benchmark --lsprof-timed' will use lsprofile to generate
+     profile data for the individual profiled calls, allowing for fine
+     grained analysis of performance.
      (Robert Collins, Martin Pool).
 
    * 'bzr commit' shows a progress bar. This is useful for commits over sftp
@@ -35,7 +313,60 @@ IN DEVELOPMENT
      ftp support has been improved, including support for supplying a
      non-standard port. (John Arbash Meinel).
 
-   * ``log --line`` shows the revision number.  (#5162, Alexander Belchenko)
+   * 'bzr log --line' shows the revision number, and uses only the
+     first line of the log message (#5162, Alexander Belchenko;
+     Matthieu Moy)
+
+   * 'bzr status' has had the --all option removed. The 'bzr ls' command
+     should be used to retrieve all versioned files. (Robert Collins)
+
+   * 'bzr bundle OTHER/BRANCH' will create a bundle which can be sent
+     over email, and applied on the other end, while maintaining ancestry.
+     This bundle can be applied with either 'bzr merge' or 'bzr pull',
+     the same way you would apply another branch.
+     (John Arbash Meinel, Aaron Bentley)
+  
+   * 'bzr whoami' can now be used to set your identity from the command line,
+     for a branch or globally.  (Robey Pointer)
+
+   * 'bzr checkout' now aliased to 'bzr co', and 'bzr annotate' to 'bzr ann'.
+     (Michael Ellerman)
+
+   * 'bzr revert DIRECTORY' now reverts the contents of the directory as well.
+     (Aaron Bentley)
+
+   * 'bzr get sftp://foo' gives a better error when paramiko is not present.
+     Also updates things like 'http+pycurl://' if pycurl is not present.
+     (John Arbash Meinel) (Malone #47821, #52204)
+
+   * New env variable BZR_PROGRESS_BAR, sets the default progress bar type.
+     Can be set to 'none' or 'dummy' to disable the progress bar, 'dots' or 
+     'tty' to create the respective type. (John Arbash Meinel, #42197, #51107)
+
+   * Improve the help text for 'bzr diff' to explain what various options do.
+     (John Arbash Meinel, #6391)
+
+   * 'bzr uncommit -r 10' now uncommits revisions 11.. rather than uncommitting
+     revision 10. This makes -r10 more in line with what other commands do.
+     'bzr uncommit' also now saves the pending merges of the revisions that
+     were removed. So it is safe to uncommit after a merge, fix something,
+     and commit again. (John Arbash Meinel, #32526, #31426)
+
+   * 'bzr init' now also works on remote locations.
+     (Wouter van Heyst, #48904)
+
+   * HTTP support has been updated. When using pycurl we now support 
+     connection keep-alive, which reduces dns requests and round trips.
+     And for both urllib and pycurl we support multi-range requests, 
+     which decreases the number of round-trips. Performance results for
+     ``bzr branch http://bazaar-vcs.org/bzr/bzr.dev/`` indicate
+     http branching is now 2-3x faster, and ``bzr pull`` in an existing 
+     branch is as much as 4x faster.
+     (Michael Ellerman, Johan Rydberg, John Arbash Meinel, #46768)
+
+   * Performance improvements for sftp. Branching and pulling are now up to
+     2x faster. Utilize paramiko.readv() support for async requests if it
+     is available (paramiko > 1.6) (John Arbash Meinel)
 
   BUG FIXES:
 
@@ -43,15 +374,132 @@ IN DEVELOPMENT
       tests not to run.  (#32587, Erik Bågfors, Michael Ellerman, 
       Martin Pool)
 
+    * Fix unnecessary requirement of sign-my-commits that it be run from
+      a working directory.  (Martin Pool, Robert Collins)
+
+    * 'bzr push location' will only remember the push location if it succeeds
+      in connecting to the remote location. (#49742, John Arbash Meinel)
+
+    * 'bzr revert' no longer toggles the executable bit on win32
+      (#45010, John Arbash Meinel)
+
+    * Handle broken pipe under win32 correctly. (John Arbash Meinel)
+    
+    * sftp tests now work correctly on win32 if you have a newer paramiko
+      (John Arbash Meinel)
+
+    * Cleanup win32 test suite, and general cleanup of places where
+      file handles were being held open. (John Arbash Meinel)
+
+    * When specifying filenames for 'diff -r x..y', the name of the file in the
+      working directory can be used, even if its name is different in both x
+      and y.
+
+    * File-ids containing single- or double-quotes are handled correctly by
+      push.  (#52227, Aaron Bentley)
+
+    * Normalize unicode filenames to ensure cross-platform consistency.
+      (John Arbash Meinel, #43689)
+
+    * The argument parser can now handle '-' as an argument. Currently
+      no code interprets it specially (it is mostly handled as a file named 
+      '-'). But plugins, and future operations can use it.
+      (John Arbash meinel, #50984)
+
+    * Bundles can properly read binary files with a plain '\r' in them.
+      (John Arbash Meinel, #51927)
+
+    * Tuning iter_entries() to be more efficient (John Arbash Meinel, #5444)
+
+    * Lots of win32 fixes (the test suite passes again).
+      (John Arbash Meinel, #50155)
+
+    * Handle openbsd returning None for sys.getfilesystemencoding() (#41183) 
+
+    * Support ftp APPE (append) to allow Knits to be used over ftp (#42592)
+
+    * Removals are only committed if they match the filespec (or if there is
+      no filespec).  (#46635, Aaron Bentley)
+
+    * smart-add recurses through all supplied directories 
+      (John Arbash Meinel, #52578)
+
+    * Make the bundle reader extra lines before and after the bundle text.
+      This allows you to parse an email with the bundle inline.
+      (John Arbash Meinel, #49182)
+
+    * Change the file id generator to squash a little bit more. Helps when
+      working with long filenames on windows. (Also helps for unicode filenames
+      not generating hidden files). (John Arbash Meinel, #43801)
+
+    * Restore terminal mode on C-c while reading sftp password.  (#48923, 
+      Nicholas Allen, Martin Pool)
+
+    * Timestamps are rounded to 1ms, and revision entries can be recreated
+      exactly. (John Arbash Meinel, Jamie Wilkinson, #40693)
+
+    * Branch.base has changed to a URL, but ~/.bazaar/locations.conf should
+      use local paths, since it is user visible (John Arbash Meinel, #53653)
+
+    * ``bzr status foo`` when foo was unversioned used to cause a full delta
+      to be generated (John Arbash Meinel, #53638)
+
+    * When reading revision properties, an empty value should be considered
+      the empty string, not None (John Arbash Meinel, #47782)
+
+    * ``bzr diff --diff-options`` can now handle binary files being changed.
+      Also, the output is consistent when --diff-options is not supplied.
+      (John Arbash Meinel, #54651, #52930)
+
+    * Use the right suffixes for loading plugins (John Arbash Meinel, #51810)
+
+    * Fix Branch.get_parent() to handle the case when the parent is not 
+      accessible (John Arbash Meinel, #52976)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
       them to reduce the threshold where  N^2 behaviour occurs in operations
       like status. (Jan Hudec, Robert Collins).
 
+    * Appending to bzrlib.DEFAULT_IGNORE is now deprecated. Instead, use
+      one of the add functions in bzrlib.ignores. (John Arbash Meinel)
+
     * 'bzr push' should only push the ancestry of the current revision, not
       all of the history in the repository. This is especially important for
       shared repositories. (John Arbash Meinel)
+
+    * bzrlib.delta.compare_trees now iterates in alphabetically sorted order,
+      rather than randomly walking the inventories. (John Arbash Meinel)
+
+    * Doctests are now run in temporary directories which are cleaned up when
+      they finish, rather than using special ScratchDir/ScratchBranch objects.
+      (Martin Pool)
+
+    * Split ``check`` into separate methods on the branch and on the repository,
+      so that it can be specialized in ways that are useful or efficient for
+      different formats.  (Martin Pool, Robert Collins)
+
+    * Deprecate Repository.all_revision_ids; most methods don't really need
+      the global revision graph but only that part leading up to a particular
+      revision.  (Martin Pool, Robert Collins)
+
+    * Add a BzrDirFormat control_formats list which allows for control formats
+      that do not use '.bzr' to store their data - i.e. '.svn', '.hg' etc.
+      (Robert Collins, Jelmer Vernooij).
+
+    * bzrlib.diff.external_diff can be redirected to any file-like object.
+      Uses subprocess instead of spawnvp.
+      (#4047, #48914, James Henstridge, John Arbash Meinel)
+
+    * New command line option '--profile-imports', which will install a custom
+      importer to log time to import modules and regex compilation time to 
+      sys.stderr (John Arbash Meinel)
+
+    * 'EmptyTree' is now deprecated, please use repository.revision_tree(None)
+      instead. (Robert Collins)
+
+    * "RevisionTree" is now in bzrlib/revisiontree.py. (Robert Collins)
 
 bzr 0.8.2  2006-05-17
   
@@ -246,8 +694,6 @@ bzr 0.8  2006-05-08
     * New option 'diff --prefix' to control how files are named in diff
       output, with shortcuts '-p0' and '-p1' corresponding to the options for 
       GNU patch.  (Alexander Belchenko, Goffredo Baroncelli, Martin Pool)
-
-    * Add --revision option to 'annotate' command.  (Olaf Conradi)
 
     * Add --revision option to 'annotate' command.  (Olaf Conradi)
 
@@ -918,7 +1364,6 @@ bzr 0.1 2005-10-11
 
     * Symlink support: working with symlinks when not in the root of a 
       bzr tree was broken, patch from Scott James Remnant.
-
 
   IMPROVEMENTS:
 

@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -29,16 +29,33 @@ it.
 import errno
 from collections import deque
 from copy import deepcopy
-from stat import *
+from cStringIO import StringIO
+import re
+from stat import S_ISDIR
 import sys
 from unittest import TestSuite
 import urllib
 import urlparse
+import warnings
 
-from bzrlib.trace import mutter, warning
-import bzrlib.errors as errors
+import bzrlib
+from bzrlib import (
+    errors,
+    osutils,
+    symbol_versioning,
+    urlutils,
+    )
 from bzrlib.errors import DependencyNotPresent
-from bzrlib.symbol_versioning import *
+from bzrlib.osutils import pumpfile
+from bzrlib.symbol_versioning import (
+        deprecated_passed,
+        deprecated_method,
+        deprecated_function,
+        DEPRECATED_PARAMETER,
+        zero_eight,
+        zero_eleven,
+        )
+from bzrlib.trace import mutter, warning
 
 # {prefix: [transport_classes]}
 # Transports are inserted onto the list LIFO and tried in order; as a result
@@ -58,7 +75,7 @@ def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
     # working, etc.
     global _protocol_handlers
     if deprecated_passed(override):
-        warn("register_transport(override) is deprecated")
+        warnings.warn("register_transport(override) is deprecated")
     _protocol_handlers.setdefault(prefix, []).insert(0, klass)
 
 
@@ -127,6 +144,7 @@ def register_urlparse_netloc_protocol(protocol):
 
 
 def split_url(url):
+    # TODO: jam 20060606 urls should only be ascii, or they should raise InvalidURL
     if isinstance(url, unicode):
         url = url.encode('utf-8')
     (scheme, netloc, path, params,
@@ -147,12 +165,28 @@ def split_url(url):
             port = int(port)
         except ValueError:
             # TODO: Should this be ConnectionError?
-            raise errors.TransportError('%s: invalid port number' % port)
+            raise errors.TransportError(
+                'invalid port number %s in url:\n%s' % (port, url))
     host = urllib.unquote(host)
 
     path = urllib.unquote(path)
 
     return (scheme, username, password, host, port, path)
+
+
+class _CoalescedOffset(object):
+    """A data container for keeping track of coalesced offsets."""
+
+    __slots__ = ['start', 'length', 'ranges']
+
+    def __init__(self, start, length, ranges):
+        self.start = start
+        self.length = length
+        self.ranges = ranges
+
+    def __cmp__(self, other):
+        return cmp((self.start, self.length, self.ranges),
+                   (other.start, other.length, other.ranges))
 
 
 class Transport(object):
@@ -165,7 +199,20 @@ class Transport(object):
     implementations can do pipelining.
     In general implementations should support having a generator or a list
     as an argument (ie always iterate, never index)
+
+    :ivar base: Base URL for the transport; should always end in a slash.
     """
+
+    # implementations can override this if it is more efficient
+    # for them to combine larger read chunks together
+    _max_readv_combine = 50
+    # It is better to read this much more data in order, rather
+    # than doing another seek. Even for the local filesystem,
+    # there is a benefit in just reading.
+    # TODO: jam 20060714 Do some real benchmarking to figure out
+    #       where the biggest benefit between combining reads and
+    #       and seeking is. Consider a runtime auto-tune.
+    _bytes_to_read_before_seek = 0
 
     def __init__(self, base):
         super(Transport, self).__init__()
@@ -176,7 +223,7 @@ class Transport(object):
 
         This handles things like ENOENT, ENOTDIR, EEXIST, and EACCESS
         """
-        if hasattr(e, 'errno'):
+        if getattr(e, 'errno', None) is not None:
             if e.errno in (errno.ENOENT, errno.ENOTDIR):
                 raise errors.NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
@@ -213,11 +260,9 @@ class Transport(object):
         object or string to another one.
         This just gives them something easy to call.
         """
-        if isinstance(from_file, basestring):
-            to_file.write(from_file)
-        else:
-            from bzrlib.osutils import pumpfile
-            pumpfile(from_file, to_file)
+        assert not isinstance(from_file, basestring), \
+            '_pump should only be called on files not %s' % (type(from_file,))
+        pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
         """Try to figure out how many entries are in multi,
@@ -262,12 +307,59 @@ class Transport(object):
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
-        This can be supplied with a string or a list
 
-        XXX: Robert Collins 20051016 - is this really needed in the public
-             interface ?
+        :param relpath: a string of a relative path
         """
+
+        # XXX: Robert Collins 20051016 - is this really needed in the public
+        # interface ?
         raise NotImplementedError(self.abspath)
+
+    def _combine_paths(self, base_path, relpath):
+        """Transform a Transport-relative path to a remote absolute path.
+
+        This does not handle substitution of ~ but does handle '..' and '.'
+        components.
+
+        Examples::
+
+            >>> t = Transport('/')
+            >>> t._combine_paths('/home/sarah', 'project/foo')
+            '/home/sarah/project/foo'
+            >>> t._combine_paths('/home/sarah', '../../etc')
+            '/etc'
+
+        :param base_path: urlencoded path for the transport root; typically a 
+             URL but need not contain scheme/host/etc.
+        :param relpath: relative url string for relative part of remote path.
+        :return: urlencoded string for final path.
+        """
+        # FIXME: share the common code across more transports; variants of
+        # this likely occur in http and sftp too.
+        #
+        # TODO: Also need to consider handling of ~, which might vary between
+        # transports?
+        if not isinstance(relpath, str):
+            raise errors.InvalidURL("not a valid url: %r" % relpath)
+        if relpath.startswith('/'):
+            base_parts = []
+        else:
+            base_parts = base_path.split('/')
+        if len(base_parts) > 0 and base_parts[-1] == '':
+            base_parts = base_parts[:-1]
+        for p in relpath.split('/'):
+            if p == '..':
+                if len(base_parts) == 0:
+                    # In most filesystems, a request for the parent
+                    # of root, just returns root.
+                    continue
+                base_parts.pop()
+            elif p == '.':
+                continue # No-op
+            elif p != '':
+                base_parts.append(p)
+        path = '/'.join(base_parts)
+        return path
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
@@ -284,12 +376,24 @@ class Transport(object):
         pl = len(self.base)
         return abspath[pl:].strip('/')
 
+    def local_abspath(self, relpath):
+        """Return the absolute path on the local filesystem.
+
+        This function will only be defined for Transports which have a
+        physical local filesystem representation.
+        """
+        # TODO: jam 20060426 Should this raise NotLocalUrl instead?
+        raise errors.TransportNotPossible('This is not a LocalTransport,'
+            ' so there is no local representation for a path')
+
     def has(self, relpath):
         """Does the file relpath exist?
         
         Note that some transports MAY allow querying on directories, but this
         is not part of the protocol.  In other words, the results of 
-        t.has("a_directory_name") are undefined."
+        t.has("a_directory_name") are undefined.
+
+        :rtype: bool
         """
         raise NotImplementedError(self.has)
 
@@ -326,8 +430,23 @@ class Transport(object):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
+        :rtype: File-like object.
         """
         raise NotImplementedError(self.get)
+
+    def get_bytes(self, relpath):
+        """Get a raw string of the bytes for a file at the given location.
+
+        :param relpath: The relative path to the file
+        """
+        return self.get(relpath).read()
+
+    def get_smart_client(self):
+        """Return a smart client for this transport if possible.
+
+        :raises NoSmartServer: if no smart server client is available.
+        """
+        raise errors.NoSmartServer(self.base)
 
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
@@ -335,43 +454,95 @@ class Transport(object):
         :offsets: A list of (offset, size) tuples.
         :return: A list or generator of (offset, data) tuples
         """
-        def do_combined_read(combined_offsets):
-            total_size = 0
-            for offset, size in combined_offsets:
-                total_size += size
-            mutter('readv coalesced %d reads.', len(combined_offsets))
-            offset = combined_offsets[0][0]
-            fp.seek(offset)
-            data = fp.read(total_size)
-            pos = 0
-            for offset, size in combined_offsets:
-                yield offset, data[pos:pos + size]
-                pos += size
-
-        if not len(offsets):
+        if not offsets:
             return
+
         fp = self.get(relpath)
-        pending_offsets = deque(offsets)
-        combined_offsets = []
-        while len(pending_offsets):
-            offset, size = pending_offsets.popleft()
-            if not combined_offsets:
-                combined_offsets = [[offset, size]]
+        return self._seek_and_read(fp, offsets, relpath)
+
+    def _seek_and_read(self, fp, offsets, relpath='<unknown>'):
+        """An implementation of readv that uses fp.seek and fp.read.
+
+        This uses _coalesce_offsets to issue larger reads and fewer seeks.
+
+        :param fp: A file-like object that supports seek() and read(size)
+        :param offsets: A list of offsets to be read from the given file.
+        :return: yield (pos, data) tuples for each request
+        """
+        # We are going to iterate multiple times, we need a list
+        offsets = list(offsets)
+        sorted_offsets = sorted(offsets)
+
+        # turn the list of offsets into a stack
+        offset_stack = iter(offsets)
+        cur_offset_and_size = offset_stack.next()
+        coalesced = self._coalesce_offsets(sorted_offsets,
+                               limit=self._max_readv_combine,
+                               fudge_factor=self._bytes_to_read_before_seek)
+
+        # Cache the results, but only until they have been fulfilled
+        data_map = {}
+        for c_offset in coalesced:
+            # TODO: jam 20060724 it might be faster to not issue seek if 
+            #       we are already at the right location. This should be
+            #       benchmarked.
+            fp.seek(c_offset.start)
+            data = fp.read(c_offset.length)
+            if len(data) < c_offset.length:
+                raise errors.ShortReadvError(relpath, c_offset.start,
+                            c_offset.length, actual=len(data))
+            for suboffset, subsize in c_offset.ranges:
+                key = (c_offset.start+suboffset, subsize)
+                data_map[key] = data[suboffset:suboffset+subsize]
+
+            # Now that we've read some data, see if we can yield anything back
+            while cur_offset_and_size in data_map:
+                this_data = data_map.pop(cur_offset_and_size)
+                yield cur_offset_and_size[0], this_data
+                cur_offset_and_size = offset_stack.next()
+
+    @staticmethod
+    def _coalesce_offsets(offsets, limit, fudge_factor):
+        """Yield coalesced offsets.
+
+        With a long list of neighboring requests, combine them
+        into a single large request, while retaining the original
+        offsets.
+        Turns  [(15, 10), (25, 10)] => [(15, 20, [(0, 10), (10, 10)])]
+
+        :param offsets: A list of (start, length) pairs
+        :param limit: Only combine a maximum of this many pairs
+                      Some transports penalize multiple reads more than
+                      others, and sometimes it is better to return early.
+                      0 means no limit
+        :param fudge_factor: All transports have some level of 'it is
+                better to read some more data and throw it away rather 
+                than seek', so collapse if we are 'close enough'
+        :return: yield _CoalescedOffset objects, which have members for wher
+                to start, how much to read, and how to split those 
+                chunks back up
+        """
+        last_end = None
+        cur = _CoalescedOffset(None, None, [])
+
+        for start, size in offsets:
+            end = start + size
+            if (last_end is not None 
+                and start <= last_end + fudge_factor
+                and start >= cur.start
+                and (limit <= 0 or len(cur.ranges) < limit)):
+                cur.length = end - cur.start
+                cur.ranges.append((start-cur.start, size))
             else:
-                if (len (combined_offsets) < 50 and
-                    combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
-                    # combatible offset:
-                    combined_offsets.append([offset, size])
-                else:
-                    # incompatible, or over the threshold issue a read and yield
-                    pending_offsets.appendleft((offset, size))
-                    for result in do_combined_read(combined_offsets):
-                        yield result
-                    combined_offsets = []
-        # whatever is left is a single coalesced request
-        if len(combined_offsets):
-            for result in do_combined_read(combined_offsets):
-                yield result
+                if cur.start is not None:
+                    yield cur
+                cur = _CoalescedOffset(start, size, [(0, size)])
+            last_end = end
+
+        if cur.start is not None:
+            yield cur
+
+        return
 
     def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
@@ -390,16 +561,106 @@ class Transport(object):
             yield self.get(relpath)
             count += 1
 
+    @deprecated_method(zero_eleven)
     def put(self, relpath, f, mode=None):
-        """Copy the file-like or string object into the location.
+        """Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
         :param mode: The mode for the newly created file, 
                      None means just use the default
         """
-        raise NotImplementedError(self.put)
+        if isinstance(f, str):
+            return self.put_bytes(relpath, f, mode=mode)
+        else:
+            return self.put_file(relpath, f, mode=mode)
 
+    def put_bytes(self, relpath, bytes, mode=None):
+        """Atomically put the supplied bytes into the given location.
+
+        :param relpath: The location to put the contents, relative to the
+            transport base.
+        :param bytes: A bytestring of data.
+        :param mode: Create the file with the given mode.
+        :return: None
+        """
+        assert isinstance(bytes, str), \
+            'bytes must be a plain string, not %s' % type(bytes)
+        return self.put_file(relpath, StringIO(bytes), mode=mode)
+
+    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+                             create_parent_dir=False,
+                             dir_mode=None):
+        """Copy the string into the target location.
+
+        This function is not strictly safe to use. See 
+        Transport.put_bytes_non_atomic for more information.
+
+        :param relpath: The remote location to put the contents.
+        :param bytes:   A string object containing the raw bytes to write into
+                        the target file.
+        :param mode:    Possible access permissions for new file.
+                        None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
+        :param dir_mode: Possible access permissions for new directories.
+        """
+        assert isinstance(bytes, str), \
+            'bytes must be a plain string, not %s' % type(bytes)
+        self.put_file_non_atomic(relpath, StringIO(bytes), mode=mode,
+                                 create_parent_dir=create_parent_dir,
+                                 dir_mode=dir_mode)
+
+    def put_file(self, relpath, f, mode=None):
+        """Copy the file-like object into the location.
+
+        :param relpath: Location to put the contents, relative to base.
+        :param f:       File-like object.
+        :param mode: The mode for the newly created file,
+                     None means just use the default.
+        """
+        # We would like to mark this as NotImplemented, but most likely
+        # transports have defined it in terms of the old api.
+        symbol_versioning.warn('Transport %s should implement put_file,'
+                               ' rather than implementing put() as of'
+                               ' version 0.11.'
+                               % (self.__class__.__name__,),
+                               DeprecationWarning)
+        return self.put(relpath, f, mode=mode)
+        #raise NotImplementedError(self.put_file)
+
+    def put_file_non_atomic(self, relpath, f, mode=None,
+                            create_parent_dir=False,
+                            dir_mode=None):
+        """Copy the file-like object into the target location.
+
+        This function is not strictly safe to use. It is only meant to
+        be used when you already know that the target does not exist.
+        It is not safe, because it will open and truncate the remote
+        file. So there may be a time when the file has invalid contents.
+
+        :param relpath: The remote location to put the contents.
+        :param f:       File-like object.
+        :param mode:    Possible access permissions for new file.
+                        None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
+        :param dir_mode: Possible access permissions for new directories.
+        """
+        # Default implementation just does an atomic put.
+        try:
+            return self.put_file(relpath, f, mode=mode)
+        except errors.NoSuchFile:
+            if not create_parent_dir:
+                raise
+            parent_dir = osutils.dirname(relpath)
+            if parent_dir:
+                self.mkdir(parent_dir, mode=dir_mode)
+                return self.put_file(relpath, f, mode=mode)
+
+    @deprecated_method(zero_eleven)
     def put_multi(self, files, mode=None, pb=None):
         """Put a set of files into the location.
 
@@ -408,9 +669,12 @@ class Transport(object):
         :param mode: The mode for the newly created files
         :return: The number of files copied.
         """
-        def put(path, f):
-            self.put(path, f, mode=mode)
-        return len(self._iterate_over(files, put, pb, 'put', expand=True))
+        def _put(path, f):
+            if isinstance(f, str):
+                self.put_bytes(path, f, mode=mode)
+            else:
+                self.put_file(path, f, mode=mode)
+        return len(self._iterate_over(files, _put, pb, 'put', expand=True))
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
@@ -422,13 +686,49 @@ class Transport(object):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
-    def append(self, relpath, f):
-        """Append the text in the file-like or string object to 
-        the supplied location.
+    @deprecated_method(zero_eleven)
+    def append(self, relpath, f, mode=None):
+        """Append the text in the file-like object to the supplied location.
 
-        returns the length of f before the content was written to it.
+        returns the length of relpath before the content was written to it.
+        
+        If the file does not exist, it is created with the supplied mode.
         """
-        raise NotImplementedError(self.append)
+        return self.append_file(relpath, f, mode=mode)
+
+    def append_file(self, relpath, f, mode=None):
+        """Append bytes from a file-like object to a file at relpath.
+
+        The file is created if it does not already exist.
+
+        :param f: a file-like object of the bytes to append.
+        :param mode: Unix mode for newly created files.  This is not used for
+            existing files.
+
+        :returns: the length of relpath before the content was written to it.
+        """
+        symbol_versioning.warn('Transport %s should implement append_file,'
+                               ' rather than implementing append() as of'
+                               ' version 0.11.'
+                               % (self.__class__.__name__,),
+                               DeprecationWarning)
+        return self.append(relpath, f, mode=mode)
+
+    def append_bytes(self, relpath, bytes, mode=None):
+        """Append bytes to a file at relpath.
+
+        The file is created if it does not already exist.
+
+        :type f: str
+        :param f: a string of the bytes to append.
+        :param mode: Unix mode for newly created files.  This is not used for
+            existing files.
+
+        :returns: the length of relpath before the content was written to it.
+        """
+        assert isinstance(bytes, str), \
+            'bytes must be a plain string, not %s' % type(bytes)
+        return self.append_file(relpath, StringIO(bytes), mode=mode)
 
     def append_multi(self, files, pb=None):
         """Append the text in each file-like or string object to
@@ -437,7 +737,7 @@ class Transport(object):
         :param files: A set of (path, f) entries
         :param pb:  An optional ProgressBar for indicating percent done.
         """
-        return self._iterate_over(files, self.append, pb, 'append', expand=True)
+        return self._iterate_over(files, self.append_file, pb, 'append', expand=True)
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to.
@@ -445,7 +745,7 @@ class Transport(object):
         Override this for efficiency if a specific transport can do it 
         faster than this default implementation.
         """
-        self.put(rel_to, self.get(rel_from))
+        self.put_file(rel_to, self.get(rel_from))
 
     def copy_multi(self, relpaths, pb=None):
         """Copy a bunch of entries.
@@ -466,7 +766,7 @@ class Transport(object):
         """
         # The dummy implementation just does a simple get + put
         def copy_entry(path):
-            other.put(path, self.get(path), mode=mode)
+            other.put_file(path, self.get(path), mode=mode)
 
         return len(self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False))
 
@@ -620,26 +920,37 @@ class Transport(object):
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
-        raise errors.TransportNotPossible("This transport has not "
+        raise errors.TransportNotPossible("Transport %r has not "
                                           "implemented list_dir "
                                           "(but must claim to be listable "
-                                          "to trigger this error).")
+                                          "to trigger this error)."
+                                          % (self))
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
-        WARNING: many transports do not support this, so trying avoid using it
+
+        WARNING: many transports do not support this, so trying avoid using it.
+        These methods may be removed in the future.
+
+        Transports may raise TransportNotPossible if OS-level locks cannot be
+        taken over this transport.  
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise NotImplementedError(self.lock_read)
+        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
-        WARNING: many transports do not support this, so trying avoid using it
+
+        WARNING: many transports do not support this, so trying avoid using it.
+        These methods may be removed in the future.
+
+        Transports may raise TransportNotPossible if OS-level locks cannot be
+        taken over this transport.
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise NotImplementedError(self.lock_write)
+        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
 
     def is_readonly(self):
         """Return true if this connection cannot be written to."""
@@ -662,6 +973,13 @@ class Transport(object):
         return False
 
 
+# jam 20060426 For compatibility we copy the functions here
+# TODO: The should be marked as deprecated
+urlescape = urlutils.escape
+urlunescape = urlutils.unescape
+_urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<path>.*)$')
+
+
 def get_transport(base):
     """Open a transport to access a URL or directory.
 
@@ -671,40 +989,54 @@ def get_transport(base):
     # handler for the scheme?
     global _protocol_handlers
     if base is None:
-        base = u'.'
-    else:
-        base = unicode(base)
+        base = '.'
+
+    last_err = None
+
+    def convert_path_to_url(base, error_str):
+        m = _urlRE.match(base)
+        if m:
+            # This looks like a URL, but we weren't able to 
+            # instantiate it as such raise an appropriate error
+            raise errors.UnsupportedProtocol(base, last_err)
+        # This doesn't look like a protocol, consider it a local path
+        new_base = urlutils.local_path_to_url(base)
+        # mutter('converting os path %r => url %s', base, new_base)
+        return new_base
+
+    # Catch any URLs which are passing Unicode rather than ASCII
+    try:
+        base = base.encode('ascii')
+    except UnicodeError:
+        # Only local paths can be Unicode
+        base = convert_path_to_url(base,
+            'URLs must be properly escaped (protocol: %s)')
+    
     for proto, factory_list in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
-            t = _try_transport_factories(base, factory_list)
+            t, last_err = _try_transport_factories(base, factory_list)
             if t:
                 return t
+
+    # We tried all the different protocols, now try one last time
+    # as a local protocol
+    base = convert_path_to_url(base, 'Unsupported protocol: %s')
+
     # The default handler is the filesystem handler, stored as protocol None
-    return _try_transport_factories(base, _protocol_handlers[None])
+    return _try_transport_factories(base, _protocol_handlers[None])[0]
 
 
 def _try_transport_factories(base, factory_list):
+    last_err = None
     for factory in factory_list:
         try:
-            return factory(base)
+            return factory(base), None
         except DependencyNotPresent, e:
             mutter("failed to instantiate transport %r for %r: %r" %
                     (factory, base, e))
+            last_err = e
             continue
-    return None
-
-
-def urlescape(relpath):
-    """Escape relpath to be a valid url."""
-    if isinstance(relpath, unicode):
-        relpath = relpath.encode('utf-8')
-    return urllib.quote(relpath)
-
-
-def urlunescape(relpath):
-    """Unescape relpath from url format."""
-    return urllib.unquote(relpath)
-    # TODO de-utf8 it last. relpath = utf8relpath.decode('utf8')
+    return None, last_err
 
 
 class Server(object):
@@ -766,7 +1098,7 @@ class TransportTestProviderAdapter(object):
 
     def get_transport_test_permutations(self, module):
         """Get the permutations module wants to have tested."""
-        if not hasattr(module, 'get_test_permutations'):
+        if getattr(module, 'get_test_permutations', None) is None:
             warning("transport module %s doesn't provide get_test_permutations()"
                     % module.__name__)
             return []
@@ -831,9 +1163,15 @@ register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTrans
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
-register_lazy_transport('memory:/', 'bzrlib.transport.memory', 'MemoryTransport')
+register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
-register_lazy_transport('vfat+', 
+register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
+register_lazy_transport('bzr://',
+                        'bzrlib.transport.smart',
+                        'SmartTCPTransport')
+register_lazy_transport('bzr+ssh://',
+                        'bzrlib.transport.smart',
+                        'SmartSSHTransport')

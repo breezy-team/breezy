@@ -18,14 +18,8 @@
 """
 
 import os
-import bzrlib
-from bzrlib.errors import BoundBranchOutOfDate
 
-def test_remove(filename):
-    if os.path.exists(filename):
-        os.remove(filename)
-    else:
-        print '* file does not exist: %r' % filename
+from bzrlib.errors import BoundBranchOutOfDate
 
 
 def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
@@ -35,7 +29,6 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
     :param verbose: Print each step as you do it
     :param revno: Remove back to this revision
     """
-    from bzrlib.atomicfile import AtomicFile
     unlockable = []
     try:
         if tree is not None:
@@ -44,6 +37,10 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
         
         branch.lock_write()
         unlockable.append(branch)
+
+        pending_merges = []
+        if tree is not None:
+            pending_merges = tree.get_parent_ids()[1:]
 
         master = branch.get_master_branch()
         if master is not None:
@@ -58,9 +55,14 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
         files_to_remove = []
         for r in range(revno-1, len(rh)):
             rev_id = rh.pop()
+            rev = branch.repository.get_revision(rev_id)
+            # When we finish popping off the pending merges, we want
+            # them to stay in the order that they used to be.
+            # but we pop from the end, so reverse the order, and
+            # then get the order right at the end
+            pending_merges.extend(reversed(rev.parent_ids[1:]))
             if verbose:
                 print 'Removing revno %d: %s' % (len(rh)+1, rev_id)
-
 
         # Committing before we start removing files, because
         # once we have removed at least one, all the rest are invalid.
@@ -69,7 +71,13 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
                 master.set_revision_history(rh)
             branch.set_revision_history(rh)
             if tree is not None:
-                tree.set_last_revision(branch.last_revision())
+                branch_tip = branch.last_revision()
+                if branch_tip is not None:
+                    parents = [branch.last_revision()]
+                else:
+                    parents = []
+                parents.extend(reversed(pending_merges))
+                tree.set_parent_ids(parents)
     finally:
         for item in reversed(unlockable):
             item.unlock()

@@ -2,6 +2,7 @@
 # Written by Martin Pool.
 # Modified by Johan Rydberg <jrydberg@gnu.org>
 # Modified by Robert Collins <robert.collins@canonical.com>
+# Modified by Aaron Bentley <aaron.bentley@utoronto.ca>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -67,21 +68,27 @@ from copy import copy
 from cStringIO import StringIO
 import difflib
 from itertools import izip, chain
+import operator
 import os
 import sys
+import warnings
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    cache_utf8,
+    errors,
+    )
 from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
         InvalidRevisionId, KnitCorrupt, KnitHeaderError, \
         RevisionNotPresent, RevisionAlreadyPresent
-from bzrlib.tuned_gzip import *
+from bzrlib.tuned_gzip import GzipFile
 from bzrlib.trace import mutter
 from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
      sha_strings
-from bzrlib.versionedfile import VersionedFile, InterVersionedFile
+from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.tsort import topo_sort
 import bzrlib.weave
+from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 
 
 # TODO: Split out code specific to this format into an associated object.
@@ -89,7 +96,7 @@ import bzrlib.weave
 # TODO: Can we put in some kind of value to check that the index and data
 # files belong together?
 
-# TODO: accomodate binaries, perhaps by storing a byte count
+# TODO: accommodate binaries, perhaps by storing a byte count
 
 # TODO: function to check whole file
 
@@ -120,7 +127,7 @@ class KnitContent(object):
         """Generate line-based delta from this content to new_lines."""
         new_texts = [text for origin, text in new_lines._lines]
         old_texts = [text for origin, text in self._lines]
-        s = SequenceMatcher(None, old_texts, new_texts)
+        s = KnitSequenceMatcher(None, old_texts, new_texts)
         for op in s.get_opcodes():
             if op[0] == 'equal':
                 continue
@@ -132,6 +139,9 @@ class KnitContent(object):
 
     def text(self):
         return [text for origin, text in self._lines]
+
+    def copy(self):
+        return KnitContent(self._lines[:])
 
 
 class _KnitFactory(object):
@@ -155,10 +165,11 @@ class KnitAnnotateFactory(_KnitFactory):
         internal representation is of the format:
         (revid, plaintext)
         """
+        decode_utf8 = cache_utf8.decode
         lines = []
         for line in content:
             origin, text = line.split(' ', 1)
-            lines.append((origin.decode('utf-8'), text))
+            lines.append((decode_utf8(origin), text))
         return KnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
@@ -172,9 +183,10 @@ class KnitAnnotateFactory(_KnitFactory):
         intstart intend intcount
         1..count lines:
         revid(utf8) newline\n
-        internal represnetation is
+        internal representation is
         (start, end, count, [1..count tuples (revid, newline)])
         """
+        decode_utf8 = cache_utf8.decode
         result = []
         lines = iter(lines)
         next = lines.next
@@ -186,7 +198,7 @@ class KnitAnnotateFactory(_KnitFactory):
             while remaining:
                 origin, text = next().split(' ', 1)
                 remaining -= 1
-                contents.append((origin.decode('utf-8'), text))
+                contents.append((decode_utf8(origin), text))
             result.append((start, end, count, contents))
         return result
 
@@ -195,18 +207,20 @@ class KnitAnnotateFactory(_KnitFactory):
 
         see parse_fulltext which this inverts.
         """
-        return ['%s %s' % (o.encode('utf-8'), t) for o, t in content._lines]
+        encode_utf8 = cache_utf8.encode
+        return ['%s %s' % (encode_utf8(o), t) for o, t in content._lines]
 
     def lower_line_delta(self, delta):
         """convert a delta into a serializable form.
 
         See parse_line_delta which this inverts.
         """
+        encode_utf8 = cache_utf8.encode
         out = []
         for start, end, c, lines in delta:
             out.append('%d,%d,%d\n' % (start, end, c))
-            for origin, text in lines:
-                out.append('%s %s' % (origin.encode('utf-8'), text))
+            out.extend(encode_utf8(origin) + ' ' + text
+                       for origin, text in lines)
         return out
 
 
@@ -265,30 +279,41 @@ class KnitVersionedFile(VersionedFile):
     stored and retrieved.
     """
 
-    def __init__(self, relpath, transport, file_mode=None, access_mode=None, factory=None,
-                 basis_knit=None, delta=True, create=False):
+    def __init__(self, relpath, transport, file_mode=None, access_mode=None,
+                 factory=None, basis_knit=DEPRECATED_PARAMETER, delta=True,
+                 create=False, create_parent_dir=False, delay_create=False,
+                 dir_mode=None):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
+        :param create_parent_dir: If True, create the parent directory if 
+            creating the file fails. (This is used for stores with 
+            hash-prefixes that may not exist yet)
+        :param delay_create: The calling code is aware that the knit won't 
+            actually be created until the first data is stored.
         """
+        if deprecated_passed(basis_knit):
+            warnings.warn("KnitVersionedFile.__(): The basis_knit parameter is"
+                 " deprecated as of bzr 0.9.",
+                 DeprecationWarning, stacklevel=2)
         if access_mode is None:
             access_mode = 'w'
         super(KnitVersionedFile, self).__init__(access_mode)
         assert access_mode in ('r', 'w'), "invalid mode specified %r" % access_mode
-        assert not basis_knit or isinstance(basis_knit, KnitVersionedFile), \
-            type(basis_knit)
-
         self.transport = transport
         self.filename = relpath
-        self.basis_knit = basis_knit
         self.factory = factory or KnitAnnotateFactory()
         self.writable = (access_mode == 'w')
         self.delta = delta
 
         self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
-            access_mode, create=create, file_mode=file_mode)
+            access_mode, create=create, file_mode=file_mode,
+            create_parent_dir=create_parent_dir, delay_create=delay_create,
+            dir_mode=dir_mode)
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
-            access_mode, create=create and not len(self), file_mode=file_mode)
+            access_mode, create=create and not len(self), file_mode=file_mode,
+            create_parent_dir=create_parent_dir, delay_create=delay_create,
+            dir_mode=dir_mode)
 
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, 
@@ -362,15 +387,23 @@ class KnitVersionedFile(VersionedFile):
         :param records: A list of tuples(version_id, options, parents, size).
         :param data: The data for the records. When it is written, the records
                      are adjusted to have pos pointing into data by the sum of
-                     the preceeding records sizes.
+                     the preceding records sizes.
         """
         # write all the data
         pos = self._data.add_raw_record(data)
+        offset = 0
         index_entries = []
         for (version_id, options, parents, size) in records:
-            index_entries.append((version_id, options, pos, size, parents))
-            pos += size
+            index_entries.append((version_id, options, pos+offset,
+                                  size, parents))
+            if self._data._do_cache:
+                self._data._cache[version_id] = data[offset:offset+size]
+            offset += size
         self._index.add_versions(index_entries)
+
+    def enable_cache(self):
+        """Start caching data for this knit"""
+        self._data.enable_cache()
 
     def clear_cache(self):
         """Clear the data cache only."""
@@ -380,14 +413,20 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.copy_to()."""
         # copy the current index to a temp index to avoid racing with local
         # writes
-        transport.put(name + INDEX_SUFFIX + '.tmp', self.transport.get(self._index._filename),)
+        transport.put_file_non_atomic(name + INDEX_SUFFIX + '.tmp',
+                self.transport.get(self._index._filename))
         # copy the data file
-        transport.put(name + DATA_SUFFIX, self._data._open_file())
-        # rename the copied index into place
-        transport.rename(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
+        f = self._data._open_file()
+        try:
+            transport.put_file(name + DATA_SUFFIX, f)
+        finally:
+            f.close()
+        # move the copied index into place
+        transport.move(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
 
     def create_empty(self, name, transport, mode=None):
-        return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta, create=True)
+        return KnitVersionedFile(name, transport, factory=self.factory,
+                                 delta=self.delta, create=True)
     
     def _fix_parents(self, version, new_parents):
         """Fix the parents list for version.
@@ -427,7 +466,7 @@ class KnitVersionedFile(VersionedFile):
             else:
                 old_texts = []
             new_texts = new_content.text()
-            delta_seq = SequenceMatcher(None, old_texts, new_texts)
+            delta_seq = KnitSequenceMatcher(None, old_texts, new_texts)
             return parent, sha1, noeol, self._make_line_delta(delta_seq, new_content)
         else:
             delta = self.factory.parse_line_delta(data, version_idx)
@@ -440,8 +479,9 @@ class KnitVersionedFile(VersionedFile):
 
     def get_sha1(self, version_id):
         """See VersionedFile.get_sha1()."""
-        components = self._get_components(version_id)
-        return components[-1][-1][-1]
+        record_map = self._get_record_map([version_id])
+        method, content, digest, next = record_map[version_id]
+        return digest 
 
     @staticmethod
     def get_suffixes():
@@ -481,7 +521,7 @@ class KnitVersionedFile(VersionedFile):
             delta_seq = None
             for parent_id in parents:
                 merge_content = self._get_content(parent_id, parent_texts)
-                seq = SequenceMatcher(None, merge_content.text(), content.text())
+                seq = KnitSequenceMatcher(None, merge_content.text(), content.text())
                 if delta_seq is None:
                     # setup a delta seq to reuse.
                     delta_seq = seq
@@ -498,7 +538,7 @@ class KnitVersionedFile(VersionedFile):
                 reference_content = self._get_content(parents[0], parent_texts)
                 new_texts = content.text()
                 old_texts = reference_content.text()
-                delta_seq = SequenceMatcher(None, old_texts, new_texts)
+                delta_seq = KnitSequenceMatcher(None, old_texts, new_texts)
             return self._make_line_delta(delta_seq, content)
 
     def _make_line_delta(self, delta_seq, new_content):
@@ -510,69 +550,33 @@ class KnitVersionedFile(VersionedFile):
             diff_hunks.append((op[1], op[2], op[4]-op[3], new_content._lines[op[3]:op[4]]))
         return diff_hunks
 
-    def _get_components(self, version_id):
-        """Return a list of (version_id, method, data) tuples that
-        makes up version specified by version_id of the knit.
+    def _get_components_positions(self, version_ids):
+        """Produce a map of position data for the components of versions.
 
-        The components should be applied in the order of the returned
-        list.
+        This data is intended to be used for retrieving the knit records.
 
-        The basis knit will be used to the largest extent possible
-        since it is assumed that accesses to it is faster.
+        A dict of version_id to (method, data_pos, data_size, next) is
+        returned.
+        method is the way referenced data should be applied.
+        data_pos is the position of the data in the knit.
+        data_size is the size of the data in the knit.
+        next is the build-parent of the version, or None for fulltexts.
         """
-        #profile notes:
-        # 4168 calls in 14912, 2289 internal
-        # 4168 in 9711 to read_records
-        # 52554 in 1250 to get_parents
-        # 170166 in 865 to list.append
-        
-        # needed_revisions holds a list of (method, version_id) of
-        # versions that is needed to be fetched to construct the final
-        # version of the file.
-        #
-        # basis_revisions is a list of versions that needs to be
-        # fetched but exists in the basis knit.
+        component_data = {}
+        for version_id in version_ids:
+            cursor = version_id
 
-        basis = self.basis_knit
-        needed_versions = []
-        basis_versions = []
-        cursor = version_id
-
-        while 1:
-            picked_knit = self
-            if basis and basis._index.has_version(cursor):
-                picked_knit = basis
-                basis_versions.append(cursor)
-            method = picked_knit._index.get_method(cursor)
-            needed_versions.append((method, cursor))
-            if method == 'fulltext':
-                break
-            cursor = picked_knit.get_parents(cursor)[0]
-
-        components = {}
-        if basis_versions:
-            records = []
-            for comp_id in basis_versions:
-                data_pos, data_size = basis._index.get_data_position(comp_id)
-                records.append((piece_id, data_pos, data_size))
-            components.update(basis._data.read_records(records))
-
-        records = []
-        for comp_id in [vid for method, vid in needed_versions
-                        if vid not in basis_versions]:
-            data_pos, data_size = self._index.get_position(comp_id)
-            records.append((comp_id, data_pos, data_size))
-        components.update(self._data.read_records(records))
-
-        # get_data_records returns a mapping with the version id as
-        # index and the value as data.  The order the components need
-        # to be applied is held by needed_versions (reversed).
-        out = []
-        for method, comp_id in reversed(needed_versions):
-            out.append((comp_id, method, components[comp_id]))
-
-        return out
-
+            while cursor is not None and cursor not in component_data:
+                method = self._index.get_method(cursor)
+                if method == 'fulltext':
+                    next = None
+                else:
+                    next = self.get_parents(cursor)[0]
+                data_pos, data_size = self._index.get_position(cursor)
+                component_data[cursor] = (method, data_pos, data_size, next)
+                cursor = next
+        return component_data
+       
     def _get_content(self, version_id, parent_texts={}):
         """Returns a content object that makes up the specified
         version."""
@@ -583,30 +587,8 @@ class KnitVersionedFile(VersionedFile):
         if cached_version is not None:
             return cached_version
 
-        if self.basis_knit and version_id in self.basis_knit:
-            return self.basis_knit._get_content(version_id)
-
-        content = None
-        components = self._get_components(version_id)
-        for component_id, method, (data, digest) in components:
-            version_idx = self._index.lookup(component_id)
-            if method == 'fulltext':
-                assert content is None
-                content = self.factory.parse_fulltext(data, version_idx)
-            elif method == 'line-delta':
-                delta = self.factory.parse_line_delta(data, version_idx)
-                content._lines = self._apply_delta(content._lines, delta)
-
-        if 'no-eol' in self._index.get_options(version_id):
-            line = content._lines[-1][1].rstrip('\n')
-            content._lines[-1] = (content._lines[-1][0], line)
-
-        # digest here is the digest from the last applied component.
-        if sha_strings(content.text()) != digest:
-            import pdb;pdb.set_trace()
-            raise KnitCorrupt(self.filename, 'sha-1 does not match %s' % version_id)
-
-        return content
+        text_map, contents_map = self._get_content_maps([version_id])
+        return contents_map[version_id]
 
     def _check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
@@ -717,18 +699,110 @@ class KnitVersionedFile(VersionedFile):
 
     def _clone_text(self, new_version_id, old_version_id, parents):
         """See VersionedFile.clone_text()."""
-        # FIXME RBC 20060228 make fast by only inserting an index with null delta.
+        # FIXME RBC 20060228 make fast by only inserting an index with null 
+        # delta.
         self.add_lines(new_version_id, parents, self.get_lines(old_version_id))
 
     def get_lines(self, version_id):
         """See VersionedFile.get_lines()."""
-        return self._get_content(version_id).text()
+        return self.get_line_list([version_id])[0]
+
+    def _get_record_map(self, version_ids):
+        """Produce a dictionary of knit records.
+        
+        The keys are version_ids, the values are tuples of (method, content,
+        digest, next).
+        method is the way the content should be applied.  
+        content is a KnitContent object.
+        digest is the SHA1 digest of this version id after all steps are done
+        next is the build-parent of the version, i.e. the leftmost ancestor.
+        If the method is fulltext, next will be None.
+        """
+        position_map = self._get_components_positions(version_ids)
+        # c = component_id, m = method, p = position, s = size, n = next
+        records = [(c, p, s) for c, (m, p, s, n) in position_map.iteritems()]
+        record_map = {}
+        for component_id, content, digest in \
+                self._data.read_records_iter(records):
+            method, position, size, next = position_map[component_id]
+            record_map[component_id] = method, content, digest, next
+                          
+        return record_map
+
+    def get_text(self, version_id):
+        """See VersionedFile.get_text"""
+        return self.get_texts([version_id])[0]
+
+    def get_texts(self, version_ids):
+        return [''.join(l) for l in self.get_line_list(version_ids)]
+
+    def get_line_list(self, version_ids):
+        """Return the texts of listed versions as a list of strings."""
+        text_map, content_map = self._get_content_maps(version_ids)
+        return [text_map[v] for v in version_ids]
+
+    def _get_content_maps(self, version_ids):
+        """Produce maps of text and KnitContents
+        
+        :return: (text_map, content_map) where text_map contains the texts for
+        the requested versions and content_map contains the KnitContents.
+        Both dicts take version_ids as their keys.
+        """
+        for version_id in version_ids:
+            if not self.has_version(version_id):
+                raise RevisionNotPresent(version_id, self.filename)
+        record_map = self._get_record_map(version_ids)
+
+        text_map = {}
+        content_map = {}
+        final_content = {}
+        for version_id in version_ids:
+            components = []
+            cursor = version_id
+            while cursor is not None:
+                method, data, digest, next = record_map[cursor]
+                components.append((cursor, method, data, digest))
+                if cursor in content_map:
+                    break
+                cursor = next
+
+            content = None
+            for component_id, method, data, digest in reversed(components):
+                if component_id in content_map:
+                    content = content_map[component_id]
+                else:
+                    version_idx = self._index.lookup(component_id)
+                    if method == 'fulltext':
+                        assert content is None
+                        content = self.factory.parse_fulltext(data, version_idx)
+                    elif method == 'line-delta':
+                        delta = self.factory.parse_line_delta(data[:], 
+                                                              version_idx)
+                        content = content.copy()
+                        content._lines = self._apply_delta(content._lines, 
+                                                           delta)
+                    content_map[component_id] = content
+
+            if 'no-eol' in self._index.get_options(version_id):
+                content = content.copy()
+                line = content._lines[-1][1].rstrip('\n')
+                content._lines[-1] = (content._lines[-1][0], line)
+            final_content[version_id] = content
+
+            # digest here is the digest from the last applied component.
+            text = content.text()
+            if sha_strings(text) != digest:
+                raise KnitCorrupt(self.filename, 
+                                  'sha-1 does not match %s' % version_id)
+
+            text_map[version_id] = text 
+        return text_map, final_content 
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         if version_ids is None:
             version_ids = self.versions()
-        # we dont care about inclusions, the caller cares.
+        # we don't care about inclusions, the caller cares.
         # but we need to setup a list of records to visit.
         # we need version_id, position, length
         version_id_records = []
@@ -861,7 +935,7 @@ class KnitVersionedFile(VersionedFile):
         annotated_b = self.annotate(ver_b)
         plain_a = [t for (a, t) in annotated_a]
         plain_b = [t for (a, t) in annotated_b]
-        blocks = SequenceMatcher(None, plain_a, plain_b).get_matching_blocks()
+        blocks = KnitSequenceMatcher(None, plain_a, plain_b).get_matching_blocks()
         a_cur = 0
         b_cur = 0
         for ai, bi, l in blocks:
@@ -884,16 +958,15 @@ class KnitVersionedFile(VersionedFile):
 class _KnitComponentFile(object):
     """One of the files used to implement a knit database"""
 
-    def __init__(self, transport, filename, mode, file_mode=None):
+    def __init__(self, transport, filename, mode, file_mode=None,
+                 create_parent_dir=False, dir_mode=None):
         self._transport = transport
         self._filename = filename
         self._mode = mode
-        self._file_mode=file_mode
-
-    def write_header(self):
-        if self._transport.append(self._filename, StringIO(self.HEADER),
-            mode=self._file_mode):
-            raise KnitCorrupt(self._filename, 'misaligned after writing header')
+        self._file_mode = file_mode
+        self._dir_mode = dir_mode
+        self._create_parent_dir = create_parent_dir
+        self._need_to_create = False
 
     def check_header(self, fp):
         line = fp.readline()
@@ -932,7 +1005,7 @@ class _KnitIndex(_KnitComponentFile):
 
     The index file on disc contains a header, followed by one line per knit
     record. The same revision can be present in an index file more than once.
-    The first occurence gets assigned a sequence number starting from 0. 
+    The first occurrence gets assigned a sequence number starting from 0. 
     
     The format of a single line is
     REVISION_ID FLAGS BYTE_OFFSET LENGTH( PARENT_ID|PARENT_SEQUENCE_ID)* :\n
@@ -954,7 +1027,7 @@ class _KnitIndex(_KnitComponentFile):
     the end of the file, then the record that is missing it will be ignored by
     the parser.
 
-    When writing new records to the index file, the data is preceeded by '\n'
+    When writing new records to the index file, the data is preceded by '\n'
     to ensure that records always start on new lines even if the last write was
     interrupted. As a result its normal for the last line in the index to be
     missing a trailing newline. One can be added with no harmful effects.
@@ -986,13 +1059,17 @@ class _KnitIndex(_KnitComponentFile):
                                    parents,
                                    index)
 
-    def __init__(self, transport, filename, mode, create=False, file_mode=None):
-        _KnitComponentFile.__init__(self, transport, filename, mode, file_mode)
+    def __init__(self, transport, filename, mode, create=False, file_mode=None,
+                 create_parent_dir=False, delay_create=False, dir_mode=None):
+        _KnitComponentFile.__init__(self, transport, filename, mode,
+                                    file_mode=file_mode,
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
         self._cache = {}
         # position in _history is the 'official' index for a revision
         # but the values may have come from a newer entry.
-        # so - wc -l of a knit index is != the number of uniqe names
-        # in the weave.
+        # so - wc -l of a knit index is != the number of unique names
+        # in the knit.
         self._history = []
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
@@ -1001,65 +1078,73 @@ class _KnitIndex(_KnitComponentFile):
             try:
                 pb.update('read knit index', count, total)
                 fp = self._transport.get(self._filename)
-                self.check_header(fp)
-                # readlines reads the whole file at once:
-                # bad for transports like http, good for local disk
-                # we save 60 ms doing this one change (
-                # from calling readline each time to calling
-                # readlines once.
-                # probably what we want for nice behaviour on
-                # http is a incremental readlines that yields, or
-                # a check for local vs non local indexes,
-                for l in fp.readlines():
-                    rec = l.split()
-                    if len(rec) < 5 or rec[-1] != ':':
-                        # corrupt line.
-                        # FIXME: in the future we should determine if its a
-                        # short write - and ignore it 
-                        # or a different failure, and raise. RBC 20060407
-                        continue
-                    count += 1
-                    total += 1
-                    #pb.update('read knit index', count, total)
-                    # See self._parse_parents
-                    parents = []
-                    for value in rec[4:-1]:
-                        if '.' == value[0]:
-                            # uncompressed reference
-                            parents.append(value[1:])
+                try:
+                    self.check_header(fp)
+                    # readlines reads the whole file at once:
+                    # bad for transports like http, good for local disk
+                    # we save 60 ms doing this one change (
+                    # from calling readline each time to calling
+                    # readlines once.
+                    # probably what we want for nice behaviour on
+                    # http is a incremental readlines that yields, or
+                    # a check for local vs non local indexes,
+                    for l in fp.readlines():
+                        rec = l.split()
+                        if len(rec) < 5 or rec[-1] != ':':
+                            # corrupt line.
+                            # FIXME: in the future we should determine if its a
+                            # short write - and ignore it 
+                            # or a different failure, and raise. RBC 20060407
+                            continue
+                        count += 1
+                        total += 1
+                        #pb.update('read knit index', count, total)
+                        # See self._parse_parents
+                        parents = []
+                        for value in rec[4:-1]:
+                            if '.' == value[0]:
+                                # uncompressed reference
+                                parents.append(value[1:])
+                            else:
+                                # this is 15/4000ms faster than isinstance,
+                                # (in lsprof)
+                                # this function is called thousands of times a 
+                                # second so small variations add up.
+                                assert value.__class__ is str
+                                parents.append(self._history[int(value)])
+                        # end self._parse_parents
+                        # self._cache_version(rec[0], 
+                        #                     rec[1].split(','),
+                        #                     int(rec[2]),
+                        #                     int(rec[3]),
+                        #                     parents)
+                        # --- self._cache_version
+                        # only want the _history index to reference the 1st 
+                        # index entry for version_id
+                        version_id = rec[0]
+                        if version_id not in self._cache:
+                            index = len(self._history)
+                            self._history.append(version_id)
                         else:
-                            # this is 15/4000ms faster than isinstance,
-                            # (in lsprof)
-                            # this function is called thousands of times a 
-                            # second so small variations add up.
-                            assert value.__class__ is str
-                            parents.append(self._history[int(value)])
-                    # end self._parse_parents
-                    # self._cache_version(rec[0], 
-                    #                     rec[1].split(','),
-                    #                     int(rec[2]),
-                    #                     int(rec[3]),
-                    #                     parents)
-                    # --- self._cache_version
-                    # only want the _history index to reference the 1st 
-                    # index entry for version_id
-                    version_id = rec[0]
-                    if version_id not in self._cache:
-                        index = len(self._history)
-                        self._history.append(version_id)
-                    else:
-                        index = self._cache[version_id][5]
-                    self._cache[version_id] = (version_id,
-                                               rec[1].split(','),
-                                               int(rec[2]),
-                                               int(rec[3]),
-                                               parents,
-                                               index)
-                    # --- self._cache_version 
+                            index = self._cache[version_id][5]
+                        self._cache[version_id] = (version_id,
+                                                   rec[1].split(','),
+                                                   int(rec[2]),
+                                                   int(rec[3]),
+                                                   parents,
+                                                   index)
+                        # --- self._cache_version 
+                finally:
+                    fp.close()
             except NoSuchFile, e:
                 if mode != 'w' or not create:
                     raise
-                self.write_header()
+                if delay_create:
+                    self._need_to_create = True
+                else:
+                    self._transport.put_bytes_non_atomic(self._filename,
+                        self.HEADER, mode=self._file_mode)
+
         finally:
             pb.update('read knit index', total, total)
             pb.finished()
@@ -1148,6 +1233,7 @@ class _KnitIndex(_KnitComponentFile):
         return self._cache[version_id][5]
 
     def _version_list_to_index(self, versions):
+        encode_utf8 = cache_utf8.encode
         result_list = []
         for version in versions:
             if version in self._cache:
@@ -1155,7 +1241,7 @@ class _KnitIndex(_KnitComponentFile):
                 result_list.append(str(self._cache[version][5]))
                 # -- end lookup () --
             else:
-                result_list.append('.' + version.encode('utf-8'))
+                result_list.append('.' + encode_utf8(version))
         return ' '.join(result_list)
 
     def add_version(self, version_id, options, pos, size, parents):
@@ -1169,8 +1255,9 @@ class _KnitIndex(_KnitComponentFile):
                          (version_id, options, pos, size, parents).
         """
         lines = []
+        encode_utf8 = cache_utf8.encode
         for version_id, options, pos, size, parents in versions:
-            line = "\n%s %s %s %s %s :" % (version_id.encode('utf-8'),
+            line = "\n%s %s %s %s %s :" % (encode_utf8(version_id),
                                            ','.join(options),
                                            pos,
                                            size,
@@ -1178,7 +1265,19 @@ class _KnitIndex(_KnitComponentFile):
             assert isinstance(line, str), \
                 'content must be utf-8 encoded: %r' % (line,)
             lines.append(line)
-        self._transport.append(self._filename, StringIO(''.join(lines)))
+        if not self._need_to_create:
+            self._transport.append_bytes(self._filename, ''.join(lines))
+        else:
+            sio = StringIO()
+            sio.write(self.HEADER)
+            sio.writelines(lines)
+            sio.seek(0)
+            self._transport.put_file_non_atomic(self._filename, sio,
+                                create_parent_dir=self._create_parent_dir,
+                                mode=self._file_mode,
+                                dir_mode=self._dir_mode)
+            self._need_to_create = False
+
         # cache after writing, so that a failed write leads to missing cache
         # entries not extra ones. XXX TODO: RBC 20060502 in the event of a 
         # failure, reload the index or flush it or some such, to prevent
@@ -1188,7 +1287,7 @@ class _KnitIndex(_KnitComponentFile):
         
     def has_version(self, version_id):
         """True if the version is in the index."""
-        return self._cache.has_key(version_id)
+        return (version_id in self._cache)
 
     def get_position(self, version_id):
         """Return data position and size of specified version."""
@@ -1213,7 +1312,7 @@ class _KnitIndex(_KnitComponentFile):
                 if parent in self._cache]
 
     def get_parents_with_ghosts(self, version_id):
-        """Return parents of specified version wth ghosts."""
+        """Return parents of specified version with ghosts."""
         return self._cache[version_id][4] 
 
     def check_versions_present(self, version_ids):
@@ -1229,27 +1328,42 @@ class _KnitIndex(_KnitComponentFile):
 class _KnitData(_KnitComponentFile):
     """Contents of the knit data file"""
 
-    HEADER = "# bzr knit data 8\n"
-
-    def __init__(self, transport, filename, mode, create=False, file_mode=None):
-        _KnitComponentFile.__init__(self, transport, filename, mode)
-        self._file = None
+    def __init__(self, transport, filename, mode, create=False, file_mode=None,
+                 create_parent_dir=False, delay_create=False,
+                 dir_mode=None):
+        _KnitComponentFile.__init__(self, transport, filename, mode,
+                                    file_mode=file_mode,
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
         self._checked = False
+        # TODO: jam 20060713 conceptually, this could spill to disk
+        #       if the cached size gets larger than a certain amount
+        #       but it complicates the model a bit, so for now just use
+        #       a simple dictionary
+        self._cache = {}
+        self._do_cache = False
         if create:
-            self._transport.put(self._filename, StringIO(''), mode=file_mode)
-        self._records = {}
+            if delay_create:
+                self._need_to_create = create
+            else:
+                self._transport.put_bytes_non_atomic(self._filename, '',
+                                                     mode=self._file_mode)
+
+    def enable_cache(self):
+        """Enable caching of reads."""
+        self._do_cache = True
 
     def clear_cache(self):
         """Clear the record cache."""
-        self._records = {}
+        self._do_cache = False
+        self._cache = {}
 
     def _open_file(self):
-        if self._file is None:
-            try:
-                self._file = self._transport.get(self._filename)
-            except NoSuchFile:
-                pass
-        return self._file
+        try:
+            return self._transport.get(self._filename)
+        except NoSuchFile:
+            pass
+        return None
 
     def _record_to_data(self, version_id, digest, lines):
         """Convert version_id, digest, lines into a raw data block.
@@ -1258,12 +1372,14 @@ class _KnitData(_KnitComponentFile):
         """
         sio = StringIO()
         data_file = GzipFile(None, mode='wb', fileobj=sio)
+
+        version_id_utf8 = cache_utf8.encode(version_id)
         data_file.writelines(chain(
-            ["version %s %d %s\n" % (version_id.encode('utf-8'), 
+            ["version %s %d %s\n" % (version_id_utf8,
                                      len(lines),
                                      digest)],
             lines,
-            ["end %s\n" % version_id.encode('utf-8')]))
+            ["end %s\n" % version_id_utf8]))
         data_file.close()
         length= sio.tell()
 
@@ -1276,16 +1392,32 @@ class _KnitData(_KnitComponentFile):
         :return: the offset in the data file raw_data was written.
         """
         assert isinstance(raw_data, str), 'data must be plain bytes'
-        return self._transport.append(self._filename, StringIO(raw_data))
+        if not self._need_to_create:
+            return self._transport.append_bytes(self._filename, raw_data)
+        else:
+            self._transport.put_bytes_non_atomic(self._filename, raw_data,
+                                   create_parent_dir=self._create_parent_dir,
+                                   mode=self._file_mode,
+                                   dir_mode=self._dir_mode)
+            self._need_to_create = False
+            return 0
         
     def add_record(self, version_id, digest, lines):
         """Write new text record to disk.  Returns the position in the
         file where it was written."""
         size, sio = self._record_to_data(version_id, digest, lines)
-        # cache
-        self._records[version_id] = (digest, lines)
         # write to disk
-        start_pos = self._transport.append(self._filename, sio)
+        if not self._need_to_create:
+            start_pos = self._transport.append_file(self._filename, sio)
+        else:
+            self._transport.put_file_non_atomic(self._filename, sio,
+                               create_parent_dir=self._create_parent_dir,
+                               mode=self._file_mode,
+                               dir_mode=self._dir_mode)
+            self._need_to_create = False
+            start_pos = 0
+        if self._do_cache:
+            self._cache[version_id] = sio.getvalue()
         return start_pos, size
 
     def _parse_record_header(self, version_id, raw_data):
@@ -1298,7 +1430,7 @@ class _KnitData(_KnitComponentFile):
         rec = df.readline().split()
         if len(rec) != 4:
             raise KnitCorrupt(self._filename, 'unexpected number of elements in record header')
-        if rec[1].decode('utf-8')!= version_id:
+        if cache_utf8.decode(rec[1]) != version_id:
             raise KnitCorrupt(self._filename, 
                               'unexpected version, wanted %r, got %r' % (
                                 version_id, rec[1]))
@@ -1313,7 +1445,7 @@ class _KnitData(_KnitComponentFile):
         record_contents = df.readlines()
         l = record_contents.pop()
         assert len(record_contents) == int(rec[2])
-        if l.decode('utf-8') != 'end %s\n' % version_id:
+        if l != 'end %s\n' % cache_utf8.encode(version_id):
             raise KnitCorrupt(self._filename, 'unexpected version end line %r, wanted %r' 
                         % (l, version_id))
         df.close()
@@ -1324,71 +1456,88 @@ class _KnitData(_KnitComponentFile):
 
         This unpacks enough of the text record to validate the id is
         as expected but thats all.
-
-        It will actively recompress currently cached records on the
-        basis that that is cheaper than I/O activity.
         """
-        needed_records = []
-        for version_id, pos, size in records:
-            if version_id not in self._records:
-                needed_records.append((version_id, pos, size))
-
         # setup an iterator of the external records:
         # uses readv so nice and fast we hope.
-        if len(needed_records):
+        if len(records):
             # grab the disk data needed.
-            raw_records = self._transport.readv(self._filename,
-                [(pos, size) for version_id, pos, size in needed_records])
+            if self._cache:
+                # Don't check _cache if it is empty
+                needed_offsets = [(pos, size) for version_id, pos, size
+                                              in records
+                                              if version_id not in self._cache]
+            else:
+                needed_offsets = [(pos, size) for version_id, pos, size
+                                               in records]
+
+            raw_records = self._transport.readv(self._filename, needed_offsets)
+                
 
         for version_id, pos, size in records:
-            if version_id in self._records:
-                # compress a new version
-                size, sio = self._record_to_data(version_id,
-                                                 self._records[version_id][0],
-                                                 self._records[version_id][1])
-                yield version_id, sio.getvalue()
+            if version_id in self._cache:
+                # This data has already been validated
+                data = self._cache[version_id]
             else:
                 pos, data = raw_records.next()
+                if self._do_cache:
+                    self._cache[version_id] = data
+
                 # validate the header
                 df, rec = self._parse_record_header(version_id, data)
                 df.close()
-                yield version_id, data
-
+            yield version_id, data
 
     def read_records_iter(self, records):
         """Read text records from data file and yield result.
 
-        Each passed record is a tuple of (version_id, pos, len) and
-        will be read in the given order.  Yields (version_id,
-        contents, digest).
+        The result will be returned in whatever is the fastest to read.
+        Not by the order requested. Also, multiple requests for the same
+        record will only yield 1 response.
+        :param records: A list of (version_id, pos, len) entries
+        :return: Yields (version_id, contents, digest) in the order
+                 read, not the order requested
         """
-        # profiling notes:
-        # 60890  calls for 4168 extractions in 5045, 683 internal.
-        # 4168   calls to readv              in 1411
-        # 4168   calls to parse_record       in 2880
+        if not records:
+            return
 
-        needed_records = []
-        for version_id, pos, size in records:
-            if version_id not in self._records:
-                needed_records.append((version_id, pos, size))
+        if self._cache:
+            # Skip records we have alread seen
+            yielded_records = set()
+            needed_records = set()
+            for record in records:
+                if record[0] in self._cache:
+                    if record[0] in yielded_records:
+                        continue
+                    yielded_records.add(record[0])
+                    data = self._cache[record[0]]
+                    content, digest = self._parse_record(record[0], data)
+                    yield (record[0], content, digest)
+                else:
+                    needed_records.add(record)
+            needed_records = sorted(needed_records, key=operator.itemgetter(1))
+        else:
+            needed_records = sorted(set(records), key=operator.itemgetter(1))
 
-        if len(needed_records):
-            # We take it that the transport optimizes the fetching as good
-            # as possible (ie, reads continous ranges.)
-            response = self._transport.readv(self._filename,
-                [(pos, size) for version_id, pos, size in needed_records])
+        if not needed_records:
+            return
 
-            for (record_id, pos, size), (pos, data) in izip(iter(needed_records), response):
-                content, digest = self._parse_record(record_id, data)
-                self._records[record_id] = (digest, content)
-    
-        for version_id, pos, size in records:
-            yield version_id, list(self._records[version_id][1]), self._records[version_id][0]
+        # The transport optimizes the fetching as well 
+        # (ie, reads continuous ranges.)
+        readv_response = self._transport.readv(self._filename,
+            [(pos, size) for version_id, pos, size in needed_records])
+
+        for (version_id, pos, size), (pos, data) in \
+                izip(iter(needed_records), readv_response):
+            content, digest = self._parse_record(version_id, data)
+            if self._do_cache:
+                self._cache[version_id] = data
+            yield version_id, content, digest
 
     def read_records(self, records):
         """Read records into a dictionary."""
         components = {}
-        for record_id, content, digest in self.read_records_iter(records):
+        for record_id, content, digest in \
+                self.read_records_iter(records):
             components[record_id] = (content, digest)
         return components
 
@@ -1469,7 +1618,7 @@ class InterKnit(InterVersionedFile):
                     # if source has the parent, we must :
                     # * already have it or
                     # * have it scheduled already
-                    # otherwise we dont care
+                    # otherwise we don't care
                     assert (self.target.has_version(parent) or
                             parent in copy_set or
                             not self.source.has_version(parent))
@@ -1603,7 +1752,7 @@ class WeaveToKnit(InterVersionedFile):
 InterVersionedFile.register_optimiser(WeaveToKnit)
 
 
-class SequenceMatcher(difflib.SequenceMatcher):
+class KnitSequenceMatcher(difflib.SequenceMatcher):
     """Knit tuned sequence matcher.
 
     This is based on profiling of difflib which indicated some improvements
@@ -1680,7 +1829,7 @@ class SequenceMatcher(difflib.SequenceMatcher):
             j2lenget = j2len.get
             newj2len = {}
             
-            # changing b2j.get(a[i], nothing) to a try:Keyerror pair produced the
+            # changing b2j.get(a[i], nothing) to a try:KeyError pair produced the
             # following improvement
             #     704  0   4650.5320   2620.7410   bzrlib.knit:1336(find_longest_match)
             # +326674  0   1655.1210   1655.1210   +<method 'get' of 'dict' objects>

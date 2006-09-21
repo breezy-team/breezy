@@ -1,15 +1,15 @@
 # Copyright (C) 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -352,3 +352,27 @@ class TestLockDir(TestCaseWithTransport):
             self.assertRaises(LockBroken, ld1.unlock)
         finally:
             bzrlib.ui.ui_factory = orig_factory
+
+    def test_create_missing_base_directory(self):
+        """If LockDir.path doesn't exist, it can be created
+
+        Some people manually remove the entire lock/ directory trying
+        to unlock a stuck repository/branch/etc. Rather than failing
+        after that, just create the lock directory when needed.
+        """
+        t = self.get_transport()
+        lf1 = LockDir(t, 'test_lock')
+
+        lf1.create()
+        self.failUnless(t.has('test_lock'))
+
+        t.rmdir('test_lock')
+        self.failIf(t.has('test_lock'))
+
+        # This will create 'test_lock' if it needs to
+        lf1.lock_write()
+        self.failUnless(t.has('test_lock'))
+        self.failUnless(t.has('test_lock/held/info'))
+
+        lf1.unlock()
+        self.failIf(t.has('test_lock/held/info'))

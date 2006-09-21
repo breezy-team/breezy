@@ -1,15 +1,15 @@
 # Copyright (C) 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -19,12 +19,12 @@
 
 import bzrlib
 import bzrlib.errors as errors
+from bzrlib.inventory import Inventory
 from bzrlib.reconcile import reconcile, Reconciler
 from bzrlib.revision import Revision
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
-from bzrlib.tree import EmptyTree
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
 
@@ -56,7 +56,8 @@ class TestsNeedingReweave(TestReconcile):
         t = get_transport(self.get_url())
         # an empty inventory with no revision for testing with.
         repo = self.make_repository('inventory_without_revision')
-        inv = EmptyTree().inventory
+        inv = Inventory(revision_id='missing')
+        inv.root.revision = 'missing'
         repo.add_inventory('missing', inv, [])
 
         # an empty inventory with no revision for testing with.
@@ -64,8 +65,9 @@ class TestsNeedingReweave(TestReconcile):
         # that all the cached data is correctly converted into ghost links
         # and the referenced inventory still cleaned.
         repo = self.make_repository('inventory_without_revision_and_ghost')
-        inv = EmptyTree().inventory
         repo.add_inventory('missing', inv, [])
+        inv = Inventory(revision_id='references_missing')
+        inv.root.revision = 'references_missing'
         sha1 = repo.add_inventory('references_missing', inv, ['missing'])
         rev = Revision(timestamp=0,
                        timezone=None,
@@ -79,6 +81,8 @@ class TestsNeedingReweave(TestReconcile):
         # a inventory with no parents and the revision has parents..
         # i.e. a ghost.
         repo = self.make_repository('inventory_one_ghost')
+        inv = Inventory(revision_id='ghost')
+        inv.root.revision = 'ghost'
         sha1 = repo.add_inventory('ghost', inv, [])
         rev = Revision(timestamp=0,
                        timezone=None,
@@ -92,6 +96,8 @@ class TestsNeedingReweave(TestReconcile):
         # a inventory with a ghost that can be corrected now.
         t.copy_tree('inventory_one_ghost', 'inventory_ghost_present')
         repo = bzrlib.repository.Repository.open('inventory_ghost_present')
+        inv = Inventory(revision_id='the_ghost')
+        inv.root.revision = 'the_ghost'
         sha1 = repo.add_inventory('the_ghost', inv, [])
         rev = Revision(timestamp=0,
                        timezone=None,
@@ -265,7 +271,8 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
         # now setup the wrong-first parent case
         repo = tree.branch.repository
-        inv = EmptyTree().inventory
+        inv = Inventory(revision_id='wrong-first-parent')
+        inv.root.revision = 'wrong-first-parent'
         sha1 = repo.add_inventory('wrong-first-parent', inv, ['2', '1'])
         rev = Revision(timestamp=0,
                        timezone=None,
@@ -278,7 +285,8 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
         # now setup the wrong-secondary parent case
         repo = repo_secondary
-        inv = EmptyTree().inventory
+        inv = Inventory(revision_id='wrong-secondary-parent')
+        inv.root.revision = 'wrong-secondary-parent'
         sha1 = repo.add_inventory('wrong-secondary-parent', inv, ['1', '3', '2'])
         rev = Revision(timestamp=0,
                        timezone=None,

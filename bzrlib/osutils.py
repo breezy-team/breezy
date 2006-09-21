@@ -1,4 +1,4 @@
-# Bazaar-NG -- distributed version control
+# Bazaar -- distributed version control
 #
 # Copyright (C) 2005 by Canonical Ltd
 #
@@ -16,20 +16,30 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from shutil import copyfile
-from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
-                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 from cStringIO import StringIO
 import errno
+from ntpath import (abspath as _nt_abspath,
+                    join as _nt_join,
+                    normpath as _nt_normpath,
+                    realpath as _nt_realpath,
+                    splitdrive as _nt_splitdrive,
+                    )
 import os
+from os import listdir
+import posixpath
 import re
 import sha
 import shutil
+from shutil import copyfile
+import stat
+from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
+                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 import string
 import sys
 import time
 import types
 import tempfile
+import unicodedata
 
 import bzrlib
 from bzrlib.errors import (BzrError,
@@ -38,8 +48,17 @@ from bzrlib.errors import (BzrError,
                            PathNotChild,
                            IllegalPath,
                            )
+from bzrlib.symbol_versioning import (deprecated_function, 
+        zero_nine)
 from bzrlib.trace import mutter
-import bzrlib.win32console
+
+
+# On win32, O_BINARY is used to indicate the file should
+# be opened in binary mode, rather than text mode.
+# On other platforms, O_BINARY doesn't exist, because
+# they always open in binary mode, so it is okay to
+# OR with 0 on those platforms
+O_BINARY = getattr(os, 'O_BINARY', 0)
 
 
 def make_readonly(filename):
@@ -65,7 +84,7 @@ def quotefn(f):
     Windows."""
     # TODO: I'm not really sure this is the best format either.x
     global _QUOTE_RE
-    if _QUOTE_RE == None:
+    if _QUOTE_RE is None:
         _QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/\\_~-])')
         
     if _QUOTE_RE.search(f):
@@ -74,50 +93,74 @@ def quotefn(f):
         return f
 
 
-def file_kind(f):
-    mode = os.lstat(f)[ST_MODE]
-    if S_ISREG(mode):
-        return 'file'
-    elif S_ISDIR(mode):
-        return 'directory'
-    elif S_ISLNK(mode):
-        return 'symlink'
-    elif S_ISCHR(mode):
-        return 'chardev'
-    elif S_ISBLK(mode):
-        return 'block'
-    elif S_ISFIFO(mode):
-        return 'fifo'
-    elif S_ISSOCK(mode):
-        return 'socket'
-    else:
-        return 'unknown'
+_directory_kind = 'directory'
+
+_formats = {
+    stat.S_IFDIR:_directory_kind,
+    stat.S_IFCHR:'chardev',
+    stat.S_IFBLK:'block',
+    stat.S_IFREG:'file',
+    stat.S_IFIFO:'fifo',
+    stat.S_IFLNK:'symlink',
+    stat.S_IFSOCK:'socket',
+}
+
+
+def file_kind_from_stat_mode(stat_mode, _formats=_formats, _unknown='unknown'):
+    """Generate a file kind from a stat mode. This is used in walkdirs.
+
+    Its performance is critical: Do not mutate without careful benchmarking.
+    """
+    try:
+        return _formats[stat_mode & 0170000]
+    except KeyError:
+        return _unknown
+
+
+def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
+    try:
+        return _mapper(_lstat(f).st_mode)
+    except OSError, e:
+        if getattr(e, 'errno', None) == errno.ENOENT:
+            raise bzrlib.errors.NoSuchFile(f)
+        raise
+
+
+def get_umask():
+    """Return the current umask"""
+    # Assume that people aren't messing with the umask while running
+    # XXX: This is not thread safe, but there is no way to get the
+    #      umask without setting it
+    umask = os.umask(0)
+    os.umask(umask)
+    return umask
 
 
 def kind_marker(kind):
     if kind == 'file':
         return ''
-    elif kind == 'directory':
+    elif kind == _directory_kind:
         return '/'
     elif kind == 'symlink':
         return '@'
     else:
         raise BzrError('invalid file kind %r' % kind)
 
-def lexists(f):
-    if hasattr(os.path, 'lexists'):
-        return os.path.lexists(f)
-    try:
-        if hasattr(os, 'lstat'):
-            os.lstat(f)
-        else:
-            os.stat(f)
-        return True
-    except OSError,e:
-        if e.errno == errno.ENOENT:
-            return False;
-        else:
-            raise BzrError("lstat/stat of (%r): %r" % (f, e))
+lexists = getattr(os.path, 'lexists', None)
+if lexists is None:
+    def lexists(f):
+        try:
+            if getattr(os, 'lstat') is not None:
+                os.lstat(f)
+            else:
+                os.stat(f)
+            return True
+        except OSError,e:
+            if e.errno == errno.ENOENT:
+                return False;
+            else:
+                raise BzrError("lstat/stat of (%r): %r" % (f, e))
+
 
 def fancy_rename(old, new, rename_func, unlink_func):
     """A fancy rename, when you don't have atomic rename.
@@ -147,12 +190,12 @@ def fancy_rename(old, new, rename_func, unlink_func):
         pass
     except IOError, e:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
-        # function raises an IOError with errno == None when a rename fails.
+        # function raises an IOError with errno is None when a rename fails.
         # This then gets caught here.
         if e.errno not in (None, errno.ENOENT, errno.ENOTDIR):
             raise
     except Exception, e:
-        if (not hasattr(e, 'errno') 
+        if (getattr(e, 'errno', None) is None
             or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
             raise
     else:
@@ -173,10 +216,89 @@ def fancy_rename(old, new, rename_func, unlink_func):
             else:
                 rename_func(tmp_name, new)
 
+
+# In Python 2.4.2 and older, os.path.abspath and os.path.realpath
+# choke on a Unicode string containing a relative path if
+# os.getcwd() returns a non-sys.getdefaultencoding()-encoded
+# string.
+_fs_enc = sys.getfilesystemencoding()
+def _posix_abspath(path):
+    # jam 20060426 rather than encoding to fsencoding
+    # copy posixpath.abspath, but use os.getcwdu instead
+    if not posixpath.isabs(path):
+        path = posixpath.join(getcwd(), path)
+    return posixpath.normpath(path)
+
+
+def _posix_realpath(path):
+    return posixpath.realpath(path.encode(_fs_enc)).decode(_fs_enc)
+
+
+def _win32_fixdrive(path):
+    """Force drive letters to be consistent.
+
+    win32 is inconsistent whether it returns lower or upper case
+    and even if it was consistent the user might type the other
+    so we force it to uppercase
+    running python.exe under cmd.exe return capital C:\\
+    running win32 python inside a cygwin shell returns lowercase c:\\
+    """
+    drive, path = _nt_splitdrive(path)
+    return drive.upper() + path
+
+
+def _win32_abspath(path):
+    # Real _nt_abspath doesn't have a problem with a unicode cwd
+    return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
+
+
+def _win32_realpath(path):
+    # Real _nt_realpath doesn't have a problem with a unicode cwd
+    return _win32_fixdrive(_nt_realpath(unicode(path)).replace('\\', '/'))
+
+
+def _win32_pathjoin(*args):
+    return _nt_join(*args).replace('\\', '/')
+
+
+def _win32_normpath(path):
+    return _win32_fixdrive(_nt_normpath(unicode(path)).replace('\\', '/'))
+
+
+def _win32_getcwd():
+    return _win32_fixdrive(os.getcwdu().replace('\\', '/'))
+
+
+def _win32_mkdtemp(*args, **kwargs):
+    return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
+
+
+def _win32_rename(old, new):
+    """We expect to be able to atomically replace 'new' with old.
+
+    On win32, if new exists, it must be moved out of the way first,
+    and then deleted. 
+    """
+    try:
+        fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+    except OSError, e:
+        if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
+            # If we try to rename a non-existant file onto cwd, we get 
+            # EPERM or EACCES instead of ENOENT, this will raise ENOENT 
+            # if the old path doesn't exist, sometimes we get EACCES
+            # On Linux, we seem to get EBUSY, on Mac we get EINVAL
+            os.lstat(old)
+        raise
+
+
+def _mac_getcwd():
+    return unicodedata.normalize('NFKC', os.getcwdu())
+
+
 # Default is to just use the python builtins, but these can be rebound on
 # particular platforms.
-abspath = os.path.abspath
-realpath = os.path.realpath
+abspath = _posix_abspath
+realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = os.path.normpath
 getcwd = os.getcwdu
@@ -188,41 +310,15 @@ rmtree = shutil.rmtree
 
 MIN_ABS_PATHLENGTH = 1
 
-if os.name == "posix":
-    # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
-    # choke on a Unicode string containing a relative path if
-    # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
-    # string.
-    _fs_enc = sys.getfilesystemencoding()
-    def abspath(path):
-        return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
-
-    def realpath(path):
-        return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
 
 if sys.platform == 'win32':
-    # We need to use the Unicode-aware os.path.abspath and
-    # os.path.realpath on Windows systems.
-    def abspath(path):
-        return os.path.abspath(path).replace('\\', '/')
-
-    def realpath(path):
-        return os.path.realpath(path).replace('\\', '/')
-
-    def pathjoin(*args):
-        return os.path.join(*args).replace('\\', '/')
-
-    def normpath(path):
-        return os.path.normpath(path).replace('\\', '/')
-
-    def getcwd():
-        return os.getcwdu().replace('\\', '/')
-
-    def mkdtemp(*args, **kwargs):
-        return tempfile.mkdtemp(*args, **kwargs).replace('\\', '/')
-
-    def rename(old, new):
-        fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+    abspath = _win32_abspath
+    realpath = _win32_realpath
+    pathjoin = _win32_pathjoin
+    normpath = _win32_normpath
+    getcwd = _win32_getcwd
+    mkdtemp = _win32_mkdtemp
+    rename = _win32_rename
 
     MIN_ABS_PATHLENGTH = 3
 
@@ -242,10 +338,39 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
+elif sys.platform == 'darwin':
+    getcwd = _mac_getcwd
+
+
+def get_terminal_encoding():
+    """Find the best encoding for printing to the screen.
+
+    This attempts to check both sys.stdout and sys.stdin to see
+    what encoding they are in, and if that fails it falls back to
+    bzrlib.user_encoding.
+    The problem is that on Windows, locale.getpreferredencoding()
+    is not the same encoding as that used by the console:
+    http://mail.python.org/pipermail/python-list/2003-May/162357.html
+
+    On my standard US Windows XP, the preferred encoding is
+    cp1252, but the console is cp437
+    """
+    output_encoding = getattr(sys.stdout, 'encoding', None)
+    if not output_encoding:
+        input_encoding = getattr(sys.stdin, 'encoding', None)
+        if not input_encoding:
+            output_encoding = bzrlib.user_encoding
+            mutter('encoding stdout as bzrlib.user_encoding %r', output_encoding)
+        else:
+            output_encoding = input_encoding
+            mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
+    else:
+        mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+    return output_encoding
 
 
 def normalizepath(f):
-    if hasattr(os.path, 'realpath'):
+    if getattr(os.path, 'realpath', None) is not None:
         F = realpath
     else:
         F = abspath
@@ -352,6 +477,15 @@ def is_inside_any(dir_list, fname):
         return False
 
 
+def is_inside_or_parent_of_any(dir_list, fname):
+    """True if fname is a child or a parent of any of the given files."""
+    for dirname in dir_list:
+        if is_inside(dirname, fname) or is_inside(fname, dirname):
+            return True
+    else:
+        return False
+
+
 def pumpfile(fromfile, tofile):
     """Copy contents of one file to another."""
     BUFSIZE = 32768
@@ -371,7 +505,7 @@ def file_iterator(input_file, readsize=32768):
 
 
 def sha_file(f):
-    if hasattr(f, 'tell'):
+    if getattr(f, 'tell', None) is not None:
         assert f.tell() == 0
     s = sha.new()
     BUFSIZE = 128<<10
@@ -421,7 +555,7 @@ def compare_files(a, b):
 def local_time_offset(t=None):
     """Return offset of local zone from GMT, either at present or at time t."""
     # python2.3 localtime() can't take None
-    if t == None:
+    if t is None:
         t = time.time()
         
     if time.localtime(t).tm_isdst and time.daylight:
@@ -440,7 +574,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         tt = time.gmtime(t)
         offset = 0
     elif timezone == 'original':
-        if offset == None:
+        if offset is None:
             offset = 0
         tt = time.gmtime(t + offset)
     elif timezone == 'local':
@@ -542,11 +676,12 @@ def splitpath(p):
 def joinpath(p):
     assert isinstance(p, list)
     for f in p:
-        if (f == '..') or (f == None) or (f == ''):
+        if (f == '..') or (f is None) or (f == ''):
             raise BzrError("sorry, %r not allowed in path" % f)
     return pathjoin(*p)
 
 
+@deprecated_function(zero_nine)
 def appendpath(p1, p2):
     if p1 == '':
         return p2
@@ -591,7 +726,7 @@ def delete_any(full_path):
 
 
 def has_symlinks():
-    if hasattr(os, 'symlink'):
+    if getattr(os, 'symlink', None) is not None:
         return True
     else:
         return False
@@ -629,6 +764,7 @@ def relpath(base, path):
     assert len(base) >= MIN_ABS_PATHLENGTH, ('Length of base must be equal or'
         ' exceed the platform minimum length (which is %d)' % 
         MIN_ABS_PATHLENGTH)
+
     rp = abspath(path)
 
     s = []
@@ -640,8 +776,6 @@ def relpath(base, path):
         if tail:
             s.insert(0, tail)
     else:
-        # XXX This should raise a NotChildPath exception, as its not tied
-        # to branch anymore.
         raise PathNotChild(rp, base)
 
     if s:
@@ -664,6 +798,50 @@ def safe_unicode(unicode_or_utf8_string):
         return unicode_or_utf8_string.decode('utf8')
     except UnicodeDecodeError:
         raise BzrBadParameterNotUnicode(unicode_or_utf8_string)
+
+
+_platform_normalizes_filenames = False
+if sys.platform == 'darwin':
+    _platform_normalizes_filenames = True
+
+
+def normalizes_filenames():
+    """Return True if this platform normalizes unicode filenames.
+
+    Mac OSX does, Windows/Linux do not.
+    """
+    return _platform_normalizes_filenames
+
+
+def _accessible_normalized_filename(path):
+    """Get the unicode normalized path, and if you can access the file.
+
+    On platforms where the system normalizes filenames (Mac OSX),
+    you can access a file by any path which will normalize correctly.
+    On platforms where the system does not normalize filenames 
+    (Windows, Linux), you have to access a file by its exact path.
+
+    Internally, bzr only supports NFC/NFKC normalization, since that is 
+    the standard for XML documents.
+
+    So return the normalized path, and a flag indicating if the file
+    can be accessed by that path.
+    """
+
+    return unicodedata.normalize('NFKC', unicode(path)), True
+
+
+def _inaccessible_normalized_filename(path):
+    __doc__ = _accessible_normalized_filename.__doc__
+
+    normalized = unicodedata.normalize('NFKC', unicode(path))
+    return normalized, normalized == path
+
+
+if _platform_normalizes_filenames:
+    normalized_filename = _accessible_normalized_filename
+else:
+    normalized_filename = _inaccessible_normalized_filename
 
 
 def terminal_width():
@@ -689,18 +867,28 @@ def terminal_width():
 
     return width
 
+
 def supports_executable():
     return sys.platform != "win32"
 
 
-def strip_trailing_slash(path):
-    """Strip trailing slash, except for root paths.
-    The definition of 'root path' is platform-dependent.
+def set_or_unset_env(env_variable, value):
+    """Modify the environment, setting or removing the env_variable.
+
+    :param env_variable: The environment variable in question
+    :param value: The value to set the environment to. If None, then
+        the variable will be removed.
+    :return: The original value of the environment variable.
     """
-    if len(path) != MIN_ABS_PATHLENGTH and path[-1] == '/':
-        return path[:-1]
+    orig_val = os.environ.get(env_variable)
+    if value is None:
+        if orig_val is not None:
+            del os.environ[env_variable]
     else:
-        return path
+        if isinstance(value, unicode):
+            value = value.encode(bzrlib.user_encoding)
+        os.environ[env_variable] = value
+    return orig_val
 
 
 _validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
@@ -715,3 +903,161 @@ def check_legal_path(path):
         return
     if _validWin32PathRE.match(path) is None:
         raise IllegalPath(path)
+
+
+def walkdirs(top, prefix=""):
+    """Yield data about all the directories in a tree.
+    
+    This yields all the data about the contents of a directory at a time.
+    After each directory has been yielded, if the caller has mutated the list
+    to exclude some directories, they are then not descended into.
+    
+    The data yielded is of the form:
+    ((directory-relpath, directory-path-from-top),
+    [(relpath, basename, kind, lstat), ...]),
+     - directory-relpath is the relative path of the directory being returned
+       with respect to top. prefix is prepended to this.
+     - directory-path-from-root is the path including top for this directory. 
+       It is suitable for use with os functions.
+     - relpath is the relative path within the subtree being walked.
+     - basename is the basename of the path
+     - kind is the kind of the file now. If unknown then the file is not
+       present within the tree - but it may be recorded as versioned. See
+       versioned_kind.
+     - lstat is the stat data *if* the file was statted.
+     - planned, not implemented: 
+       path_from_tree_root is the path from the root of the tree.
+
+    :param prefix: Prefix the relpaths that are yielded with 'prefix'. This 
+        allows one to walk a subtree but get paths that are relative to a tree
+        rooted higher up.
+    :return: an iterator over the dirs.
+    """
+    #TODO there is a bit of a smell where the results of the directory-
+    # summary in this, and the path from the root, may not agree 
+    # depending on top and prefix - i.e. ./foo and foo as a pair leads to
+    # potentially confusing output. We should make this more robust - but
+    # not at a speed cost. RBC 20060731
+    lstat = os.lstat
+    pending = []
+    _directory = _directory_kind
+    _listdir = listdir
+    pending = [(prefix, "", _directory, None, top)]
+    while pending:
+        dirblock = []
+        currentdir = pending.pop()
+        # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
+        top = currentdir[4]
+        if currentdir[0]:
+            relroot = currentdir[0] + '/'
+        else:
+            relroot = ""
+        for name in sorted(_listdir(top)):
+            abspath = top + '/' + name
+            statvalue = lstat(abspath)
+            dirblock.append((relroot + name, name,
+                file_kind_from_stat_mode(statvalue.st_mode),
+                statvalue, abspath))
+        yield (currentdir[0], top), dirblock
+        # push the user specified dirs from dirblock
+        for dir in reversed(dirblock):
+            if dir[2] == _directory:
+                pending.append(dir)
+
+
+def copy_tree(from_path, to_path, handlers={}):
+    """Copy all of the entries in from_path into to_path.
+
+    :param from_path: The base directory to copy. 
+    :param to_path: The target directory. If it does not exist, it will
+        be created.
+    :param handlers: A dictionary of functions, which takes a source and
+        destinations for files, directories, etc.
+        It is keyed on the file kind, such as 'directory', 'symlink', or 'file'
+        'file', 'directory', and 'symlink' should always exist.
+        If they are missing, they will be replaced with 'os.mkdir()',
+        'os.readlink() + os.symlink()', and 'shutil.copy2()', respectively.
+    """
+    # Now, just copy the existing cached tree to the new location
+    # We use a cheap trick here.
+    # Absolute paths are prefixed with the first parameter
+    # relative paths are prefixed with the second.
+    # So we can get both the source and target returned
+    # without any extra work.
+
+    def copy_dir(source, dest):
+        os.mkdir(dest)
+
+    def copy_link(source, dest):
+        """Copy the contents of a symlink"""
+        link_to = os.readlink(source)
+        os.symlink(link_to, dest)
+
+    real_handlers = {'file':shutil.copy2,
+                     'symlink':copy_link,
+                     'directory':copy_dir,
+                    }
+    real_handlers.update(handlers)
+
+    if not os.path.exists(to_path):
+        real_handlers['directory'](from_path, to_path)
+
+    for dir_info, entries in walkdirs(from_path, prefix=to_path):
+        for relpath, name, kind, st, abspath in entries:
+            real_handlers[kind](abspath, relpath)
+
+
+def path_prefix_key(path):
+    """Generate a prefix-order path key for path.
+
+    This can be used to sort paths in the same way that walkdirs does.
+    """
+    return (dirname(path) , path)
+
+
+def compare_paths_prefix_order(path_a, path_b):
+    """Compare path_a and path_b to generate the same order walkdirs uses."""
+    key_a = path_prefix_key(path_a)
+    key_b = path_prefix_key(path_b)
+    return cmp(key_a, key_b)
+
+
+_cached_user_encoding = None
+
+
+def get_user_encoding():
+    """Find out what the preferred user encoding is.
+
+    This is generally the encoding that is used for command line parameters
+    and file contents. This may be different from the terminal encoding
+    or the filesystem encoding.
+
+    :return: A string defining the preferred user encoding
+    """
+    global _cached_user_encoding
+    if _cached_user_encoding is not None:
+        return _cached_user_encoding
+
+    if sys.platform == 'darwin':
+        # work around egregious python 2.4 bug
+        sys.platform = 'posix'
+        try:
+            import locale
+        finally:
+            sys.platform = 'darwin'
+    else:
+        import locale
+
+    try:
+        _cached_user_encoding = locale.getpreferredencoding()
+    except locale.Error, e:
+        sys.stderr.write('bzr: warning: %s\n'
+                         '  Could not determine what text encoding to use.\n'
+                         '  This error usually means your Python interpreter\n'
+                         '  doesn\'t support the locale set by $LANG (%s)\n'
+                         "  Continuing with ascii encoding.\n"
+                         % (e, os.environ.get('LANG')))
+
+    if _cached_user_encoding is None:
+        _cached_user_encoding = 'ascii'
+    return _cached_user_encoding

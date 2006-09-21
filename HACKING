@@ -5,7 +5,7 @@ Guidelines for modifying bzr
 .. contents::
 
 (The current version of this document is available in the file ``HACKING``
-in the source tree, or at http://bazaar-ng.org/hacking.html)
+in the source tree, or at http://doc.bazaar-vcs.org/current/hacking.html)
 
 Overall
 =======
@@ -38,12 +38,12 @@ Overall
   pipelines.
 
   Recommended values are 
-    0- OK, 
-    1- Conflicts in merge-like operations, or changes are present in
+    0. OK, 
+    1. Conflicts in merge-like operations, or changes are present in
        diff-like operations. 
-    2- Unrepresentable diff changes (i.e. binary files that we cannot show 
+    2. Unrepresentable diff changes (i.e. binary files that we cannot show 
        a diff of).
-    3- An error or exception has occurred.
+    3. An error or exception has occurred.
 
 Evolving interfaces
 -------------------
@@ -194,6 +194,80 @@ what can be done inside them.
     may not catch every case but it's still useful sometimes.
 
 
+Factories
+---------
+
+In some places we have variables which point to callables that construct
+new instances.  That is to say, they can be used a lot like class objects,
+but they shouldn't be *named* like classes:
+
+> I think that things named FooBar should create instances of FooBar when
+> called. Its plain confusing for them to do otherwise. When we have
+> something that is going to be used as a class - that is, checked for via
+> isinstance or other such idioms, them I would call it foo_class, so that
+> it is clear that a callable is not sufficient. If it is only used as a
+> factory, then yes, foo_factory is what I would use.
+
+
+Lazy Imports
+------------
+
+To make startup time faster, we use the ``bzrlib.lazy_import`` module to
+delay importing modules until they are actually used. ``lazy_import`` uses
+the same syntax as regular python imports. So to import a few modules in a
+lazy fashion do::
+
+  from bzrlib.lazy_import import lazy_import
+  lazy_import(globals(), """
+  import os
+  import subprocess
+  import sys
+  import time
+
+  from bzrlib import (
+     errors,
+     transport,
+     foo as bar,
+     )
+  import bzrlib.transport
+  import bzrlib.xml5
+  """)
+
+At this point, all of these exist as a ``ImportReplacer`` object, ready to
+be imported once a member is accessed.
+
+
+Modules versus Members
+~~~~~~~~~~~~~~~~~~~~~~
+
+While it is possible for ``lazy_import()`` to import members of a module
+wehn using the ``from module import member`` syntax, it is recommended to
+only use that syntax to load sub modules ``from module import submodule``.
+This is because variables and classes can frequently be used without
+needing a sub-member for example::
+
+  lazy_import(globals(), """
+  from module import MyClass
+  """)
+
+  def test(x):
+      return isinstance(x, MyClass)
+
+This will incorrectly fail, because ``MyClass`` is a ``ImportReplacer``
+object, rather than the real class.
+
+
+Passing to other variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It also is incorrect to assign ``ImportReplacer`` objects to other variables.
+Because the replacer only knows about the original name, it is unable to
+replace other variables. The ``ImportReplacer`` class will raise an
+``IllegalUseOfScopeReplacer`` exception if it can figure out that this
+happened. But it requires accessing a member more than once from the new
+variable, so some bugs are not detected right away.
+
+
 Writing output
 ==============
 
@@ -245,7 +319,7 @@ Choose whichever is appropriate: if adding a new command, or a new command
 option, then you should be writing a UI test.  If you are both adding UI
 functionality and library functionality, you will want to write tests for 
 both the UI and the core behaviours.  We call UI tests 'blackbox' tests
-and they are found in bzrlib/tests/blackbox/*.py. 
+and they are found in ``bzrlib/tests/blackbox/*.py``. 
 
 When writing blackbox tests please honour the following conventions:
 
@@ -267,6 +341,19 @@ When writing blackbox tests please honour the following conventions:
     command changes it name or signature. Ideally only the tests for a
     given command are affected when a given command is changed.
 
+Doctests
+--------
+
+We make selective use of doctests__.  In general they should provide 
+*examples* within the API documentation which can incidentally be tested.  We 
+don't try to test every important case using doctests -- regular Python
+tests are generally a better solution.
+
+Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
+
+  __ http://docs.python.org/lib/module-doctest.html
+
+
 Running tests
 =============
 Currently, bzr selftest is used to invoke tests.
@@ -274,6 +361,11 @@ You can provide a pattern argument to run a subset. For example,
 to run just the blackbox tests, run::
 
   ./bzr selftest -v blackbox
+
+To skip a particular test (or set of tests), you need to use a negative
+match, like so::
+
+  ./bzr selftest '^(?!.*blackbox)'  
 
 
 Errors and exceptions
@@ -333,7 +425,7 @@ to the correct URL, because we don't know what encoding the server expects
 for those characters.  (Although this is not totally reliable we might still
 accept these and assume they should be put into UTF-8.)
 
-A similar edge case is that the url ``http://foo/sweet%2Fsour" contains
+A similar edge case is that the url ``http://foo/sweet%2Fsour`` contains
 one directory component whose name is "sweet/sour".  The escaped slash is
 not a directory separator.  If we try to convert URLs to regular Unicode
 paths this information will be lost.
@@ -342,6 +434,61 @@ This implies that Transports must natively deal with URLs; for simplicity
 they *only* deal with URLs and conversion of other strings to URLs is done
 elsewhere.  Information they return, such as from ``list_dir``, is also in
 the form of URL components.
+
+
+Unicode and Encoding Support
+============================
+
+This section discusses various techniques that Bazaar uses to handle
+characters that are outside the ASCII set.
+
+``Command.outf``
+----------------
+
+When a ``Command`` object is created, it is given a member variable
+accessible by ``self.outf``.  This is a file-like object, which is bound to
+``sys.stdout``, and should be used to write information to the screen,
+rather than directly writing to ``sys.stdout`` or calling ``print``.
+This file has the ability to translate Unicode objects into the correct
+representation, based on the console encoding.  Also, the class attribute
+``encoding_type`` will effect how unprintable characters will be
+handled.  This parameter can take one of 3 values:
+
+  replace
+    Unprintable characters will be represented with a suitable replacement
+    marker (typically '?'), and no exception will be raised. This is for
+    any command which generates text for the user to review, rather than
+    for automated processing.
+    For example: ``bzr log`` should not fail if one of the entries has text
+    that cannot be displayed.
+  
+  strict
+    Attempting to print and unprintable character will cause a UnicodeError.
+    This is for commands that are intended more as scripting support, rather
+    than plain user review.
+    For exampl: ``bzr ls`` is designed to be used with shell scripting. One
+    use would be ``bzr ls --null --unknows | xargs -0 rm``.  If ``bzr``
+    printed a filename with a '?', the wrong file could be deleted. (At the
+    very least, the correct file would not be deleted). An error is used to
+    indicate that the requested action could not be performed.
+  
+  exact
+    Do not attempt to automatically convert Unicode strings. This is used
+    for commands that must handle conversion themselves.
+    For example: ``bzr diff`` needs to translate Unicode paths, but should
+    not change the exact text of the contents of the files.
+
+
+``bzrlib.urlutils.unescape_for_display``
+----------------------------------------
+
+Because Transports work in URLs (as defined earlier), printing the raw URL
+to the user is usually less than optimal. Characters outside the standard
+set are printed as escapes, rather than the real character, and local
+paths would be printed as ``file://`` urls. The function
+``unescape_for_display`` attempts to unescape a URL, such that anything
+that cannot be printed in the current encoding stays an escaped URL, but
+valid characters are generated where possible.
 
 
 Merge/review process
@@ -387,4 +534,10 @@ into their integration branch, which I'll merge regularly.  (If you do
 so, please reply and say so.)
 
 
-:: vim:tw=74:ai
+Making installers for OS Windows
+================================
+To build a win32 installer, see the instructions on the wiki page:
+http://bazaar-vcs.org/BzrWin32Installer
+
+
+:: vim: ft=rst tw=74 ai

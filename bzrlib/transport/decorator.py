@@ -1,15 +1,15 @@
 # Copyright (C) 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -57,9 +57,13 @@ class TransportDecorator(Transport):
         """See Transport.abspath()."""
         return self._get_url_prefix() + self._decorated.abspath(relpath)
 
-    def append(self, relpath, f, mode=None):
-        """See Transport.append()."""
-        return self._decorated.append(relpath, f, mode=mode)
+    def append_file(self, relpath, f, mode=None):
+        """See Transport.append_file()."""
+        return self._decorated.append_file(relpath, f, mode=mode)
+
+    def append_bytes(self, relpath, bytes, mode=None):
+        """See Transport.append_bytes()."""
+        return self._decorated.append_bytes(relpath, bytes, mode=mode)
 
     def clone(self, offset=None):
         """See Transport.clone()."""
@@ -84,6 +88,9 @@ class TransportDecorator(Transport):
         """See Transport.get()."""
         return self._decorated.get(relpath)
 
+    def get_smart_client(self):
+        return self._decorated.get_smart_client()
+
     def has(self, relpath):
         """See Transport.has()."""
         return self._decorated.has(relpath)
@@ -96,10 +103,14 @@ class TransportDecorator(Transport):
         """See Transport.mkdir()."""
         return self._decorated.mkdir(relpath, mode)
 
-    def put(self, relpath, f, mode=None):
-        """See Transport.put()."""
-        return self._decorated.put(relpath, f, mode)
+    def put_file(self, relpath, f, mode=None):
+        """See Transport.put_file()."""
+        return self._decorated.put_file(relpath, f, mode)
     
+    def put_bytes(self, relpath, bytes, mode=None):
+        """See Transport.put_bytes()."""
+        return self._decorated.put_bytes(relpath, bytes, mode)
+
     def listable(self):
         """See Transport.listable."""
         return self._decorated.listable()

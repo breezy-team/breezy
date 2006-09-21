@@ -17,20 +17,34 @@
 
 from StringIO import StringIO
 
-from bzrlib.bzrdir import BzrDir
-from bzrlib.status import show_pending_merges
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.revisionspec import RevisionSpec
+from bzrlib.status import show_pending_merges, show_tree_status
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestStatus(TestCaseInTempDir):
+class TestStatus(TestCaseWithTransport):
 
     def test_pending_none(self):
         # Test whether show_pending_merges works in a tree with no commits
-        tree = BzrDir.create_standalone_workingtree('a')
+        tree = self.make_branch_and_tree('a')
         tree.commit('empty commit')
-        tree2 = BzrDir.create_standalone_workingtree('b')
-        tree2.branch.fetch(tree.branch)
-        tree2.set_pending_merges([tree.last_revision()])
+        tree2 = self.make_branch_and_tree('b')
+        # set a left most parent that is not a present commit
+        tree2.add_parent_tree_id('some-ghost', allow_leftmost_as_ghost=True)
+        # do a merge
+        tree2.merge_from_branch(tree.branch)
         output = StringIO()
         show_pending_merges(tree2, output)
         self.assertContainsRe(output.getvalue(), 'empty commit')
+
+    def tests_revision_to_revision(self):
+        """doing a status between two revision trees should work."""
+        tree = self.make_branch_and_tree('.')
+        r1_id = tree.commit('one', allow_pointless=True)
+        r2_id = tree.commit('two', allow_pointless=True)
+        r2_tree = tree.branch.repository.revision_tree(r2_id)
+        output = StringIO()
+        show_tree_status(tree, to_file=output,
+                     revision=[RevisionSpec.from_string("revid:%s" % r1_id),
+                               RevisionSpec.from_string("revid:%s" % r2_id)])
+        # return does not matter as long as it did not raise.

@@ -26,7 +26,7 @@ class TestMerge2(TestCase):
     def test_conflict(self):
         lines_a = "a\nb\nc\nd\ne\nf\ng\nh\n".splitlines(True)
         lines_b = "z\nb\nx\nd\ne\ne\nf\ng\ny\n".splitlines(True)
-        expected = "<\na\n=\nz\n>\nb\n<\nc\n=\nx\n>\nd\n<\n=\ne\n>\ne\nf\n"\
+        expected = "<\na\n=\nz\n>\nb\n<\nc\n=\nx\n>\nd\ne\n<\n=\ne\n>\nf\n"\
                    "g\n<\nh\n=\ny\n>\n"
         m2 = Merge2(lines_a, lines_b, '<\n', '>\n', '=\n')
         mlines= m2.merge_lines()[0]

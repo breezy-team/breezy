@@ -22,7 +22,6 @@ from bzrlib.revision import Revision
 from bzrlib.store.revision import RevisionStore
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transactions import PassThroughTransaction
-from bzrlib.tree import EmptyTree
 
 
 class TestFactory(TestCaseWithTransport):
@@ -47,7 +46,7 @@ class TestAll(TestCaseWithTransport):
 
     def add_sample_rev(self):
         rev = Revision(timestamp=0,
-                       timezone=None,
+                       timezone=0,
                        committer="Foo Bar <foo@example.com>",
                        message="Message",
                        inventory_sha1='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',

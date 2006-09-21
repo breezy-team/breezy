@@ -1,8 +1,10 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
 
-from bzrlib.tests import TestCase
-from bzrlib.commands import Command, parse_args
 from bzrlib.builtins import cmd_commit, cmd_log, cmd_status
+from bzrlib.commands import Command, parse_args
+from bzrlib import errors
+from bzrlib import option
+from bzrlib.tests import TestCase
 
 # TODO: might be nice to just parse them into a structured form and test
 # against that, rather than running the whole command.
@@ -15,8 +17,6 @@ class OptionTests(TestCase):
         eq = self.assertEquals
         eq(parse_args(cmd_commit(), ['--help']),
            ([], {'help': True}))
-        eq(parse_args(cmd_status(), ['--all']),
-           ([], {'all': True}))
         eq(parse_args(cmd_commit(), ['--message=biter']),
            ([], {'message': 'biter'}))
         ## eq(parse_args(cmd_log(),  '-r 500'.split()),
@@ -30,8 +30,9 @@ class OptionTests(TestCase):
     def test_option_help(self):
         """Options have help strings."""
         out, err = self.run_bzr_captured(['commit', '--help'])
-        self.assertContainsRe(out, r'--file.*file containing commit message')
-        self.assertContainsRe(out, r'--help.*-h')
+        self.assertContainsRe(out, r'--file(.|\n)*file containing commit'
+                                   ' message')
+        self.assertContainsRe(out, r'-h.*--help')
 
     def test_option_help_global(self):
         """Global options have help strings."""
@@ -46,8 +47,40 @@ class OptionTests(TestCase):
 
     def test_unknown_short_opt(self):
         out, err = self.run_bzr_captured(['help', '-r'], retcode=3)
-        self.assertContainsRe(err, r'unknown short option')
+        self.assertContainsRe(err, r'no such option')
 
+    def test_allow_dash(self):
+        """Test that we can pass a plain '-' as an argument."""
+        self.assertEqual((['-'], {}), parse_args(cmd_commit(), ['-']))
+
+    def test_conversion(self):
+        def parse(options, args):
+            parser = option.get_optparser(dict((o.name, o) for o in options))
+            return parser.parse_args(args)
+        options = [option.Option('hello')]
+        opts, args = parse(options, ['--no-hello', '--hello'])
+        self.assertEqual(True, opts.hello)
+        opts, args = parse(options, [])
+        self.assertEqual(option.OptionParser.DEFAULT_VALUE, opts.hello)
+        opts, args = parse(options, ['--hello', '--no-hello'])
+        self.assertEqual(False, opts.hello)
+        options = [option.Option('number', type=int)]
+        opts, args = parse(options, ['--number', '6'])
+        self.assertEqual(6, opts.number)
+        self.assertRaises(errors.BzrCommandError, parse, options, ['--number'])
+        self.assertRaises(errors.BzrCommandError, parse, options, 
+                          ['--no-number'])
+
+    def test_iter_switches(self):
+        opt = option.Option('hello', help='fg')
+        self.assertEqual(list(opt.iter_switches()),
+                         [('hello', None, None, 'fg')])
+        opt = option.Option('hello', help='fg', type=int)
+        self.assertEqual(list(opt.iter_switches()),
+                         [('hello', None, 'ARG', 'fg')])
+        opt = option.Option('hello', help='fg', type=int, argname='gar')
+        self.assertEqual(list(opt.iter_switches()),
+                         [('hello', None, 'GAR', 'fg')])
 
 #     >>> parse_args('log -r 500'.split())
 #     (['log'], {'revision': [<RevisionSpec_int 500>]})

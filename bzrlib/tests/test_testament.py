@@ -20,19 +20,17 @@
 
 import os
 from sha import sha
-import sys
 
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.branch import Branch
-from bzrlib.testament import Testament
-from bzrlib.trace import mutter
+from bzrlib.testament import Testament, StrictTestament
+from bzrlib.transform import TreeTransform
 from bzrlib.osutils import has_symlinks
 
 
-class TestamentTests(TestCaseWithTransport):
+class TestamentSetup(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestamentTests, self).setUp()
+        super(TestamentSetup, self).setUp()
         self.wt = self.make_branch_and_tree('.')
         b = self.b = self.wt.branch
         b.nick = "test branch"
@@ -46,11 +44,18 @@ class TestamentTests(TestCaseWithTransport):
                              ('src/foo.c', 'int main()\n{\n}\n')])
         self.wt.add(['hello', 'src', 'src/foo.c'],
                              ['hello-id', 'src-id', 'foo.c-id'])
+        tt = TreeTransform(self.wt)
+        trans_id = tt.trans_id_tree_path('hello')
+        tt.set_executability(True, trans_id)
+        tt.apply()
         self.wt.commit(message='add files and directories',
                  timestamp=1129025483,
                  timezone=36000,
                  rev_id='test@user-2',
                  committer='test@user')
+
+
+class TestamentTests(TestamentSetup):
 
     def test_null_testament(self):
         """Testament for a revision with no contents."""
@@ -70,6 +75,13 @@ class TestamentTests(TestCaseWithTransport):
         self.log('testament text form:\n' + text_form)
         self.assertEqual(text_form, REV_1_TESTAMENT)
 
+    def test_strict_testment_text_form(self):
+        """Conversion of testament to canonical text form."""
+        t = StrictTestament.from_revision(self.b.repository, 'test@user-1')
+        text_form = t.as_text()
+        self.log('testament text form:\n' + text_form)
+        self.assertEqualDiff(text_form, REV_1_STRICT_TESTAMENT)
+
     def test_testament_with_contents(self):
         """Testament containing a file and a directory."""
         t = Testament.from_revision(self.b.repository, 'test@user-2')
@@ -79,17 +91,14 @@ class TestamentTests(TestCaseWithTransport):
         actual_short = t.as_short_text()
         self.assertEqualDiff(actual_short, REV_2_SHORT)
 
-    def test_testament_command(self):
+    def test_strict_testament_with_contents(self):
         """Testament containing a file and a directory."""
-        out, err = self.run_bzr_captured(['testament', '--long'])
-        self.assertEqualDiff(err, '')
-        self.assertEqualDiff(out, REV_2_TESTAMENT)
-
-    def test_testament_command_2(self):
-        """Command getting short testament of previous version."""
-        out, err = self.run_bzr_captured(['testament', '-r1'])
-        self.assertEqualDiff(err, '')
-        self.assertEqualDiff(out, REV_1_SHORT)
+        t = StrictTestament.from_revision(self.b.repository, 'test@user-2')
+        text_form = t.as_text()
+        self.log('testament text form:\n' + text_form)
+        self.assertEqualDiff(text_form, REV_2_STRICT_TESTAMENT)
+        actual_short = t.as_short_text()
+        self.assertEqualDiff(actual_short, REV_2_SHORT_STRICT)
 
     def test_testament_symlinks(self):
         """Testament containing symlink (where possible)"""
@@ -108,7 +117,9 @@ class TestamentTests(TestCaseWithTransport):
     def test_testament_revprops(self):
         """Testament to revision with extra properties"""
         props = dict(flavor='sour cherry\ncream cheese',
-                     size='medium')
+                     size='medium',
+                     empty='',
+                    )
         self.wt.commit(message='revision with properties',
                       timestamp=1129025493,
                       timezone=36000,
@@ -124,7 +135,9 @@ class TestamentTests(TestCaseWithTransport):
             timestamp=1129025493,
             timezone=36000,
             rev_id='test@user-3',
-            committer='test@user')
+            committer='Erik B\xe5gfors <test@user>',
+            revprops={'uni':u'\xb5'}
+            )
         t = Testament.from_revision(self.b.repository, 'test@user-3')
         self.assertEqualDiff(
             SAMPLE_UNICODE_TESTAMENT.encode('utf-8'), t.as_text())
@@ -153,11 +166,34 @@ properties:
     test branch
 """
 
+REV_1_STRICT_TESTAMENT = """\
+bazaar-ng testament version 2.1
+revision-id: test@user-1
+committer: test@user
+timestamp: 1129025423
+timezone: 0
+parents:
+message:
+  initial null commit
+inventory:
+properties:
+  branch-nick:
+    test branch
+"""
+
+
 REV_1_SHORT = """\
 bazaar-ng testament short form 1
 revision-id: test@user-1
 sha1: %s
 """ % sha(REV_1_TESTAMENT).hexdigest()
+
+
+REV_1_SHORT_STRICT = """\
+bazaar-ng testament short form 2.1
+revision-id: test@user-1
+sha1: %s
+""" % sha(REV_1_STRICT_TESTAMENT).hexdigest()
 
 
 REV_2_TESTAMENT = """\
@@ -180,11 +216,38 @@ properties:
 """
 
 
+REV_2_STRICT_TESTAMENT = """\
+bazaar-ng testament version 2.1
+revision-id: test@user-2
+committer: test@user
+timestamp: 1129025483
+timezone: 36000
+parents:
+  test@user-1
+message:
+  add files and directories
+inventory:
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
+  directory src src-id test@user-2 no
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24 test@user-2 no
+properties:
+  branch-nick:
+    test branch
+"""
+
+
 REV_2_SHORT = """\
 bazaar-ng testament short form 1
 revision-id: test@user-2
 sha1: %s
 """ % sha(REV_2_TESTAMENT).hexdigest()
+
+
+REV_2_SHORT_STRICT = """\
+bazaar-ng testament short form 2.1
+revision-id: test@user-2
+sha1: %s
+""" % sha(REV_2_STRICT_TESTAMENT).hexdigest()
 
 
 REV_PROPS_TESTAMENT = """\
@@ -204,6 +267,7 @@ inventory:
 properties:
   branch-nick:
     test branch
+  empty:
   flavor:
     sour cherry
     cream cheese
@@ -236,7 +300,7 @@ properties:
 SAMPLE_UNICODE_TESTAMENT = u"""\
 bazaar-ng testament version 1
 revision-id: test@user-3
-committer: test@user
+committer: Erik B\xe5gfors <test@user>
 timestamp: 1129025493
 timezone: 36000
 parents:
@@ -250,4 +314,6 @@ inventory:
 properties:
   branch-nick:
     test branch
+  uni:
+    \xb5
 """

@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -19,13 +19,17 @@ import codecs
 #import traceback
 
 import bzrlib
-from bzrlib.decorators import *
+from bzrlib.decorators import (needs_read_lock,
+        needs_write_lock)
 import bzrlib.errors as errors
 from bzrlib.errors import BzrError
 from bzrlib.osutils import file_iterator, safe_unicode
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_method, 
+        zero_eight)
 from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
+import bzrlib.urlutils as urlutils
+
 
 # XXX: The tracking here of lock counts and whether the lock is held is
 # somewhat redundant with what's done in LockDir; the main difference is that
@@ -73,13 +77,12 @@ class LockableFiles(object):
         :param lock_class: Class of lock strategy to use: typically
             either LockDir or TransportLock.
         """
-        object.__init__(self)
         self._transport = transport
         self.lock_name = lock_name
         self._transaction = None
-        self._find_modes()
         self._lock_mode = None
         self._lock_count = 0
+        self._find_modes()
         esc_name = self._escape(lock_name)
         self._lock = lock_class(transport, esc_name,
                                 file_modebits=self._file_mode,
@@ -119,7 +122,7 @@ class LockableFiles(object):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
             return u''
-        return bzrlib.transport.urlescape(safe_unicode(file_or_path))
+        return urlutils.escape(safe_unicode(file_or_path))
 
     def _find_modes(self):
         """Determine the appropriate modes for files and directories."""
@@ -190,7 +193,7 @@ class LockableFiles(object):
                      directory
         :param f: A file-like or string object whose contents should be copied.
         """
-        self._transport.put(self._escape(path), file, mode=self._file_mode)
+        self._transport.put_file(self._escape(path), file, mode=self._file_mode)
 
     @needs_write_lock
     def put_utf8(self, path, a_string):
@@ -336,5 +339,5 @@ class TransportLock(object):
     def create(self, mode=None):
         """Create lock mechanism"""
         # for old-style locks, create the file now
-        self._transport.put(self._escaped_name, StringIO(), 
+        self._transport.put_bytes(self._escaped_name, '',
                             mode=self._file_modebits)

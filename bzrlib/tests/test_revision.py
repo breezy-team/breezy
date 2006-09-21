@@ -1,32 +1,42 @@
 # (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
 import os
+import warnings
 
+from bzrlib import (
+    revision,
+    )
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
-from bzrlib.commit import commit
 from bzrlib.graph import Graph
 from bzrlib.revision import (find_present_ancestors, combined_graph,
                              common_ancestor,
-                             is_ancestor, MultipleRevisionSources)
-from bzrlib.tests import TestCaseWithTransport
+                             is_ancestor, MultipleRevisionSources,
+                             NULL_REVISION)
+from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
+
+# We're allowed to test deprecated interfaces
+warnings.filterwarnings('ignore',
+        '.*get_intervening_revisions was deprecated',
+        DeprecationWarning,
+        r'bzrlib\.tests\.test_revision')
 
 # XXX: Make this a method of a merge base case
 def make_branches(self):
@@ -60,20 +70,18 @@ def make_branches(self):
     tree2.commit("Commit four", rev_id="b@u-0-3")
     tree2.commit("Commit five", rev_id="b@u-0-4")
     revisions_2 = br2.revision_history()
+    self.assertEquals(revisions_2[-1], 'b@u-0-4')
     
-    br1.fetch(br2)
-    tree1.add_pending_merge(revisions_2[4])
-    self.assertEquals(revisions_2[4], 'b@u-0-4')
+    tree1.merge_from_branch(br2)
     tree1.commit("Commit six", rev_id="a@u-0-3")
     tree1.commit("Commit seven", rev_id="a@u-0-4")
     tree2.commit("Commit eight", rev_id="b@u-0-5")
+    self.assertEquals(br2.revision_history()[-1], 'b@u-0-5')
     
-    br1.fetch(br2)
-    tree1.add_pending_merge(br2.revision_history()[5])
+    tree1.merge_from_branch(br2)
     tree1.commit("Commit nine", rev_id="a@u-0-5")
-    # DO NOT FETCH HERE - we WANT a GHOST.
-    # br2.fetch(br1)
-    tree2.add_pending_merge(br1.revision_history()[4])
+    # DO NOT MERGE HERE - we WANT a GHOST.
+    tree2.add_parent_tree_id(br1.revision_history()[4])
     tree2.commit("Commit ten - ghost merge", rev_id="b@u-0-6")
     
     return br1, br2
@@ -140,7 +148,6 @@ class TestIsAncestor(TestCaseWithTransport):
 class TestIntermediateRevisions(TestCaseWithTransport):
 
     def setUp(self):
-        from bzrlib.commit import commit
         TestCaseWithTransport.setUp(self)
         self.br1, self.br2 = make_branches(self)
         wt1 = self.br1.bzrdir.open_workingtree()
@@ -149,12 +156,10 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         wt2.commit("Commit twelve", rev_id="b@u-0-8")
         wt2.commit("Commit thirtteen", rev_id="b@u-0-9")
 
-        self.br1.fetch(self.br2)
-        wt1.add_pending_merge(self.br2.revision_history()[6])
+        wt1.merge_from_branch(self.br2)
         wt1.commit("Commit fourtten", rev_id="a@u-0-6")
 
-        self.br2.fetch(self.br1)
-        wt2.add_pending_merge(self.br1.revision_history()[6])
+        wt2.merge_from_branch(self.br1)
         wt2.commit("Commit fifteen", rev_id="b@u-0-10")
 
         from bzrlib.revision import MultipleRevisionSources
@@ -216,6 +221,12 @@ class TestCommonAncestor(TestCaseWithTransport):
         self.assertTrue(common_ancestor(revisions_2[6], revisions[5], sources),
                         (revisions[4], revisions_2[5]))
         self.assertEqual(None, common_ancestor(None, revisions[5], sources))
+        self.assertEqual(NULL_REVISION,
+            common_ancestor(NULL_REVISION, NULL_REVISION, sources))
+        self.assertEqual(NULL_REVISION,
+            common_ancestor(revisions[0], NULL_REVISION, sources))
+        self.assertEqual(NULL_REVISION,
+            common_ancestor(NULL_REVISION, revisions[0], sources))
 
     def test_combined(self):
         """combined_graph
@@ -223,7 +234,7 @@ class TestCommonAncestor(TestCaseWithTransport):
         """
         br1, br2 = make_branches(self)
         source = MultipleRevisionSources(br1.repository, br2.repository)
-        combined_1 = combined_graph(br1.last_revision(), 
+        combined_1 = combined_graph(br1.last_revision(),
                                     br2.last_revision(), source)
         combined_2 = combined_graph(br2.last_revision(),
                                     br1.last_revision(), source)
@@ -276,7 +287,7 @@ class TestMultipleRevisionSources(TestCaseWithTransport):
         # in repo 2, which has A, the revision_graph()
         # should return A and B both.
         tree_1 = self.make_branch_and_tree('1')
-        tree_1.add_pending_merge('A')
+        tree_1.set_parent_ids(['A'], allow_leftmost_as_ghost=True)
         tree_1.commit('foo', rev_id='B', allow_pointless=True)
         tree_2 = self.make_branch_and_tree('2')
         tree_2.commit('bar', rev_id='A', allow_pointless=True)

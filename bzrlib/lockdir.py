@@ -1,15 +1,15 @@
 # Copyright (C) 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -96,7 +96,6 @@ Example usage:
 
 import os
 import time
-from warnings import warn
 from StringIO import StringIO
 
 import bzrlib.config
@@ -106,7 +105,6 @@ from bzrlib.errors import (
         LockBreakMismatch,
         LockBroken,
         LockContention,
-        LockError,
         LockNotHeld,
         NoSuchFile,
         PathError,
@@ -116,7 +114,7 @@ from bzrlib.errors import (
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 from bzrlib.osutils import rand_chars
-from bzrlib.rio import RioWriter, read_stanza, Stanza
+from bzrlib.rio import read_stanza, Stanza
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a
@@ -191,15 +189,25 @@ class LockDir(object):
             raise UnlockableTransport(self.transport)
         try:
             tmpname = '%s/pending.%s.tmp' % (self.path, rand_chars(20))
-            self.transport.mkdir(tmpname)
-            sio = StringIO()
-            self._prepare_info(sio)
-            sio.seek(0)
-            # append will create a new file; we use append rather than put
-            # because we don't want to write to a temporary file and rename
-            # into place, because that's going to happen to the whole
-            # directory
-            self.transport.append(tmpname + self.__INFO_NAME, sio)
+            try:
+                self.transport.mkdir(tmpname)
+            except NoSuchFile:
+                # This may raise a FileExists exception
+                # which is okay, it will be caught later and determined
+                # to be a LockContention.
+                self.create(mode=self._dir_modebits)
+                
+                # After creating the lock directory, try again
+                self.transport.mkdir(tmpname)
+
+            info_bytes = self._prepare_info()
+            # We use put_file_non_atomic because we just created a new unique
+            # directory so we don't have to worry about files existing there.
+            # We'll rename the whole directory into place to get atomic
+            # properties
+            self.transport.put_bytes_non_atomic(tmpname + self.__INFO_NAME,
+                                                info_bytes)
+
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
             self.confirm()
@@ -327,7 +335,7 @@ class LockDir(object):
         except NoSuchFile, e:
             return None
 
-    def _prepare_info(self, outf):
+    def _prepare_info(self):
         """Write information about a pending lock to a temporary file.
         """
         import socket
@@ -339,7 +347,7 @@ class LockDir(object):
                    nonce=self.nonce,
                    user=config.user_email(),
                    )
-        RioWriter(outf).write_stanza(s)
+        return s.to_string()
 
     def _parse_info(self, info_file):
         return read_stanza(info_file.readlines()).as_dict()
@@ -373,7 +381,7 @@ class LockDir(object):
         self.attempt_lock()
 
     def lock_read(self):
-        """Compatability-mode shared lock.
+        """Compatibility-mode shared lock.
 
         LockDir doesn't support shared read-only locks, so this 
         just pretends that the lock is taken but really does nothing.

@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -20,16 +20,18 @@ The contents of the transport will be lost when the object is discarded,
 so this is primarily useful for testing.
 """
 
-from copy import copy
 import os
 import errno
 import re
-from stat import *
+from stat import S_IFREG, S_IFDIR
 from cStringIO import StringIO
+import warnings
 
-from bzrlib.trace import mutter
 from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
-from bzrlib.transport import Transport, register_transport, Server
+from bzrlib.trace import mutter
+from bzrlib.transport import (Transport, register_transport, Server)
+import bzrlib.urlutils as urlutils
+
 
 
 class MemoryStat(object):
@@ -52,32 +54,24 @@ class MemoryTransport(Transport):
     def __init__(self, url=""):
         """Set the 'base' path where files will be stored."""
         if url == "":
-            url = "memory:/"
+            url = "memory:///"
         if url[-1] != '/':
             url = url + '/'
         super(MemoryTransport, self).__init__(url)
-        self._cwd = url[url.find(':') + 1:]
+        split = url.find(':') + 3
+        self._scheme = url[:split]
+        self._cwd = url[split:]
         # dictionaries from absolute path to file mode
-        self._dirs = {}
+        self._dirs = {'/':None}
         self._files = {}
         self._locks = {}
 
     def clone(self, offset=None):
         """See Transport.clone()."""
-        if offset is None or offset == '':
-            return copy(self)
-        segments = offset.split('/')
-        cwdsegments = self._cwd.split('/')[:-1]
-        while len(segments):
-            segment = segments.pop(0)
-            if segment == '.':
-                continue
-            if segment == '..':
-                if len(cwdsegments) > 1:
-                    cwdsegments.pop()
-                continue
-            cwdsegments.append(segment)
-        url = self.base[:self.base.find(':') + 1] + '/'.join(cwdsegments) + '/'
+        path = self._combine_paths(self._cwd, offset)
+        if len(path) == 0 or path[-1] != '/':
+            path += '/'
+        url = self._scheme + path
         result = MemoryTransport(url)
         result._dirs = self._dirs
         result._files = self._files
@@ -90,13 +84,13 @@ class MemoryTransport(Transport):
         # current environment - XXX RBC 20060404 move the clone '..' handling
         # into here and call abspath from clone
         temp_t = self.clone(relpath)
-        if temp_t.base.count('/') == 1:
+        if temp_t.base.count('/') == 3:
             return temp_t.base
         else:
             return temp_t.base[:-1]
 
-    def append(self, relpath, f, mode=None):
-        """See Transport.append()."""
+    def append_file(self, relpath, f, mode=None):
+        """See Transport.append_file()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
         orig_content, orig_mode = self._files.get(_abspath, ("", None))
@@ -114,7 +108,7 @@ class MemoryTransport(Transport):
     def has(self, relpath):
         """See Transport.has()."""
         _abspath = self._abspath(relpath)
-        return _abspath in self._files or _abspath in self._dirs
+        return (_abspath in self._files) or (_abspath in self._dirs)
 
     def delete(self, relpath):
         """See Transport.delete()."""
@@ -130,8 +124,8 @@ class MemoryTransport(Transport):
             raise NoSuchFile(relpath)
         return StringIO(self._files[_abspath][0])
 
-    def put(self, relpath, f, mode=None):
-        """See Transport.put()."""
+    def put_file(self, relpath, f, mode=None):
+        """See Transport.put_file()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
         self._files[_abspath] = (f.read(), mode)
@@ -151,7 +145,7 @@ class MemoryTransport(Transport):
     def iter_files_recursive(self):
         for file in self._files:
             if file.startswith(self._cwd):
-                yield file[len(self._cwd):]
+                yield urlutils.escape(file[len(self._cwd):])
     
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
@@ -170,7 +164,7 @@ class MemoryTransport(Transport):
                 len(path) > len(_abspath) and
                 path[len(_abspath)] == '/'):
                 result.append(path[len(_abspath) + 1:])
-        return result
+        return map(urlutils.escape, result)
 
     def rename(self, rel_from, rel_to):
         """Rename a file or directory; fail if the destination exists"""
@@ -215,8 +209,6 @@ class MemoryTransport(Transport):
         if _abspath in self._files:
             return MemoryStat(len(self._files[_abspath][0]), False, 
                               self._files[_abspath][1])
-        elif _abspath == '':
-            return MemoryStat(0, True, None)
         elif _abspath in self._dirs:
             return MemoryStat(0, True, self._dirs[_abspath])
         else:
@@ -232,9 +224,16 @@ class MemoryTransport(Transport):
 
     def _abspath(self, relpath):
         """Generate an internal absolute path."""
+        relpath = urlutils.unescape(relpath)
         if relpath.find('..') != -1:
             raise AssertionError('relpath contains ..')
+        if relpath == '':
+            return '/'
+        if relpath[0] == '/':
+            return relpath
         if relpath == '.':
+            if (self._cwd == '/'):
+                return self._cwd
             return self._cwd[:-1]
         if relpath.endswith('/'):
             relpath = relpath[:-1]
@@ -257,7 +256,7 @@ class _MemoryLock(object):
     def __del__(self):
         # Should this warn, or actually try to cleanup?
         if self.transport:
-            warn("MemoryLock %r not explicitly unlocked" % (self.path,))
+            warnings.warn("MemoryLock %r not explicitly unlocked" % (self.path,))
             self.unlock()
 
     def unlock(self):
@@ -270,10 +269,10 @@ class MemoryServer(Server):
 
     def setUp(self):
         """See bzrlib.transport.Server.setUp."""
-        self._dirs = {}
+        self._dirs = {'/':None}
         self._files = {}
         self._locks = {}
-        self._scheme = "memory+%s:" % id(self)
+        self._scheme = "memory+%s:///" % id(self)
         def memory_factory(url):
             result = MemoryTransport(url)
             result._dirs = self._dirs

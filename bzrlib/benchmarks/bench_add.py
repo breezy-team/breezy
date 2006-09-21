@@ -23,7 +23,8 @@ class AddBenchmark(Benchmark):
 
     def test_one_add_kernel_like_tree(self):
         """Adding a kernel sized tree should be bearable (<5secs) fast.""" 
-        self.make_kernel_like_tree()
-        # on roberts machine this originally took:  25936ms/32244ms
-        # after making smart_add use the parent_ie:  5033ms/ 9368ms
+        self.make_kernel_like_tree(link_working=True)
+        # on roberts machine: this originally took:  25936ms/32244ms
+        # after making smart_add use the parent_ie:   5033ms/ 9368ms
+        # plain os.walk takes 213ms on this tree
         self.time(self.run_bzr, 'add')

@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -33,13 +33,15 @@ the inventories.
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.errors import (InstallFailed, NoSuchRevision,
-                           MissingText)
+from bzrlib.errors import (InstallFailed,
+                           )
 from bzrlib.trace import mutter
-from bzrlib.progress import ProgressBar, ProgressPhase
-from bzrlib.reconcile import RepoReconciler
+from bzrlib.progress import ProgressPhase
 from bzrlib.revision import NULL_REVISION
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function,
+        deprecated_method,
+        zero_eight,
+        )
 
 
 # TODO: Avoid repeatedly opening weaves so many times.
@@ -124,8 +126,9 @@ class RepoFetcher(object):
         self.from_control = self.from_repository.control_weaves
         self.count_total = 0
         self.file_ids_names = {}
-        pp = ProgressPhase('fetch phase', 4, self.pb)
+        pp = ProgressPhase('Fetch phase', 4, self.pb)
         try:
+            pp.next_phase()
             revs = self._revids_to_fetch()
             # something to do ?
             if revs:
@@ -144,7 +147,7 @@ class RepoFetcher(object):
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
             return None
-        if (self._last_revision != None and
+        if (self._last_revision is not None and
             self.to_repository.has_revision(self._last_revision)):
             return None
             
@@ -157,6 +160,11 @@ class RepoFetcher(object):
     def _fetch_weave_texts(self, revs):
         texts_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            # fileids_altered_by_revision_ids requires reading the inventory
+            # weave, we will need to read the inventory weave again when
+            # all this is done, so enable caching for that specific weave
+            inv_w = self.from_repository.get_inventory_weave()
+            inv_w.enable_cache()
             file_ids = self.from_repository.fileids_altered_by_revision_ids(revs)
             count = 0
             num_file_ids = len(file_ids)
@@ -170,6 +178,15 @@ class RepoFetcher(object):
                 # we fetch all the texts, because texts do
                 # not reference anything, and its cheap enough
                 to_weave.join(from_weave, version_ids=required_versions)
+                # we don't need *all* of this data anymore, but we dont know
+                # what we do. This cache clearing will result in a new read 
+                # of the knit data when we do the checkout, but probably we
+                # want to emit the needed data on the fly rather than at the
+                # end anyhow.
+                # the from weave should know not to cache data being joined,
+                # but its ok to ask it to clear.
+                from_weave.clear_cache()
+                to_weave.clear_cache()
         finally:
             texts_pb.finished()
 
@@ -182,7 +199,7 @@ class RepoFetcher(object):
     
             child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
             try:
-                # just merge, this is optimisable and its means we dont
+                # just merge, this is optimisable and its means we don't
                 # copy unreferenced data such as not-needed inventories.
                 pb.update("fetch inventory", 1, 3)
                 from_weave = self.from_repository.get_inventory_weave()
@@ -193,6 +210,7 @@ class RepoFetcher(object):
                 # corrupt.
                 to_weave.join(from_weave, pb=child_pb, msg='merge inventory',
                               version_ids=revs)
+                from_weave.clear_cache()
             finally:
                 child_pb.finished()
         finally:
@@ -263,8 +281,109 @@ class KnitRepoFetcher(RepoFetcher):
         to_rf.join(from_rf, version_ids=revs)
 
 
+class Inter1and2Helper(object):
+    """Helper for operations that convert data from model 1 and 2
+    
+    This is for use by fetchers and converters.
+    """
+
+    def __init__(self, source, target):
+        """Constructor.
+
+        :param source: The repository data comes from
+        :param target: The repository data goes to
+        """
+        self.source = source
+        self.target = target
+
+    def iter_rev_trees(self, revs):
+        """Iterate through RevisionTrees efficiently.
+
+        Additionally, the inventory's revision_id is set if unset.
+
+        Trees are retrieved in batches of 100, and then yielded in the order
+        they were requested.
+
+        :param revs: A list of revision ids
+        """
+        while revs:
+            for tree in self.source.revision_trees(revs[:100]):
+                if tree.inventory.revision_id is None:
+                    tree.inventory.revision_id = tree.get_revision_id()
+                yield tree
+            revs = revs[100:]
+
+    def generate_root_texts(self, revs):
+        """Generate VersionedFiles for all root ids.
+        
+        :param revs: the revisions to include
+        """
+        inventory_weave = self.source.get_inventory_weave()
+        parent_texts = {}
+        versionedfile = {}
+        to_store = self.target.weave_store
+        for tree in self.iter_rev_trees(revs):
+            revision_id = tree.inventory.root.revision
+            root_id = tree.inventory.root.file_id
+            parents = inventory_weave.get_parents(revision_id)
+            if root_id not in versionedfile:
+                versionedfile[root_id] = to_store.get_weave_or_empty(root_id, 
+                    self.target.get_transaction())
+            parent_texts[root_id] = versionedfile[root_id].add_lines(
+                revision_id, parents, [], parent_texts)
+
+    def regenerate_inventory(self, revs):
+        """Generate a new inventory versionedfile in target, convertin data.
+        
+        The inventory is retrieved from the source, (deserializing it), and
+        stored in the target (reserializing it in a different format).
+        :param revs: The revisions to include
+        """
+        inventory_weave = self.source.get_inventory_weave()
+        for tree in self.iter_rev_trees(revs):
+            parents = inventory_weave.get_parents(tree.get_revision_id())
+            self.target.add_inventory(tree.get_revision_id(), tree.inventory,
+                                      parents)
+
+
+class Model1toKnit2Fetcher(GenericRepoFetcher):
+    """Fetch from a Model1 repository into a Knit2 repository
+    """
+    def __init__(self, to_repository, from_repository, last_revision=None, 
+                 pb=None):
+        self.helper = Inter1and2Helper(from_repository, to_repository)
+        GenericRepoFetcher.__init__(self, to_repository, from_repository,
+                                    last_revision, pb)
+
+    def _fetch_weave_texts(self, revs):
+        GenericRepoFetcher._fetch_weave_texts(self, revs)
+        # Now generate a weave for the tree root
+        self.helper.generate_root_texts(revs)
+
+    def _fetch_inventory_weave(self, revs):
+        self.helper.regenerate_inventory(revs)
+ 
+
+class Knit1to2Fetcher(KnitRepoFetcher):
+    """Fetch from a Knit1 repository into a Knit2 repository"""
+
+    def __init__(self, to_repository, from_repository, last_revision=None, 
+                 pb=None):
+        self.helper = Inter1and2Helper(from_repository, to_repository)
+        KnitRepoFetcher.__init__(self, to_repository, from_repository,
+                                 last_revision, pb)
+
+    def _fetch_weave_texts(self, revs):
+        KnitRepoFetcher._fetch_weave_texts(self, revs)
+        # Now generate a weave for the tree root
+        self.helper.generate_root_texts(revs)
+
+    def _fetch_inventory_weave(self, revs):
+        self.helper.regenerate_inventory(revs)
+        
+
 class Fetcher(object):
-    """Backwards compatability glue for branch.fetch()."""
+    """Backwards compatibility glue for branch.fetch()."""
 
     @deprecated_method(zero_eight)
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):

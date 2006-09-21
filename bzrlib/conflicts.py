@@ -1,15 +1,15 @@
 # Copyright (C) 2005 by Aaron Bentley
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -88,7 +88,7 @@ class cmd_resolve(bzrlib.commands.Command):
 
 
 def resolve(tree, paths=None, ignore_misses=False):
-    tree.lock_write()
+    tree.lock_tree_write()
     try:
         tree_conflicts = tree.conflicts()
         if paths is None:
@@ -207,6 +207,7 @@ class ConflictList(object):
         """Select the conflicts associated with paths in a tree.
         
         File-ids are also used for this.
+        :return: a pair of ConflictLists: (not_selected, selected)
         """
         path_set = set(paths)
         ids = {}
@@ -272,6 +273,9 @@ class Conflict(object):
         if getattr(other, "_cmp_list", None) is None:
             return -1
         return cmp(self._cmp_list(), other._cmp_list())
+
+    def __hash__(self):
+        return hash((type(self), self.path, self.file_id))
 
     def __eq__(self, other):
         return self.__cmp__(other) == 0
@@ -428,19 +432,32 @@ class UnversionedParent(HandledConflict):
 
     typestring = 'unversioned parent'
 
-    format = 'Conflict adding versioned files to %(path)s.  %(action)s.'
+    format = 'Conflict because %(path)s is not versioned, but has versioned'\
+             ' children.  %(action)s.'
 
 
 class MissingParent(HandledConflict):
     """An attempt to add files to a directory that is not present.
-    Typically, the result of a merge where one tree deleted the directory and
-    the other added a file to it.
+    Typically, the result of a merge where THIS deleted the directory and
+    the OTHER added a file to it.
+    See also: DeletingParent (same situation, reversed THIS and OTHER)
     """
 
     typestring = 'missing parent'
 
     format = 'Conflict adding files to %(path)s.  %(action)s.'
 
+
+class DeletingParent(HandledConflict):
+    """An attempt to add files to a directory that is not present.
+    Typically, the result of a merge where one OTHER deleted the directory and
+    the THIS added a file to it.
+    """
+
+    typestring = 'deleting parent'
+
+    format = "Conflict: can't delete %(path)s because it is not empty.  "\
+             "%(action)s."
 
 
 ctype = {}
@@ -454,4 +471,5 @@ def register_types(*conflict_types):
 
 
 register_types(ContentsConflict, TextConflict, PathConflict, DuplicateID,
-               DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,)
+               DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,
+               DeletingParent,)

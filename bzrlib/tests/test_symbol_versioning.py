@@ -27,6 +27,10 @@ def deprecated_function():
     return 1
 
 
+a_deprecated_list = symbol_versioning.deprecated_list(symbol_versioning.zero_nine,
+    'a_deprecated_list', ['one'], extra="Don't use me")
+
+
 class TestDeprecationWarnings(TestCase):
 
     def capture_warning(self, message, category, stacklevel=None):
@@ -73,6 +77,46 @@ class TestDeprecationWarnings(TestCase):
                                        "bzrlib.tests.test_symbol_versioning",
                                        deprecated_function)
 
+    def test_deprecated_list(self):
+        expected_warning = (
+            "Modifying a_deprecated_list was deprecated in version 0.9."
+            " Don't use me", DeprecationWarning, 3)
+        expected_doctstring = ('appending to a_deprecated_list is deprecated')
+
+        old_warning_method = symbol_versioning.warn
+        try:
+            symbol_versioning.set_warning_method(self.capture_warning)
+            self.assertEqual(['one'], a_deprecated_list)
+            self.assertEqual([], self._warnings)
+
+            a_deprecated_list.append('foo')
+            self.assertEqual([expected_warning], self._warnings)
+            self.assertEqual(['one', 'foo'], a_deprecated_list)
+
+            a_deprecated_list.extend(['bar', 'baz'])
+            self.assertEqual([expected_warning]*2, self._warnings)
+            self.assertEqual(['one', 'foo', 'bar', 'baz'], a_deprecated_list)
+
+            a_deprecated_list.insert(1, 'xxx')
+            self.assertEqual([expected_warning]*3, self._warnings)
+            self.assertEqual(['one', 'xxx', 'foo', 'bar', 'baz'], a_deprecated_list)
+
+            a_deprecated_list.remove('foo')
+            self.assertEqual([expected_warning]*4, self._warnings)
+            self.assertEqual(['one', 'xxx', 'bar', 'baz'], a_deprecated_list)
+
+            val = a_deprecated_list.pop()
+            self.assertEqual([expected_warning]*5, self._warnings)
+            self.assertEqual('baz', val)
+            self.assertEqual(['one', 'xxx', 'bar'], a_deprecated_list)
+
+            val = a_deprecated_list.pop(1)
+            self.assertEqual([expected_warning]*6, self._warnings)
+            self.assertEqual('xxx', val)
+            self.assertEqual(['one', 'bar'], a_deprecated_list)
+        finally:
+            symbol_versioning.set_warning_method(old_warning_method)
+
     def check_deprecated_callable(self, expected_warning, expected_docstring,
                                   expected_name, expected_module,
                                   deprecated_callable):
@@ -98,3 +142,16 @@ class TestDeprecationWarnings(TestCase):
         self.assertEqual(False,
                          symbol_versioning.deprecated_passed(
                             symbol_versioning.DEPRECATED_PARAMETER))
+
+    def test_deprecation_string(self):
+        """We can get a deprecation string for a method or function."""
+        self.assertEqual('bzrlib.tests.test_symbol_versioning.'
+            'TestDeprecationWarnings.test_deprecation_string was deprecated in '
+            'version 0.11.',
+            symbol_versioning.deprecation_string(
+            self.test_deprecation_string, symbol_versioning.zero_eleven))
+        self.assertEqual('bzrlib.symbol_versioning.deprecated_function was '
+            'deprecated in version 0.11.',
+            symbol_versioning.deprecation_string(
+                symbol_versioning.deprecated_function,
+                symbol_versioning.zero_eleven))

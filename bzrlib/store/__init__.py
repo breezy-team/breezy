@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 by Canonical Development Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -18,7 +18,7 @@
 # compressed or not.
 
 """
-Stores are the main data-storage mechanism for Bazaar-NG.
+Stores are the main data-storage mechanism for Bazaar.
 
 A store is a simple write-once container indexed by a universally
 unique ID.
@@ -30,11 +30,19 @@ import urllib
 from zlib import adler32
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    symbol_versioning,
+    urlutils,
+    )
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    zero_eight,
+    zero_eleven,
+    )
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport, urlescape
+from bzrlib.transport import Transport
 from bzrlib.transport.local import LocalTransport
 
 ######################################################################
@@ -86,7 +94,7 @@ class Store(object):
 
     def listable(self):
         """Return True if this store is able to be listed."""
-        return hasattr(self, "__iter__")
+        return (getattr(self, "__iter__", None) is not None)
 
     def copy_all_ids(self, store_from, pb=None):
         """Copy all the file ids from store_from into self."""
@@ -163,9 +171,13 @@ class TransportStore(Store):
     def add(self, f, fileid, suffix=None):
         """Add contents of a file into the store.
 
-        f -- A file-like object, or string
+        f -- A file-like object
         """
         mutter("add store entry %r", fileid)
+        if isinstance(f, str):
+            symbol_versioning.warn(zero_eleven % 'Passing a string to Store.add',
+                DeprecationWarning, stacklevel=2)
+            f = StringIO(f)
         
         names = self._id_to_names(fileid, suffix)
         if self._transport.has_any(names):
@@ -176,7 +188,6 @@ class TransportStore(Store):
         # if we find a time where it fails, (because the dir
         # doesn't exist), then create the dir, and try again
         self._add(names[0], f)
-
 
     def _add(self, relpath, f):
         """Actually add the file to the given location.
@@ -294,15 +305,15 @@ class TransportStore(Store):
                 self._check_fileid(suffix)
         else:
             suffixes = []
+        fileid = self._escape_file_id(fileid)
         if self._prefixed:
             # hash_prefix adds the '/' separator
-            prefix = self.hash_prefix(fileid)
+            prefix = self.hash_prefix(fileid, escaped=True)
         else:
             prefix = ''
-        fileid = self._escape_file_id(fileid)
         path = prefix + fileid
         full_path = u'.'.join([path] + suffixes)
-        return urlescape(full_path)
+        return urlutils.escape(full_path)
 
     def _escape_file_id(self, file_id):
         """Turn a file id into a filesystem safe string.
@@ -323,9 +334,9 @@ class TransportStore(Store):
              for c in file_id]
         return ''.join(r)
 
-    def hash_prefix(self, fileid):
+    def hash_prefix(self, fileid, escaped=False):
         # fileid should be unescaped
-        if self._escaped:
+        if not escaped and self._escaped:
             fileid = self._escape_file_id(fileid)
         return "%02x/" % (adler32(fileid) & 0xff)
 

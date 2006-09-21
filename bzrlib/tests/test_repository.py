@@ -1,15 +1,15 @@
-# (C) 2006 Canonical Ltd
-
+# Copyright (C) 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -22,7 +22,7 @@ For concrete class tests see this file, and for storage formats tests
 also see this file.
 """
 
-from stat import *
+from stat import S_ISDIR
 from StringIO import StringIO
 
 import bzrlib
@@ -38,19 +38,21 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
+from bzrlib import upgrade, workingtree
 
 
 class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
+        private_default = repository._default_format.__class__
         old_format = repository.RepositoryFormat.get_default_format()
-        self.assertTrue(isinstance(old_format, repository.RepositoryFormatKnit1))
+        self.assertTrue(isinstance(old_format, private_default))
         repository.RepositoryFormat.set_default_format(SampleRepositoryFormat())
         # creating a repository should now create an instrumented dir.
         try:
             # the default branch format is used by the meta dir format
             # which is not the default bzrdir format at this point
-            dir = bzrdir.BzrDirMetaFormat1().initialize('memory:/')
+            dir = bzrdir.BzrDirMetaFormat1().initialize('memory:///')
             result = dir.create_repository()
             self.assertEqual(result, 'A bzr repository dir')
         finally:
@@ -72,7 +74,7 @@ class SampleRepositoryFormat(repository.RepositoryFormat):
     def initialize(self, a_bzrdir, shared=False):
         """Initialize a repository in a BzrDir"""
         t = a_bzrdir.get_repository_transport(self)
-        t.put('format', StringIO(self.get_format_string()))
+        t.put_bytes('format', self.get_format_string())
         return 'A bzr repository dir'
 
     def is_supported(self):
@@ -428,3 +430,32 @@ class TestRepositoryConverter(TestCaseWithTransport):
             pb.finished()
         repo = repo_dir.open_repository()
         self.assertTrue(isinstance(target_format, repo._format.__class__))
+
+
+class TestMisc(TestCase):
+    
+    def test_unescape_xml(self):
+        """We get some kind of error when malformed entities are passed"""
+        self.assertRaises(KeyError, repository._unescape_xml, 'foo&bar;') 
+
+
+class TestRepositoryFormatKnit2(TestCaseWithTransport):
+
+    def test_convert(self):
+        """Ensure the upgrade adds weaves for roots"""
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit1()
+        tree = self.make_branch_and_tree('.', format)
+        tree.commit("Dull commit", rev_id="dull")
+        revision_tree = tree.branch.repository.revision_tree('dull')
+        self.assertRaises(errors.NoSuchFile, revision_tree.get_file_lines,
+            revision_tree.inventory.root.file_id)
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        upgrade.Convert('.', format)
+        tree = workingtree.WorkingTree.open('.')
+        revision_tree = tree.branch.repository.revision_tree('dull')
+        revision_tree.get_file_lines(revision_tree.inventory.root.file_id)
+        tree.commit("Another dull commit", rev_id='dull2')
+        revision_tree = tree.branch.repository.revision_tree('dull2')
+        self.assertEqual('dull', revision_tree.inventory.root.revision)

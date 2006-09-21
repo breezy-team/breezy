@@ -1,15 +1,15 @@
 # (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -52,10 +52,9 @@ def unescape(s):
 def write_text_inventory(inv, outf):
     """Write out inv in a simple trad-unix text format."""
     outf.write(START_MARK)
-    for path, ie in inv.iter_entries():
-        if ie.kind == 'root_directory':
-            continue
-        
+    entries = inv.iter_entries()
+    entries.next()
+    for path, ie in entries:
         outf.write(ie.file_id + ' ')
         outf.write(escape(ie.name) + ' ')
         outf.write(ie.kind + ' ')

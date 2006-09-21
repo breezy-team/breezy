@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 by Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -436,7 +436,7 @@ class TestCommit(TestCaseWithTransport):
         # do a merge into the bound branch from other, and then change the
         # content file locally to force a new revision (rather than using the
         # revision from other). This forces extra processing in commit.
-        self.merge(other_tree.branch, bound_tree)
+        bound_tree.merge_from_branch(other_tree.branch)
         self.build_tree_contents([('bound/content_file', 'change in bound\n')])
 
         # before #34959 was fixed, this failed with 'revision not present in
@@ -490,10 +490,11 @@ class TestCommit(TestCaseWithTransport):
             other_tree.commit('modify all sample files and dirs.')
         finally:
             other_tree.unlock()
-        self.merge(other_tree.branch, this_tree)
+        this_tree.merge_from_branch(other_tree.branch)
         reporter = CapturingReporter()
         this_tree.commit('do the commit', reporter=reporter)
         self.assertEqual([
+            ('change', 'unchanged', ''),
             ('change', 'unchanged', 'dirtoleave'),
             ('change', 'unchanged', 'filetoleave'),
             ('change', 'modified', 'filetomodify'),
@@ -507,3 +508,38 @@ class TestCommit(TestCaseWithTransport):
             ('deleted', 'filetoremove'),
             ],
             reporter.calls)
+
+    def test_commit_removals_respects_filespec(self):
+        """Commit respects the specified_files for removals."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b'])
+        tree.add(['a', 'b'])
+        tree.commit('added a, b')
+        tree.remove(['a', 'b'])
+        tree.commit('removed a', specific_files='a')
+        basis = tree.basis_tree().inventory
+        self.assertIs(None, basis.path2id('a'))
+        self.assertFalse(basis.path2id('b') is None)
+
+    def test_commit_saves_1ms_timestamp(self):
+        """Passing in a timestamp is saved with 1ms resolution"""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.add('a')
+        tree.commit('added a', timestamp=1153248633.4186721, timezone=0,
+                    rev_id='a1')
+
+        rev = tree.branch.repository.get_revision('a1')
+        self.assertEqual(1153248633.419, rev.timestamp)
+
+    def test_commit_has_1ms_resolution(self):
+        """Allowing commit to generate the timestamp also has 1ms resolution"""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.add('a')
+        tree.commit('added a', rev_id='a1')
+
+        rev = tree.branch.repository.get_revision('a1')
+        timestamp = rev.timestamp
+        timestamp_1ms = round(timestamp, 3)
+        self.assertEqual(timestamp_1ms, timestamp)

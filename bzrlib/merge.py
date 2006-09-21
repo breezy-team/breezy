@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -18,11 +18,10 @@
 import os
 import errno
 from tempfile import mkdtemp
+import warnings
 
-import bzrlib
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
-from bzrlib.delta import compare_trees
 from bzrlib.errors import (BzrCommandError,
                            BzrError,
                            NoCommonAncestor,
@@ -41,22 +40,23 @@ import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin, rmtree
 from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
-from bzrlib.symbol_versioning import *
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               FinalPaths, create_by_entry, unique_add)
 from bzrlib.versionedfile import WeaveMerge
-import bzrlib.ui
+from bzrlib import ui
 
 # TODO: Report back as changes are merged in
 
 def _get_tree(treespec, local_branch=None):
+    from bzrlib import workingtree
     location, revno = treespec
-    branch = Branch.open_containing(location)[0]
     if revno is None:
-        revision = None
-    elif revno == -1:
+        tree = workingtree.WorkingTree.open_containing(location)[0]
+        return tree.branch, tree
+    branch = Branch.open_containing(location)[0]
+    if revno == -1:
         revision = branch.last_revision()
     else:
         revision = branch.get_rev_id(revno)
@@ -117,10 +117,10 @@ class Merger(object):
 
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
-            changes = compare_trees(self.other_tree, other_basis_tree)
+            changes = other_basis_tree.changes_from(self.other_tree)
             if changes.has_changed():
                 raise WorkingTreeNotRevision(self.this_tree)
-            other_rev_id = other_basis
+            other_rev_id = self.other_basis
             self.other_tree = other_basis_tree
 
     def file_revisions(self, file_id):
@@ -137,8 +137,8 @@ class Merger(object):
         trees = (self.this_basis_tree, self.other_tree)
         return [get_id(tree, file_id) for tree in trees]
 
-    def check_basis(self, check_clean):
-        if self.this_basis is None:
+    def check_basis(self, check_clean, require_commits=True):
+        if self.this_basis is None and require_commits is True:
             raise BzrCommandError("This branch has no commits")
         if check_clean:
             self.compare_basis()
@@ -146,8 +146,7 @@ class Merger(object):
                 raise BzrCommandError("Working tree has uncommitted changes.")
 
     def compare_basis(self):
-        changes = compare_trees(self.this_tree, 
-                                self.this_tree.basis_tree(), False)
+        changes = self.this_tree.changes_from(self.this_tree.basis_tree())
         if not changes.has_changed():
             self.this_rev_id = self.this_basis
 
@@ -184,10 +183,16 @@ class Merger(object):
         ancestry = self.this_branch.repository.get_ancestry(self.this_basis)
         if self.other_rev_id in ancestry:
             return
-        self.this_tree.add_pending_merge(self.other_rev_id)
+        self.this_tree.add_parent_tree((self.other_rev_id, self.other_tree))
 
     def set_other(self, other_revision):
-        other_branch, self.other_tree = _get_tree(other_revision, 
+        """Set the revision and tree to merge from.
+
+        This sets the other_tree, other_rev_id, other_basis attributes.
+
+        :param other_revision: The [path, revision] list to merge from.
+        """
+        other_branch, self.other_tree = _get_tree(other_revision,
                                                   self.this_branch)
         if other_revision[1] == -1:
             self.other_rev_id = other_branch.last_revision()
@@ -205,7 +210,14 @@ class Merger(object):
         if other_branch.base != self.this_branch.base:
             self.this_branch.fetch(other_branch, last_revision=self.other_basis)
 
+    def find_base(self):
+        self.set_base([None, None])
+
     def set_base(self, base_revision):
+        """Set the base revision to use for the merge.
+
+        :param base_revision: A 2-list containing a path and revision number.
+        """
         mutter("doing merge() with no base_revision specified")
         if base_revision == [None, None]:
             try:
@@ -365,7 +377,7 @@ class Merge3Merger(object):
         self.tt = TreeTransform(working_tree, self.pb)
         try:
             self.pp.next_phase()
-            child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            child_pb = ui.ui_factory.nested_progress_bar()
             try:
                 for num, file_id in enumerate(all_ids):
                     child_pb.update('Preparing file merge', num, len(all_ids))
@@ -376,7 +388,7 @@ class Merge3Merger(object):
                 child_pb.finished()
                 
             self.pp.next_phase()
-            child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            child_pb = ui.ui_factory.nested_progress_bar()
             try:
                 fs_conflicts = resolve_conflicts(self.tt, child_pb)
             finally:
@@ -388,14 +400,11 @@ class Merge3Merger(object):
             results = self.tt.apply()
             self.write_modified(results)
             try:
-                working_tree.set_conflicts(ConflictList(self.cooked_conflicts))
+                working_tree.add_conflicts(self.cooked_conflicts)
             except UnsupportedOperation:
                 pass
         finally:
-            try:
-                self.tt.finalize()
-            except:
-                pass
+            self.tt.finalize()
             working_tree.unlock()
             self.pb.clear()
 
@@ -519,8 +528,6 @@ class Merge3Merger(object):
             if file_id not in tree:
                 return (None, None)
             kind = tree.kind(file_id)
-            if kind == "root_directory":
-                kind = "directory"
             if kind == "file":
                 contents = tree.get_file_sha1(file_id)
             elif kind == "symlink":
@@ -691,7 +698,7 @@ class Merge3Merger(object):
         if winner == "conflict":
         # There must be a None in here, if we have a conflict, but we
         # need executability since file status was not deleted.
-            if self.other_tree.is_executable(file_id) is None:
+            if self.executable(self.other_tree, file_id) is None:
                 winner = "this"
             else:
                 winner = "other"
@@ -789,7 +796,7 @@ class WeaveMerger(Merge3Merger):
                                           pb=pb, pp=pp, reprocess=reprocess)
 
     def _get_revision_tree(self, tree):
-        """Return a revision tree releated to this tree.
+        """Return a revision tree related to this tree.
         If the tree is a WorkingTree, the basis will be returned.
         """
         if getattr(tree, 'get_weave', False) is False:
@@ -843,12 +850,16 @@ class WeaveMerger(Merge3Merger):
 
 class Diff3Merger(Merge3Merger):
     """Three-way merger using external diff3 for text merging"""
+
     def dump_file(self, temp_dir, name, tree, file_id):
         out_path = pathjoin(temp_dir, name)
-        out_file = file(out_path, "wb")
-        in_file = tree.get_file(file_id)
-        for line in in_file:
-            out_file.write(line)
+        out_file = open(out_path, "wb")
+        try:
+            in_file = tree.get_file(file_id)
+            for line in in_file:
+                out_file.write(line)
+        finally:
+            out_file.close()
         return out_path
 
     def text_merge(self, file_id, trans_id):
@@ -866,7 +877,11 @@ class Diff3Merger(Merge3Merger):
             status = bzrlib.patch.diff3(new_file, this, base, other)
             if status not in (0, 1):
                 raise BzrError("Unhandled diff3 exit code")
-            self.tt.create_file(file(new_file, "rb"), trans_id)
+            f = open(new_file, 'rb')
+            try:
+                self.tt.create_file(f, trans_id)
+            finally:
+                f.close()
             if status == 1:
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
@@ -893,7 +908,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                      branch.get_revision_tree(base_revision))'
         """
     if this_tree is None:
-        warn("bzrlib.merge.merge_inner requires a this_tree parameter as of "
+        warnings.warn("bzrlib.merge.merge_inner requires a this_tree parameter as of "
              "bzrlib version 0.8.",
              DeprecationWarning,
              stacklevel=2)
@@ -908,7 +923,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
         assert not interesting_ids, ('Only supply interesting_ids'
                                      ' or interesting_files')
         merger._set_interesting_files(interesting_files)
-    merger.show_base = show_base 
+    merger.show_base = show_base
     merger.reprocess = reprocess
     merger.other_rev_id = other_rev_id
     merger.other_basis = other_rev_id

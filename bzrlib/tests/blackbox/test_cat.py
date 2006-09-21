@@ -1,16 +1,16 @@
 # Copyright (C) 2005 by Canonical Ltd
 # -*- coding: utf-8 -*-
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -31,6 +31,8 @@ class TestCat(TestCaseInTempDir):
         def bzr(*args, **kwargs):
             return self.run_bzr(*args, **kwargs)[0]
 
+        os.mkdir('branch')
+        os.chdir('branch')
         bzr('init')
         open('a', 'wb').write('foo\n')
         bzr('add', 'a')
@@ -51,4 +53,11 @@ class TestCat(TestCaseInTempDir):
         rev_id = bzr('revision-history').strip().split('\n')[-1]
 
         self.assertEquals(bzr('cat', 'a', '-r', 'revid:%s' % rev_id), 'baz\n')
-
+        
+        os.chdir('..')
+        
+        self.assertEquals(bzr('cat', 'branch/a', '-r', 'revno:1:branch'),
+                          'foo\n')
+        bzr('cat', 'a', retcode=3)
+        bzr('cat', 'a', '-r', 'revno:1:branch-that-does-not-exist', retcode=3)
+        

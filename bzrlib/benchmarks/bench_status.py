@@ -24,8 +24,13 @@ class StatusBenchmark(Benchmark):
     def test_no_ignored_unknown_kernel_like_tree(self):
         """Status in a kernel sized tree with no ignored or unknowns.
         
-        This should be bearable (<2secs) fast.""" 
-        self.make_kernel_like_tree()
-        self.run_bzr('add')
+        This should be bearable (<2secs) fast.
+        """ 
+        self.make_kernel_like_added_tree()
         # on robertc's machine the first sample of this took 1687ms/15994ms
+        self.time(self.run_bzr, 'status')
+
+    def test_no_changes_known_kernel_like_tree(self):
+        """Status in a kernel sized tree with no ignored, unknowns, or added.""" 
+        self.make_kernel_like_committed_tree(link_bzr=True)
         self.time(self.run_bzr, 'status')

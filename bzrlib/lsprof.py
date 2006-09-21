@@ -4,26 +4,52 @@
 # instead of just the Stats object
 
 import sys
-from _lsprof import Profiler, profiler_entry, profiler_subentry
+import thread
+import threading
+from _lsprof import Profiler, profiler_entry
 
 __all__ = ['profile', 'Stats']
 
+_g_threadmap = {}
+
+
+def _thread_profile(f, *args, **kwds):
+    # we lose the first profile point for a new thread in order to trampoline
+    # a new Profile object into place
+    global _g_threadmap
+    thr = thread.get_ident()
+    _g_threadmap[thr] = p = Profiler()
+    # this overrides our sys.setprofile hook:
+    p.enable(subcalls=True, builtins=True)
+
+
 def profile(f, *args, **kwds):
     """XXX docstring"""
+    global _g_threadmap
     p = Profiler()
     p.enable(subcalls=True)
+    threading.setprofile(_thread_profile)
     try:
         ret = f(*args, **kwds)
     finally:
         p.disable()
-    return ret,Stats(p.getstats())
+        for pp in _g_threadmap.values():
+            pp.disable()
+        threading.setprofile(None)
+    
+    threads = {}
+    for tid, pp in _g_threadmap.items():
+        threads[tid] = Stats(pp.getstats(), {})
+    _g_threadmap = {}
+    return ret, Stats(p.getstats(), threads)
 
 
 class Stats(object):
     """XXX docstring"""
 
-    def __init__(self, data):
+    def __init__(self, data, threads):
         self.data = data
+        self.threads = threads
 
     def sort(self, crit="inlinetime"):
         """XXX docstring"""
@@ -66,24 +92,80 @@ class Stats(object):
             e = self.data[i]
             if not isinstance(e.code, str):
                 self.data[i] = type(e)((label(e.code),) + e[1:])
-                if e.calls:
-                    for j in range(len(e.calls)):
-                        se = e.calls[j]
-                        if not isinstance(se.code, str):
-                            e.calls[j] = type(se)((label(se.code),) + se[1:])
+            if e.calls:
+                for j in range(len(e.calls)):
+                    se = e.calls[j]
+                    if not isinstance(se.code, str):
+                        e.calls[j] = type(se)((label(se.code),) + se[1:])
+        for s in self.threads.values():
+            s.freeze()
+
+    def calltree(self, file):
+        """Output profiling data in calltree format (for KCacheGrind)."""
+        _CallTreeFilter(self.data).output(file)
+
+
+class _CallTreeFilter(object):
+
+    def __init__(self, data):
+        self.data = data
+        self.out_file = None
+
+    def output(self, out_file):
+        self.out_file = out_file        
+        print >> out_file, 'events: Ticks'
+        self._print_summary()
+        for entry in self.data:
+            self._entry(entry)
+
+    def _print_summary(self):
+        max_cost = 0
+        for entry in self.data:
+            totaltime = int(entry.totaltime * 1000)
+            max_cost = max(max_cost, totaltime)
+        print >> self.out_file, 'summary: %d' % (max_cost,)
+
+    def _entry(self, entry):
+        out_file = self.out_file
+        code = entry.code
+        inlinetime = int(entry.inlinetime * 1000)
+        #print >> out_file, 'ob=%s' % (code.co_filename,)
+        print >> out_file, 'fi=%s' % (code.co_filename,)
+        print >> out_file, 'fn=%s' % (label(code, True),)
+        print >> out_file, '%d %d' % (code.co_firstlineno, inlinetime)
+        # recursive calls are counted in entry.calls
+        if entry.calls:
+            calls = entry.calls
+        else:
+            calls = []
+        for subentry in calls:
+            self._subentry(code.co_firstlineno, subentry)
+        print >> out_file
+
+    def _subentry(self, lineno, subentry):
+        out_file = self.out_file
+        code = subentry.code
+        totaltime = int(subentry.totaltime * 1000)
+        #print >> out_file, 'cob=%s' % (code.co_filename,)
+        print >> out_file, 'cfn=%s' % (label(code, True),)
+        print >> out_file, 'cfi=%s' % (code.co_filename,)
+        print >> out_file, 'calls=%d %d' % (
+            subentry.callcount, code.co_firstlineno)
+        print >> out_file, '%d %d' % (lineno, totaltime)
+
 
 _fn2mod = {}
 
-def label(code):
+def label(code, calltree=False):
     if isinstance(code, str):
         return code
     try:
         mname = _fn2mod[code.co_filename]
     except KeyError:
-        for k, v in sys.modules.iteritems():
+        for k, v in sys.modules.items():
             if v is None:
                 continue
-            if not hasattr(v, '__file__'):
+            if getattr(v, '__file__', None) is None:
                 continue
             if not isinstance(v.__file__, str):
                 continue
@@ -92,8 +174,10 @@ def label(code):
                 break
         else:
             mname = _fn2mod[code.co_filename] = '<%s>'%code.co_filename
-    
-    return '%s:%d(%s)' % (mname, code.co_firstlineno, code.co_name)
+    if calltree:
+        return '%s %s:%d' % (code.co_name, mname, code.co_firstlineno)
+    else:
+        return '%s:%d(%s)' % (mname, code.co_firstlineno, code.co_name)
 
 
 if __name__ == '__main__':

@@ -21,11 +21,15 @@ The methods here allow for api symbol versioning.
 """
 
 __all__ = ['deprecated_function',
+           'deprecated_list',
            'deprecated_method',
            'DEPRECATED_PARAMETER',
            'deprecated_passed',
            'warn', 'set_warning_method', 'zero_seven',
            'zero_eight',
+           'zero_nine',
+           'zero_ten',
+           'zero_eleven',
            ]
 
 from warnings import warn
@@ -34,6 +38,9 @@ from warnings import warn
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
 zero_seven = "%s was deprecated in version 0.7."
 zero_eight = "%s was deprecated in version 0.8."
+zero_nine = "%s was deprecated in version 0.9."
+zero_ten = "%s was deprecated in version 0.10."
+zero_eleven = "%s was deprecated in version 0.11."
 
 
 def set_warning_method(method):
@@ -50,6 +57,26 @@ def set_warning_method(method):
 # add that on top of the primitives, once we have all three written
 # - RBC 20050105
 
+
+def deprecation_string(a_callable, deprecation_version):
+    """Generate an automatic deprecation string for a_callable.
+
+    :param a_callable: The callable to substitute into deprecation_version.
+    :param deprecation_version: A deprecation format warning string. This should
+        have a single %s operator in it. a_callable will be turned into a nice
+        python symbol and then substituted into deprecation_version.
+    """
+    if getattr(a_callable, 'im_class', None) is None:
+        symbol = "%s.%s" % (a_callable.__module__,
+                            a_callable.__name__)
+    else:
+        symbol = "%s.%s.%s" % (a_callable.im_class.__module__,
+                               a_callable.im_class.__name__,
+                               a_callable.__name__
+                               )
+    return deprecation_version % symbol
+
+
 def deprecated_function(deprecation_version):
     """Decorate a function so that use of it will trigger a warning."""
 
@@ -58,10 +85,8 @@ def deprecated_function(deprecation_version):
         
         def decorated_function(*args, **kwargs):
             """This is the decorated function."""
-            symbol = "%s.%s" % (callable.__module__, 
-                                callable.__name__
-                                )
-            warn(deprecation_version % symbol, DeprecationWarning, stacklevel=2)
+            warn(deprecation_string(callable, deprecation_version),
+                DeprecationWarning, stacklevel=2)
             return callable(*args, **kwargs)
         _populate_decorated(callable, deprecation_version, "function",
                             decorated_function)
@@ -80,7 +105,7 @@ def deprecated_method(deprecation_version):
         
         def decorated_method(self, *args, **kwargs):
             """This is the decorated method."""
-            symbol = "%s.%s.%s" % (self.__class__.__module__, 
+            symbol = "%s.%s.%s" % (self.__class__.__module__,
                                    self.__class__.__name__,
                                    callable.__name__
                                    )
@@ -113,7 +138,10 @@ def deprecated_passed(parameter_value):
 
 def _decorate_docstring(callable, deprecation_version, label,
                         decorated_callable):
-    docstring_lines = callable.__doc__.split('\n')
+    if callable.__doc__:
+        docstring_lines = callable.__doc__.split('\n')
+    else:
+        docstring_lines = []
     if len(docstring_lines) == 0:
         decorated_callable.__doc__ = deprecation_version % ("This " + label)
     elif len(docstring_lines) == 1:
@@ -140,3 +168,54 @@ def _populate_decorated(callable, deprecation_version, label,
     decorated_callable.__module__ = callable.__module__
     decorated_callable.__name__ = callable.__name__
     decorated_callable.is_deprecated = True
+
+
+def deprecated_list(deprecation_version, variable_name,
+                    initial_value, extra=None):
+    """Create a list that warns when modified
+
+    :param deprecation_version: something like zero_nine
+    :param initial_value: The contents of the list
+    :param variable_name: This allows better warnings to be printed
+    :param extra: Extra info to print when printing a warning
+    """
+
+    subst_text = 'Modifying %s' % (variable_name,)
+    msg = deprecation_version % (subst_text,)
+    if extra:
+        msg += ' ' + extra
+
+    class _DeprecatedList(list):
+        __doc__ = list.__doc__ + msg
+
+        is_deprecated = True
+
+        def _warn_deprecated(self, func, *args, **kwargs):
+            warn(msg, DeprecationWarning, stacklevel=3)
+            return func(self, *args, **kwargs)
+            
+        def append(self, obj):
+            """appending to %s is deprecated""" % (variable_name,)
+            return self._warn_deprecated(list.append, obj)
+
+        def insert(self, index, obj):
+            """inserting to %s is deprecated""" % (variable_name,)
+            return self._warn_deprecated(list.insert, index, obj)
+
+        def extend(self, iterable):
+            """extending %s is deprecated""" % (variable_name,)
+            return self._warn_deprecated(list.extend, iterable)
+
+        def remove(self, value):
+            """removing from %s is deprecated""" % (variable_name,)
+            return self._warn_deprecated(list.remove, value)
+
+        def pop(self, index=None):
+            """pop'ing from from %s is deprecated""" % (variable_name,)
+            if index:
+                return self._warn_deprecated(list.pop, index)
+            else:
+                # Can't pass None
+                return self._warn_deprecated(list.pop)
+
+    return _DeprecatedList(initial_value)
