@@ -94,6 +94,11 @@ class BundleSerializerV08(BundleSerializer):
         """
         return BundleReader(f).info
 
+    def check_compatible(self):
+        if self.source._format.rich_root_data:
+            raise errors.IncompatibleFormat('0.8', 
+                self.source._format.get_format_description())
+
     def write(self, source, revision_ids, forced_bases, f):
         """Write the bundless to the supplied files.
 
@@ -102,13 +107,11 @@ class BundleSerializerV08(BundleSerializer):
         :param forced_bases: A dict of revision -> base that overrides default
         :param f: The file to output to
         """
-        if source._format.rich_root_data:
-            raise errors.IncompatibleFormat('0.8', 
-                source._format.get_format_description())
         self.source = source
         self.revision_ids = revision_ids
         self.forced_bases = forced_bases
         self.to_file = f
+        self.check_compatible()
         source.lock_read()
         try:
             self._write_main_header()

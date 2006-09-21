@@ -312,12 +312,29 @@ class BundleTester1(TestCaseWithTransport):
         self.assertRaises(errors.IncompatibleFormat, serializer.write, 
                           b.repository, [], {}, StringIO())
 
-class BundleTester(TestCaseWithTransport):
+class V08BundleTester(TestCaseWithTransport):
+
+    format = '0.8'
+
+    def bzrdir_format(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit1()
+        return format
+
+    def make_branch_and_tree(self, path, format=None):
+        if format is None:
+            format = self.bzrdir_format()
+        return TestCaseWithTransport.make_branch_and_tree(self, path, format)
+
+    def make_branch(self, path, format=None):
+        if format is None:
+            format = self.bzrdir_format()
+        return TestCaseWithTransport.make_branch(self, path, format)
 
     def create_bundle_text(self, base_rev_id, rev_id):
         bundle_txt = StringIO()
         rev_ids = write_bundle(self.b1.repository, rev_id, base_rev_id, 
-                               bundle_txt)
+                               bundle_txt, format=self.format)
         bundle_txt.seek(0)
         self.assertEqual(bundle_txt.readline(), 
                          '# Bazaar revision bundle v0.8\n')
@@ -402,9 +419,10 @@ class BundleTester(TestCaseWithTransport):
         else:
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)
-        tree = BzrDir.create_standalone_workingtree(checkout_dir)
+        tree = self.make_branch_and_tree(checkout_dir)
         s = StringIO()
-        ancestors = write_bundle(self.b1.repository, rev_id, None, s)
+        ancestors = write_bundle(self.b1.repository, rev_id, None, s, 
+                                 format=self.format)
         s.seek(0)
         assert isinstance(s.getvalue(), str), (
             "Bundle isn't a bytestring:\n %s..." % repr(s.getvalue())[:40])
@@ -592,7 +610,7 @@ class BundleTester(TestCaseWithTransport):
     def test_symlink_bundle(self):
         if not has_symlinks():
             raise TestSkipped("No symlink support")
-        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
         tt = TreeTransform(self.tree1)
         tt.new_symlink('link', tt.root, 'bar/foo', 'link-1')
@@ -622,7 +640,7 @@ class BundleTester(TestCaseWithTransport):
         self.get_valid_bundle('l@cset-0-3', 'l@cset-0-4')
 
     def test_binary_bundle(self):
-        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
         tt = TreeTransform(self.tree1)
         
@@ -664,7 +682,7 @@ class BundleTester(TestCaseWithTransport):
         self.get_valid_bundle(None, 'b@cset-0-4')
 
     def test_last_modified(self):
-        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
         tt = TreeTransform(self.tree1)
         tt.new_file('file', tt.root, 'file', 'file')
@@ -692,7 +710,7 @@ class BundleTester(TestCaseWithTransport):
         bundle = self.get_valid_bundle('a@lmod-0-2a', 'a@lmod-0-4')
 
     def test_hide_history(self):
-        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
         open('b1/one', 'wb').write('one\n')
@@ -820,6 +838,16 @@ class BundleTester(TestCaseWithTransport):
         bundle = self.get_valid_bundle(None, 'revid1')
         tree = bundle.revision_tree(self.b1.repository, 'revid1')
         self.assertEqual('revid1', tree.inventory.root.revision)
+
+
+class V09BundleTester(V08BundleTester):
+
+    format = '0.9'
+
+    def bzrdir_format(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        return format
 
 
 class MungedBundleTester(TestCaseWithTransport):
