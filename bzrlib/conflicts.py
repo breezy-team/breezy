@@ -88,7 +88,7 @@ class cmd_resolve(bzrlib.commands.Command):
 
 
 def resolve(tree, paths=None, ignore_misses=False):
-    tree.lock_write()
+    tree.lock_tree_write()
     try:
         tree_conflicts = tree.conflicts()
         if paths is None:

@@ -165,7 +165,8 @@ def split_url(url):
             port = int(port)
         except ValueError:
             # TODO: Should this be ConnectionError?
-            raise errors.TransportError('%s: invalid port number' % port)
+            raise errors.TransportError(
+                'invalid port number %s in url:\n%s' % (port, url))
     host = urllib.unquote(host)
 
     path = urllib.unquote(path)
@@ -198,6 +199,8 @@ class Transport(object):
     implementations can do pipelining.
     In general implementations should support having a generator or a list
     as an argument (ie always iterate, never index)
+
+    :ivar base: Base URL for the transport; should always end in a slash.
     """
 
     # implementations can override this if it is more efficient
@@ -304,12 +307,59 @@ class Transport(object):
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
-        This can be supplied with a string or a list
 
-        XXX: Robert Collins 20051016 - is this really needed in the public
-             interface ?
+        :param relpath: a string of a relative path
         """
+
+        # XXX: Robert Collins 20051016 - is this really needed in the public
+        # interface ?
         raise NotImplementedError(self.abspath)
+
+    def _combine_paths(self, base_path, relpath):
+        """Transform a Transport-relative path to a remote absolute path.
+
+        This does not handle substitution of ~ but does handle '..' and '.'
+        components.
+
+        Examples::
+
+            >>> t = Transport('/')
+            >>> t._combine_paths('/home/sarah', 'project/foo')
+            '/home/sarah/project/foo'
+            >>> t._combine_paths('/home/sarah', '../../etc')
+            '/etc'
+
+        :param base_path: urlencoded path for the transport root; typically a 
+             URL but need not contain scheme/host/etc.
+        :param relpath: relative url string for relative part of remote path.
+        :return: urlencoded string for final path.
+        """
+        # FIXME: share the common code across more transports; variants of
+        # this likely occur in http and sftp too.
+        #
+        # TODO: Also need to consider handling of ~, which might vary between
+        # transports?
+        if not isinstance(relpath, str):
+            raise errors.InvalidURL("not a valid url: %r" % relpath)
+        if relpath.startswith('/'):
+            base_parts = []
+        else:
+            base_parts = base_path.split('/')
+        if len(base_parts) > 0 and base_parts[-1] == '':
+            base_parts = base_parts[:-1]
+        for p in relpath.split('/'):
+            if p == '..':
+                if len(base_parts) == 0:
+                    # In most filesystems, a request for the parent
+                    # of root, just returns root.
+                    continue
+                base_parts.pop()
+            elif p == '.':
+                continue # No-op
+            elif p != '':
+                base_parts.append(p)
+        path = '/'.join(base_parts)
+        return path
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
@@ -342,6 +392,8 @@ class Transport(object):
         Note that some transports MAY allow querying on directories, but this
         is not part of the protocol.  In other words, the results of 
         t.has("a_directory_name") are undefined.
+
+        :rtype: bool
         """
         raise NotImplementedError(self.has)
 
@@ -378,6 +430,7 @@ class Transport(object):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
+        :rtype: File-like object.
         """
         raise NotImplementedError(self.get)
 
@@ -387,6 +440,13 @@ class Transport(object):
         :param relpath: The relative path to the file
         """
         return self.get(relpath).read()
+
+    def get_smart_client(self):
+        """Return a smart client for this transport if possible.
+
+        :raises NoSmartServer: if no smart server client is available.
+        """
+        raise errors.NoSmartServer(self.base)
 
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
@@ -398,9 +458,9 @@ class Transport(object):
             return
 
         fp = self.get(relpath)
-        return self._seek_and_read(fp, offsets)
+        return self._seek_and_read(fp, offsets, relpath)
 
-    def _seek_and_read(self, fp, offsets):
+    def _seek_and_read(self, fp, offsets, relpath='<unknown>'):
         """An implementation of readv that uses fp.seek and fp.read.
 
         This uses _coalesce_offsets to issue larger reads and fewer seeks.
@@ -428,6 +488,9 @@ class Transport(object):
             #       benchmarked.
             fp.seek(c_offset.start)
             data = fp.read(c_offset.length)
+            if len(data) < c_offset.length:
+                raise errors.ShortReadvError(relpath, c_offset.start,
+                            c_offset.length, actual=len(data))
             for suboffset, subsize in c_offset.ranges:
                 key = (c_offset.start+suboffset, subsize)
                 data_map[key] = data[suboffset:suboffset+subsize]
@@ -634,11 +697,15 @@ class Transport(object):
         return self.append_file(relpath, f, mode=mode)
 
     def append_file(self, relpath, f, mode=None):
-        """Append the text in the file-like object to the supplied location.
+        """Append bytes from a file-like object to a file at relpath.
 
-        returns the length of relpath before the content was written to it.
-        
-        If the file does not exist, it is created with the supplied mode.
+        The file is created if it does not already exist.
+
+        :param f: a file-like object of the bytes to append.
+        :param mode: Unix mode for newly created files.  This is not used for
+            existing files.
+
+        :returns: the length of relpath before the content was written to it.
         """
         symbol_versioning.warn('Transport %s should implement append_file,'
                                ' rather than implementing append() as of'
@@ -648,11 +715,16 @@ class Transport(object):
         return self.append(relpath, f, mode=mode)
 
     def append_bytes(self, relpath, bytes, mode=None):
-        """Append the text in the string object to the supplied location.
+        """Append bytes to a file at relpath.
 
-        returns the length of relpath before the content was written to it.
-        
-        If the file does not exist, it is created with the supplied mode.
+        The file is created if it does not already exist.
+
+        :type f: str
+        :param f: a string of the bytes to append.
+        :param mode: Unix mode for newly created files.  This is not used for
+            existing files.
+
+        :returns: the length of relpath before the content was written to it.
         """
         assert isinstance(bytes, str), \
             'bytes must be a plain string, not %s' % type(bytes)
@@ -848,26 +920,37 @@ class Transport(object):
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
-        raise errors.TransportNotPossible("This transport has not "
+        raise errors.TransportNotPossible("Transport %r has not "
                                           "implemented list_dir "
                                           "(but must claim to be listable "
-                                          "to trigger this error).")
+                                          "to trigger this error)."
+                                          % (self))
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
-        WARNING: many transports do not support this, so trying avoid using it
+
+        WARNING: many transports do not support this, so trying avoid using it.
+        These methods may be removed in the future.
+
+        Transports may raise TransportNotPossible if OS-level locks cannot be
+        taken over this transport.  
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise NotImplementedError(self.lock_read)
+        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
-        WARNING: many transports do not support this, so trying avoid using it
+
+        WARNING: many transports do not support this, so trying avoid using it.
+        These methods may be removed in the future.
+
+        Transports may raise TransportNotPossible if OS-level locks cannot be
+        taken over this transport.
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise NotImplementedError(self.lock_write)
+        raise errors.TransportNotPossible("transport locks not supported on %s" % self)
 
     def is_readonly(self):
         """Return true if this connection cannot be written to."""
@@ -1083,6 +1166,12 @@ register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
-register_lazy_transport('vfat+', 
+register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
+register_lazy_transport('bzr://',
+                        'bzrlib.transport.smart',
+                        'SmartTCPTransport')
+register_lazy_transport('bzr+ssh://',
+                        'bzrlib.transport.smart',
+                        'SmartSSHTransport')

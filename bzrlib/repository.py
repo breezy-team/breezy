@@ -1739,6 +1739,18 @@ class InterRepository(InterObject):
         raise NotImplementedError(self.copy_content)
 
     def fetch(self, revision_id=None, pb=None):
+        """Fetch the content required to construct revision_id.
+
+        The content is copied from self.source to self.target.
+
+        :param revision_id: if None all content is copied, if NULL_REVISION no
+                            content is copied.
+        :param pb: optional progress bar to use for progress reports. If not
+                   provided a default one will be created.
+
+        Returns the copied revision count and the failed revisions in a tuple:
+        (copied, failures).
+        """
         raise NotImplementedError(self.fetch)
    
     @needs_read_lock
@@ -1811,18 +1823,7 @@ class InterSameDataRepository(InterRepository):
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
-        """Fetch the content required to construct revision_id.
-
-        The content is copied from source to target.
-
-        :param revision_id: if None all content is copied, if NULL_REVISION no
-                            content is copied.
-        :param pb: optional progress bar to use for progress reports. If not
-                   provided a default one will be created.
-
-        Returns the copied revision count and the failed revisions in a tuple:
-        (copied, failures).
-        """
+        """See InterRepository.fetch()."""
         from bzrlib.fetch import GenericRepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, 
