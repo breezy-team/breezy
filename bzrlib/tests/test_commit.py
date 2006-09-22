@@ -18,6 +18,7 @@
 import os
 
 import bzrlib
+from bzrlib import errors
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
@@ -543,3 +544,9 @@ class TestCommit(TestCaseWithTransport):
         timestamp = rev.timestamp
         timestamp_1ms = round(timestamp, 3)
         self.assertEqual(timestamp_1ms, timestamp)
+
+    def test_commit_unversioned_specified(self):
+        """Commit should raise if specified files isn't in basis or worktree"""
+        tree = self.make_branch_and_tree('.')
+        self.assertRaises(errors.PathsNotVersionedError, tree.commit, 
+                          'message', specific_files=['bogus'])
