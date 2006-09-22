@@ -363,6 +363,7 @@ class LockDir(object):
         # XXX: the transport interface doesn't let us guard 
         # against operations there taking a long time.
         deadline = time.time() + timeout
+        deadline_str = None
         last_info = None
         while True:
             try:
@@ -379,15 +380,18 @@ class LockDir(object):
                     start = 'Lock owner changed for'
                 last_info = new_info
                 formatted_info = self._format_lock_info(new_info)
+                if deadline_str is None:
+                    deadline_str = time.strftime('%H:%M:%S',
+                                                 time.localtime(deadline))
                 self._report_function('%s %s\n'
                                       '%s\n' # held by
                                       '%s\n' # locked ... ago
-                                      'Will continue to try for %s seconds\n',
+                                      'Will continue to try until %s\n',
                                       start,
                                       formatted_info[0],
                                       formatted_info[1],
                                       formatted_info[2],
-                                      int(deadline - time.time()))
+                                      deadline_str)
 
             if time.time() + poll < deadline:
                 time.sleep(poll)

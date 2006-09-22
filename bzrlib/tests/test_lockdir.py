@@ -184,7 +184,7 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEqual(1, len(self._logged_reports))
         self.assertEqual('%s %s\n'
                          '%s\n%s\n'
-                         'Will continue to try for %s seconds\n',
+                         'Will continue to try until %s\n',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
         self.assertEqual('Unable to obtain', args[0])
@@ -192,6 +192,7 @@ class TestLockDir(TestCaseWithTransport):
         self.assertStartsWith(args[2], 'held by ')
         self.assertStartsWith(args[3], 'locked ')
         self.assertEndsWith(args[3], ' ago')
+        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
 
     def test_31_lock_wait_easy(self):
         """Succeed when waiting on a lock with no contention.
@@ -242,7 +243,7 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEqual(1, len(self._logged_reports))
         self.assertEqual('%s %s\n'
                          '%s\n%s\n'
-                         'Will continue to try for %s seconds\n',
+                         'Will continue to try until %s\n',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
         self.assertEqual('Unable to obtain', args[0])
@@ -250,6 +251,7 @@ class TestLockDir(TestCaseWithTransport):
         self.assertStartsWith(args[2], 'held by ')
         self.assertStartsWith(args[3], 'locked ')
         self.assertEndsWith(args[3], ' ago')
+        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
 
     def test_33_wait(self):
         """Succeed when waiting on a lock that gets released
@@ -306,7 +308,7 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEqual(1, len(self._logged_reports))
         self.assertEqual('%s %s\n'
                          '%s\n%s\n'
-                         'Will continue to try for %s seconds\n',
+                         'Will continue to try until %s\n',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
         self.assertEqual('Unable to obtain', args[0])
@@ -314,6 +316,7 @@ class TestLockDir(TestCaseWithTransport):
         self.assertStartsWith(args[2], 'held by ')
         self.assertStartsWith(args[3], 'locked ')
         self.assertEndsWith(args[3], ' ago')
+        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
 
     def test_35_wait_lock_changing(self):
         """LockDir.wait_lock() will report if the lock changes underneath.
@@ -408,10 +411,11 @@ class TestLockDir(TestCaseWithTransport):
         # There should be 2 reports, because the lock changed
         lock_base = lf2.transport.abspath(lf2.path)
         self.assertEqual(2, len(self._logged_reports))
+
         def check_one(index, msg):
             self.assertEqual('%s %s\n'
                              '%s\n%s\n'
-                             'Will continue to try for %s seconds\n',
+                             'Will continue to try until %s\n',
                              self._logged_reports[index][0])
             args = self._logged_reports[index][1]
             self.assertEqual(msg, args[0])
@@ -419,6 +423,8 @@ class TestLockDir(TestCaseWithTransport):
             self.assertStartsWith(args[2], 'held by ')
             self.assertStartsWith(args[3], 'locked ')
             self.assertEndsWith(args[3], ' ago')
+            self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
+
         check_one(0, 'Unable to obtain')
         check_one(1, 'Lock owner changed for')
 
