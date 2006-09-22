@@ -49,21 +49,22 @@ def zip_exporter(tree, dest, root):
             file_id = ie.file_id
             mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
 
+            filename = os.path.join(root, dp).encode('utf8')
             if ie.kind == "file": 
                 zinfo = zipfile.ZipInfo(
-                            filename=str(os.path.join(root, dp)),
+                            filename=filename,
                             date_time=now)
                 zinfo.compress_type = compression
                 zipf.writestr(zinfo, tree.get_file_text(file_id))
             elif ie.kind == "directory":
                 zinfo = zipfile.ZipInfo(
-                            filename=str(os.path.join(root, dp)+os.sep),
+                            filename=filename,
                             date_time=now)
                 zinfo.compress_type = compression
                 zipf.writestr(zinfo,'')
             elif ie.kind == "symlink":
                 zinfo = zipfile.ZipInfo(
-                            filename=str(os.path.join(root, dp+".lnk")),
+                            filename=(filename + '.lnk'),
                             date_time=now)
                 zinfo.compress_type = compression
                 zipf.writestr(zinfo, ie.symlink_target)

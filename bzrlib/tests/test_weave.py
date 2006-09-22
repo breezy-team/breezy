@@ -25,11 +25,13 @@
 
 from pprint import pformat
 
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    )
+from bzrlib.osutils import sha_string
+from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.weave import Weave, WeaveFormatError, WeaveError, reweave
 from bzrlib.weavefile import write_weave, read_weave
-from bzrlib.tests import TestCase
-from bzrlib.osutils import sha_string
 
 
 # texts for use in testing
@@ -890,3 +892,14 @@ class TestNeedsReweave(TestCase):
         self.assertFalse(w1._compatible_parents(set(), set([1])))
         self.assertFalse(w1._compatible_parents(my_parents, set([1, 2, 3, 4])))
         self.assertFalse(w1._compatible_parents(my_parents, set([4])))
+
+
+class TestWeaveFile(TestCaseInTempDir):
+    
+    def test_empty_file(self):
+        f = open('empty.weave', 'wb+')
+        try:
+            self.assertRaises(errors.WeaveFormatError,
+                              read_weave, f)
+        finally:
+            f.close()
