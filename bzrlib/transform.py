@@ -292,7 +292,7 @@ class TreeTransform(object):
         except KeyError:
             return
         try:
-            mode = os.stat(old_path).st_mode
+            mode = os.stat(self._tree.abspath(old_path)).st_mode
         except OSError, e:
             if e.errno == errno.ENOENT:
                 return
