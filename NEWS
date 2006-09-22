@@ -42,6 +42,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Add ``Stanza.to_unicode()`` which can be passed to another Stanza
+      when nesting stanzas. Also, fix ``read_stanza`` to handle when
+      reading a nested Stanza. (John Arbash Meinel)
+
     * Transform._set_mode() needs to stat the right file. 
       (John Arbash Meinel, #56549)
 

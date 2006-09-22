@@ -320,8 +320,6 @@ s: both\\\"
         self.assertRaises(TypeError, s.add, 10, {})
 
     def test_rio_unicode(self):
-        # intentionally use cStringIO which doesn't accomodate unencoded unicode objects
-        sio = cStringIO.StringIO()
         uni_data = u'\N{KATAKANA LETTER O}'
         s = Stanza(foo=uni_data)
         self.assertEquals(s.get('foo'), uni_data)
@@ -331,3 +329,21 @@ s: both\\\"
         new_s = read_stanza(raw_lines)
         self.assertEquals(new_s.get('foo'), uni_data)
 
+    def test_rio_to_unicode(self):
+        uni_data = u'\N{KATAKANA LETTER O}'
+        s = Stanza(foo=uni_data)
+        self.assertEqual(u'foo: %s\n' % (uni_data,), s.to_unicode())
+
+    def test_nested_rio_unicode(self):
+        uni_data = u'\N{KATAKANA LETTER O}'
+        s = Stanza(foo=uni_data)
+        parent_stanza = Stanza(child=s.to_unicode())
+        raw_lines = parent_stanza.to_lines()
+        self.assertEqual(['child: foo: ' + uni_data.encode('utf-8') + '\n',
+                          '\t\n',
+                         ], raw_lines)
+        new_parent = read_stanza(raw_lines)
+        child_text = new_parent.get('child')
+        self.assertEqual(u'foo: %s\n' % uni_data, child_text)
+        new_child = read_stanza(child_text.splitlines(True))
+        self.assertEqual(uni_data, new_child.get('foo'))

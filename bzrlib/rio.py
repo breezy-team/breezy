@@ -171,6 +171,28 @@ class Stanza(object):
         """Return stanza as a single string"""
         return ''.join(self.to_lines())
 
+    def to_unicode(self):
+        """Return stanza as a single Unicode string.
+
+        This is most useful when adding a Stanza to a parent Stanza
+        """
+        if not self.items:
+            return u''
+
+        result = []
+        for tag, value in self.items:
+            if value == '':
+                result.append(tag + ': \n')
+            elif '\n' in value:
+                # don't want splitlines behaviour on empty lines
+                val_lines = value.split('\n')
+                result.append(tag + ': ' + val_lines[0] + '\n')
+                for line in val_lines[1:]:
+                    result.append('\t' + line + '\n')
+            else:
+                result.append(tag + ': ' + value + '\n')
+        return u''.join(result)
+
     def write(self, to_file):
         """Write stanza to a file"""
         to_file.writelines(self.to_lines())
@@ -232,7 +254,8 @@ def read_stanza(line_iter):
             break       # end of file
         if line == '\n':
             break       # end of stanza
-        line = line.decode('utf-8')
+        if not isinstance(line, unicode):
+            line = line.decode('utf-8')
         assert line[-1] == '\n'
         real_l = line
         if line[0] == '\t': # continues previous value
