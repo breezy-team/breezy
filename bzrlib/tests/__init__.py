@@ -43,11 +43,13 @@ import unittest
 import time
 
 
+from bzrlib import memorytree
 import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 import bzrlib.commands
 import bzrlib.bundle.serializer
 import bzrlib.errors as errors
+import bzrlib.export
 import bzrlib.inventory
 import bzrlib.iterablefile
 import bzrlib.lockdir
@@ -88,13 +90,15 @@ MODULES_TO_DOCTEST = [
                       bzrlib.bundle.serializer,
                       bzrlib.commands,
                       bzrlib.errors,
+                      bzrlib.export,
                       bzrlib.inventory,
                       bzrlib.iterablefile,
                       bzrlib.lockdir,
                       bzrlib.merge3,
                       bzrlib.option,
                       bzrlib.osutils,
-                      bzrlib.store
+                      bzrlib.store,
+                      bzrlib.transport,
                       ]
 
 
@@ -238,6 +242,9 @@ class _MyResult(unittest._TextTestResult):
         if isinstance(err[1], TestSkipped):
             return self.addSkipped(test, err)    
         unittest.TestResult.addError(self, test, err)
+        method = getattr(test, 'setKeepLogfile', None)
+        if method is not None:
+            method()
         self.extractBenchmarkTime(test)
         if self.showAll:
             self.stream.writeln("ERROR %s" % self._testTimeString())
@@ -254,6 +261,9 @@ class _MyResult(unittest._TextTestResult):
 
     def addFailure(self, test, err):
         unittest.TestResult.addFailure(self, test, err)
+        method = getattr(test, 'setKeepLogfile', None)
+        if method is not None:
+            method()
         self.extractBenchmarkTime(test)
         if self.showAll:
             self.stream.writeln(" FAIL %s" % self._testTimeString())
@@ -480,6 +490,7 @@ class TestCase(unittest.TestCase):
 
     _log_file_name = None
     _log_contents = ''
+    _keep_log_file = False
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
 
@@ -660,16 +671,20 @@ class TestCase(unittest.TestCase):
     def _finishLogFile(self):
         """Finished with the log file.
 
-        Read contents into memory, close, and delete.
+        Close the file and delete it, unless setKeepLogfile was called.
         """
         if self._log_file is None:
             return
         bzrlib.trace.disable_test_log(self._log_nonce)
-        self._log_file.seek(0)
-        self._log_contents = self._log_file.read()
         self._log_file.close()
-        os.remove(self._log_file_name)
-        self._log_file = self._log_file_name = None
+        self._log_file = None
+        if not self._keep_log_file:
+            os.remove(self._log_file_name)
+            self._log_file_name = None
+
+    def setKeepLogfile(self):
+        """Make the logfile not be deleted when _finishLogFile is called."""
+        self._keep_log_file = True
 
     def addCleanup(self, callable):
         """Arrange to run a callable when this case is torn down.
@@ -743,13 +758,27 @@ class TestCase(unittest.TestCase):
     def log(self, *args):
         mutter(*args)
 
-    def _get_log(self):
-        """Return as a string the log for this test"""
-        if self._log_file_name:
-            return open(self._log_file_name).read()
-        else:
+    def _get_log(self, keep_log_file=False):
+        """Return as a string the log for this test. If the file is still
+        on disk and keep_log_file=False, delete the log file and store the
+        content in self._log_contents."""
+        # flush the log file, to get all content
+        import bzrlib.trace
+        bzrlib.trace._trace_file.flush()
+        if self._log_contents:
             return self._log_contents
-        # TODO: Delete the log after it's been read in
+        if self._log_file_name is not None:
+            logfile = open(self._log_file_name)
+            try:
+                log_contents = logfile.read()
+            finally:
+                logfile.close()
+            if not keep_log_file:
+                self._log_contents = log_contents
+                os.remove(self._log_file_name)
+            return log_contents
+        else:
+            return "DELETED log file to reduce memory footprint"
 
     def capture(self, cmd, retcode=0):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
@@ -886,7 +915,40 @@ class TestCase(unittest.TestCase):
         :param universal_newlines: Convert CRLF => LF
         """
         env_changes = kwargs.get('env_changes', {})
+        process = self.start_bzr_subprocess(args, env_changes=env_changes)
+        # We distinguish between retcode=None and retcode not passed.
+        supplied_retcode = kwargs.get('retcode', 0)
+        return self.finish_bzr_subprocess(process, retcode=supplied_retcode,
+            universal_newlines=kwargs.get('universal_newlines', False),
+            process_args=args)
 
+    def start_bzr_subprocess(self, process_args, env_changes=None,
+                             skip_if_plan_to_signal=False):
+        """Start bzr in a subprocess for testing.
+
+        This starts a new Python interpreter and runs bzr in there.
+        This should only be used for tests that have a justifiable need for
+        this isolation: e.g. they are testing startup time, or signal
+        handling, or early startup code, etc.  Subprocess code can't be
+        profiled or debugged so easily.
+
+        :param process_args: a list of arguments to pass to the bzr executable,
+            for example `['--version']`.
+        :param env_changes: A dictionary which lists changes to environment
+            variables. A value of None will unset the env variable.
+            The values must be strings. The change will only occur in the
+            child, so you don't need to fix the environment after running.
+        :param skip_if_plan_to_signal: raise TestSkipped when true and os.kill
+            is not available.
+
+        :returns: Popen object for the started process.
+        """
+        if skip_if_plan_to_signal:
+            if not getattr(os, 'kill', None):
+                raise TestSkipped("os.kill not available.")
+
+        if env_changes is None:
+            env_changes = {}
         old_env = {}
 
         def cleanup_environment():
@@ -897,30 +959,53 @@ class TestCase(unittest.TestCase):
             for env_var, value in old_env.iteritems():
                 osutils.set_or_unset_env(env_var, value)
 
-        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
-        args = list(args)
+        bzr_path = self.get_bzr_path()
 
         try:
             # win32 subprocess doesn't support preexec_fn
             # so we will avoid using it on all platforms, just to
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
-            process = Popen([sys.executable, bzr_path]+args,
-                             stdout=PIPE, stderr=PIPE)
+            process = Popen([sys.executable, bzr_path] + list(process_args),
+                             stdin=PIPE, stdout=PIPE, stderr=PIPE)
         finally:
             restore_environment()
-            
-        out = process.stdout.read()
-        err = process.stderr.read()
+        return process
 
-        if kwargs.get('universal_newlines', False):
+    def get_bzr_path(self):
+        """Return the path of the 'bzr' executable for this test suite."""
+        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        if not os.path.isfile(bzr_path):
+            # We are probably installed. Assume sys.argv is the right file
+            bzr_path = sys.argv[0]
+        return bzr_path
+
+    def finish_bzr_subprocess(self, process, retcode=0, send_signal=None,
+                              universal_newlines=False, process_args=None):
+        """Finish the execution of process.
+
+        :param process: the Popen object returned from start_bzr_subprocess.
+        :param retcode: The status code that is expected.  Defaults to 0.  If
+            None is supplied, the status code is not checked.
+        :param send_signal: an optional signal to send to the process.
+        :param universal_newlines: Convert CRLF => LF
+        :returns: (stdout, stderr)
+        """
+        if send_signal is not None:
+            os.kill(process.pid, send_signal)
+        out, err = process.communicate()
+
+        if universal_newlines:
             out = out.replace('\r\n', '\n')
             err = err.replace('\r\n', '\n')
 
-        retcode = process.wait()
-        supplied_retcode = kwargs.get('retcode', 0)
-        if supplied_retcode is not None:
-            assert supplied_retcode == retcode
+        if retcode is not None and retcode != process.returncode:
+            if process_args is None:
+                process_args = "(unknown args)"
+            mutter('Output of bzr %s:\n%s', process_args, out)
+            mutter('Error for bzr %s:\n%s', process_args, err)
+            self.fail('Command bzr %s failed with retcode %s != %s'
+                      % (process_args, retcode, process.returncode))
         return [out, err]
 
     def check_inventory_shape(self, inv, shape):
@@ -1202,7 +1287,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         return self.__server
 
     def get_url(self, relpath=None):
-        """Get a URL for the readwrite transport.
+        """Get a URL (or maybe a path) for the readwrite transport.
 
         This will either be backed by '.' or to an equivalent non-file based
         facility.
@@ -1213,7 +1298,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
         if relpath is not None and relpath != '.':
             if not base.endswith('/'):
                 base = base + '/'
-            base = base + urlutils.escape(relpath)
+            # XXX: Really base should be a url; we did after all call
+            # get_url()!  But sometimes it's just a path (from
+            # LocalAbspathServer), and it'd be wrong to append urlescaped data
+            # to a non-escaped local path.
+            if base.startswith('./') or base.startswith('/'):
+                base += relpath
+            else:
+                base += urlutils.escape(relpath)
         return base
 
     def get_transport(self):
@@ -1239,20 +1331,18 @@ class TestCaseWithTransport(TestCaseInTempDir):
 
     def make_bzrdir(self, relpath, format=None):
         try:
-            url = self.get_url(relpath)
-            mutter('relpath %r => url %r', relpath, url)
-            segments = url.split('/')
-            if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
+            # might be a relative or absolute path
+            maybe_a_url = self.get_url(relpath)
+            segments = maybe_a_url.rsplit('/', 1)
+            t = get_transport(maybe_a_url)
+            if len(segments) > 1 and segments[-1] not in ('', '.'):
                 try:
-                    t.mkdir(segments[-1])
+                    t.mkdir('.')
                 except errors.FileExists:
                     pass
             if format is None:
-                format=bzrlib.bzrdir.BzrDirFormat.get_default_format()
-            # FIXME: make this use a single transport someday. RBC 20060418
-            return format.initialize_on_transport(get_transport(relpath))
+                format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+            return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
 
@@ -1261,10 +1351,25 @@ class TestCaseWithTransport(TestCaseInTempDir):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
+    def make_branch_and_memory_tree(self, relpath):
+        """Create a branch on the default transport and a MemoryTree for it."""
+        b = self.make_branch(relpath)
+        return memorytree.MemoryTree.create_on_branch(b)
+
     def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
 
-        Returns the tree.
+        If the transport is not a LocalTransport, the Tree can't be created on
+        the transport.  In that case the working tree is created in the local
+        directory, and the returned tree's branch and repository will also be
+        accessed locally.
+
+        This will fail if the original default transport for this test
+        case wasn't backed by the working directory, as the branch won't
+        be on disk for us to open it.  
+
+        :param format: The BzrDirFormat.
+        :returns: the WorkingTree.
         """
         # TODO: always use the local disk path for the working tree,
         # this obviously requires a format that supports branch references
@@ -1274,11 +1379,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
         try:
             return b.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            # new formats - catch No tree error and create
-            # a branch reference and a checkout.
-            # old formats at that point - raise TestSkipped.
-            # TODO: rbc 20060208
-            return WorkingTreeFormat2().initialize(bzrdir.BzrDir.open(relpath))
+            # We can only make working trees locally at the moment.  If the
+            # transport can't support them, then reopen the branch on a local
+            # transport, and create the working tree there.  
+            #
+            # Possibly we should instead keep
+            # the non-disk-backed branch and create a local checkout?
+            bd = bzrdir.BzrDir.open(relpath)
+            return bd.create_workingtree()
 
     def assertIsDirectory(self, relpath, transport):
         """Assert that relpath within transport is a directory.
@@ -1405,6 +1513,7 @@ def test_suite():
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
+                   'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
@@ -1414,9 +1523,11 @@ def test_suite():
                    'bzrlib.tests.test_ignores',
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
+                   'bzrlib.tests.test_lazy_import',
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
+                   'bzrlib.tests.test_memorytree',
                    'bzrlib.tests.test_merge',
                    'bzrlib.tests.test_merge3',
                    'bzrlib.tests.test_merge_core',
@@ -1441,8 +1552,8 @@ def test_suite():
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
-                   'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_smart_add',
+                   'bzrlib.tests.test_smart_transport',
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
@@ -1455,6 +1566,7 @@ def test_suite():
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_tree',
+                   'bzrlib.tests.test_treebuilder',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
@@ -1462,6 +1574,7 @@ def test_suite():
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_version',
+                   'bzrlib.tests.test_version_info',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',

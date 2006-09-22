@@ -73,13 +73,13 @@ class TreeTransform(object):
      * set_executability
     """
     def __init__(self, tree, pb=DummyProgress()):
-        """Note: a write lock is taken on the tree.
+        """Note: a tree_write lock is taken on the tree.
         
         Use TreeTransform.finalize() to release the lock
         """
         object.__init__(self)
         self._tree = tree
-        self._tree.lock_write()
+        self._tree.lock_tree_write()
         try:
             control_files = self._tree._control_files
             self._limbodir = urlutils.local_path_from_url(
@@ -292,7 +292,7 @@ class TreeTransform(object):
         except KeyError:
             return
         try:
-            mode = os.stat(old_path).st_mode
+            mode = os.stat(self._tree.abspath(old_path)).st_mode
         except OSError, e:
             if e.errno == errno.ENOENT:
                 return

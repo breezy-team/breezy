@@ -1052,7 +1052,7 @@ def get_user_encoding():
         _cached_user_encoding = locale.getpreferredencoding()
     except locale.Error, e:
         sys.stderr.write('bzr: warning: %s\n'
-                         '  Could not what text encoding to use.\n'
+                         '  Could not determine what text encoding to use.\n'
                          '  This error usually means your Python interpreter\n'
                          '  doesn\'t support the locale set by $LANG (%s)\n'
                          "  Continuing with ascii encoding.\n"

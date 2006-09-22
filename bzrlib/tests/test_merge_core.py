@@ -26,10 +26,12 @@ class MergeBuilder(object):
            path = pathjoin(self.dir, name)
            os.mkdir(path)
            wt = bzrlib.bzrdir.BzrDir.create_standalone_workingtree(path)
+           # the tests perform pulls, so need a branch that is writeable.
+           wt.lock_write()
            wt.set_root_id(self.tree_root)
            tt = TreeTransform(wt)
            return wt, tt
-        self.base, self.base_tt = wt('base') 
+        self.base, self.base_tt = wt('base')
         self.this, self.this_tt = wt('this')
         self.other, self.other_tt = wt('other')
 
@@ -165,6 +167,9 @@ class MergeBuilder(object):
         return new_inventory
 
     def cleanup(self):
+        self.base.unlock()
+        self.this.unlock()
+        self.other.unlock()
         rmtree(self.dir)
 
 
@@ -197,6 +202,7 @@ class MergeTest(TestCaseWithTransport):
         builder.merge(interesting_ids=["1"])
         self.assertEqual(builder.this.get_file("1").read(), "text4" )
         self.assertEqual(builder.this.get_file("2").read(), "hello1" )
+        builder.cleanup()
         
     def test_file_moves(self):
         """Test moves"""
@@ -259,8 +265,7 @@ y
 >>>>>>> MERGE-SOURCE
 """
         self.assertEqualDiff(builder.this.get_file("a").read(), expected)
-
- 
+        builder.cleanup()
 
     def do_contents_test(self, merge_factory):
         """Test merging with specified ContentsChange factory"""
@@ -374,6 +379,7 @@ y
                          this=False, base=False)
         conflicts = builder.merge()
         self.assertEqual(conflicts, []) 
+        builder.cleanup()
 
 
 class FunctionalMergeTest(TestCaseWithTransport):

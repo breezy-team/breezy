@@ -120,6 +120,18 @@ class Tree(object):
     def id2path(self, file_id):
         return self.inventory.id2path(file_id)
 
+    def is_control_filename(self, filename):
+        """True if filename is the name of a control file in this tree.
+        
+        :param filename: A filename within the tree. This is a relative path
+        from the root of this tree.
+
+        This is true IF and ONLY IF the filename is part of the meta data
+        that bzr controls in this tree. I.E. a random .bzr directory placed
+        on disk will not be a control file for this tree.
+        """
+        return self.bzrdir.is_control_filename(filename)
+
     def iter_entries_by_dir(self):
         """Walk the tree in 'by_dir' order.
 
@@ -135,6 +147,10 @@ class Tree(object):
 
     def _get_inventory(self):
         return self._inventory
+    
+    def get_file(self, file_id):
+        """Return a file object for the file file_id in the tree."""
+        raise NotImplementedError(self.get_file)
     
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path))
@@ -161,6 +177,9 @@ class Tree(object):
                      "file is actually %s" % fp['sha1'],
                      "store is probably damaged/corrupt"])
 
+    def path2id(self, path):
+        """Return the id for path in this tree."""
+        return self._inventory.path2id(path)
 
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""

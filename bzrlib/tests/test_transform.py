@@ -15,8 +15,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import stat
+import sys
 
-from bzrlib import tests
+from bzrlib import (
+    tests,
+    urlutils,
+    )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
                               UnversionedParent, ParentLoop, DeletingParent,)
@@ -30,7 +35,6 @@ from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name)
-import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import gen_root_id
 
 
@@ -537,6 +541,36 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertTrue(wt.is_executable('soc'))
         self.assertTrue(wt.is_executable('sac'))
 
+    def test__set_mode_stats_correctly(self):
+        """_set_mode stats to determine file mode."""
+        if sys.platform == 'win32':
+            raise TestSkipped('chmod has no effect on win32')
+
+        stat_paths = []
+        real_stat = os.stat
+        def instrumented_stat(path):
+            stat_paths.append(path)
+            return real_stat(path)
+
+        transform, root = self.get_transform()
+
+        bar1_id = transform.new_file('bar', root, 'bar contents 1\n',
+                                     file_id='bar-id-1', executable=False)
+        transform.apply()
+
+        transform, root = self.get_transform()
+        bar1_id = transform.trans_id_tree_path('bar')
+        bar2_id = transform.trans_id_tree_path('bar2')
+        try:
+            os.stat = instrumented_stat
+            transform.create_file('bar2 contents\n', bar2_id, mode_id=bar1_id)
+        finally:
+            os.stat = real_stat
+            transform.finalize()
+
+        bar1_abspath = self.wt.abspath('bar')
+        self.assertEqual([bar1_abspath], stat_paths)
+
 
 class TransformGroup(object):
     def __init__(self, dirname, root_id):
@@ -737,6 +771,7 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertIs(os.path.lexists(this.wt.abspath('b/h1.BASE')), True)
         self.assertIs(os.path.lexists(this.wt.abspath('b/h1.OTHER')), False)
         self.assertEqual(this.wt.id2path('i'), pathjoin('b/i1.OTHER'))
+
 
 class TestBuildTree(tests.TestCaseWithTransport):
 

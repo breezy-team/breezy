@@ -61,6 +61,8 @@
 
 # TODO: If commit fails, leave the message in a file somewhere.
 
+# TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
+# the rest of the code; add a deprecation of the old name.
 
 import os
 import re

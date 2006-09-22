@@ -246,7 +246,7 @@ class InventoryEntry(object):
 
     def get_tar_item(self, root, dp, now, tree):
         """Get a tarfile item and a file stream for its content."""
-        item = tarfile.TarInfo(pathjoin(root, dp))
+        item = tarfile.TarInfo(pathjoin(root, dp).encode('utf8'))
         # TODO: would be cool to actually set it to the timestamp of the
         # revision it was last changed
         item.mtime = now
