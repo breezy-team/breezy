@@ -16,6 +16,8 @@
 
 """Black-box tests for 'bzr inventory'."""
 
+import os
+
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -29,6 +31,7 @@ class TestInventory(TestCaseWithTransport):
 
         tree.add(['a', 'b', 'b/c'], ['a-id', 'b-id', 'c-id'])
         tree.commit('init', rev_id='one')
+        self.tree = tree
 
     def assertInventoryEqual(self, expected, *args, **kwargs):
         """Test that the output of 'bzr inventory' is as expected.
@@ -59,8 +62,10 @@ class TestInventory(TestCaseWithTransport):
     def test_inventory_specific_files(self):
         self.assertInventoryEqual('a\n', 'a')
         self.assertInventoryEqual('b\nb/c\n', 'b', 'b/c')
+        # 'bzr inventory' recurses into subdirectories
+        self.assertInventoryEqual('b\nb/c\n', 'b')
 
-    def test_mixed(self):
+    def test_inventory_mixed(self):
         """Test that we get expected results when mixing parameters"""
         a_line = '%-50s %s\n' % ('a', 'a-id')
         b_line = '%-50s %s\n' % ('b', 'b-id')
@@ -71,3 +76,30 @@ class TestInventory(TestCaseWithTransport):
                                                    '--show-ids')
         self.assertInventoryEqual(c_line, '--kind', 'file', '--show-ids',
                                           'b', 'b/c')
+
+    def test_in_subdir(self):
+        os.chdir('b')
+        # TODO: jam 20060922 Maybe inventory should return the paths as
+        #       relative to '.', rather than relative to root
+
+        # a plain 'inventory' returns all files
+        self.assertInventoryEqual('a\nb\nb/c\n')
+        # But passing '.' will only return paths underneath here
+        self.assertInventoryEqual('b\nb/c\n', '.')
+
+
+    def test_inventory_revision(self):
+        self.build_tree(['b/d', 'e'])
+        self.tree.add(['b/d', 'e'], ['d-id', 'e-id'])
+        self.tree.commit('add files')
+
+        self.tree.rename_one('b/d', 'd')
+        self.tree.commit('rename b/d => d')
+
+        # Passing just -r returns the inventory of that revision
+        self.assertInventoryEqual('a\nb\nb/c\n', '-r', '1')
+        self.assertInventoryEqual('a\nb\nb/c\nb/d\ne\n', '-r', '2')
+
+        # Passing a path will lookup the path in the old and current locations
+        self.assertInventoryEqual('b/d\n', '-r', '2', 'b/d')
+        self.assertInventoryEqual('b/d\n', '-r', '2', 'd')

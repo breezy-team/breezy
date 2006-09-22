@@ -54,6 +54,7 @@ from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 from bzrlib.transport.local import LocalTransport
+import bzrlib.tree
 from bzrlib.workingtree import WorkingTree
 
 
@@ -374,20 +375,34 @@ class cmd_inventory(Command):
     def run(self, revision=None, show_ids=False, kind=None, file_list=None):
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise BzrCommandError('invalid kind specified')
-        tree = WorkingTree.open_containing(u'.')[0]
-        if revision is None:
-            inv = tree.read_working_inventory()
-        else:
+
+        work_tree, file_list = tree_files(file_list)
+
+        if revision is not None:
             if len(revision) > 1:
                 raise BzrCommandError('bzr inventory --revision takes'
-                    ' exactly one revision identifier')
-            inv = tree.branch.repository.get_revision_inventory(
-                revision[0].in_history(tree.branch).rev_id)
+                                      ' exactly one revision identifier')
+            revision_id = revision[0].in_history(work_tree.branch).rev_id
+            tree = work_tree.branch.repository.revision_tree(revision_id)
+                        
+            # We include work_tree as well as 'tree' here
+            # So that doing '-r 10 path/foo' will lookup whatever file
+            # exists now at 'path/foo' even if it has been renamed, as
+            # well as whatever files existed in revision 10 at path/foo
+            trees = [tree, work_tree]
+        else:
+            tree = work_tree
+            trees = [tree]
 
         if file_list:
-            entries = [(path, inv[inv.path2id(path)]) for path in file_list]
+            file_ids = bzrlib.tree.find_ids_across_trees(file_list, trees,
+                                                      require_versioned=True)
+            # find_ids_across_trees may include some paths that don't
+            # exist in 'tree'.
+            entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
+                             for file_id in file_ids if file_id in tree)
         else:
-            entries = inv.entries()
+            entries = tree.inventory.entries()
 
         for path, entry in entries:
             if kind and kind != entry.kind:
