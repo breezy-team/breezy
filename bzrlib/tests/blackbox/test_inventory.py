@@ -103,3 +103,14 @@ class TestInventory(TestCaseWithTransport):
         # Passing a path will lookup the path in the old and current locations
         self.assertInventoryEqual('b/d\n', '-r', '2', 'b/d')
         self.assertInventoryEqual('b/d\n', '-r', '2', 'd')
+
+        self.tree.rename_one('e', 'b/e')
+        self.tree.commit('rename e => b/e')
+
+        # When supplying just a directory paths that are now,
+        # or used to be, in that directory are shown
+        self.assertInventoryEqual('b\nb/c\nb/d\ne\n', '-r', '2', 'b')
+
+    def test_missing_file(self):
+        self.run_bzr_error([r'Path\(s\) are not versioned: no-such-file'],
+                           'inventory', 'no-such-file')
