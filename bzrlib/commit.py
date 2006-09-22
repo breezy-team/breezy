@@ -71,9 +71,11 @@ import time
 
 from cStringIO import StringIO
 
-from bzrlib import tree
+from bzrlib import (
+    errors,
+    tree,
+    )
 import bzrlib.config
-import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
