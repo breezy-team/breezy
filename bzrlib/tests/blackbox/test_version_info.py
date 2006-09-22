@@ -26,7 +26,7 @@ class TestVersionInfo(TestCaseWithTransport):
     def test_invalid_format(self):
         self.run_bzr('version-info', '--format', 'quijibo', retcode=3)
 
-    def create_branch(self):
+    def create_tree(self):
         wt = self.make_branch_and_tree('branch')
 
         self.build_tree(['branch/a'])
@@ -38,9 +38,10 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.commit('adding b', rev_id='r2')
 
         self.revisions = wt.branch.revision_history()
+        return wt
 
     def test_basic(self):
-        self.create_branch()
+        self.create_tree()
 
         txt = self.run_bzr('version-info', 'branch')[0]
         self.assertContainsRe(txt, 'date:')
@@ -50,7 +51,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
     def test_all(self):
         """'--all' includes clean, revision history, and file revisions"""
-        self.create_branch()
+        self.create_tree()
         txt = self.run_bzr('version-info', 'branch',
                            '--all')[0]
         self.assertContainsRe(txt, 'date:')
@@ -68,7 +69,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
     def test_clean(self):
         """Test that --check-clean includes the right info"""
-        self.create_branch()
+        self.create_tree()
 
         txt = self.run_bzr('version-info', 'branch',
                            '--check-clean')[0]
@@ -84,6 +85,14 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(txt, 'revision: unversioned')
 
         os.remove('branch/c')
+
+    def test_no_working_tree(self):
+        tree = self.create_tree()
+        branch = self.make_branch('just_branch')
+        branch.pull(tree.branch)
+
+        txt = self.run_bzr('version-info', 'just_branch')[0]
+        self.assertStartsWith(txt, 'revision-id: r2\n')
 
     def assertEqualNoBuildDate(self, text1, text2):
         """Compare 2 texts, but ignore the build-date field.
@@ -103,7 +112,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
     def test_no_branch(self):
         """Test that bzr defaults to the local working directory"""
-        self.create_branch()
+        self.create_tree()
 
         txt1 = self.run_bzr('version-info', 'branch')[0]
 
@@ -113,7 +122,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
     def test_rio(self):
         """Test that we can pass --format=rio"""
-        self.create_branch()
+        self.create_tree()
 
         txt = self.run_bzr('version-info', 'branch')[0]
         txt1 = self.run_bzr('version-info', '--format', 'rio', 'branch')[0]
@@ -123,7 +132,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
     def test_python(self):
         """Test that we can do --format=python"""
-        self.create_branch()
+        self.create_tree()
 
         txt = self.run_bzr('version-info', '--format', 'python', 'branch')[0]
 

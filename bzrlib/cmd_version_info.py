@@ -18,11 +18,11 @@
 
 from bzrlib import (
     branch,
+    errors,
     version_info_formats,
     workingtree,
     )
 from bzrlib.commands import Command
-from bzrlib.errors import BzrCommandError
 from bzrlib.option import Option
 
 
@@ -36,9 +36,9 @@ def _parse_version_info_format(format):
         return version_info_formats.get_builder(format)
     except KeyError:
         formats = version_info_formats.get_builder_formats()
-        raise BzrCommandError('No known version info format %s.'
-                              ' Supported types are: %s'
-                              % (format, formats))
+        raise errors.BzrCommandError('No known version info format %s.'
+                                     ' Supported types are: %s'
+                                     % (format, formats))
 
 
 class cmd_version_info(Command):
@@ -70,7 +70,7 @@ class cmd_version_info(Command):
         wt = None
         try:
             wt = workingtree.WorkingTree.open_containing(location)[0]
-        except NoWorkingTree:
+        except errors.NoWorkingTree:
             b = branch.Branch.open(location)
         else:
             b = wt.branch
