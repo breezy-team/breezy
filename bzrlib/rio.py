@@ -245,18 +245,41 @@ def read_stanza(line_iter):
 
     The raw lines must be in utf-8 encoding.
     """
-    items = []
+    unicode_iter = (line.decode('utf-8') for line in line_iter)
+    return read_stanza_unicode(unicode_iter)
+
+
+def read_stanza_unicode(unicode_iter):
+    """Read a Stanza from a list of lines or a file.
+
+    The lines should already be in unicode form. This returns a single
+    stanza that was read. If there is a blank line at the end of the Stanza,
+    it is consumed. It is not an error for there to be no blank line at
+    the end of the iterable. If there is a blank line at the beginning,
+    this is treated as an empty Stanza and None is returned.
+
+    Only the stanza lines and the trailing blank (if any) are consumed
+    from the unicode_iter
+
+    :param unicode_iter: A iterable, yeilding Unicode strings. See read_stanza
+        if you have a utf-8 encoded string.
+    :return: A Stanza object if there are any lines in the file.
+        None otherwise
+    """
     stanza = Stanza()
     tag = None
     accum_value = None
-    for line in line_iter:
+    
+    # TODO: jam 20060922 This code should raise real errors rather than
+    #       using 'assert' to process user input, or raising ValueError
+    #       rather than a more specific error.
+
+    for line in unicode_iter:
         if line is None or line == '':
             break       # end of file
         if line == '\n':
             break       # end of stanza
-        if not isinstance(line, unicode):
-            line = line.decode('utf-8')
-        assert line[-1] == '\n'
+        assert line.endswith('\n')
         real_l = line
         if line[0] == '\t': # continues previous value
             if tag is None:
@@ -268,11 +291,13 @@ def read_stanza(line_iter):
             try:
                 colon_index = line.index(': ')
             except ValueError:
-                raise ValueError('tag/value separator not found in line %r' % real_l)
+                raise ValueError('tag/value separator not found in line %r'
+                                 % real_l)
             tag = str(line[:colon_index])
             assert valid_tag(tag), \
                     "invalid rio tag %r" % tag
             accum_value = line[colon_index+2:-1]
+
     if tag is not None: # add last tag-value
         stanza.add(tag, accum_value)
         return stanza

@@ -27,6 +27,9 @@ import os
 import sys
 from tempfile import TemporaryFile
 
+from bzrlib import (
+    rio,
+    )
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.rio import (RioWriter, Stanza, read_stanza, read_stanzas, rio_file,
                         RioReader)
@@ -332,7 +335,10 @@ s: both\\\"
     def test_rio_to_unicode(self):
         uni_data = u'\N{KATAKANA LETTER O}'
         s = Stanza(foo=uni_data)
-        self.assertEqual(u'foo: %s\n' % (uni_data,), s.to_unicode())
+        unicode_str = s.to_unicode()
+        self.assertEqual(u'foo: %s\n' % (uni_data,), unicode_str)
+        new_s = rio.read_stanza_unicode(unicode_str.splitlines(True))
+        self.assertEqual(uni_data, new_s.get('foo'))
 
     def test_nested_rio_unicode(self):
         uni_data = u'\N{KATAKANA LETTER O}'
@@ -345,5 +351,5 @@ s: both\\\"
         new_parent = read_stanza(raw_lines)
         child_text = new_parent.get('child')
         self.assertEqual(u'foo: %s\n' % uni_data, child_text)
-        new_child = read_stanza(child_text.splitlines(True))
+        new_child = rio.read_stanza_unicode(child_text.splitlines(True))
         self.assertEqual(uni_data, new_child.get('foo'))
