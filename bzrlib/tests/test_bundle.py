@@ -321,6 +321,24 @@ class BundleTester1(TestCaseWithTransport):
         b = self.make_branch('.', format=format)
         serializer.write(b.repository, [], {}, StringIO())
 
+    def test_mismatched_model(self):
+        """Try copying a bundle from knit2 to knit1"""
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        source = self.make_branch_and_tree('source', format=format)
+        source.commit('one', rev_id='one-id')
+        source.commit('two', rev_id='two-id')
+        text = StringIO()
+        write_bundle(source.branch.repository, 'two-id', None, text, 
+                     format='0.9')
+        text.seek(0)
+
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit1()
+        target = self.make_branch('target', format=format)
+        self.assertRaises(errors.IncompatibleRevision, install_bundle, 
+                          target.repository, read_bundle(text))
+
 
 class V08BundleTester(TestCaseWithTransport):
 

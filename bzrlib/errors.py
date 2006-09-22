@@ -395,6 +395,14 @@ class IncompatibleFormat(BzrNewError):
         self.bzrdir = bzrdir_format
 
 
+class IncompatibleRevision(BzrNewError):
+    """Revision is not compatible with %(repo_format)s"""
+
+    def __init__(self, repo_format):
+        BzrNewError.__init__(self)
+        self.repo_format = repo_format
+
+
 class NotVersionedError(BzrNewError):
     """%(path)s is not versioned"""
     def __init__(self, path):

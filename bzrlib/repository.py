@@ -780,7 +780,10 @@ def install_revision(repository, rev, revision_tree):
     entries = inv.iter_entries()
     # backwards compatability hack: skip the root id.
     if not repository._format.rich_root_data:
-        entries.next()
+        path, root = entries.next()
+        if root.revision != rev.revision_id:
+            raise errors.IncompatibleRevision(
+                repository._format.get_format_description())
     # Add the texts that are not already present
     for path, ie in entries:
         w = repository.weave_store.get_weave_or_empty(ie.file_id,
