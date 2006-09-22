@@ -35,7 +35,15 @@ IN DEVELOPMENT
       which processes these requests. (Andrew Bennetts, Robert Collins, Martin
       Pool)
 
+    * New command ``bzr version-info`` which can be used to get a summary
+      of the current state of the tree. This is especially useful as part
+      of a build commands. See ``doc/version_info.txt`` for more information 
+      (John Arbash Meinel)
+
   BUG FIXES:
+
+    * Transform._set_mode() needs to stat the right file. 
+      (John Arbash Meinel, #56549)
 
     * Raise WeaveFormatError rather than StopIteration when trying to read
       an empty Weave file. (John Arbash Meinel, #46871)
@@ -71,6 +79,10 @@ IN DEVELOPMENT
       other branch, and will not push or pull between the two branches.
       API users will need to perform a push or pull or update operation if they
       require branch synchronisation to take place. (Robert Collins, #47344)
+
+    * When creating a tarball or zipfile export, export unicode names as utf-8
+      paths. This may not work perfectly on all platforms, but has the best
+      chance of working in the common case. (John Arbash Meinel, #56816)
 
   INTERNALS:
 
