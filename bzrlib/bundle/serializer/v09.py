@@ -3,7 +3,15 @@ from bzrlib.bundle.serializer.v08 import BundleSerializerV08, BundleReader
 from bzrlib.testament import StrictTestament2
 from bzrlib.bundle.bundle_data import BundleInfo
 
+
 class BundleSerializerV09(BundleSerializerV08):
+    """Serializer for bzr bundle format 0.9
+    
+    This format supports rich root data, for the nested-trees work, but also
+    supports repositories that don't have rich root data.  It cannot be
+    used to transfer from a knit2 repo into a knit1 repo, because that would
+    be lossy.
+    """
 
     def check_compatible(self):
         pass
@@ -29,6 +37,10 @@ class BundleSerializerV09(BundleSerializerV08):
 
 
 class BundleInfo09(BundleInfo):
+    """BundleInfo that uses StrictTestament2
+    
+    This means that the root data is included in the testament.
+    """
 
     def _testament_sha1_from_revision(self, repository, revision_id):
         testament = StrictTestament2.from_revision(repository, revision_id)
@@ -39,6 +51,7 @@ class BundleInfo09(BundleInfo):
 
 
 class BundleReaderV09(BundleReader):
+    """BundleReader for 0.9 bundles"""
     
     def _get_info(self):
         return BundleInfo09()

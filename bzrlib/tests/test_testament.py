@@ -1,4 +1,3 @@
-# Copyright (C) 2005 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -140,10 +139,11 @@ class TestamentTests(TestamentSetup):
     def test___init__(self):
         revision = self.b.repository.get_revision('test@user-2')
         inventory = self.b.repository.get_inventory('test@user-2')
-        testament_1 = self.testament_class()(revision, inventory).as_short_text()
-        testament_2 = self.from_revision(self.b.repository, 
-                                              'test@user-2').as_short_text()
-        self.assertEqual(testament_1, testament_2)
+        testament_1 = self.testament_class()(revision, inventory)
+        text_1 = testament_1.as_short_text()
+        text_2 = self.from_revision(self.b.repository, 
+                                    'test@user-2').as_short_text()
+        self.assertEqual(text_1, text_2)
                     
 
 class TestamentTestsStrict(TestamentTests):
@@ -173,6 +173,7 @@ properties:
     test branch
 """
 
+
 REV_1_STRICT_TESTAMENT = """\
 bazaar-ng testament version 2.1
 revision-id: test@user-1
@@ -187,6 +188,7 @@ properties:
   branch-nick:
     test branch
 """
+
 
 REV_1_STRICT_TESTAMENT2 = """\
 bazaar-ng testament version 3 strict
@@ -203,6 +205,7 @@ properties:
   branch-nick:
     test branch
 """
+
 
 REV_1_SHORT = """\
 bazaar-ng testament short form 1
@@ -284,6 +287,7 @@ properties:
   branch-nick:
     test branch
 """
+
 
 REV_2_SHORT = """\
 bazaar-ng testament short form 1
@@ -447,6 +451,7 @@ properties:
   branch-nick:
     test branch
 """
+
 
 SAMPLE_UNICODE_TESTAMENT = u"""\
 bazaar-ng testament version 1

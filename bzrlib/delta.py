@@ -185,6 +185,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,
     old_path, old_class, old_kind, old_file_id, old_entry = get_next(old_files)
     new_path, new_class, new_kind, new_file_id, new_entry = get_next(new_files)
 
+
     def check_matching(old_path, old_entry, new_path, new_entry):
         """We have matched up 2 file_ids, check for changes."""
         assert old_entry.kind == new_entry.kind

@@ -628,7 +628,8 @@ class V08BundleTester(TestCaseWithTransport):
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-5', 'a@cset-0-6')
         other = self.get_checkout('a@cset-0-5')
-        tree1_inv = self.tree1.branch.repository.get_inventory_xml('a@cset-0-5')
+        tree1_inv = self.tree1.branch.repository.get_inventory_xml(
+            'a@cset-0-5')
         tree2_inv = other.branch.repository.get_inventory_xml('a@cset-0-5')
         self.assertEqualDiff(tree1_inv, tree2_inv)
         other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
