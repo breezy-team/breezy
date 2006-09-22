@@ -266,6 +266,14 @@ class DirectoryNotEmpty(PathError):
     """Directory not empty: %(path)r%(extra)s"""
 
 
+class ReadingCompleted(BzrNewError):
+    """The MediumRequest '%(request)s' has already had finish_reading called upon it - the request has been completed and no more data may be read."""
+
+    def __init__(self, request):
+        BzrNewError.__init__(self)
+        self.request = request
+
+
 class ResourceBusy(PathError):
     """Device or resource busy: %(path)r%(extra)s"""
 
@@ -791,9 +799,19 @@ class KnitCorrupt(KnitError):
 
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""
+
     def __init__(self, format):
         BzrNewError.__init__(self)
         self.format = format
+
+
+
+class TooManyConcurrentRequests(BzrNewError):
+    """The medium '%(medium)s' has reached its concurrent request limit. Be sure to finish_writing and finish_reading on the current request that is open."""
+
+    def __init__(self, medium):
+        BzrNewError.__init__(self)
+        self.medium = medium
 
 
 class TransportError(BzrNewError):
@@ -890,6 +908,22 @@ class WorkingTreeNotRevision(BzrError):
         BzrError.__init__(self, "The working tree for %s has changed since"
                           " last commit, but weave merge requires that it be"
                           " unchanged." % tree.basedir)
+
+
+class WritingCompleted(BzrNewError):
+    """The MediumRequest '%(request)s' has already had finish_writing called upon it - accept bytes may not be called anymore."""
+
+    def __init__(self, request):
+        BzrNewError.__init__(self)
+        self.request = request
+
+
+class WritingNotComplete(BzrNewError):
+    """The MediumRequest '%(request)s' has not has finish_writing called upon it - until the write phase is complete no data may be read."""
+
+    def __init__(self, request):
+        BzrNewError.__init__(self)
+        self.request = request
 
 
 class CantReprocessAndShowBase(BzrNewError):

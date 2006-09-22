@@ -49,6 +49,13 @@ class TestErrors(TestCaseWithTransport):
             "atree.",
             str(error))
 
+    def test_too_many_concurrent_requests(self):
+        error = errors.TooManyConcurrentRequests("a medium")
+        self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
+            "request limit. Be sure to finish_writing and finish_reading on "
+            "the current request that is open.",
+            str(error))
+
     def test_up_to_date(self):
         error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
         self.assertEqualDiff("The branch format Bazaar-NG branch, "
@@ -63,6 +70,27 @@ class TestErrors(TestCaseWithTransport):
                              "Please run bzr reconcile on this repository." %
                              repo.bzrdir.root_transport.base,
                              str(error))
+
+    def test_reading_completed(self):
+        error = errors.ReadingCompleted("a request")
+        self.assertEqualDiff("The MediumRequest 'a request' has already had "
+            "finish_reading called upon it - the request has been completed and"
+            " no more data may be read.",
+            str(error))
+
+    def test_writing_completed(self):
+        error = errors.WritingCompleted("a request")
+        self.assertEqualDiff("The MediumRequest 'a request' has already had "
+            "finish_writing called upon it - accept bytes may not be called "
+            "anymore.",
+            str(error))
+
+    def test_writing_not_completed(self):
+        error = errors.WritingNotComplete("a request")
+        self.assertEqualDiff("The MediumRequest 'a request' has not has "
+            "finish_writing called upon it - until the write phase is complete"
+            " no data may be read.",
+            str(error))
 
 
 class PassThroughError(errors.BzrNewError):

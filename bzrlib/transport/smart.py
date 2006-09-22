@@ -249,19 +249,11 @@ def _encode_tuple(args):
 class SmartProtocolBase(object):
     """Methods common to client and server"""
 
-    def _send_bulk_data(self, body, a_file=None):
-        """Send chunked body data"""
-        assert isinstance(body, str)
-        bytes = self._encode_bulk_data(body)
-        self._write_and_flush(bytes, a_file)
-
-    def _encode_bulk_data(self, body):
-        """Encode body as a bulk data chunk."""
-        return ''.join(('%d\n' % len(body), body, 'done\n'))
-
     # TODO: this only actually accomodates a single block; possibly should support
     # multiple chunks?
     def _recv_bulk(self):
+        # This is OBSOLETE except for the double handline in the server: 
+        # the read_bulk + reencode noise.
         chunk_len = self._in.readline()
         try:
             chunk_len = int(chunk_len)
@@ -273,15 +265,16 @@ class SmartProtocolBase(object):
         self._recv_trailer()
         return bulk
 
-    def _recv_tuple(self):
-        return _recv_tuple(self._in)
-
     def _recv_trailer(self):
         resp = self._recv_tuple()
         if resp == ('done', ):
             return
         else:
             self._translate_error(resp)
+
+    def _encode_bulk_data(self, body):
+        """Encode body as a bulk data chunk."""
+        return ''.join(('%d\n' % len(body), body, 'done\n'))
 
     def _serialise_offsets(self, offsets):
         """Serialise a readv offset list."""
@@ -290,6 +283,12 @@ class SmartProtocolBase(object):
             txt.append('%d,%d' % (start, length))
         return '\n'.join(txt)
 
+    def _send_bulk_data(self, body, a_file=None):
+        """Send chunked body data"""
+        assert isinstance(body, str)
+        bytes = self._encode_bulk_data(body)
+        self._write_and_flush(bytes, a_file)
+
     def _write_and_flush(self, bytes, a_file=None):
         """Write bytes to self._out and flush it."""
         # XXX: this will be inefficient.  Just ask Robert.
@@ -297,7 +296,7 @@ class SmartProtocolBase(object):
             a_file = self._out
         a_file.write(bytes)
         a_file.flush()
-
+        
 
 class SmartServerRequestProtocolOne(SmartProtocolBase):
     """Server-side encoding and decoding logic for smart version 1."""
@@ -380,7 +379,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
     def sync_with_request(self, request):
         self.finished_reading = request.finished_reading
         
-        
+
 class LengthPrefixedBodyDecoder(object):
     """Decodes the length-prefixed bulk data."""
     
@@ -450,10 +449,7 @@ class LengthPrefixedBodyDecoder(object):
         result = self._in_buffer
         self._in_buffer = ''
         return result
-            
-        
 
-        
 
 class SmartServerStreamMedium(SmartProtocolBase):
     """Handles smart commands coming over a stream.
@@ -932,14 +928,14 @@ class SmartTransport(transport.Transport):
         self._scheme, self._username, self._password, self._host, self._port, self._path = \
                 transport.split_url(url)
         if clone_from is None:
-            self._client = medium
+            self._medium = medium
         else:
             # credentials may be stripped from the base in some circumstances
             # as yet to be clearly defined or documented, so copy them.
             self._username = clone_from._username
             # reuse same connection
-            self._client = clone_from._client
-        assert self._client is not None
+            self._medium = clone_from._medium
+        assert self._medium is not None
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -964,10 +960,10 @@ class SmartTransport(transport.Transport):
         return False
                                                    
     def get_smart_client(self):
-        return self._client
+        return self._medium
 
     def get_smart_medium(self):
-        return self._client
+        return self._medium
                                                    
     def _unparse_url(self, path):
         """Return URL for a path.
@@ -990,12 +986,28 @@ class SmartTransport(transport.Transport):
         """Returns the Unicode version of the absolute path for relpath."""
         return self._combine_paths(self._path, relpath)
 
+    def _call(self, method, *args):
+        resp = self._call2(method, *args)
+        self._translate_error(resp)
+
+    def _call2(self, method, *args):
+        """Call a method on the remote server."""
+        protocol = SmartClientRequestProtocolOne(self._medium.get_request())
+        protocol.call(method, *args)
+        return protocol.read_response_tuple()
+
+    def _call_with_body_bytes(self, method, args, body):
+        """Call a method on the remote server with body bytes."""
+        protocol = SmartClientRequestProtocolOne(self._medium.get_request())
+        protocol.call_with_body_bytes((method, ) + args, body)
+        return protocol.read_response_tuple()
+
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.
 
         :see: Transport.has()
         """
-        resp = self._client._call('has', self._remote_path(relpath))
+        resp = self._call2('has', self._remote_path(relpath))
         if resp == ('yes', ):
             return True
         elif resp == ('no', ):
@@ -1008,11 +1020,17 @@ class SmartTransport(transport.Transport):
         
         :see: Transport.get_bytes()/get_file()
         """
+        return StringIO(self.get_bytes(relpath))
+
+    def get_bytes(self, relpath):
         remote = self._remote_path(relpath)
-        resp = self._client._call('get', remote)
+        protocol = SmartClientRequestProtocolOne(self._medium.get_request())
+        protocol.call('get', remote)
+        resp = protocol.read_response_tuple(True)
         if resp != ('ok', ):
+            protocol.cancel_read_body()
             self._translate_error(resp, relpath)
-        return StringIO(self._client._recv_bulk())
+        return protocol.read_body_bytes()
 
     def _serialise_optional_mode(self, mode):
         if mode is None:
@@ -1021,17 +1039,15 @@ class SmartTransport(transport.Transport):
             return '%d' % mode
 
     def mkdir(self, relpath, mode=None):
-        resp = self._client._call('mkdir', 
-                                  self._remote_path(relpath), 
-                                  self._serialise_optional_mode(mode))
+        resp = self._call2('mkdir', self._remote_path(relpath),
+            self._serialise_optional_mode(mode))
         self._translate_error(resp)
 
     def put_bytes(self, relpath, upload_contents, mode=None):
         # FIXME: upload_file is probably not safe for non-ascii characters -
         # should probably just pass all parameters as length-delimited
         # strings?
-        resp = self._client._call_with_upload(
-            'put',
+        resp = self._call_with_body_bytes('put',
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
             upload_contents)
         self._translate_error(resp)
@@ -1045,7 +1061,7 @@ class SmartTransport(transport.Transport):
         if create_parent_dir:
             create_parent_str = 'T'
 
-        resp = self._client._call_with_upload(
+        resp = self._call_with_body_bytes(
             'put_non_atomic',
             (self._remote_path(relpath), self._serialise_optional_mode(mode),
              create_parent_str, self._serialise_optional_mode(dir_mode)),
@@ -1074,7 +1090,7 @@ class SmartTransport(transport.Transport):
         return self.append_bytes(relpath, from_file.read(), mode)
         
     def append_bytes(self, relpath, bytes, mode=None):
-        resp = self._client._call_with_upload(
+        resp = self._call_with_body_bytes(
             'append',
             (self._remote_path(relpath), self._serialise_optional_mode(mode)),
             bytes)
@@ -1083,7 +1099,7 @@ class SmartTransport(transport.Transport):
         self._translate_error(resp)
 
     def delete(self, relpath):
-        resp = self._client._call('delete', self._remote_path(relpath))
+        resp = self._call2('delete', self._remote_path(relpath))
         self._translate_error(resp)
 
     def readv(self, relpath, offsets):
@@ -1100,18 +1116,20 @@ class SmartTransport(transport.Transport):
                                limit=self._max_readv_combine,
                                fudge_factor=self._bytes_to_read_before_seek))
 
-
-        resp = self._client._call_with_upload(
-            'readv',
-            (self._remote_path(relpath),),
-            self._client._serialise_offsets((c.start, c.length) for c in coalesced))
+        protocol = SmartClientRequestProtocolOne(self._medium.get_request())
+        protocol.call_with_body_readv_array(
+            ('readv', self._remote_path(relpath)),
+            [(c.start, c.length) for c in coalesced])
+        resp = protocol.read_response_tuple(True)
 
         if resp[0] != 'readv':
             # This should raise an exception
+            protocol.cancel_read_body()
             self._translate_error(resp)
             return
 
-        data = self._client._recv_bulk()
+        # FIXME: this should know how many bytes are needed, for clarity.
+        data = protocol.read_body_bytes()
         # Cache the results, but only until they have been fulfilled
         data_map = {}
         for c_offset in coalesced:
@@ -1130,21 +1148,17 @@ class SmartTransport(transport.Transport):
                 cur_offset_and_size = offset_stack.next()
 
     def rename(self, rel_from, rel_to):
-        self._call('rename', 
+        self._call('rename',
                    self._remote_path(rel_from),
                    self._remote_path(rel_to))
 
     def move(self, rel_from, rel_to):
-        self._call('move', 
+        self._call('move',
                    self._remote_path(rel_from),
                    self._remote_path(rel_to))
 
     def rmdir(self, relpath):
         resp = self._call('rmdir', self._remote_path(relpath))
-
-    def _call(self, method, *args):
-        resp = self._client._call(method, *args)
-        self._translate_error(resp)
 
     def _translate_error(self, resp, orig_path=None):
         """Raise an exception from a response"""
@@ -1188,20 +1202,14 @@ class SmartTransport(transport.Transport):
         else:
             raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 
-    def _send_tuple(self, args):
-        self._client.accept_bytes(_encode_tuple(args))
-
-    def _recv_tuple(self):
-        return self._client._recv_tuple()
-
     def disconnect(self):
-        self._client.disconnect()
+        self._medium.disconnect()
 
     def delete_tree(self, relpath):
         raise errors.TransportNotPossible('readonly transport')
 
     def stat(self, relpath):
-        resp = self._client._call('stat', self._remote_path(relpath))
+        resp = self._call2('stat', self._remote_path(relpath))
         if resp[0] == 'stat':
             return SmartStat(int(resp[1]), int(resp[2], 8))
         else:
@@ -1224,116 +1232,360 @@ class SmartTransport(transport.Transport):
         return True
 
     def list_dir(self, relpath):
-        resp = self._client._call('list_dir',
-                                  self._remote_path(relpath))
+        resp = self._call2('list_dir', self._remote_path(relpath))
         if resp[0] == 'names':
             return [name.encode('ascii') for name in resp[1:]]
         else:
             self._translate_error(resp)
 
     def iter_files_recursive(self):
-        resp = self._client._call('iter_files_recursive',
-                                  self._remote_path(''))
+        resp = self._call2('iter_files_recursive', self._remote_path(''))
         if resp[0] == 'names':
             return resp[1:]
         else:
             self._translate_error(resp)
 
 
-class SmartStreamClient(SmartProtocolBase):
-    """Connection to smart server over two streams"""
+class SmartClientMediumRequest(object):
+    """A request on a SmartClientMedium.
 
-    def _send_bulk_data(self, body):
-        self._ensure_connection()
-        SmartProtocolBase._send_bulk_data(self, body)
-        
-    def disconnect(self):
-        """If this medium maintains a persistent connection, close it.
-        
-        The default implementation does nothing.
+    Each request allows bytes to be provided to it via accept_bytes, and then
+    the response bytes to be read via read_bytes.
+
+    For instance:
+    request.accept_bytes('123')
+    request.finished_writing()
+    result = request.read_bytes(3)
+    request.finished_reading()
+
+    It is up to the individual SmartClientMedium whether multiple concurrent
+    requests can exist. See SmartClientMedium.get_request to obtain instances 
+    of SmartClientMediumRequest, and the concrete Medium you are using for 
+    details on concurrency and pipelining.
+    """
+
+    def __init__(self, medium):
+        """Construct a SmartClientMediumRequest for the medium medium."""
+        self._medium = medium
+        # we track state by constants - we may want to use the same
+        # pattern as BodyReader if it gets more complex.
+        # valid states are: "writing", "reading", "done"
+        self._state = "writing"
+
+    def accept_bytes(self, bytes):
+        """Accept bytes for inclusion in this request.
+
+        This method may not be be called after finished_writing() has been
+        called.  It depends upon the Medium whether or not the bytes will be
+        immediately transmitted. Message based Mediums will tend to buffer the
+        bytes until finished_writing() is called.
+
+        :param bytes: A bytestring.
         """
+        if self._state != "writing":
+            raise errors.WritingCompleted(self)
+        self._accept_bytes(bytes)
+
+    def _accept_bytes(self, bytes):
+        """Helper for accept_bytes.
+
+        Accept_bytes checks the state of the request to determing if bytes
+        should be accepted. After that it hands off to _accept_bytes to do the
+        actual acceptance.
+        """
+        raise NotImplementedError(self._accept_bytes)
+
+    def finished_reading(self):
+        """Inform the request that all desired data has been read.
+
+        This will remove the request from the pipeline for its medium (if the
+        medium supports pipelining) and any further calls to methods on the
+        request will raise ReadingCompleted.
+        """
+        if self._state == "writing":
+            raise errors.WritingNotComplete(self)
+        if self._state != "reading":
+            raise errors.ReadingCompleted(self)
+        self._state = "done"
+        self._finished_reading()
+
+    def _finished_reading(self):
+        """Helper for finished_reading.
+
+        finished_reading checks the state of the request to determine if 
+        finished_reading is allowed, and if it is hands off to _finished_reading
+        to perform the action.
+        """
+        raise NotImplementedError(self._finished_reading)
+
+    def finished_writing(self):
+        """Finish the writing phase of this request.
+
+        This will flush all pending data for this request along the medium.
+        After calling finished_writing, you may not call accept_bytes anymore.
+        """
+        if self._state != "writing":
+            raise errors.WritingCompleted(self)
+        self._state = "reading"
+        self._finished_writing()
+
+    def _finished_writing(self):
+        """Helper for finished_writing.
+
+        finished_writing checks the state of the request to determine if 
+        finished_writing is allowed, and if it is hands off to _finished_writing
+        to perform the action.
+        """
+        raise NotImplementedError(self._finished_writing)
+
+    def read_bytes(self, count):
+        """Read bytes from this requests response.
+
+        This method will block and wait for count bytes to be read. It may not
+        be invoked until finished_writing() has been called - this is to ensure
+        a message-based approach to requests, for compatability with message
+        based mediums like HTTP.
+        """
+        if self._state == "writing":
+            raise errors.WritingNotComplete(self)
+        if self._state != "reading":
+            raise errors.ReadingCompleted(self)
+        return self._read_bytes(count)
+
+    def _read_bytes(self, count):
+        """Helper for read_bytes.
+
+        read_bytes checks the state of the request to determing if bytes
+        should be read. After that it hands off to _read_bytes to do the
+        actual read.
+        """
+        raise NotImplementedError(self._read_bytes)
+
+
+class SmartClientStreamMediumRequest(SmartClientMediumRequest):
+    """A SmartClientMediumRequest that works with an SmartClientStreamMedium."""
+
+    def __init__(self, medium):
+        SmartClientMediumRequest.__init__(self, medium)
+        # check that we are safe concurrency wise. If some streams start
+        # allowing concurrent requests - i.e. via multiplexing - then this
+        # assert should be moved to SmartClientStreamMedium.get_request,
+        # and the setting/unsetting of _current_request likewise moved into
+        # that class : but its unneeded overhead for now. RBC 20060922
+        if self._medium._current_request is not None:
+            raise errors.TooManyConcurrentRequests(self._medium)
+        self._medium._current_request = self
+
+    def _accept_bytes(self, bytes):
+        """See SmartClientMediumRequest._accept_bytes.
         
-    def _call(self, *args):
+        This forwards to self._medium._accept_bytes because we are operating
+        on the mediums stream.
+        """
+        self._medium._accept_bytes(bytes)
+
+    def _finished_reading(self):
+        """See SmartClientMediumRequest._finished_reading.
+
+        This clears the _current_request on self._medium to allow a new 
+        request to be created.
+        """
+        assert self._medium._current_request is self
+        self._medium._current_request = None
+        
+    def _finished_writing(self):
+        """See SmartClientMediumRequest._finished_writing.
+
+        This invokes self._medium._flush to ensure all bytes are transmitted.
+        """
+        self._medium._flush()
+
+    def _read_bytes(self, count):
+        """See SmartClientMediumRequest._read_bytes.
+        
+        This forwards to self._medium._read_bytes because we are operating
+        on the mediums stream.
+        """
+        return self._medium._read_bytes(count)
+
+
+class SmartClientRequestProtocolOne(SmartProtocolBase):
+    """The client-side protocol for smart version 1."""
+
+    def __init__(self, request):
+        """Construct a SmartClientRequestProtocolOne.
+
+        :param request: A SmartClientMediumRequest to serialise onto and
+            deserialise from.
+        """
+        self._request = request
+        self._body_buffer = None
+
+    def call(self, *args):
         bytes = _encode_tuple(args)
-        # should be self.medium.accept_bytes(bytes) XXX
-        self.accept_bytes(bytes)
-        return self._recv_tuple()
+        self._request.accept_bytes(bytes)
+        self._request.finished_writing()
 
-    def _call_with_upload(self, method, args, body):
-        """Call an rpc, supplying bulk upload data.
+    def call_with_body_bytes(self, args, body):
+        """Make a remote call of args with body bytes 'body'.
 
-        :param method: method name to call
-        :param args: parameter args tuple
-        :param body: upload body as a byte string
+        After calling this, call read_response_tuple to find the result out.
         """
-        bytes = _encode_tuple((method,) + args)
-        bytes += self._encode_bulk_data(body)
-        # should be self.medium.accept_bytes XXX
-        self.accept_bytes(bytes)
-        return self._recv_tuple()
+        bytes = _encode_tuple(args)
+        self._request.accept_bytes(bytes)
+        bytes = self._encode_bulk_data(body)
+        self._request.accept_bytes(bytes)
+        self._request.finished_writing()
+
+    def call_with_body_readv_array(self, args, body):
+        """Make a remote call with a readv array.
+
+        The body is encoded with one line per readv offset pair. The numbers in
+        each pair are separated by a comma, and no trailing \n is emitted.
+        """
+        bytes = _encode_tuple(args)
+        self._request.accept_bytes(bytes)
+        readv_bytes = self._serialise_offsets(body)
+        bytes = self._encode_bulk_data(readv_bytes)
+        self._request.accept_bytes(bytes)
+        self._request.finished_writing()
+
+    def cancel_read_body(self):
+        """After expecting a body, a response code may indicate one otherwise.
+
+        This method lets the domain client inform the protocol that no body
+        will be transmitted. This is a terminal method: after calling it the
+        protocol is not able to be used further.
+        """
+        self._request.finished_reading()
+
+    def read_response_tuple(self, expect_body=False):
+        """Read a response tuple from the wire.
+
+        This should only be called once.
+        """
+        result = self._recv_tuple()
+        if not expect_body:
+            self._request.finished_reading()
+        return result
+
+    def read_body_bytes(self, count=-1):
+        """Read bytes from the body, decoding into a byte stream.
+        
+        We read all bytes at once to ensure we've checked the trailer for 
+        errors, and then feed the buffer back as read_body_bytes is called.
+        """
+        if self._body_buffer is not None:
+            return self._body_buffer.read(count)
+        _body_decoder = LengthPrefixedBodyDecoder()
+        # grab a byte from the wire: we do this so that we dont use too much
+        # from the wire; we should have the LengthPrefixedBodyDecoder tell
+        # us how much is needed once the header is written.
+        # i.e. self._body_decoder.next_read_size() would be a hint. 
+        while not _body_decoder.finished_reading:
+            byte = self._request.read_bytes(1)
+            _body_decoder.accept_bytes(byte)
+        self._request.finished_reading()
+        self._body_buffer = StringIO(_body_decoder.read_pending_data())
+        # XXX: TODO check the trailer result.
+        return self._body_buffer.read(count)
+
+    def _recv_tuple(self):
+        """Recieve a tuple from the medium request."""
+        line = ''
+        while not line or line[-1] != '\n':
+            # yes, this is inefficient - but tuples are short.
+            new_char = self._request.read_bytes(1)
+            line += new_char
+            assert new_char != '', "end of file reading from server."
+        return _decode_tuple(line)
 
     def query_version(self):
         """Return protocol version number of the server."""
-        resp = self._call('hello')
+        self.call('hello')
+        resp = self.read_response_tuple()
         if resp == ('ok', '1'):
             return 1
         else:
             raise errors.SmartProtocolError("bad response %r" % (resp,))
 
 
-class SmartClientMedium(SmartStreamClient):
-    """Smart client is a medium for sending smart protocol requests over.
+class SmartClientMedium(object):
+    """Smart client is a medium for sending smart protocol requests over."""
 
-    XXX: we want explicit finalisation
+    def disconnect(self):
+        """If this medium maintains a persistent connection, close it.
+        
+        The default implementation does nothing.
+        """
+        
+
+class SmartClientStreamMedium(SmartClientMedium):
+    """Stream based medium common class.
+
+    SmartClientStreamMediums operate on a stream. All subclasses use a common
+    SmartClientStreamMediumRequest for their requests, and should implement
+    _accept_bytes and _read_bytes to allow the request objects to send and
+    receive bytes.
     """
 
+    def __init__(self):
+        self._current_request = None
 
-class SmartStreamMediumClient(SmartClientMedium):
-    """The SmartStreamMediumClient knows how to close the stream when it is
-    finished with it.
-    """
+    def accept_bytes(self, bytes):
+        self._accept_bytes(bytes)
 
     def __del__(self):
+        """The SmartClientStreamMedium knows how to close the stream when it is
+        finished with it.
+        """
         self.disconnect()
 
+    def _flush(self):
+        """Flush the output stream.
+        
+        This method is used by the SmartClientStreamMediumRequest to ensure that
+        all data for a request is sent, to avoid long timeouts or deadlocks.
+        """
+        raise NotImplementedError(self._flush)
 
-class SmartSimplePipesClientMedium(SmartClientMedium):
+    def get_request(self):
+        """See SmartClientMedium.get_request().
+
+        SmartClientStreamMedium always returns a SmartClientStreamMediumRequest
+        for get_request.
+        """
+        return SmartClientStreamMediumRequest(self)
+
+    def read_bytes(self, count):
+        return self._read_bytes(count)
+
+
+class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     """A client medium using simple pipes.
     
     This client does not manage the pipes: it assumes they will always be open.
     """
 
     def __init__(self, readable_pipe, writeable_pipe):
+        SmartClientStreamMedium.__init__(self)
         self._readable_pipe = readable_pipe
         self._writeable_pipe = writeable_pipe
 
-    def accept_bytes(self, bytes):
-        """See SmartClientMedium.accept_bytes."""
+    def _accept_bytes(self, bytes):
+        """See SmartClientStreamMedium.accept_bytes."""
         self._writeable_pipe.write(bytes)
 
-    def read_bytes(self, count):
-        """See SmartClientMedium.read_bytes."""
+    def _flush(self):
+        """See SmartClientStreamMedium._flush()."""
+        self._writeable_pipe.flush()
+
+    def _read_bytes(self, count):
+        """See SmartClientStreamMedium._read_bytes."""
         return self._readable_pipe.read(count)
 
-    def _recv_bulk(self):
-        """transitional api from 'client' to 'medium'."""
-        self._in = self._readable_pipe
-        try:
-            return SmartClientMedium._recv_bulk(self)
-        finally:
-            self._in = None
 
-    def _recv_tuple(self):
-        """transitional api from 'client' to 'medium'."""
-        return _recv_tuple(self._readable_pipe)
-
-    def _write_and_flush(self, bytes, file=None):
-        """Thunk from the 'client' api to the 'Medium' api."""
-        assert file is None
-        self.accept_bytes(bytes)
-
-
-class SmartSSHClientMedium(SmartStreamMediumClient):
+class SmartSSHClientMedium(SmartClientStreamMedium):
     """A client medium using SSH."""
     
     def __init__(self, host, port=None, username=None, password=None,
@@ -1343,6 +1595,7 @@ class SmartSSHClientMedium(SmartStreamMediumClient):
         :param vendor: An optional override for the ssh vendor to use. See
             bzrlib.transport.ssh for details on ssh vendors.
         """
+        SmartClientStreamMedium.__init__(self)
         self._connected = False
         self._host = host
         self._password = password
@@ -1353,11 +1606,10 @@ class SmartSSHClientMedium(SmartStreamMediumClient):
         self._vendor = vendor
         self._write_to = None
 
-    def accept_bytes(self, bytes):
-        """See SmartClientMedium.accept_bytes."""
+    def _accept_bytes(self, bytes):
+        """See SmartClientStreamMedium.accept_bytes."""
         self._ensure_connection()
         self._write_to.write(bytes)
-        self._write_to.flush()
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
@@ -1385,39 +1637,29 @@ class SmartSSHClientMedium(SmartStreamMediumClient):
             self._ssh_connection.get_filelike_channels()
         self._connected = True
 
-    def read_bytes(self, count):
-        """See SmartClientMedium.read_bytes."""
-        raise errors.MediumNotConnected(self)
+    def _flush(self):
+        """See SmartClientStreamMedium._flush()."""
+        self._write_to.flush()
 
-    def _recv_bulk(self):
-        """transitional api from 'client' to 'medium'."""
-        self._in = self._read_from
-        try:
-            return SmartStreamMediumClient._recv_bulk(self)
-        finally:
-            self._in = None
-
-    def _recv_tuple(self):
-        """transitional api from 'client' to 'medium'."""
-        return _recv_tuple(self._read_from)
-
-    def _write_and_flush(self, bytes, file=None):
-        """Thunk from the 'client' api to the 'Medium' api."""
-        assert file is None
-        self.accept_bytes(bytes)
+    def _read_bytes(self, count):
+        """See SmartClientStreamMedium.read_bytes."""
+        if not self._connected:
+            raise errors.MediumNotConnected(self)
+        return self._read_from.read(count)
 
 
-class SmartTCPClientMedium(SmartStreamMediumClient):
+class SmartTCPClientMedium(SmartClientStreamMedium):
     """A client medium using TCP."""
     
     def __init__(self, host, port):
         """Creates a client that will connect on the first use."""
+        SmartClientStreamMedium.__init__(self)
         self._connected = False
         self._host = host
         self._port = port
         self._socket = None
 
-    def accept_bytes(self, bytes):
+    def _accept_bytes(self, bytes):
         """See SmartClientMedium.accept_bytes."""
         self._ensure_connection()
         self._socket.sendall(bytes)
@@ -1442,26 +1684,18 @@ class SmartTCPClientMedium(SmartStreamMediumClient):
                     (self._host, self._port, os.strerror(result)))
         self._connected = True
 
-    def read_bytes(self, count):
+    def _flush(self):
+        """See SmartClientStreamMedium._flush().
+        
+        For TCP we do no flushing. We may want to turn off TCP_NODELAY and 
+        add a means to do a flush, but that can be done in the future.
+        """
+
+    def _read_bytes(self, count):
         """See SmartClientMedium.read_bytes."""
-        raise errors.MediumNotConnected(self)
-
-    def _recv_bulk(self):
-        """transitional api from 'client' to 'medium'."""
-        self._in = self._socket.makefile('r', 0)
-        try:
-            return SmartStreamMediumClient._recv_bulk(self)
-        finally:
-            self._in = None
-
-    def _recv_tuple(self):
-        """transitional api from 'client' to 'medium'."""
-        return _recv_tuple(self._socket.makefile('r', 0))
-
-    def _write_and_flush(self, bytes, file=None):
-        """Thunk from the 'client' api to the 'Medium' api."""
-        assert file is None
-        self.accept_bytes(bytes)
+        if not self._connected:
+            raise errors.MediumNotConnected(self)
+        return self._socket.recv(count)
 
 
 class SmartTCPTransport(SmartTransport):

@@ -1311,22 +1311,6 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[2], (0, '0'))
         self.assertEqual(d[3], (3, '34'))
 
-    def test_get_smart_client(self):
-        """All transports must either give a smart client, or know they can't.
-
-        For some transports such as http this might depend on probing to see 
-        what's actually present on the other end.  (But we can adjust for that 
-        in the future.)
-        """
-        transport = self.get_transport()
-        try:
-            client = transport.get_smart_client()
-            # XXX: should be a more general class
-            self.assertIsInstance(client, smart.SmartStreamClient)
-        except NoSmartServer:
-            # as long as we got it we're fine
-            pass
-
     def test_get_smart_medium(self):
         """All transports must either give a smart medium, or know they can't.
         """
