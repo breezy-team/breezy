@@ -84,6 +84,10 @@ IN DEVELOPMENT
       paths. This may not work perfectly on all platforms, but has the best
       chance of working in the common case. (John Arbash Meinel, #56816)
 
+  PORTABILITY:
+
+    * Fixes to run on Python 2.5 (Brian M. Carlson, Martin Pool, Marien Zwart)
+
   INTERNALS:
 
     * TestCaseInTempDir now creates a separate directory for HOME, rather

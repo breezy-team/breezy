@@ -21,7 +21,7 @@ from bzrlib import (
     errors,
     )
 from bzrlib.commands import display_command
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestSkipped
 
 
 class TestCommands(TestCase):
@@ -49,6 +49,9 @@ class TestCommands(TestCase):
     def test_unicode_option(self):
         # This error is actually thrown by optparse, when it
         # can't find the given option
+        import optparse
+        if optparse.__version__ == "1.5.3":
+            raise TestSkipped("optparse 1.5.3 can't handle unicode options")
         self.assertRaises(errors.BzrCommandError,
                           commands.run_bzr, ['log', u'--option\xb5'])
 

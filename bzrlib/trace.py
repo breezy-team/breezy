@@ -54,6 +54,7 @@ form.
 import errno
 import os
 import sys
+import re
 import logging
 
 import bzrlib
@@ -168,9 +169,6 @@ def log_exception(msg=None):
     """
     if msg:
         error(msg)
-    else:
-        exc_str = format_exception_short(sys.exc_info())
-        error(exc_str)
     log_exception_quietly()
 
 
