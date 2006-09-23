@@ -21,7 +21,7 @@ from bzrlib import (
     bzrdir,
     )
 from bzrlib.benchmarks import Benchmark
-from bzrlib.tests import test_sftp_transport
+from bzrlib.tests import test_sftp_transport, TestSkipped
 
 try:
     import paramiko
