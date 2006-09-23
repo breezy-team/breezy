@@ -682,9 +682,9 @@ class TestCase(unittest.TestCase):
         bzrlib.trace.disable_test_log(self._log_nonce)
         self._log_file.close()
         self._log_file = None
-        #if not self._keep_log_file:
-        #    os.remove(self._log_file_name)
-        #    self._log_file_name = None
+        if not self._keep_log_file:
+            os.remove(self._log_file_name)
+            self._log_file_name = None
 
     def setKeepLogfile(self):
         """Make the logfile not be deleted when _finishLogFile is called."""
