@@ -394,7 +394,7 @@ class cmd_inventory(Command):
             tree = work_tree
             trees = [tree]
 
-        if file_list:
+        if file_list is not None:
             file_ids = bzrlib.tree.find_ids_across_trees(file_list, trees,
                                                       require_versioned=True)
             # find_ids_across_trees may include some paths that don't
