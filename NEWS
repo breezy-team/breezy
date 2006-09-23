@@ -42,6 +42,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * 'bzr inventory [FILE...]' allows restricting the file list to a
+      specific set of files. (John Arbash Meinel, #3631)
+
     * Don't abort when annotating empty files (John Arbash Meinel, #56814)
 
     * Add ``Stanza.to_unicode()`` which can be passed to another Stanza
