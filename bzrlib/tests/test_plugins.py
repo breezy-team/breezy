@@ -148,8 +148,8 @@ class TestPluginHelp(TestCaseInTempDir):
         help = {}
         current = None
         for line in self.capture('help commands').splitlines():
-            if line.startswith('bzr '):
-                current = line.split()[1]
+            if not line.startswith(' '):
+                current = line.split()[0]
             help[current] = help.get(current, '') + line
 
         return help
@@ -189,7 +189,7 @@ class TestPluginHelp(TestCaseInTempDir):
             help = self.capture('help myplug')
             self.assertContainsRe(help, 'From plugin "myplug"')
             help = self.split_help_commands()['myplug']
-            self.assertContainsRe(help, 'From plugin "myplug"')
+            self.assertContainsRe(help, '<myplug>')
         finally:
             # remove the plugin 'plugin'
             if getattr(bzrlib.plugins, 'plugin', None):
