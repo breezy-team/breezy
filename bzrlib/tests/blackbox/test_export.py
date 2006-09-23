@@ -19,10 +19,14 @@
 """
 
 import os
+import stat
 import sys
 import tarfile
 import zipfile
 
+from bzrlib.export import (
+    zip_exporter,
+    )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 
@@ -106,10 +110,27 @@ class TestExport(ExternalBase):
         self.run_bzr('export', 'test.zip')
         zfile = zipfile.ZipFile('test.zip')
         names = sorted(zfile.namelist())
+
         if sys.platform == 'win32':
-            self.assertEqual(['a', 'b\\', 'b\\c', 'd\\'], names)
+            self.assertEqual(['test\\a', 'test\\b\\', 'test\\b\\c', 'test\\d\\'], names)
         else:
-            self.assertEqual(['a', 'b/', 'b/c', 'd/'], names)
+            self.assertEqual(['test/a', 'test/b/', 'test/b/c', 'test/d/'], names)
+
+        file_attr = stat.S_IFREG | zip_exporter._FILE_MODE
+        dir_attr = (stat.S_IFDIR | zip_exporter._DIR_MODE
+                    | zip_exporter.ZIP_DIRECTORY_BIT)
+
+        a_info = zfile.getinfo(names[0])
+        self.assertEqual(file_attr, a_info.external_attr)
+
+        b_info = zfile.getinfo(names[1])
+        self.assertEqual(dir_attr, b_info.external_attr)
+
+        c_info = zfile.getinfo(names[2])
+        self.assertEqual(file_attr, c_info.external_attr)
+
+        d_info = zfile.getinfo(names[3])
+        self.assertEqual(dir_attr, d_info.external_attr)
 
     def test_dir_export(self):
         tree = self.make_branch_and_tree('dir')

@@ -18,8 +18,21 @@
 """
 
 import os
-from bzrlib.trace import mutter
+import stat
 import zipfile
+
+from bzrlib.trace import mutter
+
+
+# Windows expects this bit to be set in the 'external_attr' section
+# Or it won't consider the entry a directory
+ZIP_DIRECTORY_BIT = (1 << 4)
+_FILE_MODE = 0664
+_DIR_MODE = 0775
+
+_FILE_ATTR = stat.S_IFREG | _FILE_MODE
+_DIR_ATTR = stat.S_IFDIR | _DIR_MODE | ZIP_DIRECTORY_BIT
+
 
 def zip_exporter(tree, dest, root):
     """ Export this tree to a new zip file.
@@ -55,6 +68,7 @@ def zip_exporter(tree, dest, root):
                             filename=filename,
                             date_time=now)
                 zinfo.compress_type = compression
+                zinfo.external_attr = _FILE_ATTR
                 zipf.writestr(zinfo, tree.get_file_text(file_id))
             elif ie.kind == "directory":
                 # Directories must contain a trailing slash, to indicate
@@ -64,12 +78,14 @@ def zip_exporter(tree, dest, root):
                             filename=filename + os.sep,
                             date_time=now)
                 zinfo.compress_type = compression
+                zinfo.external_attr = _DIR_ATTR
                 zipf.writestr(zinfo,'')
             elif ie.kind == "symlink":
                 zinfo = zipfile.ZipInfo(
                             filename=(filename + '.lnk'),
                             date_time=now)
                 zinfo.compress_type = compression
+                zinfo.external_attr = _FILE_ATTR
                 zipf.writestr(zinfo, ie.symlink_target)
 
         zipf.close()
