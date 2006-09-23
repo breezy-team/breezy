@@ -19,6 +19,7 @@
 """
 
 import os
+import sys
 import tarfile
 import zipfile
 
@@ -94,6 +95,21 @@ class TestExport(ExternalBase):
         # all paths are prefixed with the base name of the zipfile
         self.assertEqual(['test/' + fname.encode('utf8')],
                          sorted(zfile.namelist()))
+
+    def test_zip_export_directories(self):
+        tree = self.make_branch_and_tree('zip')
+        self.build_tree(['zip/a', 'zip/b/', 'zip/b/c', 'zip/d/'])
+        tree.add(['a', 'b', 'b/c', 'd'])
+        tree.commit('init')
+
+        os.chdir('zip')
+        self.run_bzr('export', 'test.zip')
+        zfile = zipfile.ZipFile('test.zip')
+        names = sorted(zfile.namelist())
+        if sys.platform == 'win32':
+            self.assertEqual(['a', 'b\\', 'b\\c', 'd\\'], names)
+        else:
+            self.assertEqual(['a', 'b/', 'b/c', 'd/'], names)
 
     def test_dir_export(self):
         tree = self.make_branch_and_tree('dir')

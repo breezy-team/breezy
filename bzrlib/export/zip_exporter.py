@@ -50,15 +50,18 @@ def zip_exporter(tree, dest, root):
             mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
 
             filename = os.path.join(root, dp).encode('utf8')
-            if ie.kind == "file": 
+            if ie.kind == "file":
                 zinfo = zipfile.ZipInfo(
                             filename=filename,
                             date_time=now)
                 zinfo.compress_type = compression
                 zipf.writestr(zinfo, tree.get_file_text(file_id))
             elif ie.kind == "directory":
+                # Directories must contain a trailing slash, to indicate
+                # to the zip routine that they are really directories and
+                # not just empty files.
                 zinfo = zipfile.ZipInfo(
-                            filename=filename,
+                            filename=filename + os.sep,
                             date_time=now)
                 zinfo.compress_type = compression
                 zipf.writestr(zinfo,'')
