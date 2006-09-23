@@ -111,14 +111,12 @@ class TestExport(ExternalBase):
         zfile = zipfile.ZipFile('test.zip')
         names = sorted(zfile.namelist())
 
-        if sys.platform == 'win32':
-            self.assertEqual(['test\\a', 'test\\b\\', 'test\\b\\c', 'test\\d\\'], names)
-        else:
-            self.assertEqual(['test/a', 'test/b/', 'test/b/c', 'test/d/'], names)
+        # even on win32, zipfile.ZipFile changes all names to use
+        # forward slashes
+        self.assertEqual(['test/a', 'test/b/', 'test/b/c', 'test/d/'], names)
 
-        file_attr = stat.S_IFREG | zip_exporter._FILE_MODE
-        dir_attr = (stat.S_IFDIR | zip_exporter._DIR_MODE
-                    | zip_exporter.ZIP_DIRECTORY_BIT)
+        file_attr = stat.S_IFREG
+        dir_attr = stat.S_IFDIR | zip_exporter.ZIP_DIRECTORY_BIT
 
         a_info = zfile.getinfo(names[0])
         self.assertEqual(file_attr, a_info.external_attr)
