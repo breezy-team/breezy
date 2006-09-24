@@ -244,8 +244,8 @@ class _MyResult(unittest._TextTestResult):
         unittest.TestResult.addError(self, test, err)
         # We can only do this if we have one of our TestCases, not if
         # we have a doctest.
-        setKeepLogFile = getattr(test, 'setKeepLogFile', None)
-        if setKeepLogFile is not None:
+        setKeepLogfile = getattr(test, 'setKeepLogfile', None)
+        if setKeepLogfile is not None:
             setKeepLogfile()
         self.extractBenchmarkTime(test)
         if self.showAll:
@@ -265,8 +265,8 @@ class _MyResult(unittest._TextTestResult):
         unittest.TestResult.addFailure(self, test, err)
         # We can only do this if we have one of our TestCases, not if
         # we have a doctest.
-        setKeepLogFile = getattr(test, 'setKeepLogFile', None)
-        if setKeepLogFile is not None:
+        setKeepLogfile = getattr(test, 'setKeepLogfile', None)
+        if setKeepLogfile is not None:
             setKeepLogfile()
         self.extractBenchmarkTime(test)
         if self.showAll:
