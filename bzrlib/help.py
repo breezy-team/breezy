@@ -142,39 +142,29 @@ def help_commands(outfile=None):
     from bzrlib.commands import (builtin_command_names,
                                  plugin_command_names,
                                  get_cmd_object)
-
     if outfile is None:
         outfile = sys.stdout
-
-    names = set()                       # to eliminate duplicates
-    names.update(builtin_command_names())
+    names = set(builtin_command_names()) # to eliminate duplicates
     names.update(plugin_command_names())
-    names = list(names)
-    names.sort()
-    commands = [(n, get_cmd_object(n)) for n in names]
-
-    max_name = max([len(n) for n, o in commands if not o.hidden])
-    format_string = '%%-%ds %%s %%s' % max_name
-    indent = ' ' * (max_name+1)
+    commands = ((n, get_cmd_object(n)) for n in names)
+    shown_commands = [(n, o) for n, o in commands if not o.hidden]
+    max_name = max(len(n) for n, o in shown_commands)
+    indent = ' ' * (max_name + 1)
     width = osutils.terminal_width() - 1
-    for cmd_name in names:
-        cmd_object = get_cmd_object(cmd_name)
-        if cmd_object.hidden:
-            continue
+    for cmd_name, cmd_object in sorted(shown_commands):
         plugin_name = cmd_object.plugin_name()
         if plugin_name is None:
             plugin_name = ''
         else:
-            plugin_name = '<%s>' % plugin_name
+            plugin_name = ' <%s>' % plugin_name
 
         cmd_help = cmd_object.help()
         if cmd_help:
             firstline = cmd_help.split('\n', 1)[0]
         else:
             firstline = ''
-        helpstring = format_string % (cmd_name, firstline, plugin_name)
+        helpstring = '%-*s %s%s' % (max_name, cmd_name, firstline, plugin_name)
         lines = textwrap.wrap(helpstring, subsequent_indent=indent,
                               width=width)
         for line in lines:
-            print >> outfile, line
-        
+            outfile.write(line + '\n')
