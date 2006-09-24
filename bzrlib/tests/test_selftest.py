@@ -813,6 +813,7 @@ class TestRunner(TestCase):
         self.assertContainsRe(log, 'this will be kept')
         self.assertEqual(log, test._log_contents)
 
+
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
 
