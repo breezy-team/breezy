@@ -62,9 +62,7 @@ class TestUncommit(TestCaseWithTransport):
 
     def test_uncommit_checkout(self):
         wt = self.create_simple_tree()
-
-        checkout_tree = wt.bzrdir.sprout('checkout').open_workingtree()
-        checkout_tree.branch.bind(wt.branch)
+        checkout_tree = wt.branch.create_checkout('checkout')
 
         self.assertEqual(['a2'], checkout_tree.get_parent_ids())
 
@@ -95,8 +93,7 @@ class TestUncommit(TestCaseWithTransport):
         t_a.commit('commit 1')
         t_a.commit('commit 2')
         t_a.commit('commit 3')
-        b = t_a.bzrdir.sprout('b').open_branch()
-        b.bind(t_a.branch)
+        b = t_a.branch.create_checkout('b').branch
         uncommit.uncommit(b)
         self.assertEqual(len(b.revision_history()), 2)
         self.assertEqual(len(t_a.branch.revision_history()), 2)

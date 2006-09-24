@@ -44,7 +44,7 @@ This means that exceptions can used like this:
 >>> try:
 ...   raise NotBranchError(path='/foo/bar')
 ... except:
-...   print sys.exc_type
+...   print '%s.%s' % (sys.exc_type.__module__, sys.exc_type.__name__)
 ...   print sys.exc_value
 ...   path = getattr(sys.exc_value, 'path', None)
 ...   if path is not None:
@@ -96,7 +96,7 @@ from bzrlib.patches import (PatchSyntax,
 class BzrError(StandardError):
     
     is_user_error = True
-    
+
     def __str__(self):
         # XXX: Should we show the exception class in 
         # exceptions that don't provide their own message?  
@@ -120,7 +120,11 @@ class BzrNewError(BzrError):
     # base classes should override the docstring with their human-
     # readable explanation
 
-    def __init__(self, **kwds):
+    def __init__(self, *args, **kwds):
+        # XXX: Use the underlying BzrError to always generate the args attribute
+        # if it doesn't exist.  We can't use super here, because exceptions are
+        # old-style classes in python2.4 (but new in 2.5).  --bmc, 20060426
+        BzrError.__init__(self, *args)
         for key, value in kwds.items():
             setattr(self, key, value)
 
@@ -283,8 +287,7 @@ class InvalidURLJoin(PathError):
 
     def __init__(self, msg, base, args):
         PathError.__init__(self, base, msg)
-        self.args = [base]
-        self.args.extend(args)
+        self.args = [base] + list(args)
 
 
 class UnsupportedProtocol(PathError):

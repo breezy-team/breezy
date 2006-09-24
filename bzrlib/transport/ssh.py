@@ -154,10 +154,10 @@ class SSHVendor(object):
         raise NotImplementedError(self.connect_sftp)
 
     def connect_ssh(self, username, password, host, port, command):
-        """Make an SSH connection, and return a pipe-like object.
+        """Make an SSH connection.
         
-        (This is currently unused, it's just here to indicate future directions
-        for this code.)
+        :returns: something with a `close` method, and a `get_filelike_channels`
+            method that returns a pair of (read, write) filelike objects.
         """
         raise NotImplementedError(self.connect_ssh)
         
@@ -177,10 +177,21 @@ class LoopbackVendor(SSHVendor):
 register_ssh_vendor('loopback', LoopbackVendor())
 
 
+class _ParamikoSSHConnection(object):
+    def __init__(self, channel):
+        self.channel = channel
+
+    def get_filelike_channels(self):
+        return self.channel.makefile('rb'), self.channel.makefile('wb')
+
+    def close(self):
+        return self.channel.close()
+
+
 class ParamikoVendor(SSHVendor):
     """Vendor that uses paramiko."""
 
-    def connect_sftp(self, username, password, host, port):
+    def _connect(self, username, password, host, port):
         global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
         
         load_host_keys()
@@ -218,13 +229,26 @@ class ParamikoVendor(SSHVendor):
                 ['Try editing %s or %s' % (filename1, filename2)])
 
         _paramiko_auth(username, password, host, t)
+        return t
         
+    def connect_sftp(self, username, password, host, port):
+        t = self._connect(username, password, host, port)
         try:
-            sftp = t.open_sftp_client()
+            return t.open_sftp_client()
         except paramiko.SSHException, e:
             raise ConnectionError('Unable to start sftp client %s:%d' %
                                   (host, port), e)
-        return sftp
+
+    def connect_ssh(self, username, password, host, port, command):
+        t = self._connect(username, password, host, port)
+        try:
+            channel = t.open_session()
+            cmdline = ' '.join(command)
+            channel.exec_command(cmdline)
+            return _ParamikoSSHConnection(channel)
+        except paramiko.SSHException, e:
+            raise ConnectionError('Unable to invoke remote bzr %s:%d' %
+                                  (host, port), e)
 
 register_ssh_vendor('paramiko', ParamikoVendor())
 
@@ -232,17 +256,37 @@ register_ssh_vendor('paramiko', ParamikoVendor())
 class SubprocessVendor(SSHVendor):
     """Abstract base class for vendors that use pipes to a subprocess."""
     
+    def _connect(self, argv):
+        proc = subprocess.Popen(argv,
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
+                                **os_specific_subprocess_params())
+        return SSHSubprocess(proc)
+
     def connect_sftp(self, username, password, host, port):
         try:
             argv = self._get_vendor_specific_argv(username, host, port,
                                                   subsystem='sftp')
-            proc = subprocess.Popen(argv,
-                                    stdin=subprocess.PIPE,
-                                    stdout=subprocess.PIPE,
-                                    **os_specific_subprocess_params())
-            sock = SSHSubprocess(proc)
+            sock = self._connect(argv)
             return SFTPClient(sock)
         except (EOFError, paramiko.SSHException), e:
+            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                  % (host, port, e))
+        except (OSError, IOError), e:
+            # If the machine is fast enough, ssh can actually exit
+            # before we try and send it the sftp request, which
+            # raises a Broken Pipe
+            if e.errno not in (errno.EPIPE,):
+                raise
+            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                  % (host, port, e))
+
+    def connect_ssh(self, username, password, host, port, command):
+        try:
+            argv = self._get_vendor_specific_argv(username, host, port,
+                                                  command=command)
+            return self._connect(argv)
+        except (EOFError), e:
             raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
                                   % (host, port, e))
         except (OSError, IOError), e:
@@ -469,4 +513,6 @@ class SSHSubprocess(object):
         self.proc.stdout.close()
         self.proc.wait()
 
+    def get_filelike_channels(self):
+        return (self.proc.stdout, self.proc.stdin)
 
