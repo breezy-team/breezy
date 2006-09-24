@@ -102,29 +102,6 @@ class AbstractHTTPConnection:
 
     response_class = Response
 
-    def getresponse(self):
-        """Get the response from the server.
-
-        If the response can't be acquired, the request itself may
-        as well be considered aborted, so we reset the connection
-        object to be able to send a new request.
-
-        httplib should be responsible for that, it's not
-        currently (python 2.4.3 httplib (not versioned) , so we
-        try to workaround it.
-        """
-        try:
-            return httplib.HTTPConnection.getresponse(self)
-        # TODO: A bit of selection on different exceptions may be
-        # of good taste
-        except Exception, e:
-            if self.debuglevel > 0:
-                print 'On exception: [%r]' % e
-                print '  Reset connection: [%s]' % self
-            # Things look really weird, let's start again
-            self.close()
-            raise
-
     def fake_close(self):
         """Make the connection believes the response have been fully handled.
 
@@ -274,7 +251,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
     """
 
     # We change our order to be before urllib2 HTTP[S]Handlers
-    # and choosed instead of them (the first http_open called
+    # and be chosen instead of them (the first http_open called
     # wins).
     handler_order = 400
 
@@ -287,13 +264,19 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
     def __init__(self):
         urllib2.AbstractHTTPHandler.__init__(self, debuglevel=0)
 
-    # FIXME: This is the place where all the httplib exceptions
-    # should be catched, translated into bzr errors or handled
-    # accordingly (reset connection and try again or raise)
     def do_open(self, http_class, request, first_try=True):
         """See urllib2.AbstractHTTPHandler.do_open for the general idea.
 
         The request will be retried once if it fails.
+
+        urllib2 raises exception of application level kind, we
+        just have to translate them.
+
+        httplib can raise exceptions of transport level (badly
+        formatted dialog, loss of connexion or socket level
+        problems). In that case we should issue the request again
+        (httplib will close and reopen a new connection if
+        needed).        
         """
         connection = request.connection
         assert connection is not None, \
@@ -302,6 +285,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         headers = self._default_headers.copy()
         headers.update(request.header_items())
         headers.update(request.unredirected_hdrs)
+
         try:
             connection._send_request(request.get_method(),
                                      request.get_selector(),
@@ -309,47 +293,37 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                                      #None, # We don't send the body yet
                                      request.get_data(),
                                      headers)
-        except socket.error, e:
-            raise ConnectionError(msg= 'while sending %s %s:'
-                                  % (request.get_method(),
-                                     request.get_selector()),
-                                  orig_error=e)
-        if self._debuglevel > 0:
-            print 'Request sent: [%r]' % request
-        try:
+            if self._debuglevel > 0:
+                print 'Request sent: [%r]' % request
             response = connection.getresponse()
             convert_to_addinfourl = True
-        except httplib.BadStatusLine, e:
-            # Presumably the server have borked the connection
-            # for an unknown reason. Let's try again.
+        except (socket.error, httplib.HTTPException), e:
+        # FIXME: and then there is HTTPError raised by:
+        # - HTTPDefaultErrorHandler (we define our own)
+        # - HTTPRedirectHandler.redirect_request 
+        # - AbstractDigestAuthHandler.http_error_auth_reqed
             if first_try:
                 if self._debuglevel > 0:
-                    print 'Received exception: [%r]' % e
+                    print 'Received exception: [%r]' % exception
                     print '  On connection: [%r]' % request.connection
                     method = request.get_method()
                     url = request.get_full_url()
                     print '  Will retry, %s %r' % (method, url)
+                connection.close()
                 response = self.do_open(http_class, request, False)
                 convert_to_addinfourl = False
             else:
+                exception = ConnectionError(msg= 'while sending %s %s:'
+                                            % (request.get_method(),
+                                               request.get_selector()),
+                                            orig_error=e)
                 if self._debuglevel > 0:
                     print 'On connection: [%r]' % request.connection
                     method = request.get_method()
                     url = request.get_full_url()
                     print '  Failed again, %s %r' % (method, url)
-                    print '  Will raise: [%r]' % e
-                raise
-        except urllib2.URLError, e:
-            mutter('url error: %s, for %s url: %r',
-                   e.reason, request.get_method(), url)
-            raise
-        # FIXME: The following is suspicious, it has been copied
-        # from _urllib.py and should not occurs -- vila 20060913
-        except (BzrError, IOError), e:
-            mutter('io error: %s %s for %s url: %r',
-                   e.errno, errno.errorcode.get(e.errno),
-                   request.get_method(), url)
-            raise TransportError(orig_error=e)
+                    print '  Will raise: [%r]' % exception
+                raise exception
 
 # FIXME: HTTPConnection does not fully support 100-continue (the
 # server responses are just ignored)
@@ -465,10 +439,10 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         # 306: Unused (if the RFC says so...)
 
         # FIXME: If the code is 302 and the request is HEAD, we
-        # may avoid a following the redirections if the intent is
-        # to check the existence, we have a hint, now if we want
-        # to be sure, we must follow the redirection. Let's do
-        # that for now.
+        # MAY avoid following the redirections if the intent is
+        # to check the existence, we have a hint that the file
+        # exist, now if we want to be sure, we must follow the
+        # redirection. Let's do that for now.
 
         if code in (301, 302, 303, 307):
             return Request(req.get_method(),newurl,
@@ -485,11 +459,13 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         else:
             raise urllib2.HTTPError(req.get_full_url(), code, msg, headers, fp)
 
-    # Copied from urllib2 to be able to fake_close the associated
-    # connection, *before* issuing the redirected request but
-    # *after* having eventually raised an error
     def http_error_30x(self, req, fp, code, msg, headers):
-        """Requests the redirected to URI"""
+        """Requests the redirected to URI.
+
+        Copied from urllib2 to be able to fake_close the
+        associated connection, *before* issuing the redirected
+        request but *after* having eventually raised an error.
+        """
         # Some servers (incorrectly) return multiple Location headers
         # (so probably same goes for URI).  Use first header.
 
@@ -551,6 +527,20 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         return response
 
 
+class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
+    """Custom basic authentification handler.
+
+    Send the authentification preventively to avoid the the
+    roundtrip associated with the 401 error.
+    """
+
+#    def http_request(self, request):
+#        """Insert an authentification header if information is available"""
+#        if request.auth == 'basic' and request.password is not None:
+#            
+#        return request
+
+
 class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
     """Process HTTP error responses.
 
@@ -582,6 +572,7 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
                              extra=HTTPError(req.get_full_url(), code, msg,
                                              hdrs, fp))
         else:
+            # TODO: A test is needed to exercise that code path
             raise InvalidHttpResponse(req.get_full_url(),
                                       'Unable to handle http code %d: %s'
                                       % (code, msg))

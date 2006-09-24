@@ -31,3 +31,10 @@ class TestCaseWithWebserver(TestCaseWithTransport):
     def setUp(self):
         super(TestCaseWithWebserver, self).setUp()
         self.transport_readonly_server = bzrlib.transport.http.HttpServer
+
+
+class TestCaseWithWallserver(TestCaseWithTransport):
+    """A support class that provides a http server closing connections early"""
+    def setUp(self):
+        super(TestCaseWithWallserver, self).setUp()
+        self.transport_readonly_server = bzrlib.transport.http.WallHttpServer
