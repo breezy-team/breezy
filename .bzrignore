@@ -1,0 +1,4 @@
+*.pyc
+*~
+.*.sw[nop]
+.sw[nop]
