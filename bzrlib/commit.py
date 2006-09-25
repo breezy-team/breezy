@@ -71,8 +71,11 @@ import time
 
 from cStringIO import StringIO
 
+from bzrlib import (
+    errors,
+    tree,
+    )
 import bzrlib.config
-import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
@@ -277,6 +280,11 @@ class Commit(object):
             self.work_inv = self.work_tree.inventory
             self.basis_tree = self.work_tree.basis_tree()
             self.basis_inv = self.basis_tree.inventory
+            if specific_files is not None:
+                # Ensure specified files are versioned
+                # (We don't actually need the ids here)
+                tree.find_ids_across_trees(specific_files, 
+                                           [self.basis_tree, self.work_tree])
             # one to finish, one for rev and inventory, and one for each
             # inventory entry, and the same for the new inventory.
             # note that this estimate is too long when we do a partial tree

@@ -54,6 +54,7 @@ from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 from bzrlib.transport.local import LocalTransport
+import bzrlib.tree
 from bzrlib.workingtree import WorkingTree
 
 
@@ -361,26 +362,49 @@ class cmd_inventory(Command):
     """Show inventory of the current working copy or a revision.
 
     It is possible to limit the output to a particular entry
-    type using the --kind option.  For example; --kind file.
+    type using the --kind option.  For example: --kind file.
+
+    It is also possible to restrict the list of files to a specific
+    set. For example: bzr inventory --show-ids this/file
     """
 
     takes_options = ['revision', 'show-ids', 'kind']
-    
+    takes_args = ['file*']
+
     @display_command
-    def run(self, revision=None, show_ids=False, kind=None):
+    def run(self, revision=None, show_ids=False, kind=None, file_list=None):
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise BzrCommandError('invalid kind specified')
-        tree = WorkingTree.open_containing(u'.')[0]
-        if revision is None:
-            inv = tree.read_working_inventory()
-        else:
+
+        work_tree, file_list = tree_files(file_list)
+
+        if revision is not None:
             if len(revision) > 1:
                 raise BzrCommandError('bzr inventory --revision takes'
-                    ' exactly one revision identifier')
-            inv = tree.branch.repository.get_revision_inventory(
-                revision[0].in_history(tree.branch).rev_id)
+                                      ' exactly one revision identifier')
+            revision_id = revision[0].in_history(work_tree.branch).rev_id
+            tree = work_tree.branch.repository.revision_tree(revision_id)
+                        
+            # We include work_tree as well as 'tree' here
+            # So that doing '-r 10 path/foo' will lookup whatever file
+            # exists now at 'path/foo' even if it has been renamed, as
+            # well as whatever files existed in revision 10 at path/foo
+            trees = [tree, work_tree]
+        else:
+            tree = work_tree
+            trees = [tree]
 
-        for path, entry in inv.entries():
+        if file_list is not None:
+            file_ids = bzrlib.tree.find_ids_across_trees(file_list, trees,
+                                                      require_versioned=True)
+            # find_ids_across_trees may include some paths that don't
+            # exist in 'tree'.
+            entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
+                             for file_id in file_ids if file_id in tree)
+        else:
+            entries = tree.inventory.entries()
+
+        for path, entry in entries:
             if kind and kind != entry.kind:
                 continue
             if show_ids:
@@ -827,7 +851,7 @@ class cmd_update(Command):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_write()
         try:
-            existing_pending_merges = tree.pending_merges()
+            existing_pending_merges = tree.get_parent_ids()[1:]
             last_rev = tree.last_revision()
             if last_rev == tree.branch.last_revision():
                 # may be up to date, check master too.
@@ -839,7 +863,7 @@ class cmd_update(Command):
             conflicts = tree.update()
             revno = tree.branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
-            if tree.pending_merges() != existing_pending_merges:
+            if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
             if conflicts != 0:
@@ -2002,6 +2026,7 @@ class cmd_selftest(Command):
                 test_suite_factory = benchmarks.test_suite
                 if verbose is None:
                     verbose = True
+                # TODO: should possibly lock the history file...
                 benchfile = open(".perf_history", "at")
             else:
                 test_suite_factory = None
@@ -2325,11 +2350,25 @@ class cmd_remerge(Command):
             return 0
 
 class cmd_revert(Command):
-    """Reverse all changes since the last commit.
+    """Revert files to a previous revision.
 
-    Only versioned files are affected.  Specify filenames to revert only 
-    those files.  By default, any files that are changed will be backed up
-    first.  Backup files have a '~' appended to their name.
+    Giving a list of files will revert only those files.  Otherwise, all files
+    will be reverted.  If the revision is not specified with '--revision', the
+    last committed revision is used.
+
+    To remove only some changes, without reverting to a prior version, use
+    merge instead.  For example, "merge . --r-2..-3" will remove the changes
+    introduced by -2, without affecting the changes introduced by -1.  Or
+    to remove certain changes on a hunk-by-hunk basis, see the Shelf plugin.
+    
+    By default, any files that have been manually changed will be backed up
+    first.  (Files changed only by merge are not backed up.)  Backup files have
+    '.~#~' appended to their name, where # is a number.
+
+    When you provide files, you can use their current pathname or the pathname
+    from the target revision.  So you can use revert to "undelete" a file by
+    name.  If you name a directory, all the contents of that directory will be
+    reverted.
     """
     takes_options = ['revision', 'no-backup']
     takes_args = ['file*']
@@ -2767,6 +2806,66 @@ class cmd_break_lock(Command):
             pass
         
 
+class cmd_wait_until_signalled(Command):
+    """Test helper for test_start_and_stop_bzr_subprocess_send_signal.
+
+    This just prints a line to signal when it is ready, then blocks on stdin.
+    """
+
+    hidden = True
+
+    def run(self):
+        sys.stdout.write("running\n")
+        sys.stdout.flush()
+        sys.stdin.readline()
+
+
+class cmd_serve(Command):
+    """Run the bzr server."""
+
+    aliases = ['server']
+
+    takes_options = [
+        Option('inet',
+               help='serve on stdin/out for use from inetd or sshd'),
+        Option('port',
+               help='listen for connections on nominated port of the form '
+                    '[hostname:]portnumber. Passing 0 as the port number will '
+                    'result in a dynamically allocated port.',
+               type=str),
+        Option('directory',
+               help='serve contents of directory',
+               type=unicode),
+        Option('allow-writes',
+               help='By default the server is a readonly server. Supplying '
+                    '--allow-writes enables write access to the contents of '
+                    'the served directory and below. '
+                ),
+        ]
+
+    def run(self, port=None, inet=False, directory=None, allow_writes=False):
+        from bzrlib.transport import smart
+        from bzrlib.transport import get_transport
+        if directory is None:
+            directory = os.getcwd()
+        url = 'file://' + urlutils.escape(directory)
+        if not allow_writes:
+            url = 'readonly+' + url
+        t = get_transport(url)
+        if inet:
+            server = smart.SmartStreamServer(sys.stdin, sys.stdout, t)
+        elif port is not None:
+            if ':' in port:
+                host, port = port.split(':')
+            else:
+                host = '127.0.0.1'
+            server = smart.SmartTCPServer(t, host=host, port=int(port))
+            print 'listening on port: ', server.port
+            sys.stdout.flush()
+        else:
+            raise BzrCommandError("bzr serve requires one of --inet or --port")
+        server.serve()
+
 
 # command-line interpretation helper for merge-related commands
 def merge(other_revision, base_revision,
@@ -2842,6 +2941,7 @@ def merge(other_revision, base_revision,
 # we do need to load at least some information about them to know of 
 # aliases.  ideally we would avoid loading the implementation until the
 # details were needed.
+from bzrlib.cmd_version_info import cmd_version_info
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.bundle.commands import cmd_bundle_revisions
 from bzrlib.sign_my_commits import cmd_sign_my_commits

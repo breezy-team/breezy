@@ -15,6 +15,7 @@
 
 """Tests for the test framework."""
 
+import cStringIO
 import os
 from StringIO import StringIO
 import sys
@@ -62,7 +63,8 @@ class MetaTestLog(TestCase):
         """Test logs are captured when a test fails."""
         self.log('a test message')
         self._log_file.flush()
-        self.assertContainsRe(self._get_log(), 'a test message\n')
+        self.assertContainsRe(self._get_log(keep_log_file=True),
+                              'a test message\n')
 
 
 class TestTreeShape(TestCaseInTempDir):
@@ -749,6 +751,68 @@ class TestRunner(TestCase):
             revision_id = workingtree.get_parent_ids()[0]
             self.assertEndsWith(output_string.rstrip(), revision_id)
 
+    def test_success_log_deleted(self):
+        """Successful tests have their log deleted"""
+
+        class LogTester(TestCase):
+
+            def test_success(self):
+                self.log('this will be removed\n')
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_success')
+        result = self.run_test_runner(runner, test)
+
+        log = test._get_log()
+        self.assertEqual("DELETED log file to reduce memory footprint", log)
+        self.assertEqual('', test._log_contents)
+        self.assertIs(None, test._log_file_name)
+
+    def test_fail_log_kept(self):
+        """Failed tests have their log kept"""
+
+        class LogTester(TestCase):
+
+            def test_fail(self):
+                self.log('this will be kept\n')
+                self.fail('this test fails')
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_fail')
+        result = self.run_test_runner(runner, test)
+
+        text = sio.getvalue()
+        self.assertContainsRe(text, 'this will be kept')
+        self.assertContainsRe(text, 'this test fails')
+
+        log = test._get_log()
+        self.assertContainsRe(log, 'this will be kept')
+        self.assertEqual(log, test._log_contents)
+
+    def test_error_log_kept(self):
+        """Tests with errors have their log kept"""
+
+        class LogTester(TestCase):
+
+            def test_error(self):
+                self.log('this will be kept\n')
+                raise ValueError('random exception raised')
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_error')
+        result = self.run_test_runner(runner, test)
+
+        text = sio.getvalue()
+        self.assertContainsRe(text, 'this will be kept')
+        self.assertContainsRe(text, 'random exception raised')
+
+        log = test._get_log()
+        self.assertContainsRe(log, 'this will be kept')
+        self.assertEqual(log, test._log_contents)
+
 
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
@@ -919,6 +983,12 @@ class TestConvenienceMakers(TestCaseWithTransport):
                               bzrlib.bzrdir.BzrDirMetaFormat1)
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
                               bzrlib.bzrdir.BzrDirFormat6)
+
+    def test_make_branch_and_mutable_tree(self):
+        # we should be able to get a new branch and a mutable tree from
+        # TestCaseWithTransport
+        tree = self.make_branch_and_memory_tree('a')
+        self.assertIsInstance(tree, bzrlib.memorytree.MemoryTree)
 
 
 class TestSFTPMakeBranchAndTree(TestCaseWithSFTPServer):

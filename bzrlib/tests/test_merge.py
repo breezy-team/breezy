@@ -81,7 +81,7 @@ class TestMerge(TestCaseWithTransport):
         self.assertEqual([tip], wt2.get_parent_ids())
         
     def test_pending_with_null(self):
-        """When base is forced to revno 0, pending_merges is set"""
+        """When base is forced to revno 0, parent_ids are set"""
         wt2 = self.test_unrelated()
         wt1 = WorkingTree.open('.')
         br1 = wt1.branch
@@ -136,12 +136,12 @@ class TestMerge(TestCaseWithTransport):
         log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(), 
                     this_tree=tree_b, ignore_zero=True)
-        log = self._get_log()
+        log = self._get_log(keep_log_file=True)
         self.failUnless('All changes applied successfully.\n' not in log)
         tree_b.revert([])
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(), 
                     this_tree=tree_b, ignore_zero=False)
-        log = self._get_log()
+        log = self._get_log(keep_log_file=True)
         self.failUnless('All changes applied successfully.\n' in log)
 
     def test_merge_inner_conflicts(self):

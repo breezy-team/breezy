@@ -1,5 +1,22 @@
 IN DEVELOPMENT
 
+  INTERNALS:
+
+    * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
+      can take a ``working_dir='foo'`` parameter, which will change directory 
+      for the command. (John Arbash Meinel)
+
+  BUG FIXES:
+
+    * bzr branch/pull no longer complain about progress bar cleanup when
+      interrupted during fetch.  (Aaron Bentley, #54000)
+
+    * When trying to acquire a lock, don't fail immediately. Instead, try
+      a few times (up to 1 hour) before timing out. Also, report why the
+      lock is unavailable (John Arbash Meinel, #43521, #49556)
+
+bzr 0.11rc1  2006-09-18
+
   IMPROVEMENTS:
 
     * Knit files now wait to create their contents until the first data is
@@ -16,16 +33,46 @@ IN DEVELOPMENT
 
     * Commit performs one less XML parse. (Robert Collins)
 
-    * ``bzr checkout --lightweight`` now operates on readonly branches as well
-      as readwrite branches. This fixes bug #39542 for lightweight checkouts 
-      but not for heavyweight ones (the default). (Robert Collins)
+    * ``bzr checkout`` now operates on readonly branches as well
+      as readwrite branches. This fixes bug #39542. (Robert Collins)
+
+    * ``bzr bind`` no longer synchronises history with the master branch.
+      Binding should be followed by an update or push to synchronise the 
+      two branches. This is closely related to the fix for bug #39542.
+      (Robert Collins)
 
     * ``bzrlib.lazy_import.lazy_import`` function to create on-demand 
       objects.  This allows all imports to stay at the global scope, but
       modules will not actually be imported if they are not used.
       (John Arbash Meinel)
 
+    * Support bzr:// and bzr+ssh:// urls to work with the new RPC-based
+      transport which will be used with the upcoming high-performance smart
+      server. The new command ``bzr serve`` will invoke bzr in server mode,
+      which processes these requests. (Andrew Bennetts, Robert Collins, Martin
+      Pool)
+
+    * New command ``bzr version-info`` which can be used to get a summary
+      of the current state of the tree. This is especially useful as part
+      of a build commands. See ``doc/version_info.txt`` for more information 
+      (John Arbash Meinel)
+
   BUG FIXES:
+
+    * 'bzr inventory [FILE...]' allows restricting the file list to a
+      specific set of files. (John Arbash Meinel, #3631)
+
+    * Don't abort when annotating empty files (John Arbash Meinel, #56814)
+
+    * Add ``Stanza.to_unicode()`` which can be passed to another Stanza
+      when nesting stanzas. Also, add ``read_stanza_unicode`` to handle when
+      reading a nested Stanza. (John Arbash Meinel)
+
+    * Transform._set_mode() needs to stat the right file. 
+      (John Arbash Meinel, #56549)
+
+    * Raise WeaveFormatError rather than StopIteration when trying to read
+      an empty Weave file. (John Arbash Meinel, #46871)
 
     * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
       (Vincent Ladeuil, #59835)
@@ -47,9 +94,28 @@ IN DEVELOPMENT
     * Don't use preexec_fn on win32, as it is not supported by subprocess.
       (John Arbash Meinel)
 
-    * When trying to acquire a lock, don't fail immediately. Instead, try
-      a few times (up to 1 hour) before timing out. Also, report why the
-      lock is unavailable (John Arbash Meinel, #43521, #49556)
+    * Skip specific tests when the dependencies aren't met. This includes
+      some ``setup.py`` tests when ``python-dev`` is not available, and
+      some tests that depend on paramiko. (John Arbash Meinel, Mattheiu Moy)
+
+    * Fallback to Paramiko properly, if no ``ssh`` executable exists on
+      the system. (Andrew Bennetts, John Arbash Meinel)
+
+    * ``Branch.bind(other_branch)`` no longer takes a write lock on the
+      other branch, and will not push or pull between the two branches.
+      API users will need to perform a push or pull or update operation if they
+      require branch synchronisation to take place. (Robert Collins, #47344)
+
+    * When creating a tarball or zipfile export, export unicode names as utf-8
+      paths. This may not work perfectly on all platforms, but has the best
+      chance of working in the common case. (John Arbash Meinel, #56816)
+
+    * When committing, only files that exist in working tree or basis tree
+      may be specified (Aaron Bentley, #50793)
+
+  PORTABILITY:
+
+    * Fixes to run on Python 2.5 (Brian M. Carlson, Martin Pool, Marien Zwart)
 
   INTERNALS:
 
@@ -113,6 +179,28 @@ IN DEVELOPMENT
     * Special case importing the standard library 'copy' module. This shaves
       off 40ms of startup time, while retaining compatibility. See:
       ``bzrlib/inspect_for_copy.py`` for more details. (John Arbash Meinel)
+
+    * WorkingTree has a new parent class MutableTree which represents the 
+      specialisations of Tree which are able to be altered. (Robert Collins)
+
+    * New methods mkdir and put_file_bytes_non_atomic on MutableTree that
+      mutate the tree and its contents. (Robert Collins)
+
+    * Transport behaviour at the root of the URL is now defined and tested.
+      (Andrew Bennetts, Robert Collins)
+
+  TESTING:
+
+    * New test helper classs MemoryTree. This is typically accessed via
+      ``self.make_branch_and_memory_tree()`` in test cases. (Robert Collins)
+      
+    * Add start_bzr_subprocess and stop_bzr_subprocess to allow test code to
+      continue running concurrently with a subprocess of bzr. (Andrew Bennetts,
+      Robert Collins)
+
+    * Add a new method ``Transport.get_smart_client()``. This is provided to
+      allow upgrades to a richer interface than the VFS one provided by
+      Transport. (Andrew Bennetts, Martin Pool)
 
 bzr 0.10  2006-08-29
   
