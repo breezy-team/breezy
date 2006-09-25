@@ -1124,12 +1124,13 @@ class FakeHTTPMedium(object):
 
 class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
     
-    def test_bulk_data(self):
+    def _test_bulk_data(self, url_protocol):
         # We should be able to send and receive bulk data in a single message.
         # The 'readv' command in the smart protocol both sends and receives bulk
         # data, so we use that.
         self.build_tree(['data-file'])
         http_server = HTTPServerWithSmarts()
+        http_server._url_protocol = url_protocol
         http_server.setUp()
         self.addCleanup(http_server.tearDown)
 
@@ -1141,6 +1142,12 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
         self.assertEqual(
             [(0, "c")], list(remote_transport.readv("data-file", [(0,1)])))
 
+    def test_bulk_data_pycurl(self):
+        self._test_bulk_data('http+pycurl')
+    
+    def test_bulk_data_urllib(self):
+        self._test_bulk_data('http+urllib')
+
     def test_smart_http_medium_request_accept_bytes(self):
         medium = FakeHTTPMedium()
         request = smart.SmartClientHTTPMediumRequest(medium)
@@ -1150,8 +1157,9 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
         request.finished_writing()
         self.assertEqual('abcdef', medium.written_request)
 
-    def test_http_send_smart_request(self):
+    def _test_http_send_smart_request(self, url_protocol):
         http_server = HTTPServerWithSmarts()
+        http_server._url_protocol = url_protocol
         http_server.setUp()
         self.addCleanup(http_server.tearDown)
 
@@ -1163,6 +1171,12 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
         response = medium.send_smart_request(post_body)
         reply_body = response.read()
         self.assertEqual(expected_reply_body, reply_body)
+
+    def test_http_send_smart_request_pycurl(self):
+        self._test_http_send_smart_request('http+pycurl')
+
+    def test_http_send_smart_request_urllib(self):
+        self._test_http_send_smart_request('http+urllib')
 
     #def test_smart_client_http_medium_send_smart_request(self):
     #    medium = smart.SmartClientHTTPMedium()
