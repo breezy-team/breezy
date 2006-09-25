@@ -1,5 +1,18 @@
 IN DEVELOPMENT
 
+  INTERNALS:
+
+    * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
+      can take a ``working_dir='foo'`` parameter, which will change directory 
+      for the command. (John Arbash Meinel)
+
+  BUG FIXES:
+
+    * bzr branch/pull no longer complain about progress bar cleanup when
+      interrupted during fetch.  (Aaron Bentley, #54000)
+
+bzr 0.11rc1  2006-09-18
+
   IMPROVEMENTS:
 
     * Knit files now wait to create their contents until the first data is
@@ -41,6 +54,9 @@ IN DEVELOPMENT
       (John Arbash Meinel)
 
   BUG FIXES:
+
+    * 'bzr inventory [FILE...]' allows restricting the file list to a
+      specific set of files. (John Arbash Meinel, #3631)
 
     * Don't abort when annotating empty files (John Arbash Meinel, #56814)
 
