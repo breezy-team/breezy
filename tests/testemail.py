@@ -45,7 +45,7 @@ class TestGetTo(TestCaseInTempDir):
             'revno: 1\n'
             'revision-id: A\n'
             'committer: Sample <john@example.com>\n'
-            'branch nick: bzrlib.plugins.email.tests.testemail.TestGetTo.test_body\n'
+            'branch nick: work\n'
             'timestamp: Thu 1970-01-01 00:00:01 +0000\n'
             'message:\n'
             '  foo bar baz\n'
