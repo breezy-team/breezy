@@ -1,5 +1,11 @@
 IN DEVELOPMENT
 
+  INTERNALS:
+
+    * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
+      can take a ``working_dir='foo'`` parameter, which will change directory 
+      for the command. (John Arbash Meinel)
+
   BUG FIXES:
 
     * bzr branch/pull no longer complain about progress bar cleanup when
