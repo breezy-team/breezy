@@ -426,20 +426,25 @@ class Repository(object):
         # revisions. We don't need to see all lines in the inventory because
         # only those added in an inventory in rev X can contain a revision=X
         # line.
-        for line in w.iter_lines_added_or_present_in_versions(selected_revision_ids):
-            start = line.find('file_id="')+9
-            if start < 9: continue
-            end = line.find('"', start)
-            assert end>= 0
-            file_id = _unescape_xml(line[start:end])
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for line in w.iter_lines_added_or_present_in_versions(
+                selected_revision_ids, pb=pb):
+                start = line.find('file_id="')+9
+                if start < 9: continue
+                end = line.find('"', start)
+                assert end>= 0
+                file_id = _unescape_xml(line[start:end])
 
-            start = line.find('revision="')+10
-            if start < 10: continue
-            end = line.find('"', start)
-            assert end>= 0
-            revision_id = _unescape_xml(line[start:end])
-            if revision_id in selected_revision_ids:
-                result.setdefault(file_id, set()).add(revision_id)
+                start = line.find('revision="')+10
+                if start < 10: continue
+                end = line.find('"', start)
+                assert end>= 0
+                revision_id = _unescape_xml(line[start:end])
+                if revision_id in selected_revision_ids:
+                    result.setdefault(file_id, set()).add(revision_id)
+        finally:
+            pb.finished()
         return result
 
     @needs_read_lock

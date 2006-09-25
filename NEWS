@@ -1,5 +1,10 @@
 IN DEVELOPMENT
 
+  BUG FIXES:
+
+    * bzr branch/pull no longer complain about progress bar cleanup when
+      interrupted during fetch.  (Aaron Bentley, #54000)
+
 bzr 0.11rc1  2006-09-18
 
   IMPROVEMENTS:
