@@ -244,13 +244,16 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         """
         raise NotImplementedError(self._get)
 
+    def get_request(self):
+        return smart.SmartClientMediumRequest(self)
+
     def get_smart_medium(self):
         """See Transport.get_smart_medium.
 
         HttpTransportBase directly implements the minimal interface of
         SmartMediumClient, so this returns self.
         """
-        return self
+        return smart.SmartClientHTTPMedium(self)
 
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.

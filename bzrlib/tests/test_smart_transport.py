@@ -1113,10 +1113,21 @@ class LengthPrefixedBodyDecoder(tests.TestCase):
         self.assertEqual('', decoder.unused_data)
 
 
+class FakeHTTPMedium(object):
+    def __init__(self):
+        self.written_request = None
+        self._current_request = None
+    def send_smart_request(self, bytes):
+        self.written_request = bytes
+        return None
+
+
 class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
     
     def test_bulk_data(self):
-        # We should be able to send and receive bulk data in a single message
+        # We should be able to send and receive bulk data in a single message.
+        # The 'readv' command in the smart protocol both sends and receives bulk
+        # data, so we use that.
         self.build_tree(['data-file'])
         http_server = HTTPServerWithSmarts()
         http_server.setUp()
@@ -1125,8 +1136,37 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
         http_transport = get_transport(http_server.get_url())
 
         medium = http_transport.get_smart_medium()
-        remote_transport = RemoteTransport('fake_url', medium)
-        self.assertEqual("c", remote_transport.readv("data-file", [(0,1)]))
+        #remote_transport = RemoteTransport('fake_url', medium)
+        remote_transport = smart.SmartTransport('/', medium=medium)
+        self.assertEqual(
+            [(0, "c")], list(remote_transport.readv("data-file", [(0,1)])))
+
+    def test_smart_http_medium_request_accept_bytes(self):
+        medium = FakeHTTPMedium()
+        request = smart.SmartClientHTTPMediumRequest(medium)
+        request.accept_bytes('abc')
+        request.accept_bytes('def')
+        self.assertEqual(None, medium.written_request)
+        request.finished_writing()
+        self.assertEqual('abcdef', medium.written_request)
+
+    def test_http_send_smart_request(self):
+        http_server = HTTPServerWithSmarts()
+        http_server.setUp()
+        self.addCleanup(http_server.tearDown)
+
+        post_body = 'hello\n'
+        expected_reply_body = 'ok\x011\n'
+
+        http_transport = get_transport(http_server.get_url())
+        medium = http_transport.get_smart_medium()
+        response = medium.send_smart_request(post_body)
+        reply_body = response.read()
+        self.assertEqual(expected_reply_body, reply_body)
+
+    #def test_smart_client_http_medium_send_smart_request(self):
+    #    medium = smart.SmartClientHTTPMedium()
+    #    medium.send_smart_request(
 
     def test_http_server_with_smarts(self):
         http_server = HTTPServerWithSmarts()
@@ -1141,7 +1181,7 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
 
         self.assertEqual(expected_reply_body, reply)
 
-    def test_smart_http_post_request_handler(self):
+    def test_smart_http_server_post_request_handler(self):
         http_server = HTTPServerWithSmarts()
         http_server.setUp()
         self.addCleanup(http_server.tearDown)
