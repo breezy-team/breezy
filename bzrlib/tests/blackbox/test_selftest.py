@@ -88,6 +88,12 @@ class TestRunBzr(ExternalBase):
 
     def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
                          working_dir=None):
+        """Override run_bzr_captured to test how it is invoked by run_bzr.
+
+        We test how run_bzr_captured actually invokes bzr in another location.
+        Here we only need to test that it is run_bzr passes the right
+        parameters to run_bzr_captured.
+        """
         self.argv = argv
         self.retcode = retcode
         self.encoding = encoding
