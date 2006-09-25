@@ -583,11 +583,8 @@ class VersionedFileTestMixIn(object):
             for line in vf.iter_lines_added_or_present_in_versions(versions, 
                 pb=progress):
                 lines[line] += 1
-            try:
-                self.assertEqual([], progress.updates)
-            except AssertionError:
-                self.assertEqual(expected,
-                                 progress.updates)
+            if []!= progress.updates: 
+                self.assertEqual(expected, progress.updates)
             return lines
         lines = iter_with_versions(['child', 'otherchild'], 
                                    [('Walking content.', 0, 2), 
