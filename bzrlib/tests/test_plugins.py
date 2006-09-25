@@ -189,7 +189,7 @@ class TestPluginHelp(TestCaseInTempDir):
             help = self.capture('help myplug')
             self.assertContainsRe(help, 'From plugin "myplug"')
             help = self.split_help_commands()['myplug']
-            self.assertContainsRe(help, '<myplug>')
+            self.assertContainsRe(help, '\[myplug\]')
         finally:
             # remove the plugin 'plugin'
             if getattr(bzrlib.plugins, 'plugin', None):

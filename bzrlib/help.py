@@ -156,7 +156,7 @@ def help_commands(outfile=None):
         if plugin_name is None:
             plugin_name = ''
         else:
-            plugin_name = ' <%s>' % plugin_name
+            plugin_name = ' [%s]' % plugin_name
 
         cmd_help = cmd_object.help()
         if cmd_help:
