@@ -27,16 +27,18 @@ major, minor, micro, releaselevel = bzrlib.version_info[:4]
 if major != 0 or minor != 11 or releaselevel != 'dev':
     # Until  the  plugin  is  considered  mature  enough,  better
     # restrict its use to the developers.
-    raise BzrCheckError('We need a recent bzr >= 0.11.0dev0')
+    from bzrlib import trace
+    trace.note('not installing http+webdav:// support'
+               ' (only supported for bzr 0.11)')
+else:
+    from bzrlib.transport import (
+        register_lazy_transport
+        )
 
-from bzrlib.transport import (
-    register_lazy_transport
-    )
-
-register_lazy_transport('https+webdav://',
-                        'bzrlib.plugins.webdav.webdav',
-                        'HttpDavTransport')
-register_lazy_transport('http+webdav://',
-                        'bzrlib.plugins.webdav.webdav',
-                        'HttpDavTransport')
+    register_lazy_transport('https+webdav://',
+                            'bzrlib.plugins.webdav.webdav',
+                            'HttpDavTransport')
+    register_lazy_transport('http+webdav://',
+                            'bzrlib.plugins.webdav.webdav',
+                            'HttpDavTransport')
 
