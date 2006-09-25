@@ -57,7 +57,7 @@ def extract_auth(url, password_manager):
     assert re.match(r'^(https?)(\+\w+)?://', url), \
             'invalid absolute url %r' % url
     scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-    
+
     if '@' in netloc:
         auth, netloc = netloc.split('@', 1)
         if ':' in auth:
@@ -107,7 +107,7 @@ def _extract_headers(header_text, url):
         if not first_line.startswith('HTTP'):
             if first_header: # The first header *must* start with HTTP
                 raise errors.InvalidHttpResponse(url,
-                    'Opening header line did not start with HTTP: %s' 
+                    'Opening header line did not start with HTTP: %s'
                     % (first_line,))
                 assert False, 'Opening header line was not HTTP'
             else:
@@ -569,10 +569,23 @@ class HttpServer(Server):
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
         return self._get_remote_url(self._home_dir)
-        
+
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
         # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
         return 'http://127.0.0.1:1/'
 
+class WallRequestHandler(TestingHTTPRequestHandler):
+    """Whatever request comes in, close the connection"""
+
+    def handle_one_request(self):
+        """Handle a single HTTP request, by abruptly closing the connection"""
+        self.close_connection = 1
+
+
+class WallHttpServer(HttpServer):
+    """A server which close the connection as soon as a request comes in"""
+
+    def __init__(self):
+        HttpServer.__init__(self,WallRequestHandler)

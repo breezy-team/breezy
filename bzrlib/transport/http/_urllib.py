@@ -49,7 +49,7 @@ class HttpTransport_urllib(HttpTransportBase):
     # In order to debug we have to issue our traces in sync with
     # httplib, which use print :(
     _debuglevel = 0
-    
+
     _opener_class = Opener
 
     def __init__(self, base, from_transport=None):
@@ -133,7 +133,7 @@ class HttpTransport_urllib(HttpTransportBase):
         if ranges or tail_amount:
             bytes = 'bytes=' + self.range_header(ranges, tail_amount)
             headers = {'Range': bytes}
-        
+
         request = Request('GET', abspath, None, headers)
         response = self._perform(request)
 

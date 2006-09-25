@@ -29,14 +29,17 @@ from bzrlib.tests import TestCase, TestSkipped
 from bzrlib.transport import Transport
 from bzrlib.transport.http import extract_auth, HttpTransportBase
 from bzrlib.transport.http._urllib import HttpTransport_urllib
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.tests.HTTPTestUtil import (
+    TestCaseWithWebserver,
+    TestCaseWithWallserver,
+    )
 
 
 class FakeManager (object):
 
     def __init__(self):
         self.credentials = []
-        
+
     def add_password(self, realm, host, username, password):
         self.credentials.append([realm, host, username, password])
 
@@ -51,15 +54,16 @@ class TestHttpUrls(TestCase):
         url = extract_auth('http://user:pass@www.bazaar-vcs.org/bzr/bzr.dev', f)
         self.assertEquals('http://www.bazaar-vcs.org/bzr/bzr.dev', url)
         self.assertEquals(1, len(f.credentials))
-        self.assertEquals([None, 'www.bazaar-vcs.org', 'user', 'pass'], f.credentials[0])
-        
+        self.assertEquals([None, 'www.bazaar-vcs.org', 'user', 'pass'],
+                          f.credentials[0])
+
     def test_abs_url(self):
         """Construction of absolute http URLs"""
         t = HttpTransport_urllib('http://bazaar-vcs.org/bzr/bzr.dev/')
         eq = self.assertEqualDiff
         eq(t.abspath('.'),
            'http://bazaar-vcs.org/bzr/bzr.dev')
-        eq(t.abspath('foo/bar'), 
+        eq(t.abspath('foo/bar'),
            'http://bazaar-vcs.org/bzr/bzr.dev/foo/bar')
         eq(t.abspath('.bzr'),
            'http://bazaar-vcs.org/bzr/bzr.dev/.bzr')
@@ -106,14 +110,14 @@ class TestHttpMixins(object):
         t = self._transport(server.get_url())
         self.assertEqual(t.has('foo/bar'), True)
         self.assertEqual(len(server.logs), 1)
-        self.assertContainsRe(server.logs[0], 
+        self.assertContainsRe(server.logs[0],
             r'"HEAD /foo/bar HTTP/1.." (200|302) - "-" "bzr/')
 
     def test_http_has_not_found(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
         self.assertEqual(t.has('not-found'), False)
-        self.assertContainsRe(server.logs[1], 
+        self.assertContainsRe(server.logs[1],
             r'"HEAD /not-found HTTP/1.." 404 - "-" "bzr/')
 
     def test_http_get(self):
@@ -151,7 +155,6 @@ class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
             socket.setdefaulttimeout(default_timeout)
 
 
-
 class TestHttpConnections_pycurl(TestCaseWithWebserver, TestHttpMixins):
 
     def _get_pycurl_maybe(self):
@@ -166,7 +169,6 @@ class TestHttpConnections_pycurl(TestCaseWithWebserver, TestHttpMixins):
     def setUp(self):
         TestCaseWithWebserver.setUp(self)
         self._prep_tree()
-
 
 
 class TestHttpTransportRegistration(TestCase):
@@ -228,3 +230,20 @@ class TestRangeHeader(TestCase):
         self.check_header('0-9,300-5000,-50',
                           ranges=[(0,9), (300,5000)],
                           tail=50)
+
+# TODO: We need to generalize the following tests to all
+# transports which connect to a server via a socket. Is there a
+# way to add an accessor or an attribute to this transports so
+# that we can filter them from the list of all existing
+# transports ?
+class TestWallServer(TestCaseWithWallserver):
+    """Tests that we get the right exceptions during the connection phase"""
+
+    from bzrlib.transport.http._pycurl import PyCurlTransport
+#    _transport = PyCurlTransport
+    _transport = HttpTransport_urllib
+
+    def test_has(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(ConnectionError, t.has, 'foo/bar')
