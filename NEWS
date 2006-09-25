@@ -1,5 +1,7 @@
 IN DEVELOPMENT
 
+bzr 0.11rc1  2006-09-18
+
   IMPROVEMENTS:
 
     * Knit files now wait to create their contents until the first data is
