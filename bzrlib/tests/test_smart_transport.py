@@ -20,12 +20,9 @@
 from cStringIO import StringIO
 import os
 import socket
-import subprocess
-import sys
 import threading
 import urllib2
 
-import bzrlib
 from bzrlib import (
         bzrdir,
         errors,

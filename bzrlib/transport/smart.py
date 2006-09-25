@@ -201,10 +201,8 @@ PROTOCOL  (serialisation, deserialisation)  accepts structured data for one
 #       the overall server shouldn't die.
 
 from cStringIO import StringIO
-import errno
 import os
 import socket
-import sys
 import tempfile
 import threading
 import urllib
@@ -219,8 +217,6 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.bundle.serializer import write_bundle
-from bzrlib.trace import mutter
-from bzrlib.transport import local
 
 # must do this otherwise urllib can't parse the urls properly :(
 for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
@@ -783,7 +779,7 @@ class SmartServerRequestHandler(object):
 class SmartTCPServer(object):
     """Listens on a TCP socket and accepts connections from smart clients"""
 
-    def __init__(self, backing_transport=None, host='127.0.0.1', port=0):
+    def __init__(self, backing_transport, host='127.0.0.1', port=0):
         """Construct a new server.
 
         To actually start it running, call either start_background_thread or
@@ -792,8 +788,6 @@ class SmartTCPServer(object):
         :param host: Name of the interface to listen on.
         :param port: TCP port to listen on, or 0 to allocate a transient port.
         """
-        if backing_transport is None:
-            backing_transport = memory.MemoryTransport()
         self._server_socket = socket.socket()
         self._server_socket.bind((host, port))
         self.port = self._server_socket.getsockname()[1]
@@ -1717,7 +1711,7 @@ class SmartTCPTransport(SmartTransport):
 
 
 try:
-    from bzrlib.transport import sftp, ssh
+    from bzrlib.transport import ssh
 except errors.ParamikoNotPresent:
     # no paramiko, no SSHTransport.
     pass
