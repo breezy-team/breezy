@@ -95,3 +95,15 @@ class TestCommitBuilder(TestCaseWithRepository):
         # precisely test that - a repository that wants to can add it on deserialisation,
         # but thats all the current contract guarantees anyway.
         self.assertEqual(rev_id, tree.branch.repository.get_inventory(rev_id).revision_id)
+
+    def test_get_tree(self):
+        tree = self.make_branch_and_tree(".")
+        builder = tree.branch.get_commit_builder([])
+        self.record_root(builder, tree)
+        builder.finish_inventory()
+        rev_id = builder.commit('foo bar')
+        rev_tree = builder.get_tree()
+        # Just a couple simple tests to ensure that it actually follows
+        # the RevisionTree api.
+        self.assertEqual(rev_id, rev_tree.get_revision_id())
+        self.assertEqual([], rev_tree.get_parent_ids())
