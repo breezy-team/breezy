@@ -242,7 +242,11 @@ class _MyResult(unittest._TextTestResult):
         if isinstance(err[1], TestSkipped):
             return self.addSkipped(test, err)    
         unittest.TestResult.addError(self, test, err)
-        test.setKeepLogfile()
+        # We can only do this if we have one of our TestCases, not if
+        # we have a doctest.
+        setKeepLogfile = getattr(test, 'setKeepLogfile', None)
+        if setKeepLogfile is not None:
+            setKeepLogfile()
         self.extractBenchmarkTime(test)
         if self.showAll:
             self.stream.writeln("ERROR %s" % self._testTimeString())
@@ -259,7 +263,11 @@ class _MyResult(unittest._TextTestResult):
 
     def addFailure(self, test, err):
         unittest.TestResult.addFailure(self, test, err)
-        test.setKeepLogfile()
+        # We can only do this if we have one of our TestCases, not if
+        # we have a doctest.
+        setKeepLogfile = getattr(test, 'setKeepLogfile', None)
+        if setKeepLogfile is not None:
+            setKeepLogfile()
         self.extractBenchmarkTime(test)
         if self.showAll:
             self.stream.writeln(" FAIL %s" % self._testTimeString())
@@ -1593,6 +1601,7 @@ def test_suite():
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_version',
+                   'bzrlib.tests.test_version_info',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',
