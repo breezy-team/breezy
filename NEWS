@@ -1,5 +1,8 @@
 IN DEVELOPMENT
 
+  IMPROVEMENTS:
+    * ``bzr help commands`` output is now shorter (Aaron Bentley)
+
   INTERNALS:
 
     * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
