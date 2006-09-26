@@ -723,16 +723,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
         if len(parent_ids) == 0:
-            self.set_last_revision(None)
+            leftmost_parent_id = None
+            leftmost_parent_tree = None
         else:
             leftmost_parent_id, leftmost_parent_tree = parents_list[0]
 
-            if leftmost_parent_id is None or leftmost_parent_tree is None:
-                self.set_last_revision(leftmost_parent_id)
-            elif self._change_last_revision(leftmost_parent_id):
+        if self._change_last_revision(leftmost_parent_id):
+            if leftmost_parent_tree is None:
+                self._cache_basis_inventory(leftmost_parent_id)
+            else:
                 # It seems Repository.deserialise_inventory is doing this
-                # because apparently commit, and such *don't*. But that
-                # seems really bogus.
+                # because apparently commit builder, *doesn't*. It
+                # seems like the in-memory Inventory should always have
+                # the root.revision set without having to serialize out
+                # to disk first.
                 inv = leftmost_parent_tree.inventory
                 if not self.branch.repository._format.rich_root_data:
                     inv.root.revision = leftmost_parent_id
