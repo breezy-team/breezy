@@ -19,7 +19,7 @@
 
 import difflib
 
-from bzrlib import errors
+
 from bzrlib.errors import KnitError, RevisionAlreadyPresent, NoSuchFile
 from bzrlib.knit import (
     KnitVersionedFile,
@@ -244,22 +244,6 @@ class BasicKnitTests(KnitTests):
         self.assertEquals(count, 5)
         self.assertTrue(k2.has_version('text-a'))
         self.assertTrue(k2.has_version('text-c'))
-
-    def test_bogus_join(self):
-        """Join should fail if parent versions are inconsistent
-
-        That is, if two knits have the same version, and it's being used
-        as a parent, and the digests don't match, join should fail."""
-        k1 = KnitVersionedFile('test1', get_transport('.'), 
-                               factory=KnitPlainFactory(), create=True)
-        k2 = KnitVersionedFile('test2', get_transport('.'), 
-                               factory=KnitPlainFactory(), create=True)
-        k1.add_lines('text-1', [], split_lines(TEXT_1))
-        # Note 'text-1' differs between k1 and k2
-        k2.add_lines('text-1', [], split_lines(TEXT_1A))
-        k1.add_lines('text-2', ['text-1'], split_lines(TEXT_1))
-        self.assertRaises(errors.KnitTextsDiffer, k2.join, k1, 
-                          version_ids=['text-2'])
 
     def test_reannotate(self):
         k1 = KnitVersionedFile('knit1', get_transport('.'),

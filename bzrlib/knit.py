@@ -477,14 +477,11 @@ class KnitVersionedFile(VersionedFile):
         graph_items = self._index.get_graph()
         return dict(graph_items)
 
-    def get_sha1s(self, version_ids):
-        """Return a map of sha1 digests for the specified versions"""
-        record_map = self._get_record_map(version_ids)
-        return dict((v, record_map[v][2]) for v in version_ids) 
-        
     def get_sha1(self, version_id):
         """See VersionedFile.get_sha1()."""
-        return self.get_sha1s([version_id])[version_id]
+        record_map = self._get_record_map([version_id])
+        method, content, digest, next = record_map[version_id]
+        return digest 
 
     @staticmethod
     def get_suffixes():
@@ -1604,12 +1601,10 @@ class InterKnit(InterVersionedFile):
     
             if not needed_versions and not mismatched_versions:
                 return 0
-
-            source_graph = self.source.get_graph()
-            full_list = topo_sort(source_graph)
-            version_list = [i for i in full_list if (i not in self.target
-                                                     and i in needed_versions)]
-            self.check_matching_parents(version_list, source_graph)
+            full_list = topo_sort(self.source.get_graph())
+    
+            version_list = [i for i in full_list if (not self.target.has_version(i)
+                            and i in needed_versions)]
     
             # plan the join:
             copy_queue = []
@@ -1660,22 +1655,6 @@ class InterKnit(InterVersionedFile):
         finally:
             pb.finished()
 
-    def check_matching_parents(self, versions, source_graph):
-        """Check that parents texts match between knits
-        
-        This prevents knit corruption when copying raw records.
-        """
-        parents_to_check = set()
-        for version in versions:
-            for parent in source_graph[version]:
-                if parent in self.target and parent in self.source:
-                    parents_to_check.add(parent)
-        source_sha1s = self.source.get_sha1s(parents_to_check)
-        target_sha1s = self.target.get_sha1s(parents_to_check)
-        for parent in parents_to_check:
-            if source_sha1s[parent] != target_sha1s[parent]:
-                raise errors.KnitTextsDiffer(parent)
-            
 
 InterVersionedFile.register_optimiser(InterKnit)
 
