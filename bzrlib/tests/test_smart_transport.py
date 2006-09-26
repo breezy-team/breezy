@@ -35,7 +35,11 @@ from bzrlib.transport import (
         memory,
         smart,
         )
-from bzrlib.transport.http import HTTPServerWithSmarts, SmartRequestHandler
+from bzrlib.transport.http import (
+        HTTPServerWithSmarts,
+        SmartClientHTTPMediumRequest,
+        SmartRequestHandler,
+        )
 
 
 class StringIOSSHVendor(object):
@@ -1117,7 +1121,7 @@ class FakeHTTPMedium(object):
     def __init__(self):
         self.written_request = None
         self._current_request = None
-    def send_smart_request(self, bytes):
+    def send_http_smart_request(self, bytes):
         self.written_request = bytes
         return None
 
@@ -1150,7 +1154,7 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
 
     def test_smart_http_medium_request_accept_bytes(self):
         medium = FakeHTTPMedium()
-        request = smart.SmartClientHTTPMediumRequest(medium)
+        request = SmartClientHTTPMediumRequest(medium)
         request.accept_bytes('abc')
         request.accept_bytes('def')
         self.assertEqual(None, medium.written_request)
@@ -1168,7 +1172,7 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
 
         http_transport = get_transport(http_server.get_url())
         medium = http_transport.get_smart_medium()
-        response = medium.send_smart_request(post_body)
+        response = medium.send_http_smart_request(post_body)
         reply_body = response.read()
         self.assertEqual(expected_reply_body, reply_body)
 

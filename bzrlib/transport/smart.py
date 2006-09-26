@@ -1356,38 +1356,6 @@ class SmartClientMediumRequest(object):
         raise NotImplementedError(self._read_bytes)
 
 
-class SmartClientHTTPMediumRequest(SmartClientMediumRequest):
-    """A SmartClientMediumRequest that works with a SmartClientHTTPMedium."""
-
-    def __init__(self, medium):
-        SmartClientMediumRequest.__init__(self, medium)
-        self._buffer = ''
-        # Check that we are safe concurrency wise. For now we just assume that
-        # only one request can be made on a medium at a time.  20060925 AJB.
-        if self._medium._current_request is not None:
-            raise errors.TooManyConcurrentRequests(self._medium)
-        self._medium._current_request = self
-
-    def _accept_bytes(self, bytes):
-        self._buffer += bytes
-
-    def _finished_writing(self):
-        data = self._medium.send_smart_request(self._buffer)
-        self._response_body = data
-
-    def _read_bytes(self, count):
-        return self._response_body.read(count)
-        
-    def _finished_reading(self):
-        """See SmartClientMediumRequest._finished_reading.
-
-        This clears the _current_request on self._medium to allow a new 
-        request to be created.
-        """
-        assert self._medium._current_request is self
-        self._medium._current_request = None
-        
-
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
     """A SmartClientMediumRequest that works with an SmartClientStreamMedium."""
 
@@ -1545,23 +1513,6 @@ class SmartClientMedium(object):
         The default implementation does nothing.
         """
         
-class SmartClientHTTPMedium(SmartClientMedium):
-    """HTTP client medium."""
-
-    def __init__(self, http_transport):
-        SmartClientMedium.__init__(self)
-        self._http_transport = http_transport
-        self._current_request = None
-
-    def get_request(self):
-        """See SmartClientMedium.get_request()."""
-        return SmartClientHTTPMediumRequest(self)
-    
-    def send_smart_request(self, bytes):
-        code, body_filelike = self._http_transport._post(bytes)
-        assert code == 200, 'unexpected HTTP response code'
-        return body_filelike
-
 
 class SmartClientStreamMedium(SmartClientMedium):
     """Stream based medium common class.

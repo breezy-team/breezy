@@ -130,12 +130,7 @@ class TestHttpMixins(object):
         server = self.get_readonly_server()
         http_transport = self._transport(server.get_url())
         medium = http_transport.get_smart_medium()
-        # XXX: this assert temporarily disabled while in development... so
-        # use a weaker assertion instead. -- Andrew
-        #self.assertTrue(medium is http_transport)
-        from bzrlib.transport import smart
-        self.assertTrue(isinstance(medium, smart.SmartClientMedium))
-        
+        self.assertTrue(medium is http_transport)
         
 
 class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):

@@ -245,7 +245,7 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         raise NotImplementedError(self._get)
 
     def get_request(self):
-        return smart.SmartClientMediumRequest(self)
+        return SmartClientHTTPMediumRequest(self)
 
     def get_smart_medium(self):
         """See Transport.get_smart_medium.
@@ -253,7 +253,7 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         HttpTransportBase directly implements the minimal interface of
         SmartMediumClient, so this returns self.
         """
-        return smart.SmartClientHTTPMedium(self)
+        return self
 
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
@@ -414,6 +414,33 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
 
         return ','.join(strings)
 
+    def send_http_smart_request(self, bytes):
+        code, body_filelike = self._post(bytes)
+        assert code == 200, 'unexpected HTTP response code %r' % (code,)
+        return body_filelike
+
+
+class SmartClientHTTPMediumRequest(smart.SmartClientMediumRequest):
+    """A SmartClientMediumRequest that works with an HTTP medium."""
+
+    def __init__(self, medium):
+        smart.SmartClientMediumRequest.__init__(self, medium)
+        self._buffer = ''
+
+    def _accept_bytes(self, bytes):
+        self._buffer += bytes
+
+    def _finished_writing(self):
+        data = self._medium.send_http_smart_request(self._buffer)
+        self._response_body = data
+
+    def _read_bytes(self, count):
+        return self._response_body.read(count)
+        
+    def _finished_reading(self):
+        """See SmartClientMediumRequest._finished_reading."""
+        pass
+        
 
 #---------------- test server facilities ----------------
 # TODO: load these only when running tests
