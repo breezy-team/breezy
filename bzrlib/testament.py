@@ -211,14 +211,14 @@ class StrictTestament(Testament):
         return l
 
 
-class StrictTestament2(StrictTestament):
+class StrictTestament3(StrictTestament):
     """This testament format is for use as a checksum in bundle format 0.9+
     
     It differs from StrictTestament by including data about the tree root.
     """
 
-    long_header = 'bazaar-ng testament version 3 strict\n'
-    short_header = 'bazaar-ng testament short form 3 strict\n'
+    long_header = 'bazaar testament version 3 strict\n'
+    short_header = 'bazaar testament short form 3 strict\n'
     def _get_entries(self):
         return self.inventory.iter_entries()
 

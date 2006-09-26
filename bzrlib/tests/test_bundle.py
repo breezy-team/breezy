@@ -19,7 +19,13 @@ import os
 import sys
 import tempfile
 
-from bzrlib import bzrdir, errors, inventory, repository, treebuilder
+from bzrlib import (
+    bzrdir, 
+    errors, 
+    inventory, 
+    repository, 
+    treebuilder,
+    )
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
@@ -449,7 +455,7 @@ class V08BundleTester(TestCaseWithTransport):
                 os.mkdir(checkout_dir)
         tree = self.make_branch_and_tree(checkout_dir)
         s = StringIO()
-        ancestors = write_bundle(self.b1.repository, rev_id, None, s, 
+        ancestors = write_bundle(self.b1.repository, rev_id, None, s,
                                  format=self.format)
         s.seek(0)
         assert isinstance(s.getvalue(), str), (

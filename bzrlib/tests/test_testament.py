@@ -1,3 +1,4 @@
+# Copyright (C) 2005-2006 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +22,7 @@ import os
 from sha import sha
 
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.testament import Testament, StrictTestament, StrictTestament2
+from bzrlib.testament import Testament, StrictTestament, StrictTestament3
 from bzrlib.transform import TreeTransform
 from bzrlib.osutils import has_symlinks
 
@@ -155,7 +156,7 @@ class TestamentTestsStrict(TestamentTests):
 class TestamentTestsStrict2(TestamentTests):
     
     def testament_class(self):
-        return StrictTestament2
+        return StrictTestament3
 
 
 REV_1_TESTAMENT = """\
@@ -190,8 +191,8 @@ properties:
 """
 
 
-REV_1_STRICT_TESTAMENT2 = """\
-bazaar-ng testament version 3 strict
+REV_1_STRICT_TESTAMENT3 = """\
+bazaar testament version 3 strict
 revision-id: test@user-1
 committer: test@user
 timestamp: 1129025423
@@ -221,11 +222,11 @@ sha1: %s
 """ % sha(REV_1_STRICT_TESTAMENT).hexdigest()
 
 
-REV_1_SHORT_STRICT2 = """\
-bazaar-ng testament short form 3 strict
+REV_1_SHORT_STRICT3 = """\
+bazaar testament short form 3 strict
 revision-id: test@user-1
 sha1: %s
-""" % sha(REV_1_STRICT_TESTAMENT2).hexdigest()
+""" % sha(REV_1_STRICT_TESTAMENT3).hexdigest()
 
 
 REV_2_TESTAMENT = """\
@@ -268,8 +269,8 @@ properties:
 """
 
 
-REV_2_STRICT_TESTAMENT2 = """\
-bazaar-ng testament version 3 strict
+REV_2_STRICT_TESTAMENT3 = """\
+bazaar testament version 3 strict
 revision-id: test@user-2
 committer: test@user
 timestamp: 1129025483
@@ -303,11 +304,11 @@ sha1: %s
 """ % sha(REV_2_STRICT_TESTAMENT).hexdigest()
 
 
-REV_2_SHORT_STRICT2 = """\
-bazaar-ng testament short form 3 strict
+REV_2_SHORT_STRICT3 = """\
+bazaar testament short form 3 strict
 revision-id: test@user-2
 sha1: %s
-""" % sha(REV_2_STRICT_TESTAMENT2).hexdigest()
+""" % sha(REV_2_STRICT_TESTAMENT3).hexdigest()
 
 
 REV_PROPS_TESTAMENT = """\
@@ -362,8 +363,8 @@ properties:
 """
 
 
-REV_PROPS_TESTAMENT_STRICT2 = """\
-bazaar-ng testament version 3 strict
+REV_PROPS_TESTAMENT_STRICT3 = """\
+bazaar testament version 3 strict
 revision-id: test@user-3
 committer: test@user
 timestamp: 1129025493
@@ -431,8 +432,8 @@ properties:
 """
 
 
-REV_3_TESTAMENT_STRICT2 = """\
-bazaar-ng testament version 3 strict
+REV_3_TESTAMENT_STRICT3 = """\
+bazaar testament version 3 strict
 revision-id: test@user-3
 committer: test@user
 timestamp: 1129025493
@@ -497,8 +498,8 @@ properties:
 """
 
 
-SAMPLE_UNICODE_TESTAMENT_STRICT2 = u"""\
-bazaar-ng testament version 3 strict
+SAMPLE_UNICODE_TESTAMENT_STRICT3 = u"""\
+bazaar testament version 3 strict
 revision-id: test@user-3
 committer: Erik B\xe5gfors <test@user>
 timestamp: 1129025493
@@ -537,12 +538,12 @@ texts = {
                       'rev_props': REV_PROPS_TESTAMENT_STRICT,
                       'sample_unicode': SAMPLE_UNICODE_TESTAMENT_STRICT,
     },
-    StrictTestament2: {'rev_1': REV_1_STRICT_TESTAMENT2,
-                      'rev_1_short': REV_1_SHORT_STRICT2,
-                      'rev_2': REV_2_STRICT_TESTAMENT2,
-                      'rev_2_short': REV_2_SHORT_STRICT2,
-                      'rev_3': REV_3_TESTAMENT_STRICT2,
-                      'rev_props': REV_PROPS_TESTAMENT_STRICT2,
-                      'sample_unicode': SAMPLE_UNICODE_TESTAMENT_STRICT2,
+    StrictTestament3: {'rev_1': REV_1_STRICT_TESTAMENT3,
+                      'rev_1_short': REV_1_SHORT_STRICT3,
+                      'rev_2': REV_2_STRICT_TESTAMENT3,
+                      'rev_2_short': REV_2_SHORT_STRICT3,
+                      'rev_3': REV_3_TESTAMENT_STRICT3,
+                      'rev_props': REV_PROPS_TESTAMENT_STRICT3,
+                      'sample_unicode': SAMPLE_UNICODE_TESTAMENT_STRICT3,
     },
 }

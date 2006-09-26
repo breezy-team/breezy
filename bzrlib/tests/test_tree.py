@@ -106,6 +106,6 @@ class TestTree(TestCaseWithTransport):
              ('compare', tree2, tree, False, None, None, False, False),
              ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
               'require', True),
-             ('compare', tree2, tree, 'unchanged', 'specific', 'extra', 
+             ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
               'require', True),
             ], RecordingOptimiser.calls)

@@ -100,7 +100,7 @@ def write_bundle(repository, revision_id, base_revision_id, out, format=None):
     """"""
     repository.lock_read()
     try:
-        return _write_bundle(repository, revision_id, base_revision_id, out, 
+        return _write_bundle(repository, revision_id, base_revision_id, out,
                              format)
     finally:
         repository.unlock()

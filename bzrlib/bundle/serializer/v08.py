@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Development Ltd
+# (C) 2005, 2006 Canonical Development Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -275,7 +275,7 @@ class BundleSerializerV08(BundleSerializer):
             else:
                 action.write(self.to_file)
 
-        delta = new_tree.changes_from(old_tree, want_unchanged=True, 
+        delta = new_tree.changes_from(old_tree, want_unchanged=True,
                                       include_root=True)
         for path, file_id, kind in delta.removed:
             action = Action('removed', [kind, path]).write(self.to_file)

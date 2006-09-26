@@ -155,7 +155,7 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
         require_versioned=require_versioned)
 
 
-def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids, 
+def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,
                    include_root):
 
     from osutils import is_inside_any
