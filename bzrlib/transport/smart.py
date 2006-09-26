@@ -518,6 +518,9 @@ class SmartTCPServer(object):
 
     def accept_and_serve(self):
         conn, client_addr = self._server_socket.accept()
+        # For WIN32, where the timeout value from the listening socket
+        # propogates to the newly accepted socket.
+        conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         from_client = conn.makefile('r')
         to_client = conn.makefile('w')
