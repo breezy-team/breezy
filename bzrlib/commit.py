@@ -332,11 +332,8 @@ class Commit(object):
             # and now do the commit locally.
             self.branch.append_revision(self.rev_id)
 
-            # if the builder gave us the revisiontree it created back, we
-            # could use it straight away here.
-            # TODO: implement this.
-            self.work_tree.set_parent_trees([(self.rev_id,
-                self.branch.repository.revision_tree(self.rev_id))])
+            rev_tree = self.builder.get_tree()
+            self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             # now the work tree is up to date with the branch
             
             self.reporter.completed(self.branch.revno(), self.rev_id)

@@ -675,6 +675,22 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         return self.get_parent_ids()[1:]
 
+    def _check_parents_for_ghosts(self, revision_ids, allow_leftmost_as_ghost):
+        """Common ghost checking functionality from set_parent_*.
+
+        This checks that the left hand-parent exists if there are any
+        revisions present.
+        """
+        if len(revision_ids) > 0:
+            leftmost_id = revision_ids[0]
+            if (not allow_leftmost_as_ghost and not
+                self.branch.repository.has_revision(leftmost_id)):
+                raise errors.GhostRevisionUnusableHere(leftmost_id)
+
+    def _set_merges_from_parent_ids(self, parent_ids):
+        merges = parent_ids[1:]
+        self._control_files.put_utf8('pending-merges', '\n'.join(merges))
+
     @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
@@ -688,24 +704,42 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         :param revision_ids: The revision_ids to set as the parent ids of this
             working tree. Any of these may be ghosts.
         """
+        self._check_parents_for_ghosts(revision_ids,
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
         if len(revision_ids) > 0:
-            leftmost_id = revision_ids[0]
-            if (not allow_leftmost_as_ghost and not
-                self.branch.repository.has_revision(leftmost_id)):
-                raise errors.GhostRevisionUnusableHere(leftmost_id)
-            self.set_last_revision(leftmost_id)
+            self.set_last_revision(revision_ids[0])
         else:
             self.set_last_revision(None)
-        merges = revision_ids[1:]
-        self._control_files.put_utf8('pending-merges', '\n'.join(merges))
+
+        self._set_merges_from_parent_ids(revision_ids)
 
     @needs_tree_write_lock
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees."""
-        # parent trees are not used in current format trees, delegate to
-        # set_parent_ids
-        self.set_parent_ids([rev for (rev, tree) in parents_list],
+        parent_ids = [rev for (rev, tree) in parents_list]
+
+        self._check_parents_for_ghosts(parent_ids,
             allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
+        if len(parent_ids) == 0:
+            self.set_last_revision(None)
+        else:
+            leftmost_parent_id, leftmost_parent_tree = parents_list[0]
+
+            if leftmost_parent_id is None or leftmost_parent_tree is None:
+                self.set_last_revision(leftmost_parent_id)
+            elif self._change_last_revision(leftmost_parent_id):
+                # It seems Repository.deserialise_inventory is doing this
+                # because apparently commit, and such *don't*. But that
+                # seems really bogus.
+                inv = leftmost_parent_tree.inventory
+                if not self.branch.repository._format.rich_root_data:
+                    inv.root.revision = leftmost_parent_id
+                xml = self._create_basis_xml_from_inventory(
+                                        leftmost_parent_id, inv)
+                self._write_basis_inventory(xml)
+        self._set_merges_from_parent_ids(parent_ids)
 
     @needs_tree_write_lock
     def set_pending_merges(self, rev_list):
@@ -1383,6 +1417,18 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self.branch.set_revision_history([new_revision])
         return True
 
+    def _write_basis_inventory(self, xml):
+        """Write the basis inventory XML to the basis-inventory file"""
+        assert isinstance(xml, str), 'serialised xml must be bytestring.'
+        path = self._basis_inventory_name()
+        sio = StringIO(xml)
+        self._control_files.put(path, sio)
+
+    def _create_basis_xml_from_inventory(self, revision_id, inventory):
+        """Create the text that will be saved in basis-inventory"""
+        inventory.revision_id = revision_id
+        return bzrlib.xml6.serializer_v6.write_inventory_to_string(inventory)
+
     def _cache_basis_inventory(self, new_revision):
         """Cache new_revision as the basis inventory."""
         # TODO: this should allow the ready-to-use inventory to be passed in,
@@ -1405,12 +1451,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 'format="6"' not in firstline):
                 inv = self.branch.repository.deserialise_inventory(
                     new_revision, xml)
-                inv.revision_id = new_revision
-                xml = bzrlib.xml6.serializer_v6.write_inventory_to_string(inv)
-            assert isinstance(xml, str), 'serialised xml must be bytestring.'
-            path = self._basis_inventory_name()
-            sio = StringIO(xml)
-            self._control_files.put(path, sio)
+                xml = self._create_basis_xml_from_inventory(new_revision, inv)
+            self._write_basis_inventory(xml)
         except (errors.NoSuchRevision, errors.RevisionNotPresent):
             pass
 
