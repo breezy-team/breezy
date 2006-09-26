@@ -730,6 +730,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         if self._change_last_revision(leftmost_parent_id):
             if leftmost_parent_tree is None:
+                # If we don't have a tree, fall back to reading the
+                # parent tree from the repository.
                 self._cache_basis_inventory(leftmost_parent_id)
             else:
                 # It seems Repository.deserialise_inventory is doing this

@@ -11,6 +11,11 @@ IN DEVELOPMENT
     * bzr branch/pull no longer complain about progress bar cleanup when
       interrupted during fetch.  (Aaron Bentley, #54000)
 
+    * ``WorkingTree.set_parent_trees()`` uses the trees to directly write
+      the basis inventory, rather than going through the repository. This
+      allows us to have 1 inventory read, and 2 inventory writes when
+      committing a new tree. (John Arbash Meinel)
+
 bzr 0.11rc1  2006-09-18
 
   IMPROVEMENTS:
