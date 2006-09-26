@@ -2311,7 +2311,7 @@ class CommitBuilder(object):
             self.new_inventory, self._config)
         return self._new_revision_id
 
-    def get_tree(self):
+    def revision_tree(self):
         """Return the tree that was just committed.
 
         After calling commit() this can be called to get a RevisionTree
