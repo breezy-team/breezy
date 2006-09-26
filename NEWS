@@ -1,3 +1,12 @@
+bzr 0.11rc2  2006-09-27
+
+  BUG FIXES:
+
+    * Test suite hangs on windows fixed. (Andrew Bennets, Alexander Belchenko).
+    
+    * Commit performance regression fixed. (Aaron Bentley, Robert Collins, John
+      Arbash Meinel).
+
 bzr 0.11rc1  2006-09-25
 
   IMPROVEMENTS:
