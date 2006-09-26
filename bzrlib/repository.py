@@ -2306,6 +2306,18 @@ class CommitBuilder(object):
             self.new_inventory, self._config)
         return self._new_revision_id
 
+    def revision_tree(self):
+        """Return the tree that was just committed.
+
+        After calling commit() this can be called to get a RevisionTree
+        representing the newly committed tree. This is preferred to
+        calling Repository.revision_tree() because that may require
+        deserializing the inventory, while we already have a copy in
+        memory.
+        """
+        return RevisionTree(self.repository, self.new_inventory,
+                            self._new_revision_id)
+
     def finish_inventory(self):
         """Tell the builder that the inventory is finished."""
         if self.new_inventory.root is None:
@@ -2367,10 +2379,9 @@ class CommitBuilder(object):
 
         # In this revision format, root entries have no knit or weave
         if ie is self.new_inventory.root:
-            if len(parent_invs):
-                ie.revision = parent_invs[0].root.revision
-            else:
-                ie.revision = None
+            # When serializing out to disk and back in
+            # root.revision is always _new_revision_id
+            ie.revision = self._new_revision_id
             return
         previous_entries = ie.find_previous_heads(
             parent_invs,
