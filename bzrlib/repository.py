@@ -2384,10 +2384,9 @@ class CommitBuilder(object):
 
         # In this revision format, root entries have no knit or weave
         if ie is self.new_inventory.root:
-            if len(parent_invs):
-                ie.revision = parent_invs[0].root.revision
-            else:
-                ie.revision = None
+            # When serializing out to disk and back in
+            # root.revision is always _new_revision_id
+            ie.revision = self._new_revision_id
             return
         previous_entries = ie.find_previous_heads(
             parent_invs,

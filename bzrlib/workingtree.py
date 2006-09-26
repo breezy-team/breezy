@@ -734,14 +734,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 # parent tree from the repository.
                 self._cache_basis_inventory(leftmost_parent_id)
             else:
-                # It seems Repository.deserialise_inventory is doing this
-                # because apparently commit builder, *doesn't*. It
-                # seems like the in-memory Inventory should always have
-                # the root.revision set without having to serialize out
-                # to disk first.
                 inv = leftmost_parent_tree.inventory
-                if not self.branch.repository._format.rich_root_data:
-                    inv.root.revision = leftmost_parent_id
                 xml = self._create_basis_xml_from_inventory(
                                         leftmost_parent_id, inv)
                 self._write_basis_inventory(xml)
