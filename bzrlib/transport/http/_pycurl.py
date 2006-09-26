@@ -218,9 +218,12 @@ class PyCurlTransport(HttpTransportBase):
         # There's no way in http/1.0 to say "must revalidate"; we don't want
         # to force it to always retrieve.  so just turn off the default Pragma
         # provided by Curl.
+        # Also, we override the Expect: header so that pycurl will send the POST
+        # body immediately.
         headers = ['Cache-control: max-age=0',
                    'Pragma: no-cache',
-                   'Connection: Keep-Alive']
+                   'Connection: Keep-Alive',
+                   'Expect: ',]
         ## curl.setopt(pycurl.VERBOSE, 1)
         # TODO: maybe include a summary of the pycurl version
         ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__,)
