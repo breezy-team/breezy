@@ -17,6 +17,56 @@
 """Classes to provide name-to-object registry-like support."""
 
 
+class _ObjectGetter(object):
+    """Hang onto an object, and return it on request.
+
+    This is used by Registry to make plain objects function similarly
+    to lazily imported objects.
+
+    Objects can be any sort of python object (class, function, module,
+    instance, etc)
+    """
+
+    __slots__ = ['_obj']
+
+    def __init__(self, obj):
+        self._obj = obj
+
+    def get_obj(self):
+        """Get the object that was saved at creation time"""
+        return self._obj
+
+
+class _LazyObjectGetter(_ObjectGetter):
+    """Keep a record of a future object, and on request load it."""
+
+    __slots__ = ['_module_name', '_member_name', '_imported']
+
+    def __init__(self, module_name, member_name):
+        self._module_name = module_name
+        self._member_name = member_name
+        self._imported = False
+        super(_LazyObjectGetter, self).__init__(None)
+
+    def get_obj(self):
+        """Get the referenced object.
+
+        If not imported yet, this will import the requested module.
+        Further requests will just return the already imported object.
+        """
+        if not self._imported:
+            self._do_import()
+        return super(_LazyObjectGetter, self).get_obj()
+
+    def _do_import(self):
+        obj = __import__(self._module_name, globals(), locals(),
+                         [self._member_name])
+        if member_name:
+            obj = getattr(obj, member_name)
+        self._obj = obj
+        self._imported = True
+
+
 class Registry(object):
     """A class that registers objects to a name.
 
@@ -33,12 +83,12 @@ class Registry(object):
         self._help_dict = {}
         self._info_dict = {}
 
-    def register(self, key, object, help=None, info=None,
+    def register(self, key, obj, help=None, info=None,
                  override_existing=False):
         """Register a new object to a name.
 
         :param key: This is the key to use to request the object later.
-        :param object: The object to register.
+        :param obj: The object to register.
         :param help: Help text for this entry. This may be a string or
                 a callable. If it is a callable, it should take two
                 parameters, this registry and the key that the help was
@@ -53,7 +103,7 @@ class Registry(object):
         if not override_existing:
             if key in self._dict:
                 raise KeyError('Key %r already registered' % key)
-        self._dict[key] = (False, object)
+        self._dict[key] = _ObjectGetter(obj)
         self._add_help_and_info(key, help=help, info=info)
 
     def register_lazy(self, key, module_name, member_name,
@@ -74,7 +124,7 @@ class Registry(object):
         if not override_existing:
             if key in self._dict:
                 raise KeyError('Key %r already registered' % key)
-        self._dict[key] = (True, (module_name, member_name))
+        self._dict[key] = _LazyObjectGetter(module_name, member_name)
         self._add_help_and_info(key, help=help, info=info)
 
     def _add_help_and_info(self, key, help=None, info=None):
@@ -95,7 +145,7 @@ class Registry(object):
             raised.
         :return: The previously registered object.
         """
-        return self._get_one(self._get_key_or_default(key))
+        return self._dict[self._get_key_or_default(key)].get_obj()
 
     def _get_key_or_default(self, key=None):
         """Return either 'key' or the default key if key is None"""
@@ -105,27 +155,6 @@ class Registry(object):
             raise KeyError('Key is None, and no default key is set')
         else:
             return self.default_key
-
-    def _get_one(self, key):
-        """Attempt to return a single entry.
-
-        This will import the entry if it is lazy, and replace the registry
-        with the imported object.
-
-        This may raise KeyError if the given key doesn't exist, or ImportError
-        or AttributeError.
-        """
-        is_lazy, info_or_object = self._dict[key]
-        if not is_lazy:
-            # We have a real object to return
-            return info_or_object
-
-        module_name, member_name = info_or_object
-        obj = __import__(module_name, globals(), locals(), [member_name])
-        if member_name:
-            obj = getattr(obj, member_name)
-        self._dict[key] = (False, obj)
-        return obj
 
     def get_help(self, key=None):
         """Get the help text associated with the given key"""
@@ -153,8 +182,8 @@ class Registry(object):
         return sorted(self._dict.keys())
 
     def iteritems(self):
-        for key in self._dict.iterkeys():
-            yield key, self._get_one(key)
+        for key, getter in self._dict.iteritems():
+            yield key, getter.get_obj()
 
     def _set_default_key(self, key):
         if not self._dict.has_key(key):
