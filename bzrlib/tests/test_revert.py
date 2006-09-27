@@ -36,3 +36,40 @@ class TestRevert(tests.TestCaseWithTransport):
         target_tree.revert([])
         self.failIfExists('target/dir/contents')
         self.failIfExists('target/dir')
+
+    def test_revert_new(self):
+        """Only locally-changed new files should be preserved when reverting
+
+        When a file isn't present in revert's target tree:
+        If a file hasn't been committed, revert should unversion it, but not
+        delete it.
+        If a file has local changes, revert should unversion it, but not
+        delete it.
+        If a file has no changes from the last commit, revert should delete it.
+        If a file has changes due to a merge, revert should delete it.
+        """
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('empty tree')
+        merge_target = tree.bzrdir.sprout('merge_target').open_workingtree()
+        self.build_tree(['tree/new_file'])
+        tree.add('new_file')
+        basis_tree = tree.basis_tree()
+        tree.revert([])
+        self.failUnlessExists('tree/new_file')
+        tree.add('new_file')
+        tree.commit('add new_file')
+        tree.revert([], old_tree=basis_tree)
+        self.failIfExists('tree/new_file')
+        merge_target.merge_from_branch(tree.branch)
+        self.failUnlessExists('merge_target/new_file')
+        merge_target.revert([])
+        self.failIfExists('merge_target/new_file')
+        merge_target.merge_from_branch(tree.branch)
+        new_file = open('merge_target/new_file', 'wb')
+        try:
+            new_file.write('new_contents')
+        finally:
+            new_file.close()
+        self.failUnlessExists('merge_target/new_file')
+        merge_target.revert([])
+        self.failUnlessExists('merge_target/new_file')
