@@ -19,6 +19,9 @@ IN DEVELOPMENT
       allows us to have 1 inventory read, and 2 inventory writes when
       committing a new tree. (John Arbash Meinel)
 
+    * When reverting, files that are not locally modified that do not exist
+      in the target are deleted, not just unversioned (Aaron Bentley)
+
 bzr 0.11rc2  2006-09-27
 
   BUG FIXES:
