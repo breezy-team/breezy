@@ -877,8 +877,21 @@ class TestSmartProtocol(tests.TestCase):
         serialised = client._serialise_offsets(offsets)
         self.assertEqual(expected_serialised, serialised)
 
+    def build_protocol_waiting_for_body(self):
+        out_stream = StringIO()
+        protocol = smart.SmartServerRequestProtocolOne(out_stream, None)
+        protocol.has_dispatched = True
+        protocol.request = smart.SmartServerRequestHandler(None)
+        def handle_end_of_bytes():
+            self.end_received = True
+            self.assertEqual('abcdefg', protocol.request._body_bytes)
+            protocol.request.response = smart.SmartServerResponse(('ok', ))
+        protocol.request._end_of_body_handler = handle_end_of_bytes
+        return protocol
+
     def test_construct_version_one_server_protocol(self):
         protocol = smart.SmartServerRequestProtocolOne(None, None)
+        self.assertEqual('', protocol.excess_buffer)
         self.assertEqual('', protocol.in_buffer)
         self.assertFalse(protocol.has_dispatched)
         # Once refactoring is complete, we don't need these assertions
@@ -919,19 +932,40 @@ class TestSmartProtocol(tests.TestCase):
         self.assertTrue(protocol.has_dispatched)
 
     def test_accept_body_bytes_to_protocol(self):
-        out_stream = StringIO()
-        protocol = smart.SmartServerRequestProtocolOne(out_stream, None)
-        protocol.has_dispatched = True
-        protocol.request = smart.SmartServerRequestHandler(None)
-        def handle_end_of_bytes():
-            self.end_received = True
-            self.assertEqual('abcdefg', protocol.request._body_bytes)
-            protocol.request.response = smart.SmartServerResponse(('ok', ))
-        protocol.request._end_of_body_handler = handle_end_of_bytes
+        protocol = self.build_protocol_waiting_for_body()
         protocol.accept_bytes('7\nabc')
         protocol.accept_bytes('defgd')
         protocol.accept_bytes('one\n')
         self.assertTrue(self.end_received)
+
+    def test_accept_excess_bytes_are_preserved(self):
+        out_stream = StringIO()
+        protocol = smart.SmartServerRequestProtocolOne(out_stream, None)
+        protocol.accept_bytes('hello\nhello\n')
+        self.assertEqual("ok\x011\n", out_stream.getvalue())
+        self.assertEqual("hello\n", protocol.excess_buffer)
+        self.assertEqual("", protocol.in_buffer)
+
+    def test_accept_excess_bytes_after_body(self):
+        protocol = self.build_protocol_waiting_for_body()
+        protocol.accept_bytes('7\nabcdefgdone\nX')
+        self.assertTrue(self.end_received)
+        self.assertEqual("X", protocol.excess_buffer)
+        self.assertEqual("", protocol.in_buffer)
+        protocol.accept_bytes('Y')
+        self.assertEqual("XY", protocol.excess_buffer)
+        self.assertEqual("", protocol.in_buffer)
+
+    def test_accept_excess_bytes_after_dispatch(self):
+        out_stream = StringIO()
+        protocol = smart.SmartServerRequestProtocolOne(out_stream, None)
+        protocol.accept_bytes('hello\n')
+        self.assertEqual("ok\x011\n", out_stream.getvalue())
+        protocol.accept_bytes('hel')
+        self.assertEqual("hel", protocol.excess_buffer)
+        protocol.accept_bytes('lo\n')
+        self.assertEqual("hello\n", protocol.excess_buffer)
+        self.assertEqual("", protocol.in_buffer)
 
     def test_sync_with_request_sets_finished_reading(self):
         protocol = smart.SmartServerRequestProtocolOne(None, None)
@@ -1068,6 +1102,7 @@ class LengthPrefixedBodyDecoder(tests.TestCase):
     def test_construct(self):
         decoder = smart.LengthPrefixedBodyDecoder()
         self.assertFalse(decoder.finished_reading)
+        self.assertEqual(6, decoder.next_read_size())
         self.assertEqual('', decoder.read_pending_data())
         self.assertEqual('', decoder.unused_data)
 
@@ -1075,26 +1110,32 @@ class LengthPrefixedBodyDecoder(tests.TestCase):
         decoder = smart.LengthPrefixedBodyDecoder()
         decoder.accept_bytes('')
         self.assertFalse(decoder.finished_reading)
+        self.assertEqual(6, decoder.next_read_size())
         self.assertEqual('', decoder.read_pending_data())
         self.assertEqual('', decoder.unused_data)
         decoder.accept_bytes('7')
         self.assertFalse(decoder.finished_reading)
+        self.assertEqual(6, decoder.next_read_size())
         self.assertEqual('', decoder.read_pending_data())
         self.assertEqual('', decoder.unused_data)
         decoder.accept_bytes('\na')
         self.assertFalse(decoder.finished_reading)
+        self.assertEqual(11, decoder.next_read_size())
         self.assertEqual('a', decoder.read_pending_data())
         self.assertEqual('', decoder.unused_data)
         decoder.accept_bytes('bcdefgd')
         self.assertFalse(decoder.finished_reading)
+        self.assertEqual(4, decoder.next_read_size())
         self.assertEqual('bcdefg', decoder.read_pending_data())
         self.assertEqual('', decoder.unused_data)
         decoder.accept_bytes('one')
         self.assertFalse(decoder.finished_reading)
+        self.assertEqual(1, decoder.next_read_size())
         self.assertEqual('', decoder.read_pending_data())
         self.assertEqual('', decoder.unused_data)
         decoder.accept_bytes('\nblarg')
         self.assertTrue(decoder.finished_reading)
+        self.assertEqual(1, decoder.next_read_size())
         self.assertEqual('', decoder.read_pending_data())
         self.assertEqual('blarg', decoder.unused_data)
         
@@ -1102,6 +1143,7 @@ class LengthPrefixedBodyDecoder(tests.TestCase):
         decoder = smart.LengthPrefixedBodyDecoder()
         decoder.accept_bytes('1\nadone\nunused')
         self.assertTrue(decoder.finished_reading)
+        self.assertEqual(1, decoder.next_read_size())
         self.assertEqual('a', decoder.read_pending_data())
         self.assertEqual('unused', decoder.unused_data)
 
@@ -1109,10 +1151,12 @@ class LengthPrefixedBodyDecoder(tests.TestCase):
         decoder = smart.LengthPrefixedBodyDecoder()
         decoder.accept_bytes('1\na')
         self.assertFalse(decoder.finished_reading)
+        self.assertEqual(5, decoder.next_read_size())
         self.assertEqual('a', decoder.read_pending_data())
         self.assertEqual('', decoder.unused_data)
         decoder.accept_bytes('done\n')
         self.assertTrue(decoder.finished_reading)
+        self.assertEqual(1, decoder.next_read_size())
         self.assertEqual('', decoder.read_pending_data())
         self.assertEqual('', decoder.unused_data)
 

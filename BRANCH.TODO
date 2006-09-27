@@ -1,28 +1,10 @@
 # This file is for listing TODOs for branches that are being worked on.
 # It should ALWAYS be empty in the mainline or in integration branches.
-# 
+#
 
-Want to be able to tunnel smart client requests over HTTP
-
-Want to be able to get a smart client generically to try upgrade a read-only
-transport to read-write.
-
-We should be able to instantiate a smart server in a directory that does not
-exist (over HTTP).
-
-We should be able to handle chunked uploads.  HTTP 1.0 must have Content-length.  1.1
-must have Content-length or be a chunked upload.  So, to allow streaming from
-the client, we must do 1.1 with chunked POST bodies.  Specific test to write is
-that we do not over-read when reading chunked requests.  
-
-Chunked downloads.  1.0 allows no Content-length, but for integrity we should
-perform our own chunking.  1.1 allows chunked responses, and in this case we
-should chunk using the HTTP chunking as this will allow HTTP persistent safely,
-even if we have to stop early due to error.
-
-smart server request protocol accept bytes after first \n extra bytes.
+Fix three cases of read(1)-like problems:
+  * SmartClientRequestProtocolOne.read_body_bytes (DONE)
+  * SmartClientRequestProtocolOne._recv_tuple
+  * SmartServerStreamMedium._serve_one_request
 
 
-smart server protocol needs an optional end_of_bytes call to tell it that
-something finished early. I.e. a get upload that fails because the tcp
-connection resets.

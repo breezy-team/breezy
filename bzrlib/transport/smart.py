@@ -300,6 +300,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
     def __init__(self, output_stream, backing_transport):
         self._out_stream = output_stream
         self._backing_transport = backing_transport
+        self.excess_buffer = ''
         self.finished_reading = False
         self.in_buffer = ''
         self.has_dispatched = False
@@ -321,14 +322,16 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
             # XXX if in_buffer not \n-terminated this will do the wrong
             # thing.
             try:
-                assert self.in_buffer.endswith('\n')
-                req_args = _decode_tuple(self.in_buffer)
-                self.in_buffer = ''
+                first_line, self.in_buffer = self.in_buffer.split('\n', 1)
+                first_line += '\n'
+                req_args = _decode_tuple(first_line)
                 self.request = SmartServerRequestHandler(
                     self._backing_transport)
                 self.request.dispatch_command(req_args[0], req_args[1:])
                 if self.request.finished_reading:
                     # trivial request
+                    self.excess_buffer = self.in_buffer
+                    self.in_buffer = ''
                     self._send_response(self.request.response.args,
                         self.request.response.body)
                 self.sync_with_request(self.request)
@@ -344,6 +347,8 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
             if self.finished_reading:
                 # nothing to do.XXX: this routine should be a single state 
                 # machine too.
+                self.excess_buffer += self.in_buffer
+                self.in_buffer = ''
                 return
             if self._body_decoder is None:
                 self._body_decoder = LengthPrefixedBodyDecoder()
@@ -359,6 +364,8 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
             if self.request.response is not None:
                 self._send_response(self.request.response.args,
                     self.request.response.body)
+                self.excess_buffer = self.in_buffer
+                self.in_buffer = ''
             else:
                 assert not self.request.finished_reading, \
                     "no response and we have finished reading."
@@ -380,6 +387,7 @@ class LengthPrefixedBodyDecoder(object):
     """Decodes the length-prefixed bulk data."""
     
     def __init__(self):
+        self.bytes_left = None
         self.finished_reading = False
         self.unused_data = ''
         self.state_accept = self._state_accept_expecting_length
@@ -403,6 +411,22 @@ class LengthPrefixedBodyDecoder(object):
             current_state = self.state_accept
             self.state_accept('')
 
+    def next_read_size(self):
+        if self.bytes_left is not None:
+            # Ideally we want to read all the remainder of the body and the
+            # trailer in one go.
+            return self.bytes_left + 5
+        elif self.state_accept == self._state_accept_reading_trailer:
+            # Just the trailer left
+            return 5 - len(self._trailer_buffer)
+        elif self.state_accept == self._state_accept_expecting_length:
+            # There's still at least 6 bytes left ('\n' to end the length, plus
+            # 'done\n').
+            return 6
+        else:
+            # Reading excess data.  Either way, 1 byte at a time is fine.
+            return 1
+        
     def read_pending_data(self):
         """Return any pending data that has been decoded."""
         return self.state_read()
@@ -426,6 +450,7 @@ class LengthPrefixedBodyDecoder(object):
             if self.bytes_left != 0:
                 self._trailer_buffer = self._in_buffer[self.bytes_left:]
                 self._in_buffer = self._in_buffer[:self.bytes_left]
+            self.bytes_left = None
             self.state_accept = self._state_accept_reading_trailer
         
     def _state_accept_reading_trailer(self, bytes):
@@ -1472,20 +1497,20 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         if self._body_buffer is not None:
             return self._body_buffer.read(count)
         _body_decoder = LengthPrefixedBodyDecoder()
-        # grab a byte from the wire: we do this so that we dont use too much
-        # from the wire; we should have the LengthPrefixedBodyDecoder tell
-        # us how much is needed once the header is written.
-        # i.e. self._body_decoder.next_read_size() would be a hint. 
+
         while not _body_decoder.finished_reading:
-            byte = self._request.read_bytes(1)
-            _body_decoder.accept_bytes(byte)
+            bytes_wanted = _body_decoder.bytes_left
+            if bytes_wanted is None:
+                bytes_wanted = 1
+            bytes = self._request.read_bytes(bytes_wanted)
+            _body_decoder.accept_bytes(bytes)
         self._request.finished_reading()
         self._body_buffer = StringIO(_body_decoder.read_pending_data())
         # XXX: TODO check the trailer result.
         return self._body_buffer.read(count)
 
     def _recv_tuple(self):
-        """Recieve a tuple from the medium request."""
+        """Receive a tuple from the medium request."""
         line = ''
         while not line or line[-1] != '\n':
             # yes, this is inefficient - but tuples are short.

@@ -301,6 +301,17 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
 
         return combined
 
+    def _post(self, body_bytes):
+        """POST body_bytes to .bzr/smart on this transport.
+        
+        :returns: (response code, response body file-like object).
+        """
+        # TODO: Requiring all the body_bytes to be available at the beginning of
+        # the POST may require large client buffers.  It would be nice to have
+        # an interface that allows streaming via POST when possible (and
+        # degrades to a local buffer when not).
+        raise NotImplementedError(self._post)
+
     def put_file(self, relpath, f, mode=None):
         """Copy the file-like object into the location.
 
@@ -635,6 +646,13 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "application/octet-stream")
         transport = get_transport(self.server.test_case._home_dir)
+        # TODO: We might like to support streaming responses.  1.0 allows no
+        # Content-length in this case, so for integrity we should perform our
+        # own chunking within the stream.
+        # 1.1 allows chunked responses, and in this case we could chunk using
+        # the HTTP chunking as this will allow HTTP persistence safely, even if
+        # we have to stop early due to error, but we would also have to use the
+        # HTTP trailer facility which may not be widely available.
         out_buffer = StringIO()
         smart_protocol_request = smart.SmartServerRequestProtocolOne(out_buffer,
                 transport)
