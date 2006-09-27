@@ -16,8 +16,6 @@
 
 """A generator which creates a rio stanza of the current tree info"""
 
-from cStringIO import StringIO
-
 from bzrlib.rio import RioWriter, Stanza
 
 from bzrlib.version_info_formats import (
@@ -63,20 +61,14 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
                 log.add('id', revision_id)
                 log.add('message', message)
                 log.add('date', create_date_str(timestamp, timezone))
-            sio = StringIO()
-            log_writer = RioWriter(to_file=sio)
-            log_writer.write_stanza(log)
-            info.add('revisions', sio.getvalue())
+            info.add('revisions', log.to_unicode())
 
         if self._include_file_revs:
             files = Stanza()
             for path in sorted(self._file_revisions.keys()):
                 files.add('path', path)
                 files.add('revision', self._file_revisions[path])
-            sio = StringIO()
-            file_writer = RioWriter(to_file=sio)
-            file_writer.write_stanza(files)
-            info.add('file-revisions', sio.getvalue())
+            info.add('file-revisions', files.to_unicode())
 
         writer = RioWriter(to_file=to_file)
         writer.write_stanza(info)
