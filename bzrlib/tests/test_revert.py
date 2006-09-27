@@ -52,24 +52,28 @@ class TestRevert(tests.TestCaseWithTransport):
         tree.commit('empty tree')
         merge_target = tree.bzrdir.sprout('merge_target').open_workingtree()
         self.build_tree(['tree/new_file'])
+
+        # newly-added files should not be deleted
         tree.add('new_file')
         basis_tree = tree.basis_tree()
         tree.revert([])
         self.failUnlessExists('tree/new_file')
+
+        # unchanged files should be deleted
         tree.add('new_file')
         tree.commit('add new_file')
         tree.revert([], old_tree=basis_tree)
         self.failIfExists('tree/new_file')
+        
+        # files should be deleted if their changes came from merges
         merge_target.merge_from_branch(tree.branch)
         self.failUnlessExists('merge_target/new_file')
         merge_target.revert([])
         self.failIfExists('merge_target/new_file')
+
+        # files should not be deleted if changed after a merge
         merge_target.merge_from_branch(tree.branch)
-        new_file = open('merge_target/new_file', 'wb')
-        try:
-            new_file.write('new_contents')
-        finally:
-            new_file.close()
         self.failUnlessExists('merge_target/new_file')
+        self.build_tree_contents([('merge_target/new_file', 'new_contents')])
         merge_target.revert([])
         self.failUnlessExists('merge_target/new_file')
