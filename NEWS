@@ -177,7 +177,7 @@ bzr 0.11rc1  2006-09-25
       needs_tree_write_lock is provided in the workingtree module. Like the
       needs_read_lock and needs_write_lock decorators this allows static 
       declaration of the locking requirements of a function to ensure that
-      a lock is taken out for casual scripts. (Robert Collins)
+      a lock is taken out for casual scripts. (Robert Collins, #54107)
 
     * All WorkingTree methods which write to the tree, but not to the branch
       have been converted to use ``needs_tree_write_lock`` rather than 
