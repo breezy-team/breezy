@@ -116,6 +116,7 @@ from bzrlib.transport import Transport
 from bzrlib.osutils import rand_chars, format_delta
 from bzrlib.rio import read_stanza, Stanza
 
+
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a
 # lock at the same time they should *both* get it.  But then that's unlikely
@@ -130,8 +131,10 @@ from bzrlib.rio import read_stanza, Stanza
 # TODO: Make sure to pass the right file and directory mode bits to all
 # files/dirs created.
 
-_DEFAULT_TIMEOUT_SECONDS = 3600
+
+_DEFAULT_TIMEOUT_SECONDS = 300
 _DEFAULT_POLL_SECONDS = 1.0
+
 
 class LockDir(object):
     """Write-lock guarding access to data."""

@@ -21,7 +21,6 @@ import os
 import socket
 import stat
 import sys
-import time
 
 import bzrlib
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
@@ -151,42 +150,41 @@ class TestOSUtils(TestCaseInTempDir):
         finally:
             os.umask(orig_umask)
 
+    def assertFormatedDelta(self, expected, seconds):
+        """Assert osutils.format_delta formats as expected"""
+        actual = osutils.format_delta(seconds)
+        self.assertEqual(expected, actual)
+
     def test_format_delta(self):
-        t = time.time()
-
-        def check(expected, delta):
-            actual = osutils.format_delta(delta)
-            self.assertEqual(expected, actual)
-
-        check('0 seconds ago', 0)
-        check('1 second ago', 1)
-        check('10 seconds ago', 10)
-        check('59 seconds ago', 59)
-        check('89 seconds ago', 89)
-        check('1 minute, 30 seconds ago', 90)
-        check('3 minutes, 0 seconds ago', 180)
-        check('3 minutes, 1 second ago', 181)
-        check('10 minutes, 15 seconds ago', 615)
-        check('30 minutes, 59 seconds ago', 1859)
-        check('31 minutes, 0 seconds ago', 1860)
-        check('60 minutes, 0 seconds ago', 3600)
-        check('89 minutes, 59 seconds ago', 5399)
-        check('1 hour, 30 minutes ago', 5400)
-        check('2 hours, 30 minutes ago', 9017)
-        check('10 hours, 0 minutes ago', 36000)
-        check('24 hours, 0 minutes ago', 86400)
-        check('35 hours, 59 minutes ago', 129599)
-        check('36 hours, 0 minutes ago', 129600)
-        check('36 hours, 0 minutes ago', 129601)
-        check('36 hours, 1 minute ago', 129660)
-        check('36 hours, 1 minute ago', 129661)
-        check('84 hours, 10 minutes ago', 303002)
+        self.assertFormatedDelta('0 seconds ago', 0)
+        self.assertFormatedDelta('1 second ago', 1)
+        self.assertFormatedDelta('10 seconds ago', 10)
+        self.assertFormatedDelta('59 seconds ago', 59)
+        self.assertFormatedDelta('89 seconds ago', 89)
+        self.assertFormatedDelta('1 minute, 30 seconds ago', 90)
+        self.assertFormatedDelta('3 minutes, 0 seconds ago', 180)
+        self.assertFormatedDelta('3 minutes, 1 second ago', 181)
+        self.assertFormatedDelta('10 minutes, 15 seconds ago', 615)
+        self.assertFormatedDelta('30 minutes, 59 seconds ago', 1859)
+        self.assertFormatedDelta('31 minutes, 0 seconds ago', 1860)
+        self.assertFormatedDelta('60 minutes, 0 seconds ago', 3600)
+        self.assertFormatedDelta('89 minutes, 59 seconds ago', 5399)
+        self.assertFormatedDelta('1 hour, 30 minutes ago', 5400)
+        self.assertFormatedDelta('2 hours, 30 minutes ago', 9017)
+        self.assertFormatedDelta('10 hours, 0 minutes ago', 36000)
+        self.assertFormatedDelta('24 hours, 0 minutes ago', 86400)
+        self.assertFormatedDelta('35 hours, 59 minutes ago', 129599)
+        self.assertFormatedDelta('36 hours, 0 minutes ago', 129600)
+        self.assertFormatedDelta('36 hours, 0 minutes ago', 129601)
+        self.assertFormatedDelta('36 hours, 1 minute ago', 129660)
+        self.assertFormatedDelta('36 hours, 1 minute ago', 129661)
+        self.assertFormatedDelta('84 hours, 10 minutes ago', 303002)
 
         # We handle when time steps the wrong direction because computers
         # don't have synchronized clocks.
-        check('84 hours, 10 minutes in the future', -303002)
-        check('1 second in the future', -1)
-        check('2 seconds in the future', -2)
+        self.assertFormatedDelta('84 hours, 10 minutes in the future', -303002)
+        self.assertFormatedDelta('1 second in the future', -1)
+        self.assertFormatedDelta('2 seconds in the future', -2)
 
 
 class TestSafeUnicode(TestCase):

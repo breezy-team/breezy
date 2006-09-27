@@ -412,21 +412,29 @@ class TestLockDir(TestCaseWithTransport):
         lock_base = lf2.transport.abspath(lf2.path)
         self.assertEqual(2, len(self._logged_reports))
 
-        def check_one(index, msg):
-            self.assertEqual('%s %s\n'
-                             '%s\n%s\n'
-                             'Will continue to try until %s\n',
-                             self._logged_reports[index][0])
-            args = self._logged_reports[index][1]
-            self.assertEqual(msg, args[0])
-            self.assertEqual('lock %s' % (lock_base,), args[1])
-            self.assertStartsWith(args[2], 'held by ')
-            self.assertStartsWith(args[3], 'locked ')
-            self.assertEndsWith(args[3], ' ago')
-            self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
+        self.assertEqual('%s %s\n'
+                         '%s\n%s\n'
+                         'Will continue to try until %s\n',
+                         self._logged_reports[0][0])
+        args = self._logged_reports[0][1]
+        self.assertEqual('Unable to obtain', args[0])
+        self.assertEqual('lock %s' % (lock_base,), args[1])
+        self.assertStartsWith(args[2], 'held by ')
+        self.assertStartsWith(args[3], 'locked ')
+        self.assertEndsWith(args[3], ' ago')
+        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
 
-        check_one(0, 'Unable to obtain')
-        check_one(1, 'Lock owner changed for')
+        self.assertEqual('%s %s\n'
+                         '%s\n%s\n'
+                         'Will continue to try until %s\n',
+                         self._logged_reports[1][0])
+        args = self._logged_reports[1][1]
+        self.assertEqual('Lock owner changed for', args[0])
+        self.assertEqual('lock %s' % (lock_base,), args[1])
+        self.assertStartsWith(args[2], 'held by ')
+        self.assertStartsWith(args[3], 'locked ')
+        self.assertEndsWith(args[3], ' ago')
+        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
 
     def test_40_confirm_easy(self):
         """Confirm a lock that's already held"""
