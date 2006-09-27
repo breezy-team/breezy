@@ -65,6 +65,7 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_pull',
         'bzrlib.tests.workingtree_implementations.test_put_file',
         'bzrlib.tests.workingtree_implementations.test_mkdir',
+        'bzrlib.tests.workingtree_implementations.test_subsume',
         'bzrlib.tests.workingtree_implementations.test_unversion',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]

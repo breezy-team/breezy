@@ -803,6 +803,18 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             pb.finished()
         return conflicts
 
+    @needs_write_lock
+    def subsume(self, other_tree):
+        other_tree_path = self.relpath(other_tree.basedir)
+        other_root = other_tree.inventory.root
+        other_root.parent_id = self.path2id(osutils.dirname(other_tree_path))
+        assert other_root.parent_id is not None
+        other_root.name = osutils.basename(other_tree_path)
+        self.inventory.add(other_root)
+        for parent_id in other_tree.get_parent_ids():
+            self.add_parent_tree_id(parent_id)
+
+
     @needs_read_lock
     def merge_modified(self):
         try:
