@@ -147,22 +147,6 @@ class TestCommands(ExternalBase):
         test.runbzr('add goodbye')
         test.runbzr('commit -m setup goodbye')
 
-    def test_inventory(self):
-        bzr = self.runbzr
-        def output_equals(value, *args):
-            out = self.runbzr(['inventory'] + list(args), backtick=True)
-            self.assertEquals(out, value)
-
-        bzr('init')
-        open('a', 'wb').write('hello\n')
-        os.mkdir('b')
-
-        bzr('add a b')
-        bzr('commit -m add')
-
-        output_equals('a\n', '--kind', 'file')
-        output_equals('b\n', '--kind', 'directory')
-
     def test_pull_verbose(self):
         """Pull changes from one branch to another and watch the output."""
 

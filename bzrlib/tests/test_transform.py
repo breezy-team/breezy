@@ -541,6 +541,21 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertTrue(wt.is_executable('soc'))
         self.assertTrue(wt.is_executable('sac'))
 
+    def test_preserve_mode(self):
+        """File mode is preserved when replacing content"""
+        if sys.platform == 'win32':
+            raise TestSkipped('chmod has no effect on win32')
+        transform, root = self.get_transform()
+        transform.new_file('file1', root, 'contents', 'file1-id', True)
+        transform.apply()
+        self.assertTrue(self.wt.is_executable('file1-id'))
+        transform, root = self.get_transform()
+        file1_id = transform.trans_id_tree_file_id('file1-id')
+        transform.delete_contents(file1_id)
+        transform.create_file('contents2', file1_id)
+        transform.apply()
+        self.assertTrue(self.wt.is_executable('file1-id'))
+
     def test__set_mode_stats_correctly(self):
         """_set_mode stats to determine file mode."""
         if sys.platform == 'win32':

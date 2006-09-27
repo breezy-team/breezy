@@ -42,7 +42,7 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.commit('b', rev_id='r2')
 
         self.build_tree_contents([('branch/a', 'new contents\n')])
-        wt.commit('a2', rev_id='r3')
+        wt.commit(u'\xe52', rev_id='r3')
 
         return wt
 
@@ -77,7 +77,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(val, 'id: r2')
         self.assertContainsRe(val, 'message: b')
         self.assertContainsRe(val, 'id: r3')
-        self.assertContainsRe(val, 'message: a2')
+        self.assertContainsRe(val, 'message: \xc3\xa52') # utf8 encoding '\xe5'
 
     def test_rio_version(self):
         wt = self.create_branch()
@@ -120,7 +120,7 @@ class TestVersionInfo(TestCaseWithTransport):
         stanza = regen(include_revision_history=True)
         revision_stanza = get_one_stanza(stanza, 'revisions')
         self.assertEqual(['r1', 'r2', 'r3'], revision_stanza.get_all('id'))
-        self.assertEqual(['a', 'b', 'a2'], revision_stanza.get_all('message'))
+        self.assertEqual(['a', 'b', u'\xe52'], revision_stanza.get_all('message'))
         self.assertEqual(3, len(revision_stanza.get_all('date')))
 
         # a was modified, so it should show up modified again
@@ -195,7 +195,7 @@ class TestVersionInfo(TestCaseWithTransport):
 
         rev_info = [(rev, message) for rev, message, timestamp, timezone
                                    in tvi.revisions]
-        self.assertEqual([('r1', 'a'), ('r2', 'b'), ('r3', 'a2')], rev_info)
+        self.assertEqual([('r1', 'a'), ('r2', 'b'), ('r3', u'\xe52')], rev_info)
 
         # a was modified, so it should show up modified again
         self.build_tree(['branch/a', 'branch/c'])

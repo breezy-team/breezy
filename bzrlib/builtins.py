@@ -54,6 +54,7 @@ from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 from bzrlib.transport.local import LocalTransport
+import bzrlib.tree
 from bzrlib.workingtree import WorkingTree
 
 
@@ -361,26 +362,49 @@ class cmd_inventory(Command):
     """Show inventory of the current working copy or a revision.
 
     It is possible to limit the output to a particular entry
-    type using the --kind option.  For example; --kind file.
+    type using the --kind option.  For example: --kind file.
+
+    It is also possible to restrict the list of files to a specific
+    set. For example: bzr inventory --show-ids this/file
     """
 
     takes_options = ['revision', 'show-ids', 'kind']
-    
+    takes_args = ['file*']
+
     @display_command
-    def run(self, revision=None, show_ids=False, kind=None):
+    def run(self, revision=None, show_ids=False, kind=None, file_list=None):
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise BzrCommandError('invalid kind specified')
-        tree = WorkingTree.open_containing(u'.')[0]
-        if revision is None:
-            inv = tree.read_working_inventory()
-        else:
+
+        work_tree, file_list = tree_files(file_list)
+
+        if revision is not None:
             if len(revision) > 1:
                 raise BzrCommandError('bzr inventory --revision takes'
-                    ' exactly one revision identifier')
-            inv = tree.branch.repository.get_revision_inventory(
-                revision[0].in_history(tree.branch).rev_id)
+                                      ' exactly one revision identifier')
+            revision_id = revision[0].in_history(work_tree.branch).rev_id
+            tree = work_tree.branch.repository.revision_tree(revision_id)
+                        
+            # We include work_tree as well as 'tree' here
+            # So that doing '-r 10 path/foo' will lookup whatever file
+            # exists now at 'path/foo' even if it has been renamed, as
+            # well as whatever files existed in revision 10 at path/foo
+            trees = [tree, work_tree]
+        else:
+            tree = work_tree
+            trees = [tree]
 
-        for path, entry in inv.entries():
+        if file_list is not None:
+            file_ids = bzrlib.tree.find_ids_across_trees(file_list, trees,
+                                                      require_versioned=True)
+            # find_ids_across_trees may include some paths that don't
+            # exist in 'tree'.
+            entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
+                             for file_id in file_ids if file_id in tree)
+        else:
+            entries = tree.inventory.entries()
+
+        for path, entry in entries:
             if kind and kind != entry.kind:
                 continue
             if show_ids:
@@ -2004,6 +2028,7 @@ class cmd_selftest(Command):
                 test_suite_factory = benchmarks.test_suite
                 if verbose is None:
                     verbose = True
+                # TODO: should possibly lock the history file...
                 benchfile = open(".perf_history", "at")
             else:
                 test_suite_factory = None
