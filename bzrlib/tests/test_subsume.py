@@ -25,28 +25,52 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         format.repository_format = repository.RepositoryFormatKnit2()
         return format
 
+    def get_knit1_format(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit1()
+        return format
+
     def make_branch_and_tree(self, relpath, format=None):
         if format is None:
             format = self.get_knit2_format()
         return tests.TestCaseWithTransport.make_branch_and_tree(self, relpath, 
                                                           format)
 
-    def make_trees(self, format=None):
+    def make_trees(self, format=None, same_root=False):
         self.build_tree(['tree/', 
                          'tree/file',
                          'tree/subtree/',
                          'tree/subtree/file2'])
-        base_tree = self.make_branch_and_tree('tree')
+        base_tree = self.make_branch_and_tree('tree', format=format)
         base_tree.add('file', 'file-id')
         base_tree.commit('first commit', rev_id='tree-1')
-        sub_tree = self.make_branch_and_tree('tree/subtree')
+        sub_tree = self.make_branch_and_tree('tree/subtree', 
+                                             format=self.get_knit1_format())
+        if same_root is True:
+            sub_tree.set_root_id(base_tree.get_root_id())
         sub_tree.add('file2', 'file2-id')
         sub_tree.commit('first commit', rev_id='subtree-1')
-        assert base_tree.get_root_id() != sub_tree.get_root_id()
         return base_tree, sub_tree
+
+    def test_old_knit1_failure(self):
+        """Ensure that BadSubsumeSource is raised.
+
+        SubsumeTargetNeedsUpgrade must not be raised, because upgrading the
+        target won't help.
+        """
+        base_tree, sub_tree = self.make_trees(format=self.get_knit1_format(),
+                                              same_root=True)
+        self.assertRaises(errors.BadSubsumeSource, base_tree.subsume, 
+                          sub_tree)
+
+    def test_knit1_failure(self):
+        base_tree, sub_tree = self.make_trees(format=self.get_knit1_format())
+        self.assertRaises(errors.SubsumeTargetNeedsUpgrade, base_tree.subsume, 
+                          sub_tree)
 
     def test_subsume_tree(self):
         base_tree, sub_tree = self.make_trees()
+        assert base_tree.get_root_id() != sub_tree.get_root_id()
         sub_root_id = sub_tree.get_root_id()
         base_tree.subsume(sub_tree)
         self.assertEqual(['tree-1', 'subtree-1'], base_tree.get_parent_ids())
@@ -77,15 +101,15 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         if base_tree.get_root_id() == sub_tree.get_root_id():
             raise tests.TestSkipped('This test requires unique roots')
         sub_root_id = sub_tree.get_root_id()
-        self.assertRaises(errors.BadSubsumeTarget, base_tree.subsume, 
+        self.assertRaises(errors.BadSubsumeSource, base_tree.subsume, 
                           base_tree)
-        self.assertRaises(errors.BadSubsumeTarget, sub_tree.subsume, 
+        self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume, 
                           base_tree)
         self.build_tree(['subtree2/'])
         sub_tree2 = self.make_branch_and_tree('subtree2')
-        self.assertRaises(errors.BadSubsumeTarget, sub_tree.subsume, 
+        self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume, 
                           sub_tree2)
         self.build_tree(['tree/subtree/subtree3/'])
         sub_tree3 = self.make_branch_and_tree('tree/subtree/subtree3')
-        self.assertRaises(errors.BadSubsumeTarget, base_tree.subsume,
+        self.assertRaises(errors.BadSubsumeSource, base_tree.subsume,
                           sub_tree3)

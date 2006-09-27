@@ -1271,9 +1271,17 @@ class ImportNameCollision(BzrNewError):
         BzrNewError.__init__(self)
         self.name = name
 
-class BadSubsumeTarget(BzrNewError):
+class BadSubsumeSource(BzrNewError):
     """Can't subsume %(other_tree)s into %(tree)s.  %(reason)s"""
+
     def __init__(self, tree, other_tree, reason):
         self.tree = tree
         self.other_tree = other_tree
         self.reason = reason
+
+
+class SubsumeTargetNeedsUpgrade(BzrNewError):
+    """Subsume target %(other_tree)s needs to be upgraded."""
+
+    def __init__(self, other_tree):
+        self.other_tree = other_tree

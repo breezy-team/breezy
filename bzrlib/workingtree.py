@@ -811,17 +811,25 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 if child_entry.kind == 'directory':
                     add_children(inventory, child_entry)
         if other_tree.get_root_id() == self.get_root_id():
-            raise errors.BadSubsumeTarget(self, other_tree, 
+            raise errors.BadSubsumeSource(self, other_tree, 
                                           'Trees have the same root')
         try:
             other_tree_path = self.relpath(other_tree.basedir)
         except errors.PathNotChild:
-            raise errors.BadSubsumeTarget(self, other_tree, 
+            raise errors.BadSubsumeSource(self, other_tree, 
                 'Tree is not contained by the other')
         new_root_parent = self.path2id(osutils.dirname(other_tree_path))
         if new_root_parent is None:
-            raise errors.BadSubsumeTarget(self, other_tree, 
+            raise errors.BadSubsumeSource(self, other_tree, 
                 'Parent directory is not versioned.')
+        # We need to ensure that the result of a fetch will have a
+        # versionedfile for the other_tree root, and only fetching into
+        # RepositoryKnit2 guarantees that.
+        try:
+            basis_tree = self.basis_tree()
+            basis_tree.get_file_text(basis_tree.inventory.root.file_id)
+        except NoSuchFile:
+            raise errors.SubsumeTargetNeedsUpgrade(other_tree)
         other_tree.lock_tree_write()
         try:
             for parent_id in other_tree.get_parent_ids():
