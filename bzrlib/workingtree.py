@@ -815,7 +815,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 'Tree is not contained by the other')
         other_root = other_tree.inventory.root
         other_root.parent_id = self.path2id(osutils.dirname(other_tree_path))
-        assert other_root.parent_id is not None
+        if other_root.parent_id is None:
+            raise errors.BadSubsumeTarget(self, other_tree, 
+                'Parent directory is not versioned.')
         other_root.name = osutils.basename(other_tree_path)
         self.inventory.add(other_root)
         for parent_id in other_tree.get_parent_ids():

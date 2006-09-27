@@ -58,3 +58,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         sub_tree2 = self.make_branch_and_tree('subtree2')
         self.assertRaises(errors.BadSubsumeTarget, sub_tree.subsume, 
                           sub_tree2)
+        self.build_tree(['tree/subtree/subtree3/'])
+        sub_tree3 = self.make_branch_and_tree('tree/subtree/subtree3')
+        self.assertRaises(errors.BadSubsumeTarget, base_tree.subsume,
+                          sub_tree3)
