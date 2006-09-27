@@ -805,7 +805,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_write_lock
     def subsume(self, other_tree):
-        other_tree_path = self.relpath(other_tree.basedir)
+        if other_tree.get_root_id() == self.get_root_id():
+            raise errors.BadSubsumeTarget(self, other_tree, 
+                                          'Trees have the same root')
+        try:
+            other_tree_path = self.relpath(other_tree.basedir)
+        except errors.PathNotChild:
+            raise errors.BadSubsumeTarget(self, other_tree, 
+                'Tree is not contained by the other')
         other_root = other_tree.inventory.root
         other_root.parent_id = self.path2id(osutils.dirname(other_tree_path))
         assert other_root.parent_id is not None
