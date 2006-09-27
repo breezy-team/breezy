@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import bzrdir, errors, repository, tests
+from bzrlib import bzrdir, errors, repository, workingtree, tests
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -81,6 +81,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
             file2_contents = file2.read()
         finally:
             file2.close()
+        base_tree = workingtree.WorkingTree.open('tree')
         base_tree.commit('combined', rev_id='combined-1')
         self.assertEqual('file2-id', base_tree.path2id('subtree/file2'))
         self.assertEqual('subtree/file2', base_tree.id2path('file2-id'))
