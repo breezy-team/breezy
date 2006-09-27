@@ -353,8 +353,7 @@ class LockDir(object):
     def _parse_info(self, info_file):
         return read_stanza(info_file.readlines()).as_dict()
 
-    def wait_lock(self, timeout=_DEFAULT_TIMEOUT_SECONDS,
-                  poll=_DEFAULT_POLL_SECONDS):
+    def wait_lock(self, timeout=None, poll=None):
         """Wait a certain period for a lock.
 
         If the lock can be acquired within the bounded time, it
@@ -363,6 +362,11 @@ class LockDir(object):
         approximately `timeout` seconds.  (It may be a bit more if
         a transport operation takes a long time to complete.)
         """
+        if timeout is None:
+            timeout = _DEFAULT_TIMEOUT_SECONDS
+        if poll is None:
+            poll = _DEFAULT_POLL_SECONDS
+
         # XXX: the transport interface doesn't let us guard 
         # against operations there taking a long time.
         deadline = time.time() + timeout
