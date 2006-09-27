@@ -805,6 +805,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_write_lock
     def subsume(self, other_tree):
+        def add_children(inventory, entry):
+            for child_entry in entry.children.values():
+                inventory._byid[child_entry.file_id] = child_entry
+                if child_entry.kind == 'directory':
+                    add_children(inventory, child_entry)
         if other_tree.get_root_id() == self.get_root_id():
             raise errors.BadSubsumeTarget(self, other_tree, 
                                           'Trees have the same root')
@@ -813,15 +818,23 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         except errors.PathNotChild:
             raise errors.BadSubsumeTarget(self, other_tree, 
                 'Tree is not contained by the other')
-        other_root = other_tree.inventory.root
-        other_root.parent_id = self.path2id(osutils.dirname(other_tree_path))
-        if other_root.parent_id is None:
+        new_root_parent = self.path2id(osutils.dirname(other_tree_path))
+        if new_root_parent is None:
             raise errors.BadSubsumeTarget(self, other_tree, 
                 'Parent directory is not versioned.')
-        other_root.name = osutils.basename(other_tree_path)
-        self.inventory.add(other_root)
-        for parent_id in other_tree.get_parent_ids():
-            self.add_parent_tree_id(parent_id)
+        other_tree.lock_tree_write()
+        try:
+            for parent_id in other_tree.get_parent_ids():
+                self.branch.fetch(other_tree.branch, parent_id)
+                self.add_parent_tree_id(parent_id)
+            other_root = other_tree.inventory.root
+            other_root.parent_id = new_root_parent
+            other_root.name = osutils.basename(other_tree_path)
+            self.inventory.add(other_root)
+            add_children(self.inventory, other_root)
+            self._write_inventory(self.inventory)
+        finally:
+            other_tree.unlock()
 
 
     @needs_read_lock

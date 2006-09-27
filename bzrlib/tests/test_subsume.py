@@ -14,13 +14,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import errors, tests
+from bzrlib import bzrdir, errors, repository, tests
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
-class TestWorkingTree(TestCaseWithWorkingTree):
+class TestWorkingTree(tests.TestCaseWithTransport):
 
-    def make_trees(self):
+    def get_knit2_format(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        return format
+
+    def make_branch_and_tree(self, relpath, format=None):
+        if format is None:
+            format = self.get_knit2_format()
+        return tests.TestCaseWithTransport.make_branch_and_tree(self, relpath, 
+                                                          format)
+
+    def make_trees(self, format=None):
         self.build_tree(['tree/', 
                          'tree/file',
                          'tree/subtree/',
@@ -31,19 +42,35 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         sub_tree = self.make_branch_and_tree('tree/subtree')
         sub_tree.add('file2', 'file2-id')
         sub_tree.commit('first commit', rev_id='subtree-1')
-        if base_tree.get_root_id() == sub_tree.get_root_id():
-            raise tests.TestSkipped('This test requires unique roots')
+        assert base_tree.get_root_id() != sub_tree.get_root_id()
         return base_tree, sub_tree
 
     def test_subsume_tree(self):
         base_tree, sub_tree = self.make_trees()
-        if base_tree.get_root_id() == sub_tree.get_root_id():
-            raise tests.TestSkipped('This test requires unique roots')
         sub_root_id = sub_tree.get_root_id()
         base_tree.subsume(sub_tree)
         self.assertEqual(['tree-1', 'subtree-1'], base_tree.get_parent_ids())
         self.assertEqual(sub_root_id, base_tree.path2id('subtree'))
         self.assertEqual('file2-id', base_tree.path2id('subtree/file2'))
+        file2 = open('tree/subtree/file2', 'rb')
+        try:
+            file2_contents = file2.read()
+        finally:
+            file2.close()
+        base_tree.commit('combined', rev_id='combined-1')
+        self.assertEqual('file2-id', base_tree.path2id('subtree/file2'))
+        self.assertEqual('subtree/file2', base_tree.id2path('file2-id'))
+        self.assertEqualDiff(file2_contents, 
+                             base_tree.get_file_text('file2-id'))
+        basis_tree = base_tree.basis_tree()
+        self.assertEqualDiff(file2_contents, 
+                             base_tree.get_file_text('file2-id'))
+        self.assertEqualDiff(file2_contents, 
+                             basis_tree.get_file_text('file2-id'))
+        self.assertEqual('subtree-1', 
+                         basis_tree.inventory['file2-id'].revision)
+        self.assertEqual('combined-1', 
+                         basis_tree.inventory[sub_root_id].revision)
 
     def test_subsume_failure(self):
         base_tree, sub_tree = self.make_trees()
