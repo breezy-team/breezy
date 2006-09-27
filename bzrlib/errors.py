@@ -398,6 +398,14 @@ class IncompatibleFormat(BzrNewError):
         self.bzrdir = bzrdir_format
 
 
+class IncompatibleRevision(BzrNewError):
+    """Revision is not compatible with %(repo_format)s"""
+
+    def __init__(self, repo_format):
+        BzrNewError.__init__(self)
+        self.repo_format = repo_format
+
+
 class NotVersionedError(BzrNewError):
     """%(path)s is not versioned"""
     def __init__(self, path):
@@ -823,7 +831,7 @@ class SmartProtocolError(TransportError):
 
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
-    """Transport operation not possible: %(msg)s %(orig_error)%"""
+    """Transport operation not possible: %(msg)s %(orig_error)s"""
 
 
 class ConnectionError(TransportError):
@@ -1186,6 +1194,15 @@ class UnsupportedEOLMarker(BadBundle):
 
     def __init__(self):
         BzrNewError.__init__(self)
+
+
+class IncompatibleFormat(BzrNewError):
+    """Bundle format %(bundle_format)s is incompatible with %(other)s"""
+
+    def __init__(self, bundle_format, other):
+        BzrNewError.__init__(self)
+        self.bundle_format = bundle_format
+        self.other = other
 
 
 class BadInventoryFormat(BzrNewError):

@@ -843,7 +843,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             return '?'
 
-    def list_files(self):
+    def list_files(self, include_root=False):
         """Recursively list all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
@@ -854,6 +854,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         Skips the control directory.
         """
         inv = self._inventory
+        if include_root is True:
+            yield ('', 'V', 'directory', inv.root.file_id, inv.root)
         # Convert these into local objects to save lookup times
         pathjoin = osutils.pathjoin
         file_kind = osutils.file_kind
