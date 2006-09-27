@@ -174,19 +174,10 @@ def merge_sort(graph, branch_tip, mainline_revisions=None, generate_revno=False)
                                old revision listed in the mainline revisions
                                list.
                                The order for this parameter is oldest-first.
-    :generate_revno: Optional parameter controlling the generation of revision
-        number sequences in the output. See the output description of the
-        MergeSorter docstrng for details.
-
-    The result is a list sorted to that all parents come before
-    their children. Each element of the list is a tuple containing:
-    (sequence_number, node_name, merge_depth, end_of_merge)
-     * sequence_number: The sequence of this row in the output. Useful for 
-       GUIs.
-     * node_name: The node name, opaque text to the merge routine.
-     * merge_depth: How many levels of merging deep this node has been found.
-     * end_of_merge: When True the next node is part of a different merge.
-
+    :param generate_revno: Optional parameter controlling the generation of
+        revision number sequences in the output. See the output description of
+        the MergeSorter docstring for details.
+    :result: See the MergeSorter docstring for details.
     node identifiers can be any hashable object, and are typically strings.
     """
     return MergeSorter(graph, branch_tip, mainline_revisions,
@@ -215,16 +206,16 @@ class MergeSorter(object):
                                old revision listed in the mainline revisions
                                list.
                                The order for this parameter is oldest-first.
-        :generate_revno: Optional parameter controlling the generation of
+        :param generate_revno: Optional parameter controlling the generation of
             revision number sequences in the output. See the output description
             for more details.
 
-        The result is a list sorted to that all parents come before
+        The result is a list sorted so that all parents come before
         their children. Each element of the list is a tuple containing:
         (sequence_number, node_name, merge_depth, end_of_merge)
          * sequence_number: The sequence of this row in the output. Useful for 
            GUIs.
-         * node_name: The node name, opaque text to the merge routine.
+         * node_name: The node name: opaque text to the merge routine.
          * merge_depth: How many levels of merging deep this node has been
            found.
          * revno_sequence: When requested this field provides a sequence of
