@@ -714,6 +714,9 @@ class Repository(object):
         warning("Format %s for %s is deprecated - please use 'bzr upgrade' to get better performance"
                 % (self._format, self.bzrdir.transport.base))
 
+    def supports_rich_root(self):
+        return self._format.rich_root_data
+
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
@@ -782,10 +785,12 @@ def install_revision(repository, rev, revision_tree):
             parent_trees[p_id] = repository.revision_tree(None)
 
     inv = revision_tree.inventory
-    
-    # backwards compatability hack: skip the root id.
     entries = inv.iter_entries()
-    entries.next()
+    # backwards compatability hack: skip the root id.
+    if not repository.supports_rich_root():
+        path, root = entries.next()
+        if root.revision != rev.revision_id:
+            raise errors.IncompatibleRevision(repr(repository))
     # Add the texts that are not already present
     for path, ie in entries:
         w = repository.weave_store.get_weave_or_empty(ie.file_id,
@@ -2311,6 +2316,18 @@ class CommitBuilder(object):
             self.new_inventory, self._config)
         return self._new_revision_id
 
+    def revision_tree(self):
+        """Return the tree that was just committed.
+
+        After calling commit() this can be called to get a RevisionTree
+        representing the newly committed tree. This is preferred to
+        calling Repository.revision_tree() because that may require
+        deserializing the inventory, while we already have a copy in
+        memory.
+        """
+        return RevisionTree(self.repository, self.new_inventory,
+                            self._new_revision_id)
+
     def finish_inventory(self):
         """Tell the builder that the inventory is finished."""
         if self.new_inventory.root is None:
@@ -2372,10 +2389,9 @@ class CommitBuilder(object):
 
         # In this revision format, root entries have no knit or weave
         if ie is self.new_inventory.root:
-            if len(parent_invs):
-                ie.revision = parent_invs[0].root.revision
-            else:
-                ie.revision = None
+            # When serializing out to disk and back in
+            # root.revision is always _new_revision_id
+            ie.revision = self._new_revision_id
             return
         previous_entries = ie.find_previous_heads(
             parent_invs,

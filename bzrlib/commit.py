@@ -332,11 +332,8 @@ class Commit(object):
             # and now do the commit locally.
             self.branch.append_revision(self.rev_id)
 
-            # if the builder gave us the revisiontree it created back, we
-            # could use it straight away here.
-            # TODO: implement this.
-            self.work_tree.set_parent_trees([(self.rev_id,
-                self.branch.repository.revision_tree(self.rev_id))])
+            rev_tree = self.builder.revision_tree()
+            self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             # now the work tree is up to date with the branch
             
             self.reporter.completed(self.branch.revno(), self.rev_id)
@@ -353,18 +350,53 @@ class Commit(object):
             self._cleanup()
         return self.rev_id
 
+    def _any_real_changes(self):
+        """Are there real changes between new_inventory and basis?
+
+        For trees without rich roots, inv.root.revision changes every commit.
+        But if that is the only change, we want to treat it as though there
+        are *no* changes.
+        """
+        new_entries = self.builder.new_inventory.iter_entries()
+        basis_entries = self.basis_inv.iter_entries()
+        new_path, new_root_ie = new_entries.next()
+        basis_path, basis_root_ie = basis_entries.next()
+
+        # This is a copy of InventoryEntry.__eq__ only leaving out .revision
+        def ie_equal_no_revision(this, other):
+            return ((this.file_id == other.file_id)
+                    and (this.name == other.name)
+                    and (this.symlink_target == other.symlink_target)
+                    and (this.text_sha1 == other.text_sha1)
+                    and (this.text_size == other.text_size)
+                    and (this.text_id == other.text_id)
+                    and (this.parent_id == other.parent_id)
+                    and (this.kind == other.kind)
+                    and (this.executable == other.executable)
+                    )
+        if not ie_equal_no_revision(new_root_ie, basis_root_ie):
+            return True
+
+        for new_ie, basis_ie in zip(new_entries, basis_entries):
+            if new_ie != basis_ie:
+                return True
+
+        # No actual changes present
+        return False
+
     def _check_pointless(self):
         if self.allow_pointless:
             return
         # A merge with no effect on files
         if len(self.parents) > 1:
             return
-        # work around the fact that a newly-initted tree does differ from its
-        # basis
+        # Shortcut, if the number of entries changes, then we obviously have
+        # a change
         if len(self.builder.new_inventory) != len(self.basis_inv):
             return
-        if (len(self.builder.new_inventory) != 1 and
-            self.builder.new_inventory != self.basis_inv):
+        # If length == 1, then we only have the root entry. Which means
+        # that there is no real difference (only the root could be different)
+        if (len(self.builder.new_inventory) != 1 and self._any_real_changes()):
             return
         raise PointlessCommit()
 
