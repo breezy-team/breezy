@@ -823,7 +823,7 @@ class SmartProtocolError(TransportError):
 
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
-    """Transport operation not possible: %(msg)s %(orig_error)%"""
+    """Transport operation not possible: %(msg)s %(orig_error)s"""
 
 
 class ConnectionError(TransportError):
