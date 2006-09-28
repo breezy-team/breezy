@@ -74,7 +74,7 @@ bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
 import bzrlib.commands
 import bzrlib.trace
 
-if bzrlib.version_info[:3] != (0, 11, 0):
+if bzrlib.version_info[:3] != (0, 12, 0):
     sys.stderr.write("bzr: WARNING: bzrlib version doesn't match the bzr program.\n"
             "This may indicate an installation problem.\n"
             "bzrlib from %s is version %r\n"

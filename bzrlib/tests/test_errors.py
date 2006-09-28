@@ -124,3 +124,10 @@ class TestErrorFormatting(TestCase):
         self.assertStartsWith(
             str(e), 'Unprintable exception ErrorWithBadFormat(')
 
+
+class TestSpecificErrors(TestCase):
+    
+    def test_transport_not_possible(self):
+        e = errors.TransportNotPossible('readonly', 'original error')
+        self.assertEqual('Transport operation not possible:'
+                         ' readonly original error', str(e))

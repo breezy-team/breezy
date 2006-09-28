@@ -1,6 +1,6 @@
-*****************************
-Release notes for Bazaar 0.10
-*****************************
+**********************
+README for Bazaar 0.11
+**********************
 
 Bazaar is a distributed/decentralized version control system.
 
@@ -26,7 +26,7 @@ Features include:
  * vibrant and active community
 
 For usage instructions see 
-http://bazaar.canonical.com/IntroductionToBzr
+http://doc.bazaar-vcs.org/
 or run "bzr help"
 
 For installation instructions see ./INSTALL

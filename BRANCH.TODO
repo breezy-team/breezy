@@ -1,10 +1,9 @@
 # This file is for listing TODOs for branches that are being worked on.
 # It should ALWAYS be empty in the mainline or in integration branches.
-#
+# 
 
 Fix three cases of read(1)-like problems:
   * SmartClientRequestProtocolOne.read_body_bytes (DONE)
   * SmartClientRequestProtocolOne._recv_tuple
   * SmartServerStreamMedium._serve_one_request
-
 

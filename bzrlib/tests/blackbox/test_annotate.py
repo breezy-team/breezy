@@ -97,3 +97,13 @@ class TestAnnotate(TestCaseWithTransport):
         self.assertEquals(out, '')
         self.assertEquals(err, 'bzr: ERROR: bzr annotate --revision takes'
                                ' exactly 1 argument\n')
+
+    def test_annotate_empty_file(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/empty', '')])
+        tree.add('empty')
+        tree.commit('add empty file')
+
+        os.chdir('tree')
+        out, err = self.run_bzr('annotate', 'empty')
+        self.assertEqual('', out)

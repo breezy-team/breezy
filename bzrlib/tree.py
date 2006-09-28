@@ -54,7 +54,7 @@ class Tree(object):
     """
     
     def changes_from(self, other, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False):
+        extra_trees=None, require_versioned=False, include_root=False):
         """Return a TreeDelta of the changes from other to this tree.
 
         :param other: A tree to compare with.
@@ -81,6 +81,7 @@ class Tree(object):
             specific_files=specific_files,
             extra_trees=extra_trees,
             require_versioned=require_versioned,
+            include_root=include_root
             )
     
     def conflicts(self):
@@ -398,7 +399,7 @@ class InterTree(InterObject):
 
     @needs_read_lock
     def compare(self, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False):
+        extra_trees=None, require_versioned=False, include_root=False):
         """Return the changes from source to target.
 
         :return: A TreeDelta.
@@ -426,4 +427,4 @@ class InterTree(InterObject):
             # _compare_trees would think we want a complete delta
             return delta.TreeDelta()
         return delta._compare_trees(self.source, self.target, want_unchanged,
-            specific_file_ids)
+            specific_file_ids, include_root)

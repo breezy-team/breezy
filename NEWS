@@ -1,6 +1,39 @@
 IN DEVELOPMENT
 
   IMPROVEMENTS:
+    * ``bzr help commands`` output is now shorter (Aaron Bentley)
+
+  INTERNALS:
+
+    * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
+      can take a ``working_dir='foo'`` parameter, which will change directory 
+      for the command. (John Arbash Meinel)
+
+  BUG FIXES:
+
+    * bzr branch/pull no longer complain about progress bar cleanup when
+      interrupted during fetch.  (Aaron Bentley, #54000)
+
+    * ``WorkingTree.set_parent_trees()`` uses the trees to directly write
+      the basis inventory, rather than going through the repository. This
+      allows us to have 1 inventory read, and 2 inventory writes when
+      committing a new tree. (John Arbash Meinel)
+
+    * When reverting, files that are not locally modified that do not exist
+      in the target are deleted, not just unversioned (Aaron Bentley)
+
+bzr 0.11rc2  2006-09-27
+
+  BUG FIXES:
+
+    * Test suite hangs on windows fixed. (Andrew Bennets, Alexander Belchenko).
+    
+    * Commit performance regression fixed. (Aaron Bentley, Robert Collins, John
+      Arbash Meinel).
+
+bzr 0.11rc1  2006-09-25
+
+  IMPROVEMENTS:
 
     * Knit files now wait to create their contents until the first data is
       added. The old code used to create an empty .knit and a .kndx with just
@@ -35,7 +68,27 @@ IN DEVELOPMENT
       which processes these requests. (Andrew Bennetts, Robert Collins, Martin
       Pool)
 
+    * New command ``bzr version-info`` which can be used to get a summary
+      of the current state of the tree. This is especially useful as part
+      of a build commands. See ``doc/version_info.txt`` for more information 
+      (John Arbash Meinel)
+
   BUG FIXES:
+
+    * 'bzr inventory [FILE...]' allows restricting the file list to a
+      specific set of files. (John Arbash Meinel, #3631)
+
+    * Don't abort when annotating empty files (John Arbash Meinel, #56814)
+
+    * Add ``Stanza.to_unicode()`` which can be passed to another Stanza
+      when nesting stanzas. Also, add ``read_stanza_unicode`` to handle when
+      reading a nested Stanza. (John Arbash Meinel)
+
+    * Transform._set_mode() needs to stat the right file. 
+      (John Arbash Meinel, #56549)
+
+    * Raise WeaveFormatError rather than StopIteration when trying to read
+      an empty Weave file. (John Arbash Meinel, #46871)
 
     * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
       (Vincent Ladeuil, #59835)
@@ -68,6 +121,17 @@ IN DEVELOPMENT
       other branch, and will not push or pull between the two branches.
       API users will need to perform a push or pull or update operation if they
       require branch synchronisation to take place. (Robert Collins, #47344)
+
+    * When creating a tarball or zipfile export, export unicode names as utf-8
+      paths. This may not work perfectly on all platforms, but has the best
+      chance of working in the common case. (John Arbash Meinel, #56816)
+
+    * When committing, only files that exist in working tree or basis tree
+      may be specified (Aaron Bentley, #50793)
+
+  PORTABILITY:
+
+    * Fixes to run on Python 2.5 (Brian M. Carlson, Martin Pool, Marien Zwart)
 
   INTERNALS:
 
@@ -116,7 +180,7 @@ IN DEVELOPMENT
       needs_tree_write_lock is provided in the workingtree module. Like the
       needs_read_lock and needs_write_lock decorators this allows static 
       declaration of the locking requirements of a function to ensure that
-      a lock is taken out for casual scripts. (Robert Collins)
+      a lock is taken out for casual scripts. (Robert Collins, #54107)
 
     * All WorkingTree methods which write to the tree, but not to the branch
       have been converted to use ``needs_tree_write_lock`` rather than 
