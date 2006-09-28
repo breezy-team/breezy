@@ -1504,9 +1504,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         _body_decoder = LengthPrefixedBodyDecoder()
 
         while not _body_decoder.finished_reading:
-            bytes_wanted = _body_decoder.bytes_left
-            if bytes_wanted is None:
-                bytes_wanted = 1
+            bytes_wanted = _body_decoder.next_read_size()
             bytes = self._request.read_bytes(bytes_wanted)
             _body_decoder.accept_bytes(bytes)
         self._request.finished_reading()
