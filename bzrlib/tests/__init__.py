@@ -1128,6 +1128,15 @@ class TestCaseWithMemoryTransport(TestCase):
     TEST_ROOT = None
     _TEST_NAME = 'test'
 
+
+    def __init__(self, methodName='runTest'):
+        # allow test parameterisation after test construction and before test
+        # execution. Variables that the parameteriser sets need to be 
+        # ones that are not set by setUp, or setUp will trash them.
+        super(TestCaseWithMemoryTransport, self).__init__(methodName)
+        self.transport_server = default_transport
+        self.transport_readonly_server = None
+
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
         self.failUnless(osutils.lexists(path))
@@ -1303,8 +1312,6 @@ class TestCaseWithMemoryTransport(TestCase):
         self.overrideEnvironmentForTesting()
         self.__readonly_server = None
         self.__server = None
-        self.transport_server = default_transport
-        self.transport_readonly_server = None
 
      
 class TestCaseInTempDir(TestCaseWithMemoryTransport):
