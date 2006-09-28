@@ -126,15 +126,23 @@ class BasicSmartTests(tests.TestCase):
 
 
 class SmartTCPTests(tests.TestCase):
-    """Tests for connection to TCP server.
-    
+    """Tests for connection/end to end behaviour using the TCP server.
+
     All of these tests are run with a server running on another thread serving
     a MemoryTransport, and a connection to it already open.
+
+    the server is obtained by calling self.setUpServer(readonly=False).
     """
 
-    def setUp(self):
-        super(SmartTCPTests, self).setUp()
+    def setUpServer(self, readonly=False):
+        """Setup the server.
+
+        :param readonly: Create a readonly server.
+        """
         self.backing_transport = memory.MemoryTransport()
+        if readonly:
+            self.real_backing_transport = self.backing_transport
+            self.backing_transport = get_transport("readonly+" + self.backing_transport.abspath('.'))
         self.server = smart.SmartTCPServer(self.backing_transport)
         self.server.start_background_thread()
         self.transport = smart.SmartTCPTransport(self.server.get_url())
@@ -146,6 +154,14 @@ class SmartTCPTests(tests.TestCase):
             self.server.stop_background_thread()
         super(SmartTCPTests, self).tearDown()
         
+
+class WritableEndToEndTests(SmartTCPTests):
+    """Client to server tests that require a writable transport."""
+
+    def setUp(self):
+        super(WritableEndToEndTests, self).setUp()
+        self.setUpServer()
+
     def test_start_tcp_server(self):
         url = self.server.get_url()
         self.assertContainsRe(url, r'^bzr://127\.0\.0\.1:[0-9]{2,}/')
@@ -161,7 +177,7 @@ class SmartTCPTests(tests.TestCase):
         self.backing_transport.put_bytes("foo", "contents\nof\nfoo\n")
         fp = self.transport.get("foo")
         self.assertEqual('contents\nof\nfoo\n', fp.read())
-        
+
     def test_get_error_enoent(self):
         """Error reported from server getting nonexistent file."""
         # The path in a raised NoSuchFile exception should be the precise path
@@ -215,6 +231,16 @@ class SmartTCPTests(tests.TestCase):
         result_dir = bzrdir.BzrDir.open_containing_from_transport(transport)
 
 
+class ReadOnlyEndToEndTests(SmartTCPTests):
+    """Tests from the client to the server using a readonly backing transport."""
+
+    def test_mkdir_error_readonly(self):
+        """TransportNotPossible should be preserved from the backing transport."""
+        self.setUpServer(readonly=True)
+        self.assertRaises(errors.TransportNotPossible, self.transport.mkdir,
+            'foo')
+        
+
 class SmartServerTests(tests.TestCaseWithTransport):
     """Test that call directly into the server logic, bypassing the network."""
 
@@ -234,6 +260,18 @@ class SmartServerTests(tests.TestCaseWithTransport):
         server = smart.SmartServer(self.get_transport())
         response = server.dispatch_command('get_bundle', ('.', rev_id))
         bundle = serializer.read_bundle(StringIO(response.body))
+
+    def test_readonly_exception_becomes_transport_not_possible(self):
+        """The response for a read-only error is ('ReadOnlyError')."""
+        server = smart.SmartServer(self.get_readonly_transport())
+        # send a mkdir for foo, with no explicit mode - should fail.
+        response = server.dispatch_command('mkdir', ('foo', ''))
+        # and the failure should be an explicit ReadOnlyError
+        self.assertEqual(("ReadOnlyError", ), response.args)
+        # XXX: TODO: test that other TransportNotPossible errors are
+        # presented as TransportNotPossible - not possible to do that
+        # until I figure out how to trigger that relatively cleanly via
+        # the api. RBC 20060918
 
 
 class SmartTransportRegistration(tests.TestCase):
@@ -274,6 +312,13 @@ class TestSmartTransport(tests.TestCase):
         self.assertEqual('bar', transport.get_bytes('foo'))
         # The only call to _call should have been to get /foo.
         self.assertEqual([('_call', ('get', '/foo'))], client._calls)
+
+    def test__translate_error_readonly(self):
+        """Sending a ReadOnlyError to _translate_error raises TransportNotPossible."""
+        client = FakeClient()
+        transport = smart.SmartTransport('bzr://localhost/', client=client)
+        self.assertRaises(errors.TransportNotPossible,
+            transport._translate_error, ("ReadOnlyError", ))
 
 
 class InstrumentedClient(smart.SmartStreamClient):
