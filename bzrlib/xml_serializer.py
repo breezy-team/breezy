@@ -25,13 +25,20 @@
 from bzrlib.trace import mutter, warning
 
 try:
-    from cElementTree import (ElementTree, SubElement, Element,
-                              XMLTreeBuilder, fromstring, tostring)
-    import elementtree
+    try:
+        # it's in this package in python2.5
+        from xml.etree.cElementTree import (ElementTree, SubElement, Element,
+            XMLTreeBuilder, fromstring, tostring)
+        import xml.etree as elementtree
+    except ImportError:
+        from cElementTree import (ElementTree, SubElement, Element,
+                                  XMLTreeBuilder, fromstring, tostring)
+        import elementtree
     ParseError = SyntaxError
 except ImportError:
     mutter('WARNING: using slower ElementTree; consider installing cElementTree'
            " and make sure it's on your PYTHONPATH")
+    # this copy is shipped with bzr
     from util.elementtree.ElementTree import (ElementTree, SubElement,
                                               Element, XMLTreeBuilder,
                                               fromstring, tostring)
