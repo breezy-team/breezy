@@ -44,7 +44,7 @@ This means that exceptions can used like this:
 >>> try:
 ...   raise NotBranchError(path='/foo/bar')
 ... except:
-...   print sys.exc_type
+...   print '%s.%s' % (sys.exc_type.__module__, sys.exc_type.__name__)
 ...   print sys.exc_value
 ...   path = getattr(sys.exc_value, 'path', None)
 ...   if path is not None:
@@ -96,7 +96,7 @@ from bzrlib.patches import (PatchSyntax,
 class BzrError(StandardError):
     
     is_user_error = True
-    
+
     def __str__(self):
         # XXX: Should we show the exception class in 
         # exceptions that don't provide their own message?  
@@ -120,7 +120,11 @@ class BzrNewError(BzrError):
     # base classes should override the docstring with their human-
     # readable explanation
 
-    def __init__(self, **kwds):
+    def __init__(self, *args, **kwds):
+        # XXX: Use the underlying BzrError to always generate the args attribute
+        # if it doesn't exist.  We can't use super here, because exceptions are
+        # old-style classes in python2.4 (but new in 2.5).  --bmc, 20060426
+        BzrError.__init__(self, *args)
         for key, value in kwds.items():
             setattr(self, key, value)
 
@@ -132,9 +136,14 @@ class BzrNewError(BzrError):
             if isinstance(s, unicode):
                 return s.encode('utf8')
             return s
-        except (NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s: %s' \
-                % (self.__class__.__name__, str(e))
+        except (TypeError, NameError, ValueError, KeyError), e:
+            return 'Unprintable exception %s(%r): %s' \
+                % (self.__class__.__name__,
+                   self.__dict__, str(e))
+
+
+class AlreadyBuilding(BzrNewError):
+    """The tree builder is already building a tree."""
 
 
 class BzrCheckError(BzrNewError):
@@ -166,11 +175,21 @@ class InvalidRevisionNumber(BzrNewError):
 
 class InvalidRevisionId(BzrNewError):
     """Invalid revision-id {%(revision_id)s} in %(branch)s"""
+
     def __init__(self, revision_id, branch):
         # branch can be any string or object with __str__ defined
         BzrNewError.__init__(self)
         self.revision_id = revision_id
         self.branch = branch
+
+
+class NoSuchId(BzrNewError):
+    """The file id %(file_id)s is not present in the tree %(tree)s."""
+    
+    def __init__(self, tree, file_id):
+        BzrNewError.__init__(self)
+        self.file_id = file_id
+        self.tree = tree
 
 
 class NoWorkingTree(BzrNewError):
@@ -179,6 +198,10 @@ class NoWorkingTree(BzrNewError):
     def __init__(self, base):
         BzrNewError.__init__(self)
         self.base = base
+
+
+class NotBuilding(BzrNewError):
+    """Not currently building a tree."""
 
 
 class NotLocalUrl(BzrNewError):
@@ -264,8 +287,7 @@ class InvalidURLJoin(PathError):
 
     def __init__(self, msg, base, args):
         PathError.__init__(self, base, msg)
-        self.args = [base]
-        self.args.extend(args)
+        self.args = [base] + list(args)
 
 
 class UnsupportedProtocol(PathError):
@@ -273,6 +295,18 @@ class UnsupportedProtocol(PathError):
 
     def __init__(self, url, extra):
         PathError.__init__(self, url, extra=extra)
+
+
+class ShortReadvError(PathError):
+    """readv() read %(actual)s bytes rather than %(length)s bytes at %(offset)s for %(path)s%(extra)s"""
+
+    is_user_error = False
+
+    def __init__(self, path, offset, length, actual, extra=None):
+        PathError.__init__(self, path, extra=extra)
+        self.offset = offset
+        self.length = length
+        self.actual = actual
 
 
 class PathNotChild(BzrNewError):
@@ -362,6 +396,14 @@ class IncompatibleFormat(BzrNewError):
         BzrNewError.__init__(self)
         self.format = format
         self.bzrdir = bzrdir_format
+
+
+class IncompatibleRevision(BzrNewError):
+    """Revision is not compatible with %(repo_format)s"""
+
+    def __init__(self, repo_format):
+        BzrNewError.__init__(self)
+        self.repo_format = repo_format
 
 
 class NotVersionedError(BzrNewError):
@@ -504,7 +546,6 @@ class UpToDateFormat(BzrNewError):
         self.format = format
 
 
-
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
@@ -515,8 +556,26 @@ class NoSuchRevision(BzrNewError):
     is_user_error = False
 
     def __init__(self, branch, revision):
-        self.branch = branch
-        self.revision = revision
+        BzrNewError.__init__(self, branch=branch, revision=revision)
+
+
+class NoSuchRevisionSpec(BzrNewError):
+    """No namespace registered for string: %(spec)r"""
+
+    def __init__(self, spec):
+        BzrNewError.__init__(self, spec=spec)
+
+
+class InvalidRevisionSpec(BzrNewError):
+    """Requested revision: '%(spec)s' does not exist in branch:
+%(branch)s%(extra)s"""
+
+    def __init__(self, spec, branch, extra=None):
+        BzrNewError.__init__(self, branch=branch, spec=spec)
+        if extra:
+            self.extra = '\n' + str(extra)
+        else:
+            self.extra = ''
 
 
 class HistoryMissing(BzrError):
@@ -585,10 +644,11 @@ class AmbiguousBase(BzrError):
         self.bases = bases
 
 
-class NoCommits(BzrError):
+class NoCommits(BzrNewError):
+    """Branch %(branch)s has no commits."""
+
     def __init__(self, branch):
-        msg = "Branch %s has no commits." % branch
-        BzrError.__init__(self, msg)
+        BzrNewError.__init__(self, branch=branch)
 
 
 class UnlistableStore(BzrError):
@@ -762,9 +822,16 @@ class TransportError(BzrNewError):
         BzrNewError.__init__(self)
 
 
+class SmartProtocolError(TransportError):
+    """Generic bzr smart protocol error: %(details)s"""
+
+    def __init__(self, details):
+        self.details = details
+
+
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
-    """Transport operation not possible: %(msg)s %(orig_error)%"""
+    """Transport operation not possible: %(msg)s %(orig_error)s"""
 
 
 class ConnectionError(TransportError):
@@ -776,11 +843,13 @@ class ConnectionReset(TransportError):
 
 
 class InvalidRange(TransportError):
-    """Invalid range access."""
+    """Invalid range access in %(path)s at %(offset)s."""
     
     def __init__(self, path, offset):
         TransportError.__init__(self, ("Invalid range access in %s at %d"
                                        % (path, offset)))
+        self.path = path
+        self.offset = offset
 
 
 class InvalidHttpResponse(TransportError):
@@ -948,11 +1017,24 @@ class ParamikoNotPresent(DependencyNotPresent):
         DependencyNotPresent.__init__(self, 'paramiko', error)
 
 
+class PointlessMerge(BzrNewError):
+    """Nothing to merge."""
+
+
 class UninitializableFormat(BzrNewError):
     """Format %(format)s cannot be initialised by this version of bzr."""
 
     def __init__(self, format):
         BzrNewError.__init__(self)
+        self.format = format
+
+
+class BadConversionTarget(BzrNewError):
+    """Cannot convert to format %(format)s.  %(problem)s"""
+
+    def __init__(self, problem, format):
+        BzrNewError.__init__(self)
+        self.problem = problem
         self.format = format
 
 
@@ -1106,8 +1188,88 @@ class MalformedFooter(BadBundle):
         BzrNewError.__init__(self)
         self.text = text
 
+
 class UnsupportedEOLMarker(BadBundle):
     """End of line marker was not \\n in bzr revision-bundle"""    
 
     def __init__(self):
-        BzrNewError.__init__(self)    
+        BzrNewError.__init__(self)
+
+
+class IncompatibleFormat(BzrNewError):
+    """Bundle format %(bundle_format)s is incompatible with %(other)s"""
+
+    def __init__(self, bundle_format, other):
+        BzrNewError.__init__(self)
+        self.bundle_format = bundle_format
+        self.other = other
+
+
+class BadInventoryFormat(BzrNewError):
+    """Root class for inventory serialization errors"""
+
+
+class UnexpectedInventoryFormat(BadInventoryFormat):
+    """The inventory was not in the expected format:\n %(msg)s"""
+
+    def __init__(self, msg):
+        BadInventoryFormat.__init__(self, msg=msg)
+
+
+class NoSmartServer(NotBranchError):
+    """No smart server available at %(url)s"""
+
+    def __init__(self, url):
+        self.url = url
+
+
+class UnknownSSH(BzrNewError):
+    """Unrecognised value for BZR_SSH environment variable: %(vendor)s"""
+
+    def __init__(self, vendor):
+        BzrNewError.__init__(self)
+        self.vendor = vendor
+
+
+class GhostRevisionUnusableHere(BzrNewError):
+    """Ghost revision {%(revision_id)s} cannot be used here."""
+
+    def __init__(self, revision_id):
+        BzrNewError.__init__(self)
+        self.revision_id = revision_id
+
+
+class IllegalUseOfScopeReplacer(BzrNewError):
+    """ScopeReplacer object %(name)r was used incorrectly: %(msg)s%(extra)s"""
+
+    is_user_error = False
+
+    def __init__(self, name, msg, extra=None):
+        BzrNewError.__init__(self)
+        self.name = name
+        self.msg = msg
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
+
+
+class InvalidImportLine(BzrNewError):
+    """Not a valid import statement: %(msg)\n%(text)s"""
+
+    is_user_error = False
+
+    def __init__(self, text, msg):
+        BzrNewError.__init__(self)
+        self.text = text
+        self.msg = msg
+
+
+class ImportNameCollision(BzrNewError):
+    """Tried to import an object to the same name as an existing object. %(name)s"""
+
+    is_user_error = False
+
+    def __init__(self, name):
+        BzrNewError.__init__(self)
+        self.name = name

@@ -42,11 +42,11 @@ def register_exporter(format, extensions, func, override=False):
     """
     global _exporters, _exporter_extensions
 
-    if not _exporters.has_key(format) or override:
+    if (format not in _exporters) or override:
         _exporters[format] = func
 
     for ext in extensions:
-        if not _exporter_extensions.has_key(ext) or override:
+        if (ext not in _exporter_extensions) or override:
             _exporter_extensions[ext] = format
 
 
@@ -90,7 +90,7 @@ def export(tree, dest, format=None, root=None):
     if root is None:
         root = get_root_name(dest)
 
-    if not _exporters.has_key(format):
+    if format not in _exporters:
         raise errors.NoSuchExportFormat(format)
     return _exporters[format](tree, dest, root)
 
@@ -98,6 +98,8 @@ def export(tree, dest, format=None, root=None):
 def get_root_name(dest):
     """Get just the root name for an export.
 
+    >>> get_root_name('../mytest.tar')
+    'mytest'
     >>> get_root_name('mytar.tar')
     'mytar'
     >>> get_root_name('mytar.tar.bz2')

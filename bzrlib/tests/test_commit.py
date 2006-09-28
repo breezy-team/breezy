@@ -18,7 +18,7 @@
 import os
 
 import bzrlib
-from bzrlib import osutils, tests
+from bzrlib import errors, osutils, tests
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
@@ -437,7 +437,7 @@ class TestCommit(TestCaseWithTransport):
         # do a merge into the bound branch from other, and then change the
         # content file locally to force a new revision (rather than using the
         # revision from other). This forces extra processing in commit.
-        self.merge(other_tree.branch, bound_tree)
+        bound_tree.merge_from_branch(other_tree.branch)
         self.build_tree_contents([('bound/content_file', 'change in bound\n')])
 
         # before #34959 was fixed, this failed with 'revision not present in
@@ -491,7 +491,7 @@ class TestCommit(TestCaseWithTransport):
             other_tree.commit('modify all sample files and dirs.')
         finally:
             other_tree.unlock()
-        self.merge(other_tree.branch, this_tree)
+        this_tree.merge_from_branch(other_tree.branch)
         reporter = CapturingReporter()
         this_tree.commit('do the commit', reporter=reporter)
         self.assertEqual([
@@ -589,3 +589,9 @@ class TestCommit(TestCaseWithTransport):
         os.mkdir('name')
         tree.commit('file to directory')
         self.assertEqual('directory', tree.basis_tree().kind('a-file-id'))
+
+    def test_commit_unversioned_specified(self):
+        """Commit should raise if specified files isn't in basis or worktree"""
+        tree = self.make_branch_and_tree('.')
+        self.assertRaises(errors.PathsNotVersionedError, tree.commit, 
+                          'message', specific_files=['bogus'])

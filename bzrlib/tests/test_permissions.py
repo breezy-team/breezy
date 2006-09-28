@@ -33,7 +33,8 @@ permissions should be inherited individually, rather than all be the same.
 import os
 import sys
 import stat
-from StringIO import StringIO
+from cStringIO import StringIO
+import urllib
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
@@ -72,10 +73,11 @@ def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
         test.assertTransportMode(t, base, dir_mode)
     for root, dirs, files in os.walk(base):
         for d in dirs:
-            p = os.path.join(root, d)
+            p = '/'.join([urllib.quote(x) for x in root.split('/\\') + [d]])
             test.assertTransportMode(t, p, dir_mode)
         for f in files:
             p = os.path.join(root, f)
+            p = '/'.join([urllib.quote(x) for x in root.split('/\\') + [f]])
             test.assertTransportMode(t, p, file_mode)
 
 
@@ -88,7 +90,8 @@ class TestPermissions(TestCaseWithTransport):
         t = self.make_branch_and_tree('.')
         b = t.branch
         open('a', 'wb').write('foo\n')
-        t.add('a')
+        # ensure check_mode_r works with capital-letter file-ids like TREE_ROOT
+        t.add('a', 'CAPS-ID')
         t.commit('foo')
 
         chmod_r('.bzr', 0644, 0755)
@@ -156,7 +159,7 @@ class TestPermissions(TestCaseWithTransport):
         #                    extra chmod calls aren't being made
         try:
             transport = get_transport(self.get_url())
-            transport.put('my-lock', StringIO(''))
+            transport.put_bytes('my-lock', '')
             lockable = LockableFiles(transport, 'my-lock', TransportLock)
             self.assertNotEqual(None, lockable._dir_mode)
             self.assertNotEqual(None, lockable._file_mode)
@@ -276,7 +279,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
             self.assertTransportMode(t, 'a', 0666 &~umask)
 
             # but Transport overrides umask
-            t.put('b', 'txt', mode=0666)
+            t.put_bytes('b', 'txt', mode=0666)
             self.assertTransportMode(t, 'b', 0666)
 
             t._sftp.mkdir('c', mode=0777)

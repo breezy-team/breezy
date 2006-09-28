@@ -43,7 +43,6 @@ from bzrlib.errors import (BzrError,
 from bzrlib import option
 from bzrlib.option import Option
 import bzrlib.osutils
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, be_quiet
@@ -65,7 +64,7 @@ def register_command(cmd, decorate=False):
         k_unsquished = _unsquish_command_name(k)
     else:
         k_unsquished = k
-    if not plugin_cmds.has_key(k_unsquished):
+    if k_unsquished not in plugin_cmds:
         plugin_cmds[k_unsquished] = cmd
         mutter('registered plugin command %s', k_unsquished)
         if decorate and k_unsquished in builtin_command_names():
@@ -585,7 +584,7 @@ def display_command(func):
             sys.stdout.flush()
             return result
         except IOError, e:
-            if not hasattr(e, 'errno'):
+            if getattr(e, 'errno', None) is None:
                 raise
             if e.errno != errno.EPIPE:
                 # Win32 raises IOError with errno=0 on a broken pipe
@@ -612,7 +611,7 @@ def run_bzr_catch_errors(argv):
         return run_bzr(argv)
         # do this here inside the exception wrappers to catch EPIPE
         sys.stdout.flush()
-    except Exception, e:
+    except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
         bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)

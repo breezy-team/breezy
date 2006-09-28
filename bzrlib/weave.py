@@ -75,6 +75,9 @@ import sha
 import time
 import warnings
 
+from bzrlib import (
+    progress,
+    )
 from bzrlib.trace import mutter
 from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         RevisionAlreadyPresent,
@@ -265,7 +268,7 @@ class Weave(VersionedFile):
 
     def has_version(self, version_id):
         """See VersionedFile.has_version."""
-        return self._name_map.has_key(version_id)
+        return (version_id in self._name_map)
 
     __contains__ = has_version
 
@@ -664,7 +667,8 @@ class Weave(VersionedFile):
         """_walk has become visit, a supported api."""
         return self._walk_internal()
 
-    def iter_lines_added_or_present_in_versions(self, version_ids=None):
+    def iter_lines_added_or_present_in_versions(self, version_ids=None,
+                                                pb=None):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         if version_ids is None:
             version_ids = self.versions()
@@ -1132,7 +1136,7 @@ class WeaveFile(Weave):
         sio = StringIO()
         write_weave_v5(self, sio)
         sio.seek(0)
-        transport.put(name + WeaveFile.WEAVE_SUFFIX, sio, self._filemode)
+        transport.put_file(name + WeaveFile.WEAVE_SUFFIX, sio, self._filemode)
 
     def create_empty(self, name, transport, filemode=None):
         return WeaveFile(name, transport, filemode, create=True)
@@ -1143,9 +1147,9 @@ class WeaveFile(Weave):
         sio = StringIO()
         write_weave_v5(self, sio)
         sio.seek(0)
-        self._transport.put(self._weave_name + WeaveFile.WEAVE_SUFFIX,
-                            sio,
-                            self._filemode)
+        self._transport.put_file(self._weave_name + WeaveFile.WEAVE_SUFFIX,
+                                 sio,
+                                 self._filemode)
 
     @staticmethod
     def get_suffixes():

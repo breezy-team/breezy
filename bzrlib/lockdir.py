@@ -114,7 +114,7 @@ from bzrlib.errors import (
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 from bzrlib.osutils import rand_chars
-from bzrlib.rio import RioWriter, read_stanza, Stanza
+from bzrlib.rio import read_stanza, Stanza
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
 # objects.  This should perhaps be updated - e.g. if two threads try to take a
@@ -200,14 +200,13 @@ class LockDir(object):
                 # After creating the lock directory, try again
                 self.transport.mkdir(tmpname)
 
-            sio = StringIO()
-            self._prepare_info(sio)
-            sio.seek(0)
-            # append will create a new file; we use append rather than put
-            # because we don't want to write to a temporary file and rename
-            # into place, because that's going to happen to the whole
-            # directory
-            self.transport.append(tmpname + self.__INFO_NAME, sio)
+            info_bytes = self._prepare_info()
+            # We use put_file_non_atomic because we just created a new unique
+            # directory so we don't have to worry about files existing there.
+            # We'll rename the whole directory into place to get atomic
+            # properties
+            self.transport.put_bytes_non_atomic(tmpname + self.__INFO_NAME,
+                                                info_bytes)
 
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
@@ -336,7 +335,7 @@ class LockDir(object):
         except NoSuchFile, e:
             return None
 
-    def _prepare_info(self, outf):
+    def _prepare_info(self):
         """Write information about a pending lock to a temporary file.
         """
         import socket
@@ -348,7 +347,7 @@ class LockDir(object):
                    nonce=self.nonce,
                    user=config.user_email(),
                    )
-        RioWriter(outf).write_stanza(s)
+        return s.to_string()
 
     def _parse_info(self, info_file):
         return read_stanza(info_file.readlines()).as_dict()

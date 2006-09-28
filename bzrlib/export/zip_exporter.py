@@ -18,8 +18,22 @@
 """
 
 import os
-from bzrlib.trace import mutter
+import stat
 import zipfile
+
+from bzrlib import (
+    osutils,
+    )
+from bzrlib.trace import mutter
+
+
+# Windows expects this bit to be set in the 'external_attr' section
+# Or it won't consider the entry a directory
+ZIP_DIRECTORY_BIT = (1 << 4)
+
+_FILE_ATTR = stat.S_IFREG
+_DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT
+
 
 def zip_exporter(tree, dest, root):
     """ Export this tree to a new zip file.
@@ -49,23 +63,32 @@ def zip_exporter(tree, dest, root):
             file_id = ie.file_id
             mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
 
-            if ie.kind == "file": 
+            # zipfile.ZipFile switches all paths to forward
+            # slashes anyway, so just stick with that.
+            filename = osutils.pathjoin(root, dp).encode('utf8')
+            if ie.kind == "file":
                 zinfo = zipfile.ZipInfo(
-                            filename=str(os.path.join(root, dp)),
+                            filename=filename,
                             date_time=now)
                 zinfo.compress_type = compression
+                zinfo.external_attr = _FILE_ATTR
                 zipf.writestr(zinfo, tree.get_file_text(file_id))
             elif ie.kind == "directory":
+                # Directories must contain a trailing slash, to indicate
+                # to the zip routine that they are really directories and
+                # not just empty files.
                 zinfo = zipfile.ZipInfo(
-                            filename=str(os.path.join(root, dp)+os.sep),
+                            filename=filename + '/',
                             date_time=now)
                 zinfo.compress_type = compression
+                zinfo.external_attr = _DIR_ATTR
                 zipf.writestr(zinfo,'')
             elif ie.kind == "symlink":
                 zinfo = zipfile.ZipInfo(
-                            filename=str(os.path.join(root, dp+".lnk")),
+                            filename=(filename + '.lnk'),
                             date_time=now)
                 zinfo.compress_type = compression
+                zinfo.external_attr = _FILE_ATTR
                 zipf.writestr(zinfo, ie.symlink_target)
 
         zipf.close()

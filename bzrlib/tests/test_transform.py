@@ -15,10 +15,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import stat
+import sys
 
+from bzrlib import (
+    tests,
+    urlutils,
+    )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
-                              UnversionedParent, ParentLoop)
+                              UnversionedParent, ParentLoop, DeletingParent,)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot, 
                            PathsNotVersionedError, ExistingLimbo,
@@ -29,7 +35,7 @@ from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name)
-import bzrlib.urlutils as urlutils
+
 
 class TestTreeTransform(TestCaseInTempDir):
 
@@ -387,9 +393,13 @@ class TestTreeTransform(TestCaseInTempDir):
                                          'dorothy-id')
         old_dorothy = conflicts.trans_id_tree_file_id('dorothy-id')
         oz = conflicts.trans_id_tree_file_id('oz-id')
-        # set up missing, unversioned parent
+        # set up DeletedParent parent conflict
         conflicts.delete_versioned(oz)
         emerald = conflicts.trans_id_tree_file_id('emerald-id')
+        # set up MissingParent conflict
+        munchkincity = conflicts.trans_id_file_id('munchkincity-id')
+        conflicts.adjust_path('munchkincity', root, munchkincity)
+        conflicts.new_directory('auntem', munchkincity, 'auntem-id')
         # set up parent loop
         conflicts.adjust_path('emeraldcity', emerald, emerald)
         return conflicts, emerald, oz, old_dorothy, new_dorothy
@@ -416,15 +426,22 @@ class TestTreeTransform(TestCaseInTempDir):
                                    'dorothy.moved', 'dorothy', None,
                                    'dorothy-id')
         self.assertEqual(cooked_conflicts[1], duplicate_id)
-        missing_parent = MissingParent('Not deleting', 'oz', 'oz-id')
+        missing_parent = MissingParent('Created directory', 'munchkincity',
+                                       'munchkincity-id')
+        deleted_parent = DeletingParent('Not deleting', 'oz', 'oz-id')
         self.assertEqual(cooked_conflicts[2], missing_parent)
-        unversioned_parent = UnversionedParent('Versioned directory', 'oz',
+        unversioned_parent = UnversionedParent('Versioned directory',
+                                               'munchkincity',
+                                               'munchkincity-id')
+        unversioned_parent2 = UnversionedParent('Versioned directory', 'oz',
                                                'oz-id')
         self.assertEqual(cooked_conflicts[3], unversioned_parent)
         parent_loop = ParentLoop('Cancelled move', 'oz/emeraldcity', 
                                  'oz/emeraldcity', 'emerald-id', 'emerald-id')
-        self.assertEqual(cooked_conflicts[4], parent_loop)
-        self.assertEqual(len(cooked_conflicts), 5)
+        self.assertEqual(cooked_conflicts[4], deleted_parent)
+        self.assertEqual(cooked_conflicts[5], unversioned_parent2)
+        self.assertEqual(cooked_conflicts[6], parent_loop)
+        self.assertEqual(len(cooked_conflicts), 7)
         tt.finalize()
 
     def test_string_conflicts(self):
@@ -440,11 +457,17 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertEqual(conflicts_s[1], 'Conflict adding id to dorothy.  '
                                          'Unversioned existing file '
                                          'dorothy.moved.')
-        self.assertEqual(conflicts_s[2], 'Conflict adding files to oz.  '
-                                         'Not deleting.')
-        self.assertEqual(conflicts_s[3], 'Conflict adding versioned files to '
-                                         'oz.  Versioned directory.')
-        self.assertEqual(conflicts_s[4], 'Conflict moving oz/emeraldcity into'
+        self.assertEqual(conflicts_s[2], 'Conflict adding files to'
+                                         ' munchkincity.  Created directory.')
+        self.assertEqual(conflicts_s[3], 'Conflict because munchkincity is not'
+                                         ' versioned, but has versioned'
+                                         ' children.  Versioned directory.')
+        self.assertEqualDiff(conflicts_s[4], "Conflict: can't delete oz because it"
+                                         " is not empty.  Not deleting.")
+        self.assertEqual(conflicts_s[5], 'Conflict because oz is not'
+                                         ' versioned, but has versioned'
+                                         ' children.  Versioned directory.')
+        self.assertEqual(conflicts_s[6], 'Conflict moving oz/emeraldcity into'
                                          ' oz/emeraldcity.  Cancelled move.')
 
     def test_moving_versioned_directories(self):
@@ -516,6 +539,51 @@ class TestTreeTransform(TestCaseInTempDir):
         transform.apply()
         self.assertTrue(wt.is_executable('soc'))
         self.assertTrue(wt.is_executable('sac'))
+
+    def test_preserve_mode(self):
+        """File mode is preserved when replacing content"""
+        if sys.platform == 'win32':
+            raise TestSkipped('chmod has no effect on win32')
+        transform, root = self.get_transform()
+        transform.new_file('file1', root, 'contents', 'file1-id', True)
+        transform.apply()
+        self.assertTrue(self.wt.is_executable('file1-id'))
+        transform, root = self.get_transform()
+        file1_id = transform.trans_id_tree_file_id('file1-id')
+        transform.delete_contents(file1_id)
+        transform.create_file('contents2', file1_id)
+        transform.apply()
+        self.assertTrue(self.wt.is_executable('file1-id'))
+
+    def test__set_mode_stats_correctly(self):
+        """_set_mode stats to determine file mode."""
+        if sys.platform == 'win32':
+            raise TestSkipped('chmod has no effect on win32')
+
+        stat_paths = []
+        real_stat = os.stat
+        def instrumented_stat(path):
+            stat_paths.append(path)
+            return real_stat(path)
+
+        transform, root = self.get_transform()
+
+        bar1_id = transform.new_file('bar', root, 'bar contents 1\n',
+                                     file_id='bar-id-1', executable=False)
+        transform.apply()
+
+        transform, root = self.get_transform()
+        bar1_id = transform.trans_id_tree_path('bar')
+        bar2_id = transform.trans_id_tree_path('bar2')
+        try:
+            os.stat = instrumented_stat
+            transform.create_file('bar2 contents\n', bar2_id, mode_id=bar1_id)
+        finally:
+            os.stat = real_stat
+            transform.finalize()
+
+        bar1_abspath = self.wt.abspath('bar')
+        self.assertEqual([bar1_abspath], stat_paths)
 
 
 class TransformGroup(object):
@@ -713,7 +781,9 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertIs(os.path.lexists(this.wt.abspath('b/h1.OTHER')), False)
         self.assertEqual(this.wt.id2path('i'), pathjoin('b/i1.OTHER'))
 
-class TestBuildTree(TestCaseInTempDir):
+
+class TestBuildTree(tests.TestCaseWithTransport):
+
     def test_build_tree(self):
         if not has_symlinks():
             raise TestSkipped('Test requires symlink support')
@@ -729,7 +799,115 @@ class TestBuildTree(TestCaseInTempDir):
         self.assertIs(os.path.isdir('b/foo'), True)
         self.assertEqual(file('b/foo/bar', 'rb').read(), "contents")
         self.assertEqual(os.readlink('b/foo/baz'), 'a/foo/bar')
+
+    def test_file_conflict_handling(self):
+        """Ensure that when building trees, conflict handling is done"""
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch_and_tree('target')
+        self.build_tree(['source/file', 'target/file'])
+        source.add('file', 'new-file')
+        source.commit('added file')
+        build_tree(source.basis_tree(), target)
+        self.assertEqual([DuplicateEntry('Moved existing file to',
+                          'file.moved', 'file', None, 'new-file')],
+                         target.conflicts())
+        target2 = self.make_branch_and_tree('target2')
+        target_file = file('target2/file', 'wb')
+        try:
+            source_file = file('source/file', 'rb')
+            try:
+                target_file.write(source_file.read())
+            finally:
+                source_file.close()
+        finally:
+            target_file.close()
+        build_tree(source.basis_tree(), target2)
+        self.assertEqual([], target2.conflicts())
+
+    def test_symlink_conflict_handling(self):
+        """Ensure that when building trees, conflict handling is done"""
+        if not has_symlinks():
+            raise TestSkipped('Test requires symlink support')
+        source = self.make_branch_and_tree('source')
+        os.symlink('foo', 'source/symlink')
+        source.add('symlink', 'new-symlink')
+        source.commit('added file')
+        target = self.make_branch_and_tree('target')
+        os.symlink('bar', 'target/symlink')
+        build_tree(source.basis_tree(), target)
+        self.assertEqual([DuplicateEntry('Moved existing file to',
+            'symlink.moved', 'symlink', None, 'new-symlink')],
+            target.conflicts())
+        target = self.make_branch_and_tree('target2')
+        os.symlink('foo', 'target2/symlink')
+        build_tree(source.basis_tree(), target)
+        self.assertEqual([], target.conflicts())
         
+    def test_directory_conflict_handling(self):
+        """Ensure that when building trees, conflict handling is done"""
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch_and_tree('target')
+        self.build_tree(['source/dir1/', 'source/dir1/file', 'target/dir1/'])
+        source.add(['dir1', 'dir1/file'], ['new-dir1', 'new-file'])
+        source.commit('added file')
+        build_tree(source.basis_tree(), target)
+        self.assertEqual([], target.conflicts())
+        self.failUnlessExists('target/dir1/file')
+
+        # Ensure contents are merged
+        target = self.make_branch_and_tree('target2')
+        self.build_tree(['target2/dir1/', 'target2/dir1/file2'])
+        build_tree(source.basis_tree(), target)
+        self.assertEqual([], target.conflicts())
+        self.failUnlessExists('target2/dir1/file2')
+        self.failUnlessExists('target2/dir1/file')
+
+        # Ensure new contents are suppressed for existing branches
+        target = self.make_branch_and_tree('target3')
+        self.make_branch('target3/dir1')
+        self.build_tree(['target3/dir1/file2'])
+        build_tree(source.basis_tree(), target)
+        self.failIfExists('target3/dir1/file')
+        self.failUnlessExists('target3/dir1/file2')
+        self.failUnlessExists('target3/dir1.diverted/file')
+        self.assertEqual([DuplicateEntry('Diverted to',
+            'dir1.diverted', 'dir1', 'new-dir1', None)],
+            target.conflicts())
+
+        target = self.make_branch_and_tree('target4')
+        self.build_tree(['target4/dir1/'])
+        self.make_branch('target4/dir1/file')
+        build_tree(source.basis_tree(), target)
+        self.failUnlessExists('target4/dir1/file')
+        self.assertEqual('directory', file_kind('target4/dir1/file'))
+        self.failUnlessExists('target4/dir1/file.diverted')
+        self.assertEqual([DuplicateEntry('Diverted to',
+            'dir1/file.diverted', 'dir1/file', 'new-file', None)],
+            target.conflicts())
+
+    def test_mixed_conflict_handling(self):
+        """Ensure that when building trees, conflict handling is done"""
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch_and_tree('target')
+        self.build_tree(['source/name', 'target/name/'])
+        source.add('name', 'new-name')
+        source.commit('added file')
+        build_tree(source.basis_tree(), target)
+        self.assertEqual([DuplicateEntry('Moved existing file to',
+            'name.moved', 'name', None, 'new-name')], target.conflicts())
+
+    def test_raises_in_populated(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/name'])
+        source.add('name')
+        source.commit('added name')
+        target = self.make_branch_and_tree('target')
+        self.build_tree(['target/name'])
+        target.add('name')
+        self.assertRaises(AssertionError, build_tree, source.basis_tree(),
+                          target)
+
+
 class MockTransform(object):
 
     def has_named_child(self, by_parent, parent_id, name):

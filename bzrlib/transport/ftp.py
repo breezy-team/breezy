@@ -196,15 +196,13 @@ class FtpTransport(Transport):
     def _abspath(self, relpath):
         assert isinstance(relpath, basestring)
         relpath = urlutils.unescape(relpath)
-        relpath_parts = relpath.split('/')
-        if len(relpath_parts) > 1:
-            if relpath_parts[0] == '':
-                raise ValueError("path %r within branch %r seems to be absolute"
-                                 % (relpath, self._path))
-        basepath = self._path.split('/')
+        if relpath.startswith('/'):
+            basepath = []
+        else:
+            basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
-        for p in relpath_parts:
+        for p in relpath.split('/'):
             if p == '..':
                 if len(basepath) == 0:
                     # In most filesystems, a request for the parent
@@ -294,7 +292,7 @@ class FtpTransport(Transport):
                 self._FTP_instance = None
                 return self.get(relpath, decode, retries+1)
 
-    def put(self, relpath, fp, mode=None, retries=0):
+    def put_file(self, relpath, fp, mode=None, retries=0):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
@@ -307,7 +305,7 @@ class FtpTransport(Transport):
         abspath = self._abspath(relpath)
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
                         os.getpid(), random.randint(0,0x7FFFFFFF))
-        if not hasattr(fp, 'read'):
+        if getattr(fp, 'read', None) is None:
             fp = StringIO(fp)
         try:
             mutter("FTP put: %s", abspath)
@@ -333,7 +331,7 @@ class FtpTransport(Transport):
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
                 self._FTP_instance = None
-                self.put(relpath, fp, mode, retries+1)
+                self.put_file(relpath, fp, mode, retries+1)
         except EOFError:
             if retries > _number_of_retries:
                 raise errors.TransportError("FTP control connection closed during PUT %s."
@@ -342,7 +340,7 @@ class FtpTransport(Transport):
                 warning("FTP control connection closed. Trying to reopen.")
                 time.sleep(_sleep_between_retries)
                 self._FTP_instance = None
-                self.put(relpath, fp, mode, retries+1)
+                self.put_file(relpath, fp, mode, retries+1)
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
@@ -365,7 +363,7 @@ class FtpTransport(Transport):
         except ftplib.error_perm, e:
             self._translate_perm_error(e, abspath, unknown_exc=errors.PathError)
 
-    def append(self, relpath, f, mode=None):
+    def append_file(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """
@@ -465,18 +463,21 @@ class FtpTransport(Transport):
 
     def list_dir(self, relpath):
         """See Transport.list_dir."""
+        basepath = self._abspath(relpath)
+        mutter("FTP nlst: %s", basepath)
+        f = self._get_FTP()
         try:
-            mutter("FTP nlst: %s", self._abspath(relpath))
-            f = self._get_FTP()
-            basepath = self._abspath(relpath)
             paths = f.nlst(basepath)
-            # If FTP.nlst returns paths prefixed by relpath, strip 'em
-            if paths and paths[0].startswith(basepath):
-                paths = [path[len(basepath)+1:] for path in paths]
-            # Remove . and .. if present, and return
-            return [path for path in paths if path not in (".", "..")]
         except ftplib.error_perm, e:
             self._translate_perm_error(e, relpath, extra='error with list_dir')
+        # If FTP.nlst returns paths prefixed by relpath, strip 'em
+        if paths and paths[0].startswith(basepath):
+            entries = [path[len(basepath)+1:] for path in paths]
+        else:
+            entries = paths
+        # Remove . and .. if present
+        return [urlutils.escape(entry) for entry in entries
+                if entry not in ('.', '..')]
 
     def iter_files_recursive(self):
         """See Transport.iter_files_recursive.
@@ -485,7 +486,7 @@ class FtpTransport(Transport):
         mutter("FTP iter_files_recursive")
         queue = list(self.list_dir("."))
         while queue:
-            relpath = urllib.quote(queue.pop(0))
+            relpath = queue.pop(0)
             st = self.stat(relpath)
             if stat.S_ISDIR(st.st_mode):
                 for i, basename in enumerate(self.list_dir(relpath)):
