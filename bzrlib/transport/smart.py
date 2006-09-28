@@ -455,6 +455,8 @@ class LengthPrefixedBodyDecoder(object):
         
     def _state_accept_reading_trailer(self, bytes):
         self._trailer_buffer += bytes
+        # TODO: what if the trailer does not match "done\n"?  Should this raise
+        # a ProtocolViolation exception?
         if self._trailer_buffer.startswith('done\n'):
             self.unused_data = self._trailer_buffer[len('done\n'):]
             self.state_accept = self._state_accept_reading_unused

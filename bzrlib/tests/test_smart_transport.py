@@ -1226,10 +1226,6 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
     def test_http_send_smart_request_urllib(self):
         self._test_http_send_smart_request('http+urllib')
 
-    #def test_smart_client_http_medium_send_smart_request(self):
-    #    medium = smart.SmartClientHTTPMedium()
-    #    medium.send_smart_request(
-
     def test_http_server_with_smarts(self):
         http_server = HTTPServerWithSmarts()
         http_server.setUp()
