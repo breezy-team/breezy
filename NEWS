@@ -26,6 +26,9 @@ IN DEVELOPMENT
       a few times (up to 1 hour) before timing out. Also, report why the
       lock is unavailable (John Arbash Meinel, #43521, #49556)
 
+    * Leave HttpTransportBase daughter classes decides how they
+      implement cloning. (Vincent Ladeuil, #61606)
+
 bzr 0.11rc2  2006-09-27
 
   BUG FIXES:
