@@ -235,12 +235,6 @@ class BundleSerializerV08(BundleSerializer):
         old_label = ''
         new_label = ''
 
-        def bundle_path(path):
-            if path != '':
-                return path
-            else:
-                return '.'
-
         def do_diff(file_id, old_path, new_path, action, force_binary):
             def tree_lines(tree, require_text=False):
                 if file_id in tree:
@@ -270,8 +264,7 @@ class BundleSerializerV08(BundleSerializer):
         def finish_action(action, file_id, kind, meta_modified, text_modified,
                           old_path, new_path):
             entry = new_tree.inventory[file_id]
-            if (entry.revision != default_revision_id and 
-                entry.revision is not None):
+            if entry.revision != default_revision_id:
                 action.add_property('last-changed', entry.revision)
             if meta_modified:
                 action.add_bool_property('executable', entry.executable)
@@ -288,8 +281,7 @@ class BundleSerializerV08(BundleSerializer):
             action = Action('removed', [kind, path]).write(self.to_file)
 
         for path, file_id, kind in delta.added:
-            action = Action('added', [kind, bundle_path(path)], 
-                            [('file-id', file_id)])
+            action = Action('added', [kind, path], [('file-id', file_id)])
             meta_modified = (kind=='file' and 
                              new_tree.is_executable(file_id))
             finish_action(action, file_id, kind, meta_modified, True,
@@ -297,14 +289,13 @@ class BundleSerializerV08(BundleSerializer):
 
         for (old_path, new_path, file_id, kind,
              text_modified, meta_modified) in delta.renamed:
-            action = Action('renamed', [kind, bundle_path(old_path)], 
-                            [(bundle_path(new_path),)])
+            action = Action('renamed', [kind, old_path], [(new_path,)])
             finish_action(action, file_id, kind, meta_modified, text_modified,
                           old_path, new_path)
 
         for (path, file_id, kind,
              text_modified, meta_modified) in delta.modified:
-            action = Action('modified', [kind, bundle_path(path)])
+            action = Action('modified', [kind, path])
             finish_action(action, file_id, kind, meta_modified, text_modified,
                           path, path)
 
@@ -315,10 +306,9 @@ class BundleSerializerV08(BundleSerializer):
                 continue
             old_rev = getattr(old_tree.inventory[ie.file_id], 'revision', None)
             if new_rev != old_rev:
-                action = Action('modified', 
-                    [ie.kind, bundle_path(new_tree.id2path(ie.file_id))])
-                if ie.revision is not None:
-                    action.add_property('last-changed', ie.revision)
+                action = Action('modified', [ie.kind, 
+                                             new_tree.id2path(ie.file_id)])
+                action.add_property('last-changed', ie.revision)
                 action.write(self.to_file)
 
 
