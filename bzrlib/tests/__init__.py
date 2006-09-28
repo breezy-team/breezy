@@ -869,6 +869,8 @@ class TestCase(unittest.TestCase):
         where it may be useful for debugging.  See also run_captured.
 
         :param stdin: A string to be used as stdin for the command.
+        :param retcode: The status code the command should return
+        :param working_dir: The directory to run the command in
         """
         retcode = kwargs.pop('retcode', 0)
         encoding = kwargs.pop('encoding', None)
