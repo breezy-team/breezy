@@ -16,8 +16,11 @@
 
 """Tests for the (un)lock interfaces on all working tree implemenations."""
 
-import bzrlib.branch as branch
-import bzrlib.errors as errors
+from bzrlib import (
+    branch,
+    errors,
+    lockdir,
+    )
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -179,7 +182,13 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         branch_copy.lock_write()
         try:
             try:
-                self.assertRaises(errors.LockError, wt.lock_write)
+                orig_default = lockdir._DEFAULT_TIMEOUT_SECONDS
+                try:
+                    lockdir._DEFAULT_TIMEOUT_SECONDS = 1
+                    self.assertRaises(errors.LockError, wt.lock_write)
+                finally:
+                    lockdir._DEFAULT_TIMEOUT_SECONDS = orig_default
+
                 self.assertFalse(wt.is_locked())
                 self.assertFalse(wt.branch.is_locked())
             finally:
@@ -198,6 +207,7 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # locking, the test still passes.
         wt = self.make_branch_and_tree('.')
         branch_copy = branch.Branch.open('.')
+
         branch_copy.lock_write()
         try:
             try:
