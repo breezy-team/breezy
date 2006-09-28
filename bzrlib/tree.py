@@ -236,7 +236,7 @@ class EmptyTree(Tree):
         assert self._inventory[file_id].kind == "directory"
         return "directory"
 
-    def list_files(self, include_root=True):
+    def list_files(self, include_root=False):
         return iter([])
     
     def __contains__(self, file_id):
