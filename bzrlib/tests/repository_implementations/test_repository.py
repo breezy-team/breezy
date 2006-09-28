@@ -71,6 +71,15 @@ class TestRepository(TestCaseWithRepository):
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
 
+    def test_supports_rich_root(self):
+        tree = self.make_branch_and_tree('a')
+        tree.commit('')
+        second_revision = tree.commit('')
+        inv = tree.branch.repository.revision_tree(second_revision).inventory
+        rich_root = (inv.root.revision != second_revision)
+        self.assertEqual(rich_root, 
+                         tree.branch.repository.supports_rich_root())
+
     def test_clone_specific_format(self):
         """todo"""
 

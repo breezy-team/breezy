@@ -2850,7 +2850,7 @@ class cmd_serve(Command):
         from bzrlib.transport import get_transport
         if directory is None:
             directory = os.getcwd()
-        url = 'file://' + urlutils.escape(directory)
+        url = urlutils.local_path_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
         t = get_transport(url)

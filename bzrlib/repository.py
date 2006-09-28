@@ -714,6 +714,9 @@ class Repository(object):
         warning("Format %s for %s is deprecated - please use 'bzr upgrade' to get better performance"
                 % (self._format, self.bzrdir.transport.base))
 
+    def supports_rich_root(self):
+        return self._format.rich_root_data
+
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
@@ -782,10 +785,12 @@ def install_revision(repository, rev, revision_tree):
             parent_trees[p_id] = repository.revision_tree(None)
 
     inv = revision_tree.inventory
-    
-    # backwards compatability hack: skip the root id.
     entries = inv.iter_entries()
-    entries.next()
+    # backwards compatability hack: skip the root id.
+    if not repository.supports_rich_root():
+        path, root = entries.next()
+        if root.revision != rev.revision_id:
+            raise errors.IncompatibleRevision(repr(repository))
     # Add the texts that are not already present
     for path, ie in entries:
         w = repository.weave_store.get_weave_or_empty(ie.file_id,
