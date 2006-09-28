@@ -2853,7 +2853,7 @@ class cmd_serve(Command):
             url = 'readonly+' + url
         t = get_transport(url)
         if inet:
-            server = smart.SmartServerStreamMedium(sys.stdin, sys.stdout, t)
+            server = smart.SmartServerPipeStreamMedium(sys.stdin, sys.stdout, t)
         elif port is not None:
             if ':' in port:
                 host, port = port.split(':')

@@ -3,7 +3,5 @@
 # 
 
 Fix three cases of read(1)-like problems:
-  * SmartClientRequestProtocolOne.read_body_bytes (DONE)
-  * SmartClientRequestProtocolOne._recv_tuple
   * SmartServerStreamMedium._serve_one_request
 

@@ -202,6 +202,7 @@ PROTOCOL  (serialisation, deserialisation)  accepts structured data for one
 
 from cStringIO import StringIO
 import os
+import select
 import socket
 import tempfile
 import threading
@@ -335,7 +336,6 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                     self._send_response(self.request.response.args,
                         self.request.response.body)
                 self.sync_with_request(self.request)
-                return self.request
             except KeyboardInterrupt:
                 raise
             except Exception, exception:
@@ -343,7 +343,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 self._send_response(('error', str(exception)))
                 return None
 
-        else:
+        if self.has_dispatched:
             if self.finished_reading:
                 # nothing to do.XXX: this routine should be a single state 
                 # machine too.
@@ -517,9 +517,71 @@ class SmartServerStreamMedium(SmartProtocolBase):
         ## self._out.close()
         ## self._in.close()
 
-    def _serve_one_request(self):
+    def serve(self):
+        """Serve requests until the client disconnects."""
+        # Keep a reference to stderr because the sys module's globals get set to
+        # None during interpreter shutdown.
+        from sys import stderr
+        try:
+            while True:
+                protocol = SmartServerRequestProtocolOne(self._out,
+                                                         self.backing_transport)
+                if self._serve_one_request(protocol) == False:
+                    break
+        except Exception, e:
+            stderr.write("%s terminating on exception %s\n" % (self, e))
+            raise
+
+
+class SmartServerSocketStreamMedium(SmartServerStreamMedium):
+
+    def __init__(self, in_socket, out_file, backing_transport):
+        """Constructor.
+
+        :param in_socket: the socket the server will read from.  It will be put
+            into blocking mode.
+        """
+        in_socket.setblocking(True)
+        SmartServerStreamMedium.__init__(
+            self, in_socket, out_file, backing_transport)
+        self.push_back = ''
+        
+    def _serve_one_request(self, protocol):
         """Read one request from input, process, send back a response.
         
+        :param protocol: a SmartServerRequestProtocol.
+        :return: False if the server should terminate, otherwise None.
+        """
+        while not protocol.finished_reading:
+            if self.push_back:
+                protocol.accept_bytes(self.push_back)
+                self.push_back = ''
+            else:
+                bytes = self._in.recv(4096)
+                if bytes == '':
+                    return False
+                protocol.accept_bytes(bytes)
+
+        self.push_back = protocol.excess_buffer
+    
+
+class SmartServerPipeStreamMedium(SmartServerStreamMedium):
+
+    def __init__(self, in_file, out_file, backing_transport):
+        """Construct new server.
+
+        :param in_file: Python file from which requests can be read.
+        :param out_file: Python file to write responses.
+        :param backing_transport: Transport for the directory served.
+        """
+        SmartServerStreamMedium.__init__(self, in_file, out_file, backing_transport)
+        self._in = in_file
+        self._out = out_file
+
+    def _serve_one_request(self, protocol):
+        """Read one request from input, process, send back a response.
+        
+        :param protocol: a SmartServerRequestProtocol.
         :return: False if the server should terminate, otherwise None.
         """
         # ** deserialise, read bytes, serialise and write bytes
@@ -529,8 +591,6 @@ class SmartServerStreamMedium(SmartProtocolBase):
             # client closed connection
             return False  # shutdown server
         try:
-            protocol = SmartServerRequestProtocolOne(self._out,
-                self.backing_transport)
             protocol.accept_bytes(req_line)
             if not protocol.finished_reading:
                 # this boils down to readline which wont block on open sockets
@@ -543,25 +603,13 @@ class SmartServerStreamMedium(SmartProtocolBase):
                 # might be nice to do protocol.end_of_bytes()
                 # because self._recv_bulk reads all the bytes, this must finish
                 # after one delivery of data rather than looping.
-                assert protocol.finished_reading
+                assert protocol.finished_reading, 'was not finished reading'
         except KeyboardInterrupt:
             raise
         except Exception, e:
             # everything else: pass to client, flush, and quit
             self._send_error_and_disconnect(e)
             return False
-
-    def serve(self):
-        """Serve requests until the client disconnects."""
-        # Keep a reference to stderr because the sys module's globals get set to
-        # None during interpreter shutdown.
-        from sys import stderr
-        try:
-            while self._serve_one_request() != False:
-                pass
-        except Exception, e:
-            stderr.write("%s terminating on exception %s\n" % (self, e))
-            raise
 
 
 class SmartServerResponse(object):
@@ -851,7 +899,7 @@ class SmartTCPServer(object):
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         from_client = conn.makefile('r')
         to_client = conn.makefile('w')
-        handler = SmartServerStreamMedium(from_client, to_client,
+        handler = SmartServerSocketStreamMedium(conn, to_client,
                 self.backing_transport)
         connection_thread = threading.Thread(None, handler.serve, name='smart-server-child')
         connection_thread.setDaemon(True)
@@ -1516,7 +1564,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase):
         """Receive a tuple from the medium request."""
         line = ''
         while not line or line[-1] != '\n':
-            # yes, this is inefficient - but tuples are short.
+            # TODO: this is inefficient - but tuples are short.
             new_char = self._request.read_bytes(1)
             line += new_char
             assert new_char != '', "end of file reading from server."

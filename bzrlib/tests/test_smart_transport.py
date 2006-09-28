@@ -535,15 +535,47 @@ class RemoteTransportTests(tests.TestCaseWithTransport):
         self.assertIsInstance(medium, smart.SmartClientMedium)
 
 
-class BasicSmartTests(tests.TestCase):
+class SampleRequest(object):
+    
+    def __init__(self, expected_bytes):
+        self.accepted_bytes = ''
+        self.finished_reading = False
+        self.expected_bytes = expected_bytes
+        self.excess_buffer = ''
+
+    def accept_bytes(self, bytes):
+        self.accepted_bytes += bytes
+        if self.accepted_bytes.startswith(self.expected_bytes):
+            self.finished_reading = True
+            self.excess_buffer = self.accepted_bytes[len(self.expected_bytes):]
+
+
+class TestSmartServerStreamMedium(tests.TestCase):
+
+    def portable_socket_pair(self):
+        """Return a pair of TCP sockets connected to each other.
+        
+        Unlike socket.socketpair, this should work on Windows.
+        """
+        listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listen_sock.bind(('127.0.0.1', 0))
+        listen_sock.listen(1)
+        client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_sock.connect(listen_sock.getsockname())
+        server_sock, addr = listen_sock.accept()
+        listen_sock.close()
+        return server_sock, client_sock
     
     def test_smart_query_version(self):
         """Feed a canned query version to a server"""
         # wire-to-wire, using the whole stack
         to_server = StringIO('hello\n')
         from_server = StringIO()
-        server = smart.SmartServerStreamMedium(to_server, from_server, local.LocalTransport('file:///'))
-        server._serve_one_request()
+        transport = local.LocalTransport('file:///')
+        server = smart.SmartServerPipeStreamMedium(
+            to_server, from_server, transport)
+        protocol = smart.SmartServerRequestProtocolOne(from_server, transport)
+        server._serve_one_request(protocol)
         self.assertEqual('ok\0011\n',
                          from_server.getvalue())
 
@@ -552,13 +584,103 @@ class BasicSmartTests(tests.TestCase):
         transport.put_bytes('testfile', 'contents\nof\nfile\n')
         to_server = StringIO('get\001./testfile\n')
         from_server = StringIO()
-        server = smart.SmartServerStreamMedium(to_server, from_server, transport)
-        server._serve_one_request()
+        server = smart.SmartServerPipeStreamMedium(
+            to_server, from_server, transport)
+        protocol = smart.SmartServerRequestProtocolOne(from_server, transport)
+        server._serve_one_request(protocol)
         self.assertEqual('ok\n'
                          '17\n'
                          'contents\nof\nfile\n'
                          'done\n',
                          from_server.getvalue())
+
+    def test_pipe_like_stream_with_bulk_data(self):
+        sample_request_bytes = 'command\n9\nbulk datadone\n'
+        to_server = StringIO(sample_request_bytes)
+        from_server = StringIO()
+        server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
+        sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
+        stream_still_open = server._serve_one_request(sample_protocol)
+        self.assertEqual('', from_server.getvalue())
+        self.assertEqual(sample_request_bytes, sample_protocol.accepted_bytes)
+        self.assertEqual(None, stream_still_open)
+
+    def test_socket_stream_with_bulk_data(self):
+        sample_request_bytes = 'command\n9\nbulk datadone\n'
+        server_sock, client_sock = self.portable_socket_pair()
+        from_server = StringIO() # XXX: that's not a socket
+        server = smart.SmartServerSocketStreamMedium(
+            server_sock, from_server, None)
+        sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
+        client_sock.sendall(sample_request_bytes)
+        stream_still_open = server._serve_one_request(sample_protocol)
+        self.assertEqual('', from_server.getvalue())
+        self.assertEqual(sample_request_bytes, sample_protocol.accepted_bytes)
+        self.assertEqual(None, stream_still_open)
+
+    def test_pipe_like_stream_shutdown_detection(self):
+        to_server = StringIO('')
+        from_server = StringIO()
+        server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
+        stream_still_open = server._serve_one_request(None)
+        self.assertEqual(False, stream_still_open)
+        
+    def test_socket_stream_shutdown_detection(self):
+        server_sock, client_sock = self.portable_socket_pair()
+        from_server = StringIO()
+        client_sock.close()
+        server = smart.SmartServerSocketStreamMedium(
+            server_sock, from_server, None)
+        stream_still_open = server._serve_one_request(SampleRequest('x'))
+        self.assertEqual(False, stream_still_open)
+        
+    def test_pipe_like_stream_with_two_requests(self):
+        # If two requests are read in one go, then two calls to
+        # _serve_one_request should still process both of them as if they had
+        # been received seperately.
+        sample_request_bytes = 'command\n'
+        to_server = StringIO(sample_request_bytes * 2)
+        from_server = StringIO()
+        server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
+        first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
+        stream_still_open = server._serve_one_request(first_protocol)
+        self.assertTrue(first_protocol.finished_reading)
+        self.assertEqual('', from_server.getvalue())
+        self.assertEqual(None, stream_still_open)
+        # Make a new protocol, call _serve_one_request with it to collect the
+        # second request.
+        second_protocol = SampleRequest(expected_bytes=sample_request_bytes)
+        stream_still_open = server._serve_one_request(second_protocol)
+        self.assertEqual('', from_server.getvalue())
+        self.assertEqual(sample_request_bytes, second_protocol.accepted_bytes)
+        self.assertEqual(None, stream_still_open)
+        
+    def test_socket_stream_with_two_requests(self):
+        # If two requests are read in one go, then two calls to
+        # _serve_one_request should still process both of them as if they had
+        # been received seperately.
+        sample_request_bytes = 'command\n'
+        server_sock, client_sock = self.portable_socket_pair()
+        from_server = StringIO() # XXX: that's not a socket
+        server = smart.SmartServerSocketStreamMedium(
+            server_sock, from_server, None)
+        first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
+        # Put two whole requests on the wire.
+        client_sock.sendall(sample_request_bytes * 2)
+        stream_still_open = server._serve_one_request(first_protocol)
+        self.assertTrue(first_protocol.finished_reading)
+        self.assertEqual('', from_server.getvalue())
+        self.assertEqual(None, stream_still_open)
+        # Make a new protocol, call _serve_one_request with it to collect the
+        # second request.
+        second_protocol = SampleRequest(expected_bytes=sample_request_bytes)
+        stream_still_open = server._serve_one_request(second_protocol)
+        self.assertEqual('', from_server.getvalue())
+        self.assertEqual(sample_request_bytes, second_protocol.accepted_bytes)
+        self.assertEqual(None, stream_still_open)
+
+
+class TestSmartTCPServer(tests.TestCase):
 
     def test_get_error_unexpected(self):
         """Error reported by server with no specific representation"""
@@ -937,6 +1059,17 @@ class TestSmartProtocol(tests.TestCase):
         protocol.accept_bytes('defgd')
         protocol.accept_bytes('one\n')
         self.assertTrue(self.end_received)
+
+    def test_accept_request_and_body_all_at_once(self):
+        mem_transport = memory.MemoryTransport()
+        mem_transport.put_bytes('foo', 'abcdefghij')
+        out_stream = StringIO()
+        protocol = smart.SmartServerRequestProtocolOne(out_stream, mem_transport)
+        protocol.accept_bytes('readv\x01foo\n3\n3,3done\n')
+        self.assertTrue(protocol.finished_reading)
+        self.assertEqual('readv\n3\ndefdone\n', out_stream.getvalue())
+        self.assertEqual('', protocol.excess_buffer)
+        self.assertEqual('', protocol.in_buffer)
 
     def test_accept_excess_bytes_are_preserved(self):
         out_stream = StringIO()
