@@ -160,11 +160,11 @@ class TestRepository(TestCaseWithRepository):
         expected = InventoryDirectory('fixed-root', '', None)
         expected.revision = 'revision-1'
         self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
-                         list(tree.list_files()))
+                         list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(None)
-        self.assertEqual([], list(tree.list_files()))
+        self.assertEqual([], list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
-        self.assertEqual([], list(tree.list_files()))
+        self.assertEqual([], list(tree.list_files(include_root=True)))
 
     def test_fetch(self):
         # smoke test fetch to ensure that the convenience function works.
