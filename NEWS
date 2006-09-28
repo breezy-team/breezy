@@ -7,6 +7,9 @@ IN DEVELOPMENT
       mainline. These revision numbers are not yet accepted as input into bzr
       commands such as log, diff etc. (Robert Collins)
 
+    * revisions can now be specified using dotted-decimal revision numbers.
+      For instance, ``bzr diff -r 1.2.1..1.2.3. (Robert Collins)
+
   API INCOMPATABILITY:
   
     * LogFormatter subclasses show now expect the 'revno' parameter to 

@@ -80,6 +80,7 @@ def _parse_revision_str(revstr):
     """
     # TODO: Maybe move this into revisionspec.py
     revs = []
+    # split on the first .. that is not followed by a / ?
     sep = re.compile("\\.\\.(?!/)")
     for x in sep.split(revstr):
         revs.append(RevisionSpec.from_string(x or None))
