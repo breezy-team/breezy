@@ -535,6 +535,15 @@ class RemoteTransportTests(tests.TestCaseWithTransport):
         self.assertIsInstance(medium, smart.SmartClientMedium)
 
 
+class ErrorRaisingProtocol(object):
+
+    def __init__(self, exception):
+        self.exception = exception
+
+    def next_read_size(self):
+        raise self.exception
+
+
 class SampleRequest(object):
     
     def __init__(self, expected_bytes):
@@ -628,7 +637,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         to_server = StringIO('')
         from_server = StringIO()
         server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
-        stream_still_open = server._serve_one_request(None)
+        stream_still_open = server._serve_one_request(SampleRequest('x'))
         self.assertEqual(False, stream_still_open)
         
     def test_socket_stream_shutdown_detection(self):
@@ -684,6 +693,62 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual('', from_server.getvalue())
         self.assertEqual(sample_request_bytes, second_protocol.accepted_bytes)
         self.assertEqual(None, stream_still_open)
+
+    def test_pipe_like_stream_error_handling(self):
+        # Use plain python StringIO so we can monkey-patch the close method to
+        # not discard the contents.
+        from StringIO import StringIO
+        to_server = StringIO('')
+        from_server = StringIO()
+        self.closed = False
+        def close():
+            self.closed = True
+        from_server.close = close
+        server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
+        fake_protocol = ErrorRaisingProtocol(Exception('boom'))
+        stream_still_open = server._serve_one_request(fake_protocol)
+        self.assertEqual('', from_server.getvalue())
+        self.assertTrue(self.closed)
+        self.assertEqual(False, stream_still_open)
+        
+    def test_socket_stream_error_handling(self):
+        # Use plain python StringIO so we can monkey-patch the close method to
+        # not discard the contents.
+        from StringIO import StringIO
+        server_sock, client_sock = self.portable_socket_pair()
+        from_server = StringIO() # XXX: that's not a socket
+        self.closed = False
+        def close():
+            self.closed = True
+        from_server.close = close
+        server = smart.SmartServerSocketStreamMedium(
+            server_sock, from_server, None)
+        fake_protocol = ErrorRaisingProtocol(Exception('boom'))
+        stream_still_open = server._serve_one_request(fake_protocol)
+        self.assertEqual('', from_server.getvalue())
+        self.assertTrue(self.closed)
+        self.assertEqual(False, stream_still_open)
+        
+    def test_pipe_like_stream_keyboard_interrupt_handling(self):
+        # Use plain python StringIO so we can monkey-patch the close method to
+        # not discard the contents.
+        to_server = StringIO('')
+        from_server = StringIO()
+        server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
+        fake_protocol = ErrorRaisingProtocol(KeyboardInterrupt('boom'))
+        self.assertRaises(
+            KeyboardInterrupt, server._serve_one_request, fake_protocol)
+        self.assertEqual('', from_server.getvalue())
+
+    def test_socket_stream_keyboard_interrupt_handling(self):
+        server_sock, client_sock = self.portable_socket_pair()
+        from_server = StringIO() # XXX: that's not a socket
+        server = smart.SmartServerSocketStreamMedium(
+            server_sock, from_server, None)
+        fake_protocol = ErrorRaisingProtocol(KeyboardInterrupt('boom'))
+        self.assertRaises(
+            KeyboardInterrupt, server._serve_one_request, fake_protocol)
+        self.assertEqual('', from_server.getvalue())
         
         
 class TestSmartTCPServer(tests.TestCase):

@@ -461,7 +461,7 @@ class LengthPrefixedBodyDecoder(object):
         return result
 
 
-class SmartServerStreamMedium(SmartProtocolBase):
+class SmartServerStreamMedium(object):
     """Handles smart commands coming over a stream.
 
     The stream may be a pipe connected to sshd, or a tcp socket, or an
@@ -483,18 +483,13 @@ class SmartServerStreamMedium(SmartProtocolBase):
         """
         self._in = in_file
         self._out = out_file
+        # backing_transport could be passed to serve instead of __init__
         self.backing_transport = backing_transport
 
     def _send_tuple(self, args):
         """Send response header"""
         # ** serialise and write bytes
         return self._write_and_flush(_encode_tuple(args))
-
-    def _send_error_and_disconnect(self, exception):
-        # ** serialise and write bytes
-        self._send_tuple(('error', str(exception)))
-        ## self._out.close()
-        ## self._in.close()
 
     def serve(self):
         """Serve requests until the client disconnects."""
@@ -531,17 +526,23 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         :param protocol: a SmartServerRequestProtocol.
         :return: False if the server should terminate, otherwise None.
         """
-        while protocol.next_read_size():
-            if self.push_back:
-                protocol.accept_bytes(self.push_back)
-                self.push_back = ''
-            else:
-                bytes = self._in.recv(4096)
-                if bytes == '':
-                    return False
-                protocol.accept_bytes(bytes)
+        try:
+            while protocol.next_read_size():
+                if self.push_back:
+                    protocol.accept_bytes(self.push_back)
+                    self.push_back = ''
+                else:
+                    bytes = self._in.recv(4096)
+                    if bytes == '':
+                        return False
+                    protocol.accept_bytes(bytes)
 
-        self.push_back = protocol.excess_buffer
+            self.push_back = protocol.excess_buffer
+        except KeyboardInterrupt:
+            raise
+        except Exception, e:
+            self._out.close()
+            return False
     
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
@@ -577,8 +578,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         except KeyboardInterrupt:
             raise
         except Exception, e:
-            # everything else: pass to client, flush, and quit
-            self._send_error_and_disconnect(e)
+            self._out.close()
             return False
 
 
