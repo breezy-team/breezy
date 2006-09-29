@@ -703,6 +703,7 @@ class TestCase(unittest.TestCase):
 
     def _cleanEnvironment(self):
         new_env = {
+            'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
             'HOME': os.getcwd(),
             'APPDATA': os.getcwd(),
             'BZR_EMAIL': None,
