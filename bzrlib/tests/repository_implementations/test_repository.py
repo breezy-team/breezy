@@ -71,6 +71,15 @@ class TestRepository(TestCaseWithRepository):
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
 
+    def test_supports_rich_root(self):
+        tree = self.make_branch_and_tree('a')
+        tree.commit('')
+        second_revision = tree.commit('')
+        inv = tree.branch.repository.revision_tree(second_revision).inventory
+        rich_root = (inv.root.revision != second_revision)
+        self.assertEqual(rich_root, 
+                         tree.branch.repository.supports_rich_root())
+
     def test_clone_specific_format(self):
         """todo"""
 
@@ -151,11 +160,11 @@ class TestRepository(TestCaseWithRepository):
         expected = InventoryDirectory('fixed-root', '', None)
         expected.revision = 'revision-1'
         self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
-                         list(tree.list_files()))
+                         list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(None)
-        self.assertEqual([], list(tree.list_files()))
+        self.assertEqual([], list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
-        self.assertEqual([], list(tree.list_files()))
+        self.assertEqual([], list(tree.list_files(include_root=True)))
 
     def test_fetch(self):
         # smoke test fetch to ensure that the convenience function works.

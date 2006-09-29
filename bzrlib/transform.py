@@ -1237,6 +1237,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
         pp.next_phase()
         wt_interesting = [i for i in working_tree.inventory if interesting(i)]
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        basis_tree = None
         try:
             for id_num, file_id in enumerate(wt_interesting):
                 if (working_tree.inventory.is_root(file_id) and 
@@ -1251,18 +1252,21 @@ def revert(working_tree, target_tree, filenames, backups=False,
                         file_kind = working_tree.kind(file_id)
                     except NoSuchFile:
                         file_kind = None
+                    delete_merge_modified = (file_id in merge_modified)
                     if file_kind != 'file' and file_kind is not None:
                         keep_contents = False
-                        delete_merge_modified = False
                     else:
+                        if basis_tree is None:
+                            basis_tree = working_tree.basis_tree()
+                        wt_sha1 = working_tree.get_file_sha1(file_id)
                         if (file_id in merge_modified and 
-                            merge_modified[file_id] == 
-                            working_tree.get_file_sha1(file_id)):
+                            merge_modified[file_id] == wt_sha1):
                             keep_contents = False
-                            delete_merge_modified = True
+                        elif (file_id in basis_tree and 
+                            basis_tree.get_file_sha1(file_id) == wt_sha1):
+                            keep_contents = False
                         else:
                             keep_contents = True
-                            delete_merge_modified = False
                     if not keep_contents:
                         tt.delete_contents(trans_id)
                     if delete_merge_modified:

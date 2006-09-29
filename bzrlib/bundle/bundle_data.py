@@ -26,7 +26,7 @@ from bzrlib.errors import (TestamentMismatch, BzrError,
                            MalformedHeader, MalformedPatches, NotABundle)
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
-                              InventoryLink, ROOT_ID)
+                              InventoryLink)
 from bzrlib.osutils import sha_file, sha_string, pathjoin
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.testament import StrictTestament
@@ -223,7 +223,8 @@ class BundleInfo(object):
             if repository.has_revision(revision_id):
                 testament = StrictTestament.from_revision(repository, 
                                                           revision_id)
-                local_sha1 = testament.as_sha1()
+                local_sha1 = self._testament_sha1_from_revision(repository,
+                                                                revision_id)
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For revision id {%s}' 
                             'local: %s, bundle: %s' % (revision_id, local_sha1, sha1))
@@ -281,7 +282,7 @@ class BundleInfo(object):
         rev_info = self.get_revision_info(revision_id)
         assert rev.revision_id == rev_info.revision_id
         assert rev.revision_id == revision_id
-        sha1 = StrictTestament(rev, inventory).as_sha1()
+        sha1 = self._testament_sha1(rev, inventory)
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev.revision_id in rev_to_sha1:
@@ -440,20 +441,11 @@ class BundleTree(Tree):
         self.revision_id = revision_id
         self._inventory = None
 
-    @staticmethod
-    def _true_path(path):
-        if path != '.':
-            return path
-        else:
-            return ''
-
     def __str__(self):
         return pprint.pformat(self.__dict__)
 
     def note_rename(self, old_path, new_path):
         """A file/directory has been renamed from old_path => new_path"""
-        new_path = self._true_path(new_path)
-        old_path = self._true_path(old_path)
         assert new_path not in self._renamed
         assert old_path not in self._renamed_r
         self._renamed[new_path] = old_path
@@ -461,7 +453,6 @@ class BundleTree(Tree):
 
     def note_id(self, new_id, new_path, kind='file'):
         """Files that don't exist in base need a new id."""
-        new_path = self._true_path(new_path)
         self._new_id[new_path] = new_id
         self._new_id_r[new_id] = new_path
         self._kinds[new_id] = kind
@@ -477,22 +468,21 @@ class BundleTree(Tree):
 
     def note_patch(self, new_path, patch):
         """There is a patch for a given filename."""
-        self.patches[self._true_path(new_path)] = patch
+        self.patches[new_path] = patch
 
     def note_target(self, new_path, target):
         """The symlink at the new path has the given target"""
-        self._targets[self._true_path(new_path)] = target
+        self._targets[new_path] = target
 
     def note_deletion(self, old_path):
         """The file at old_path has been deleted."""
-        self.deleted.append(self._true_path(old_path))
+        self.deleted.append(old_path)
 
     def note_executable(self, new_path, executable):
-        self._executable[self._true_path(new_path)] = executable
+        self._executable[new_path] = executable
 
     def old_path(self, new_path):
         """Get the old_path (path in the base_tree) for the file at new_path"""
-        new_path = self._true_path(new_path)
         assert new_path[:1] not in ('\\', '/')
         old_path = self._renamed.get(new_path)
         if old_path is not None:
@@ -519,7 +509,6 @@ class BundleTree(Tree):
         """Get the new_path (path in the target_tree) for the file at old_path
         in the base tree.
         """
-        old_path = self._true_path(old_path)
         assert old_path[:1] not in ('\\', '/')
         new_path = self._renamed_r.get(old_path)
         if new_path is not None:
@@ -589,7 +578,8 @@ class BundleTree(Tree):
                 then be cached.
         """
         base_id = self.old_contents_id(file_id)
-        if base_id is not None:
+        if (base_id is not None and
+            base_id != self.base_tree.inventory.root.file_id):
             patch_original = self.base_tree.get_file(base_id)
         else:
             patch_original = None
@@ -658,28 +648,19 @@ class BundleTree(Tree):
 
         assert self.base_tree is not None
         base_inv = self.base_tree.inventory
-        root_id = ROOT_ID
-        if base_inv.root is not None:
-            root_id = base_inv.root.file_id
         try:
-            root_id = self._new_id['']
-        except KeyError:
-            pass
-        try:
-            # New inventories have a unique root_id
-            inv = Inventory(root_id, self.revision_id)
+            inv = Inventory(None, self.revision_id)
         except TypeError:
             inv = Inventory(revision_id=self.revision_id)
-        inv.root.revision = self.get_last_changed(root_id)
 
         def add_entry(file_id):
             path = self.id2path(file_id)
             if path is None:
                 return
-            parent_path = dirname(path)
-            if parent_path == u'':
-                parent_id = root_id
+            if path == '':
+                parent_id = None
             else:
+                parent_path = dirname(path)
                 parent_id = self.path2id(parent_path)
 
             kind = self.get_kind(file_id)
@@ -706,8 +687,6 @@ class BundleTree(Tree):
 
         sorted_entries = self.sorted_path_id()
         for path, file_id in sorted_entries:
-            if file_id == inv.root.file_id:
-                continue
             add_entry(file_id)
 
         return inv

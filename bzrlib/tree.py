@@ -236,7 +236,7 @@ class EmptyTree(Tree):
         assert self._inventory[file_id].kind == "directory"
         return "directory"
 
-    def list_files(self, include_root=True):
+    def list_files(self, include_root=False):
         return iter([])
     
     def __contains__(self, file_id):
@@ -427,4 +427,4 @@ class InterTree(InterObject):
             # _compare_trees would think we want a complete delta
             return delta.TreeDelta()
         return delta._compare_trees(self.source, self.target, want_unchanged,
-            specific_file_ids, include_root=include_root)
+            specific_file_ids, include_root)

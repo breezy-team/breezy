@@ -897,6 +897,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         Skips the control directory.
         """
         inv = self._inventory
+        if include_root is True:
+            yield ('', 'V', 'directory', inv.root.file_id, inv.root)
         # Convert these into local objects to save lookup times
         pathjoin = osutils.pathjoin
         file_kind = osutils.file_kind
@@ -915,8 +917,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # list and just reverse() them.
         children = collections.deque(children)
         stack = [(inv.root.file_id, u'', self.basedir, children)]
-        if include_root:
-            yield u'', 'V', 'directory', inv.root.file_id, inv.root
         while stack:
             from_dir_id, from_dir_relpath, from_dir_abspath, children = stack[-1]
 

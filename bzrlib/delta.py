@@ -251,7 +251,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,
             # mark it as added
             assert entry.file_id not in added
             added[entry.file_id] = path, entry
-    while (old_path is not None or new_path is not None):
+
+    while old_path is not None or new_path is not None:
         # list_files() returns files in alphabetical path sorted order
         if old_path == new_path:
             if old_file_id == new_file_id:
