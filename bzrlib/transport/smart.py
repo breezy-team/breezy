@@ -277,8 +277,7 @@ class SmartProtocolBase(object):
 class SmartServerRequestProtocolOne(SmartProtocolBase):
     """Server-side encoding and decoding logic for smart version 1."""
     
-    def __init__(self, output_stream, backing_transport):
-        self._out_stream = output_stream
+    def __init__(self, backing_transport, write_func):
         self._backing_transport = backing_transport
         self.excess_buffer = ''
         self._finished_reading = False
@@ -286,6 +285,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         self.has_dispatched = False
         self.request = None
         self._body_decoder = None
+        self._write_func = write_func
 
     def accept_bytes(self, bytes):
         """Take bytes, and advance the internal state machine appropriately.
@@ -351,11 +351,12 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
 
     def _send_response(self, args, body=None):
         """Send a smart server response down the output stream."""
-        self._out_stream.write(_encode_tuple(args))
-        if body is None:
-            self._out_stream.flush()
-        else:
-            self._send_bulk_data(body, self._out_stream)
+        self._write_func(_encode_tuple(args))
+        if body is not None:
+            assert isinstance(body, str), 'body must be a str'
+            bytes = self._encode_bulk_data(body)
+            self._write_func(bytes)
+            #self._send_bulk_data(body, self._out_stream)
 
     def sync_with_request(self, request):
         self._finished_reading = request.finished_reading
@@ -473,23 +474,14 @@ class SmartServerStreamMedium(object):
     which will typically be a LocalTransport looking at the server's filesystem.
     """
 
-    def __init__(self, in_file, out_file, backing_transport):
+    def __init__(self, backing_transport):
         """Construct new server.
 
-        :param in_file: Python file from which requests can be read.
-        :param out_file: Python file to write responses.
         :param backing_transport: Transport for the directory served.
         """
-        self._in = in_file
-        self._out = out_file
         # backing_transport could be passed to serve instead of __init__
         self.backing_transport = backing_transport
         self.finished = False
-
-    def _send_tuple(self, args):
-        """Send response header"""
-        # ** serialise and write bytes
-        return self._write_and_flush(_encode_tuple(args))
 
     def serve(self):
         """Serve requests until the client disconnects."""
@@ -498,8 +490,8 @@ class SmartServerStreamMedium(object):
         from sys import stderr
         try:
             while not self.finished:
-                protocol = SmartServerRequestProtocolOne(self._out,
-                                                         self.backing_transport)
+                protocol = SmartServerRequestProtocolOne(self.backing_transport,
+                                                         self._write_out)
                 self._serve_one_request(protocol)
         except Exception, e:
             stderr.write("%s terminating on exception %s\n" % (self, e))
@@ -519,24 +511,21 @@ class SmartServerStreamMedium(object):
 
     def terminate_due_to_error(self):
         """Called when an unhandled exception from the protocol occurs."""
-        # TODO: This should log to a server log file, but no such thing
-        # exists yet.  Andrew Bennetts 2006-09-29.
-        self._out.close()
-        self.finished = True
+        raise NotImplementedError(self.terminate_due_to_error)
 
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
-    def __init__(self, in_socket, out_file, backing_transport):
+    def __init__(self, sock, backing_transport):
         """Constructor.
 
-        :param in_socket: the socket the server will read from.  It will be put
+        :param sock: the socket the server will read from.  It will be put
             into blocking mode.
         """
-        in_socket.setblocking(True)
-        SmartServerStreamMedium.__init__(
-            self, in_socket, out_file, backing_transport)
+        SmartServerStreamMedium.__init__(self, backing_transport)
         self.push_back = ''
+        sock.setblocking(True)
+        self.socket = sock
 
     def _serve_one_request_unguarded(self, protocol):
         while protocol.next_read_size():
@@ -544,7 +533,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
                 protocol.accept_bytes(self.push_back)
                 self.push_back = ''
             else:
-                bytes = self._in.recv(4096)
+                bytes = self.socket.recv(4096)
                 if bytes == '':
                     self.finished = True
                     return
@@ -552,6 +541,16 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         
         self.push_back = protocol.excess_buffer
     
+    def terminate_due_to_error(self):
+        """Called when an unhandled exception from the protocol occurs."""
+        # TODO: This should log to a server log file, but no such thing
+        # exists yet.  Andrew Bennetts 2006-09-29.
+        self.socket.close()
+        self.finished = True
+
+    def _write_out(self, bytes):
+        self.socket.sendall(bytes)
+
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
 
@@ -562,7 +561,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         :param out_file: Python file to write responses.
         :param backing_transport: Transport for the directory served.
         """
-        SmartServerStreamMedium.__init__(self, in_file, out_file, backing_transport)
+        SmartServerStreamMedium.__init__(self, backing_transport)
         self._in = in_file
         self._out = out_file
 
@@ -571,13 +570,24 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             bytes_to_read = protocol.next_read_size()
             if bytes_to_read == 0:
                 # Finished serving this request.
+                self._out.flush()
                 return
             bytes = self._in.read(bytes_to_read)
             if bytes == '':
                 # Connection has been closed.
                 self.finished = True
+                self._out.flush()
                 return
             protocol.accept_bytes(bytes)
+
+    def terminate_due_to_error(self):
+        # TODO: This should log to a server log file, but no such thing
+        # exists yet.  Andrew Bennetts 2006-09-29.
+        self._out.close()
+        self.finished = True
+
+    def _write_out(self, bytes):
+        self._out.write(bytes)
 
 
 class SmartServerResponse(object):
@@ -865,10 +875,7 @@ class SmartTCPServer(object):
         # propogates to the newly accepted socket.
         conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        from_client = conn.makefile('r')
-        to_client = conn.makefile('w')
-        handler = SmartServerSocketStreamMedium(conn, to_client,
-                self.backing_transport)
+        handler = SmartServerSocketStreamMedium(conn, self.backing_transport)
         connection_thread = threading.Thread(None, handler.serve, name='smart-server-child')
         connection_thread.setDaemon(True)
         connection_thread.start()

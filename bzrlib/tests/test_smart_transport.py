@@ -589,7 +589,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
         transport = local.LocalTransport('file:///')
         server = smart.SmartServerPipeStreamMedium(
             to_server, from_server, transport)
-        protocol = smart.SmartServerRequestProtocolOne(from_server, transport)
+        protocol = smart.SmartServerRequestProtocolOne(transport,
+                from_server.write)
         server._serve_one_request(protocol)
         self.assertEqual('ok\0011\n',
                          from_server.getvalue())
@@ -601,7 +602,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
         from_server = StringIO()
         server = smart.SmartServerPipeStreamMedium(
             to_server, from_server, transport)
-        protocol = smart.SmartServerRequestProtocolOne(from_server, transport)
+        protocol = smart.SmartServerRequestProtocolOne(transport,
+                from_server.write)
         server._serve_one_request(protocol)
         self.assertEqual('ok\n'
                          '17\n'
@@ -623,13 +625,13 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def test_socket_stream_with_bulk_data(self):
         sample_request_bytes = 'command\n9\nbulk datadone\n'
         server_sock, client_sock = self.portable_socket_pair()
-        from_server = StringIO() # XXX: that's not a socket
         server = smart.SmartServerSocketStreamMedium(
-            server_sock, from_server, None)
+            server_sock, None)
         sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         client_sock.sendall(sample_request_bytes)
         server._serve_one_request(sample_protocol)
-        self.assertEqual('', from_server.getvalue())
+        server_sock.close()
+        self.assertEqual('', client_sock.recv(1))
         self.assertEqual(sample_request_bytes, sample_protocol.accepted_bytes)
         self.assertFalse(server.finished)
 
@@ -642,10 +644,9 @@ class TestSmartServerStreamMedium(tests.TestCase):
         
     def test_socket_stream_shutdown_detection(self):
         server_sock, client_sock = self.portable_socket_pair()
-        from_server = StringIO()
         client_sock.close()
         server = smart.SmartServerSocketStreamMedium(
-            server_sock, from_server, None)
+            server_sock, None)
         server._serve_one_request(SampleRequest('x'))
         self.assertTrue(server.finished)
         
@@ -676,23 +677,22 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # been received seperately.
         sample_request_bytes = 'command\n'
         server_sock, client_sock = self.portable_socket_pair()
-        from_server = StringIO() # XXX: that's not a socket
         server = smart.SmartServerSocketStreamMedium(
-            server_sock, from_server, None)
+            server_sock, None)
         first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         # Put two whole requests on the wire.
         client_sock.sendall(sample_request_bytes * 2)
         server._serve_one_request(first_protocol)
         self.assertEqual(0, first_protocol.next_read_size())
-        self.assertEqual('', from_server.getvalue())
         self.assertFalse(server.finished)
         # Make a new protocol, call _serve_one_request with it to collect the
         # second request.
         second_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         stream_still_open = server._serve_one_request(second_protocol)
-        self.assertEqual('', from_server.getvalue())
         self.assertEqual(sample_request_bytes, second_protocol.accepted_bytes)
         self.assertFalse(server.finished)
+        server_sock.close()
+        self.assertEqual('', client_sock.recv(1))
 
     def test_pipe_like_stream_error_handling(self):
         # Use plain python StringIO so we can monkey-patch the close method to
@@ -716,17 +716,13 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # not discard the contents.
         from StringIO import StringIO
         server_sock, client_sock = self.portable_socket_pair()
-        from_server = StringIO() # XXX: that's not a socket
-        self.closed = False
-        def close():
-            self.closed = True
-        from_server.close = close
         server = smart.SmartServerSocketStreamMedium(
-            server_sock, from_server, None)
+            server_sock, None)
         fake_protocol = ErrorRaisingProtocol(Exception('boom'))
         server._serve_one_request(fake_protocol)
-        self.assertEqual('', from_server.getvalue())
-        self.assertTrue(self.closed)
+        # recv should not block, because the other end of the socket has been
+        # closed.
+        self.assertEqual('', client_sock.recv(1))
         self.assertTrue(server.finished)
         
     def test_pipe_like_stream_keyboard_interrupt_handling(self):
@@ -742,13 +738,13 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def test_socket_stream_keyboard_interrupt_handling(self):
         server_sock, client_sock = self.portable_socket_pair()
-        from_server = StringIO() # XXX: that's not a socket
         server = smart.SmartServerSocketStreamMedium(
-            server_sock, from_server, None)
+            server_sock, None)
         fake_protocol = ErrorRaisingProtocol(KeyboardInterrupt('boom'))
         self.assertRaises(
             KeyboardInterrupt, server._serve_one_request, fake_protocol)
-        self.assertEqual('', from_server.getvalue())
+        server_sock.close()
+        self.assertEqual('', client_sock.recv(1))
         
 
 class TestSmartTCPServer(tests.TestCase):
@@ -1018,8 +1014,7 @@ class InstrumentedServerProtocol(smart.SmartServerStreamMedium):
     """A smart server which is backed by memory and saves its write requests."""
 
     def __init__(self, write_output_list):
-        smart.SmartServerStreamMedium.__init__(self, None, None,
-            memory.MemoryTransport())
+        smart.SmartServerStreamMedium.__init__(self, memory.MemoryTransport())
         self._write_output_list = write_output_list
 
     def _write_and_flush(self, bytes):
@@ -1072,7 +1067,7 @@ class TestSmartProtocol(tests.TestCase):
 
     def build_protocol_waiting_for_body(self):
         out_stream = StringIO()
-        protocol = smart.SmartServerRequestProtocolOne(out_stream, None)
+        protocol = smart.SmartServerRequestProtocolOne(None, out_stream.write)
         protocol.has_dispatched = True
         protocol.request = smart.SmartServerRequestHandler(None)
         def handle_end_of_bytes():
@@ -1122,7 +1117,7 @@ class TestSmartProtocol(tests.TestCase):
 
     def test_accept_bytes_to_protocol(self):
         out_stream = StringIO()
-        protocol = smart.SmartServerRequestProtocolOne(out_stream, None)
+        protocol = smart.SmartServerRequestProtocolOne(None, out_stream.write)
         protocol.accept_bytes('abc')
         self.assertEqual('abc', protocol.in_buffer)
         protocol.accept_bytes('\n')
@@ -1145,7 +1140,8 @@ class TestSmartProtocol(tests.TestCase):
         mem_transport = memory.MemoryTransport()
         mem_transport.put_bytes('foo', 'abcdefghij')
         out_stream = StringIO()
-        protocol = smart.SmartServerRequestProtocolOne(out_stream, mem_transport)
+        protocol = smart.SmartServerRequestProtocolOne(mem_transport,
+                out_stream.write)
         protocol.accept_bytes('readv\x01foo\n3\n3,3done\n')
         self.assertEqual(0, protocol.next_read_size())
         self.assertEqual('readv\n3\ndefdone\n', out_stream.getvalue())
@@ -1154,7 +1150,7 @@ class TestSmartProtocol(tests.TestCase):
 
     def test_accept_excess_bytes_are_preserved(self):
         out_stream = StringIO()
-        protocol = smart.SmartServerRequestProtocolOne(out_stream, None)
+        protocol = smart.SmartServerRequestProtocolOne(None, out_stream.write)
         protocol.accept_bytes('hello\nhello\n')
         self.assertEqual("ok\x011\n", out_stream.getvalue())
         self.assertEqual("hello\n", protocol.excess_buffer)
@@ -1172,7 +1168,7 @@ class TestSmartProtocol(tests.TestCase):
 
     def test_accept_excess_bytes_after_dispatch(self):
         out_stream = StringIO()
-        protocol = smart.SmartServerRequestProtocolOne(out_stream, None)
+        protocol = smart.SmartServerRequestProtocolOne(None, out_stream.write)
         protocol.accept_bytes('hello\n')
         self.assertEqual("ok\x011\n", out_stream.getvalue())
         protocol.accept_bytes('hel')
@@ -1215,8 +1211,8 @@ class TestSmartProtocol(tests.TestCase):
         # expected bytes
         for input_tuple in input_tuples:
             server_output = StringIO()
-            server_protocol = smart.SmartServerRequestProtocolOne(server_output,
-                None)
+            server_protocol = smart.SmartServerRequestProtocolOne(
+                None, server_output.write)
             server_protocol._send_response(input_tuple)
             self.assertEqual(expected_bytes, server_output.getvalue())
         # check the decoding of the client protocol from expected_bytes:

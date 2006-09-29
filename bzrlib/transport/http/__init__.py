@@ -654,8 +654,8 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         # we have to stop early due to error, but we would also have to use the
         # HTTP trailer facility which may not be widely available.
         out_buffer = StringIO()
-        smart_protocol_request = smart.SmartServerRequestProtocolOne(out_buffer,
-                transport)
+        smart_protocol_request = smart.SmartServerRequestProtocolOne(
+                transport, out_buffer.write)
         # if this fails, we should return 400 bad request, but failure is
         # failure for now - RBC 20060919
         data_length = int(self.headers['Content-Length'])

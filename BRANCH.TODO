@@ -2,8 +2,3 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 
-Make SmartServerSocketStreamMedium no longer take out_file.
-
-Test the HTTP medium for the same behaviours that we test the socket and pipe
-mediums for, where applicable.
-
