@@ -18,7 +18,7 @@ def kidified_rest(rest_file, template_name):
     assert body is not None
     template=kid.Template(file=template_name, 
                           head=head, body=body)
-    return (template.serialize())
+    return (template.serialize(output="html"))
 
 def safe_open(filename, mode):
     try:

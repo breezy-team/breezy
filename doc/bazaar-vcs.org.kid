@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:py="http://purl.org/kid/ns#">
 <head>
 <base href="http://bazaar-vcs.org" />
 <script type="text/javascript" src=
@@ -219,10 +219,10 @@ actionsMenuInit('More Actions:');
 <hr class="hide" />
 <div id="msg" class="vnav"></div>
 <a name="skipToContent" id="skipToContent"></a>
-<div class="inside">
+<div class="inside" >
 <!--<img id="navProtection" width="1" height="1" border="0" src="/htdocs/bazaarNew/css/spacer.gif" alt="" style="height: 1px"/>-->
-<div dir="ltr" id="content" lang="en" xml:lang="en"><span class=
-"anchor" id="top"></span> <span class="anchor" id="line-8"></span>
+<div dir="ltr" id="content" lang="en" xml:lang="en" py:content="body[:]"><span
+class="anchor" id="top"></span> <span class="anchor" id="line-8"></span>
 <h1 id="head-31592baed255c2a5cdfdaafb9521b837ea61021f">Performance
 Drive Under Way</h1>
 <span class="anchor" id="line-9"></span>
