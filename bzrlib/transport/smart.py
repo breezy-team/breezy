@@ -541,6 +541,8 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         except KeyboardInterrupt:
             raise
         except Exception, e:
+            # TODO: This should log to a server log file, but no such thing
+            # exists yet.  Andrew Bennetts 2006-09-29.
             self._out.close()
             return False
     
@@ -578,6 +580,8 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         except KeyboardInterrupt:
             raise
         except Exception, e:
+            # TODO: This should log to a server log file, but no such thing
+            # exists yet.  Andrew Bennetts 2006-09-29.
             self._out.close()
             return False
 
