@@ -685,31 +685,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual(sample_request_bytes, second_protocol.accepted_bytes)
         self.assertEqual(None, stream_still_open)
         
-    #def test_pipe_like_stream_uses_read_size_hint_from_protocol(self):
-
         
-
-        # test for SmartServerStreamMedium with a StringIO (pipe-like) with bulk
-        # data.  We can use a custom protocol.
-
-        # test for SSSM (stringIO) shutdown detection
-
-        # test for SSSM with TCP.
-        
-        # test for SSSM (TCP) shutdown detection
-
-        # test for SSSM (TCP) no data to read doesn't trigger shutdown
-
-        # two subclasses of SSSM, change callers to use the right subclass,
-        # change the TCP subclass to use recv + select (so it's not a busy
-        # loop)
-
-        # on the SmartServerRequestProtocolOne expose a read size hint (see
-        # next_read_size).
-
-        # change the SSSM pipe-like to use the size hint from the protocol.
-
-
 class TestSmartTCPServer(tests.TestCase):
 
     def test_get_error_unexpected(self):
