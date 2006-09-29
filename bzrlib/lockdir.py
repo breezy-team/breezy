@@ -347,7 +347,7 @@ class LockDir(object):
         config = bzrlib.config.GlobalConfig()
         try:
             user = config.user_email()
-        except errors.BzrError:
+        except errors.NoEmailInUsername:
             user = config.username()
         s = Stanza(hostname=socket.gethostname(),
                    pid=str(os.getpid()),
