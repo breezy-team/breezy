@@ -825,10 +825,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # We need to ensure that the result of a fetch will have a
         # versionedfile for the other_tree root, and only fetching into
         # RepositoryKnit2 guarantees that.
-        try:
-            basis_tree = self.basis_tree()
-            basis_tree.get_file_text(basis_tree.inventory.root.file_id)
-        except NoSuchFile:
+        if not self.branch.repository.supports_rich_root():
             raise errors.SubsumeTargetNeedsUpgrade(other_tree)
         other_tree.lock_tree_write()
         try:
