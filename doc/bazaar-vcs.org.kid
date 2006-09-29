@@ -2,19 +2,18 @@
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:py="http://purl.org/kid/ns#">
 <head>
-<base href="http://bazaar-vcs.org" />
 <script type="text/javascript" src=
 "/htdocs/bazaarNew/js/opacity.js">
 </script>
 <link rel="shortcut icon" href=
-"/Welcome?action=AttachFile&amp;do=get&amp;target=favicon.ico"
+"http://bazaar-vcs.org/Welcome?action=AttachFile&amp;do=get&amp;target=favicon.ico"
 type="image/x-icon" />
 <meta http-equiv="Content-Type" content=
 "text/html; charset=us-ascii" />
 <meta name="robots" content="index,follow" />
 <title>Welcome - Bazaar Version Control</title>
 
-<script type="text/javascript" src="/htdocs/common/js/common.js">
+<script type="text/javascript" src="http://bazaar-vcs.org/htdocs/common/js/common.js">
 </script>
 <script type="text/javascript">
 //<![CDATA[
@@ -86,33 +85,33 @@ function actionsMenuInit(title) {
 //]]>
 </script>
 <link rel="stylesheet" type="text/css" charset="utf-8" media="all"
-href="/htdocs/bazaarNew/css/common.css" />
+href="http://bazaar-vcs.org/htdocs/bazaarNew/css/common.css" />
 <link rel="stylesheet" type="text/css" charset="utf-8" media=
-"screen" href="/htdocs/bazaarNew/css/screen.css" />
+"screen" href="http://bazaar-vcs.org/htdocs/bazaarNew/css/screen.css" />
 <link rel="stylesheet" type="text/css" charset="utf-8" media=
-"print" href="/htdocs/bazaarNew/css/print.css" />
+"print" href="http://bazaar-vcs.org/htdocs/bazaarNew/css/print.css" />
 <link rel="stylesheet" type="text/css" charset="utf-8" media=
-"projection" href="/htdocs/bazaarNew/css/projection.css" />
+"projection" href="http://bazaar-vcs.org/htdocs/bazaarNew/css/projection.css" />
 <link rel="stylesheet" type="text/css" charset="utf-8" media=
-"screen" href="/htdocs/bazaarNew/css/v4.css" />
+"screen" href="http://bazaar-vcs.org/htdocs/bazaarNew/css/v4.css" />
 <link rel="stylesheet" type="text/css" charset="utf-8" media=
-"screen" href="/htdocs/bazaarNew/css/screen2.css" />
+"screen" href="http://bazaar-vcs.org/htdocs/bazaarNew/css/screen2.css" />
 <link rel="stylesheet" type="text/css" charset="utf-8" media=
-"screen" href="/htdocs/bazaarNew/css/twoColumnsRight.css" />
+"screen" href="http://bazaar-vcs.org/htdocs/bazaarNew/css/twoColumnsRight.css" />
 <link rel="alternate" title="Bazaar Version Control Recent Changes"
-href="/RecentChanges?action=rss_rc&amp;ddiffs=1&amp;unique=1" type=
+href="http://bazaar-vcs.org/RecentChanges?action=rss_rc&amp;ddiffs=1&amp;unique=1" type=
 "application/rss+xml" />
-<link rel="Start" href="/Welcome" />
+<link rel="Start" href="http://bazaar-vcs.org/Welcome" />
 <link rel="Alternate" title="Wiki Markup" href=
-"/Welcome?action=raw" />
+"http://bazaar-vcs.org/Welcome?action=raw" />
 <link rel="Alternate" media="print" title="Print View" href=
-"/Welcome?action=print" />
+"http://bazaar-vcs.org/Welcome?action=print" />
 <link rel="Appendix" title="favicon.ico" href=
-"/Welcome?action=AttachFile&amp;do=view&amp;target=favicon.ico" />
-<link rel="Search" href="/FindPage" />
-<link rel="Index" href="/TitleIndex" />
-<link rel="Glossary" href="/WordIndex" />
-<link rel="Help" href="/HelpOnFormatting" />
+"http://bazaar-vcs.org/Welcome?action=AttachFile&amp;do=view&amp;target=favicon.ico" />
+<link rel="Search" href="http://bazaar-vcs.org/FindPage" />
+<link rel="Index" href="http://bazaar-vcs.org/TitleIndex" />
+<link rel="Glossary" href="http://bazaar-vcs.org/WordIndex" />
+<link rel="Help" href="http://bazaar-vcs.org/HelpOnFormatting" />
 </head>
 <body lang="en" dir="ltr" xml:lang="en">
 <div id="page_header1_div"><script type="text/javascript">
@@ -123,10 +122,10 @@ gui_editor_link_text = gui_editor_link_href = null;
 <div id="pageWrapper">
 <hr class="hide" />
 <div id="masthead" class="inside">
-<div id="logoimage"><a href="/"><img src=
-"/htdocs/bazaarNew/css/logo.png" width="144" height="149" alt=
+<div id="logoimage"><a href="http://bazaar-vcs.org/"><img src=
+"http://bazaar-vcs.org/htdocs/bazaarNew/css/logo.png" width="144" height="149" alt=
 "Bazaar" /></a></div>
-<h1><a href="/">Bazaar</a></h1>
+<h1><a href="http://bazaar-vcs.org/">Bazaar</a></h1>
 <p>GPL Distributed Version Control Software</p>
 </div>
 <hr class="hide" />
@@ -134,13 +133,13 @@ gui_editor_link_text = gui_editor_link_href = null;
 <ul>
 <li class="hide"><a class="hide" href="#skipToContent"><em>Skip
 Navigation</em></a> <span class="divider">:</span></li>
-<li><a href="/Documentation" id="hnav_learn" name=
+<li><a href="http://bazaar-vcs.org/Documentation" id="hnav_learn" name=
 "hnav_learn">Learn</a> <span class="divider">:</span></li>
-<li><a href="/Download" id="hnav_get" name="hnav_get">Get</a>
+<li><a href="http://bazaar-vcs.org/Download" id="hnav_get" name="hnav_get">Get</a>
 <span class="divider">:</span></li>
-<li><a href="/BzrSupport" id="hnav_community" name=
+<li><a href="http://bazaar-vcs.org/BzrSupport" id="hnav_community" name=
 "hnav_community">Community</a> <span class="divider">:</span></li>
-<li><a href="/BzrPlugins" id="hnav_plugins" name=
+<li><a href="http://bazaar-vcs.org/BzrPlugins" id="hnav_plugins" name=
 "hnav_plugins">Plugins</a></li>
 </ul>
 </div>
@@ -169,15 +168,15 @@ id="search_q" value="" onfocus="searchFocus(this)" onblur=
 <div id="username" class="vnav">
 <h4>Website Links</h4>
 <ul>
-<li><a href="/AaronBentley">AaronBentley</a></li>
-<li><a href="/UserPreferences">User Preferences</a></li>
-<li><a href="/FindPage">FindPage</a></li>
-<li><a href="/RecentChanges">RecentChanges</a></li>
+<li><a href="http://bazaar-vcs.org/AaronBentley">AaronBentley</a></li>
+<li><a href="http://bazaar-vcs.org/UserPreferences">User Preferences</a></li>
+<li><a href="http://bazaar-vcs.org/FindPage">FindPage</a></li>
+<li><a href="http://bazaar-vcs.org/RecentChanges">RecentChanges</a></li>
 <li><a name="editlink" href=
-"/Welcome?action=edit&amp;editor=textonly" id="editlink">Edit
+"http://bazaar-vcs.org/Welcome?action=edit&amp;editor=textonly" id="editlink">Edit
 Page</a></li>
-<li><a href="/Welcome?action=info">Page History</a></li>
-<li><a href="/Welcome?action=subscribe">Subscribe</a></li>
+<li><a href="http://bazaar-vcs.org/Welcome?action=info">Page History</a></li>
+<li><a href="http://bazaar-vcs.org/Welcome?action=subscribe">Subscribe</a></li>
 <li>
 <form class="actionsmenu" method="get" action="">
 <div><label>More Actions:</label> <select name="action" onchange=
