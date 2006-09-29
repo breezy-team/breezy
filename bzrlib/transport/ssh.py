@@ -27,6 +27,7 @@ import sys
 from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (ConnectionError,
                            ParamikoNotPresent,
+                           SocketConnectionError,
                            TransportError,
                            UnknownSSH,
                            )
@@ -160,24 +161,15 @@ class SSHVendor(object):
         """
         raise NotImplementedError(self.connect_ssh)
         
-    def _get_host_and_port(self, host, port):
-        """Get a user-visible host + port.
-
-        This handles the case when port is None, so we have nothing to display.
-        """
-        if port is None:
-            return host
-        return '%s:%s' % (host, port)
-
     def _raise_connection_error(self, host, port=None, orig_error=None,
-                                msg='Unable to connect to SSH host %s'):
-        """Raise a ConnectionError with properly formatted host.
+                                msg='Unable to connect to SSH host'):
+        """Raise a SocketConnectionError with properly formatted host.
 
         This just unifies all the locations that try to raise ConnectionError,
         so that they format things properly.
         """
-        raise ConnectionError(msg % self._get_host_and_port(host, port),
-                              orig_error=orig_error)
+        raise SocketConnectionError(host=host, port=port, msg=msg,
+                                    orig_error=orig_error)
 
 
 class LoopbackVendor(SSHVendor):
@@ -253,7 +245,7 @@ class ParamikoVendor(SSHVendor):
             return t.open_sftp_client()
         except paramiko.SSHException, e:
             self._raise_connection_error(host, port=port, orig_error=e,
-                                         msg='Unable to start sftp client %s')
+                                         msg='Unable to start sftp client')
 
     def connect_ssh(self, username, password, host, port, command):
         t = self._connect(username, password, host, port)
@@ -264,7 +256,7 @@ class ParamikoVendor(SSHVendor):
             return _ParamikoSSHConnection(channel)
         except paramiko.SSHException, e:
             self._raise_connection_error(host, port=port, orig_error=e,
-                                         msg='Unable to invoke remote bzr %s')
+                                         msg='Unable to invoke remote bzr')
 
 register_ssh_vendor('paramiko', ParamikoVendor())
 
