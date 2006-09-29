@@ -356,7 +356,6 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
             self._out_stream.flush()
         else:
             self._send_bulk_data(body, self._out_stream)
-            #self._out_stream.write('BLARGH')
 
     def sync_with_request(self, request):
         self._finished_reading = request.finished_reading
