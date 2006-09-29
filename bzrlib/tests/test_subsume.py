@@ -76,6 +76,9 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         self.assertEqual(['tree-1', 'subtree-1'], base_tree.get_parent_ids())
         self.assertEqual(sub_root_id, base_tree.path2id('subtree'))
         self.assertEqual('file2-id', base_tree.path2id('subtree/file2'))
+        sub_bzrdir = bzrdir.BzrDir.open('tree/subtree')
+        self.assertRaises(errors.NoWorkingTree, sub_bzrdir.open_workingtree)
+        sub_bzrdir.open_branch()
         file2 = open('tree/subtree/file2', 'rb')
         try:
             file2_contents = file2.read()
