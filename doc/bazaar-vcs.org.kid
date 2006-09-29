@@ -17,6 +17,11 @@
       attrib = dict(attrib)
       attrib['href'] = attrib['href'] + 'l'
       return attrib
+
+   def update_attrib(attrib, **kwargs):
+      attrib = dict(attrib)
+      attrib.update(kwargs)
+      return attrib
 ?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:py="http://purl.org/kid/ns#">
 <head>
@@ -240,7 +245,7 @@ actionsMenuInit('More Actions:');
 <!--<img id="navProtection" width="1" height="1" border="0" src="/htdocs/bazaarNew/css/spacer.gif" alt="" style="height: 1px"/>-->
 <span py:match="item.tag == 'local_link(item)'" 
 py:strip="True" style='display:None'><a py:attrs="fixlink(item.attrib)">${item.text}${item[:]}</a>${item.tail}</span>
-<span py:match="item.tag == '{http://www.w3.org/1999/xhtml}a' and 'href' not in item.attrib" py:replace="item.text"/>
+<a py:match="item.tag == '{http://www.w3.org/1999/xhtml}a' and 'href' not in item.attrib" py:content="item.text" py:attrs="update_attrib(item.attrib, style='color: black')"/>
 <div dir="ltr" id="content" lang="en" xml:lang="en" py:content="body[:]"><span
 class="anchor" id="top"></span> <span class="anchor" id="line-8"></span>
 <h1 id="head-31592baed255c2a5cdfdaafb9521b837ea61021f">Performance
