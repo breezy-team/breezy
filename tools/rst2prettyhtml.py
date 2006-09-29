@@ -10,7 +10,10 @@ from elementtree.ElementTree import XML
 import kid
 
 def kidified_rest(rest_file, template_name):
-    xhtml = publish_file(rest_file, writer_name='html', destination=StringIO())
+    xhtml = publish_file(rest_file, writer_name='html', destination=StringIO(),
+                         settings_overrides={"doctitle_xform": 0} 
+    
+    )
     xml = XML(xhtml)
     head = xml.find('{http://www.w3.org/1999/xhtml}head')
     body = xml.find('{http://www.w3.org/1999/xhtml}body')

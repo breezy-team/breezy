@@ -1,5 +1,23 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<?python
+   def local_link(item):
+      if item.tag != '{http://www.w3.org/1999/xhtml}a':
+         return False
+      elif 'href' not in item.attrib:
+         return False
+      elif item.attrib['href'].startswith('http://'):
+         return False 
+      elif item.attrib['href'].startswith('/'):
+         return False
+      elif not item.attrib['href'].endswith('.htm'):
+         return False
+      
+   def fixlink(attrib):
+      attrib = dict(attrib)
+      attrib['href'] = attrib['href'] + 'l'
+      return attrib
+?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:py="http://purl.org/kid/ns#">
 <head>
 <script type="text/javascript" src=
@@ -153,11 +171,11 @@ Navigation</em></a> <span class="divider">:</span></li>
 <div id="rightColumn">
 <div class="inside">
 <div id="searchbox">
-<form name="search" method="get" action="" id="search">
+<form name="search" method="get" action="http://bazaar-vcs.org/" id="search">
 <div><input type="hidden" name="action" value="fullsearch" id=
 "fullsearch" /> <input type="hidden" name="context" value="180" />
 <input type="hidden" name="fullsearch" value="Text" /> <label for=
-"search_q">Search Bazaar</label> <input type="text" name="value"
+"search_q" py:content="'Search Wiki'">Search Bazaar</label> <input type="text" name="value"
 id="search_q" value="" onfocus="searchFocus(this)" onblur=
 "searchBlur(this)" onkeyup="searchChange(this)" onchange=
 "searchChange(this)" alt="Search" /> <input type="submit" value=
@@ -166,8 +184,8 @@ id="search_q" value="" onfocus="searchFocus(this)" onblur=
 </div>
 <div id="searchform"></div>
 <div id="username" class="vnav">
-<h4>Website Links</h4>
-<ul>
+<h4 py:replace="''">Website Links</h4>
+<ul py:replace="''">
 <li><a href="http://bazaar-vcs.org/AaronBentley">AaronBentley</a></li>
 <li><a href="http://bazaar-vcs.org/UserPreferences">User Preferences</a></li>
 <li><a href="http://bazaar-vcs.org/FindPage">FindPage</a></li>
@@ -220,6 +238,9 @@ actionsMenuInit('More Actions:');
 <a name="skipToContent" id="skipToContent"></a>
 <div class="inside" >
 <!--<img id="navProtection" width="1" height="1" border="0" src="/htdocs/bazaarNew/css/spacer.gif" alt="" style="height: 1px"/>-->
+<span py:match="item.tag == 'local_link(item)'" 
+py:strip="True"><a py:attrs="fixlink(item.attrib)">${item.text}${item[:]}</a>${item.tail}</span>
+<span py:match="item.tag == '{http://www.w3.org/1999/xhtml}a' and 'href' not in item.attrib" py:replace="item.text"/>
 <div dir="ltr" id="content" lang="en" xml:lang="en" py:content="body[:]"><span
 class="anchor" id="top"></span> <span class="anchor" id="line-8"></span>
 <h1 id="head-31592baed255c2a5cdfdaafb9521b837ea61021f">Performance
