@@ -63,6 +63,9 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_merge_from_branch',
         'bzrlib.tests.workingtree_implementations.test_parents',
         'bzrlib.tests.workingtree_implementations.test_pull',
+        'bzrlib.tests.workingtree_implementations.test_put_file',
+        'bzrlib.tests.workingtree_implementations.test_mkdir',
+        'bzrlib.tests.workingtree_implementations.test_unversion',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]
     adapter = WorkingTreeTestProviderAdapter(

@@ -98,6 +98,8 @@ def export(tree, dest, format=None, root=None):
 def get_root_name(dest):
     """Get just the root name for an export.
 
+    >>> get_root_name('../mytest.tar')
+    'mytest'
     >>> get_root_name('mytar.tar')
     'mytar'
     >>> get_root_name('mytar.tar.bz2')

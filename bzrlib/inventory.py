@@ -246,7 +246,7 @@ class InventoryEntry(object):
 
     def get_tar_item(self, root, dp, now, tree):
         """Get a tarfile item and a file stream for its content."""
-        item = tarfile.TarInfo(pathjoin(root, dp))
+        item = tarfile.TarInfo(pathjoin(root, dp).encode('utf8'))
         # TODO: would be cool to actually set it to the timestamp of the
         # revision it was last changed
         item.mtime = now
@@ -1216,6 +1216,24 @@ class Inventory(object):
 
     def has_id(self, file_id):
         return (file_id in self._byid)
+
+    def remove_recursive_id(self, file_id):
+        """Remove file_id, and children, from the inventory.
+        
+        :param file_id: A file_id to remove.
+        """
+        to_find_delete = [self._byid[file_id]]
+        to_delete = []
+        while to_find_delete:
+            ie = to_find_delete.pop()
+            to_delete.append(ie.file_id)
+            if ie.kind == 'directory':
+                to_find_delete.extend(ie.children.values())
+        for file_id in reversed(to_delete):
+            ie = self[file_id]
+            del self._byid[file_id]
+            if ie.parent_id is not None:
+                del self[ie.parent_id].children[ie.name]
 
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.
