@@ -151,6 +151,24 @@ class TestBzrDir(TestCaseWithBzrDir):
         wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
         self.assertEqual([], wt.get_parent_ids())
 
+    def test_destroy_workingtree(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        tree.add('file')
+        tree.commit('first commit')
+        bzrdir = tree.bzrdir
+        try:
+            bzrdir.destroy_workingtree(keep_files=False)
+        except errors.UnsupportedOperation:
+            raise TestSkipped('Format does not support destroying tree')
+        self.failIfExists('tree/file')
+        self.assertRaises(errors.NoWorkingTree, bzrdir.open_workingtree)
+        bzrdir.create_workingtree()
+        self.failUnlessExists('tree/file')
+        bzrdir.destroy_workingtree(keep_files=True)
+        self.failUnlessExists('tree/file')
+        self.assertRaises(errors.NoWorkingTree, bzrdir.open_workingtree)
+            
     def test_clone_bzrdir_empty(self):
         dir = self.make_bzrdir('source')
         target = dir.clone(self.get_url('target'))
