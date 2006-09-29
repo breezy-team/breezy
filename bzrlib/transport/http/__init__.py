@@ -663,8 +663,8 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         data = self.rfile.read(data_length - len(first_line))
         smart_protocol_request.accept_bytes(first_line)
         smart_protocol_request.accept_bytes(data)
-        assert smart_protocol_request.finished_reading, \
-            "not finished reading, but all data sent to protocol."
+        assert smart_protocol_request.next_read_size() == 0, (
+            "not finished reading, but all data sent to protocol.")
         self.send_header("Content-Length", str(len(out_buffer.getvalue())))
         self.end_headers()
         self.wfile.write(out_buffer.getvalue())

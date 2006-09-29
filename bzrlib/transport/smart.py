@@ -302,7 +302,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         self._out_stream = output_stream
         self._backing_transport = backing_transport
         self.excess_buffer = ''
-        self.finished_reading = False
+        self._finished_reading = False
         self.in_buffer = ''
         self.has_dispatched = False
         self.request = None
@@ -344,7 +344,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 return None
 
         if self.has_dispatched:
-            if self.finished_reading:
+            if self._finished_reading:
                 # nothing to do.XXX: this routine should be a single state 
                 # machine too.
                 self.excess_buffer += self.in_buffer
@@ -380,8 +380,16 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
             #self._out_stream.write('BLARGH')
 
     def sync_with_request(self, request):
-        self.finished_reading = request.finished_reading
+        self._finished_reading = request.finished_reading
         
+    def next_read_size(self):
+        if self._finished_reading:
+            return 0
+        if self._body_decoder is None:
+            return 1
+        else:
+            return self._body_decoder.next_read_size()
+
 
 class LengthPrefixedBodyDecoder(object):
     """Decodes the length-prefixed bulk data."""
@@ -552,7 +560,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         :param protocol: a SmartServerRequestProtocol.
         :return: False if the server should terminate, otherwise None.
         """
-        while not protocol.finished_reading:
+        while protocol.next_read_size():
             if self.push_back:
                 protocol.accept_bytes(self.push_back)
                 self.push_back = ''
@@ -592,7 +600,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             return False  # shutdown server
         try:
             protocol.accept_bytes(req_line)
-            if not protocol.finished_reading:
+            if protocol.next_read_size():
                 # this boils down to readline which wont block on open sockets
                 # without data. We should really though read as much as is
                 # available and then hand to that accept_bytes without this
@@ -603,7 +611,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 # might be nice to do protocol.end_of_bytes()
                 # because self._recv_bulk reads all the bytes, this must finish
                 # after one delivery of data rather than looping.
-                assert protocol.finished_reading, 'was not finished reading'
+                assert protocol.next_read_size() == 0, 'was not finished reading'
         except KeyboardInterrupt:
             raise
         except Exception, e:
