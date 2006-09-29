@@ -157,14 +157,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         tree.commit('first commit')
         bzrdir = tree.bzrdir
         try:
-            bzrdir.destroy_workingtree(keep_files=False)
+            bzrdir.destroy_workingtree()
         except errors.UnsupportedOperation:
             raise TestSkipped('Format does not support destroying tree')
         self.failIfExists('tree/file')
         self.assertRaises(errors.NoWorkingTree, bzrdir.open_workingtree)
         bzrdir.create_workingtree()
         self.failUnlessExists('tree/file')
-        bzrdir.destroy_workingtree(keep_files=True)
+        bzrdir.destroy_workingtree_metadata()
         self.failUnlessExists('tree/file')
         self.assertRaises(errors.NoWorkingTree, bzrdir.open_workingtree)
             
