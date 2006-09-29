@@ -248,27 +248,6 @@ class SmartProtocolBase(object):
 
     # TODO: this only actually accomodates a single block; possibly should support
     # multiple chunks?
-    def _recv_bulk(self):
-        # This is OBSOLETE except for the double handline in the server: 
-        # the read_bulk + reencode noise.
-        chunk_len = self._in.readline()
-        try:
-            chunk_len = int(chunk_len)
-        except ValueError:
-            raise errors.SmartProtocolError("bad chunk length line %r" % chunk_len)
-        bulk = self._in.read(chunk_len)
-        if len(bulk) != chunk_len:
-            raise errors.SmartProtocolError("short read fetching bulk data chunk")
-        self._recv_trailer()
-        return bulk
-
-    def _recv_trailer(self):
-        resp = self._recv_tuple()
-        if resp == ('done', ):
-            return
-        else:
-            self._translate_error(resp)
-
     def _encode_bulk_data(self, body):
         """Encode body as a bulk data chunk."""
         return ''.join(('%d\n' % len(body), body, 'done\n'))
@@ -506,14 +485,6 @@ class SmartServerStreamMedium(SmartProtocolBase):
         self._out = out_file
         self.backing_transport = backing_transport
 
-    def _recv_tuple(self):
-        """Read a request from the client and return as a tuple.
-        
-        Returns None at end of file (if the client closed the connection.)
-        """
-        # ** Deserialise and read bytes
-        return _recv_tuple(self._in)
-
     def _send_tuple(self, args):
         """Send response header"""
         # ** serialise and write bytes
@@ -592,26 +563,17 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         :param protocol: a SmartServerRequestProtocol.
         :return: False if the server should terminate, otherwise None.
         """
-        # ** deserialise, read bytes, serialise and write bytes
-        req_line = self._in.readline()
-        # this should just test "req_line == ''", surely?  -- Andrew Bennetts
-        if req_line in ('', None):
-            # client closed connection
-            return False  # shutdown server
         try:
-            protocol.accept_bytes(req_line)
-            if protocol.next_read_size():
-                # this boils down to readline which wont block on open sockets
-                # without data. We should really though read as much as is
-                # available and then hand to that accept_bytes without this
-                # silly double-decode.
-                bulk = self._recv_bulk()
-                bulk_bytes = ''.join(('%d\n' % len(bulk), bulk, 'done\n'))
-                protocol.accept_bytes(bulk_bytes)
-                # might be nice to do protocol.end_of_bytes()
-                # because self._recv_bulk reads all the bytes, this must finish
-                # after one delivery of data rather than looping.
-                assert protocol.next_read_size() == 0, 'was not finished reading'
+            while True:
+                bytes_to_read = protocol.next_read_size()
+                if bytes_to_read == 0:
+                    # Finished serving this request.
+                    return
+                bytes = self._in.read(bytes_to_read)
+                if bytes == '':
+                    # Connection has been closed.
+                    return False
+                protocol.accept_bytes(bytes)
         except KeyboardInterrupt:
             raise
         except Exception, e:
