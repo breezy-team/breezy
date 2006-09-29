@@ -352,7 +352,11 @@ class SmartServer(object):
         return SmartServerResponse((r,))
 
     def do_get(self, relpath):
-        backing_bytes = self._backing_transport.get_bytes(relpath)
+        try:
+            backing_bytes = self._backing_transport.get_bytes(relpath)
+        except errors.ReadError:
+            # cannot read the file
+            return SmartServerResponse(('ReadError', ))
         return SmartServerResponse(('ok',), backing_bytes)
 
     def _deserialise_optional_mode(self, mode):
@@ -876,6 +880,12 @@ class SmartTransport(transport.Transport):
                 raise UnicodeEncodeError(encoding, val, start, end, reason)
         elif what == "ReadOnlyError":
             raise errors.TransportNotPossible('readonly transport')
+        elif what == "ReadError":
+            if orig_path is not None:
+                error_path = orig_path
+            else:
+                error_path = resp[1]
+            raise errors.ReadError(error_path)
         else:
             raise errors.SmartProtocolError('unexpected smart server error: %r' % (resp,))
 

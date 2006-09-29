@@ -53,6 +53,17 @@ class TestErrors(TestCaseWithTransport):
                              repo.bzrdir.root_transport.base,
                              str(error))
 
+    def test_read_error(self):
+        # a unicode path to check that %r is being used.
+        path = u'a path'
+        error = errors.ReadError(path)
+        self.assertEqualDiff("Error reading from u'a path'.", str(error))
+
+    def test_transport_not_possible(self):
+        error = errors.TransportNotPossible('readonly', 'original error')
+        self.assertEqualDiff('Transport operation not possible:'
+                         ' readonly original error', str(error))
+
 
 class PassThroughError(errors.BzrNewError):
     """Pass through %(foo)s and %(bar)s"""
@@ -84,11 +95,3 @@ class TestErrorFormatting(TestCase):
         e = ErrorWithBadFormat(not_thing='x')
         self.assertStartsWith(
             str(e), 'Unprintable exception ErrorWithBadFormat(')
-
-
-class TestSpecificErrors(TestCase):
-    
-    def test_transport_not_possible(self):
-        e = errors.TransportNotPossible('readonly', 'original error')
-        self.assertEqual('Transport operation not possible:'
-                         ' readonly original error', str(e))

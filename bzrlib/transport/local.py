@@ -35,7 +35,7 @@ from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename,
                             check_legal_path, rmtree)
 from bzrlib.symbol_versioning import warn
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport, Server
+from bzrlib.transport import LateReadError, Transport, Server
 
 
 _append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY
@@ -131,6 +131,8 @@ class LocalTransport(Transport):
             path = self._abspath(relpath)
             return open(path, 'rb')
         except (IOError, OSError),e:
+            if e.errno == errno.EISDIR:
+                return LateReadError(relpath)
             self._translate_error(e, path)
 
     def put_file(self, relpath, f, mode=None):

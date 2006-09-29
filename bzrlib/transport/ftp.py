@@ -527,7 +527,7 @@ class FtpTransport(Transport):
 
 
 class FtpServer(Server):
-    """Common code for SFTP server facilities."""
+    """Common code for FTP server facilities."""
 
     def __init__(self):
         self._root = None

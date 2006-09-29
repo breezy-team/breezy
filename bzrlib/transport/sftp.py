@@ -50,6 +50,7 @@ from bzrlib.errors import (FileExists,
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
+    LateReadError,
     register_urlparse_netloc_protocol,
     Server,
     split_url,
@@ -392,7 +393,10 @@ class SFTPTransport(SFTPUrlHandling):
                 f.prefetch()
             return f
         except (IOError, paramiko.SSHException), e:
-            self._translate_io_exception(e, path, ': error retrieving')
+            self._translate_io_exception(e, path, ': error retrieving',
+                raise_on_failure=False)
+            # a paramiko generic failure occured.
+            return LateReadError(relpath)
 
     def readv(self, relpath, offsets):
         """See Transport.readv()"""
@@ -682,7 +686,8 @@ class SFTPTransport(SFTPUrlHandling):
         self._mkdir(self._remote_path(relpath), mode=mode)
 
     def _translate_io_exception(self, e, path, more_info='', 
-                                failure_exc=PathError):
+                                failure_exc=PathError,
+                                raise_on_failure=True):
         """Translate a paramiko or IOError into a friendlier exception.
 
         :param e: The original exception
@@ -694,6 +699,8 @@ class SFTPTransport(SFTPUrlHandling):
                            no more information.
                            If this parameter is set, it defines the exception 
                            to raise in these cases.
+        :param raise_on_failure: When False do not raise on a generic paramiko
+            'Failure', rather return to the caller to dispatch differently.
         """
         # paramiko seems to generate detailless errors.
         self._translate_error(e, path, raise_generic=False)
@@ -705,7 +712,10 @@ class SFTPTransport(SFTPUrlHandling):
                 raise FileExists(path, str(e) + more_info)
             # strange but true, for the paramiko server.
             if (e.args == ('Failure',)):
-                raise failure_exc(path, str(e) + more_info)
+                if raise_on_failure:
+                    raise failure_exc(path, str(e) + more_info)
+                else:
+                    return
             mutter('Raising exception with args %s', e.args)
         if getattr(e, 'errno', None) is not None:
             mutter('Raising exception with errno %s', e.errno)

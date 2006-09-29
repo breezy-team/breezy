@@ -189,6 +189,23 @@ class _CoalescedOffset(object):
                    (other.start, other.length, other.ranges))
 
 
+class LateReadError(object):
+    """A helper for transports which pretends to be a readable file.
+
+    When read() is called, errors.ReadError is raised.
+    """
+
+    def __init__(self, path):
+        self._path = path
+
+    def close(self):
+        """a no-op - do nothing."""
+
+    def read(self, count=-1):
+        """Raise ReadError."""
+        raise errors.ReadError(self._path)
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -428,6 +445,17 @@ class Transport(object):
 
     def get(self, relpath):
         """Get the file at the given relative path.
+
+        This may fail in a number of ways:
+         - HTTP servers may return content for a directory. (unexpected
+           content failure)
+         - FTP servers may indicate NoSuchFile for a directory.
+         - SFTP servers may give a file handle for a directory that will
+           fail on read().
+
+        For correct use of the interface, be sure to catch errors.PathError
+        when calling it and catch errors.ReadError when reading from the
+        returned object.
 
         :param relpath: The relative path to the file
         :rtype: File-like object.

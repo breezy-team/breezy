@@ -9,6 +9,10 @@ IN DEVELOPMENT
       can take a ``working_dir='foo'`` parameter, which will change directory 
       for the command. (John Arbash Meinel)
 
+    * ``Transport.get`` has had its interface made more clear for ease of use.
+      Retrieval of a directory must now fail with either 'PathError' at open
+      time, or raise 'ReadError' on a read. (Robert Collins)
+
   BUG FIXES:
 
     * bzr branch/pull no longer complain about progress bar cleanup when
