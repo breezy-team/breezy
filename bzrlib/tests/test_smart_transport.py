@@ -615,10 +615,10 @@ class TestSmartServerStreamMedium(tests.TestCase):
         from_server = StringIO()
         server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
         sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
-        stream_still_open = server._serve_one_request(sample_protocol)
+        server._serve_one_request(sample_protocol)
         self.assertEqual('', from_server.getvalue())
         self.assertEqual(sample_request_bytes, sample_protocol.accepted_bytes)
-        self.assertEqual(None, stream_still_open)
+        self.assertFalse(server.finished)
 
     def test_socket_stream_with_bulk_data(self):
         sample_request_bytes = 'command\n9\nbulk datadone\n'
@@ -628,17 +628,17 @@ class TestSmartServerStreamMedium(tests.TestCase):
             server_sock, from_server, None)
         sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         client_sock.sendall(sample_request_bytes)
-        stream_still_open = server._serve_one_request(sample_protocol)
+        server._serve_one_request(sample_protocol)
         self.assertEqual('', from_server.getvalue())
         self.assertEqual(sample_request_bytes, sample_protocol.accepted_bytes)
-        self.assertEqual(None, stream_still_open)
+        self.assertFalse(server.finished)
 
     def test_pipe_like_stream_shutdown_detection(self):
         to_server = StringIO('')
         from_server = StringIO()
         server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
-        stream_still_open = server._serve_one_request(SampleRequest('x'))
-        self.assertEqual(False, stream_still_open)
+        server._serve_one_request(SampleRequest('x'))
+        self.assertTrue(server.finished)
         
     def test_socket_stream_shutdown_detection(self):
         server_sock, client_sock = self.portable_socket_pair()
@@ -646,8 +646,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
         client_sock.close()
         server = smart.SmartServerSocketStreamMedium(
             server_sock, from_server, None)
-        stream_still_open = server._serve_one_request(SampleRequest('x'))
-        self.assertEqual(False, stream_still_open)
+        server._serve_one_request(SampleRequest('x'))
+        self.assertTrue(server.finished)
         
     def test_pipe_like_stream_with_two_requests(self):
         # If two requests are read in one go, then two calls to
@@ -658,17 +658,17 @@ class TestSmartServerStreamMedium(tests.TestCase):
         from_server = StringIO()
         server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
         first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
-        stream_still_open = server._serve_one_request(first_protocol)
+        server._serve_one_request(first_protocol)
         self.assertEqual(0, first_protocol.next_read_size())
         self.assertEqual('', from_server.getvalue())
-        self.assertEqual(None, stream_still_open)
+        self.assertFalse(server.finished)
         # Make a new protocol, call _serve_one_request with it to collect the
         # second request.
         second_protocol = SampleRequest(expected_bytes=sample_request_bytes)
-        stream_still_open = server._serve_one_request(second_protocol)
+        server._serve_one_request(second_protocol)
         self.assertEqual('', from_server.getvalue())
         self.assertEqual(sample_request_bytes, second_protocol.accepted_bytes)
-        self.assertEqual(None, stream_still_open)
+        self.assertFalse(server.finished)
         
     def test_socket_stream_with_two_requests(self):
         # If two requests are read in one go, then two calls to
@@ -682,17 +682,17 @@ class TestSmartServerStreamMedium(tests.TestCase):
         first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         # Put two whole requests on the wire.
         client_sock.sendall(sample_request_bytes * 2)
-        stream_still_open = server._serve_one_request(first_protocol)
+        server._serve_one_request(first_protocol)
         self.assertEqual(0, first_protocol.next_read_size())
         self.assertEqual('', from_server.getvalue())
-        self.assertEqual(None, stream_still_open)
+        self.assertFalse(server.finished)
         # Make a new protocol, call _serve_one_request with it to collect the
         # second request.
         second_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         stream_still_open = server._serve_one_request(second_protocol)
         self.assertEqual('', from_server.getvalue())
         self.assertEqual(sample_request_bytes, second_protocol.accepted_bytes)
-        self.assertEqual(None, stream_still_open)
+        self.assertFalse(server.finished)
 
     def test_pipe_like_stream_error_handling(self):
         # Use plain python StringIO so we can monkey-patch the close method to
@@ -706,10 +706,10 @@ class TestSmartServerStreamMedium(tests.TestCase):
         from_server.close = close
         server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
         fake_protocol = ErrorRaisingProtocol(Exception('boom'))
-        stream_still_open = server._serve_one_request(fake_protocol)
+        server._serve_one_request(fake_protocol)
         self.assertEqual('', from_server.getvalue())
         self.assertTrue(self.closed)
-        self.assertEqual(False, stream_still_open)
+        self.assertTrue(server.finished)
         
     def test_socket_stream_error_handling(self):
         # Use plain python StringIO so we can monkey-patch the close method to
@@ -724,10 +724,10 @@ class TestSmartServerStreamMedium(tests.TestCase):
         server = smart.SmartServerSocketStreamMedium(
             server_sock, from_server, None)
         fake_protocol = ErrorRaisingProtocol(Exception('boom'))
-        stream_still_open = server._serve_one_request(fake_protocol)
+        server._serve_one_request(fake_protocol)
         self.assertEqual('', from_server.getvalue())
         self.assertTrue(self.closed)
-        self.assertEqual(False, stream_still_open)
+        self.assertTrue(server.finished)
         
     def test_pipe_like_stream_keyboard_interrupt_handling(self):
         # Use plain python StringIO so we can monkey-patch the close method to
@@ -750,7 +750,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
             KeyboardInterrupt, server._serve_one_request, fake_protocol)
         self.assertEqual('', from_server.getvalue())
         
-        
+
 class TestSmartTCPServer(tests.TestCase):
 
     def test_get_error_unexpected(self):

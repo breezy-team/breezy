@@ -2,6 +2,8 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 
-Fix three cases of read(1)-like problems:
-  * SmartServerStreamMedium._serve_one_request
+Make SmartServerSocketStreamMedium no longer take out_file.
+
+Test the HTTP medium for the same behaviours that we test the socket and pipe
+mediums for, where applicable.
 

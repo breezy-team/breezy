@@ -485,6 +485,7 @@ class SmartServerStreamMedium(object):
         self._out = out_file
         # backing_transport could be passed to serve instead of __init__
         self.backing_transport = backing_transport
+        self.finished = False
 
     def _send_tuple(self, args):
         """Send response header"""
@@ -497,14 +498,32 @@ class SmartServerStreamMedium(object):
         # None during interpreter shutdown.
         from sys import stderr
         try:
-            while True:
+            while not self.finished:
                 protocol = SmartServerRequestProtocolOne(self._out,
                                                          self.backing_transport)
-                if self._serve_one_request(protocol) == False:
-                    break
+                self._serve_one_request(protocol)
         except Exception, e:
             stderr.write("%s terminating on exception %s\n" % (self, e))
             raise
+
+    def _serve_one_request(self, protocol):
+        """Read one request from input, process, send back a response.
+        
+        :param protocol: a SmartServerRequestProtocol.
+        """
+        try:
+            self._serve_one_request_unguarded(protocol)
+        except KeyboardInterrupt:
+            raise
+        except Exception, e:
+            self.terminate_due_to_error()
+
+    def terminate_due_to_error(self):
+        """Called when an unhandled exception from the protocol occurs."""
+        # TODO: This should log to a server log file, but no such thing
+        # exists yet.  Andrew Bennetts 2006-09-29.
+        self._out.close()
+        self.finished = True
 
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
@@ -519,32 +538,20 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         SmartServerStreamMedium.__init__(
             self, in_socket, out_file, backing_transport)
         self.push_back = ''
-        
-    def _serve_one_request(self, protocol):
-        """Read one request from input, process, send back a response.
-        
-        :param protocol: a SmartServerRequestProtocol.
-        :return: False if the server should terminate, otherwise None.
-        """
-        try:
-            while protocol.next_read_size():
-                if self.push_back:
-                    protocol.accept_bytes(self.push_back)
-                    self.push_back = ''
-                else:
-                    bytes = self._in.recv(4096)
-                    if bytes == '':
-                        return False
-                    protocol.accept_bytes(bytes)
 
-            self.push_back = protocol.excess_buffer
-        except KeyboardInterrupt:
-            raise
-        except Exception, e:
-            # TODO: This should log to a server log file, but no such thing
-            # exists yet.  Andrew Bennetts 2006-09-29.
-            self._out.close()
-            return False
+    def _serve_one_request_unguarded(self, protocol):
+        while protocol.next_read_size():
+            if self.push_back:
+                protocol.accept_bytes(self.push_back)
+                self.push_back = ''
+            else:
+                bytes = self._in.recv(4096)
+                if bytes == '':
+                    self.finished = True
+                    return
+                protocol.accept_bytes(bytes)
+        
+        self.push_back = protocol.excess_buffer
     
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
@@ -560,30 +567,18 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
         self._in = in_file
         self._out = out_file
 
-    def _serve_one_request(self, protocol):
-        """Read one request from input, process, send back a response.
-        
-        :param protocol: a SmartServerRequestProtocol.
-        :return: False if the server should terminate, otherwise None.
-        """
-        try:
-            while True:
-                bytes_to_read = protocol.next_read_size()
-                if bytes_to_read == 0:
-                    # Finished serving this request.
-                    return
-                bytes = self._in.read(bytes_to_read)
-                if bytes == '':
-                    # Connection has been closed.
-                    return False
-                protocol.accept_bytes(bytes)
-        except KeyboardInterrupt:
-            raise
-        except Exception, e:
-            # TODO: This should log to a server log file, but no such thing
-            # exists yet.  Andrew Bennetts 2006-09-29.
-            self._out.close()
-            return False
+    def _serve_one_request_unguarded(self, protocol):
+        while True:
+            bytes_to_read = protocol.next_read_size()
+            if bytes_to_read == 0:
+                # Finished serving this request.
+                return
+            bytes = self._in.read(bytes_to_read)
+            if bytes == '':
+                # Connection has been closed.
+                self.finished = True
+                return
+            protocol.accept_bytes(bytes)
 
 
 class SmartServerResponse(object):
