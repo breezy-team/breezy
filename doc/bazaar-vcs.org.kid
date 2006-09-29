@@ -239,7 +239,7 @@ actionsMenuInit('More Actions:');
 <div class="inside" >
 <!--<img id="navProtection" width="1" height="1" border="0" src="/htdocs/bazaarNew/css/spacer.gif" alt="" style="height: 1px"/>-->
 <span py:match="item.tag == 'local_link(item)'" 
-py:strip="True"><a py:attrs="fixlink(item.attrib)">${item.text}${item[:]}</a>${item.tail}</span>
+py:strip="True" style='display:None'><a py:attrs="fixlink(item.attrib)">${item.text}${item[:]}</a>${item.tail}</span>
 <span py:match="item.tag == '{http://www.w3.org/1999/xhtml}a' and 'href' not in item.attrib" py:replace="item.text"/>
 <div dir="ltr" id="content" lang="en" xml:lang="en" py:content="body[:]"><span
 class="anchor" id="top"></span> <span class="anchor" id="line-8"></span>
