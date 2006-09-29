@@ -659,10 +659,10 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         # if this fails, we should return 400 bad request, but failure is
         # failure for now - RBC 20060919
         data_length = int(self.headers['Content-Length'])
-        first_line = self.rfile.readline()
-        data = self.rfile.read(data_length - len(first_line))
-        smart_protocol_request.accept_bytes(first_line)
-        smart_protocol_request.accept_bytes(data)
+        # Perhaps there should be a SmartServerHTTPMedium that takes care of
+        # feeding the bytes in the http request to the smart_protocol_request,
+        # but for now it's simpler to just feed the bytes directly.
+        smart_protocol_request.accept_bytes(self.rfile.read(data_length))
         assert smart_protocol_request.next_read_size() == 0, (
             "not finished reading, but all data sent to protocol.")
         self.send_header("Content-Length", str(len(out_buffer.getvalue())))
