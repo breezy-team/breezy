@@ -32,7 +32,7 @@ except AttributeError:
 
 REINVOKE = "__BZR_REINVOKE"
 NEED_VERS = (2, 4)
-KNOWN_PYTHONS = ('python2.4',)
+KNOWN_PYTHONS = ('python2.4', 'python2.5')
 
 if version_info < NEED_VERS:
     if not os.environ.has_key(REINVOKE):
