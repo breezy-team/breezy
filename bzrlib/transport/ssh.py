@@ -106,6 +106,16 @@ def _get_ssh_vendor():
     return _ssh_vendor
 
 
+def _get_host_and_port(host, port):
+    """Get a user-visible host + port.
+
+    This handles the case when port is None, so we have nothing to display.
+    """
+    if port is None:
+        return host
+    return '%s:%s' % (host, port)
+
+
 
 def _ignore_sigint():
     # TODO: This should possibly ignore SIGHUP as well, but bzr currently
@@ -170,8 +180,9 @@ class LoopbackVendor(SSHVendor):
         try:
             sock.connect((host, port))
         except socket.error, e:
-            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                  % (host, port, e))
+            raise ConnectionError('Unable to connect to SSH host %s'
+                                  % (_get_host_and_port(host, port),),
+                                  orig_error=e)
         return SFTPClient(LoopbackSFTP(sock))
 
 register_ssh_vendor('loopback', LoopbackVendor())
@@ -201,8 +212,9 @@ class ParamikoVendor(SSHVendor):
             t.set_log_channel('bzr.paramiko')
             t.start_client()
         except (paramiko.SSHException, socket.error), e:
-            raise ConnectionError('Unable to reach SSH host %s:%s: %s' 
-                                  % (host, port, e))
+            raise ConnectionError('Unable to connect to SSH host %s'
+                                  % (_get_host_and_port(host, port),),
+                                  orig_error=e)
             
         server_key = t.get_remote_server_key()
         server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
@@ -236,8 +248,9 @@ class ParamikoVendor(SSHVendor):
         try:
             return t.open_sftp_client()
         except paramiko.SSHException, e:
-            raise ConnectionError('Unable to start sftp client %s:%d' %
-                                  (host, port), e)
+            raise ConnectionError('Unable to start sftp client %s'
+                                  % (_get_host_and_port(host, port),),
+                                  orig_error=e)
 
     def connect_ssh(self, username, password, host, port, command):
         t = self._connect(username, password, host, port)
@@ -247,8 +260,9 @@ class ParamikoVendor(SSHVendor):
             channel.exec_command(cmdline)
             return _ParamikoSSHConnection(channel)
         except paramiko.SSHException, e:
-            raise ConnectionError('Unable to invoke remote bzr %s:%d' %
-                                  (host, port), e)
+            raise ConnectionError('Unable to invoke remote bzr %s'
+                                  % (_get_host_and_port(host, port),),
+                                  orig_error=e)
 
 register_ssh_vendor('paramiko', ParamikoVendor())
 
@@ -270,16 +284,18 @@ class SubprocessVendor(SSHVendor):
             sock = self._connect(argv)
             return SFTPClient(sock)
         except (EOFError, paramiko.SSHException), e:
-            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                  % (host, port, e))
+            raise ConnectionError('Unable to connect to SSH host %s'
+                                  % (_get_host_and_port(host, port),),
+                                  orig_error=e)
         except (OSError, IOError), e:
             # If the machine is fast enough, ssh can actually exit
             # before we try and send it the sftp request, which
             # raises a Broken Pipe
             if e.errno not in (errno.EPIPE,):
                 raise
-            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                  % (host, port, e))
+            raise ConnectionError('Unable to connect to SSH host %s'
+                                  % (_get_host_and_port(host, port),),
+                                  orig_error=e)
 
     def connect_ssh(self, username, password, host, port, command):
         try:
@@ -287,16 +303,18 @@ class SubprocessVendor(SSHVendor):
                                                   command=command)
             return self._connect(argv)
         except (EOFError), e:
-            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                  % (host, port, e))
+            raise ConnectionError('Unable to connect to SSH host %s'
+                                  % (_get_host_and_port(host, port),),
+                                  orig_error=e)
         except (OSError, IOError), e:
             # If the machine is fast enough, ssh can actually exit
             # before we try and send it the sftp request, which
             # raises a Broken Pipe
             if e.errno not in (errno.EPIPE,):
                 raise
-            raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
-                                  % (host, port, e))
+            raise ConnectionError('Unable to connect to SSH host %s'
+                                  % (_get_host_and_port(host, port),),
+                                  orig_error=e)
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
