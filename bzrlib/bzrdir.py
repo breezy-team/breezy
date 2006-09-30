@@ -341,17 +341,20 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.create_workingtree)
 
-    def destroy_workingtree(self, keep_files=False):
+    def destroy_workingtree(self):
         """Destroy the working tree at this BzrDir.
 
         Formats that do not support this may raise UnsupportedOperation.
-        if keep_files is False, locally-modified files are unversioned,
-        and unmodified files are deleted, as per revert.
-
-        :param keep_files: If true, delete only the checkout metadata, not
-            the tree contents.
         """
         raise NotImplementedError(self.destroy_workingtree)
+
+    def destroy_workingtree_metadata(self):
+        """Destroy the control files for the working tree at this BzrDir.
+
+        The contents of working tree files are not affected.
+        Formats that do not support this may raise UnsupportedOperation.
+        """
+        raise NotImplementedError(self.destroy_workingtree_metadata)
 
     def find_repository(self):
         """Find the repository that should be used for a_bzrdir.
@@ -750,9 +753,14 @@ class BzrDirPreSplitOut(BzrDir):
                 result.set_parent_ids([revision_id])
         return result
 
-    def destroy_workingtree(self, keep_files=False):
+    def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""
         raise errors.UnsupportedOperation(self.destroy_workingtree, self)
+
+    def destroy_workingtree_metadata(self):
+        """See BzrDir.destroy_workingtree_metadata."""
+        raise errors.UnsupportedOperation(self.destroy_workingtree_metadata, 
+                                          self)
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
@@ -899,14 +907,16 @@ class BzrDirMeta1(BzrDir):
         from bzrlib.workingtree import WorkingTreeFormat
         return WorkingTreeFormat.get_default_format().initialize(self, revision_id)
 
-    def destroy_workingtree(self, keep_files=False):
+    def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""
         wt = self.open_workingtree()
-        if keep_files is False:
-            repository = wt.branch.repository
-            empty = repository.revision_tree(bzrlib.revision.NULL_REVISION)
-            wt.revert([], old_tree=empty)
-        wt._control_files._transport.delete_tree('.')
+        repository = wt.branch.repository
+        empty = repository.revision_tree(bzrlib.revision.NULL_REVISION)
+        wt.revert([], old_tree=empty)
+        self.destroy_workingtree_metadata()
+
+    def destroy_workingtree_metadata(self):
+        self.transport.delete_tree('checkout')
 
     def _get_mkdir_mode(self):
         """Figure out the mode to use when creating a bzrdir subdir."""
