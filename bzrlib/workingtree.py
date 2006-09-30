@@ -840,7 +840,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self._write_inventory(self.inventory)
         finally:
             other_tree.unlock()
-        other_tree.bzrdir.destroy_workingtree(keep_files=True)
+        other_tree.bzrdir.destroy_workingtree_metadata()
 
     @needs_read_lock
     def merge_modified(self):
