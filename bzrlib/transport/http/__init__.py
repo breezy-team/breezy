@@ -376,7 +376,7 @@ class HttpTransportBase(Transport):
 
     def clone(self, offset=None):
         """Return a new HttpTransportBase with root at self.base + offset
-        
+
         We leave the daughter classes take advantage of the hint
         that it's a cloning not a raw creation.
         """

@@ -71,6 +71,15 @@ class TestRepository(TestCaseWithRepository):
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
 
+    def test_supports_rich_root(self):
+        tree = self.make_branch_and_tree('a')
+        tree.commit('')
+        second_revision = tree.commit('')
+        inv = tree.branch.repository.revision_tree(second_revision).inventory
+        rich_root = (inv.root.revision != second_revision)
+        self.assertEqual(rich_root, 
+                         tree.branch.repository.supports_rich_root())
+
     def test_clone_specific_format(self):
         """todo"""
 
@@ -573,7 +582,7 @@ class TestEscaping(TestCaseWithTransport):
         FOO_ID = 'foo<:>ID'
         REV_ID = 'revid-1'
         wt = self.make_branch_and_tree('repo')
-        self.build_tree(["repo/foo"])
+        self.build_tree(["repo/foo"], line_endings='binary')
         # add file with id containing wierd characters
         wt.add(['foo'], [FOO_ID])
         wt.commit('this is my new commit', rev_id=REV_ID)
