@@ -259,6 +259,8 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                         'Cache-control': 'max-age=0',
                         'Connection': 'Keep-Alive',
                         'User-Agent': 'bzr/%s (urllib)' % bzrlib_version,
+                        # FIXME: pycurl also set the following, understand why
+                        'Accept': '*/*',
                         }
 
     def __init__(self):

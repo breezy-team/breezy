@@ -1245,6 +1245,20 @@ class TestCaseWithTransport(TestCaseInTempDir):
         self.transport_server = default_transport
         self.transport_readonly_server = None
 
+    def create_transport_server(self):
+        """Create a transport server from class defined at init.
+
+        This is mostly a hook for daugter classes.
+        """
+        return self.transport_server()
+
+    def create_transport_readonly_server(self):
+        """Create a transport read-only server from class defined at init.
+
+        This is mostly a hook for daugter classes.
+        """
+        return self.transport_readonly_server()
+
     def get_readonly_url(self, relpath=None):
         """Get a URL for the readonly transport.
 
@@ -1273,7 +1287,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
                 self.__readonly_server = ReadonlyServer()
                 self.__readonly_server.setUp(self.__server)
             else:
-                self.__readonly_server = self.transport_readonly_server()
+                self.__readonly_server = self.create_transport_readonly_server()
                 self.__readonly_server.setUp()
             self.addCleanup(self.__readonly_server.tearDown)
         return self.__readonly_server
@@ -1285,7 +1299,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         diagnostics.
         """
         if self.__server is None:
-            self.__server = self.transport_server()
+            self.__server = self.create_transport_server()
             self.__server.setUp()
             self.addCleanup(self.__server.tearDown)
         return self.__server

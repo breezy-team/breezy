@@ -498,7 +498,10 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
 
 
 class HttpServer(Server):
-    """A test server for http transports."""
+    """A test server for http transports.
+
+    Subclasses can provide a specific request handler.
+    """
 
     # used to form the url that connects to this server
     _url_protocol = 'http'
@@ -582,10 +585,3 @@ class WallRequestHandler(TestingHTTPRequestHandler):
     def handle_one_request(self):
         """Handle a single HTTP request, by abruptly closing the connection"""
         self.close_connection = 1
-
-
-class WallHttpServer(HttpServer):
-    """A server which close the connection as soon as a request comes in"""
-
-    def __init__(self):
-        HttpServer.__init__(self,WallRequestHandler)

@@ -23,18 +23,10 @@ from bzrlib.tests import TestCaseWithTransport
 class TestCaseWithWebserver(TestCaseWithTransport):
     """A support class that provides readonly urls that are http://.
 
-    This is done by forcing the readonly server to be an http one. This 
-    will current fail if the primary transport is not backed by regular disk
-    files.
+    This is done by forcing the readonly server to be an http
+    one. This will currently fail if the primary transport is not
+    backed by regular disk files.
     """
-
     def setUp(self):
         super(TestCaseWithWebserver, self).setUp()
         self.transport_readonly_server = bzrlib.transport.http.HttpServer
-
-
-class TestCaseWithWallserver(TestCaseWithTransport):
-    """A support class that provides a http server closing connections early"""
-    def setUp(self):
-        super(TestCaseWithWallserver, self).setUp()
-        self.transport_readonly_server = bzrlib.transport.http.WallHttpServer

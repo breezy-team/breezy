@@ -220,7 +220,8 @@ class PyCurlTransport(HttpTransportBase):
             mutter('got pycurl error: %s, %s, %s, url: %s ',
                     e[0], _pycurl_errors.errorcode[e[0]], e, url)
             if e[0] in (_pycurl_errors.CURLE_COULDNT_RESOLVE_HOST,
-                        _pycurl_errors.CURLE_COULDNT_CONNECT):
+                        _pycurl_errors.CURLE_COULDNT_CONNECT,
+                        _pycurl_errors.CURLE_GOT_NOTHING):
                 self._raise_curl_connection_error(curl)
             # jam 20060713 The code didn't use to re-raise the exception here
             # but that seemed bogus
