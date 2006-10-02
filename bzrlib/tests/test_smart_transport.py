@@ -26,6 +26,7 @@ from bzrlib import (
         bzrdir,
         errors,
         tests,
+        urlutils,
         )
 from bzrlib.transport import (
         get_transport,
@@ -72,7 +73,8 @@ class BasicSmartTests(tests.TestCase):
         """Feed a canned query version to a server"""
         to_server = StringIO('hello\n')
         from_server = StringIO()
-        server = smart.SmartStreamServer(to_server, from_server, local.LocalTransport('file:///'))
+        server = smart.SmartStreamServer(to_server, from_server, 
+            local.LocalTransport(urlutils.local_path_to_url('/')))
         server._serve_one_request()
         self.assertEqual('ok\0011\n',
                          from_server.getvalue())
@@ -115,8 +117,11 @@ class BasicSmartTests(tests.TestCase):
         without ssh intermediating.
         """
         args = [sys.executable, sys.argv[0], 'serve', '--inet']
+        do_close_fds = True
+        if sys.platform == 'win32':
+            do_close_fds = False
         child = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                 close_fds=True)
+                                 close_fds=do_close_fds, universal_newlines=True)
         conn = smart.SmartStreamClient(lambda: (child.stdout, child.stdin))
         conn.query_version()
         conn.query_version()

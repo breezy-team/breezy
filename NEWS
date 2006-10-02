@@ -22,6 +22,17 @@ IN DEVELOPMENT
     * When reverting, files that are not locally modified that do not exist
       in the target are deleted, not just unversioned (Aaron Bentley)
 
+    * When trying to acquire a lock, don't fail immediately. Instead, try
+      a few times (up to 1 hour) before timing out. Also, report why the
+      lock is unavailable (John Arbash Meinel, #43521, #49556)
+
+    * Leave HttpTransportBase daughter classes decides how they
+      implement cloning. (Vincent Ladeuil, #61606)
+
+bzr 0.11  2006-10-02
+
+    * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
+
 bzr 0.11rc2  2006-09-27
 
   BUG FIXES:
