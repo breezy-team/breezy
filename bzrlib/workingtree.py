@@ -52,7 +52,7 @@ from time import time
 import warnings
 
 import bzrlib
-from bzrlib import bzrdir, errors, ignores, osutils, urlutils
+from bzrlib import bzrdir, errors, ignores, osutils, urlutils, repository
 from bzrlib.atomicfile import AtomicFile
 import bzrlib.branch
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
@@ -841,6 +841,47 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         finally:
             other_tree.unlock()
         other_tree.bzrdir.destroy_workingtree_metadata()
+
+    @needs_tree_write_lock
+    def extract(self, file_id):
+        """Extract a subtree from this tree.
+        
+        A new branch will be created, relative to the path for this tree.
+        """
+        sub_path = self.id2path(file_id)
+        branch_transport = self.branch.bzrdir.root_transport.clone(sub_path)
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        branch_bzrdir = format.initialize_on_transport(branch_transport)
+        try:
+            repo = branch_bzrdir.find_repository()
+        except errors.NoRepositoryPresent:
+            repo = branch_bzrdir.create_repository()
+            assert repo.supports_rich_root()
+        else:
+            if not repo.supports_rich_root():
+                raise 'Gah'
+        new_branch = branch_bzrdir.create_branch()
+        for parent_id in self.get_parent_ids():
+            new_branch.fetch(self.branch, parent_id)
+        tree_transport = self.bzrdir.root_transport.clone(sub_path)
+        if tree_transport.base != branch_transport.base:
+            tree_bzrdir = format.initialize_on_transport(tree_transport)
+            # create branch reference
+            pass
+        else:
+            tree_bzrdir = branch_bzrdir
+        wt = tree_bzrdir.create_workingtree('null:')
+        wt.set_parent_ids(self.get_parent_ids())
+        my_inv = self.inventory
+        child_inv = Inventory(root_id=None)
+        new_root = my_inv[file_id]
+        my_inv.remove_recursive_id(file_id)
+        new_root.parent_id = None
+        child_inv.add(new_root)
+        self._write_inventory(my_inv)
+        wt._write_inventory(child_inv)
+        return wt
 
     @needs_read_lock
     def merge_modified(self):
