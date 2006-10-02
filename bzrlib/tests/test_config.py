@@ -67,6 +67,9 @@ sample_branches_text = ("[http://www.example.com]\n"
                         "[http://www.example.com/ignoreparent]\n"
                         "# different project: ignore parent dir config\n"
                         "ignore_parents=true\n"
+                        "[http://www.example.com/norecurse]\n"
+                        "# configuration items that only apply to this dir\n"
+                        "recurse=false\n"
                         "[/b/]\n"
                         "check_signatures=require\n"
                         "# test trailing / matching with no children\n"
@@ -552,15 +555,27 @@ class TestLocationConfig(TestCaseInTempDir):
         self.assertEqual([('http://www.example.com', 'com')],
                          self.my_location_config._get_matching_sections())
 
-    def test__get_matching_sections_subdir_matches(self):
+    def test__get_matching_sections_ignoreparent(self):
         self.get_branch_config('http://www.example.com/ignoreparent')
         self.assertEqual([('http://www.example.com/ignoreparent', '')],
                          self.my_location_config._get_matching_sections())
 
-    def test__get_matching_sections_subdir_nonrecursive(self):
+    def test__get_matching_sections_ignoreparent_subdir(self):
         self.get_branch_config(
             'http://www.example.com/ignoreparent/childbranch')
         self.assertEqual([('http://www.example.com/ignoreparent', 'childbranch')],
+                         self.my_location_config._get_matching_sections())
+
+    def test__get_matching_sections_norecurse(self):
+        self.get_branch_config('http://www.example.com/norecurse')
+        self.assertEqual([('http://www.example.com/norecurse', ''),
+                          ('http://www.example.com', 'norecurse')],
+                         self.my_location_config._get_matching_sections())
+
+    def test__get_matching_sections_norecurse_subdir(self):
+        self.get_branch_config(
+            'http://www.example.com/norecurse/childbranch')
+        self.assertEqual([('http://www.example.com', 'norecurse/childbranch')],
                          self.my_location_config._get_matching_sections())
 
     def test__get_matching_sections_subdir_trailing_slash(self):
