@@ -518,6 +518,9 @@ class SmartTCPServer(object):
 
     def accept_and_serve(self):
         conn, client_addr = self._server_socket.accept()
+        # For WIN32, where the timeout value from the listening socket
+        # propogates to the newly accepted socket.
+        conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         from_client = conn.makefile('r')
         to_client = conn.makefile('w')
@@ -549,13 +552,14 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     """
 
     def __init__(self):
-        self._homedir = os.getcwd()
+        self._homedir = urlutils.local_path_to_url(os.getcwd())[7:]
         # The server is set up by default like for ssh access: the client
         # passes filesystem-absolute paths; therefore the server must look
         # them up relative to the root directory.  it might be better to act
         # a public server and have the server rewrite paths into the test
         # directory.
-        SmartTCPServer.__init__(self, transport.get_transport("file:///"))
+        SmartTCPServer.__init__(self,
+            transport.get_transport(urlutils.local_path_to_url('/')))
         
     def setUp(self):
         """Set up server for testing"""
@@ -567,9 +571,6 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     def get_url(self):
         """Return the url of the server"""
         host, port = self._server_socket.getsockname()
-        # XXX: I think this is likely to break on windows -- self._homedir will
-        # have backslashes (and maybe a drive letter?).
-        #  -- Andrew Bennetts, 2006-08-29
         return "bzr://%s:%d%s" % (host, port, urlutils.escape(self._homedir))
 
     def get_bogus_url(self):

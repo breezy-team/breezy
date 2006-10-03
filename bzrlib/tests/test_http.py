@@ -27,12 +27,13 @@ from bzrlib.errors import (DependencyNotPresent,
                            )
 from bzrlib.tests import TestCase, TestSkipped
 from bzrlib.transport import Transport
-from bzrlib.transport.http import extract_auth, HttpTransportBase
-from bzrlib.transport.http._urllib import HttpTransport_urllib
-from bzrlib.tests.HTTPTestUtil import (
-    TestCaseWithWebserver,
-    TestCaseWithWallserver,
+from bzrlib.transport.http import (
+    extract_auth,
+    HttpTransportBase,
+    WallRequestHandler,
     )
+from bzrlib.transport.http._urllib import HttpTransport_urllib
+from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 
 
 class FakeManager (object):
@@ -236,14 +237,25 @@ class TestRangeHeader(TestCase):
 # way to add an accessor or an attribute to this transports so
 # that we can filter them from the list of all existing
 # transports ?
-class TestWallServer(TestCaseWithWallserver):
-    """Tests that we get the right exceptions during the connection phase"""
+class TestBogusServer(TestCaseWithWebserver):
+    """Abstract class to define test for all bogus servers"""
 
-    from bzrlib.transport.http._pycurl import PyCurlTransport
-#    _transport = PyCurlTransport
+    #from bzrlib.transport.http._pycurl import PyCurlTransport
+    #_transport = PyCurlTransport
     _transport = HttpTransport_urllib
 
     def test_has(self):
-        server = self.get_readonly_server()
+        server = self.get_server()
         t = self._transport(server.get_url())
         self.assertRaises(ConnectionError, t.has, 'foo/bar')
+
+    def test_get(self):
+        server = self.get_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(ConnectionError, t.get, 'foo/bar')
+
+
+class TestWallServer(TestBogusServer):
+    """Tests that we get the right exceptions during the connection phase"""
+    def create_transport_server(self):
+        return bzrlib.transport.http.HttpServer(WallRequestHandler)
