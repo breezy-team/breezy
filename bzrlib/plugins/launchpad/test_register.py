@@ -71,6 +71,9 @@ class InstrumentedXMLRPCConnection(object):
 
 class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
 
+    # Python 2.5's xmlrpclib looks for this.
+    _use_datetime = False
+
     def __init__(self, testcase):
         self.testcase = testcase
 
