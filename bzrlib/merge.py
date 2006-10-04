@@ -886,7 +886,7 @@ class Diff3Merger(Merge3Merger):
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
                 self._dump_conflicts(name, parent_id, file_id)
-            self._raw_conflicts.append(('text conflict', trans_id))
+                self._raw_conflicts.append(('text conflict', trans_id))
         finally:
             rmtree(temp_dir)
 
