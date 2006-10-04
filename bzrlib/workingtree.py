@@ -52,7 +52,14 @@ from time import time
 import warnings
 
 import bzrlib
-from bzrlib import bzrdir, errors, ignores, osutils, urlutils
+from bzrlib import (
+    bzrdir,
+    errors,
+    ignores,
+    osutils,
+    symbol_versioning,
+    urlutils,
+    )
 from bzrlib.atomicfile import AtomicFile
 import bzrlib.branch
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
@@ -67,7 +74,7 @@ from bzrlib.errors import (BzrCheckError,
                            MergeModifiedFormatError,
                            UnsupportedOperation,
                            )
-from bzrlib.inventory import InventoryEntry, Inventory
+from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 from bzrlib.merge import merge_inner, transform_tree
@@ -1555,7 +1562,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_tree_write_lock
     def set_root_id(self, file_id):
         """Set the root id for this tree."""
-        inv = self.read_working_inventory()
+        # for compatability 
+        if file_id is None:
+            symbol_versioning.warn(symbol_versioning.zero_twelve
+                % 'WorkingTree.set_root_id with fileid=None',
+                DeprecationWarning,
+                stacklevel=3)
+            file_id = ROOT_ID
+        inv = self._inventory
         orig_root_id = inv.root.file_id
         del inv._byid[inv.root.file_id]
         inv.root.file_id = file_id
