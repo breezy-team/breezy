@@ -552,13 +552,14 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     """
 
     def __init__(self):
-        self._homedir = os.getcwd()
+        self._homedir = urlutils.local_path_to_url(os.getcwd())[7:]
         # The server is set up by default like for ssh access: the client
         # passes filesystem-absolute paths; therefore the server must look
         # them up relative to the root directory.  it might be better to act
         # a public server and have the server rewrite paths into the test
         # directory.
-        SmartTCPServer.__init__(self, transport.get_transport("file:///"))
+        SmartTCPServer.__init__(self,
+            transport.get_transport(urlutils.local_path_to_url('/')))
         
     def setUp(self):
         """Set up server for testing"""
@@ -570,9 +571,6 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     def get_url(self):
         """Return the url of the server"""
         host, port = self._server_socket.getsockname()
-        # XXX: I think this is likely to break on windows -- self._homedir will
-        # have backslashes (and maybe a drive letter?).
-        #  -- Andrew Bennetts, 2006-08-29
         return "bzr://%s:%d%s" % (host, port, urlutils.escape(self._homedir))
 
     def get_bogus_url(self):
@@ -1029,36 +1027,32 @@ class SmartTCPTransport(SmartTransport):
         if self._socket is not None:
             self._socket.close()
 
-try:
-    from bzrlib.transport import sftp, ssh
-except errors.ParamikoNotPresent:
-    # no paramiko, no SSHTransport.
-    pass
-else:
-    class SmartSSHTransport(SmartTransport):
-        """Connection to smart server over SSH."""
 
-        def __init__(self, url, clone_from=None):
-            # TODO: all this probably belongs in the parent class.
-            super(SmartSSHTransport, self).__init__(url, clone_from)
-            try:
-                if self._port is not None:
-                    self._port = int(self._port)
-            except (ValueError, TypeError), e:
-                raise errors.InvalidURL(path=url, extra="invalid port %s" % self._port)
+class SmartSSHTransport(SmartTransport):
+    """Connection to smart server over SSH."""
 
-        def _connect_to_server(self):
-            executable = os.environ.get('BZR_REMOTE_PATH', 'bzr')
-            vendor = ssh._get_ssh_vendor()
-            self._ssh_connection = vendor.connect_ssh(self._username,
-                    self._password, self._host, self._port,
-                    command=[executable, 'serve', '--inet', '--directory=/',
-                             '--allow-writes'])
-            return self._ssh_connection.get_filelike_channels()
+    def __init__(self, url, clone_from=None):
+        # TODO: all this probably belongs in the parent class.
+        super(SmartSSHTransport, self).__init__(url, clone_from)
+        try:
+            if self._port is not None:
+                self._port = int(self._port)
+        except (ValueError, TypeError), e:
+            raise errors.InvalidURL(path=url, extra="invalid port %s" % self._port)
 
-        def disconnect(self):
-            super(SmartSSHTransport, self).disconnect()
-            self._ssh_connection.close()
+    def _connect_to_server(self):
+        from bzrlib.transport import ssh
+        executable = os.environ.get('BZR_REMOTE_PATH', 'bzr')
+        vendor = ssh._get_ssh_vendor()
+        self._ssh_connection = vendor.connect_ssh(self._username,
+                self._password, self._host, self._port,
+                command=[executable, 'serve', '--inet', '--directory=/',
+                         '--allow-writes'])
+        return self._ssh_connection.get_filelike_channels()
+
+    def disconnect(self):
+        super(SmartSSHTransport, self).disconnect()
+        self._ssh_connection.close()
 
 
 def get_test_permutations():
