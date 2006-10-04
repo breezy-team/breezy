@@ -55,7 +55,7 @@ class BundleBenchmark(Benchmark):
         """Create a bundle for a kernel sized tree with no ignored, unknowns,
         or added and one commit.
         """ 
-        tree = self.make_kernel_like_tree_committed('tree')
+        tree = self.make_kernel_like_committed_tree('tree')
 
         f = open('bundle', 'wb')
         try:
