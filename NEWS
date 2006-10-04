@@ -29,6 +29,17 @@ IN DEVELOPMENT
     * Leave HttpTransportBase daughter classes decides how they
       implement cloning. (Vincent Ladeuil, #61606)
 
+  TESTING:
+
+    * New test base class TestCaseWithMemoryTransport offers memory-only
+      testing facilities: its not suitable for tests that need to mutate disk
+      state, but most tests should not need that and should be converted to
+      TestCaseWithMemoryTransport. (Robert Collins)
+
+bzr 0.11  2006-10-02
+
+    * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
+
 bzr 0.11rc2  2006-09-27
 
   BUG FIXES:
@@ -213,11 +224,6 @@ bzr 0.11rc1  2006-09-25
       (Andrew Bennetts, Robert Collins)
 
   TESTING:
-
-    * New test base class TestCaseWithMemoryTransport offers memory-only
-      testing facilities: its not suitable for tests that need to mutate disk
-      state, but most tests should not need that and should be converted to
-      TestCaseWithMemoryTransport. (Robert Collins)
 
     * New test helper classs MemoryTree. This is typically accessed via
       ``self.make_branch_and_memory_tree()`` in test cases. (Robert Collins)
