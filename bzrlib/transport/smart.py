@@ -22,7 +22,7 @@ followed by bulk body data. ::
 
   SEP := '\001'
     Fields are separated by Ctrl-A.
-  BULK_DATA := CHUNK+ TRAILER
+  BULK_DATA := CHUNK TRAILER
     Chunks can be repeated as many times as necessary.
   CHUNK := CHUNK_LEN CHUNK_BODY
   CHUNK_LEN := DIGIT+ NEWLINE
