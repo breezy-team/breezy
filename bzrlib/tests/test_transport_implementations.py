@@ -26,18 +26,19 @@ import stat
 import sys
 
 from bzrlib import (
+    errors,
     osutils,
     urlutils,
     )
 from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
-                           LockError, PathError,
+                           LockError, NoSmartServer, PathError,
                            TransportNotPossible, ConnectionError,
                            InvalidURL)
 from bzrlib.osutils import getcwd
 from bzrlib.symbol_versioning import zero_eleven
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.tests.test_transport import TestTransportImplementation
-from bzrlib.transport import memory
+from bzrlib.transport import memory, smart
 import bzrlib.transport
 
 
@@ -68,8 +69,10 @@ class TransportTests(TestTransportImplementation):
         except excClass:
             return
         else:
-            if hasattr(excClass,'__name__'): excName = excClass.__name__
-            else: excName = str(excClass)
+            if getattr(excClass,'__name__', None) is not None:
+                excName = excClass.__name__
+            else:
+                excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
     def test_has(self):
@@ -88,6 +91,13 @@ class TransportTests(TestTransportImplementation):
                 [True, True, False, False, True, False, True, False])
         self.assertEqual(False, t.has_any(['c', 'c', 'c']))
         self.assertEqual(True, t.has_any(['b', 'b', 'b']))
+
+    def test_has_root_works(self):
+        current_transport = self.get_transport()
+        # import pdb;pdb.set_trace()
+        self.assertTrue(current_transport.has('/'))
+        root = current_transport.clone('/')
+        self.assertTrue(root.has(''))
 
     def test_get(self):
         t = self.get_transport()
@@ -141,6 +151,11 @@ class TransportTests(TestTransportImplementation):
         self.applyDeprecated(zero_eleven,
                              t.put, 'b', StringIO('file-like\ncontents\n'))
         self.check_transport_contents('file-like\ncontents\n', t, 'b')
+
+        self.assertRaises(NoSuchFile,
+            self.applyDeprecated,
+            zero_eleven,
+            t.put, 'path/doesnt/exist/c', StringIO('contents'))
 
     def test_put_bytes(self):
         t = self.get_transport()
@@ -398,6 +413,37 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('diff\ncontents for\na\n', t, 'a')
         self.check_transport_contents('another contents\nfor d\n', t, 'd')
 
+    def test_put_permissions(self):
+        t = self.get_transport()
+
+        if t.is_readonly():
+            return
+        if not t._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
+        self.applyDeprecated(zero_eleven, t.put, 'mode644',
+                             StringIO('test text\n'), mode=0644)
+        self.assertTransportMode(t, 'mode644', 0644)
+        self.applyDeprecated(zero_eleven, t.put, 'mode666',
+                             StringIO('test text\n'), mode=0666)
+        self.assertTransportMode(t, 'mode666', 0666)
+        self.applyDeprecated(zero_eleven, t.put, 'mode600',
+                             StringIO('test text\n'), mode=0600)
+        self.assertTransportMode(t, 'mode600', 0600)
+        # Yes, you can put a file such that it becomes readonly
+        self.applyDeprecated(zero_eleven, t.put, 'mode400',
+                             StringIO('test text\n'), mode=0400)
+        self.assertTransportMode(t, 'mode400', 0400)
+        self.applyDeprecated(zero_eleven, t.put_multi,
+                             [('mmode644', StringIO('text\n'))], mode=0644)
+        self.assertTransportMode(t, 'mmode644', 0644)
+
+        # The default permissions should be based on the current umask
+        umask = osutils.get_umask()
+        self.applyDeprecated(zero_eleven, t.put, 'nomode',
+                             StringIO('test text\n'), mode=None)
+        self.assertTransportMode(t, 'nomode', 0666 & ~umask)
+        
     def test_mkdir(self):
         t = self.get_transport()
 
@@ -749,6 +795,8 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('adir/asubdir')
         t.mkdir('bdir')
         t.mkdir('bdir/bsubdir')
+        # any kind of PathError would be OK, though we normally expect
+        # DirectoryNotEmpty
         self.assertRaises(PathError, t.rename, 'bdir', 'adir')
         # nothing was changed so it should still be as before
         self.assertTrue(t.has('bdir/bsubdir'))
@@ -839,7 +887,11 @@ class TransportTests(TestTransportImplementation):
         # TODO: test copy_multi
 
     def test_connection_error(self):
-        """ConnectionError is raised when connection is impossible"""
+        """ConnectionError is raised when connection is impossible.
+        
+        The error may be raised from either the constructor or the first
+        operation on the transport.
+        """
         try:
             url = self._server.get_bogus_url()
         except NotImplementedError:
@@ -990,6 +1042,44 @@ class TransportTests(TestTransportImplementation):
         self.failUnless(t2.has('d'))
         self.failUnless(t3.has('b/d'))
 
+    def test_clone_to_root(self):
+        orig_transport = self.get_transport()
+        # Repeatedly go up to a parent directory until we're at the root
+        # directory of this transport
+        root_transport = orig_transport
+        new_transport = root_transport.clone("..")
+        # as we are walking up directories, the path must be must be 
+        # growing less, except at the top
+        self.assertTrue(len(new_transport.base) < len(root_transport.base)
+            or new_transport.base == root_transport.base)
+        while new_transport.base != root_transport.base:
+            root_transport = new_transport
+            new_transport = root_transport.clone("..")
+            # as we are walking up directories, the path must be must be 
+            # growing less, except at the top
+            self.assertTrue(len(new_transport.base) < len(root_transport.base)
+                or new_transport.base == root_transport.base)
+
+        # Cloning to "/" should take us to exactly the same location.
+        self.assertEqual(root_transport.base, orig_transport.clone("/").base)
+        # the abspath of "/" from the original transport should be the same
+        # as the base at the root:
+        self.assertEqual(orig_transport.abspath("/"), root_transport.base)
+
+        # At the root, the URL must still end with / as its a directory
+        self.assertEqual(root_transport.base[-1], '/')
+
+    def test_clone_from_root(self):
+        """At the root, cloning to a simple dir should just do string append."""
+        orig_transport = self.get_transport()
+        root_transport = orig_transport.clone('/')
+        self.assertEqual(root_transport.base + '.bzr/',
+            root_transport.clone('.bzr').base)
+
+    def test_base_url(self):
+        t = self.get_transport()
+        self.assertEqual('/', t.base[-1])
+
     def test_relpath(self):
         t = self.get_transport()
         self.assertEqual('', t.relpath(t.base))
@@ -1018,10 +1108,14 @@ class TransportTests(TestTransportImplementation):
         # specific test cases.
         transport = self.get_transport()
         
-        # disabled because some transports might normalize urls in generating
-        # the abspath - eg http+pycurl-> just http -- mbp 20060308 
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
+
+        # This should work without raising an error.
+        transport.abspath("/")
+
+        # the abspath of "/" and "/foo/.." should result in the same location
+        self.assertEqual(transport.abspath("/"), transport.abspath("/foo/.."))
 
     def test_local_abspath(self):
         transport = self.get_transport()
@@ -1154,23 +1248,37 @@ class TransportTests(TestTransportImplementation):
         self.check_transport_contents('bar', transport2, 'foo')
 
     def test_lock_write(self):
+        """Test transport-level write locks.
+
+        These are deprecated and transports may decline to support them.
+        """
         transport = self.get_transport()
         if transport.is_readonly():
             self.assertRaises(TransportNotPossible, transport.lock_write, 'foo')
             return
         transport.put_bytes('lock', '')
-        lock = transport.lock_write('lock')
+        try:
+            lock = transport.lock_write('lock')
+        except TransportNotPossible:
+            return
         # TODO make this consistent on all platforms:
         # self.assertRaises(LockError, transport.lock_write, 'lock')
         lock.unlock()
 
     def test_lock_read(self):
+        """Test transport-level read locks.
+
+        These are deprecated and transports may decline to support them.
+        """
         transport = self.get_transport()
         if transport.is_readonly():
             file('lock', 'w').close()
         else:
             transport.put_bytes('lock', '')
-        lock = transport.lock_read('lock')
+        try:
+            lock = transport.lock_read('lock')
+        except TransportNotPossible:
+            return
         # TODO make this consistent on all platforms:
         # self.assertRaises(LockError, transport.lock_read, 'lock')
         lock.unlock()
@@ -1200,3 +1308,36 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[1], (9, '9'))
         self.assertEqual(d[2], (0, '0'))
         self.assertEqual(d[3], (3, '34'))
+
+    def test_get_smart_client(self):
+        """All transports must either give a smart client, or know they can't.
+
+        For some transports such as http this might depend on probing to see 
+        what's actually present on the other end.  (But we can adjust for that 
+        in the future.)
+        """
+        transport = self.get_transport()
+        try:
+            client = transport.get_smart_client()
+            # XXX: should be a more general class
+            self.assertIsInstance(client, smart.SmartStreamClient)
+        except NoSmartServer:
+            # as long as we got it we're fine
+            pass
+
+    def test_readv_short_read(self):
+        transport = self.get_transport()
+        if transport.is_readonly():
+            file('a', 'w').write('0123456789')
+        else:
+            transport.put_bytes('a', '01234567890')
+
+        # This is intentionally reading off the end of the file
+        # since we are sure that it cannot get there
+        self.assertListRaises((errors.ShortReadvError, AssertionError),
+                              transport.readv, 'a', [(1,1), (8,10)])
+
+        # This is trying to seek past the end of the file, it should
+        # also raise a special error
+        self.assertListRaises(errors.ShortReadvError,
+                              transport.readv, 'a', [(12,2)])

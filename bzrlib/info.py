@@ -31,7 +31,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
 def plural(n, base='', pl=None):
     if n == 1:
         return base
-    elif pl != None:
+    elif pl is not None:
         return pl
     else:
         return 's'

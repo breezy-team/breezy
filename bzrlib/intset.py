@@ -71,7 +71,7 @@ class IntSet(Exception):
             If specified, an initial collection of values.
         """
         self._val = bitmask
-        if values != None:
+        if values is not None:
             self.update(values)
 
 

@@ -44,7 +44,7 @@ This means that exceptions can used like this:
 >>> try:
 ...   raise NotBranchError(path='/foo/bar')
 ... except:
-...   print sys.exc_type
+...   print '%s.%s' % (sys.exc_type.__module__, sys.exc_type.__name__)
 ...   print sys.exc_value
 ...   path = getattr(sys.exc_value, 'path', None)
 ...   if path is not None:
@@ -96,7 +96,7 @@ from bzrlib.patches import (PatchSyntax,
 class BzrError(StandardError):
     
     is_user_error = True
-    
+
     def __str__(self):
         # XXX: Should we show the exception class in 
         # exceptions that don't provide their own message?  
@@ -120,7 +120,11 @@ class BzrNewError(BzrError):
     # base classes should override the docstring with their human-
     # readable explanation
 
-    def __init__(self, **kwds):
+    def __init__(self, *args, **kwds):
+        # XXX: Use the underlying BzrError to always generate the args attribute
+        # if it doesn't exist.  We can't use super here, because exceptions are
+        # old-style classes in python2.4 (but new in 2.5).  --bmc, 20060426
+        BzrError.__init__(self, *args)
         for key, value in kwds.items():
             setattr(self, key, value)
 
@@ -132,9 +136,14 @@ class BzrNewError(BzrError):
             if isinstance(s, unicode):
                 return s.encode('utf8')
             return s
-        except (NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s: %s' \
-                % (self.__class__.__name__, str(e))
+        except (TypeError, NameError, ValueError, KeyError), e:
+            return 'Unprintable exception %s(%r): %s' \
+                % (self.__class__.__name__,
+                   self.__dict__, str(e))
+
+
+class AlreadyBuilding(BzrNewError):
+    """The tree builder is already building a tree."""
 
 
 class BzrCheckError(BzrNewError):
@@ -189,6 +198,10 @@ class NoWorkingTree(BzrNewError):
     def __init__(self, base):
         BzrNewError.__init__(self)
         self.base = base
+
+
+class NotBuilding(BzrNewError):
+    """Not currently building a tree."""
 
 
 class NotLocalUrl(BzrNewError):
@@ -274,8 +287,7 @@ class InvalidURLJoin(PathError):
 
     def __init__(self, msg, base, args):
         PathError.__init__(self, base, msg)
-        self.args = [base]
-        self.args.extend(args)
+        self.args = [base] + list(args)
 
 
 class UnsupportedProtocol(PathError):
@@ -283,6 +295,18 @@ class UnsupportedProtocol(PathError):
 
     def __init__(self, url, extra):
         PathError.__init__(self, url, extra=extra)
+
+
+class ShortReadvError(PathError):
+    """readv() read %(actual)s bytes rather than %(length)s bytes at %(offset)s for %(path)s%(extra)s"""
+
+    is_user_error = False
+
+    def __init__(self, path, offset, length, actual, extra=None):
+        PathError.__init__(self, path, extra=extra)
+        self.offset = offset
+        self.length = length
+        self.actual = actual
 
 
 class PathNotChild(BzrNewError):
@@ -372,6 +396,14 @@ class IncompatibleFormat(BzrNewError):
         BzrNewError.__init__(self)
         self.format = format
         self.bzrdir = bzrdir_format
+
+
+class IncompatibleRevision(BzrNewError):
+    """Revision is not compatible with %(repo_format)s"""
+
+    def __init__(self, repo_format):
+        BzrNewError.__init__(self)
+        self.repo_format = repo_format
 
 
 class NotVersionedError(BzrNewError):
@@ -799,9 +831,16 @@ class TransportError(BzrNewError):
         BzrNewError.__init__(self)
 
 
+class SmartProtocolError(TransportError):
+    """Generic bzr smart protocol error: %(details)s"""
+
+    def __init__(self, details):
+        self.details = details
+
+
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
-    """Transport operation not possible: %(msg)s %(orig_error)%"""
+    """Transport operation not possible: %(msg)s %(orig_error)s"""
 
 
 class ConnectionError(TransportError):
@@ -999,6 +1038,15 @@ class UninitializableFormat(BzrNewError):
         self.format = format
 
 
+class BadConversionTarget(BzrNewError):
+    """Cannot convert to format %(format)s.  %(problem)s"""
+
+    def __init__(self, problem, format):
+        BzrNewError.__init__(self)
+        self.problem = problem
+        self.format = format
+
+
 class NoDiff(BzrNewError):
     """Diff is not installed on this machine: %(msg)s"""
 
@@ -1157,6 +1205,33 @@ class UnsupportedEOLMarker(BadBundle):
         BzrNewError.__init__(self)
 
 
+class IncompatibleFormat(BzrNewError):
+    """Bundle format %(bundle_format)s is incompatible with %(other)s"""
+
+    def __init__(self, bundle_format, other):
+        BzrNewError.__init__(self)
+        self.bundle_format = bundle_format
+        self.other = other
+
+
+class BadInventoryFormat(BzrNewError):
+    """Root class for inventory serialization errors"""
+
+
+class UnexpectedInventoryFormat(BadInventoryFormat):
+    """The inventory was not in the expected format:\n %(msg)s"""
+
+    def __init__(self, msg):
+        BadInventoryFormat.__init__(self, msg=msg)
+
+
+class NoSmartServer(NotBranchError):
+    """No smart server available at %(url)s"""
+
+    def __init__(self, url):
+        self.url = url
+
+
 class UnknownSSH(BzrNewError):
     """Unrecognised value for BZR_SSH environment variable: %(vendor)s"""
 
@@ -1171,3 +1246,39 @@ class GhostRevisionUnusableHere(BzrNewError):
     def __init__(self, revision_id):
         BzrNewError.__init__(self)
         self.revision_id = revision_id
+
+
+class IllegalUseOfScopeReplacer(BzrNewError):
+    """ScopeReplacer object %(name)r was used incorrectly: %(msg)s%(extra)s"""
+
+    is_user_error = False
+
+    def __init__(self, name, msg, extra=None):
+        BzrNewError.__init__(self)
+        self.name = name
+        self.msg = msg
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
+
+
+class InvalidImportLine(BzrNewError):
+    """Not a valid import statement: %(msg)\n%(text)s"""
+
+    is_user_error = False
+
+    def __init__(self, text, msg):
+        BzrNewError.__init__(self)
+        self.text = text
+        self.msg = msg
+
+
+class ImportNameCollision(BzrNewError):
+    """Tried to import an object to the same name as an existing object. %(name)s"""
+
+    is_user_error = False
+
+    def __init__(self, name):
+        BzrNewError.__init__(self)
+        self.name = name

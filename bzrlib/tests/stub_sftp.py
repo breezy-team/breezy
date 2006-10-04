@@ -153,8 +153,7 @@ class StubSFTPServer (SFTPServerInterface):
     def open(self, path, flags, attr):
         path = self._realpath(path)
         try:
-            if hasattr(os, 'O_BINARY'):
-                flags |= os.O_BINARY
+            flags |= getattr(os, 'O_BINARY', 0)
             if getattr(attr, 'st_mode', None):
                 fd = os.open(path, flags, attr.st_mode)
             else:

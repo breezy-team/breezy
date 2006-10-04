@@ -2,9 +2,9 @@ import sys
 
 
 def shellcomplete(context=None, outfile = None):
-    if outfile == None:
+    if outfile is None:
         outfile = sys.stdout
-    if context == None:
+    if context is None:
         shellcomplete_commands(outfile = outfile)
     else:
         shellcomplete_on_command(context, outfile = outfile)
@@ -12,7 +12,7 @@ def shellcomplete(context=None, outfile = None):
 def shellcomplete_on_command(cmdname, outfile = None):
     cmdname = str(cmdname)
 
-    if outfile == None:
+    if outfile is None:
         outfile = sys.stdout
 
     from inspect import getdoc
@@ -20,7 +20,7 @@ def shellcomplete_on_command(cmdname, outfile = None):
     cmdobj = commands.get_cmd_object(cmdname)
 
     doc = getdoc(cmdobj)
-    if doc == None:
+    if doc is None:
         raise NotImplementedError("sorry, no detailed shellcomplete yet for %r" % cmdname)
 
     shellcomplete_on_option(cmdobj.takes_options, outfile = None)
@@ -32,7 +32,7 @@ def shellcomplete_on_option(options, outfile=None):
     from bzrlib.option import Option
     if not options:
         return
-    if outfile == None:
+    if outfile is None:
         outfile = sys.stdout
     for on in options:
         for shortname, longname in Option.SHORT_OPTIONS.items():
@@ -50,7 +50,7 @@ def shellcomplete_commands(outfile = None):
     import commands
     from inspect import getdoc
     
-    if outfile == None:
+    if outfile is None:
         outfile = sys.stdout
     
     cmds = []
@@ -63,7 +63,7 @@ def shellcomplete_commands(outfile = None):
         if cmdclass.hidden:
             continue
         doc = getdoc(cmdclass)
-        if doc == None:
+        if doc is None:
 	    outfile.write(cmdname + '\n')
         else:
 	    doclines = doc.splitlines()
