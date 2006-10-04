@@ -497,10 +497,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 parents.append(l.rstrip('\n'))
         return parents
 
+    @needs_read_lock
     def get_root_id(self):
         """Return the id of this trees root"""
-        inv = self.read_working_inventory()
-        return inv.root.file_id
+        return self._inventory.root.file_id
         
     def _get_store_filename(self, file_id):
         ## XXX: badly named; this is not in the store at all
