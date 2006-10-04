@@ -246,8 +246,8 @@ def _encode_tuple(args):
 class SmartProtocolBase(object):
     """Methods common to client and server"""
 
-    # TODO: this only actually accomodates a single block; possibly should support
-    # multiple chunks?
+    # TODO: this only actually accomodates a single block; possibly should
+    # support multiple chunks?
     def _encode_bulk_data(self, body):
         """Encode body as a bulk data chunk."""
         return ''.join(('%d\n' % len(body), body, 'done\n'))
@@ -258,20 +258,6 @@ class SmartProtocolBase(object):
         for start, length in offsets:
             txt.append('%d,%d' % (start, length))
         return '\n'.join(txt)
-
-    def _send_bulk_data(self, body, a_file=None):
-        """Send chunked body data"""
-        assert isinstance(body, str)
-        bytes = self._encode_bulk_data(body)
-        self._write_and_flush(bytes, a_file)
-
-    def _write_and_flush(self, bytes, a_file=None):
-        """Write bytes to self._out and flush it."""
-        # XXX: this will be inefficient.  Just ask Robert.
-        if a_file is None:
-            a_file = self._out
-        a_file.write(bytes)
-        a_file.flush()
         
 
 class SmartServerRequestProtocolOne(SmartProtocolBase):
@@ -299,8 +285,6 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 # no command line yet
                 return
             self.has_dispatched = True
-            # XXX if in_buffer not \n-terminated this will do the wrong
-            # thing.
             try:
                 first_line, self.in_buffer = self.in_buffer.split('\n', 1)
                 first_line += '\n'
@@ -356,7 +340,6 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
             assert isinstance(body, str), 'body must be a str'
             bytes = self._encode_bulk_data(body)
             self._write_func(bytes)
-            #self._send_bulk_data(body, self._out_stream)
 
     def sync_with_request(self, request):
         self._finished_reading = request.finished_reading

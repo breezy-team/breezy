@@ -1017,9 +1017,6 @@ class InstrumentedServerProtocol(smart.SmartServerStreamMedium):
         smart.SmartServerStreamMedium.__init__(self, memory.MemoryTransport())
         self._write_output_list = write_output_list
 
-    def _write_and_flush(self, bytes):
-        self._write_output_list.append(bytes)
-
 
 class TestSmartProtocol(tests.TestCase):
     """Tests for the smart protocol.
