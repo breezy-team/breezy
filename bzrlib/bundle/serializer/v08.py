@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Development Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -94,6 +94,10 @@ class BundleSerializerV08(BundleSerializer):
         """
         return BundleReader(f).info
 
+    def check_compatible(self):
+        if self.source.supports_rich_root():
+            raise errors.IncompatibleFormat('0.8', repr(self.source))
+
     def write(self, source, revision_ids, forced_bases, f):
         """Write the bundless to the supplied files.
 
@@ -106,6 +110,7 @@ class BundleSerializerV08(BundleSerializer):
         self.revision_ids = revision_ids
         self.forced_bases = forced_bases
         self.to_file = f
+        self.check_compatible()
         source.lock_read()
         try:
             self._write_main_header()
@@ -182,6 +187,10 @@ class BundleSerializerV08(BundleSerializer):
             last_rev_id = base_id
             last_rev_tree = base_tree
 
+    def _testament_sha1(self, revision_id):
+        return StrictTestament.from_revision(self.source, 
+                                             revision_id).as_sha1()
+
     def _write_revision(self, rev, rev_tree, base_rev, base_tree, 
                         explicit_base, force_binary):
         """Write out the information for a revision."""
@@ -196,8 +205,7 @@ class BundleSerializerV08(BundleSerializer):
         self._write_delta(rev_tree, base_tree, rev.revision_id, force_binary)
 
         w('revision id', rev.revision_id)
-        w('sha1', StrictTestament.from_revision(self.source, 
-                                                rev.revision_id).as_sha1())
+        w('sha1', self._testament_sha1(rev.revision_id))
         w('inventory sha1', rev.inventory_sha1)
         if rev.parent_ids:
             w('parent ids', rev.parent_ids)
@@ -267,7 +275,8 @@ class BundleSerializerV08(BundleSerializer):
             else:
                 action.write(self.to_file)
 
-        delta = new_tree.changes_from(old_tree, want_unchanged=True)
+        delta = new_tree.changes_from(old_tree, want_unchanged=True,
+                                      include_root=True)
         for path, file_id, kind in delta.removed:
             action = Action('removed', [kind, path]).write(self.to_file)
 
@@ -316,13 +325,16 @@ class BundleReader(object):
         self.from_file = iter(from_file)
         self._next_line = None
         
-        self.info = BundleInfo08()
+        self.info = self._get_info()
         # We put the actual inventory ids in the footer, so that the patch
         # is easier to read for humans.
         # Unfortunately, that means we need to read everything before we
         # can create a proper bundle.
         self._read()
         self._validate()
+
+    def _get_info(self):
+        return BundleInfo08()
 
     def _read(self):
         self._next().next()
@@ -411,7 +423,7 @@ class BundleReader(object):
             return
 
         revision_info = self.info.revisions[-1]
-        if hasattr(revision_info, key):
+        if key in revision_info.__dict__:
             if getattr(revision_info, key) is None:
                 setattr(revision_info, key, value)
             else:
@@ -502,6 +514,14 @@ class BundleReader(object):
 
 
 class BundleInfo08(BundleInfo):
+
     def _update_tree(self, bundle_tree, revision_id):
         bundle_tree.note_last_changed('', revision_id)
         BundleInfo._update_tree(self, bundle_tree, revision_id)
+
+    def _testament_sha1_from_revision(self, repository, revision_id):
+        testament = StrictTestament.from_revision(repository, revision_id)
+        return testament.as_sha1()
+
+    def _testament_sha1(self, revision, inventory):
+        return StrictTestament(revision, inventory).as_sha1()

@@ -49,8 +49,8 @@ class RevisionTree(Tree):
 
         A RevisionTree's parents match the revision graph.
         """
-        if self._revision_id == revision.NULL_REVISION:
-            return []
+        if self._revision_id in (None, revision.NULL_REVISION):
+            parent_ids = []
         else:
             parent_ids = self._repository.get_revision(
                 self._revision_id).parent_ids
@@ -98,11 +98,12 @@ class RevisionTree(Tree):
     def has_filename(self, filename):
         return bool(self.inventory.path2id(filename))
 
-    def list_files(self):
+    def list_files(self, include_root=False):
         # The only files returned by this are those from the version
         entries = self.inventory.iter_entries()
-        # skip the root for compatability with the current apis.
-        entries.next()
+        if not include_root:
+            # skip the root for compatability with the current apis.
+            entries.next()
         for path, entry in entries:
             yield path, 'V', entry.kind, entry.file_id, entry
 

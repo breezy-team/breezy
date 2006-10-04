@@ -584,7 +584,7 @@ def display_command(func):
             sys.stdout.flush()
             return result
         except IOError, e:
-            if not hasattr(e, 'errno'):
+            if getattr(e, 'errno', None) is None:
                 raise
             if e.errno != errno.EPIPE:
                 # Win32 raises IOError with errno=0 on a broken pipe
@@ -611,7 +611,7 @@ def run_bzr_catch_errors(argv):
         return run_bzr(argv)
         # do this here inside the exception wrappers to catch EPIPE
         sys.stdout.flush()
-    except Exception, e:
+    except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
         bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)

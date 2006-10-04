@@ -25,12 +25,18 @@ from bzrlib import bzrdir, conflicts, errors, workingtree
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.lockdir import LockDir
+from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
-from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
-                                WorkingTree)
+from bzrlib.workingtree import (
+    TreeEntry,
+    TreeDirectory,
+    TreeFile,
+    TreeLink,
+    WorkingTree,
+    )
 
 class TestTreeDirectory(TestCaseWithTransport):
 
@@ -364,3 +370,49 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
         finally:
             bzrlib.DEFAULT_IGNORE = orig_default
             ignores._runtime_ignores = orig_runtime
+
+
+class InstrumentedTree(object):
+    """A instrumented tree to check the needs_tree_write_lock decorator."""
+
+    def __init__(self):
+        self._locks = []
+
+    def lock_tree_write(self):
+        self._locks.append('t')
+
+    @needs_tree_write_lock
+    def method_with_tree_write_lock(self, *args, **kwargs):
+        """A lock_tree_write decorated method that returns its arguments."""
+        return args, kwargs
+
+    @needs_tree_write_lock
+    def method_that_raises(self):
+        """This method causes an exception when called with parameters.
+        
+        This allows the decorator code to be checked - it should still call
+        unlock.
+        """
+
+    def unlock(self):
+        self._locks.append('u')
+
+
+class TestInstrumentedTree(TestCase):
+
+    def test_needs_tree_write_lock(self):
+        """@needs_tree_write_lock should be semantically transparent."""
+        tree = InstrumentedTree()
+        self.assertEqual(
+            'method_with_tree_write_lock',
+            tree.method_with_tree_write_lock.__name__)
+        self.assertEqual(
+            "A lock_tree_write decorated method that returns its arguments.",
+            tree.method_with_tree_write_lock.__doc__)
+        args = (1, 2, 3)
+        kwargs = {'a':'b'}
+        result = tree.method_with_tree_write_lock(1,2,3, a='b')
+        self.assertEqual((args, kwargs), result)
+        self.assertEqual(['t', 'u'], tree._locks)
+        self.assertRaises(TypeError, tree.method_that_raises, 'foo')
+        self.assertEqual(['t', 'u', 't', 'u'], tree._locks)
