@@ -2391,7 +2391,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar-NG Working Tree format 4"
+        return "Bazaar Working Tree format 4\n"
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
