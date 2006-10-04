@@ -34,7 +34,6 @@ the server. We also create a Request hierarchy, to make it clear what type
 of request is being made.
 """
 
-
 DEBUG = 0
 
 # TODO: It may be possible to share the password_manager across
@@ -48,13 +47,14 @@ DEBUG = 0
 # response means we are able to leave the socket clean, so if we
 # are not able to do that, we should close the connection. The
 # actual code more or less do that, tests should be written to
-# ensur that.
+# ensure that.
 
 import httplib
 import socket
 import urllib
 import urllib2
 import urlparse
+import sys
 
 from bzrlib import (
     __version__ as bzrlib_version,
@@ -69,7 +69,7 @@ from bzrlib.errors import (
 
 # We define our own Response class to keep our httplib pipe clean
 class Response(httplib.HTTPResponse):
-    """Custom HTTPResponse, to avoid needing to decorate.
+    """Custom HTTPResponse, to avoid the need to decorate.
 
     httplib prefers to decorate the returned objects, rather
     than using a custom object.
@@ -91,8 +91,23 @@ class Response(httplib.HTTPResponse):
         """
         httplib.HTTPResponse.begin(self)
         if self.status in self._body_ignored_responses:
-            body = self.fp.read(self.length)
-            #print "Consumed body: [%s]" % body
+            if self.debuglevel > 0:
+                print "For status: [%s]," % self.status,
+                print "will ready body, length: ",
+                if  self.length is not None:
+                    print "[%d]" % self.length
+                else:
+                    print "None"
+            if not (self.length is None or self.will_close):
+                # In some cases, we just can't read the body not
+                # even try or we may encounter a 104, 'Connection
+                # reset by peer' error if there is indeed no body
+                # and the server closed the connection just after
+                # having issued the response headers (even if the
+                # heaers indicate a Content-Type...)
+                body = self.fp.read(self.length)
+                if self.debuglevel > 0:
+                    print "Consumed body: [%s]" % body
             self.close()
 
 
@@ -101,6 +116,7 @@ class AbstractHTTPConnection:
     """A custom HTTP(S) Connection, which can reset itself on a bad response"""
 
     response_class = Response
+    strict = 1 # We don't support HTTP/0.9
 
     def fake_close(self):
         """Make the connection believes the response have been fully handled.
@@ -270,7 +286,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                         }
 
     def __init__(self):
-        urllib2.AbstractHTTPHandler.__init__(self, debuglevel=0)
+        urllib2.AbstractHTTPHandler.__init__(self, debuglevel=DEBUG)
 
     def http_request(self, request):
         """Common headers setting"""
@@ -314,11 +330,19 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 print 'Request sent: [%r]' % request
             response = connection.getresponse()
             convert_to_addinfourl = True
-        except (socket.error, httplib.HTTPException), e:
+        except httplib.BadStatusLine, exception:
+            raise InvalidHttpResponse(request.get_full_url(),
+                                      'Bad status line received',
+                                      orig_error=exception)
+        except (socket.error, httplib.HTTPException), exception:
         # FIXME: and then there is HTTPError raised by:
         # - HTTPDefaultErrorHandler (we define our own)
         # - HTTPRedirectHandler.redirect_request 
         # - AbstractDigestAuthHandler.http_error_auth_reqed
+
+        # When an exception occurs, give back the original
+        # Traceback or the bugs are hard to diagnose.
+            exc_type, exc_val, exc_tb = sys.exc_info()
             if first_try:
                 if self._debuglevel > 0:
                     print 'Received exception: [%r]' % exception
@@ -330,17 +354,17 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 response = self.do_open(http_class, request, False)
                 convert_to_addinfourl = False
             else:
-                exception = ConnectionError(msg= 'while sending %s %s:'
-                                            % (request.get_method(),
-                                               request.get_selector()),
-                                            orig_error=e)
+                my_exception = ConnectionError(msg= 'while sending %s %s:'
+                                               % (request.get_method(),
+                                                  request.get_selector()),
+                                               orig_error=exception)
                 if self._debuglevel > 0:
                     print 'On connection: [%r]' % request.connection
                     method = request.get_method()
                     url = request.get_full_url()
                     print '  Failed again, %s %r' % (method, url)
-                    print '  Will raise: [%r]' % exception
-                raise exception
+                    print '  Will raise: [%r]' % my_exception
+                raise my_exception, None, exc_tb
 
 # FIXME: HTTPConnection does not fully support 100-continue (the
 # server responses are just ignored)

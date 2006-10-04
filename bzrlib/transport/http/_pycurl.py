@@ -98,6 +98,11 @@ class PyCurlTransport(HttpTransportBase):
         # don't want the body - ie just do a HEAD request
         # This means "NO BODY" not 'nobody'
         curl.setopt(pycurl.NOBODY, 1)
+        # In some erroneous cases, pycurl will emit text on
+        # stdout if we don't catch it (see InvalidStatus tests
+        # for one such occurrence).
+        blackhole = StringIO()
+        curl.setopt(pycurl.WRITEFUNCTION, blackhole.write)
         self._curl_perform(curl)
         code = curl.getinfo(pycurl.HTTP_CODE)
         if code == 404: # not found
@@ -106,14 +111,14 @@ class PyCurlTransport(HttpTransportBase):
             return True
         else:
             self._raise_curl_http_error(curl)
-        
+
     def _get(self, relpath, ranges, tail_amount=0):
         # This just switches based on the type of request
         if ranges is not None or tail_amount not in (0, None):
             return self._get_ranged(relpath, ranges, tail_amount=tail_amount)
         else:
             return self._get_full(relpath)
-    
+
     def _setup_get_request(self, curl, relpath):
         """Do the common setup stuff for making a request
 

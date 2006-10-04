@@ -586,3 +586,23 @@ class WallRequestHandler(TestingHTTPRequestHandler):
     def handle_one_request(self):
         """Handle a single HTTP request, by abruptly closing the connection"""
         self.close_connection = 1
+
+
+class BadStatusRequestHandler(TestingHTTPRequestHandler):
+    """Whatever request comes in, returns a bad status"""
+
+    def parse_request(self):
+        """Fakes handling a single HTTP request, returns a bad status"""
+        ignored = TestingHTTPRequestHandler.parse_request(self)
+        self.send_response(0, "Bad status")
+        return False
+
+
+class InvalidStatusRequestHandler(TestingHTTPRequestHandler):
+    """Whatever request comes in, returns am invalid status"""
+
+    def parse_request(self):
+        """Fakes handling a single HTTP request, returns a bad status"""
+        ignored = TestingHTTPRequestHandler.parse_request(self)
+        self.wfile.write("Invalid status line\r\n")
+        return False

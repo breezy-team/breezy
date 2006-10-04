@@ -25,6 +25,7 @@ import bzrlib
 from bzrlib.errors import (
     DependencyNotPresent,
     ConnectionError,
+    InvalidHttpResponse,
     )
 from bzrlib.tests import (
     TestCase,
@@ -36,7 +37,9 @@ from bzrlib.transport import (
     )
 from bzrlib.transport.http import (
     extract_auth,
+    BadStatusRequestHandler,
     HttpTransportBase,
+    InvalidStatusRequestHandler,
     WallRequestHandler,
     )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
@@ -112,6 +115,10 @@ class TestHttpConnections(object):
 
     This MUST be used by daughter classes that also inherit from
     TestCaseWithWebserver.
+
+    We can't inherit directly from TestCaseWithWebserver or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete.
     """
 
     def setUp(self):
@@ -274,3 +281,53 @@ class TestWallServer_pycurl(TestWithTransport_pycurl,
     """Tests WallServer for pycurl implementation"""
 
 
+class TestBadStatusServer(object):
+    """Tests bad status from server."""
+
+    def create_transport_server(self):
+        return bzrlib.transport.http.HttpServer(BadStatusRequestHandler)
+
+    def test_http_has(self):
+        server = self.get_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(InvalidHttpResponse, t.has, 'foo/bar')
+
+    def test_http_get(self):
+        server = self.get_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(InvalidHttpResponse, t.get, 'foo/bar')
+
+
+class TestBadStatusServer_urllib(TestBadStatusServer, TestCaseWithWebserver):
+    """Tests BadStatusServer for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestBadStatusServer_pycurl(TestWithTransport_pycurl,
+                                 TestBadStatusServer,
+                                 TestCaseWithWebserver):
+    """Tests BadStatusServer for pycurl implementation"""
+
+
+class TestInvalidStatusServer(TestBadStatusServer):
+    """Tests invalid status from server.
+
+    Both implementations raises the same error as for a bad status.
+    """
+
+    def create_transport_server(self):
+        return bzrlib.transport.http.HttpServer(InvalidStatusRequestHandler)
+
+
+class TestInvalidStatusServer_urllib(TestInvalidStatusServer,
+                                     TestCaseWithWebserver):
+    """Tests InvalidStatusServer for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestInvalidStatusServer_pycurl(TestWithTransport_pycurl,
+                                     TestInvalidStatusServer,
+                                     TestCaseWithWebserver):
+    """Tests InvalidStatusServer for pycurl implementation"""
