@@ -22,11 +22,18 @@
 import socket
 
 import bzrlib
-from bzrlib.errors import (DependencyNotPresent,
-                           ConnectionError,
-                           )
-from bzrlib.tests import TestCase, TestSkipped
-from bzrlib.transport import Transport
+from bzrlib.errors import (
+    DependencyNotPresent,
+    ConnectionError,
+    )
+from bzrlib.tests import (
+    TestCase,
+    TestSkipped,
+    )
+from bzrlib.transport import (
+    get_transport,
+    Transport,
+    )
 from bzrlib.transport.http import (
     extract_auth,
     HttpTransportBase,
@@ -100,9 +107,15 @@ class TestHttpUrls(TestCase):
             raise TestSkipped('pycurl not present')
 
 
-class TestHttpMixins(object):
+class TestHttpConnections(object):
+    """Test the http connections.
 
-    def _prep_tree(self):
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithWebserver.
+    """
+
+    def setUp(self):
+        TestCaseWithWebserver.setUp(self)
         self.build_tree(['xxx', 'foo/', 'foo/bar'], line_endings='binary',
                         transport=self.get_transport())
 
@@ -130,16 +143,8 @@ class TestHttpMixins(object):
             'contents of foo/bar\n')
         self.assertEqual(len(server.logs), 1)
         self.assertTrue(server.logs[0].find(
-            '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s' % bzrlib.__version__) > -1)
-
-
-class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
-
-    _transport = HttpTransport_urllib
-
-    def setUp(self):
-        TestCaseWithWebserver.setUp(self)
-        self._prep_tree()
+            '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s'
+            % bzrlib.__version__) > -1)
 
     def test_has_on_bogus_host(self):
         # Get a free address and don't 'accept' on it, so that we
@@ -156,8 +161,8 @@ class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
             socket.setdefaulttimeout(default_timeout)
 
 
-class TestHttpConnections_pycurl(TestCaseWithWebserver, TestHttpMixins):
-
+class TestWithTransport_pycurl(object):
+    """Test case to inherit from if pycurl is present"""
     def _get_pycurl_maybe(self):
         try:
             from bzrlib.transport.http._pycurl import PyCurlTransport
@@ -167,21 +172,28 @@ class TestHttpConnections_pycurl(TestCaseWithWebserver, TestHttpMixins):
 
     _transport = property(_get_pycurl_maybe)
 
-    def setUp(self):
-        TestCaseWithWebserver.setUp(self)
-        self._prep_tree()
+
+class TestHttpConnections_urllib(TestHttpConnections, TestCaseWithWebserver):
+    """Test http connections with urllib"""
+
+    _transport = HttpTransport_urllib
+
+
+
+class TestHttpConnections_pycurl(TestWithTransport_pycurl,
+                                 TestHttpConnections,
+                                 TestCaseWithWebserver):
+    """Test http connections with pycurl"""
 
 
 class TestHttpTransportRegistration(TestCase):
     """Test registrations of various http implementations"""
 
     def test_http_registered(self):
-        import bzrlib.transport.http._urllib
-        from bzrlib.transport import get_transport
         # urlllib should always be present
         t = get_transport('http+urllib://bzr.google.com/')
         self.assertIsInstance(t, Transport)
-        self.assertIsInstance(t, bzrlib.transport.http._urllib.HttpTransport_urllib)
+        self.assertIsInstance(t, HttpTransport_urllib)
 
 
 class TestOffsets(TestCase):
@@ -232,30 +244,33 @@ class TestRangeHeader(TestCase):
                           ranges=[(0,9), (300,5000)],
                           tail=50)
 
-# TODO: We need to generalize the following tests to all
-# transports which connect to a server via a socket. Is there a
-# way to add an accessor or an attribute to this transports so
-# that we can filter them from the list of all existing
-# transports ?
-class TestBogusServer(TestCaseWithWebserver):
-    """Abstract class to define test for all bogus servers"""
 
-    #from bzrlib.transport.http._pycurl import PyCurlTransport
-    #_transport = PyCurlTransport
-    _transport = HttpTransport_urllib
+class TestWallServer(object):
+    """Tests exceptions during the connection phase"""
 
-    def test_has(self):
+    def create_transport_server(self):
+        return bzrlib.transport.http.HttpServer(WallRequestHandler)
+
+    def test_http_has(self):
         server = self.get_server()
         t = self._transport(server.get_url())
         self.assertRaises(ConnectionError, t.has, 'foo/bar')
 
-    def test_get(self):
+    def test_http_get(self):
         server = self.get_server()
         t = self._transport(server.get_url())
         self.assertRaises(ConnectionError, t.get, 'foo/bar')
 
 
-class TestWallServer(TestBogusServer):
-    """Tests that we get the right exceptions during the connection phase"""
-    def create_transport_server(self):
-        return bzrlib.transport.http.HttpServer(WallRequestHandler)
+class TestWallServer_urllib(TestWallServer, TestCaseWithWebserver):
+    """Tests WallServer for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestWallServer_pycurl(TestWithTransport_pycurl,
+                            TestWallServer,
+                            TestCaseWithWebserver):
+    """Tests WallServer for pycurl implementation"""
+
+

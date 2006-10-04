@@ -835,7 +835,7 @@ class TransportNotPossible(TransportError):
 
 
 class ConnectionError(TransportError):
-    """%(msg)s %(orig_error)s"""
+    """Connection error: %(msg)s %(orig_error)s"""
 
 
 class ConnectionReset(TransportError):

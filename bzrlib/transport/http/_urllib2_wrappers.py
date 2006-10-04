@@ -204,7 +204,9 @@ class ConnectionHandler(urllib2.BaseHandler):
     def create_connection(self, request, http_connection_class):
         host = request.get_host()
         if not host:
-            raise urllib2.URLError('no host given')
+            # Just a bit of paranoia here, this should have been
+            # handled in the higher levels
+            raise InvalidURL(request.get_full_url(), 'no host given.')
 
         # We create a connection (but it will not connect yet)
         connection = http_connection_class(host)
@@ -258,13 +260,26 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
     _default_headers = {'Pragma': 'no-cache',
                         'Cache-control': 'max-age=0',
                         'Connection': 'Keep-Alive',
-                        'User-Agent': 'bzr/%s (urllib)' % bzrlib_version,
+                        # FIXME: Spell it User-*A*gent once we
+                        # know how to properly avoid bogus
+                        # urllib2 using capitalize() for headers
+                        # instead of title(sp?).
+                        'User-agent': 'bzr/%s (urllib)' % bzrlib_version,
                         # FIXME: pycurl also set the following, understand why
                         'Accept': '*/*',
                         }
 
     def __init__(self):
         urllib2.AbstractHTTPHandler.__init__(self, debuglevel=0)
+
+    def http_request(self, request):
+        """Common headers setting"""
+
+        request.headers.update(self._default_headers.copy())
+        # FIXME: We may have to add the Content-Length header if
+        # we have data to send.
+        return request
+
 
     def do_open(self, http_class, request, first_try=True):
         """See urllib2.AbstractHTTPHandler.do_open for the general idea.
@@ -284,7 +299,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         assert connection is not None, \
             'Cannot process a request without a connection'
 
-        headers = self._default_headers.copy()
+        headers = {}
         headers.update(request.header_items())
         headers.update(request.unredirected_hdrs)
 

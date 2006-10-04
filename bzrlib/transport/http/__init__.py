@@ -406,6 +406,7 @@ class HttpTransportBase(Transport):
 
 #---------------- test server facilities ----------------
 # TODO: load these only when running tests
+# FIXME: By moving them to HTTPTestUtil.py ?
 
 
 class WebserverNotAvailable(Exception):
