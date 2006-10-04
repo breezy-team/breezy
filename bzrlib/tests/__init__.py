@@ -1293,9 +1293,9 @@ class TestCaseWithMemoryTransport(TestCase):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
-    def make_branch_and_memory_tree(self, relpath):
+    def make_branch_and_memory_tree(self, relpath, format=None):
         """Create a branch on the default transport and a MemoryTree for it."""
-        b = self.make_branch(relpath)
+        b = self.make_branch(relpath, format=format)
         return memorytree.MemoryTree.create_on_branch(b)
 
     def overrideEnvironmentForTesting(self):

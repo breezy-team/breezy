@@ -36,6 +36,10 @@ IN DEVELOPMENT
       state, but most tests should not need that and should be converted to
       TestCaseWithMemoryTransport. (Robert Collins)
 
+    * ``TestCase.make_branch_and_memory_tree`` now takes a format
+      option to set the BzrDir, Repository and Branch formats of the
+      created objects. (Robert Collins, John Arbash Meinel)
+
 bzr 0.11  2006-10-02
 
     * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
