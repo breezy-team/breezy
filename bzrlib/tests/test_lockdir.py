@@ -17,17 +17,21 @@
 """Tests for LockDir"""
 
 from cStringIO import StringIO
-from threading import Thread
+from threading import Thread, Lock
 import time
 
 import bzrlib
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.errors import (
         LockBreakMismatch,
         LockContention, LockError, UnlockableTransport,
         LockNotHeld, LockBroken
         )
-from bzrlib.lockdir import LockDir
+from bzrlib.lockdir import LockDir, _DEFAULT_TIMEOUT_SECONDS
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.trace import note
 
 # These tests sometimes use threads to test the behaviour of lock files with
 # concurrent actors.  This is not a typical (or necessarily supported) use;
@@ -41,6 +45,13 @@ from bzrlib.tests import TestCaseWithTransport
 
 class TestLockDir(TestCaseWithTransport):
     """Test LockDir operations"""
+
+    def logging_report_function(self, fmt, *args):
+        self._logged_reports.append((fmt, args))
+
+    def setup_log_reporter(self, lock_dir):
+        self._logged_reports = []
+        lock_dir._report_function = self.logging_report_function
 
     def test_00_lock_creation(self):
         """Creation of lock file on a transport"""
@@ -156,6 +167,7 @@ class TestLockDir(TestCaseWithTransport):
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
         lf2 = LockDir(t, 'test_lock')
+        self.setup_log_reporter(lf2)
         lf1.attempt_lock()
         try:
             before = time.time()
@@ -168,6 +180,19 @@ class TestLockDir(TestCaseWithTransport):
                     "took %f seconds to detect lock contention" % (after - before))
         finally:
             lf1.unlock()
+        lock_base = lf2.transport.abspath(lf2.path)
+        self.assertEqual(1, len(self._logged_reports))
+        self.assertEqual('%s %s\n'
+                         '%s\n%s\n'
+                         'Will continue to try until %s\n',
+                         self._logged_reports[0][0])
+        args = self._logged_reports[0][1]
+        self.assertEqual('Unable to obtain', args[0])
+        self.assertEqual('lock %s' % (lock_base,), args[1])
+        self.assertStartsWith(args[2], 'held by ')
+        self.assertStartsWith(args[3], 'locked ')
+        self.assertEndsWith(args[3], ' ago')
+        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
 
     def test_31_lock_wait_easy(self):
         """Succeed when waiting on a lock with no contention.
@@ -175,6 +200,7 @@ class TestLockDir(TestCaseWithTransport):
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
+        self.setup_log_reporter(lf1)
         try:
             before = time.time()
             lf1.wait_lock(timeout=0.4, poll=0.1)
@@ -182,6 +208,7 @@ class TestLockDir(TestCaseWithTransport):
             self.assertTrue(after - before <= 1.0)
         finally:
             lf1.unlock()
+        self.assertEqual([], self._logged_reports)
 
     def test_32_lock_wait_succeed(self):
         """Succeed when trying to acquire a lock that gets released
@@ -201,6 +228,7 @@ class TestLockDir(TestCaseWithTransport):
         unlocker.start()
         try:
             lf2 = LockDir(t, 'test_lock')
+            self.setup_log_reporter(lf2)
             before = time.time()
             # wait and then lock
             lf2.wait_lock(timeout=0.4, poll=0.1)
@@ -208,6 +236,22 @@ class TestLockDir(TestCaseWithTransport):
             self.assertTrue(after - before <= 1.0)
         finally:
             unlocker.join()
+
+        # There should be only 1 report, even though it should have to
+        # wait for a while
+        lock_base = lf2.transport.abspath(lf2.path)
+        self.assertEqual(1, len(self._logged_reports))
+        self.assertEqual('%s %s\n'
+                         '%s\n%s\n'
+                         'Will continue to try until %s\n',
+                         self._logged_reports[0][0])
+        args = self._logged_reports[0][1]
+        self.assertEqual('Unable to obtain', args[0])
+        self.assertEqual('lock %s' % (lock_base,), args[1])
+        self.assertStartsWith(args[2], 'held by ')
+        self.assertStartsWith(args[3], 'locked ')
+        self.assertEndsWith(args[3], ' ago')
+        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
 
     def test_33_wait(self):
         """Succeed when waiting on a lock that gets released
@@ -235,6 +279,162 @@ class TestLockDir(TestCaseWithTransport):
             self.assertTrue(after - before <= 1.0)
         finally:
             unlocker.join()
+
+    def test_34_lock_write_waits(self):
+        """LockDir.lock_write() will wait for the lock.""" 
+        t = self.get_transport()
+        lf1 = LockDir(t, 'test_lock')
+        lf1.create()
+        lf1.attempt_lock()
+
+        def wait_and_unlock():
+            time.sleep(0.1)
+            lf1.unlock()
+        unlocker = Thread(target=wait_and_unlock)
+        unlocker.start()
+        try:
+            lf2 = LockDir(t, 'test_lock')
+            self.setup_log_reporter(lf2)
+            before = time.time()
+            # wait and then lock
+            lf2.lock_write()
+            after = time.time()
+        finally:
+            unlocker.join()
+
+        # There should be only 1 report, even though it should have to
+        # wait for a while
+        lock_base = lf2.transport.abspath(lf2.path)
+        self.assertEqual(1, len(self._logged_reports))
+        self.assertEqual('%s %s\n'
+                         '%s\n%s\n'
+                         'Will continue to try until %s\n',
+                         self._logged_reports[0][0])
+        args = self._logged_reports[0][1]
+        self.assertEqual('Unable to obtain', args[0])
+        self.assertEqual('lock %s' % (lock_base,), args[1])
+        self.assertStartsWith(args[2], 'held by ')
+        self.assertStartsWith(args[3], 'locked ')
+        self.assertEndsWith(args[3], ' ago')
+        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
+
+    def test_35_wait_lock_changing(self):
+        """LockDir.wait_lock() will report if the lock changes underneath.
+        
+        This is the stages we want to happen:
+
+        0) Synchronization locks are created and locked.
+        1) Lock1 obtains the lockdir, and releases the 'check' lock.
+        2) Lock2 grabs the 'check' lock, and checks the lockdir.
+           It sees the lockdir is already acquired, reports the fact, 
+           and unsets the 'checked' lock.
+        3) Thread1 blocks on acquiring the 'checked' lock, and then tells
+           Lock1 to release and acquire the lockdir. This resets the 'check'
+           lock.
+        4) Lock2 acquires the 'check' lock, and checks again. It notices
+           that the holder of the lock has changed, and so reports a new 
+           lock holder.
+        5) Thread1 blocks on the 'checked' lock, this time, it completely
+           unlocks the lockdir, allowing Lock2 to acquire the lock.
+        """
+
+        wait_to_check_lock = Lock()
+        wait_until_checked_lock = Lock()
+
+        wait_to_check_lock.acquire()
+        wait_until_checked_lock.acquire()
+        note('locked check and checked locks')
+
+        class LockDir1(LockDir):
+            """Use the synchronization points for the first lock."""
+
+            def attempt_lock(self):
+                # Once we have acquired the lock, it is okay for
+                # the other lock to check it
+                try:
+                    return super(LockDir1, self).attempt_lock()
+                finally:
+                    note('lock1: releasing check lock')
+                    wait_to_check_lock.release()
+
+        class LockDir2(LockDir):
+            """Use the synchronization points for the second lock."""
+
+            def attempt_lock(self):
+                note('lock2: waiting for check lock')
+                wait_to_check_lock.acquire()
+                note('lock2: acquired check lock')
+                try:
+                    return super(LockDir2, self).attempt_lock()
+                finally:
+                    note('lock2: releasing checked lock')
+                    wait_until_checked_lock.release()
+
+        t = self.get_transport()
+        lf1 = LockDir1(t, 'test_lock')
+        lf1.create()
+
+        lf2 = LockDir2(t, 'test_lock')
+        self.setup_log_reporter(lf2)
+
+        def wait_and_switch():
+            lf1.attempt_lock()
+            # Block until lock2 has had a chance to check
+            note('lock1: waiting 1 for checked lock')
+            wait_until_checked_lock.acquire()
+            note('lock1: acquired for checked lock')
+            note('lock1: released lockdir')
+            lf1.unlock()
+            note('lock1: acquiring lockdir')
+            # Create a new nonce, so the lock looks different.
+            lf1.nonce = osutils.rand_chars(20)
+            lf1.lock_write()
+            note('lock1: acquired lockdir')
+
+            # Block until lock2 has peeked again
+            note('lock1: waiting 2 for checked lock')
+            wait_until_checked_lock.acquire()
+            note('lock1: acquired for checked lock')
+            # Now unlock, and let lock 2 grab the lock
+            lf1.unlock()
+            wait_to_check_lock.release()
+
+        unlocker = Thread(target=wait_and_switch)
+        unlocker.start()
+        try:
+            # Wait and play against the other thread
+            lf2.wait_lock(timeout=1.0, poll=0.01)
+        finally:
+            unlocker.join()
+        lf2.unlock()
+
+        # There should be 2 reports, because the lock changed
+        lock_base = lf2.transport.abspath(lf2.path)
+        self.assertEqual(2, len(self._logged_reports))
+
+        self.assertEqual('%s %s\n'
+                         '%s\n%s\n'
+                         'Will continue to try until %s\n',
+                         self._logged_reports[0][0])
+        args = self._logged_reports[0][1]
+        self.assertEqual('Unable to obtain', args[0])
+        self.assertEqual('lock %s' % (lock_base,), args[1])
+        self.assertStartsWith(args[2], 'held by ')
+        self.assertStartsWith(args[3], 'locked ')
+        self.assertEndsWith(args[3], ' ago')
+        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
+
+        self.assertEqual('%s %s\n'
+                         '%s\n%s\n'
+                         'Will continue to try until %s\n',
+                         self._logged_reports[1][0])
+        args = self._logged_reports[1][1]
+        self.assertEqual('Lock owner changed for', args[0])
+        self.assertEqual('lock %s' % (lock_base,), args[1])
+        self.assertStartsWith(args[2], 'held by ')
+        self.assertStartsWith(args[3], 'locked ')
+        self.assertEndsWith(args[3], ' ago')
+        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
 
     def test_40_confirm_easy(self):
         """Confirm a lock that's already held"""
@@ -376,3 +576,17 @@ class TestLockDir(TestCaseWithTransport):
 
         lf1.unlock()
         self.failIf(t.has('test_lock/held/info'))
+
+    def test__format_lock_info(self):
+        ld1 = self.get_lock()
+        ld1.create()
+        ld1.lock_write()
+        try:
+            info_list = ld1._format_lock_info(ld1.peek())
+        finally:
+            ld1.unlock()
+        self.assertEqual('lock %s' % (ld1.transport.abspath(ld1.path),),
+                         info_list[0])
+        self.assertContainsRe(info_list[1],
+                              r'^held by .* on host .* \[process #\d*\]$')
+        self.assertContainsRe(info_list[2], r'locked \d+ seconds? ago$')

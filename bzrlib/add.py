@@ -296,7 +296,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
                 else:
                     this_ie = inv[this_id]
 
-            for subf in os.listdir(abspath):
+            for subf in sorted(os.listdir(abspath)):
                 # here we could use TreeDirectory rather than 
                 # string concatenation.
                 subp = bzrlib.osutils.pathjoin(directory.raw_path, subf)
