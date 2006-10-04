@@ -1026,36 +1026,31 @@ class SmartTCPTransport(SmartTransport):
         if self._socket is not None:
             self._socket.close()
 
-try:
-    from bzrlib.transport import sftp, ssh
-except errors.ParamikoNotPresent:
-    # no paramiko, no SSHTransport.
-    pass
-else:
-    class SmartSSHTransport(SmartTransport):
-        """Connection to smart server over SSH."""
 
-        def __init__(self, url, clone_from=None):
-            # TODO: all this probably belongs in the parent class.
-            super(SmartSSHTransport, self).__init__(url, clone_from)
-            try:
-                if self._port is not None:
-                    self._port = int(self._port)
-            except (ValueError, TypeError), e:
-                raise errors.InvalidURL(path=url, extra="invalid port %s" % self._port)
+class SmartSSHTransport(SmartTransport):
+    """Connection to smart server over SSH."""
 
-        def _connect_to_server(self):
-            executable = os.environ.get('BZR_REMOTE_PATH', 'bzr')
-            vendor = ssh._get_ssh_vendor()
-            self._ssh_connection = vendor.connect_ssh(self._username,
-                    self._password, self._host, self._port,
-                    command=[executable, 'serve', '--inet', '--directory=/',
-                             '--allow-writes'])
-            return self._ssh_connection.get_filelike_channels()
+    def __init__(self, url, clone_from=None):
+        # TODO: all this probably belongs in the parent class.
+        super(SmartSSHTransport, self).__init__(url, clone_from)
+        try:
+            if self._port is not None:
+                self._port = int(self._port)
+        except (ValueError, TypeError), e:
+            raise errors.InvalidURL(path=url, extra="invalid port %s" % self._port)
 
-        def disconnect(self):
-            super(SmartSSHTransport, self).disconnect()
-            self._ssh_connection.close()
+    def _connect_to_server(self):
+        executable = os.environ.get('BZR_REMOTE_PATH', 'bzr')
+        vendor = ssh._get_ssh_vendor()
+        self._ssh_connection = vendor.connect_ssh(self._username,
+                self._password, self._host, self._port,
+                command=[executable, 'serve', '--inet', '--directory=/',
+                         '--allow-writes'])
+        return self._ssh_connection.get_filelike_channels()
+
+    def disconnect(self):
+        super(SmartSSHTransport, self).disconnect()
+        self._ssh_connection.close()
 
 
 def get_test_permutations():
