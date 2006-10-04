@@ -1041,6 +1041,7 @@ class SmartSSHTransport(SmartTransport):
             raise errors.InvalidURL(path=url, extra="invalid port %s" % self._port)
 
     def _connect_to_server(self):
+        from bzrlib.transport import ssh
         executable = os.environ.get('BZR_REMOTE_PATH', 'bzr')
         vendor = ssh._get_ssh_vendor()
         self._ssh_connection = vendor.connect_ssh(self._username,
