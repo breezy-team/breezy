@@ -36,6 +36,10 @@ IN DEVELOPMENT
       state, but most tests should not need that and should be converted to
       TestCaseWithMemoryTransport. (Robert Collins)
 
+bzr 0.11  2006-10-02
+
+    * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
+
 bzr 0.11rc2  2006-09-27
 
   BUG FIXES:

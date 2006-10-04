@@ -582,7 +582,7 @@ class TestEscaping(TestCaseWithTransport):
         FOO_ID = 'foo<:>ID'
         REV_ID = 'revid-1'
         wt = self.make_branch_and_tree('repo')
-        self.build_tree(["repo/foo"])
+        self.build_tree(["repo/foo"], line_endings='binary')
         # add file with id containing wierd characters
         wt.add(['foo'], [FOO_ID])
         wt.commit('this is my new commit', rev_id=REV_ID)
