@@ -122,9 +122,13 @@ from bzrlib.transport.http._urllib import (
     )
 
 from bzrlib.transport.http._urllib2_wrappers import (
-    Request,
-    Opener,
+    ConnectionHandler,
+    HTTPConnection,
     HTTPErrorProcessor,
+    HTTPSConnection,
+    Opener,
+    Request,
+    Response,
     )
 
 # We want https because user and passwords are required to
@@ -144,15 +148,38 @@ class PUTRequest(Request):
                    # htmllib.HTTPConnection, it's just a
                    # shame (at least a waste) that we
                    # can't use the following.
-                   
+
                    #  'Expect': '100-continue',
                    #  'Transfer-Encoding': 'chunked',
                    }
         headers.update(more_headers)
         Request.__init__(self, 'PUT', url, data, headers)
 
+class DavResponse(Response):
+    """Custom HTTPResponse.
 
-class DAVErrorProcessor(HTTPErrorProcessor):
+    DAV have some reponses for which the body is of no interest.
+    """
+
+    def __init__(self, *args, **kwargs):
+        Response.__init__(self, *args, **kwargs)
+        self._body_ignored_responses += [201, 204,
+                                         403, 405, 409, 412,
+                                         999, # FIXME: <cough>
+                                         ]
+
+# Takes DavResponse into account:
+class DavHTTPConnection(HTTPConnection):
+
+    response_class = DavResponse
+
+
+class DavHTTPSConnection(HTTPSConnection):
+
+    response_class = DavResponse
+
+
+class DavErrorProcessor(HTTPErrorProcessor):
     """Process DAV error responses.
 
     We don't really process the errors, quite the contrary
@@ -169,12 +196,27 @@ class DAVErrorProcessor(HTTPErrorProcessor):
 
     https_response = http_response
 
+class DavConnectionHandler(ConnectionHandler):
+    """Custom connection handler.
+
+    We need to use the DavConnectionHTTPxConnection class to take
+    into account our own DavResponse objects, to be able to
+    declare our own body ignored responses, sigh.
+    """
+
+    def http_request(self, request):
+        return self.capture_connection(request, DavHTTPConnection)
+
+    def https_request(self, request):
+        return self.capture_connection(request, DavHTTPSConnection)
+
 
 class DavOpener(Opener):
     """Dav specific needs regarding HTTP(S)"""
 
     def __init__(self):
-        super(DavOpener, self).__init__(error=DAVErrorProcessor)
+        super(DavOpener, self).__init__(connection=DavConnectionHandler,
+                                        error=DavErrorProcessor)
 
 
 class HttpDavTransport(HttpTransport_urllib):
@@ -185,9 +227,10 @@ class HttpDavTransport(HttpTransport_urllib):
     needed for bzr.
     """
     _debuglevel = 0
-    def __init__(self, base, from_transport=None,opener=DavOpener()):
+    _opener_class = DavOpener
+    def __init__(self, base, from_transport=None):
         assert base.startswith('https+webdav') or base.startswith('http+webdav')
-        super(HttpDavTransport, self).__init__(base, from_transport, opener)
+        super(HttpDavTransport, self).__init__(base, from_transport)
 
     def is_readonly(self):
         """See Transport.is_readonly."""
@@ -283,7 +326,7 @@ class HttpDavTransport(HttpTransport_urllib):
             response = self._perform(request)
             code = response.code
 
-            if code in (403, 409):
+            if code in (403, 404, 409):
                 raise NoSuchFile(abspath) # Intermediate directories missing
             if code not in  (200, 201, 204):
                 self._raise_curl_http_error(abspath, response,
@@ -323,14 +366,14 @@ class HttpDavTransport(HttpTransport_urllib):
         abspath = self._real_abspath(relpath)
 
         request = PUTRequest(abspath, bytes,
-                             {'Content-Range': 
+                             {'Content-Range':
                               'bytes %d-%d/%d' % (at, at+len(bytes),
                                                   len(bytes)),
                               })
         response = self._perform(request)
         code = response.code
 
-        if code in (403, 409):
+        if code in (403, 404, 409):
             raise NoSuchFile(abspath) # Intermediate directories missing
         if code not in  (200, 201, 204):
             self._raise_http_error(abspath, response,
@@ -356,7 +399,7 @@ class HttpDavTransport(HttpTransport_urllib):
         elif code == 405:
             # Not allowed (generally already exists)
             raise FileExists(abspath)
-        elif code == 409:
+        elif code in (404, 409):
             # Conflict (intermediate directories do not exist)
             raise NoSuchFile(abspath)
         elif code != 201: # Created

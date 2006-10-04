@@ -87,17 +87,6 @@ class TestingDAVRequestHandler(TestingHTTPRequestHandler):
                     mutter("Hmm, that's worse than I thought")
                     raise
 
-    # FIXME: BaseHTTPServer.BaseHTTPRequestHandler send garbage
-    # when the command is not HEAD and he thinks it will be nice
-    # for the user. Investigate to see if that's really against
-    # the protocol, or override htmllib.getresponse to get a more
-    # robust implementation. In the mean time, the following
-    # function gives a correct behavior to the test server.
-    def send_error(self,code, message):
-        """Simplified vesion of BaseHTTPServer.BaseHTTPRequestHandler"""
-        self.send_response(code, message)
-        self.end_headers()
-
     def _read(self, length):
         """Read the client socket"""
         return self._retry_if_not_available(self.rfile.read,length)
