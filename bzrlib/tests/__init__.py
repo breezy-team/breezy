@@ -703,6 +703,7 @@ class TestCase(unittest.TestCase):
 
     def _cleanEnvironment(self):
         new_env = {
+            'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
             'HOME': os.getcwd(),
             'APPDATA': os.getcwd(),
             'BZR_EMAIL': None,
@@ -788,7 +789,8 @@ class TestCase(unittest.TestCase):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
 
-    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None):
+    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None,
+                         working_dir=None):
         """Invoke bzr and return (stdout, stderr).
 
         Useful for code that wants to check the contents of the
@@ -809,6 +811,7 @@ class TestCase(unittest.TestCase):
         :param retcode: expected return code, or None for don't-care.
         :param encoding: encoding for sys.stdout and sys.stderr
         :param stdin: A string to be used as stdin for the command.
+        :param working_dir: Change to this directory before running
         """
         if encoding is None:
             encoding = bzrlib.user_encoding
@@ -830,6 +833,12 @@ class TestCase(unittest.TestCase):
             stdout=stdout,
             stderr=stderr)
         bzrlib.ui.ui_factory.stdin = stdin
+
+        cwd = None
+        if working_dir is not None:
+            cwd = osutils.getcwd()
+            os.chdir(working_dir)
+
         try:
             result = self.apply_redirected(stdin, stdout, stderr,
                                            bzrlib.commands.run_bzr_catch_errors,
@@ -837,6 +846,8 @@ class TestCase(unittest.TestCase):
         finally:
             logger.removeHandler(handler)
             bzrlib.ui.ui_factory = old_ui_factory
+            if cwd is not None:
+                os.chdir(cwd)
 
         out = stdout.getvalue()
         err = stderr.getvalue()
@@ -863,7 +874,9 @@ class TestCase(unittest.TestCase):
         retcode = kwargs.pop('retcode', 0)
         encoding = kwargs.pop('encoding', None)
         stdin = kwargs.pop('stdin', None)
-        return self.run_bzr_captured(args, retcode=retcode, encoding=encoding, stdin=stdin)
+        working_dir = kwargs.pop('working_dir', None)
+        return self.run_bzr_captured(args, retcode=retcode, encoding=encoding,
+                                     stdin=stdin, working_dir=working_dir)
 
     def run_bzr_decode(self, *args, **kwargs):
         if 'encoding' in kwargs:
@@ -919,7 +932,9 @@ class TestCase(unittest.TestCase):
         :param universal_newlines: Convert CRLF => LF
         """
         env_changes = kwargs.get('env_changes', {})
-        process = self.start_bzr_subprocess(args, env_changes=env_changes)
+        working_dir = kwargs.get('working_dir', None)
+        process = self.start_bzr_subprocess(args, env_changes=env_changes,
+                                            working_dir=working_dir)
         # We distinguish between retcode=None and retcode not passed.
         supplied_retcode = kwargs.get('retcode', 0)
         return self.finish_bzr_subprocess(process, retcode=supplied_retcode,
@@ -927,7 +942,8 @@ class TestCase(unittest.TestCase):
             process_args=args)
 
     def start_bzr_subprocess(self, process_args, env_changes=None,
-                             skip_if_plan_to_signal=False):
+                             skip_if_plan_to_signal=False,
+                             working_dir=None):
         """Start bzr in a subprocess for testing.
 
         This starts a new Python interpreter and runs bzr in there.
@@ -965,6 +981,11 @@ class TestCase(unittest.TestCase):
 
         bzr_path = self.get_bzr_path()
 
+        cwd = None
+        if working_dir is not None:
+            cwd = osutils.getcwd()
+            os.chdir(working_dir)
+
         try:
             # win32 subprocess doesn't support preexec_fn
             # so we will avoid using it on all platforms, just to
@@ -974,6 +995,9 @@ class TestCase(unittest.TestCase):
                              stdin=PIPE, stdout=PIPE, stderr=PIPE)
         finally:
             restore_environment()
+            if cwd is not None:
+                os.chdir(cwd)
+
         return process
 
     def get_bzr_path(self):
