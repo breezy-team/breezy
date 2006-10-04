@@ -71,6 +71,7 @@ import bzrlib.trace
 from bzrlib.transport import get_transport
 import bzrlib.transport
 from bzrlib.transport.local import LocalRelpathServer
+from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
 from bzrlib.tests import TestUtil
@@ -394,7 +395,7 @@ class TextTestRunner(object):
         # This is still a little bogus, 
         # but only a little. Folk not using our testrunner will
         # have to delete their temp directories themselves.
-        test_root = TestCaseInTempDir.TEST_ROOT
+        test_root = TestCaseWithMemoryTransport.TEST_ROOT
         if result.wasSuccessful() or not self.keep_output:
             if test_root is not None:
                 # If LANG=C we probably have created some bogus paths
@@ -418,7 +419,7 @@ class TextTestRunner(object):
                 self.stream.writeln(
                     "Failed tests working directories are in '%s'\n" %
                     test_root)
-        TestCaseInTempDir.TEST_ROOT = None
+        TestCaseWithMemoryTransport.TEST_ROOT = None
         if self.pb is not None:
             self.pb.clear()
         return result
@@ -1108,34 +1109,131 @@ class TestCase(unittest.TestCase):
 
 BzrTestBase = TestCase
 
-     
-class TestCaseInTempDir(TestCase):
-    """Derived class that runs a test within a temporary directory.
 
-    This is useful for tests that need to create a branch, etc.
+class TestCaseWithMemoryTransport(TestCase):
+    """Common test class for tests that do not need disk resources.
 
-    The directory is created in a slightly complex way: for each
-    Python invocation, a new temporary top-level directory is created.
-    All test cases create their own directory within that.  If the
-    tests complete successfully, the directory is removed.
+    Tests that need disk resources should derive from TestCaseWithTransport.
 
-    InTempDir is an old alias for FunctionalTestCase.
+    TestCaseWithMemoryTransport sets the TEST_ROOT variable for all bzr tests.
+
+    For TestCaseWithMemoryTransport the test_home_dir is set to the name of
+    a directory which does not exist. This serves to help ensure test isolation
+    is preserved. test_dir is set to the TEST_ROOT, as is cwd, because they
+    must exist. However, TestCaseWithMemoryTransport does not offer local
+    file defaults for the transport in tests, nor does it obey the command line
+    override, so tests that accidentally write to the common directory should
+    be rare.
     """
 
     TEST_ROOT = None
     _TEST_NAME = 'test'
-    OVERRIDE_PYTHON = 'python'
 
-    def check_file_contents(self, filename, expect):
-        self.log("check contents of file %s" % filename)
-        contents = file(filename, 'r').read()
-        if contents != expect:
-            self.log("expected: %r" % expect)
-            self.log("actually: %r" % contents)
-            self.fail("contents of %s not as expected" % filename)
+
+    def __init__(self, methodName='runTest'):
+        # allow test parameterisation after test construction and before test
+        # execution. Variables that the parameteriser sets need to be 
+        # ones that are not set by setUp, or setUp will trash them.
+        super(TestCaseWithMemoryTransport, self).__init__(methodName)
+        self.transport_server = default_transport
+        self.transport_readonly_server = None
+
+    def failUnlessExists(self, path):
+        """Fail unless path, which may be abs or relative, exists."""
+        self.failUnless(osutils.lexists(path))
+
+    def failIfExists(self, path):
+        """Fail if path, which may be abs or relative, exists."""
+        self.failIf(osutils.lexists(path))
+        
+    def get_transport(self):
+        """Return a writeable transport for the test scratch space"""
+        t = get_transport(self.get_url())
+        self.assertFalse(t.is_readonly())
+        return t
+
+    def get_readonly_transport(self):
+        """Return a readonly transport for the test scratch space
+        
+        This can be used to test that operations which should only need
+        readonly access in fact do not try to write.
+        """
+        t = get_transport(self.get_readonly_url())
+        self.assertTrue(t.is_readonly())
+        return t
+
+    def get_readonly_server(self):
+        """Get the server instance for the readonly transport
+
+        This is useful for some tests with specific servers to do diagnostics.
+        """
+        if self.__readonly_server is None:
+            if self.transport_readonly_server is None:
+                # readonly decorator requested
+                # bring up the server
+                self.get_url()
+                self.__readonly_server = ReadonlyServer()
+                self.__readonly_server.setUp(self.__server)
+            else:
+                self.__readonly_server = self.transport_readonly_server()
+                self.__readonly_server.setUp()
+            self.addCleanup(self.__readonly_server.tearDown)
+        return self.__readonly_server
+
+    def get_readonly_url(self, relpath=None):
+        """Get a URL for the readonly transport.
+
+        This will either be backed by '.' or a decorator to the transport 
+        used by self.get_url()
+        relpath provides for clients to get a path relative to the base url.
+        These should only be downwards relative, not upwards.
+        """
+        base = self.get_readonly_server().get_url()
+        if relpath is not None:
+            if not base.endswith('/'):
+                base = base + '/'
+            base = base + relpath
+        return base
+
+    def get_server(self):
+        """Get the read/write server instance.
+
+        This is useful for some tests with specific servers that need
+        diagnostics.
+
+        For TestCaseWithMemoryTransport this is always a MemoryServer, and there
+        is no means to override it.
+        """
+        if self.__server is None:
+            self.__server = MemoryServer()
+            self.__server.setUp()
+            self.addCleanup(self.__server.tearDown)
+        return self.__server
+
+    def get_url(self, relpath=None):
+        """Get a URL (or maybe a path) for the readwrite transport.
+
+        This will either be backed by '.' or to an equivalent non-file based
+        facility.
+        relpath provides for clients to get a path relative to the base url.
+        These should only be downwards relative, not upwards.
+        """
+        base = self.get_server().get_url()
+        if relpath is not None and relpath != '.':
+            if not base.endswith('/'):
+                base = base + '/'
+            # XXX: Really base should be a url; we did after all call
+            # get_url()!  But sometimes it's just a path (from
+            # LocalAbspathServer), and it'd be wrong to append urlescaped data
+            # to a non-escaped local path.
+            if base.startswith('./') or base.startswith('/'):
+                base += relpath
+            else:
+                base += urlutils.escape(relpath)
+        return base
 
     def _make_test_root(self):
-        if TestCaseInTempDir.TEST_ROOT is not None:
+        if TestCaseWithMemoryTransport.TEST_ROOT is not None:
             return
         i = 0
         while True:
@@ -1149,16 +1247,103 @@ class TestCaseInTempDir(TestCase):
                 else:
                     raise
             # successfully created
-            TestCaseInTempDir.TEST_ROOT = osutils.abspath(root)
+            TestCaseWithMemoryTransport.TEST_ROOT = osutils.abspath(root)
             break
         # make a fake bzr directory there to prevent any tests propagating
         # up onto the source directory's real branch
-        bzrdir.BzrDir.create_standalone_workingtree(TestCaseInTempDir.TEST_ROOT)
+        bzrdir.BzrDir.create_standalone_workingtree(
+            TestCaseWithMemoryTransport.TEST_ROOT)
 
+    def makeAndChdirToTestDir(self):
+        """Create a temporary directories for this one test.
+        
+        This must set self.test_home_dir and self.test_dir and chdir to
+        self.test_dir.
+        
+        For TestCaseWithMemoryTransport we chdir to the TEST_ROOT for this test.
+        """
+        os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
+        self.test_dir = TestCaseWithMemoryTransport.TEST_ROOT
+        self.test_home_dir = self.test_dir + "/MemoryTransportMissingHomeDir"
+        
+    def make_branch(self, relpath, format=None):
+        """Create a branch on the transport at relpath."""
+        repo = self.make_repository(relpath, format=format)
+        return repo.bzrdir.create_branch()
+
+    def make_bzrdir(self, relpath, format=None):
+        try:
+            # might be a relative or absolute path
+            maybe_a_url = self.get_url(relpath)
+            segments = maybe_a_url.rsplit('/', 1)
+            t = get_transport(maybe_a_url)
+            if len(segments) > 1 and segments[-1] not in ('', '.'):
+                try:
+                    t.mkdir('.')
+                except errors.FileExists:
+                    pass
+            if format is None:
+                format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+            return format.initialize_on_transport(t)
+        except errors.UninitializableFormat:
+            raise TestSkipped("Format %s is not initializable." % format)
+
+    def make_repository(self, relpath, shared=False, format=None):
+        """Create a repository on our default transport at relpath."""
+        made_control = self.make_bzrdir(relpath, format=format)
+        return made_control.create_repository(shared=shared)
+
+    def make_branch_and_memory_tree(self, relpath):
+        """Create a branch on the default transport and a MemoryTree for it."""
+        b = self.make_branch(relpath)
+        return memorytree.MemoryTree.create_on_branch(b)
+
+    def overrideEnvironmentForTesting(self):
+        os.environ['HOME'] = self.test_home_dir
+        os.environ['APPDATA'] = self.test_home_dir
+        
     def setUp(self):
-        super(TestCaseInTempDir, self).setUp()
+        super(TestCaseWithMemoryTransport, self).setUp()
         self._make_test_root()
         _currentdir = os.getcwdu()
+        def _leaveDirectory():
+            os.chdir(_currentdir)
+        self.addCleanup(_leaveDirectory)
+        self.makeAndChdirToTestDir()
+        self.overrideEnvironmentForTesting()
+        self.__readonly_server = None
+        self.__server = None
+
+     
+class TestCaseInTempDir(TestCaseWithMemoryTransport):
+    """Derived class that runs a test within a temporary directory.
+
+    This is useful for tests that need to create a branch, etc.
+
+    The directory is created in a slightly complex way: for each
+    Python invocation, a new temporary top-level directory is created.
+    All test cases create their own directory within that.  If the
+    tests complete successfully, the directory is removed.
+
+    InTempDir is an old alias for FunctionalTestCase.
+    """
+
+    OVERRIDE_PYTHON = 'python'
+
+    def check_file_contents(self, filename, expect):
+        self.log("check contents of file %s" % filename)
+        contents = file(filename, 'r').read()
+        if contents != expect:
+            self.log("expected: %r" % expect)
+            self.log("actually: %r" % contents)
+            self.fail("contents of %s not as expected" % filename)
+
+    def makeAndChdirToTestDir(self):
+        """See TestCaseWithMemoryTransport.makeAndChdirToTestDir().
+        
+        For TestCaseInTempDir we create a temporary directory based on the test
+        name and then create two subdirs - test and home under it.
+        """
         # shorten the name, to avoid test failures due to path length
         short_id = self.id().replace('bzrlib.tests.', '') \
                    .replace('__main__.', '')[-100:]
@@ -1181,12 +1366,7 @@ class TestCaseInTempDir(TestCase):
                 os.mkdir(self.test_dir)
                 os.chdir(self.test_dir)
                 break
-        os.environ['HOME'] = self.test_home_dir
-        os.environ['APPDATA'] = self.test_home_dir
-        def _leaveDirectory():
-            os.chdir(_currentdir)
-        self.addCleanup(_leaveDirectory)
-        
+
     def build_tree(self, shape, line_endings='native', transport=None):
         """Build a test tree according to a pattern.
 
@@ -1233,14 +1413,6 @@ class TestCaseInTempDir(TestCase):
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
 
-    def failUnlessExists(self, path):
-        """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(osutils.lexists(path))
-
-    def failIfExists(self, path):
-        """Fail if path, which may be abs or relative, exists."""
-        self.failIf(osutils.lexists(path))
-        
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.failUnless(osutils.lexists(path))
@@ -1262,13 +1434,6 @@ class TestCaseWithTransport(TestCaseInTempDir):
     readwrite one must both define get_url() as resolving to os.getcwd().
     """
 
-    def __init__(self, methodName='testMethod'):
-        super(TestCaseWithTransport, self).__init__(methodName)
-        self.__readonly_server = None
-        self.__server = None
-        self.transport_server = default_transport
-        self.transport_readonly_server = None
-
     def create_transport_server(self):
         """Create a transport server from class defined at init.
 
@@ -1276,48 +1441,8 @@ class TestCaseWithTransport(TestCaseInTempDir):
         """
         return self.transport_server()
 
-    def create_transport_readonly_server(self):
-        """Create a transport read-only server from class defined at init.
-
-        This is mostly a hook for daugter classes.
-        """
-        return self.transport_readonly_server()
-
-    def get_readonly_url(self, relpath=None):
-        """Get a URL for the readonly transport.
-
-        This will either be backed by '.' or a decorator to the transport 
-        used by self.get_url()
-        relpath provides for clients to get a path relative to the base url.
-        These should only be downwards relative, not upwards.
-        """
-        base = self.get_readonly_server().get_url()
-        if relpath is not None:
-            if not base.endswith('/'):
-                base = base + '/'
-            base = base + relpath
-        return base
-
-    def get_readonly_server(self):
-        """Get the server instance for the readonly transport
-
-        This is useful for some tests with specific servers to do diagnostics.
-        """
-        if self.__readonly_server is None:
-            if self.transport_readonly_server is None:
-                # readonly decorator requested
-                # bring up the server
-                self.get_url()
-                self.__readonly_server = ReadonlyServer()
-                self.__readonly_server.setUp(self.__server)
-            else:
-                self.__readonly_server = self.create_transport_readonly_server()
-                self.__readonly_server.setUp()
-            self.addCleanup(self.__readonly_server.tearDown)
-        return self.__readonly_server
-
     def get_server(self):
-        """Get the read/write server instance.
+        """See TestCaseWithMemoryTransport.
 
         This is useful for some tests with specific servers that need
         diagnostics.
@@ -1327,76 +1452,6 @@ class TestCaseWithTransport(TestCaseInTempDir):
             self.__server.setUp()
             self.addCleanup(self.__server.tearDown)
         return self.__server
-
-    def get_url(self, relpath=None):
-        """Get a URL (or maybe a path) for the readwrite transport.
-
-        This will either be backed by '.' or to an equivalent non-file based
-        facility.
-        relpath provides for clients to get a path relative to the base url.
-        These should only be downwards relative, not upwards.
-        """
-        base = self.get_server().get_url()
-        if relpath is not None and relpath != '.':
-            if not base.endswith('/'):
-                base = base + '/'
-            # XXX: Really base should be a url; we did after all call
-            # get_url()!  But sometimes it's just a path (from
-            # LocalAbspathServer), and it'd be wrong to append urlescaped data
-            # to a non-escaped local path.
-            if base.startswith('./') or base.startswith('/'):
-                base += relpath
-            else:
-                base += urlutils.escape(relpath)
-        return base
-
-    def get_transport(self):
-        """Return a writeable transport for the test scratch space"""
-        t = get_transport(self.get_url())
-        self.assertFalse(t.is_readonly())
-        return t
-
-    def get_readonly_transport(self):
-        """Return a readonly transport for the test scratch space
-        
-        This can be used to test that operations which should only need
-        readonly access in fact do not try to write.
-        """
-        t = get_transport(self.get_readonly_url())
-        self.assertTrue(t.is_readonly())
-        return t
-
-    def make_branch(self, relpath, format=None):
-        """Create a branch on the transport at relpath."""
-        repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch()
-
-    def make_bzrdir(self, relpath, format=None):
-        try:
-            # might be a relative or absolute path
-            maybe_a_url = self.get_url(relpath)
-            segments = maybe_a_url.rsplit('/', 1)
-            t = get_transport(maybe_a_url)
-            if len(segments) > 1 and segments[-1] not in ('', '.'):
-                try:
-                    t.mkdir('.')
-                except errors.FileExists:
-                    pass
-            if format is None:
-                format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-            return format.initialize_on_transport(t)
-        except errors.UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable." % format)
-
-    def make_repository(self, relpath, shared=False, format=None):
-        """Create a repository on our default transport at relpath."""
-        made_control = self.make_bzrdir(relpath, format=format)
-        return made_control.create_repository(shared=shared)
-
-    def make_branch_and_memory_tree(self, relpath):
-        """Create a branch on the default transport and a MemoryTree for it."""
-        b = self.make_branch(relpath)
-        return memorytree.MemoryTree.create_on_branch(b)
 
     def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
@@ -1445,6 +1500,11 @@ class TestCaseWithTransport(TestCaseInTempDir):
             self.fail("path %s is not a directory; has mode %#o"
                       % (relpath, mode))
 
+    def setUp(self):
+        super(TestCaseWithTransport, self).setUp()
+        self.__server = None
+        self.transport_server = default_transport
+
 
 class ChrootedTestCase(TestCaseWithTransport):
     """A support class that provides readonly urls outside the local namespace.
@@ -1476,7 +1536,6 @@ def filter_suite_by_re(suite, pattern):
 def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
               transport=None, lsprof_timed=None, bench_history=None):
-    TestCaseInTempDir._TEST_NAME = name
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
         verbosity = 2

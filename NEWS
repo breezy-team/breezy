@@ -29,6 +29,13 @@ IN DEVELOPMENT
     * Leave HttpTransportBase daughter classes decides how they
       implement cloning. (Vincent Ladeuil, #61606)
 
+  TESTING:
+
+    * New test base class TestCaseWithMemoryTransport offers memory-only
+      testing facilities: its not suitable for tests that need to mutate disk
+      state, but most tests should not need that and should be converted to
+      TestCaseWithMemoryTransport. (Robert Collins)
+
 bzr 0.11  2006-10-02
 
     * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
