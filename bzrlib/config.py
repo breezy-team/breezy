@@ -114,13 +114,13 @@ class Config(object):
     def _get_signing_policy(self):
         """Template method to override signature creation policy."""
 
-    def _get_user_option(self, option_name, recurse=True):
+    def _get_user_option(self, option_name):
         """Template method to provide a user option."""
         return None
 
-    def get_user_option(self, option_name, recurse=True):
+    def get_user_option(self, option_name):
         """Get a generic option - no special process, no default."""
-        return self._get_user_option(option_name, recurse=recurse)
+        return self._get_user_option(option_name)
 
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
@@ -287,11 +287,9 @@ class IniBasedConfig(Config):
         """Get the user id from the 'email' key in the current section."""
         return self._get_user_option('email')
 
-    def _get_user_option(self, option_name, recurse=True):
+    def _get_user_option(self, option_name):
         """See Config._get_user_option."""
         for (section, extra_path) in self._get_matching_sections():
-            if not recurse and extra_path != '':
-                continue
             try:
                 return self._get_parser().get_value(section, option_name)
             except KeyError:
@@ -534,10 +532,10 @@ class BranchConfig(Config):
         """See Config._get_signing_policy."""
         return self._get_best_value('_get_signing_policy')
 
-    def _get_user_option(self, option_name, recurse=True):
+    def _get_user_option(self, option_name):
         """See Config._get_user_option."""
         for source in self.option_sources:
-            value = source()._get_user_option(option_name, recurse=recurse)
+            value = source()._get_user_option(option_name)
             if value is not None:
                 return value
         return None

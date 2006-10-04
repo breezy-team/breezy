@@ -664,17 +664,6 @@ class TestLocationConfig(TestCaseInTempDir):
         self.assertEqual('local',
                          self.my_config.get_user_option('user_local_option'))
 
-    def test_get_user_option_non_recursive(self):
-        self.get_branch_config('/a/c')
-        # Doesn't see values from "/a/" config:
-        self.assertEqual(None,
-                         self.my_config.get_user_option('user_local_option',
-                                                        recurse=False))
-        # Sees values from global config:
-        self.assertEqual('vim',
-                         self.my_config.get_user_option('editor',
-                                                        recurse=False))
-
     def test_post_commit_default(self):
         self.get_branch_config('/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
