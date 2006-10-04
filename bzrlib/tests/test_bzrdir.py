@@ -392,6 +392,28 @@ class ChrootedTests(TestCaseWithTransport):
             get_transport(self.get_readonly_url('g/p/q')))
         self.assertEqual('g/p/q', relpath)
 
+    def test_open_from_transport(self):
+        # transport pointing at bzrdir should give a bzrdir with root transport
+        # set to the given transport
+        control = bzrdir.BzrDir.create(self.get_url())
+        transport = get_transport(self.get_url())
+        opened_bzrdir = bzrdir.BzrDir.open_from_transport(transport)
+        self.assertEqual(transport.base, opened_bzrdir.root_transport.base)
+        self.assertIsInstance(opened_bzrdir, bzrdir.BzrDir)
+        
+    def test_open_from_transport_no_bzrdir(self):
+        transport = get_transport(self.get_url())
+        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport,
+                          transport)
+
+    def test_open_from_transport_bzrdir_in_parent(self):
+        control = bzrdir.BzrDir.create(self.get_url())
+        transport = get_transport(self.get_url())
+        transport.mkdir('subdir')
+        transport = transport.clone('subdir')
+        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport,
+                          transport)
+
 
 class TestMeta1DirFormat(TestCaseWithTransport):
     """Tests specific to the meta1 dir format."""

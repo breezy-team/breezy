@@ -71,6 +71,15 @@ class TestRepository(TestCaseWithRepository):
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
 
+    def test_supports_rich_root(self):
+        tree = self.make_branch_and_tree('a')
+        tree.commit('')
+        second_revision = tree.commit('')
+        inv = tree.branch.repository.revision_tree(second_revision).inventory
+        rich_root = (inv.root.revision != second_revision)
+        self.assertEqual(rich_root, 
+                         tree.branch.repository.supports_rich_root())
+
     def test_clone_specific_format(self):
         """todo"""
 
@@ -162,9 +171,36 @@ class TestRepository(TestCaseWithRepository):
         tree_a.commit('rev1', rev_id='rev1')
         # fetch with a default limit (grab everything)
         repo = bzrdir.BzrDir.create_repository(self.get_url('b'))
+        if (tree_a.branch.repository._format.rich_root_data and not
+            repo._format.rich_root_data):
+            raise TestSkipped('Cannot fetch from model2 to model1')
         repo.fetch(tree_a.branch.repository,
                    revision_id=None,
                    pb=bzrlib.progress.DummyProgress())
+
+    def test_fetch_knit2(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/foo'])
+        tree_a.add('foo', 'file1')
+        tree_a.commit('rev1', rev_id='rev1')
+        # fetch with a default limit (grab everything)
+        f = bzrdir.BzrDirMetaFormat1()
+        f._repository_format = repository.RepositoryFormatKnit2()
+        os.mkdir('b')
+        b_bzrdir = f.initialize(self.get_url('b'))
+        repo = b_bzrdir.create_repository()
+        repo.fetch(tree_a.branch.repository,
+                   revision_id=None,
+                   pb=bzrlib.progress.DummyProgress())
+        rev1_tree = repo.revision_tree('rev1')
+        lines = rev1_tree.get_file_lines(rev1_tree.inventory.root.file_id)
+        self.assertEqual([], lines)
+        b_branch = b_bzrdir.create_branch()
+        b_branch.pull(tree_a.branch)
+        tree_b = b_bzrdir.create_workingtree()
+        tree_b.commit('no change', rev_id='rev2')
+        rev2_tree = repo.revision_tree('rev2')
+        self.assertEqual('rev1', rev2_tree.inventory.root.revision)
 
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
@@ -240,6 +276,8 @@ class TestRepository(TestCaseWithRepository):
         except errors.UpToDateFormat:
             # this is in the most current format already.
             return
+        except errors.BadConversionTarget, e:
+            raise TestSkipped(str(e))
         wt = WorkingTree.open(wt.basedir)
         new_signature = wt.branch.repository.get_signature_text('A')
         self.assertEqual(old_signature, new_signature)
@@ -319,6 +357,56 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual('rev_id', tree.basis_tree().inventory.root.revision)
         rev_tree = tree.branch.repository.revision_tree(tree.get_parent_ids()[0])
         self.assertEqual('rev_id', rev_tree.inventory.root.revision)
+
+    def test_create_basis_inventory(self):
+        # Needs testing here because differences between repo and working tree
+        # basis inventory formats can lead to bugs.
+        t = self.make_branch_and_tree('.')
+        b = t.branch
+        open('a', 'wb').write('a\n')
+        t.add('a')
+        t.commit('a', rev_id='r1')
+
+        t._control_files.get_utf8('basis-inventory-cache')
+
+        basis_inv = t.basis_tree().inventory
+        self.assertEquals('r1', basis_inv.revision_id)
+        
+        store_inv = b.repository.get_inventory('r1')
+        self.assertEquals(store_inv._byid, basis_inv._byid)
+
+        open('b', 'wb').write('b\n')
+        t.add('b')
+        t.commit('b', rev_id='r2')
+
+        t._control_files.get_utf8('basis-inventory-cache')
+
+        basis_inv_txt = t.read_basis_inventory()
+        basis_inv = bzrlib.xml6.serializer_v6.read_inventory_from_string(basis_inv_txt)
+        self.assertEquals('r2', basis_inv.revision_id)
+        store_inv = b.repository.get_inventory('r2')
+
+        self.assertEquals(store_inv._byid, basis_inv._byid)
+
+    def test_upgrade_from_format4(self):
+        from bzrlib.tests.test_upgrade import _upgrade_dir_template
+        if self.repository_format.__class__ == repository.RepositoryFormat4:
+            raise TestSkipped('Cannot convert format-4 to itself')
+        self.build_tree_contents(_upgrade_dir_template)
+        old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
+        old_repo_format = old_repodir.open_repository()._format
+        format = self.repository_format._matchingbzrdir
+        try:
+            format.repository_format = self.repository_format
+        except AttributeError:
+            pass
+        upgrade('.', format)
+
+    def test_pointless_commit(self):
+        tree = self.make_branch_and_tree('.')
+        self.assertRaises(errors.PointlessCommit, tree.commit, 'pointless',
+                          allow_pointless=False)
+        tree.commit('pointless', allow_pointless=True)
 
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
@@ -434,7 +522,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         # a inventory with no parents and the revision has parents..
         # i.e. a ghost.
         repo = self.make_repository('inventory_with_unnecessary_ghost')
-        inv = Inventory()
+        inv = Inventory(revision_id = 'ghost')
+        inv.root.revision = 'ghost'
         sha1 = repo.add_inventory('ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
@@ -445,6 +534,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         rev.parent_ids = ['the_ghost']
         repo.add_revision('ghost', rev)
          
+        inv = Inventory(revision_id = 'the_ghost')
+        inv.root.revision = 'the_ghost'
         sha1 = repo.add_inventory('the_ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
@@ -474,3 +565,29 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
     def test_corrupt_revision_get_revision_reconcile(self):
         repo = repository.Repository.open('inventory_with_unnecessary_ghost')
         repo.get_revision_reconcile('ghost')
+
+
+class TestEscaping(TestCaseWithTransport):
+    """Test that repositories can be stored correctly on VFAT transports.
+    
+    Makes sure we have proper escaping of invalid characters, etc.
+
+    It'd be better to test all operations on the FakeVFATTransportDecorator,
+    but working trees go straight to the os not through the Transport layer.
+    Therefore we build some history first in the regular way and then 
+    check it's safe to access for vfat.
+    """
+
+    def test_on_vfat(self):
+        FOO_ID = 'foo<:>ID'
+        REV_ID = 'revid-1'
+        wt = self.make_branch_and_tree('repo')
+        self.build_tree(["repo/foo"], line_endings='binary')
+        # add file with id containing wierd characters
+        wt.add(['foo'], [FOO_ID])
+        wt.commit('this is my new commit', rev_id=REV_ID)
+        # now access over vfat; should be safe
+        branch = bzrdir.BzrDir.open('vfat+' + self.get_url('repo')).open_branch()
+        revtree = branch.repository.revision_tree(REV_ID)
+        contents = revtree.get_file_text(FOO_ID)
+        self.assertEqual(contents, 'contents of repo/foo\n')
