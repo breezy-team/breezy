@@ -37,6 +37,7 @@ from bzrlib.transport import (
     )
 from bzrlib.transport.http import (
     extract_auth,
+    BadProtocolRequestHandler,
     BadStatusRequestHandler,
     HttpTransportBase,
     InvalidStatusRequestHandler,
@@ -255,16 +256,16 @@ class TestRangeHeader(TestCase):
 class TestWallServer(object):
     """Tests exceptions during the connection phase"""
 
-    def create_transport_server(self):
+    def create_transport_readonly_server(self):
         return bzrlib.transport.http.HttpServer(WallRequestHandler)
 
     def test_http_has(self):
-        server = self.get_server()
+        server = self.get_readonly_server()
         t = self._transport(server.get_url())
         self.assertRaises(ConnectionError, t.has, 'foo/bar')
 
     def test_http_get(self):
-        server = self.get_server()
+        server = self.get_readonly_server()
         t = self._transport(server.get_url())
         self.assertRaises(ConnectionError, t.get, 'foo/bar')
 
@@ -284,16 +285,16 @@ class TestWallServer_pycurl(TestWithTransport_pycurl,
 class TestBadStatusServer(object):
     """Tests bad status from server."""
 
-    def create_transport_server(self):
+    def create_transport_readonly_server(self):
         return bzrlib.transport.http.HttpServer(BadStatusRequestHandler)
 
     def test_http_has(self):
-        server = self.get_server()
+        server = self.get_readonly_server()
         t = self._transport(server.get_url())
         self.assertRaises(InvalidHttpResponse, t.has, 'foo/bar')
 
     def test_http_get(self):
-        server = self.get_server()
+        server = self.get_readonly_server()
         t = self._transport(server.get_url())
         self.assertRaises(InvalidHttpResponse, t.get, 'foo/bar')
 
@@ -316,7 +317,7 @@ class TestInvalidStatusServer(TestBadStatusServer):
     Both implementations raises the same error as for a bad status.
     """
 
-    def create_transport_server(self):
+    def create_transport_readonly_server(self):
         return bzrlib.transport.http.HttpServer(InvalidStatusRequestHandler)
 
 
@@ -331,3 +332,35 @@ class TestInvalidStatusServer_pycurl(TestWithTransport_pycurl,
                                      TestInvalidStatusServer,
                                      TestCaseWithWebserver):
     """Tests InvalidStatusServer for pycurl implementation"""
+
+
+class TestBadProtocolServer(object):
+    """Tests bad status from server."""
+
+    def create_transport_readonly_server(self):
+        return bzrlib.transport.http.HttpServer(BadProtocolRequestHandler)
+
+    def test_http_has(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(InvalidHttpResponse, t.has, 'foo/bar')
+
+    def test_http_get(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(InvalidHttpResponse, t.get, 'foo/bar')
+
+
+class TestBadProtocolServer_urllib(TestBadProtocolServer,
+                                   TestCaseWithWebserver):
+    """Tests BadProtocolServer for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+# curl don't check the protocol version
+#class TestBadProtocolServer_pycurl(TestWithTransport_pycurl,
+#                                   TestBadProtocolServer,
+#                                   TestCaseWithWebserver):
+#    """Tests BadProtocolServer for pycurl implementation"""
+
+

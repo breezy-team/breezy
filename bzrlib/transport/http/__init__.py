@@ -624,3 +624,17 @@ class InvalidStatusRequestHandler(TestingHTTPRequestHandler):
         ignored = TestingHTTPRequestHandler.parse_request(self)
         self.wfile.write("Invalid status line\r\n")
         return False
+
+
+class BadProtocolRequestHandler(TestingHTTPRequestHandler):
+    """Whatever request comes in, returns a bad protocol version"""
+
+    def parse_request(self):
+        """Fakes handling a single HTTP request, returns a bad status"""
+        ignored = TestingHTTPRequestHandler.parse_request(self)
+        # Returns an invalid protocol version, but curl just
+        # ignores it and those cannot be tested.
+        self.wfile.write("%s %d %s\r\n" % ('HTTP/0.0',
+                                           404,
+                                           'Look at my protocol version'))
+        return False

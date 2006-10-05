@@ -315,6 +315,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         assert connection is not None, \
             'Cannot process a request without a connection'
 
+        # Get all the headers
         headers = {}
         headers.update(request.header_items())
         headers.update(request.unredirected_hdrs)
@@ -330,11 +331,23 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 print 'Request sent: [%r]' % request
             response = connection.getresponse()
             convert_to_addinfourl = True
-        except httplib.BadStatusLine, exception:
+        except (httplib.BadStatusLine, httplib.UnknownProtocol), exception:
+            # A bogus server was encountered
             raise InvalidHttpResponse(request.get_full_url(),
                                       'Bad status line received',
                                       orig_error=exception)
         except (socket.error, httplib.HTTPException), exception:
+            # httplib.HTTPException should indicate a bug in the
+            # urllib implementation, somewhow the httplib
+            # pipeline is in an incorrect state, we retry in hope
+            # that will correct the problem but that may need
+            # investigation (note that no such bug is known as of
+            # 20061005 --vila).
+
+            # socket errors generally occurs for reasons far
+            # outside our scope, so closing the connection and
+            # retrying is the best we can do.
+
         # FIXME: and then there is HTTPError raised by:
         # - HTTPDefaultErrorHandler (we define our own)
         # - HTTPRedirectHandler.redirect_request 

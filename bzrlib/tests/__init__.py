@@ -1162,6 +1162,13 @@ class TestCaseWithMemoryTransport(TestCase):
         self.assertTrue(t.is_readonly())
         return t
 
+    def create_transport_readonly_server(self):
+        """Create a transport server from class defined at init.
+
+        This is mostly a hook for daugter classes.
+        """
+        return self.transport_readonly_server()
+
     def get_readonly_server(self):
         """Get the server instance for the readonly transport
 
@@ -1175,7 +1182,7 @@ class TestCaseWithMemoryTransport(TestCase):
                 self.__readonly_server = ReadonlyServer()
                 self.__readonly_server.setUp(self.__server)
             else:
-                self.__readonly_server = self.transport_readonly_server()
+                self.__readonly_server = self.create_transport_readonly_server()
                 self.__readonly_server.setUp()
             self.addCleanup(self.__readonly_server.tearDown)
         return self.__readonly_server
