@@ -2092,7 +2092,6 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          _control_files=control_files)
         wt.lock_tree_write()
         try:
-            # set_root_id will write the inventory to disk.
             wt.set_root_id(inv.root.file_id)
             basis_tree = branch.repository.revision_tree(revision_id)
             if revision_id == bzrlib.revision.NULL_REVISION:
@@ -2101,8 +2100,10 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                 wt.set_parent_trees([(revision_id, basis_tree)])
             build_tree(basis_tree, wt)
         finally:
-            wt.unlock()
+            # unlock in this order so that the unlock-triggers-flush in
+            # WorkingTree is given a chance to fire.
             control_files.unlock()
+            wt.unlock()
         return wt
 
     def __init__(self):
