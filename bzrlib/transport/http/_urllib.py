@@ -19,9 +19,7 @@ import urllib, urllib2
 import errno
 from cStringIO import StringIO
 
-from bzrlib import (
-    ui,
-    )
+from bzrlib import ui
 from bzrlib.errors import (TransportNotPossible,
                            NoSuchFile,
                            BzrError,
