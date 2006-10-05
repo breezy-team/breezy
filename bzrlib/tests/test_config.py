@@ -824,5 +824,5 @@ class TestMailAddressExtraction(TestCase):
     def test_extract_email_address(self):
         self.assertEqual('jane@test.com',
                          config.extract_email_address('Jane <jane@test.com>'))
-        self.assertRaises(errors.BzrError,
+        self.assertRaises(errors.NoEmailInUsername,
                           config.extract_email_address, 'Jane Tester')
