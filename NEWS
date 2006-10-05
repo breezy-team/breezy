@@ -1,6 +1,7 @@
 IN DEVELOPMENT
 
   IMPROVEMENTS:
+
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
 
   INTERNALS:
@@ -12,6 +13,13 @@ IN DEVELOPMENT
     * ``WorkingTree.set_root_id(None)`` is now deprecated. Please
       pass in inventory.ROOT_ID if you want the default root id value.
       (Robert Collins, John Arbash Meinel)
+
+    * New method ``WorkingTree.flush()`` which will write the current memory
+      inventory out to disk. At the same time, read_working_inventory will
+      no longer trash the current tree inventory if it has been modified within
+      the current lock, and the tree will now ``flush()`` automatically on
+      ``unlock()``. ``WorkingTree.set_root_id()`` has been updated to take
+      advantage of this functionality. (Robert Collins, John Arbash Meinel)
 
   BUG FIXES:
 

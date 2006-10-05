@@ -38,8 +38,13 @@ class TestSetRootId(TestCaseWithWorkingTree):
         # setting the root id allows it to be read via get_root_id.
         tree.lock_write()
         try:
+            old_id = tree.get_root_id()
             tree.set_root_id(u'\xe5n id')
             self.assertEqual(u'\xe5n id', tree.get_root_id())
+            # set root id should not have triggered a flush of the tree,
+            # so check a new tree sees the old state.
+            reference_tree = tree.bzrdir.open_workingtree()
+            self.assertEqual(old_id, reference_tree.get_root_id())
         finally:
             tree.unlock()
         # having unlocked the tree, the value should have been 
