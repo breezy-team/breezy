@@ -289,13 +289,13 @@ y
         conflicts = builder.merge(merge_factory)
         try:
             self.assertEqual([], conflicts)
-            self.assertEqual(builder.this.get_file("1").read(), "text4" )
-            self.assertEqual(builder.this.get_file("2").read(), "text2" )
-            self.assertEqual(builder.this.get_file("5").read(), 
-                             "a\nz\nc\nd\ne\nz\n")
-            self.assertIs(builder.this.is_executable("1"), True)
-            self.assertIs(builder.this.is_executable("2"), False)
-            self.assertIs(builder.this.is_executable("3"), True)
+            self.assertEqual("text4", builder.this.get_file("1").read())
+            self.assertEqual("text2", builder.this.get_file("2").read())
+            self.assertEqual("a\nz\nc\nd\ne\nz\n", 
+                             builder.this.get_file("5").read())
+            self.assertTrue(builder.this.is_executable("1"))
+            self.assertFalse(builder.this.is_executable("2"))
+            self.assertTrue(builder.this.is_executable("3"))
         except:
             builder.unlock()
             raise
