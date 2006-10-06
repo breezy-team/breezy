@@ -46,19 +46,13 @@ from tempfile import (
     mkdtemp,
     )
 import unicodedata
-""")
 
-import bzrlib
 from bzrlib import (
     errors,
     )
-from bzrlib.errors import (
-    BzrError,
-    BzrBadParameterNotUnicode,
-    NoSuchFile,
-    PathNotChild,
-    IllegalPath,
-    )
+""")
+
+import bzrlib
 from bzrlib.symbol_versioning import (
     deprecated_function,
     zero_nine,
@@ -157,7 +151,7 @@ def kind_marker(kind):
     elif kind == 'symlink':
         return '@'
     else:
-        raise BzrError('invalid file kind %r' % kind)
+        raise errors.BzrError('invalid file kind %r' % kind)
 
 lexists = getattr(os.path, 'lexists', None)
 if lexists is None:
@@ -172,7 +166,7 @@ if lexists is None:
             if e.errno == errno.ENOENT:
                 return False;
             else:
-                raise BzrError("lstat/stat of (%r): %r" % (f, e))
+                raise errors.BzrError("lstat/stat of (%r): %r" % (f, e))
 
 
 def fancy_rename(old, new, rename_func, unlink_func):
@@ -199,7 +193,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     file_existed = False
     try:
         rename_func(new, tmp_name)
-    except (NoSuchFile,), e:
+    except (errors.NoSuchFile,), e:
         pass
     except IOError, e:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
@@ -582,8 +576,8 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         tt = time.localtime(t)
         offset = local_time_offset(t)
     else:
-        raise BzrError("unsupported timezone format %r" % timezone,
-                       ['options are "utc", "original", "local"'])
+        raise errors.BzrError("unsupported timezone format %r" % timezone,
+                              ['options are "utc", "original", "local"'])
     if date_fmt is None:
         date_fmt = "%a %Y-%m-%d %H:%M:%S"
     if show_offset:
@@ -701,7 +695,7 @@ def splitpath(p):
     rps = []
     for f in ps:
         if f == '..':
-            raise BzrError("sorry, %r not allowed in path" % f)
+            raise errors.BzrError("sorry, %r not allowed in path" % f)
         elif (f == '.') or (f == ''):
             pass
         else:
@@ -712,7 +706,7 @@ def joinpath(p):
     assert isinstance(p, list)
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
-            raise BzrError("sorry, %r not allowed in path" % f)
+            raise errors.BzrError("sorry, %r not allowed in path" % f)
     return pathjoin(*p)
 
 
@@ -811,7 +805,7 @@ def relpath(base, path):
         if tail:
             s.insert(0, tail)
     else:
-        raise PathNotChild(rp, base)
+        raise errors.PathNotChild(rp, base)
 
     if s:
         return pathjoin(*s)
@@ -832,7 +826,7 @@ def safe_unicode(unicode_or_utf8_string):
     try:
         return unicode_or_utf8_string.decode('utf8')
     except UnicodeDecodeError:
-        raise BzrBadParameterNotUnicode(unicode_or_utf8_string)
+        raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
 
 
 _platform_normalizes_filenames = False
@@ -937,7 +931,7 @@ def check_legal_path(path):
     if sys.platform != "win32":
         return
     if _validWin32PathRE.match(path) is None:
-        raise IllegalPath(path)
+        raise errors.IllegalPath(path)
 
 
 def walkdirs(top, prefix=""):
