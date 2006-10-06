@@ -83,7 +83,6 @@ from bzrlib.errors import (BzrCheckError,
 from bzrlib.inventory import InventoryEntry, Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
-from bzrlib.merge import merge_inner, transform_tree
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import (
