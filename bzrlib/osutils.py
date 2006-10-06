@@ -597,6 +597,54 @@ def compact_date(when):
     return time.strftime('%Y%m%d%H%M%S', time.gmtime(when))
     
 
+def format_delta(delta):
+    """Get a nice looking string for a time delta.
+
+    :param delta: The time difference in seconds, can be positive or negative.
+        positive indicates time in the past, negative indicates time in the
+        future. (usually time.time() - stored_time)
+    :return: String formatted to show approximate resolution
+    """
+    delta = int(delta)
+    if delta >= 0:
+        direction = 'ago'
+    else:
+        direction = 'in the future'
+        delta = -delta
+
+    seconds = delta
+    if seconds < 90: # print seconds up to 90 seconds
+        if seconds == 1:
+            return '%d second %s' % (seconds, direction,)
+        else:
+            return '%d seconds %s' % (seconds, direction)
+
+    minutes = int(seconds / 60)
+    seconds -= 60 * minutes
+    if seconds == 1:
+        plural_seconds = ''
+    else:
+        plural_seconds = 's'
+    if minutes < 90: # print minutes, seconds up to 90 minutes
+        if minutes == 1:
+            return '%d minute, %d second%s %s' % (
+                    minutes, seconds, plural_seconds, direction)
+        else:
+            return '%d minutes, %d second%s %s' % (
+                    minutes, seconds, plural_seconds, direction)
+
+    hours = int(minutes / 60)
+    minutes -= 60 * hours
+    if minutes == 1:
+        plural_minutes = ''
+    else:
+        plural_minutes = 's'
+
+    if hours == 1:
+        return '%d hour, %d minute%s %s' % (hours, minutes,
+                                            plural_minutes, direction)
+    return '%d hours, %d minute%s %s' % (hours, minutes,
+                                         plural_minutes, direction)
 
 def filesize(f):
     """Return size of given open file."""
@@ -1039,7 +1087,7 @@ def get_user_encoding():
         _cached_user_encoding = locale.getpreferredencoding()
     except locale.Error, e:
         sys.stderr.write('bzr: warning: %s\n'
-                         '  Could not what text encoding to use.\n'
+                         '  Could not determine what text encoding to use.\n'
                          '  This error usually means your Python interpreter\n'
                          '  doesn\'t support the locale set by $LANG (%s)\n'
                          "  Continuing with ascii encoding.\n"

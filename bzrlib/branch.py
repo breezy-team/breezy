@@ -299,7 +299,7 @@ class Branch(object):
 
     def revision_history(self):
         """Return sequence of revision hashes on to this branch."""
-        raise NotImplementedError('revision_history is abstract')
+        raise NotImplementedError(self.revision_history)
 
     def revno(self):
         """Return current revision number for this branch.
@@ -586,6 +586,18 @@ class Branch(object):
             mainline_parent_id = revision_id
         return BranchCheckResult(self)
 
+    def _get_checkout_format(self):
+        """Return the most suitable metadir for a checkout of this branch.
+        Weaves are used if this branch's repostory uses weaves.
+        """
+        if isinstance(self.bzrdir, bzrdir.BzrDirPreSplitOut):
+            from bzrlib import repository
+            format = bzrdir.BzrDirMetaFormat1()
+            format.repository_format = repository.RepositoryFormat7()
+        else:
+            format = self.repository.bzrdir.cloning_metadir()
+        return format
+
     def create_checkout(self, to_location, revision_id=None, 
                         lightweight=False):
         """Create a checkout of a branch.
@@ -596,23 +608,23 @@ class Branch(object):
         produce a bound branch (heavyweight checkout)
         :return: The tree of the created checkout
         """
+        t = transport.get_transport(to_location)
+        try:
+            t.mkdir('.')
+        except errors.FileExists:
+            pass
         if lightweight:
-            t = transport.get_transport(to_location)
-            try:
-                t.mkdir('.')
-            except errors.FileExists:
-                pass
             checkout = bzrdir.BzrDirMetaFormat1().initialize_on_transport(t)
             BranchReferenceFormat().initialize(checkout, self)
         else:
+            format = self._get_checkout_format()
             checkout_branch = bzrdir.BzrDir.create_branch_convenience(
-                to_location, force_new_tree=False)
+                to_location, force_new_tree=False, format=format)
             checkout = checkout_branch.bzrdir
             checkout_branch.bind(self)
-            if revision_id is not None:
-                rh = checkout_branch.revision_history()
-                new_rh = rh[:rh.index(revision_id) + 1]
-                checkout_branch.set_revision_history(new_rh)
+            # pull up to the specified revision_id to set the initial 
+            # branch tip correctly, and seed it with history.
+            checkout_branch.pull(self, stop_revision=revision_id)
         return checkout.create_workingtree(revision_id)
 
 
@@ -1180,7 +1192,7 @@ class BzrBranch(Branch):
         try:
             old_count = len(self.revision_history())
             try:
-                self.update_revisions(source,stop_revision)
+                self.update_revisions(source, stop_revision)
             except DivergedBranches:
                 if not overwrite:
                     raise
@@ -1321,8 +1333,13 @@ class BzrBranch5(BzrBranch):
 
     @needs_write_lock
     def bind(self, other):
-        """Bind the local branch the other branch.
+        """Bind this branch to the branch other.
 
+        This does not push or pull data between the branches, though it does
+        check for divergence to raise an error when the branches are not
+        either the same, or one a prefix of the other. That behaviour may not
+        be useful, so that check may be removed in future.
+        
         :param other: The branch to bind to
         :type other: Branch
         """
@@ -1333,35 +1350,27 @@ class BzrBranch5(BzrBranch):
         #       but binding itself may not be.
         #       Since we *have* to check at commit time, we don't
         #       *need* to check here
-        self.pull(other)
 
-        # we are now equal to or a suffix of other.
-
-        # Since we have 'pulled' from the remote location,
-        # now we should try to pull in the opposite direction
-        # in case the local tree has more revisions than the
-        # remote one.
-        # There may be a different check you could do here
-        # rather than actually trying to install revisions remotely.
-        # TODO: capture an exception which indicates the remote branch
-        #       is not writable. 
-        #       If it is up-to-date, this probably should not be a failure
-        
-        # lock other for write so the revision-history syncing cannot race
-        other.lock_write()
-        try:
-            other.pull(self)
-            # if this does not error, other now has the same last rev we do
-            # it can only error if the pull from other was concurrent with
-            # a commit to other from someone else.
-
-            # until we ditch revision-history, we need to sync them up:
-            self.set_revision_history(other.revision_history())
-            # now other and self are up to date with each other and have the
-            # same revision-history.
-        finally:
-            other.unlock()
-
+        # we want to raise diverged if:
+        # last_rev is not in the other_last_rev history, AND
+        # other_last_rev is not in our history, and do it without pulling
+        # history around
+        last_rev = self.last_revision()
+        if last_rev is not None:
+            other.lock_read()
+            try:
+                other_last_rev = other.last_revision()
+                if other_last_rev is not None:
+                    # neither branch is new, we have to do some work to
+                    # ascertain diversion.
+                    remote_graph = other.repository.get_revision_graph(
+                        other_last_rev)
+                    local_graph = self.repository.get_revision_graph(last_rev)
+                    if (last_rev not in remote_graph and
+                        other_last_rev not in local_graph):
+                        raise errors.DivergedBranches(self, other)
+            finally:
+                other.unlock()
         self.set_bound_location(other.base)
 
     @needs_write_lock

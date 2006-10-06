@@ -65,7 +65,7 @@ message:
         # as the first part of the string. It may be a little tempermental
         self.assertEqualDiff("""\
 bzr: warning: unsupported locale setting
-  Could not what text encoding to use.
+  Could not determine what text encoding to use.
   This error usually means your Python interpreter
   doesn't support the locale set by $LANG (BOGUS)
   Continuing with ascii encoding.

@@ -260,11 +260,12 @@ object, rather than the real class.
 Passing to other variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-It also is bad form to pass ``ImportReplacer`` objects to other variables.
+It also is incorrect to assign ``ImportReplacer`` objects to other variables.
 Because the replacer only knows about the original name, it is unable to
 replace other variables. The ``ImportReplacer`` class will raise an
-exception if it can figure out that this happened. But it is not always
-possible to know, so bugs can be secretly waiting to be exposed.
+``IllegalUseOfScopeReplacer`` exception if it can figure out that this
+happened. But it requires accessing a member more than once from the new
+variable, so some bugs are not detected right away.
 
 
 Writing output

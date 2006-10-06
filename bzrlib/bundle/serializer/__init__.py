@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Development Ltd
+# (C) 2005-2006 Canonical Development Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -96,23 +96,32 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
         source.unlock()
 
 
-def write_bundle(repository, revision_id, base_revision_id, out):
+def write_bundle(repository, revision_id, base_revision_id, out, format=None):
     """"""
     repository.lock_read()
     try:
-        return _write_bundle(repository, revision_id, base_revision_id, out)
+        return _write_bundle(repository, revision_id, base_revision_id, out,
+                             format)
     finally:
         repository.unlock()
 
 
-def _write_bundle(repository, revision_id, base_revision_id, out):
+def _write_bundle(repository, revision_id, base_revision_id, out, format):
+    """Write a bundle of revisions.
+
+    :param repository: Repository containing revisions to serialize.
+    :param revision_id: Head revision_id of the bundle.
+    :param base_revision_id: Revision assumed to be present in repositories
+         applying the bundle.
+    :param out: Output file.
+    """
     if base_revision_id is NULL_REVISION:
         base_revision_id = None
     base_ancestry = set(repository.get_ancestry(base_revision_id))
     revision_ids = [r for r in repository.get_ancestry(revision_id) if r
                     not in base_ancestry]
     revision_ids = list(reversed(revision_ids))
-    write(repository, revision_ids, out, 
+    write(repository, revision_ids, out, format,
           forced_bases = {revision_id:base_revision_id})
     return revision_ids
 
@@ -288,5 +297,6 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
     to_file.write('\n')
 
 register_lazy('0.8', 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
+register_lazy('0.9', 'bzrlib.bundle.serializer.v09', 'BundleSerializerV09')
 register_lazy(None, 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
 

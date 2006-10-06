@@ -57,6 +57,8 @@ from bzrlib.option import Option
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 from bzrlib.transport.local import LocalTransport
+import bzrlib.tree
+from bzrlib.workingtree import WorkingTree
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -108,6 +110,10 @@ def get_format_type(typestring):
     if typestring == "knit":
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = repository.RepositoryFormatKnit1()
+        return format
+    if typestring == "experimental-knit2":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
         return format
     msg = "Unknown bzr format %s. Current formats are: default, knit,\n" \
           "metaweave and weave" % typestring
@@ -359,26 +365,49 @@ class cmd_inventory(Command):
     """Show inventory of the current working copy or a revision.
 
     It is possible to limit the output to a particular entry
-    type using the --kind option.  For example; --kind file.
+    type using the --kind option.  For example: --kind file.
+
+    It is also possible to restrict the list of files to a specific
+    set. For example: bzr inventory --show-ids this/file
     """
 
     takes_options = ['revision', 'show-ids', 'kind']
-    
+    takes_args = ['file*']
+
     @display_command
-    def run(self, revision=None, show_ids=False, kind=None):
+    def run(self, revision=None, show_ids=False, kind=None, file_list=None):
         if kind and kind not in ['file', 'directory', 'symlink']:
             raise BzrCommandError('invalid kind specified')
-        tree = WorkingTree.open_containing(u'.')[0]
-        if revision is None:
-            inv = tree.read_working_inventory()
-        else:
+
+        work_tree, file_list = tree_files(file_list)
+
+        if revision is not None:
             if len(revision) > 1:
                 raise BzrCommandError('bzr inventory --revision takes'
-                    ' exactly one revision identifier')
-            inv = tree.branch.repository.get_revision_inventory(
-                revision[0].in_history(tree.branch).rev_id)
+                                      ' exactly one revision identifier')
+            revision_id = revision[0].in_history(work_tree.branch).rev_id
+            tree = work_tree.branch.repository.revision_tree(revision_id)
+                        
+            # We include work_tree as well as 'tree' here
+            # So that doing '-r 10 path/foo' will lookup whatever file
+            # exists now at 'path/foo' even if it has been renamed, as
+            # well as whatever files existed in revision 10 at path/foo
+            trees = [tree, work_tree]
+        else:
+            tree = work_tree
+            trees = [tree]
 
-        for path, entry in inv.entries():
+        if file_list is not None:
+            file_ids = bzrlib.tree.find_ids_across_trees(file_list, trees,
+                                                      require_versioned=True)
+            # find_ids_across_trees may include some paths that don't
+            # exist in 'tree'.
+            entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
+                             for file_id in file_ids if file_id in tree)
+        else:
+            entries = tree.inventory.entries()
+
+        for path, entry in entries:
             if kind and kind != entry.kind:
                 continue
             if show_ids:
@@ -762,7 +791,7 @@ class cmd_checkout(Command):
         # if the source and to_location are the same, 
         # and there is no working tree,
         # then reconstitute a branch
-        if (osutils.abspath(to_location) == 
+        if (osutils.abspath(to_location) ==
             osutils.abspath(branch_location)):
             try:
                 source.bzrdir.open_workingtree()
@@ -825,7 +854,7 @@ class cmd_update(Command):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_write()
         try:
-            existing_pending_merges = tree.pending_merges()
+            existing_pending_merges = tree.get_parent_ids()[1:]
             last_rev = tree.last_revision()
             if last_rev == tree.branch.last_revision():
                 # may be up to date, check master too.
@@ -837,7 +866,7 @@ class cmd_update(Command):
             conflicts = tree.update()
             revno = tree.branch.revision_id_to_revno(tree.last_revision())
             note('Updated to revision %d.' % (revno,))
-            if tree.pending_merges() != existing_pending_merges:
+            if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
             if conflicts != 0:
@@ -1348,7 +1377,12 @@ class cmd_log(Command):
         else:
             # local dir only
             # FIXME ? log the current subdir only RBC 20060203 
-            dir, relpath = bzrdir.BzrDir.open_containing('.')
+            if revision is not None \
+                    and len(revision) > 0 and revision[0].get_branch():
+                location = revision[0].get_branch()
+            else:
+                location = '.'
+            dir, relpath = bzrdir.BzrDir.open_containing(location)
             b = dir.open_branch()
 
         if revision is None:
@@ -1357,6 +1391,12 @@ class cmd_log(Command):
         elif len(revision) == 1:
             rev1 = rev2 = revision[0].in_history(b).revno
         elif len(revision) == 2:
+            if revision[1].get_branch() != revision[0].get_branch():
+                # b is taken from revision[0].get_branch(), and
+                # show_log will use its revision_history. Having
+                # different branches will lead to weird behaviors.
+                raise BzrCommandError(
+                    "Log doesn't accept two revisions in different branches.")
             if revision[0].spec is None:
                 # missing begin-range means first revision
                 rev1 = 1
@@ -1650,6 +1690,8 @@ class cmd_cat(Command):
 
         if tree is None:
             b, relpath = Branch.open_containing(filename)
+        if revision is not None and revision[0].get_branch() is not None:
+            b = Branch.open(revision[0].get_branch())
         if revision is None:
             revision_id = b.last_revision()
         else:
@@ -1870,7 +1912,7 @@ class cmd_whoami(Command):
         # display a warning if an email address isn't included in the given name.
         try:
             config.extract_email_address(name)
-        except BzrError, e:
+        except errors.NoEmailInUsername, e:
             warning('"%s" does not seem to contain an email address.  '
                     'This is allowed, but not recommended.', name)
         
@@ -1987,6 +2029,7 @@ class cmd_selftest(Command):
                 test_suite_factory = benchmarks.test_suite
                 if verbose is None:
                     verbose = True
+                # TODO: should possibly lock the history file...
                 benchfile = open(".perf_history", "at")
             else:
                 test_suite_factory = None
@@ -2134,7 +2177,9 @@ class cmd_merge(Command):
                 else:
                     return 1
 
-        branch = self._get_remembered_parent(tree, branch, 'Merging from')
+        if revision is None \
+                or len(revision) < 1 or revision[0].needs_branch():
+            branch = self._get_remembered_parent(tree, branch, 'Merging from')
 
         if revision is None or len(revision) < 1:
             if uncommitted:
@@ -2148,6 +2193,7 @@ class cmd_merge(Command):
             if uncommitted:
                 raise BzrCommandError('Cannot use --uncommitted and --revision'
                                       ' at the same time.')
+            branch = revision[0].get_branch() or branch
             if len(revision) == 1:
                 base = [None, None]
                 other_branch, path = Branch.open_containing(branch)
@@ -2157,11 +2203,16 @@ class cmd_merge(Command):
                 assert len(revision) == 2
                 if None in revision:
                     raise BzrCommandError(
-                        "Merge doesn't permit that revision specifier.")
-                other_branch, path = Branch.open_containing(branch)
+                        "Merge doesn't permit empty revision specifier.")
+                base_branch, path = Branch.open_containing(branch)
+                branch1 = revision[1].get_branch() or branch
+                other_branch, path1 = Branch.open_containing(branch1)
+                if revision[0].get_branch() is not None:
+                    # then path was obtained from it, and is None.
+                    path = path1
 
-                base = [branch, revision[0].in_history(other_branch).revno]
-                other = [branch, revision[1].in_history(other_branch).revno]
+                base = [branch, revision[0].in_history(base_branch).revno]
+                other = [branch1, revision[1].in_history(other_branch).revno]
 
         if tree.branch.get_parent() is None or remember:
             tree.branch.set_parent(other_branch.base)
@@ -2301,11 +2352,25 @@ class cmd_remerge(Command):
             return 0
 
 class cmd_revert(Command):
-    """Reverse all changes since the last commit.
+    """Revert files to a previous revision.
 
-    Only versioned files are affected.  Specify filenames to revert only 
-    those files.  By default, any files that are changed will be backed up
-    first.  Backup files have a '~' appended to their name.
+    Giving a list of files will revert only those files.  Otherwise, all files
+    will be reverted.  If the revision is not specified with '--revision', the
+    last committed revision is used.
+
+    To remove only some changes, without reverting to a prior version, use
+    merge instead.  For example, "merge . --r-2..-3" will remove the changes
+    introduced by -2, without affecting the changes introduced by -1.  Or
+    to remove certain changes on a hunk-by-hunk basis, see the Shelf plugin.
+    
+    By default, any files that have been manually changed will be backed up
+    first.  (Files changed only by merge are not backed up.)  Backup files have
+    '.~#~' appended to their name, where # is a number.
+
+    When you provide files, you can use their current pathname or the pathname
+    from the target revision.  So you can use revert to "undelete" a file by
+    name.  If you name a directory, all the contents of that directory will be
+    reverted.
     """
     takes_options = ['revision', 'no-backup']
     takes_args = ['file*']
@@ -2742,6 +2807,66 @@ class cmd_break_lock(Command):
             pass
         
 
+class cmd_wait_until_signalled(Command):
+    """Test helper for test_start_and_stop_bzr_subprocess_send_signal.
+
+    This just prints a line to signal when it is ready, then blocks on stdin.
+    """
+
+    hidden = True
+
+    def run(self):
+        sys.stdout.write("running\n")
+        sys.stdout.flush()
+        sys.stdin.readline()
+
+
+class cmd_serve(Command):
+    """Run the bzr server."""
+
+    aliases = ['server']
+
+    takes_options = [
+        Option('inet',
+               help='serve on stdin/out for use from inetd or sshd'),
+        Option('port',
+               help='listen for connections on nominated port of the form '
+                    '[hostname:]portnumber. Passing 0 as the port number will '
+                    'result in a dynamically allocated port.',
+               type=str),
+        Option('directory',
+               help='serve contents of directory',
+               type=unicode),
+        Option('allow-writes',
+               help='By default the server is a readonly server. Supplying '
+                    '--allow-writes enables write access to the contents of '
+                    'the served directory and below. '
+                ),
+        ]
+
+    def run(self, port=None, inet=False, directory=None, allow_writes=False):
+        from bzrlib.transport import smart
+        from bzrlib.transport import get_transport
+        if directory is None:
+            directory = os.getcwd()
+        url = urlutils.local_path_to_url(directory)
+        if not allow_writes:
+            url = 'readonly+' + url
+        t = get_transport(url)
+        if inet:
+            server = smart.SmartStreamServer(sys.stdin, sys.stdout, t)
+        elif port is not None:
+            if ':' in port:
+                host, port = port.split(':')
+            else:
+                host = '127.0.0.1'
+            server = smart.SmartTCPServer(t, host=host, port=int(port))
+            print 'listening on port: ', server.port
+            sys.stdout.flush()
+        else:
+            raise BzrCommandError("bzr serve requires one of --inet or --port")
+        server.serve()
+
 
 # command-line interpretation helper for merge-related commands
 def _merge_helper(other_revision, base_revision,
@@ -2825,6 +2950,7 @@ merge = _merge_helper
 # we do need to load at least some information about them to know of 
 # aliases.  ideally we would avoid loading the implementation until the
 # details were needed.
+from bzrlib.cmd_version_info import cmd_version_info
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.bundle.commands import cmd_bundle_revisions
 from bzrlib.sign_my_commits import cmd_sign_my_commits

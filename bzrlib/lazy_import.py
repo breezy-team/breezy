@@ -17,6 +17,27 @@
 """Functionality to create lazy evaluation objects.
 
 This includes waiting to import a module until it is actually used.
+
+Most commonly, the 'lazy_import' function is used to import other modules
+in an on-demand fashion. Typically use looks like:
+    from bzrlib.lazy_import import lazy_import
+    lazy_import(globals(), '''
+    from bzrlib import (
+        errors,
+        osutils,
+        branch,
+        )
+    import bzrlib.branch
+    ''')
+
+    Then 'errors, osutils, branch' and 'bzrlib' will exist as lazy-loaded
+    objects which will be replaced with a real object on first use.
+
+    In general, it is best to only load modules in this way. This is because
+    it isn't safe to pass these variables to other functions before they
+    have been replaced. This is especially true for constants, sometimes
+    true for classes or functions (when used as a factory, or you want
+    to inherit from them).
 """
 
 
@@ -57,7 +78,7 @@ class ScopeReplacer(object):
             # make it forbidden, and try to give a good error.
             raise errors.IllegalUseOfScopeReplacer(
                 name, msg="Object already cleaned up, did you assign it"
-                          "to another variable?",
+                          " to another variable?",
                 extra=e)
         obj = factory(self, scope, name)
         scope[name] = obj
@@ -94,9 +115,13 @@ class ImportReplacer(ScopeReplacer):
     At present, this only supports 'import foo.bar.baz' syntax.
     """
 
-    # Intentially a long semi-unique name that won't likely exist
-    # elsewhere. (We can't use isinstance because that accesses __class__
-    # which causes the __getattribute__ to trigger)
+    # '_import_replacer_children' is intentionally a long semi-unique name
+    # that won't likely exist elsewhere. This allows us to detect an
+    # ImportReplacer object by using
+    #       object.__getattribute__(obj, '_import_replacer_children')
+    # We can't just use 'isinstance(obj, ImportReplacer)', because that
+    # accesses .__class__, which goes through __getattribute__, and triggers
+    # the replacement.
     __slots__ = ('_import_replacer_children', '_member', '_module_path')
 
     def __init__(self, scope, name, module_path, member=None, children={}):

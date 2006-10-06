@@ -61,6 +61,10 @@ class PassThroughError(errors.BzrNewError):
         errors.BzrNewError.__init__(self, foo=foo, bar=bar)
 
 
+class ErrorWithBadFormat(errors.BzrNewError):
+    """One format specifier: %(thing)s"""
+
+
 class TestErrorFormatting(TestCase):
     
     def test_always_str(self):
@@ -72,3 +76,19 @@ class TestErrorFormatting(TestCase):
         # returned from e.__str__(), and it has non ascii characters
         s = str(e)
         self.assertEqual('Pass through \xc2\xb5 and bar', s)
+
+    def test_mismatched_format_args(self):
+        # Even though ErrorWithBadFormat's format string does not match the
+        # arguments we constructing it with, we can still stringify an instance
+        # of this exception. The resulting string will say its unprintable.
+        e = ErrorWithBadFormat(not_thing='x')
+        self.assertStartsWith(
+            str(e), 'Unprintable exception ErrorWithBadFormat(')
+
+
+class TestSpecificErrors(TestCase):
+    
+    def test_transport_not_possible(self):
+        e = errors.TransportNotPossible('readonly', 'original error')
+        self.assertEqual('Transport operation not possible:'
+                         ' readonly original error', str(e))

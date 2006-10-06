@@ -407,7 +407,8 @@ class VersionedFile(object):
             version_ids,
             ignore_missing)
 
-    def iter_lines_added_or_present_in_versions(self, version_ids=None):
+    def iter_lines_added_or_present_in_versions(self, version_ids=None, 
+                                                pb=None):
         """Iterate over the lines in the versioned file from version_ids.
 
         This may return lines from other versions, and does not return the
@@ -415,6 +416,10 @@ class VersionedFile(object):
         during development to include the version that the versioned file
         thinks is relevant, but given that such hints are just guesses,
         its better not to have it if we don't need it.
+
+        If a progress bar is supplied, it may be used to indicate progress.
+        The caller is responsible for cleaning up progress bars (because this
+        is an iterator).
 
         NOTES: Lines are normalised: they will all have \n terminators.
                Lines are returned in arbitrary order.
@@ -562,7 +567,7 @@ class InterVersionedFile(InterObject):
     InterVersionedFile.get(other).method_name(parameters).
     """
 
-    _optimisers = set()
+    _optimisers = []
     """The available optimised InterVersionedFile types."""
 
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):

@@ -1,6 +1,59 @@
 IN DEVELOPMENT
 
   IMPROVEMENTS:
+    * ``bzr help commands`` output is now shorter (Aaron Bentley)
+
+  INTERNALS:
+
+    * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
+      can take a ``working_dir='foo'`` parameter, which will change directory 
+      for the command. (John Arbash Meinel)
+
+  BUG FIXES:
+
+    * bzr branch/pull no longer complain about progress bar cleanup when
+      interrupted during fetch.  (Aaron Bentley, #54000)
+
+    * ``WorkingTree.set_parent_trees()`` uses the trees to directly write
+      the basis inventory, rather than going through the repository. This
+      allows us to have 1 inventory read, and 2 inventory writes when
+      committing a new tree. (John Arbash Meinel)
+
+    * When reverting, files that are not locally modified that do not exist
+      in the target are deleted, not just unversioned (Aaron Bentley)
+
+    * When trying to acquire a lock, don't fail immediately. Instead, try
+      a few times (up to 1 hour) before timing out. Also, report why the
+      lock is unavailable (John Arbash Meinel, #43521, #49556)
+
+    * Leave HttpTransportBase daughter classes decides how they
+      implement cloning. (Vincent Ladeuil, #61606)
+
+   * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
+
+  TESTING:
+
+    * New test base class TestCaseWithMemoryTransport offers memory-only
+      testing facilities: its not suitable for tests that need to mutate disk
+      state, but most tests should not need that and should be converted to
+      TestCaseWithMemoryTransport. (Robert Collins)
+
+bzr 0.11  2006-10-02
+
+    * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
+
+bzr 0.11rc2  2006-09-27
+
+  BUG FIXES:
+
+    * Test suite hangs on windows fixed. (Andrew Bennets, Alexander Belchenko).
+    
+    * Commit performance regression fixed. (Aaron Bentley, Robert Collins, John
+      Arbash Meinel).
+
+bzr 0.11rc1  2006-09-25
+
+  IMPROVEMENTS:
 
     * Knit files now wait to create their contents until the first data is
       added. The old code used to create an empty .knit and a .kndx with just
@@ -16,12 +69,49 @@ IN DEVELOPMENT
 
     * Commit performs one less XML parse. (Robert Collins)
 
+    * ``bzr checkout`` now operates on readonly branches as well
+      as readwrite branches. This fixes bug #39542. (Robert Collins)
+
+    * ``bzr bind`` no longer synchronises history with the master branch.
+      Binding should be followed by an update or push to synchronise the 
+      two branches. This is closely related to the fix for bug #39542.
+      (Robert Collins)
+
     * ``bzrlib.lazy_import.lazy_import`` function to create on-demand 
       objects.  This allows all imports to stay at the global scope, but
       modules will not actually be imported if they are not used.
       (John Arbash Meinel)
 
+    * Support bzr:// and bzr+ssh:// urls to work with the new RPC-based
+      transport which will be used with the upcoming high-performance smart
+      server. The new command ``bzr serve`` will invoke bzr in server mode,
+      which processes these requests. (Andrew Bennetts, Robert Collins, Martin
+      Pool)
+
+    * New command ``bzr version-info`` which can be used to get a summary
+      of the current state of the tree. This is especially useful as part
+      of a build commands. See ``doc/version_info.txt`` for more information 
+      (John Arbash Meinel)
+
   BUG FIXES:
+
+    * 'bzr inventory [FILE...]' allows restricting the file list to a
+      specific set of files. (John Arbash Meinel, #3631)
+
+    * Don't abort when annotating empty files (John Arbash Meinel, #56814)
+
+    * Add ``Stanza.to_unicode()`` which can be passed to another Stanza
+      when nesting stanzas. Also, add ``read_stanza_unicode`` to handle when
+      reading a nested Stanza. (John Arbash Meinel)
+
+    * Transform._set_mode() needs to stat the right file. 
+      (John Arbash Meinel, #56549)
+
+    * Raise WeaveFormatError rather than StopIteration when trying to read
+      an empty Weave file. (John Arbash Meinel, #46871)
+
+    * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
+      (Vincent Ladeuil, #59835)
 
     * Handle boundary="" lines properly to allow access through a Squid proxy.
       (John Arbash Meinel, #57723)
@@ -39,6 +129,29 @@ IN DEVELOPMENT
 
     * Don't use preexec_fn on win32, as it is not supported by subprocess.
       (John Arbash Meinel)
+
+    * Skip specific tests when the dependencies aren't met. This includes
+      some ``setup.py`` tests when ``python-dev`` is not available, and
+      some tests that depend on paramiko. (John Arbash Meinel, Mattheiu Moy)
+
+    * Fallback to Paramiko properly, if no ``ssh`` executable exists on
+      the system. (Andrew Bennetts, John Arbash Meinel)
+
+    * ``Branch.bind(other_branch)`` no longer takes a write lock on the
+      other branch, and will not push or pull between the two branches.
+      API users will need to perform a push or pull or update operation if they
+      require branch synchronisation to take place. (Robert Collins, #47344)
+
+    * When creating a tarball or zipfile export, export unicode names as utf-8
+      paths. This may not work perfectly on all platforms, but has the best
+      chance of working in the common case. (John Arbash Meinel, #56816)
+
+    * When committing, only files that exist in working tree or basis tree
+      may be specified (Aaron Bentley, #50793)
+
+  PORTABILITY:
+
+    * Fixes to run on Python 2.5 (Brian M. Carlson, Martin Pool, Marien Zwart)
 
   INTERNALS:
 
@@ -81,7 +194,51 @@ IN DEVELOPMENT
     * WorkingTree.pending_merges is deprecated.  Please use the get_parent_ids
       (introduced in 0.10) method instead. (Robert Collins)
 
-bzr 0.10.0RC1  2006-08-28
+    * WorkingTree has a new lock_tree_write method which locks the branch for
+      read rather than write. This is appropriate for actions which only need
+      the branch data for reference rather than mutation. A new decorator
+      needs_tree_write_lock is provided in the workingtree module. Like the
+      needs_read_lock and needs_write_lock decorators this allows static 
+      declaration of the locking requirements of a function to ensure that
+      a lock is taken out for casual scripts. (Robert Collins, #54107)
+
+    * All WorkingTree methods which write to the tree, but not to the branch
+      have been converted to use ``needs_tree_write_lock`` rather than 
+      ``needs_write_lock``. Also converted is the revert, conflicts and tree
+      transform modules. This provides a modest performance improvement on 
+      metadir style trees, due to the reduce lock-acquisition, and a more
+      significant performance improvement on lightweight checkouts from 
+      remote branches, where trivial operations used to pay a significant 
+      penalty. It also provides the basis for allowing readonly checkouts.
+      (Robert Collins)
+
+    * Special case importing the standard library 'copy' module. This shaves
+      off 40ms of startup time, while retaining compatibility. See:
+      ``bzrlib/inspect_for_copy.py`` for more details. (John Arbash Meinel)
+
+    * WorkingTree has a new parent class MutableTree which represents the 
+      specialisations of Tree which are able to be altered. (Robert Collins)
+
+    * New methods mkdir and put_file_bytes_non_atomic on MutableTree that
+      mutate the tree and its contents. (Robert Collins)
+
+    * Transport behaviour at the root of the URL is now defined and tested.
+      (Andrew Bennetts, Robert Collins)
+
+  TESTING:
+
+    * New test helper classs MemoryTree. This is typically accessed via
+      ``self.make_branch_and_memory_tree()`` in test cases. (Robert Collins)
+      
+    * Add start_bzr_subprocess and stop_bzr_subprocess to allow test code to
+      continue running concurrently with a subprocess of bzr. (Andrew Bennetts,
+      Robert Collins)
+
+    * Add a new method ``Transport.get_smart_client()``. This is provided to
+      allow upgrades to a richer interface than the VFS one provided by
+      Transport. (Andrew Bennetts, Martin Pool)
+
+bzr 0.10  2006-08-29
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
@@ -139,6 +296,9 @@ bzr 0.10.0RC1  2006-08-28
     * Testament handles more cases when content is unicode. Specific bug was
       in handling of revision properties. (John Arbash Meinel, Holger Krekel,
       #54723)
+
+    * The bzr selftest was failing on installed versions due to a bug in a new
+      test helper. (John Arbash Meinel, Robert Collins, #58057)
 
   INTERNALS:
 

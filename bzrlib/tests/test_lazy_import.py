@@ -97,7 +97,11 @@ class TestScopeReplacer(TestCase):
     """
 
     def test_object(self):
-
+        """ScopeReplacer can create an instance in local scope.
+        
+        An object should appear in globals() by constructing a ScopeReplacer,
+        and it will be replaced with the real object upon the first request.
+        """
         actions = []
         InstrumentedReplacer.use_actions(actions)
         TestClass.use_actions(actions)
@@ -114,8 +118,12 @@ class TestScopeReplacer(TestCase):
         else:
             self.fail('test_obj1 was not supposed to exist yet')
 
+        orig_globals = set(globals().keys())
+
         InstrumentedReplacer(scope=globals(), name='test_obj1',
                              factory=factory)
+
+        new_globals = set(globals().keys())
 
         # We can't use isinstance() because that uses test_obj1.__class__
         # and that goes through __getattribute__ which would activate
@@ -132,6 +140,44 @@ class TestScopeReplacer(TestCase):
                           ('foo', 1),
                           ('foo', 2),
                          ], actions)
+
+    def test_replace_side_effects(self):
+        """Creating a new object should only create one entry in globals.
+
+        And only that entry even after replacement.
+        """
+        try:
+            test_scope1
+        except NameError:
+            # test_scope1 shouldn't exist yet
+            pass
+        else:
+            self.fail('test_scope1 was not supposed to exist yet')
+
+        # ignore the logged actions
+        TestClass.use_actions([])
+
+        def factory(replacer, scope, name):
+            return TestClass()
+
+        orig_globals = set(globals().keys())
+
+        lazy_import.ScopeReplacer(scope=globals(), name='test_scope1',
+                                  factory=factory)
+
+        new_globals = set(globals().keys())
+
+        self.assertEqual(lazy_import.ScopeReplacer,
+                         object.__getattribute__(test_scope1, '__class__'))
+        self.assertEqual('foo', test_scope1.foo(1))
+        self.assertIsInstance(test_scope1, TestClass)
+
+        final_globals = set(globals().keys())
+
+        self.assertEqual(set(['test_scope1']), new_globals - orig_globals)
+        self.assertEqual(set(), orig_globals - new_globals)
+        self.assertEqual(set(), final_globals - new_globals)
+        self.assertEqual(set(), new_globals - final_globals)
 
     def test_class(self):
         actions = []

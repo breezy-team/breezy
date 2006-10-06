@@ -20,6 +20,14 @@ At format 7 this was split out into Branch, Repository and Checkout control
 directories.
 """
 
+# TODO: remove unittest dependency; put that stuff inside the test suite
+
+# TODO: The Format probe_transport seems a bit redundant with just trying to
+# open the bzrdir. -- mbp
+#
+# TODO: Can we move specific formats into separate modules to make this file
+# smaller?
+
 from cStringIO import StringIO
 import os
 
@@ -89,6 +97,11 @@ class BzrDir(object):
     def can_convert_format(self):
         """Return true if this bzrdir is one whose format we can convert from."""
         return True
+
+    def check_conversion_target(self, target_format):
+        target_repo_format = target_format.repository_format
+        source_repo_format = self._format.repository_format
+        source_repo_format.check_conversion_target(target_repo_format)
 
     @staticmethod
     def _check_supported(format, allow_unsupported):
@@ -296,7 +309,7 @@ class BzrDir(object):
         This will use the current default BzrDirFormat, and use whatever 
         repository format that that uses for bzrdirformat.create_repository.
 
-        ;param shared: Create a shared repository rather than a standalone
+        :param shared: Create a shared repository rather than a standalone
                        repository.
         The Repository object is returned.
 
@@ -317,7 +330,7 @@ class BzrDir(object):
         repository format that that uses for bzrdirformat.create_workingtree,
         create_branch and create_repository.
 
-        The WorkingTree object is returned.
+        :return: The WorkingTree object.
         """
         t = get_transport(safe_unicode(base))
         if not isinstance(t, LocalTransport):
@@ -332,6 +345,21 @@ class BzrDir(object):
         revision_id: create it as of this revision id.
         """
         raise NotImplementedError(self.create_workingtree)
+
+    def destroy_workingtree(self):
+        """Destroy the working tree at this BzrDir.
+
+        Formats that do not support this may raise UnsupportedOperation.
+        """
+        raise NotImplementedError(self.destroy_workingtree)
+
+    def destroy_workingtree_metadata(self):
+        """Destroy the control files for the working tree at this BzrDir.
+
+        The contents of working tree files are not affected.
+        Formats that do not support this may raise UnsupportedOperation.
+        """
+        raise NotImplementedError(self.destroy_workingtree_metadata)
 
     def find_repository(self):
         """Find the repository that should be used for a_bzrdir.
@@ -464,10 +492,18 @@ class BzrDir(object):
         _unsupported is a private parameter to the BzrDir class.
         """
         t = get_transport(base)
-        # mutter("trying to open %r with transport %r", base, t)
-        format = BzrDirFormat.find_format(t)
+        return BzrDir.open_from_transport(t, _unsupported=_unsupported)
+
+    @staticmethod
+    def open_from_transport(transport, _unsupported=False):
+        """Open a bzrdir within a particular directory.
+
+        :param transport: Transport containing the bzrdir.
+        :param _unsupported: private.
+        """
+        format = BzrDirFormat.find_format(transport)
         BzrDir._check_supported(format, _unsupported)
-        return format.open(t, _found=True)
+        return format.open(transport, _found=True)
 
     def open_branch(self, unsupported=False):
         """Open the branch object at this BzrDir if one is present.
@@ -507,11 +543,9 @@ class BzrDir(object):
         url = a_transport.base
         while True:
             try:
-                format = BzrDirFormat.find_format(a_transport)
-                BzrDir._check_supported(format, False)
-                return format.open(a_transport), urlutils.unescape(a_transport.relpath(url))
+                result = BzrDir.open_from_transport(a_transport)
+                return result, urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
-                ## mutter('not a branch in: %r %s', a_transport.base, e)
                 pass
             new_t = a_transport.clone('..')
             if new_t.base == a_transport.base:
@@ -567,6 +601,28 @@ class BzrDir(object):
         except errors.NoWorkingTree:
             return False
 
+    def cloning_metadir(self, basis=None):
+        """Produce a metadir suitable for cloning with"""
+        def related_repository(bzrdir):
+            try:
+                branch = bzrdir.open_branch()
+                return branch.repository
+            except errors.NotBranchError:
+                source_branch = None
+                return bzrdir.open_repository()
+        result_format = self._format.__class__()
+        try:
+            try:
+                source_repository = related_repository(self)
+            except errors.NoRepositoryPresent:
+                if basis is None:
+                    raise
+                source_repository = related_repository(self)
+            result_format.repository_format = source_repository._format
+        except errors.NoRepositoryPresent:
+            pass
+        return result_format
+
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
@@ -582,7 +638,8 @@ class BzrDir(object):
             itself to download less data.
         """
         self._make_tail(url)
-        result = self._format.initialize(url)
+        cloning_format = self.cloning_metadir(basis)
+        result = cloning_format.initialize(url)
         basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
         try:
             source_branch = self.open_branch()
@@ -696,6 +753,15 @@ class BzrDirPreSplitOut(BzrDir):
             else:
                 result.set_parent_ids([revision_id])
         return result
+
+    def destroy_workingtree(self):
+        """See BzrDir.destroy_workingtree."""
+        raise errors.UnsupportedOperation(self.destroy_workingtree, self)
+
+    def destroy_workingtree_metadata(self):
+        """See BzrDir.destroy_workingtree_metadata."""
+        raise errors.UnsupportedOperation(self.destroy_workingtree_metadata, 
+                                          self)
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
@@ -841,6 +907,17 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.create_workingtree."""
         from bzrlib.workingtree import WorkingTreeFormat
         return WorkingTreeFormat.get_default_format().initialize(self, revision_id)
+
+    def destroy_workingtree(self):
+        """See BzrDir.destroy_workingtree."""
+        wt = self.open_workingtree()
+        repository = wt.branch.repository
+        empty = repository.revision_tree(bzrlib.revision.NULL_REVISION)
+        wt.revert([], old_tree=empty)
+        self.destroy_workingtree_metadata()
+
+    def destroy_workingtree_metadata(self):
+        self.transport.delete_tree('checkout')
 
     def _get_mkdir_mode(self):
         """Figure out the mode to use when creating a bzrdir subdir."""
@@ -1063,6 +1140,10 @@ class BzrDirFormat(object):
         """
         return True
 
+    def same_model(self, target_format):
+        return (self.repository_format.rich_root_data == 
+            target_format.rich_root_data)
+
     @classmethod
     def known_formats(klass):
         """Return all the known formats.
@@ -1184,7 +1265,7 @@ class BzrDirFormat4(BzrDirFormat):
     def __return_repository_format(self):
         """Circular import protection."""
         from bzrlib.repository import RepositoryFormat4
-        return RepositoryFormat4(self)
+        return RepositoryFormat4()
     repository_format = property(__return_repository_format)
 
 
@@ -1244,7 +1325,7 @@ class BzrDirFormat5(BzrDirFormat):
     def __return_repository_format(self):
         """Circular import protection."""
         from bzrlib.repository import RepositoryFormat5
-        return RepositoryFormat5(self)
+        return RepositoryFormat5()
     repository_format = property(__return_repository_format)
 
 
@@ -1303,7 +1384,7 @@ class BzrDirFormat6(BzrDirFormat):
     def __return_repository_format(self):
         """Circular import protection."""
         from bzrlib.repository import RepositoryFormat6
-        return RepositoryFormat6(self)
+        return RepositoryFormat6()
     repository_format = property(__return_repository_format)
 
 
@@ -1549,6 +1630,7 @@ class ConvertBzrDir4To5(Converter):
         assert rev_id not in self.converted_revs
         old_inv_xml = self.branch.repository.inventory_store.get(rev_id).read()
         inv = xml4.serializer_v4.read_inventory_from_string(old_inv_xml)
+        inv.revision_id = rev_id
         rev = self.revisions[rev_id]
         if rev.inventory_sha1:
             assert rev.inventory_sha1 == sha_string(old_inv_xml), \
