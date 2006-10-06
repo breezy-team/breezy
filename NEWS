@@ -3,6 +3,11 @@ IN DEVELOPMENT
   IMPROVEMENTS:
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
 
+    * ``bzr`` now uses lazy importing to reduce the startup time. This has
+      a moderate effect on lots of actions, especially ones that have
+      little to do. For example ``bzr rocks`` time is down to 168ms from
+      283ms. (John Arbash Meinel)
+
   INTERNALS:
 
     * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
