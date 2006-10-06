@@ -37,6 +37,7 @@ from bzrlib import (
     osutils,
     repository,
     transport,
+    tree as _mod_tree,
     ui,
     urlutils,
     )
@@ -57,7 +58,6 @@ from bzrlib.option import Option
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 from bzrlib.transport.local import LocalTransport
-import bzrlib.tree
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -397,7 +397,7 @@ class cmd_inventory(Command):
             trees = [tree]
 
         if file_list is not None:
-            file_ids = bzrlib.tree.find_ids_across_trees(file_list, trees,
+            file_ids = _mod_tree.find_ids_across_trees(file_list, trees,
                                                       require_versioned=True)
             # find_ids_across_trees may include some paths that don't
             # exist in 'tree'.
@@ -826,11 +826,10 @@ class cmd_renames(Command):
 
     @display_command
     def run(self, dir=u'.'):
-        from bzrlib.tree import find_renames
         tree = WorkingTree.open_containing(dir)[0]
         old_inv = tree.basis_tree().inventory
         new_inv = tree.read_working_inventory()
-        renames = list(find_renames(old_inv, new_inv))
+        renames = list(_mod_tree.find_renames(old_inv, new_inv))
         renames.sort()
         for old_name, new_name in renames:
             self.outf.write("%s => %s\n" % (old_name, new_name))
