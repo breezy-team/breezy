@@ -58,7 +58,6 @@ from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 from bzrlib.transport.local import LocalTransport
 import bzrlib.tree
-from bzrlib.workingtree import WorkingTree
 
 
 def tree_files(file_list, default_branch=u'.'):
