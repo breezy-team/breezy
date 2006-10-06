@@ -183,6 +183,14 @@ class InvalidRevisionId(BzrNewError):
         self.branch = branch
 
 
+class InventoryModified(BzrNewError):
+    """The current inventory for the tree %(tree)r has been modified, so a clean inventory cannot be read without data loss."""
+
+    def __init__(self, tree):
+        BzrNewError.__init__(self)
+        self.tree = tree
+
+
 class NoSuchId(BzrNewError):
     """The file id %(file_id)s is not present in the tree %(tree)s."""
     
@@ -210,6 +218,14 @@ class NotLocalUrl(BzrNewError):
     def __init__(self, url):
         BzrNewError.__init__(self)
         self.url = url
+
+
+class NotWriteLocked(BzrNewError):
+    """%(not_locked)r is not write locked but needs to be."""
+
+    def __init__(self, not_locked):
+        BzrNewError.__init__(self)
+        self.not_locked = not_locked
 
 
 class BzrCommandError(BzrNewError):
@@ -897,6 +913,14 @@ class ParseConfigError(BzrError):
         message = "Error(s) parsing config file %s:\n%s" % \
             (filename, ('\n'.join(e.message for e in errors)))
         BzrError.__init__(self, message)
+
+
+class NoEmailInUsername(BzrNewError):
+    """%(username)r does not seem to contain a reasonable email address"""
+
+    def __init__(self, username):
+        BzrNewError.__init__(self)
+        self.username = username
 
 
 class SigningFailed(BzrError):
