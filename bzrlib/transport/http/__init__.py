@@ -24,6 +24,7 @@ import errno
 import mimetools
 import os
 import posixpath
+import random
 import re
 import sys
 import urlparse
@@ -31,8 +32,11 @@ import urllib
 from warnings import warn
 
 # TODO: load these only when running http tests
-import BaseHTTPServer, SimpleHTTPServer, socket, time
+import BaseHTTPServer
+from SimpleHTTPServer import SimpleHTTPRequestHandler
+import socket
 import threading
+import time
 
 from bzrlib import errors
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
@@ -418,7 +422,7 @@ class BadWebserverPath(ValueError):
         return 'path %s is not in %s' % self.args
 
 
-class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
         self.server.test_case.log('webserver - %s - - [%s] %s "%s" "%s"',
@@ -461,6 +465,112 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             return
         method = getattr(self, mname)
         method()
+
+    _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)$')
+    _tail_regexp = re.compile(r'^-(?P<tail>\d+)$')
+
+    def parse_ranges(self, ranges_header):
+        """Parse the range header value and returns ranges and tail"""
+        tail = 0
+        ranges = []
+        assert ranges_header.startswith('bytes=')
+        ranges_header = ranges_header[len('bytes='):]
+        for range_str in ranges_header.split(','):
+            range_match = self._range_regexp.match(range_str)
+            if range_match is not None:
+                ranges.append((int(range_match.group('start')),
+                               int(range_match.group('end'))))
+            else:
+                tail_match = self._tail_regexp.match(range_str)
+                if tail_match is not None:
+                    tail = int(tail_match.group('tail'))
+        return tail, ranges
+
+    def send_range_content(self, file, start, length):
+        file.seek(start)
+        self.wfile.write(file.read(length))
+
+    def get_single_range(self, file, file_size, start, end):
+        self.send_response(206)
+        length = end - start + 1
+        self.send_header('Accept-Ranges', 'bytes')
+        self.send_header("Content-Length", "%d" % length)
+
+        self.send_header("Content-type", 'application/octet-stream')
+        self.send_header("Content-Range", "bytes %d-%d/%d" % (start,
+                                                              end,
+                                                              file_size))
+        self.end_headers()
+        self.send_range_content(file, start, length)
+
+    def get_multiple_ranges(self, file, file_size, ranges):
+        self.send_response(206)
+        self.send_header('Accept-Ranges', 'bytes')
+        boundary = "%d" % random.randint(0,0x7FFFFFFF)
+        self.send_header("Content-Type",
+                         "multipart/byteranges; boundary=%s" % boundary)
+        self.end_headers()
+        for (start, end) in ranges:
+            self.wfile.write("--%s\r\n" % boundary)
+            self.send_header("Content-type", 'application/octet-stream')
+            self.send_header("Content-Range", "bytes %d-%d/%d" % (start,
+                                                                  end,
+                                                                  file_size))
+            self.end_headers()
+            self.send_range_content(file, start, end - start + 1)
+            self.wfile.write("--%s\r\n" % boundary)
+            pass
+
+    def do_GET(self):
+        """Serve a GET request.
+
+        Handles the Range header.
+        """
+
+        path = self.translate_path(self.path)
+        ranges_header_value = self.headers.get('Range')
+        if ranges_header_value is None or os.path.isdir(path):
+            # Let the mother class handle most cases
+            return SimpleHTTPRequestHandler.do_GET(self)
+
+        try:
+            # Always read in binary mode. Opening files in text
+            # mode may cause newline translations, making the
+            # actual size of the content transmitted *less* than
+            # the content-length!
+            file = open(path, 'rb')
+        except IOError:
+            self.send_error(404, "File not found")
+            return None
+
+        file_size = os.fstat(file.fileno())[6]
+        tail, ranges = self.parse_ranges(ranges_header_value)
+        # Normalize tail into ranges
+        if tail != 0:
+            ranges.append((file_size - tail, file_size))
+
+        ranges_valid = True
+        if len(ranges) == 0:
+            ranges_valid = False
+        else:
+            for (start, end) in ranges:
+                if start >= file_size or end >= file_size:
+                    ranges_valid = False
+                    break
+        if not ranges_valid:
+            # RFC2616 14-16 says that invalid Range headers
+            # should be ignored and in that case, the whole file
+            # should be returned as if no Range header was
+            # present
+            file.close() # Will be reopened by the following call
+            return SimpleHTTPRequestHandler.do_GET(self)
+
+        if len(ranges) == 1:
+            (start, end) = ranges[0]
+            self.get_single_range(file, file_size, start, end)
+        else:
+            self.get_multiple_ranges(file, file_size, ranges)
+        file.close()
 
     if sys.platform == 'win32':
         # On win32 you cannot access non-ascii filenames without
@@ -579,6 +689,7 @@ class HttpServer(Server):
         # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
         return 'http://127.0.0.1:1/'
+
 
 class WallRequestHandler(TestingHTTPRequestHandler):
     """Whatever request comes in, close the connection"""

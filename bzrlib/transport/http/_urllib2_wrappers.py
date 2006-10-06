@@ -657,7 +657,7 @@ class Opener(object):
             HTTPDefaultErrorHandler,
             )
         self.open = self._opener.open
-        if DEBUG > 0:
+        if DEBUG >= 2:
             # When dealing with handler order, it's easy to mess
             # things up, the following will help understand which
             # handler is used, when and for what.

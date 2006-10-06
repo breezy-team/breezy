@@ -1290,6 +1290,9 @@ class TransportTests(TestTransportImplementation):
         else:
             transport.put_bytes('a', '0123456789')
 
+        d = list(transport.readv('a', ((0, 1),)))
+        self.assertEqual(d[0], (0, '0'))
+
         d = list(transport.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
         self.assertEqual(d[0], (0, '0'))
         self.assertEqual(d[1], (1, '1'))

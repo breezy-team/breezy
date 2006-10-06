@@ -38,6 +38,9 @@ IN DEVELOPMENT
       state, but most tests should not need that and should be converted to
       TestCaseWithMemoryTransport. (Robert Collins)
 
+    * TestingHTTPRequestHandler really handles the Range header
+      (previously it was ignoring it and returning the whole file,).
+
 bzr 0.11  2006-10-02
 
     * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
