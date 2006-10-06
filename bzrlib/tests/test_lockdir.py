@@ -22,6 +22,7 @@ import time
 
 import bzrlib
 from bzrlib import (
+    config,
     osutils,
     )
 from bzrlib.errors import (
@@ -590,3 +591,12 @@ class TestLockDir(TestCaseWithTransport):
         self.assertContainsRe(info_list[1],
                               r'^held by .* on host .* \[process #\d*\]$')
         self.assertContainsRe(info_list[2], r'locked \d+ seconds? ago$')
+
+    def test_lock_without_email(self):
+        global_config = config.GlobalConfig()
+        # Intentionally has no email address
+        global_config.set_user_option('email', 'User Identity')
+        ld1 = self.get_lock()
+        ld1.create()
+        ld1.lock_write()
+        ld1.unlock()
