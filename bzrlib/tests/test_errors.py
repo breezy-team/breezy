@@ -26,6 +26,13 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_inventory_modified(self):
+        error = errors.InventoryModified("a tree to be repred")
+        self.assertEqualDiff("The current inventory for the tree 'a tree to "
+            "be repred' has been modified, so a clean inventory cannot be "
+            "read without data loss.",
+            str(error))
+
     def test_no_repo(self):
         dir = bzrdir.BzrDir.create(self.get_url())
         error = errors.NoRepositoryPresent(dir)
@@ -44,6 +51,12 @@ class TestErrors(TestCaseWithTransport):
             "atree.",
             str(error))
         self.assertIsInstance(error, errors.NoSuchRevision)
+
+    def test_not_write_locked(self):
+        error = errors.NotWriteLocked('a thing to repr')
+        self.assertEqualDiff("'a thing to repr' is not write locked but needs "
+            "to be.",
+            str(error))
 
     def test_up_to_date(self):
         error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
