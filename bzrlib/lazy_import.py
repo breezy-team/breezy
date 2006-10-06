@@ -19,10 +19,6 @@
 This includes waiting to import a module until it is actually used.
 """
 
-from bzrlib import (
-    errors,
-    )
-
 
 class ScopeReplacer(object):
     """A lazy object that will replace itself in the appropriate scope.
@@ -349,3 +345,12 @@ def lazy_import(scope, text, lazy_import_class=None):
     # This is just a helper around ImportProcessor.lazy_import
     proc = ImportProcessor(lazy_import_class=lazy_import_class)
     return proc.lazy_import(scope, text)
+
+
+# The only module that this module depends on is 'bzrlib.errors'. But it
+# can actually be imported lazily, since we only need it if there is a
+# problem.
+
+lazy_import(globals(), """
+from bzrlib import errors
+""")
