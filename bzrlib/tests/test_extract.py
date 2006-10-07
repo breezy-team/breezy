@@ -14,7 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import errors
+from bzrlib import (
+    branch, 
+    errors,
+    )
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -32,3 +35,26 @@ class TestExtract(TestCaseWithTransport):
         self.assertRaises(errors.BzrError, wt.id2path, 'b-id')
         self.assertEqual(b_wt.basedir, wt.abspath('b'))
         self.assertEqual(wt.get_parent_ids(), b_wt.get_parent_ids())
+
+    def test_extract_in_checkout(self):
+        a_branch = self.make_branch('branch')
+        self.build_tree(['a/', 'a/b/', 'a/b/c/', 'a/b/c/d'])
+        wt = a_branch.create_checkout('a', lightweight=True)
+        wt.add(['b', 'b/c', 'b/c/d'], ['b-id', 'c-id', 'd-id'])
+        wt.commit('added files')
+        b_wt = wt.extract('b-id')
+        b_branch = branch.Branch.open('branch/b')
+        b_branch_ref = branch.Branch.open('a/b')
+        self.assertEqual(b_branch.base, b_branch_ref.base)
+
+    def test_extract_in_deep_checkout(self):
+        a_branch = self.make_branch('branch')
+        self.build_tree(['a/', 'a/b/', 'a/b/c/', 'a/b/c/d/', 'a/b/c/d/e'])
+        wt = a_branch.create_checkout('a', lightweight=True)
+        wt.add(['b', 'b/c', 'b/c/d', 'b/c/d/e/'], ['b-id', 'c-id', 'd-id',
+                'e-id'])
+        wt.commit('added files')
+        b_wt = wt.extract('d-id')
+        b_branch = branch.Branch.open('branch/b/c/d')
+        b_branch_ref = branch.Branch.open('a/b/c/d')
+        self.assertEqual(b_branch.base, b_branch_ref.base)
