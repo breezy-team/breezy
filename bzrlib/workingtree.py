@@ -885,6 +885,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if not repo.supports_rich_root():
                 raise errors.RootNotRich()
         new_branch = branch_bzrdir.create_branch()
+        new_branch.pull(self.branch)
         for parent_id in self.get_parent_ids():
             new_branch.fetch(self.branch, parent_id)
         tree_transport = self.bzrdir.root_transport.clone(sub_path)

@@ -36,6 +36,8 @@ class TestExtract(TestCaseWithTransport):
         self.assertRaises(errors.BzrError, wt.id2path, 'b-id')
         self.assertEqual(b_wt.basedir, wt.abspath('b'))
         self.assertEqual(wt.get_parent_ids(), b_wt.get_parent_ids())
+        self.assertEqual(wt.branch.last_revision(), 
+                         b_wt.branch.last_revision())
 
     def extract_in_checkout(self, a_branch):
         self.build_tree(['a/', 'a/b/', 'a/b/c/', 'a/b/c/d'])
