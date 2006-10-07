@@ -5,13 +5,8 @@ from bzrlib import bzrdir, repository, tests, workingtree
 
 class TestJoin(tests.TestCaseWithTransport):
 
-    def get_knit2_format(self):
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
-        return format
-
     def make_trees(self):
-        format = self.get_knit2_format()
+        format = bzrdir.get_knit2_format()
         base_tree = self.make_branch_and_tree('tree', format=format)
         base_tree.commit('empty commit')
         self.build_tree(['tree/subtree/', 'tree/subtree/file1'])
