@@ -1230,6 +1230,10 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
         BadInventoryFormat.__init__(self, msg=msg)
 
 
+class RootNotRich(BzrNewError):
+    """This operation requires rich root data storage"""
+
+
 class NoSmartServer(NotBranchError):
     """No smart server available at %(url)s"""
 

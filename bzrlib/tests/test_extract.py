@@ -15,7 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib import (
-    branch, 
+    branch,
+    bzrdir,
     errors,
     )
 from bzrlib.tests import TestCaseWithTransport
@@ -36,13 +37,16 @@ class TestExtract(TestCaseWithTransport):
         self.assertEqual(b_wt.basedir, wt.abspath('b'))
         self.assertEqual(wt.get_parent_ids(), b_wt.get_parent_ids())
 
-    def test_extract_in_checkout(self):
-        a_branch = self.make_branch('branch')
+    def extract_in_checkout(self, a_branch):
         self.build_tree(['a/', 'a/b/', 'a/b/c/', 'a/b/c/d'])
         wt = a_branch.create_checkout('a', lightweight=True)
         wt.add(['b', 'b/c', 'b/c/d'], ['b-id', 'c-id', 'd-id'])
         wt.commit('added files')
-        b_wt = wt.extract('b-id')
+        return wt.extract('b-id')
+
+    def test_extract_in_checkout(self):
+        a_branch = self.make_branch('branch')
+        self.extract_in_checkout(a_branch)
         b_branch = branch.Branch.open('branch/b')
         b_branch_ref = branch.Branch.open('a/b')
         self.assertEqual(b_branch.base, b_branch_ref.base)
@@ -58,3 +62,18 @@ class TestExtract(TestCaseWithTransport):
         b_branch = branch.Branch.open('branch/b/c/d')
         b_branch_ref = branch.Branch.open('a/b/c/d')
         self.assertEqual(b_branch.base, b_branch_ref.base)
+
+    def test_bad_repo_format(self):
+        repo = self.make_repository('branch', shared=True, 
+                                    format=bzrdir.get_knit1_format())
+        a_branch = repo.bzrdir.create_branch()
+        self.assertRaises(errors.RootNotRich, self.extract_in_checkout, 
+                          a_branch)
+
+    def test_good_repo_format(self):
+        repo = self.make_repository('branch', shared=True, 
+                                    format=bzrdir.get_knit2_format())
+        a_branch = repo.bzrdir.create_branch()
+        wt_b = self.extract_in_checkout(a_branch)
+        self.assertEqual(wt_b.branch.repository.bzrdir.transport.base,
+        repo.bzrdir.transport.base)

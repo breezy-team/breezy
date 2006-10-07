@@ -870,8 +870,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         sub_path = self.id2path(file_id)
         branch_transport = mkdirs(sub_path)
         if format is None:
-            format = bzrdir.BzrDirMetaFormat1()
-            format.repository_format = repository.RepositoryFormatKnit2()
+            format = bzrdir.get_knit2_format()
         try:
             branch_transport.mkdir('.')
         except errors.FileExists:
@@ -884,7 +883,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             assert repo.supports_rich_root()
         else:
             if not repo.supports_rich_root():
-                raise 'Gah'
+                raise errors.RootNotRich()
         new_branch = branch_bzrdir.create_branch()
         for parent_id in self.get_parent_ids():
             new_branch.fetch(self.branch, parent_id)
@@ -894,7 +893,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             branch.BranchReferenceFormat().initialize(tree_bzrdir, new_branch)
         else:
             tree_bzrdir = branch_bzrdir
-        wt = tree_bzrdir.create_workingtree('null:')
+        wt = tree_bzrdir.create_workingtree(NULL_REVISION)
         wt.set_parent_ids(self.get_parent_ids())
         my_inv = self.inventory
         child_inv = Inventory(root_id=None)
