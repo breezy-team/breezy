@@ -2886,6 +2886,22 @@ class cmd_join(Command):
         except errors.BadSubsumeSource, e:
             raise BzrCommandError("Cannot join %s.  %s" % (tree, e.reason))
 
+
+class cmd_split(Command):
+    """Split a tree into two trees.
+    """
+
+    takes_args = ['tree']
+
+    def run(self, tree):
+        containing_tree, subdir = WorkingTree.open_containing(tree)
+        sub_id = containing_tree.path2id(subdir)
+        if sub_id is None:
+            raise errors.NotVersionedError(subdir)
+        containing_tree.extract(sub_id)
+
+
+
 # command-line interpretation helper for merge-related commands
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
