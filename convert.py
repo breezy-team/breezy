@@ -42,6 +42,9 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True, working
 
     if os.path.isfile(url):
         tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
+        import svn
+        from svn.core import SubversionException
+        from cStringIO import StringIO
         repos = svn.repos.svn_repos_create(tmp_repos, '', '', None, None)
         try:
             svn.repos.load_fs2(repos, open(url), StringIO(), svn.repos.load_uuid_default, '', 0, 0, None)
