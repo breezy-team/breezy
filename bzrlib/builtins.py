@@ -2898,7 +2898,10 @@ class cmd_split(Command):
         sub_id = containing_tree.path2id(subdir)
         if sub_id is None:
             raise errors.NotVersionedError(subdir)
-        containing_tree.extract(sub_id)
+        try:
+            containing_tree.extract(sub_id)
+        except errors.RootNotRich:
+            raise errors.UpgradeRequired(containing_tree.branch.base)
 
 
 

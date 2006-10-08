@@ -17,7 +17,7 @@
 
 import os
 
-from bzrlib import bzrdir, repository, tests, workingtree
+from bzrlib import bzrdir, tests
 
 
 class TestSplit(tests.TestCaseWithTransport):
@@ -29,3 +29,14 @@ class TestSplit(tests.TestCaseWithTransport):
         wt.commit('rev1')
         self.run_bzr('split', 'a/b')
         self.run_bzr_error(('.* is not versioned',), 'split', 'q')
+
+    def test_split_repo_failure(self):
+        repo = self.make_repository('branch', shared=True, 
+                                    format=bzrdir.get_knit1_format())
+        a_branch = repo.bzrdir.create_branch()
+        self.build_tree(['a/', 'a/b/', 'a/b/c/', 'a/b/c/d'])
+        wt = a_branch.create_checkout('a', lightweight=True)
+        wt.add(['b', 'b/c', 'b/c/d'], ['b-id', 'c-id', 'd-id'])
+        wt.commit('added files')
+        self.run_bzr_error(('must upgrade your branch at .*a',), 'split', 
+                            'a/b')
