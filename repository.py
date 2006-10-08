@@ -295,6 +295,9 @@ See http://bazaar-vcs.org/BzrSvn for details.
         return ancestry
 
     def has_revision(self, revision_id):
+        if revision_id is None:
+            return True
+
         try:
             (path, revnum) = self.parse_revision_id(revision_id)
         except NoSuchRevision:
