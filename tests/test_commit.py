@@ -131,16 +131,18 @@ class TestCommitFromBazaar(TestCaseWithSubversionRepository):
 
     def test_commit_parents(self):
         wt = self.checkout.create_workingtree()
-        self.build_tree({'dc/foo/bla': "data"})
+        self.build_tree({'dc/foo/bla': "data", 'dc/bla': "otherdata"})
+        wt.add('bla')
+        wt.commit(message="data")
         wt.add('foo')
         wt.add('foo/bla')
         wt.set_pending_merges(["some-ghost-revision"])
         wt.commit(message="data")
-        self.assertEqual(["some-ghost-revision"],
+        self.assertEqual(["svn-v1:1@%s-" % wt.branch.repository.uuid, "some-ghost-revision"],
                          wt.branch.repository.revision_parents(
                              wt.branch.last_revision()))
         self.assertEqual("some-ghost-revision\n", 
-                self.client_get_prop(self.repos_url, "bzr:merge", 1))
+                self.client_get_prop(self.repos_url, "bzr:merge", 2))
 
 class TestPush(TestCaseWithSubversionRepository):
     def setUp(self):
