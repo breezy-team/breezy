@@ -698,8 +698,7 @@ def extract_email_address(e):
     """
     m = re.search(r'[\w+.-]+@[\w+.-]+', e)
     if not m:
-        raise errors.BzrError("%r doesn't seem to contain "
-                              "a reasonable email address" % e)
+        raise errors.NoEmailInUsername(e)
     return m.group(0)
 
 

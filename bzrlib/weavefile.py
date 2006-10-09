@@ -124,7 +124,11 @@ def _read_weave_v5(f, w):
 
     lines = iter(f.readlines())
     
-    l = lines.next()
+    try:
+        l = lines.next()
+    except StopIteration:
+        raise WeaveFormatError('invalid weave file: no header')
+
     if l != FORMAT_1:
         raise WeaveFormatError('invalid weave file header: %r' % l)
 
