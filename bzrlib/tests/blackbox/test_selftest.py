@@ -26,7 +26,7 @@ from bzrlib import (
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
                           TestCase,
-                          TestCaseInTempDir,
+                          TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
                           TestSkipped,
                           )
@@ -65,8 +65,8 @@ class TestOptions(TestCase):
         except ParamikoNotPresent:
             raise TestSkipped("Paramiko not present")
         old_transport = bzrlib.tests.default_transport
-        old_root = TestCaseInTempDir.TEST_ROOT
-        TestCaseInTempDir.TEST_ROOT = None
+        old_root = TestCaseWithMemoryTransport.TEST_ROOT
+        TestCaseWithMemoryTransport.TEST_ROOT = None
         try:
             TestOptions.current_test = "test_transport_set_to_sftp"
             stdout = self.capture('selftest --transport=sftp test_transport_set_to_sftp')
@@ -81,7 +81,7 @@ class TestOptions(TestCase):
         finally:
             bzrlib.tests.default_transport = old_transport
             TestOptions.current_test = None
-            TestCaseInTempDir.TEST_ROOT = old_root
+            TestCaseWithMemoryTransport.TEST_ROOT = old_root
 
 
 class TestRunBzr(ExternalBase):
@@ -165,12 +165,12 @@ class TestBenchmarkTests(TestCaseWithTransport):
         """bzr selftest --benchmark should not run the default test suite."""
         # We test this by passing a regression test name to --benchmark, which
         # should result in 0 rests run.
-        old_root = TestCaseInTempDir.TEST_ROOT
+        old_root = TestCaseWithMemoryTransport.TEST_ROOT
         try:
-            TestCaseInTempDir.TEST_ROOT = None
+            TestCaseWithMemoryTransport.TEST_ROOT = None
             out, err = self.run_bzr('selftest', '--benchmark', 'workingtree_implementations')
         finally:
-            TestCaseInTempDir.TEST_ROOT = old_root
+            TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
         self.assertEqual(
             'running tests...\ntests passed\n',

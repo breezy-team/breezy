@@ -28,6 +28,7 @@ from bzrlib import (
         errors,
         osutils,
         tests,
+        urlutils,
         )
 from bzrlib.transport import (
         get_transport,
@@ -586,7 +587,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # wire-to-wire, using the whole stack
         to_server = StringIO('hello\n')
         from_server = StringIO()
-        transport = local.LocalTransport('file:///')
+        transport = local.LocalTransport(urlutils.local_path_to_url('/'))
         server = smart.SmartServerPipeStreamMedium(
             to_server, from_server, transport)
         protocol = smart.SmartServerRequestProtocolOne(transport,

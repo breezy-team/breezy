@@ -196,7 +196,6 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 
 from cStringIO import StringIO
 import os
-import select
 import socket
 import tempfile
 import threading
@@ -212,6 +211,11 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.bundle.serializer import write_bundle
+try:
+    from bzrlib.transport import ssh
+except errors.ParamikoNotPresent:
+    # no paramiko.  SmartSSHClientMedium will break.
+    pass
 
 # must do this otherwise urllib can't parse the urls properly :(
 for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
@@ -884,13 +888,14 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     """
 
     def __init__(self):
-        self._homedir = os.getcwd()
+        self._homedir = urlutils.local_path_to_url(os.getcwd())[7:]
         # The server is set up by default like for ssh access: the client
         # passes filesystem-absolute paths; therefore the server must look
         # them up relative to the root directory.  it might be better to act
         # a public server and have the server rewrite paths into the test
         # directory.
-        SmartTCPServer.__init__(self, transport.get_transport("file:///"))
+        SmartTCPServer.__init__(self,
+            transport.get_transport(urlutils.local_path_to_url('/')))
         
     def setUp(self):
         """Set up server for testing"""
@@ -902,9 +907,6 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     def get_url(self):
         """Return the url of the server"""
         host, port = self._server_socket.getsockname()
-        # XXX: I think this is likely to break on windows -- self._homedir will
-        # have backslashes (and maybe a drive letter?).
-        #  -- Andrew Bennetts, 2006-08-29
         return "bzr://%s:%d%s" % (host, port, urlutils.escape(self._homedir))
 
     def get_bogus_url(self):
@@ -1743,30 +1745,24 @@ class SmartTCPTransport(SmartTransport):
         super(SmartTCPTransport, self).__init__(url, medium=medium)
 
 
-try:
-    from bzrlib.transport import ssh
-except errors.ParamikoNotPresent:
-    # no paramiko, no SSHTransport.
-    pass
-else:
-    class SmartSSHTransport(SmartTransport):
-        """Connection to smart server over SSH.
+class SmartSSHTransport(SmartTransport):
+    """Connection to smart server over SSH.
 
-        This is essentially just a factory to get 'RemoteTransport(url,
-            SmartSSHClientMedium).
-        """
+    This is essentially just a factory to get 'RemoteTransport(url,
+        SmartSSHClientMedium).
+    """
 
-        def __init__(self, url):
-            _scheme, _username, _password, _host, _port, _path = \
-                transport.split_url(url)
-            try:
-                if _port is not None:
-                    _port = int(_port)
-            except (ValueError, TypeError), e:
-                raise errors.InvalidURL(path=url, extra="invalid port %s" % 
-                    _port)
-            medium = SmartSSHClientMedium(_host, _port, _username, _password)
-            super(SmartSSHTransport, self).__init__(url, medium=medium)
+    def __init__(self, url):
+        _scheme, _username, _password, _host, _port, _path = \
+            transport.split_url(url)
+        try:
+            if _port is not None:
+                _port = int(_port)
+        except (ValueError, TypeError), e:
+            raise errors.InvalidURL(path=url, extra="invalid port %s" % 
+                _port)
+        medium = SmartSSHClientMedium(_host, _port, _username, _password)
+        super(SmartSSHTransport, self).__init__(url, medium=medium)
 
 
 def get_test_permutations():

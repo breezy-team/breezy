@@ -1909,7 +1909,7 @@ class cmd_whoami(Command):
         # display a warning if an email address isn't included in the given name.
         try:
             config.extract_email_address(name)
-        except BzrError, e:
+        except errors.NoEmailInUsername, e:
             warning('"%s" does not seem to contain an email address.  '
                     'This is allowed, but not recommended.', name)
         
