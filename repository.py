@@ -16,7 +16,7 @@
 
 import bzrlib
 from bzrlib.branch import BranchCheckResult
-from bzrlib.config import config_dir
+from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile, 
                            NoSuchRevision, NotBranchError)
 from bzrlib.graph import Graph
@@ -46,8 +46,6 @@ SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
-
-cache_dir = os.path.join(config_dir(), 'svn-cache')
 
 _unsafe = "%/-\t "
 def escape_svn_path(id):
@@ -200,6 +198,9 @@ class SvnRepository(Repository):
                            self.base)
 
     def create_cache_dir(self):
+        ensure_config_dir_exists()
+        cache_dir = os.path.join(config_dir(), 'svn-cache')
+
         if not os.path.exists(cache_dir):
             os.mkdir(cache_dir)
 
