@@ -43,6 +43,7 @@ import unittest
 import time
 
 
+from bzrlib import memorytree
 import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 import bzrlib.commands
@@ -931,10 +932,7 @@ class TestCase(unittest.TestCase):
             for env_var, value in old_env.iteritems():
                 osutils.set_or_unset_env(env_var, value)
 
-        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
-        if not os.path.isfile(bzr_path):
-            # We are probably installed. Assume sys.argv is the right file
-            bzr_path = sys.argv[0]
+        bzr_path = self.get_bzr_path()
 
         try:
             # win32 subprocess doesn't support preexec_fn
@@ -946,6 +944,14 @@ class TestCase(unittest.TestCase):
         finally:
             restore_environment()
         return process
+
+    def get_bzr_path(self):
+        """Return the path of the 'bzr' executable for this test suite."""
+        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        if not os.path.isfile(bzr_path):
+            # We are probably installed. Assume sys.argv is the right file
+            bzr_path = sys.argv[0]
+        return bzr_path
 
     def finish_bzr_subprocess(self, process, retcode=0, send_signal=None,
                               universal_newlines=False, process_args=None):
@@ -1318,6 +1324,11 @@ class TestCaseWithTransport(TestCaseInTempDir):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
+    def make_branch_and_memory_tree(self, relpath):
+        """Create a branch on the default transport and a MemoryTree for it."""
+        b = self.make_branch(relpath)
+        return memorytree.MemoryTree.create_on_branch(b)
+
     def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
 
@@ -1489,6 +1500,7 @@ def test_suite():
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
+                   'bzrlib.tests.test_memorytree',
                    'bzrlib.tests.test_merge',
                    'bzrlib.tests.test_merge3',
                    'bzrlib.tests.test_merge_core',
@@ -1528,6 +1540,7 @@ def test_suite():
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_tree',
+                   'bzrlib.tests.test_treebuilder',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',

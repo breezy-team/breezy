@@ -26,6 +26,7 @@ import stat
 import sys
 
 from bzrlib import (
+    errors,
     osutils,
     urlutils,
     )
@@ -90,6 +91,13 @@ class TransportTests(TestTransportImplementation):
                 [True, True, False, False, True, False, True, False])
         self.assertEqual(False, t.has_any(['c', 'c', 'c']))
         self.assertEqual(True, t.has_any(['b', 'b', 'b']))
+
+    def test_has_root_works(self):
+        current_transport = self.get_transport()
+        # import pdb;pdb.set_trace()
+        self.assertTrue(current_transport.has('/'))
+        root = current_transport.clone('/')
+        self.assertTrue(root.has(''))
 
     def test_get(self):
         t = self.get_transport()
@@ -1039,11 +1047,24 @@ class TransportTests(TestTransportImplementation):
         # Repeatedly go up to a parent directory until we're at the root
         # directory of this transport
         root_transport = orig_transport
-        while root_transport.clone("..").base != root_transport.base:
-            root_transport = root_transport.clone("..")
+        new_transport = root_transport.clone("..")
+        # as we are walking up directories, the path must be must be 
+        # growing less, except at the top
+        self.assertTrue(len(new_transport.base) < len(root_transport.base)
+            or new_transport.base == root_transport.base)
+        while new_transport.base != root_transport.base:
+            root_transport = new_transport
+            new_transport = root_transport.clone("..")
+            # as we are walking up directories, the path must be must be 
+            # growing less, except at the top
+            self.assertTrue(len(new_transport.base) < len(root_transport.base)
+                or new_transport.base == root_transport.base)
 
         # Cloning to "/" should take us to exactly the same location.
         self.assertEqual(root_transport.base, orig_transport.clone("/").base)
+        # the abspath of "/" from the original transport should be the same
+        # as the base at the root:
+        self.assertEqual(orig_transport.abspath("/"), root_transport.base)
 
         # At the root, the URL must still end with / as its a directory
         self.assertEqual(root_transport.base[-1], '/')
@@ -1303,3 +1324,20 @@ class TransportTests(TestTransportImplementation):
         except NoSmartServer:
             # as long as we got it we're fine
             pass
+
+    def test_readv_short_read(self):
+        transport = self.get_transport()
+        if transport.is_readonly():
+            file('a', 'w').write('0123456789')
+        else:
+            transport.put_bytes('a', '01234567890')
+
+        # This is intentionally reading off the end of the file
+        # since we are sure that it cannot get there
+        self.assertListRaises((errors.ShortReadvError, AssertionError),
+                              transport.readv, 'a', [(1,1), (8,10)])
+
+        # This is trying to seek past the end of the file, it should
+        # also raise a special error
+        self.assertListRaises(errors.ShortReadvError,
+                              transport.readv, 'a', [(12,2)])

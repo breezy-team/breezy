@@ -16,9 +16,13 @@ IN DEVELOPMENT
 
     * Commit performs one less XML parse. (Robert Collins)
 
-    * ``bzr checkout --lightweight`` now operates on readonly branches as well
-      as readwrite branches. This fixes bug #39542 for lightweight checkouts 
-      but not for heavyweight ones (the default). (Robert Collins)
+    * ``bzr checkout`` now operates on readonly branches as well
+      as readwrite branches. This fixes bug #39542. (Robert Collins)
+
+    * ``bzr bind`` no longer synchronises history with the master branch.
+      Binding should be followed by an update or push to synchronise the 
+      two branches. This is closely related to the fix for bug #39542.
+      (Robert Collins)
 
     * ``bzrlib.lazy_import.lazy_import`` function to create on-demand 
       objects.  This allows all imports to stay at the global scope, but
@@ -52,6 +56,18 @@ IN DEVELOPMENT
 
     * Don't use preexec_fn on win32, as it is not supported by subprocess.
       (John Arbash Meinel)
+
+    * Skip specific tests when the dependencies aren't met. This includes
+      some ``setup.py`` tests when ``python-dev`` is not available, and
+      some tests that depend on paramiko. (John Arbash Meinel, Mattheiu Moy)
+
+    * Fallback to Paramiko properly, if no ``ssh`` executable exists on
+      the system. (Andrew Bennetts, John Arbash Meinel)
+
+    * ``Branch.bind(other_branch)`` no longer takes a write lock on the
+      other branch, and will not push or pull between the two branches.
+      API users will need to perform a push or pull or update operation if they
+      require branch synchronisation to take place. (Robert Collins, #47344)
 
   INTERNALS:
 
@@ -116,9 +132,20 @@ IN DEVELOPMENT
       off 40ms of startup time, while retaining compatibility. See:
       ``bzrlib/inspect_for_copy.py`` for more details. (John Arbash Meinel)
 
+    * WorkingTree has a new parent class MutableTree which represents the 
+      specialisations of Tree which are able to be altered. (Robert Collins)
+
+    * New methods mkdir and put_file_bytes_non_atomic on MutableTree that
+      mutate the tree and its contents. (Robert Collins)
+
     * Transport behaviour at the root of the URL is now defined and tested.
       (Andrew Bennetts, Robert Collins)
 
+  TESTING:
+
+    * New test helper classs MemoryTree. This is typically accessed via
+      ``self.make_branch_and_memory_tree()`` in test cases. (Robert Collins)
+      
     * Add start_bzr_subprocess and stop_bzr_subprocess to allow test code to
       continue running concurrently with a subprocess of bzr. (Andrew Bennetts,
       Robert Collins)

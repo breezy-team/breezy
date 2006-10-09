@@ -15,8 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Tests of bound branches (binding, unbinding, commit, etc) command.
-"""
+"""Tests of bound branches (binding, unbinding, commit, etc) command."""
 
 import os
 from cStringIO import StringIO
@@ -235,17 +234,22 @@ class TestBoundBranches(TestCaseWithTransport):
         bzr('commit', '-m', 'merged')
         self.check_revno(3)
 
+        # After binding, the revision history should be unaltered
+        base_branch = Branch.open('../base')
+        child_branch = Branch.open('.')
+        # take a copy before
+        base_history = base_branch.revision_history()
+        child_history = child_branch.revision_history()
+
         # After a merge, trying to bind again should succeed
-        # by pushing the new change to base
+        # keeping the new change as a local commit.
         bzr('bind', '../base')
         self.check_revno(3)
-        self.check_revno(3, '../base')
+        self.check_revno(2, '../base')
 
-        # After binding, the revision history should be identical
-        child_rh = bzr('revision-history')[0]
-        os.chdir('../base')
-        base_rh = bzr('revision-history')[0]
-        self.assertEquals(child_rh, base_rh)
+        # and compare the revision history now
+        self.assertEqual(base_history, base_branch.revision_history())
+        self.assertEqual(child_history, child_branch.revision_history())
 
     def test_bind_parent_ahead(self):
         bzr = self.run_bzr
@@ -261,7 +265,8 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(1)
         bzr('bind', '../base')
 
-        self.check_revno(2)
+        # binding does not pull data:
+        self.check_revno(1)
         bzr('unbind')
 
         # Check and make sure it also works if parent is ahead multiple
@@ -272,16 +277,16 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(5)
 
         os.chdir('../child')
-        self.check_revno(2)
+        self.check_revno(1)
         bzr('bind', '../base')
-        self.check_revno(5)
+        self.check_revno(1)
 
     def test_bind_child_ahead(self):
         # test binding when the master branches history is a prefix of the 
-        # childs
+        # childs - it should bind ok but the revision histories should not
+        # be altered
         bzr = self.run_bzr
         self.create_branches()
-        return
 
         os.chdir('child')
         bzr('unbind')
@@ -290,7 +295,7 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(1, '../base')
 
         bzr('bind', '../base')
-        self.check_revno(2, '../base')
+        self.check_revno(1, '../base')
 
         # Check and make sure it also works if child is ahead multiple
         bzr('unbind')
@@ -299,9 +304,9 @@ class TestBoundBranches(TestCaseWithTransport):
         bzr('commit', '-m', 'child 5', '--unchanged')
         self.check_revno(5)
 
-        self.check_revno(2, '../base')
+        self.check_revno(1, '../base')
         bzr('bind', '../base')
-        self.check_revno(5, '../base')
+        self.check_revno(1, '../base')
 
     def test_commit_after_merge(self):
         bzr = self.run_bzr

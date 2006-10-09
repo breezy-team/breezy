@@ -458,9 +458,9 @@ class Transport(object):
             return
 
         fp = self.get(relpath)
-        return self._seek_and_read(fp, offsets)
+        return self._seek_and_read(fp, offsets, relpath)
 
-    def _seek_and_read(self, fp, offsets):
+    def _seek_and_read(self, fp, offsets, relpath='<unknown>'):
         """An implementation of readv that uses fp.seek and fp.read.
 
         This uses _coalesce_offsets to issue larger reads and fewer seeks.
@@ -488,6 +488,9 @@ class Transport(object):
             #       benchmarked.
             fp.seek(c_offset.start)
             data = fp.read(c_offset.length)
+            if len(data) < c_offset.length:
+                raise errors.ShortReadvError(relpath, c_offset.start,
+                            c_offset.length, actual=len(data))
             for suboffset, subsize in c_offset.ranges:
                 key = (c_offset.start+suboffset, subsize)
                 data_map[key] = data[suboffset:suboffset+subsize]
