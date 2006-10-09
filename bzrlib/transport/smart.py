@@ -47,13 +47,13 @@ URLs that include ~ should probably be passed across to the server verbatim
 and the server can expand them.  This will proably not be meaningful when 
 limited to a directory?
 
-At the bottom level socket, pipes, HTTP server.  For sockets, we have the
-idea that you have multiple requests and get have a read error because the
-other side did shutdown sd send.  For pipes we have read pipe which will have a
-zero read which marks end-of-file.  For HTTP server environment there is not
-end-of-stream because each request coming into the server is independent.
+At the bottom level socket, pipes, HTTP server.  For sockets, we have the idea
+that you have multiple requests and get a read error because the other side did
+shutdown.  For pipes we have read pipe which will have a zero read which marks
+end-of-file.  For HTTP server environment there is not end-of-stream because
+each request coming into the server is independent.
 
-So we need a wrapper around pipes and sockets to seperate out reqeusts from
+So we need a wrapper around pipes and sockets to seperate out requests from
 substrate and this will give us a single model which is consist for HTTP,
 sockets and pipes.
 
@@ -67,7 +67,7 @@ Server-side
   | bytes.
   v
 
-PROTOCOL  (serialisation, deserialisation)  accepts bytes for one
+PROTOCOL  (serialization, deserialization)  accepts bytes for one
           request, decodes according to internal state, pushes
           structured data to handler.  accepts structured data from
           handler and encodes and writes to the medium.  factory for
@@ -97,7 +97,7 @@ Client-side
   | structured data
   v
 
-PROTOCOL  (serialisation, deserialisation)  accepts structured data for one
+PROTOCOL  (serialization, deserialization)  accepts structured data for one
           request, encodes and writes to the medium.  Reads bytes from the
           medium, decodes and allows the client to read structured data.
   ^
@@ -193,16 +193,9 @@ PROTOCOL  (serialisation, deserialisation)  accepts structured data for one
 # TODO: SmartBzrDir class, proxying all Branch etc methods across to another
 # branch doing file-level operations.
 #
-# TODO: jam 20060915 _decode_tuple is acting directly on input over
-#       the socket, and it assumes everything is UTF8 sections separated
-#       by \001. Which means a request like '\002' Will abort the connection
-#       because of a UnicodeDecodeError. It does look like invalid data will
-#       kill the SmartServerStreamMedium, but only with an abort + exception, and 
-#       the overall server shouldn't die.
 
 from cStringIO import StringIO
 import os
-import select
 import socket
 import tempfile
 import threading
@@ -218,6 +211,11 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.bundle.serializer import write_bundle
+try:
+    from bzrlib.transport import ssh
+except errors.ParamikoNotPresent:
+    # no paramiko.  SmartSSHClientMedium will break.
+    pass
 
 # must do this otherwise urllib can't parse the urls properly :(
 for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
@@ -235,7 +233,12 @@ def _decode_tuple(req_line):
         return None
     if req_line[-1] != '\n':
         raise errors.SmartProtocolError("request %r not terminated" % req_line)
-    return tuple((a.decode('utf-8') for a in req_line[:-1].split('\x01')))
+    try:
+        return tuple((a.decode('utf-8') for a in req_line[:-1].split('\x01')))
+    except UnicodeDecodeError:
+        raise errors.SmartProtocolError(
+            "one or more arguments of request %r are not valid UTF-8"
+            % req_line)
 
 
 def _encode_tuple(args):
@@ -885,13 +888,14 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     """
 
     def __init__(self):
-        self._homedir = os.getcwd()
+        self._homedir = urlutils.local_path_to_url(os.getcwd())[7:]
         # The server is set up by default like for ssh access: the client
         # passes filesystem-absolute paths; therefore the server must look
         # them up relative to the root directory.  it might be better to act
         # a public server and have the server rewrite paths into the test
         # directory.
-        SmartTCPServer.__init__(self, transport.get_transport("file:///"))
+        SmartTCPServer.__init__(self,
+            transport.get_transport(urlutils.local_path_to_url('/')))
         
     def setUp(self):
         """Set up server for testing"""
@@ -903,9 +907,6 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     def get_url(self):
         """Return the url of the server"""
         host, port = self._server_socket.getsockname()
-        # XXX: I think this is likely to break on windows -- self._homedir will
-        # have backslashes (and maybe a drive letter?).
-        #  -- Andrew Bennetts, 2006-08-29
         return "bzr://%s:%d%s" % (host, port, urlutils.escape(self._homedir))
 
     def get_bogus_url(self):
@@ -1744,30 +1745,24 @@ class SmartTCPTransport(SmartTransport):
         super(SmartTCPTransport, self).__init__(url, medium=medium)
 
 
-try:
-    from bzrlib.transport import ssh
-except errors.ParamikoNotPresent:
-    # no paramiko, no SSHTransport.
-    pass
-else:
-    class SmartSSHTransport(SmartTransport):
-        """Connection to smart server over SSH.
+class SmartSSHTransport(SmartTransport):
+    """Connection to smart server over SSH.
 
-        This is essentially just a factory to get 'RemoteTransport(url,
-            SmartSSHClientMedium).
-        """
+    This is essentially just a factory to get 'RemoteTransport(url,
+        SmartSSHClientMedium).
+    """
 
-        def __init__(self, url):
-            _scheme, _username, _password, _host, _port, _path = \
-                transport.split_url(url)
-            try:
-                if _port is not None:
-                    _port = int(_port)
-            except (ValueError, TypeError), e:
-                raise errors.InvalidURL(path=url, extra="invalid port %s" % 
-                    _port)
-            medium = SmartSSHClientMedium(_host, _port, _username, _password)
-            super(SmartSSHTransport, self).__init__(url, medium=medium)
+    def __init__(self, url):
+        _scheme, _username, _password, _host, _port, _path = \
+            transport.split_url(url)
+        try:
+            if _port is not None:
+                _port = int(_port)
+        except (ValueError, TypeError), e:
+            raise errors.InvalidURL(path=url, extra="invalid port %s" % 
+                _port)
+        medium = SmartSSHClientMedium(_host, _port, _username, _password)
+        super(SmartSSHTransport, self).__init__(url, medium=medium)
 
 
 def get_test_permutations():

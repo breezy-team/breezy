@@ -399,13 +399,14 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
 
     def clone(self, offset=None):
         """Return a new HttpTransportBase with root at self.base + offset
-        For now HttpTransportBase does not actually connect, so just return
-        a new HttpTransportBase object.
+
+        We leave the daughter classes take advantage of the hint
+        that it's a cloning not a raw creation.
         """
         if offset is None:
-            return self.__class__(self.base)
+            return self.__class__(self.base, self)
         else:
-            return self.__class__(self.abspath(offset))
+            return self.__class__(self.abspath(offset), self)
 
     @staticmethod
     def range_header(ranges, tail_amount):

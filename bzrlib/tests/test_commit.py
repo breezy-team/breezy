@@ -18,15 +18,18 @@
 import os
 
 import bzrlib
-from bzrlib import errors
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import (
+    errors,
+    lockdir,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
-from bzrlib.workingtree import WorkingTree
 from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import BranchConfig
 from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed, 
                            LockContention)
+from bzrlib.tests import TestCaseWithTransport
+from bzrlib.workingtree import WorkingTree
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -408,10 +411,14 @@ class TestCommit(TestCaseWithTransport):
         bound = master.sprout('bound')
         wt = bound.open_workingtree()
         wt.branch.set_bound_location(os.path.realpath('master'))
+
+        orig_default = lockdir._DEFAULT_TIMEOUT_SECONDS
         master_branch.lock_write()
         try:
+            lockdir._DEFAULT_TIMEOUT_SECONDS = 1
             self.assertRaises(LockContention, wt.commit, 'silly')
         finally:
+            lockdir._DEFAULT_TIMEOUT_SECONDS = orig_default
             master_branch.unlock()
 
     def test_commit_bound_merge(self):

@@ -181,7 +181,7 @@ class TestHttpMixins(object):
         server = self.get_readonly_server()
         http_transport = self._transport(server.get_url())
         medium = http_transport.get_smart_medium()
-        self.assertTrue(medium is http_transport)
+        self.assertIs(medium, http_transport)
         
 
 class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
