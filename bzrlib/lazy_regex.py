@@ -82,3 +82,22 @@ def lazy_compile(*args, **kwargs):
     """
     return LazyRegex(args, kwargs)
 
+
+def install_lazy_compile():
+    """Make lazy_compile the default compile mode for regex compilation.
+
+    This overrides re.compile with lazy_compile. To restore the original
+    functionality, call reset_compile().
+    """
+    re.compile = lazy_compile
+
+
+def reset_compile():
+    """Restore the original function to re.compile().
+    
+    It is safe to call reset_compile() multiple times, it will always
+    restore re.compile() to the value that existed at import time.
+    Though the first call will reset back to the original (it doesn't
+    track nesting level)
+    """
+    re.compile = _real_re_compile

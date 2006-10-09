@@ -80,3 +80,50 @@ class TestLazyCompile(tests.TestCase):
         self.assertTrue(pattern.match('foo'))
         self.assertTrue(pattern.match('Foo'))
 
+    def test_findall(self):
+        pattern = lazy_regex.lazy_compile('fo*')
+        self.assertEqual(['f', 'fo', 'foo', 'fooo'],
+                         pattern.findall('f fo foo fooo'))
+
+    def test_finditer(self):
+        pattern = lazy_regex.lazy_compile('fo*')
+        matches = [(m.start(), m.end(), m.group())
+                   for m in pattern.finditer('foo bar fop')]
+        self.assertEqual([(0, 3, 'foo'), (8, 10, 'fo')], matches)
+
+    def test_match(self):
+        pattern = lazy_regex.lazy_compile('fo*')
+        self.assertIs(None, pattern.match('baz foo'))
+        self.assertEqual('fooo', pattern.match('fooo').group())
+
+    def test_search(self):
+        pattern = lazy_regex.lazy_compile('fo*')
+        self.assertEqual('foo', pattern.search('baz foo').group())
+        self.assertEqual('fooo', pattern.search('fooo').group())
+
+    def test_split(self):
+        pattern = lazy_regex.lazy_compile('[,;]*')
+        self.assertEqual(['x', 'y', 'z'], pattern.split('x,y;z'))
+
+
+class TestInstallLazyCompile(tests.TestCase):
+
+    def setUp(self):
+        super(TestInstallLazyCompile, self).setUp()
+        self.addCleanup(lazy_regex.reset_compile)
+
+    def test_install(self):
+        lazy_regex.install_lazy_compile()
+        pattern = re.compile('foo')
+        self.assertIsInstance(pattern, lazy_regex.LazyRegex)
+
+    def test_reset(self):
+        lazy_regex.install_lazy_compile()
+        lazy_regex.reset_compile()
+        pattern = re.compile('foo')
+        self.failIf(isinstance(pattern, lazy_regex.LazyRegex),
+                    'lazy_regex.reset_compile() did not restore the original'
+                    ' compile() function %s' % (type(pattern),))
+        # but the returned object should still support regex operations
+        m = pattern.match('foo')
+        self.assertEqual('foo', m.group())
