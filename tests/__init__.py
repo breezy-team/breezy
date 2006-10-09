@@ -124,12 +124,12 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         """
         svn.client.add3(relpath, recursive, False, False, self.client_ctx)
 
-    def client_delete(self, relpaths):
+    def client_delete(self, relpath):
         """Remove specified files from working copy.
 
         :param relpath: Path to the files to remove.
         """
-        svn.client.delete2([relpaths], True, self.client_ctx)
+        svn.client.delete2([relpath], True, self.client_ctx)
 
     def client_copy(self, oldpath, newpath, revnum=None):
         """Copy file in working copy.

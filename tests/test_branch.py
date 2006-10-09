@@ -89,36 +89,225 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.assertIs(None, branch.nick)
 
     def test_fetch_replace(self):
-        repos_url = self.make_client('d', 'dc')
+        filename = os.path.join(self.test_dir, "dumpfile")
+        open(filename, 'w').write("""SVN-fs-dump-format-version: 2
 
-        self.build_tree({'dc/trunk': None, 
-                         'dc/trunk/hosts': 'hej1'})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "created trunk and added hosts") #1
+UUID: 6f95bc5c-e18d-4021-aca8-49ed51dbcb75
 
-        self.build_tree({'dc/trunk/hosts': 'hej2'})
-        self.client_commit("dc", "rev 2") #2
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
 
-        self.build_tree({'dc/trunk/hosts': 'hej3'})
-        self.client_commit("dc", "rev 3") #3
+K 8
+svn:date
+V 27
+2006-07-30T12:41:25.270824Z
+PROPS-END
 
-        self.build_tree({'dc/branches': None})
-        self.client_add("dc/branches")
-        self.client_commit("dc", "added branches") #4
+Revision-number: 1
+Prop-content-length: 94
+Content-length: 94
 
-        self.client_copy("dc/trunk", "dc/branches/foobranch")
-        self.client_commit("dc", "added branch foobranch") #5
+K 7
+svn:log
+V 0
 
-        self.client_delete("dc/branches/foobranch/hosts")
-        self.client_copy("dc/trunk/hosts", "dc/branches/foobranch/hosts", 2)
-        self.client_commit("dc", "replaced hosts") #6
+K 10
+svn:author
+V 0
 
-        self.build_tree({'dc/branches/foobranch/hosts': 'foohosts'})
-        self.client_commit("dc", "foohosts") #7
+K 8
+svn:date
+V 27
+2006-07-30T12:41:26.117512Z
+PROPS-END
 
+Node-path: trunk
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Node-path: trunk/hosts
+Node-kind: file
+Node-action: add
+Prop-content-length: 10
+Text-content-length: 4
+Text-content-md5: 771ec3328c29d17af5aacf7f895dd885
+Content-length: 14
+
+PROPS-END
+hej1
+
+Revision-number: 2
+Prop-content-length: 94
+Content-length: 94
+
+K 7
+svn:log
+V 0
+
+K 10
+svn:author
+V 0
+
+K 8
+svn:date
+V 27
+2006-07-30T12:41:27.130044Z
+PROPS-END
+
+Node-path: trunk/hosts
+Node-kind: file
+Node-action: change
+Text-content-length: 4
+Text-content-md5: 6c2479dbb342b8df96d84db7ab92c412
+Content-length: 4
+
+hej2
+
+Revision-number: 3
+Prop-content-length: 94
+Content-length: 94
+
+K 7
+svn:log
+V 0
+
+K 10
+svn:author
+V 0
+
+K 8
+svn:date
+V 27
+2006-07-30T12:41:28.114350Z
+PROPS-END
+
+Node-path: trunk/hosts
+Node-kind: file
+Node-action: change
+Text-content-length: 4
+Text-content-md5: 368cb8d3db6186e2e83d9434f165c525
+Content-length: 4
+
+hej3
+
+Revision-number: 4
+Prop-content-length: 94
+Content-length: 94
+
+K 7
+svn:log
+V 0
+
+K 10
+svn:author
+V 0
+
+K 8
+svn:date
+V 27
+2006-07-30T12:41:29.129563Z
+PROPS-END
+
+Node-path: branches
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 5
+Prop-content-length: 94
+Content-length: 94
+
+K 7
+svn:log
+V 0
+
+K 10
+svn:author
+V 0
+
+K 8
+svn:date
+V 27
+2006-07-30T12:41:31.130508Z
+PROPS-END
+
+Node-path: branches/foobranch
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 4
+Node-copyfrom-path: trunk
+
+
+Revision-number: 6
+Prop-content-length: 94
+Content-length: 94
+
+K 7
+svn:log
+V 0
+
+K 10
+svn:author
+V 0
+
+K 8
+svn:date
+V 27
+2006-07-30T12:41:33.129149Z
+PROPS-END
+
+Node-path: branches/foobranch/hosts
+Node-kind: file
+Node-action: delete
+
+Node-path: branches/foobranch/hosts
+Node-kind: file
+Node-action: add
+Node-copyfrom-rev: 2
+Node-copyfrom-path: trunk/hosts
+
+
+
+
+Revision-number: 7
+Prop-content-length: 94
+Content-length: 94
+
+K 7
+svn:log
+V 0
+
+K 10
+svn:author
+V 0
+
+K 8
+svn:date
+V 27
+2006-07-30T12:41:34.136423Z
+PROPS-END
+
+Node-path: branches/foobranch/hosts
+Node-kind: file
+Node-action: change
+Text-content-length: 8
+Text-content-md5: 0e328d3517a333a4879ebf3d88fd82bb
+Content-length: 8
+
+foohosts""")
         os.mkdir("new")
 
-        url = "svn+"+repos_url+"/branches/foobranch"
+        url = "dumpfile/branches/foobranch"
         mutter('open %r' % url)
         olddir = BzrDir.open(url)
 
@@ -126,7 +315,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         newbranch = newdir.open_branch()
 
-        uuid = olddir.open_repository().uuid
+        uuid = "6f95bc5c-e18d-4021-aca8-49ed51dbcb75"
         tree = newbranch.repository.revision_tree(
                 "svn-v1:7@%s-branches%%2ffoobranch" % uuid)
 
