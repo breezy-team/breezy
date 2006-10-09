@@ -197,8 +197,8 @@ class SmartClientMediumTests(tests.TestCase):
         input = StringIO()
         output = StringIO()
         flush_calls = []
-        def _flush(): flush_calls.append('flush')
-        output.flush = _flush
+        def logging_flush(): flush_calls.append('flush')
+        output.flush = logging_flush
         medium = smart.SmartSimplePipesClientMedium(input, output)
         # this call is here to ensure we only flush once, not on every
         # _accept_bytes call.
@@ -215,10 +215,10 @@ class SmartClientMediumTests(tests.TestCase):
         # a medium.
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('127.0.0.1', 0))
-        unopen_port = sock.getsockname()[1]
+        unopened_port = sock.getsockname()[1]
         # having vendor be invalid means that if it tries to connect via the
         # vendor it will blow up.
-        medium = smart.SmartSSHClientMedium('127.0.0.1', unopen_port,
+        medium = smart.SmartSSHClientMedium('127.0.0.1', unopened_port,
             username=None, password=None, vendor="not a vendor")
         sock.close()
 
@@ -308,7 +308,7 @@ class SmartClientMediumTests(tests.TestCase):
     
     def test_ssh_client_ignores_disconnect_when_not_connected(self):
         # Doing a disconnect on a new (and thus unconnected) SSH medium
-        # does nothing.
+        # does not fail.  It's ok to disconnect an unconnected medium.
         medium = smart.SmartSSHClientMedium(None)
         medium.disconnect()
 
@@ -327,8 +327,8 @@ class SmartClientMediumTests(tests.TestCase):
         input = StringIO()
         output = StringIO()
         flush_calls = []
-        def _flush(): flush_calls.append('flush')
-        output.flush = _flush
+        def logging_flush(): flush_calls.append('flush')
+        output.flush = logging_flush
         vendor = StringIOSSHVendor(input, output)
         medium = smart.SmartSSHClientMedium('a hostname', vendor=vendor)
         # this call is here to ensure we only flush once, not on every
@@ -343,8 +343,8 @@ class SmartClientMediumTests(tests.TestCase):
         # connect to anything.
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('127.0.0.1', 0))
-        unopen_port = sock.getsockname()[1]
-        medium = smart.SmartTCPClientMedium('127.0.0.1', unopen_port)
+        unopened_port = sock.getsockname()[1]
+        medium = smart.SmartTCPClientMedium('127.0.0.1', unopened_port)
         sock.close()
 
     def test_tcp_client_connects_on_first_use(self):
@@ -353,7 +353,7 @@ class SmartClientMediumTests(tests.TestCase):
         sock, medium = self.make_loopsocket_and_medium()
         bytes = []
         t = self.receive_bytes_on_server(sock, bytes)
-        medium._accept_bytes('abc')
+        medium.accept_bytes('abc')
         t.join()
         sock.close()
         self.assertEqual(['abc'], bytes)
@@ -361,22 +361,22 @@ class SmartClientMediumTests(tests.TestCase):
     def test_tcp_client_disconnect_does_so(self):
         # calling disconnect on the client terminates the connection.
         # we test this by forcing a short read during a socket.MSG_WAITALL
-        # call : write 2 bytes, try to read 3, and then the client disconnects.
+        # call: write 2 bytes, try to read 3, and then the client disconnects.
         sock, medium = self.make_loopsocket_and_medium()
         bytes = []
         t = self.receive_bytes_on_server(sock, bytes)
-        medium._accept_bytes('ab')
+        medium.accept_bytes('ab')
         medium.disconnect()
         t.join()
         sock.close()
         self.assertEqual(['ab'], bytes)
-        # now disconnect again : this should not do anything, if disconnection
+        # now disconnect again: this should not do anything, if disconnection
         # really did disconnect.
         medium.disconnect()
     
     def test_tcp_client_ignores_disconnect_when_not_connected(self):
         # Doing a disconnect on a new (and thus unconnected) TCP medium
-        # does nothing.
+        # does not fail.  It's ok to disconnect an unconnected medium.
         medium = smart.SmartTCPClientMedium(None, None)
         medium.disconnect()
 
@@ -445,7 +445,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         output = StringIO()
         medium = smart.SmartSimplePipesClientMedium(None, output)
         request = smart.SmartClientStreamMediumRequest(medium)
-        self.assertTrue(medium._current_request is request)
+        self.assertIs(medium._current_request, request)
 
     def test_construct_while_another_request_active_throws(self):
         # constructing a SmartClientStreamMediumRequest on a StreamMedium with
@@ -838,7 +838,7 @@ class WritableEndToEndTests(SmartTCPTests):
         # we create a real connection not a loopback one, but it will use the
         # same server and pipes
         conn2 = self.transport.clone('.')
-        self.assertTrue(self.transport._medium is conn2._medium)
+        self.assertIs(self.transport._medium, conn2._medium)
 
     def test__remote_path(self):
         self.assertEquals('/foo/bar',
@@ -1084,9 +1084,6 @@ class TestSmartProtocol(tests.TestCase):
         self.assertEqual('', protocol.excess_buffer)
         self.assertEqual('', protocol.in_buffer)
         self.assertFalse(protocol.has_dispatched)
-        # Once refactoring is complete, we don't need these assertions
-        self.assertFalse(hasattr(protocol, '_in'))
-        self.assertFalse(hasattr(protocol, '_out'))
         self.assertEqual(1, protocol.next_read_size())
 
     def test_construct_version_one_client_protocol(self):
@@ -1120,6 +1117,18 @@ class TestSmartProtocol(tests.TestCase):
         protocol.accept_bytes('\n')
         self.assertEqual("error\x01Generic bzr smart protocol error: bad request"
             " u'abc'\n", out_stream.getvalue())
+        self.assertTrue(protocol.has_dispatched)
+        self.assertEqual(1, protocol.next_read_size())
+
+    def test_accept_bytes_with_invalid_utf8_to_protocol(self):
+        out_stream = StringIO()
+        protocol = smart.SmartServerRequestProtocolOne(None, out_stream.write)
+        # the byte 0xdd is not a valid UTF-8 string.
+        protocol.accept_bytes('\xdd\n')
+        self.assertEqual(
+            "error\x01Generic bzr smart protocol error: "
+            "one or more arguments of request '\\xdd\\n' are not valid UTF-8\n",
+            out_stream.getvalue())
         self.assertTrue(protocol.has_dispatched)
         self.assertEqual(1, protocol.next_read_size())
 
@@ -1399,7 +1408,10 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
             [(0, "c")], list(remote_transport.readv("data-file", [(0,1)])))
 
     def test_bulk_data_pycurl(self):
-        self._test_bulk_data('http+pycurl')
+        try:
+            self._test_bulk_data('http+pycurl')
+        except errors.UnsupportedProtocol, e:
+            raise tests.TestSkipped(str(e))
     
     def test_bulk_data_urllib(self):
         self._test_bulk_data('http+urllib')
@@ -1429,7 +1441,10 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
         self.assertEqual(expected_reply_body, reply_body)
 
     def test_http_send_smart_request_pycurl(self):
-        self._test_http_send_smart_request('http+pycurl')
+        try:
+            self._test_http_send_smart_request('http+pycurl')
+        except errors.UnsupportedProtocol, e:
+            raise tests.TestSkipped(str(e))
 
     def test_http_send_smart_request_urllib(self):
         self._test_http_send_smart_request('http+urllib')

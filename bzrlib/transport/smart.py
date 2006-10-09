@@ -47,13 +47,13 @@ URLs that include ~ should probably be passed across to the server verbatim
 and the server can expand them.  This will proably not be meaningful when 
 limited to a directory?
 
-At the bottom level socket, pipes, HTTP server.  For sockets, we have the
-idea that you have multiple requests and get have a read error because the
-other side did shutdown sd send.  For pipes we have read pipe which will have a
-zero read which marks end-of-file.  For HTTP server environment there is not
-end-of-stream because each request coming into the server is independent.
+At the bottom level socket, pipes, HTTP server.  For sockets, we have the idea
+that you have multiple requests and get a read error because the other side did
+shutdown.  For pipes we have read pipe which will have a zero read which marks
+end-of-file.  For HTTP server environment there is not end-of-stream because
+each request coming into the server is independent.
 
-So we need a wrapper around pipes and sockets to seperate out reqeusts from
+So we need a wrapper around pipes and sockets to seperate out requests from
 substrate and this will give us a single model which is consist for HTTP,
 sockets and pipes.
 
@@ -67,7 +67,7 @@ Server-side
   | bytes.
   v
 
-PROTOCOL  (serialisation, deserialisation)  accepts bytes for one
+PROTOCOL  (serialization, deserialization)  accepts bytes for one
           request, decodes according to internal state, pushes
           structured data to handler.  accepts structured data from
           handler and encodes and writes to the medium.  factory for
@@ -97,7 +97,7 @@ Client-side
   | structured data
   v
 
-PROTOCOL  (serialisation, deserialisation)  accepts structured data for one
+PROTOCOL  (serialization, deserialization)  accepts structured data for one
           request, encodes and writes to the medium.  Reads bytes from the
           medium, decodes and allows the client to read structured data.
   ^
@@ -193,12 +193,6 @@ PROTOCOL  (serialisation, deserialisation)  accepts structured data for one
 # TODO: SmartBzrDir class, proxying all Branch etc methods across to another
 # branch doing file-level operations.
 #
-# TODO: jam 20060915 _decode_tuple is acting directly on input over
-#       the socket, and it assumes everything is UTF8 sections separated
-#       by \001. Which means a request like '\002' Will abort the connection
-#       because of a UnicodeDecodeError. It does look like invalid data will
-#       kill the SmartServerStreamMedium, but only with an abort + exception, and 
-#       the overall server shouldn't die.
 
 from cStringIO import StringIO
 import os
@@ -235,7 +229,12 @@ def _decode_tuple(req_line):
         return None
     if req_line[-1] != '\n':
         raise errors.SmartProtocolError("request %r not terminated" % req_line)
-    return tuple((a.decode('utf-8') for a in req_line[:-1].split('\x01')))
+    try:
+        return tuple((a.decode('utf-8') for a in req_line[:-1].split('\x01')))
+    except UnicodeDecodeError:
+        raise errors.SmartProtocolError(
+            "one or more arguments of request %r are not valid UTF-8"
+            % req_line)
 
 
 def _encode_tuple(args):
