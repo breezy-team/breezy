@@ -2,6 +2,9 @@
 Serving Bazaar with FastCGI
 ===========================
 
+**This feature is EXPERIMENTAL and is NOT SECURE.  It will allow access to
+arbitrary files on your server.**
+
 This document describes one way to setup a Bazaar HTTP smart server, using
 Apache 2.0 and FastCGI.
 
@@ -11,8 +14,9 @@ Example
 You have a webserver already publishing `/srv/example.com/www/code` as
 `http://example.com/code/...` with plain HTTP.  It contains bzr branches and
 directories like `/srv/example.com/www/code/branch-one` and
-`/srv/example.com/www/code/my-repo/branch-two`.  You want to provide read-only smart
-server access to these directories in addition to the existing HTTP access.
+`/srv/example.com/www/code/my-repo/branch-two`.  You want to provide read-only
+smart server access to these directories in addition to the existing HTTP
+access.
 
 Configuring Apache 2.0
 ----------------------
