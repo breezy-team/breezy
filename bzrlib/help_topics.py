@@ -56,9 +56,12 @@ def _help_on_topics(name, outfile):
     """Write out the help for topics to outfile"""
 
     topics = get_topics_list()
+    lmax = max( len(topic) for topic in topics )
+        
     for topic in topics:
         obj, comment = topics[topic]
-        outfile.write("%s\n        %s\n" % (topic, comment))
+        spaces = " "*(lmax-len(topic))
+        outfile.write("%s%s %s\n" % (topic, spaces, comment))
 
 
 def _help_on_revisionspec(name, outfile):
