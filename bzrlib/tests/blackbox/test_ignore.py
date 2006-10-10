@@ -74,6 +74,11 @@ class TestCommands(ExternalBase):
         self.assertEquals(self.capture('unknowns'), '')
         self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\ngarh\n')
         
+        # 'ignore' works with multiple arguments
+        self.runbzr('ignore a b c')
+        self.assertEquals(self.capture('unknowns'), '')
+        self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\ngarh\na\nb\nc\n')
+        
     def test_ignore_old_defaults(self):
         out, err = self.run_bzr('ignore', '--old-default-rules')
         self.assertContainsRe(out, 'CVS')

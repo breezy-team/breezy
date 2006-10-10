@@ -29,7 +29,9 @@ IN DEVELOPMENT
     * Leave HttpTransportBase daughter classes decides how they
       implement cloning. (Vincent Ladeuil, #61606)
 
-   * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
+    * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
+
+    * ``bzr ignore`` takes multiple arguments. (Cheuksan Edward Wang #29488)
 
   TESTING:
 
