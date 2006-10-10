@@ -1558,7 +1558,7 @@ class cmd_ignore(Command):
                 print pattern
             return
         if name_pattern_list is None or name_pattern_list == []:
-            raise BzrCommandError("ignore requires a NAME_PATTERN")
+            raise BzrCommandError("ignore requires at least one NAME_PATTERN or --old-default-rules")
         tree, relpath = WorkingTree.open_containing(u'.')
         ifn = tree.abspath('.bzrignore')
         if os.path.exists(ifn):
@@ -1575,8 +1575,8 @@ class cmd_ignore(Command):
 
         if igns and igns[-1] != '\n':
             igns += '\n'
-	for name_pattern in name_pattern_list:
-	    igns += name_pattern + '\n'
+        for name_pattern in name_pattern_list:
+            igns += name_pattern + '\n'
 
         f = AtomicFile(ifn, 'wt')
         try:
