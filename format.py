@@ -27,7 +27,7 @@ import svn.core, svn.repos
 from branch import SvnBranch
 from repository import SvnRepository
 from scheme import BranchingScheme
-from transport import SvnRaTransport, bzr_to_svn_url
+from transport import SvnRaTransport, bzr_to_svn_url, svn_to_bzr_url
 
 
 class SvnRemoteAccess(BzrDir):
@@ -119,7 +119,9 @@ class SvnRemoteAccess(BzrDir):
         repos = self.open_repository()
         # TODO: Check if there are any revisions in this repository 
         # yet if it is the top-level one
-        return SvnBranch(repos, self.branch_path)
+        branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
+        branch.bzrdir = self
+        return branch
 
     def open_branch(self, unsupported=True):
         """See BzrDir.open_branch()."""
