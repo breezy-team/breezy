@@ -644,8 +644,8 @@ class cmd_push(Command):
                 else:
                     count = tree_to.pull(br_from, overwrite)
             except DivergedBranches:
-                raise BzrCommandError("These branches have diverged."
-                                      "  Try a merge then push with overwrite.")
+                raise BzrCommandError('These branches have diverged.'
+                                      '  Try using "merge" and then "push".')
         note('%d revision(s) pushed.' % (count,))
 
         if verbose:
