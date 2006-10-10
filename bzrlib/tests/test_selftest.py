@@ -1051,3 +1051,5 @@ class TestSelftest(TestCase):
         self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
+
+

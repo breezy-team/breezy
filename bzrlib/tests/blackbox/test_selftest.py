@@ -248,6 +248,24 @@ class TestRunBzrCaptured(ExternalBase):
 
 class TestRunBzrSubprocess(TestCaseWithTransport):
 
+    def _popen(self, *args, **kwargs):
+        """Log the command that is run, so that we can ensure it is correct"""
+        self._popen_args = args
+        self._popen_kwargs = kwargs
+        return super(TestRunBzrSubprocess, self)._popen(*args, **kwargs)
+
+    def test_empty_run_bzr_subprocess(self):
+        self.run_bzr_subprocess()
+        command = self._popen_args[0]
+        self.assertEqual(sys.executable, command[0])
+        self.assertEqual(self.get_bzr_path(), command[1])
+        self.assertEqual(['--no-plugins'], command[2:])
+
+    def test_allow_plugins(self):
+        self.run_bzr_subprocess(allow_plugins=True)
+        command = self._popen_args[0]
+        self.assertEqual([], command[2:])
+
     def test_run_bzr_subprocess(self):
         """The run_bzr_helper_external comand behaves nicely."""
         result = self.run_bzr_subprocess('--version')
