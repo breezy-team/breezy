@@ -56,7 +56,7 @@ not be changed without leaving a 'deprecated forwarder' behind. This even
 applies to modules and classes.
 
 If you wish to change the behaviour of a supported API in an incompatible
-way, you need to change its name as well. For instance, if I add a optional keyword
+way, you need to change its name as well. For instance, if I add an optional keyword
 parameter to branch.commit - that's fine. On the other hand, if I add a
 keyword parameter to branch.commit which is a *required* transaction
 object, I should rename the API - i.e. to 'branch.commit_transaction'. 
@@ -67,7 +67,7 @@ bzrlib.symbol_versioning module for decorators that take care of the
 details for you - such as updating the docstring, and issuing a warning
 when the old api is used.
 
-For unsupported API's, it does not hurt to follow this discipline, but its
+For unsupported API's, it does not hurt to follow this discipline, but it's
 not required. Minimally though, please try to rename things so that
 callers will at least get an AttributeError rather than weird results.
 
@@ -78,7 +78,7 @@ Standard parameter types
 There are some common requirements in the library: some parameters need to be
 unicode safe, some need byte strings, and so on. At the moment we have
 only codified one specific pattern: Parameters that need to be unicode
-should be check via 'bzrlib.osutils.safe_unicode'. This will coerce the
+should be checked via 'bzrlib.osutils.safe_unicode'. This will coerce the
 input into unicode in a consistent fashion, allowing trivial strings to be
 used for programmer convenience, but not performing unpredictably in the
 presence of different locales.
@@ -241,7 +241,7 @@ Modules versus Members
 ~~~~~~~~~~~~~~~~~~~~~~
 
 While it is possible for ``lazy_import()`` to import members of a module
-wehn using the ``from module import member`` syntax, it is recommended to
+when using the ``from module import member`` syntax, it is recommended to
 only use that syntax to load sub modules ``from module import submodule``.
 This is because variables and classes can frequently be used without
 needing a sub-member for example::
@@ -338,7 +338,7 @@ When writing blackbox tests please honour the following conventions:
     the command. We do this so that the library api has continual pressure
     on it to be as functional as the command line in a simple manner, and
     to isolate knock-on effects throughout the blackbox test suite when a
-    command changes it name or signature. Ideally only the tests for a
+    command changes its name or signature. Ideally only the tests for a
     given command are affected when a given command is changed.
 
 Doctests
@@ -463,7 +463,7 @@ handled.  This parameter can take one of 3 values:
     that cannot be displayed.
   
   strict
-    Attempting to print and unprintable character will cause a UnicodeError.
+    Attempting to print an unprintable character will cause a UnicodeError.
     This is for commands that are intended more as scripting support, rather
     than plain user review.
     For exampl: ``bzr ls`` is designed to be used with shell scripting. One
