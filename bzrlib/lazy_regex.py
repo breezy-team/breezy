@@ -23,11 +23,8 @@ This allows overriding re.compile() to return lazily compiled objects.
 import re
 
 
-_real_re_compile = re.compile
-
-
 class LazyRegex(object):
-    """A proxy around a real regex, which won't compiled until accessed."""
+    """A proxy around a real regex, which won't be compiled until accessed."""
 
 
     # These are the parameters on a real _sre.SRE_Pattern object, which we
@@ -101,3 +98,9 @@ def reset_compile():
     track nesting level)
     """
     re.compile = _real_re_compile
+
+
+_real_re_compile = re.compile
+assert _real_re_compile is not lazy_compile, \
+    "re.compile has already been overridden as lazy_compile, but this would" \
+    " cause infinite recursion"
