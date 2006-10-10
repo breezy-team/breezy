@@ -194,6 +194,7 @@ def test_suite():
                    'bzrlib.benchmarks.bench_log',
                    'bzrlib.benchmarks.bench_osutils',
                    'bzrlib.benchmarks.bench_rocks',
+                   'bzrlib.benchmarks.bench_startup',
                    'bzrlib.benchmarks.bench_status',
                    'bzrlib.benchmarks.bench_transform',
                    'bzrlib.benchmarks.bench_workingtree',
