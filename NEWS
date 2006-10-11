@@ -14,6 +14,10 @@ IN DEVELOPMENT
       can take a ``working_dir='foo'`` parameter, which will change directory 
       for the command. (John Arbash Meinel)
 
+    * ``bzrlib.lazy_regex.lazy_compile`` can be used to create a proxy
+      around a regex, which defers compilation until first use. 
+      (John Arbash Meinel)
+
   BUG FIXES:
 
     * bzr branch/pull no longer complain about progress bar cleanup when
