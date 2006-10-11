@@ -3,6 +3,10 @@ IN DEVELOPMENT
   IMPROVEMENTS:
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
 
+    * Added help topics to the bzr help system
+
+    * On line documentation of the revision spec (see bzr help revisionspec)
+
   INTERNALS:
 
     * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
