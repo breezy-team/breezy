@@ -77,12 +77,10 @@ class PyCurlTransport(HttpTransportBase):
         if from_transport is not None:
             self._base_curl = from_transport._base_curl
             self._range_curl = from_transport._range_curl
-            self._post_curl = from_transport._post_curl
         else:
             mutter('using pycurl %s' % pycurl.version)
             self._base_curl = pycurl.Curl()
             self._range_curl = pycurl.Curl()
-            self._post_curl = pycurl.Curl()
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -97,6 +95,7 @@ class PyCurlTransport(HttpTransportBase):
         abspath = self._real_abspath(relpath)
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
+        curl.setopt(pycurl.HTTPGET, 1)
         # don't want the body - ie just do a HEAD request
         # This means "NO BODY" not 'nobody'
         curl.setopt(pycurl.NOBODY, 1)
@@ -186,7 +185,10 @@ class PyCurlTransport(HttpTransportBase):
 
     def _post(self, body_bytes):
         fake_file = StringIO(body_bytes)
-        curl = self._post_curl
+        curl = self._base_curl
+        # Other places that use _base_curl for GET requests explicitly set
+        # HTTPGET, so it should be safe to re-use the same object for both GETs
+        # and POSTs.
         curl.setopt(pycurl.POST, 1)
         curl.setopt(pycurl.POSTFIELDSIZE, len(body_bytes))
         curl.setopt(pycurl.READFUNCTION, fake_file.read)

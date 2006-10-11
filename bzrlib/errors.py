@@ -273,6 +273,8 @@ class DirectoryNotEmpty(PathError):
 class ReadingCompleted(BzrNewError):
     """The MediumRequest '%(request)s' has already had finish_reading called upon it - the request has been completed and no more data may be read."""
 
+    is_user_error = False
+
     def __init__(self, request):
         BzrNewError.__init__(self)
         self.request = request
@@ -932,6 +934,8 @@ class WorkingTreeNotRevision(BzrError):
 class WritingCompleted(BzrNewError):
     """The MediumRequest '%(request)s' has already had finish_writing called upon it - accept bytes may not be called anymore."""
 
+    is_user_error = False
+
     def __init__(self, request):
         BzrNewError.__init__(self)
         self.request = request
@@ -939,6 +943,8 @@ class WritingCompleted(BzrNewError):
 
 class WritingNotComplete(BzrNewError):
     """The MediumRequest '%(request)s' has not has finish_writing called upon it - until the write phase is complete no data may be read."""
+
+    is_user_error = False
 
     def __init__(self, request):
         BzrNewError.__init__(self)

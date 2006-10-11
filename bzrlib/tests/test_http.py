@@ -49,6 +49,12 @@ class RecordingServer(object):
     """
 
     def __init__(self, expect_body_tail=None):
+        """Constructor.
+
+        :type expect_body_tail: str
+        :param expect_body_tail: a reply won't be sent until this string is
+            received.
+        """
         self._expect_body_tail = expect_body_tail
         self.host = None
         self.port = None
