@@ -124,12 +124,7 @@ class TestSource(TestSourceHelper):
             # We don't require external utilities to be (C) Canonical Ltd
             return True
 
-        exceptions = ['bzrlib/lsprof.py',
-                      'bzrlib/conflicts.py',
-                      'bzrlib/iterablefile.py',
-                      'bzrlib/patches.py',
-                      'bzrlib/tests/test_patches.py',
-                     ]
+        exceptions = ['bzrlib/lsprof.py']
         for exc in exceptions:
             if fname.endswith(exc):
                 return True
