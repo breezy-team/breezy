@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -152,12 +152,18 @@ class TestSource(TestSourceHelper):
         for fname, text in self.get_source_file_contents():
             if self.is_exception(fname):
                 continue
-            if not copyright_canonical_re.search(text):
-                m = copyright_re.search(text)
-                if m:
-                    incorrect.append((fname, 'found: %s' % (m.group(),)))
+            match = copyright_canonical_re.search(text)
+            if not match:
+                match = copyright_re.search(text)
+                if match:
+                    incorrect.append((fname, 'found: %s' % (match.group(),)))
                 else:
                     incorrect.append((fname, 'no copyright line found\n'))
+            else:
+                if 'by Canonical' in match.group():
+                    incorrect.append((fname,
+                        'should not have: "by Canonical": %s'
+                        % (match.group(),)))
 
         if incorrect:
             help_text = ["Some files have missing or incorrect copyright"
