@@ -22,15 +22,21 @@
 # TODO: `help commands --all` should show hidden commands
 
 import sys
-from bzrlib import help_topics
-from bzrlib import osutils
 import textwrap
+
+from bzrlib import (
+    help_topics,
+    osutils,
+    )
+
 
 help_topics.add_topic("commands",
                       (lambda name, outfile: help_commands(outfile)),
                       "Basic help for all commands")
 
-def help(topic=None, outfile = None):
+
+def help(topic=None, outfile=None):
+    """Write the help for the specific topic to outfile"""
     if outfile is None:
         outfile = sys.stdout
     if topic is None:
@@ -89,7 +95,7 @@ def help_on_command(cmdname, outfile=None):
     if doc is None:
         raise NotImplementedError("sorry, no detailed help yet for %r" % cmdname)
 
-    print >>outfile, 'usage:', command_usage(cmd_object) 
+    print >>outfile, 'usage:', command_usage(cmd_object)
 
     if cmd_object.aliases:
         print >>outfile, 'aliases:',

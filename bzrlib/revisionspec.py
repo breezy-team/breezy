@@ -474,11 +474,10 @@ class RevisionSpec_date(RevisionSpec):
           value can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
           matches the first entry after a given date (either at midnight or
           at a specified time).
-
-          XXX: This doesn't actually work
-          So the proper way of saying 'give me all entries for today' is:
-              -r date:yesterday..date:today
         """
+        #  XXX: This doesn't actually work
+        #  So the proper way of saying 'give me all entries for today' is:
+        #      -r date:yesterday..date:today
         today = datetime.datetime.fromordinal(datetime.date.today().toordinal())
         if self.spec.lower() == 'yesterday':
             dt = today - datetime.timedelta(days=1)

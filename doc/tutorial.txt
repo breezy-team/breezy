@@ -107,8 +107,8 @@ Introducing yourself to Bazaar
 ==============================
 
 Bazaar installs a single new command, **bzr**.  Everything else is a
-subcommand of this.  You can get some help with `bzr help`. Some arguments 
-are grouped in topics: 'bzr help topics' to see which topics are available.
+subcommand of this.  You can get some help with ``bzr help``. Some arguments 
+are grouped in topics: ``bzr help topics`` to see which topics are available.
 There will be more in the future.
 
 One function of a version control system is to keep track of who changed
