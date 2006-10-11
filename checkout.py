@@ -17,8 +17,7 @@
 from binascii import hexlify
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import NotBranchError, NoSuchFile, InvalidRevisionId
-from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile, 
-                              ROOT_ID)
+from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile)
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import rand_bytes, fingerprint_file
@@ -238,7 +237,8 @@ class SvnWorkingTree(WorkingTree):
             self.base_revnum = max(self.base_revnum, entry.revision)
 
             # First handle directory itself
-            if id is ROOT_ID:
+            if relpath == "":
+                inv.add_path("", 'directory')
                 inv.revision_id = revid
             else:
                 inventry = InventoryDirectory(id, os.path.basename(relpath), parent_id)

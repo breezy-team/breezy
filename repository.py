@@ -20,7 +20,7 @@ from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile, 
                            NoSuchRevision, NotBranchError)
 from bzrlib.graph import Graph
-from bzrlib.inventory import ROOT_ID, Inventory
+from bzrlib.inventory import Inventory, ROOT_ID
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar

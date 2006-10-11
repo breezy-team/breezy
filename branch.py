@@ -18,8 +18,7 @@ from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, BzrBranch
 from bzrlib.config import TreeConfig
 from bzrlib.errors import (NotBranchError, NoWorkingTree, NoSuchRevision, 
                            NoSuchFile, DivergedBranches)
-from bzrlib.inventory import (Inventory, InventoryFile, InventoryDirectory, 
-                              ROOT_ID)
+from bzrlib.inventory import (Inventory, InventoryFile, InventoryDirectory)
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.symbol_versioning import deprecated_function, zero_nine
 from bzrlib.tree import Tree

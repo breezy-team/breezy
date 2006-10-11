@@ -292,3 +292,16 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
                          tree.basis_tree().get_revision_id())
         self.assertFalse(delta.has_changed())
 
+    def test_status(self):
+        self.make_client('a', 'dc')
+        tree = WorkingTree.open("dc")
+        self.assertTrue(os.path.exists("dc/.svn"))
+        self.assertTrue(not os.path.exists("dc/.bzr"))
+        tree.read_working_inventory()
+
+    def test_status_bzrdir(self):
+        self.make_client('a', 'dc')
+        bzrdir = BzrDir.open("dc")
+        self.assertTrue(os.path.exists("dc/.svn"))
+        self.assertTrue(not os.path.exists("dc/.bzr"))
+        bzrdir.open_workingtree()
