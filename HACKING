@@ -227,14 +227,18 @@ lazy fashion do::
   from bzrlib import (
      errors,
      transport,
-     foo as bar,
+     revision as _mod_revision,
      )
   import bzrlib.transport
   import bzrlib.xml5
   """)
 
 At this point, all of these exist as a ``ImportReplacer`` object, ready to
-be imported once a member is accessed.
+be imported once a member is accessed. Also, when importing a module into
+the local namespace, which is likely to clash with variable names, it is
+recommended to prefix it as ``_mod_<module>``. This makes it clean that
+the variable is a module, and these object should be hidden anyway, since
+they shouldn't be imported into other namespaces.
 
 
 Modules versus Members
