@@ -5,7 +5,7 @@ IN DEVELOPMENT
     * New Registry class to provide name-to-object registry-like support,
       for example for schemes where plugins can register new classes to
       do certain tasks (e.g. log formatters). Also provides lazy registration
-      to allow modules to be oladed on request. (John Arbash Meinel, Adeodato
+      to allow modules to be loaded on request. (John Arbash Meinel, Adeodato
       Simó)
 
   BUG FIXES:

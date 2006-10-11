@@ -61,8 +61,8 @@ class _LazyObjectGetter(_ObjectGetter):
     def _do_import(self):
         obj = __import__(self._module_name, globals(), locals(),
                          [self._member_name])
-        if member_name:
-            obj = getattr(obj, member_name)
+        if self._member_name:
+            obj = getattr(obj, self._member_name)
         self._obj = obj
         self._imported = True
 
