@@ -48,6 +48,8 @@ will look like::
         RewriteRule ^(.*)/\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
     </Directory>
     
+    # bzr-smart.fcgi isn't under the DocumentRoot, so Alias it into the URL
+    # namespace so it can be executed.
     Alias /srv/example.com/scripts/bzr-smart.fcgi /srv/example.com/scripts/bzr-smart.fcgi
     <Directory /srv/example.com/scripts>
         Options ExecCGI

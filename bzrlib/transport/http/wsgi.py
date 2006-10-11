@@ -102,9 +102,14 @@ class SmartWSGIApp(object):
         request_data_length = int(environ['CONTENT_LENGTH'])
         request_data_bytes = environ['wsgi.input'].read(request_data_length)
         smart_protocol_request.accept_bytes(request_data_bytes)
-        assert smart_protocol_request.next_read_size() == 0, (
-            "not finished reading, but all data sent to protocol.")
-        response_data = out_buffer.getvalue()
+        if smart_protocol_request.next_read_size() != 0:
+            # The request appears to be incomplete, or perhaps it's just a
+            # newer version we don't understand.  Regardless, all we can do
+            # is return an error response in the format of our version of the
+            # protocol.
+            response_data = 'error\x01incomplete request\n'
+        else:
+            response_data = out_buffer.getvalue()
         headers = [('Content-type', 'application/octet-stream')]
         headers.append(("Content-Length", str(len(response_data))))
         start_response('200 OK', headers)

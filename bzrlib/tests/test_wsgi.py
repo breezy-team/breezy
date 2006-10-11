@@ -22,6 +22,7 @@ from bzrlib import tests
 from bzrlib.transport.http import wsgi
 from bzrlib.transport import memory
 
+
 class TestWSGI(tests.TestCase):
 
     def setUp(self):
@@ -29,10 +30,11 @@ class TestWSGI(tests.TestCase):
         self.status = None
         self.headers = None
 
-    def build_environ(self, **kw):
+    def build_environ(self, updates=None):
         """Builds an environ dict with all fields required by PEP 333.
         
-        The resulting environ dict will be updated with an **kw that are passed.
+        :param updates: a dict to that will be incorporated into the returned
+            dict using dict.update(updates).
         """
         environ = {
             # Required CGI variables
@@ -52,7 +54,8 @@ class TestWSGI(tests.TestCase):
             'wsgi.multiprocess': False,
             'wsgi.run_once': True,
         }
-        environ.update(kw)
+        if updates is not None:
+            environ.update(updates)
         return environ
         
     def read_response(self, iterable):
@@ -71,7 +74,7 @@ class TestWSGI(tests.TestCase):
     def test_http_get_rejected(self):
         # GET requests are rejected.
         app = wsgi.SmartWSGIApp(None)
-        environ = self.build_environ(REQUEST_METHOD='GET')
+        environ = self.build_environ({'REQUEST_METHOD': 'GET'})
         iterable = app(environ, self.start_response)
         self.read_response(iterable)
         self.assertEqual('405 Method not allowed', self.status)
@@ -89,8 +92,7 @@ class TestWSGI(tests.TestCase):
             return request
         wsgi_app.make_request = make_request
         fake_input = StringIO('fake request')
-        environ = self.build_environ()
-        environ.update({
+        environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
             'CONTENT_LENGTH': len(fake_input.getvalue()),
             'wsgi.input': fake_input,
@@ -113,8 +115,7 @@ class TestWSGI(tests.TestCase):
             return request
         wsgi_app.make_request = make_request
         fake_input = StringIO('fake request')
-        environ = self.build_environ()
-        environ.update({
+        environ = self.build_environ({
             'REQUEST_METHOD': 'POST',
             'CONTENT_LENGTH': len(fake_input.getvalue()),
             'wsgi.input': fake_input,
@@ -136,16 +137,30 @@ class TestWSGI(tests.TestCase):
         wrapped_app({'FOO': '/abc/xyz/.bzr/smart'}, None)
         self.assertEqual(['xyz'], calls)
        
-    def test_relpath_setter_bad_path(self):
+    def test_relpath_setter_bad_path_prefix(self):
         # wsgi.RelpathSetter will reject paths with that don't match the prefix
-        # or suffix with a 404.  This is probably a sign of misconfiguration; a
-        # server shouldn't ever be invoking our WSGI application with bad paths.
+        # with a 404.  This is probably a sign of misconfiguration; a server
+        # shouldn't ever be invoking our WSGI application with bad paths.
         def fake_app(environ, start_response):
             self.fail('The app should never be called when the path is wrong')
         wrapped_app = wsgi.RelpathSetter(
             fake_app, prefix='/abc/', path_var='FOO')
         iterable = wrapped_app(
             {'FOO': 'AAA/abc/xyz/.bzr/smart'}, self.start_response)
+        self.read_response(iterable)
+        self.assertTrue(self.status.startswith('404'))
+        
+    def test_relpath_setter_bad_path_suffix(self):
+        # Similar to test_relpath_setter_bad_path_prefix: wsgi.RelpathSetter
+        # will reject paths with that don't match the suffix '.bzr/smart' with a
+        # 404 as well.  Again, this shouldn't be seen by our WSGI application if
+        # the server is configured correctly.
+        def fake_app(environ, start_response):
+            self.fail('The app should never be called when the path is wrong')
+        wrapped_app = wsgi.RelpathSetter(
+            fake_app, prefix='/abc/', path_var='FOO')
+        iterable = wrapped_app(
+            {'FOO': '/abc/xyz/.bzr/AAA'}, self.start_response)
         self.read_response(iterable)
         self.assertTrue(self.status.startswith('404'))
         
@@ -161,6 +176,27 @@ class TestWSGI(tests.TestCase):
         self.assertEndsWith(app.app.backing_transport.base, 'a%20root/')
         self.assertEqual(app.prefix, 'a prefix')
         self.assertEqual(app.path_var, 'a path_var')
+
+    def test_incomplete_request(self):
+        transport = FakeTransport()
+        wsgi_app = wsgi.SmartWSGIApp(transport)
+        def make_request(transport, write_func):
+            request = IncompleteRequest(transport, write_func)
+            self.request = request
+            return request
+        wsgi_app.make_request = make_request
+
+        fake_input = StringIO('incomplete request')
+        environ = self.build_environ({
+            'REQUEST_METHOD': 'POST',
+            'CONTENT_LENGTH': len(fake_input.getvalue()),
+            'wsgi.input': fake_input,
+            'bzrlib.relpath': 'foo/bar',
+        })
+        iterable = wsgi_app(environ, self.start_response)
+        response = self.read_response(iterable)
+        self.assertEqual('200 OK', self.status)
+        self.assertEqual('error\x01incomplete request\n', response)
 
 
 class FakeRequest(object):
@@ -186,4 +222,12 @@ class FakeTransport(object):
     def clone(self, relpath):
         self.calls.append(('clone', relpath))
         return self
+
+
+class IncompleteRequest(FakeRequest):
+    """A request-like object that always expects to read more bytes."""
+
+    def next_read_size(self):
+        # this request always asks for more
+        return 1
 
