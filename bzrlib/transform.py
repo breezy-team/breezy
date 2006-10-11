@@ -73,13 +73,13 @@ class TreeTransform(object):
      * set_executability
     """
     def __init__(self, tree, pb=DummyProgress()):
-        """Note: a write lock is taken on the tree.
+        """Note: a tree_write lock is taken on the tree.
         
         Use TreeTransform.finalize() to release the lock
         """
         object.__init__(self)
         self._tree = tree
-        self._tree.lock_write()
+        self._tree.lock_tree_write()
         try:
             control_files = self._tree._control_files
             self._limbodir = urlutils.local_path_from_url(
@@ -292,7 +292,7 @@ class TreeTransform(object):
         except KeyError:
             return
         try:
-            mode = os.stat(old_path).st_mode
+            mode = os.stat(self._tree.abspath(old_path)).st_mode
         except OSError, e:
             if e.errno == errno.ENOENT:
                 return
@@ -1086,7 +1086,7 @@ def new_by_entry(tt, entry, parent_id, tree):
 def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
     """Create new file contents according to an inventory entry."""
     if entry.kind == "file":
-        if lines == None:
+        if lines is None:
             lines = tree.get_file(entry.file_id).readlines()
         tt.create_file(lines, trans_id, mode_id=mode_id)
     elif entry.kind == "symlink":
@@ -1229,6 +1229,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
         pp.next_phase()
         wt_interesting = [i for i in working_tree.inventory if interesting(i)]
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        basis_tree = None
         try:
             for id_num, file_id in enumerate(wt_interesting):
                 child_pb.update("New file check", id_num+1, 
@@ -1240,18 +1241,21 @@ def revert(working_tree, target_tree, filenames, backups=False,
                         file_kind = working_tree.kind(file_id)
                     except NoSuchFile:
                         file_kind = None
+                    delete_merge_modified = (file_id in merge_modified)
                     if file_kind != 'file' and file_kind is not None:
                         keep_contents = False
-                        delete_merge_modified = False
                     else:
+                        if basis_tree is None:
+                            basis_tree = working_tree.basis_tree()
+                        wt_sha1 = working_tree.get_file_sha1(file_id)
                         if (file_id in merge_modified and 
-                            merge_modified[file_id] == 
-                            working_tree.get_file_sha1(file_id)):
+                            merge_modified[file_id] == wt_sha1):
                             keep_contents = False
-                            delete_merge_modified = True
+                        elif (file_id in basis_tree and 
+                            basis_tree.get_file_sha1(file_id) == wt_sha1):
+                            keep_contents = False
                         else:
                             keep_contents = True
-                            delete_merge_modified = False
                     if not keep_contents:
                         tt.delete_contents(trans_id)
                     if delete_merge_modified:
@@ -1326,10 +1330,11 @@ def conflict_pass(tt, conflicts):
             trans_id = conflict[1]
             try:
                 tt.cancel_deletion(trans_id)
-                new_conflicts.add((c_type, 'Not deleting', trans_id))
+                new_conflicts.add(('deleting parent', 'Not deleting', 
+                                   trans_id))
             except KeyError:
                 tt.create_directory(trans_id)
-                new_conflicts.add((c_type, 'Created directory.', trans_id))
+                new_conflicts.add((c_type, 'Created directory', trans_id))
         elif c_type == 'unversioned parent':
             tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))

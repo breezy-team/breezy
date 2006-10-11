@@ -25,9 +25,11 @@ class MergeBuilder(object):
            path = pathjoin(self.dir, name)
            os.mkdir(path)
            wt = bzrlib.bzrdir.BzrDir.create_standalone_workingtree(path)
+           # the tests perform pulls, so need a branch that is writeable.
+           wt.lock_write()
            tt = TreeTransform(wt)
            return wt, tt
-        self.base, self.base_tt = wt('base') 
+        self.base, self.base_tt = wt('base')
         self.this, self.this_tt = wt('this')
         self.other, self.other_tt = wt('other')
 
@@ -162,7 +164,13 @@ class MergeBuilder(object):
             new_inventory[file_id] = path
         return new_inventory
 
+    def unlock(self):
+        self.base.unlock()
+        self.this.unlock()
+        self.other.unlock()
+
     def cleanup(self):
+        self.unlock()
         rmtree(self.dir)
 
 
@@ -195,6 +203,7 @@ class MergeTest(TestCaseWithTransport):
         builder.merge(interesting_ids=["1"])
         self.assertEqual(builder.this.get_file("1").read(), "text4" )
         self.assertEqual(builder.this.get_file("2").read(), "hello1" )
+        builder.cleanup()
         
     def test_file_moves(self):
         """Test moves"""
@@ -257,8 +266,7 @@ y
 >>>>>>> MERGE-SOURCE
 """
         self.assertEqualDiff(builder.this.get_file("a").read(), expected)
-
- 
+        builder.cleanup()
 
     def do_contents_test(self, merge_factory):
         """Test merging with specified ContentsChange factory"""
@@ -278,14 +286,19 @@ y
         builder.add_file("5", "TREE_ROOT", "name7", "a\nb\nc\nd\ne\nf\n", True)
         builder.change_contents("5", other="a\nz\nc\nd\ne\nf\n", 
                                      this="a\nb\nc\nd\ne\nz\n")
-        builder.merge(merge_factory)
-        self.assertEqual(builder.this.get_file("1").read(), "text4" )
-        self.assertEqual(builder.this.get_file("2").read(), "text2" )
-        self.assertEqual(builder.this.get_file("5").read(), 
-                         "a\nz\nc\nd\ne\nz\n")
-        self.assertIs(builder.this.is_executable("1"), True)
-        self.assertIs(builder.this.is_executable("2"), False)
-        self.assertIs(builder.this.is_executable("3"), True)
+        conflicts = builder.merge(merge_factory)
+        try:
+            self.assertEqual([], conflicts)
+            self.assertEqual("text4", builder.this.get_file("1").read())
+            self.assertEqual("text2", builder.this.get_file("2").read())
+            self.assertEqual("a\nz\nc\nd\ne\nz\n", 
+                             builder.this.get_file("5").read())
+            self.assertTrue(builder.this.is_executable("1"))
+            self.assertFalse(builder.this.is_executable("2"))
+            self.assertTrue(builder.this.is_executable("3"))
+        except:
+            builder.unlock()
+            raise
         return builder
 
     def contents_test_conflicts(self, merge_factory):
@@ -371,6 +384,7 @@ y
                          base=False)
         conflicts = builder.merge()
         self.assertEqual(conflicts, []) 
+        builder.cleanup()
 
 
 class FunctionalMergeTest(TestCaseWithTransport):

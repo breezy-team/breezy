@@ -15,6 +15,7 @@
 
 """Tests for the test framework."""
 
+import cStringIO
 import os
 from StringIO import StringIO
 import sys
@@ -22,22 +23,26 @@ import time
 import unittest
 import warnings
 
-from bzrlib import osutils
+from bzrlib import osutils, memorytree
 import bzrlib
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
                           ChrootedTestCase,
                           TestCase,
                           TestCaseInTempDir,
+                          TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
                           TestSkipped,
                           TestSuite,
                           TextTestRunner,
                           )
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
 from bzrlib import symbol_versioning
+from bzrlib.symbol_versioning import zero_ten, zero_eleven
 from bzrlib.trace import note
+from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.version import _get_bzr_source_tree
 
 
@@ -59,7 +64,8 @@ class MetaTestLog(TestCase):
         """Test logs are captured when a test fails."""
         self.log('a test message')
         self._log_file.flush()
-        self.assertContainsRe(self._get_log(), 'a test message\n')
+        self.assertContainsRe(self._get_log(keep_log_file=True),
+                              'a test message\n')
 
 
 class TestTreeShape(TestCaseInTempDir):
@@ -419,6 +425,47 @@ class TestInterTreeProviderAdapter(TestCase):
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
+
+class TestTestCaseInTempDir(TestCaseInTempDir):
+
+    def test_home_is_not_working(self):
+        self.assertNotEqual(self.test_dir, self.test_home_dir)
+        cwd = osutils.getcwd()
+        self.assertEqual(self.test_dir, cwd)
+        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+
+
+class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
+
+    def test_home_is_non_existant_dir_under_root(self):
+        """The test_home_dir for TestCaseWithMemoryTransport is missing.
+
+        This is because TestCaseWithMemoryTransport is for tests that do not
+        need any disk resources: they should be hooked into bzrlib in such a 
+        way that no global settings are being changed by the test (only a 
+        few tests should need to do that), and having a missing dir as home is
+        an effective way to ensure that this is the case.
+        """
+        self.assertEqual(self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
+            self.test_home_dir)
+        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        
+    def test_cwd_is_TEST_ROOT(self):
+        self.assertEqual(self.test_dir, self.TEST_ROOT)
+        cwd = osutils.getcwd()
+        self.assertEqual(self.test_dir, cwd)
+
+    def test_make_branch_and_memory_tree(self):
+        """In TestCaseWithMemoryTransport we should not make the branch on disk.
+
+        This is hard to comprehensively robustly test, so we settle for making
+        a branch and checking no directory was created at its relpath.
+        """
+        tree = self.make_branch_and_memory_tree('dir')
+        self.failIfExists('dir')
+        self.assertIsInstance(tree, memorytree.MemoryTree)
+
+
 class TestTestCaseWithTransport(TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
@@ -461,6 +508,21 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertIsDirectory('a_dir', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'a_file', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'not_here', t)
+
+
+class TestTestCaseTransports(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestTestCaseTransports, self).setUp()
+        self.transport_server = MemoryServer
+
+    def test_make_bzrdir_preserves_transport(self):
+        t = self.get_transport()
+        result_bzrdir = self.make_bzrdir('subdir')
+        self.assertIsInstance(result_bzrdir.transport, 
+                              MemoryTransport)
+        # should not be on disk, should only be in memory
+        self.failIfExists('subdir')
 
 
 class TestChrootedTest(ChrootedTestCase):
@@ -718,8 +780,70 @@ class TestRunner(TestCase):
         output_string = output.getvalue()
         self.assertContainsRe(output_string, "--date [0-9.]+")
         if workingtree is not None:
-            revision_id = workingtree.last_revision()
+            revision_id = workingtree.get_parent_ids()[0]
             self.assertEndsWith(output_string.rstrip(), revision_id)
+
+    def test_success_log_deleted(self):
+        """Successful tests have their log deleted"""
+
+        class LogTester(TestCase):
+
+            def test_success(self):
+                self.log('this will be removed\n')
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_success')
+        result = self.run_test_runner(runner, test)
+
+        log = test._get_log()
+        self.assertEqual("DELETED log file to reduce memory footprint", log)
+        self.assertEqual('', test._log_contents)
+        self.assertIs(None, test._log_file_name)
+
+    def test_fail_log_kept(self):
+        """Failed tests have their log kept"""
+
+        class LogTester(TestCase):
+
+            def test_fail(self):
+                self.log('this will be kept\n')
+                self.fail('this test fails')
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_fail')
+        result = self.run_test_runner(runner, test)
+
+        text = sio.getvalue()
+        self.assertContainsRe(text, 'this will be kept')
+        self.assertContainsRe(text, 'this test fails')
+
+        log = test._get_log()
+        self.assertContainsRe(log, 'this will be kept')
+        self.assertEqual(log, test._log_contents)
+
+    def test_error_log_kept(self):
+        """Tests with errors have their log kept"""
+
+        class LogTester(TestCase):
+
+            def test_error(self):
+                self.log('this will be kept\n')
+                raise ValueError('random exception raised')
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_error')
+        result = self.run_test_runner(runner, test)
+
+        text = sio.getvalue()
+        self.assertContainsRe(text, 'this will be kept')
+        self.assertContainsRe(text, 'random exception raised')
+
+        log = test._get_log()
+        self.assertContainsRe(log, 'this will be kept')
+        self.assertEqual(log, test._log_contents)
 
 
 class TestTestCase(TestCase):
@@ -798,6 +922,32 @@ class TestTestCase(TestCase):
         self.assertIsInstance(self._benchcalls[1][1], bzrlib.lsprof.Stats)
 
 
+@symbol_versioning.deprecated_function(zero_eleven)
+def sample_deprecated_function():
+    """A deprecated function to test applyDeprecated with."""
+    return 2
+
+
+def sample_undeprecated_function(a_param):
+    """A undeprecated function to test applyDeprecated with."""
+
+
+class ApplyDeprecatedHelper(object):
+    """A helper class for ApplyDeprecated tests."""
+
+    @symbol_versioning.deprecated_method(zero_eleven)
+    def sample_deprecated_method(self, param_one):
+        """A deprecated method for testing with."""
+        return param_one
+
+    def sample_normal_method(self):
+        """A undeprecated method."""
+
+    @symbol_versioning.deprecated_method(zero_ten)
+    def sample_nested_deprecation(self):
+        return sample_deprecated_function()
+
+
 class TestExtraAssertions(TestCase):
     """Tests for new test assertions in bzrlib test suite"""
 
@@ -811,6 +961,35 @@ class TestExtraAssertions(TestCase):
         self.assertEndsWith('foo', 'oo')
         self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
 
+    def test_applyDeprecated_not_deprecated(self):
+        sample_object = ApplyDeprecatedHelper()
+        # calling an undeprecated callable raises an assertion
+        self.assertRaises(AssertionError, self.applyDeprecated, zero_eleven,
+            sample_object.sample_normal_method)
+        self.assertRaises(AssertionError, self.applyDeprecated, zero_eleven,
+            sample_undeprecated_function, "a param value")
+        # calling a deprecated callable (function or method) with the wrong
+        # expected deprecation fails.
+        self.assertRaises(AssertionError, self.applyDeprecated, zero_ten,
+            sample_object.sample_deprecated_method, "a param value")
+        self.assertRaises(AssertionError, self.applyDeprecated, zero_ten,
+            sample_deprecated_function)
+        # calling a deprecated callable (function or method) with the right
+        # expected deprecation returns the functions result.
+        self.assertEqual("a param value", self.applyDeprecated(zero_eleven,
+            sample_object.sample_deprecated_method, "a param value"))
+        self.assertEqual(2, self.applyDeprecated(zero_eleven,
+            sample_deprecated_function))
+        # calling a nested deprecation with the wrong deprecation version
+        # fails even if a deeper nested function was deprecated with the 
+        # supplied version.
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            zero_eleven, sample_object.sample_nested_deprecation)
+        # calling a nested deprecation with the right deprecation value
+        # returns the calls result.
+        self.assertEqual(2, self.applyDeprecated(zero_ten,
+            sample_object.sample_nested_deprecation))
+
     def test_callDeprecated(self):
         def testfunc(be_deprecated, result=None):
             if be_deprecated is True:
@@ -821,8 +1000,7 @@ class TestExtraAssertions(TestCase):
         self.assertIs(None, result)
         result = self.callDeprecated([], testfunc, False, 'result')
         self.assertEqual('result', result)
-        self.callDeprecated(['i am deprecated'], testfunc, 
-                              be_deprecated=True)
+        self.callDeprecated(['i am deprecated'], testfunc, be_deprecated=True)
         self.callDeprecated([], testfunc, be_deprecated=False)
 
 
@@ -837,6 +1015,27 @@ class TestConvenienceMakers(TestCaseWithTransport):
                               bzrlib.bzrdir.BzrDirMetaFormat1)
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
                               bzrlib.bzrdir.BzrDirFormat6)
+
+    def test_make_branch_and_memory_tree(self):
+        # we should be able to get a new branch and a mutable tree from
+        # TestCaseWithTransport
+        tree = self.make_branch_and_memory_tree('a')
+        self.assertIsInstance(tree, bzrlib.memorytree.MemoryTree)
+
+
+class TestSFTPMakeBranchAndTree(TestCaseWithSFTPServer):
+
+    def test_make_tree_for_sftp_branch(self):
+        """Transports backed by local directories create local trees."""
+
+        tree = self.make_branch_and_tree('t1')
+        base = tree.bzrdir.root_transport.base
+        self.failIf(base.startswith('sftp'),
+                'base %r is on sftp but should be local' % base)
+        self.assertEquals(tree.bzrdir.root_transport,
+                tree.branch.bzrdir.root_transport)
+        self.assertEquals(tree.bzrdir.root_transport,
+                tree.branch.repository.bzrdir.root_transport)
 
 
 class TestSelftest(TestCase):

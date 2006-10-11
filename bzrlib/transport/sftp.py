@@ -17,26 +17,35 @@
 
 """Implementation of Transport over SFTP, using paramiko."""
 
+# TODO: Remove the transport-based lock_read and lock_write methods.  They'll
+# then raise TransportNotPossible, which will break remote access to any
+# formats which rely on OS-level locks.  That should be fine as those formats
+# are pretty old, but these combinations may have to be removed from the test
+# suite.  Those formats all date back to 0.7; so we should be able to remove
+# these methods when we officially drop support for those formats.
+
 import errno
 import os
 import random
 import select
 import socket
 import stat
-import subprocess
 import sys
 import time
 import urllib
 import urlparse
 import weakref
 
-from bzrlib.errors import (FileExists, 
+from bzrlib import (
+    errors,
+    urlutils,
+    )
+from bzrlib.errors import (FileExists,
                            NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError, 
+                           LockError,
                            PathError,
                            ParamikoNotPresent,
-                           UnknownSSH,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.trace import mutter, warning
@@ -47,7 +56,6 @@ from bzrlib.transport import (
     ssh,
     Transport,
     )
-import bzrlib.urlutils as urlutils
 
 try:
     import paramiko
@@ -85,8 +93,15 @@ def clear_connection_cache():
 
 
 class SFTPLock(object):
-    """This fakes a lock in a remote location."""
+    """This fakes a lock in a remote location.
+    
+    A present lock is indicated just by the existence of a file.  This
+    doesn't work well on all transports and they are only used in 
+    deprecated storage formats.
+    """
+    
     __slots__ = ['path', 'lock_path', 'lock_file', 'transport']
+
     def __init__(self, path, transport):
         assert isinstance(transport, SFTPTransport)
 
@@ -119,7 +134,69 @@ class SFTPLock(object):
             pass
 
 
-class SFTPTransport(Transport):
+class SFTPUrlHandling(Transport):
+    """Mix-in that does common handling of SSH/SFTP URLs."""
+
+    def __init__(self, base):
+        self._parse_url(base)
+        base = self._unparse_url(self._path)
+        if base[-1] != '/':
+            base += '/'
+        super(SFTPUrlHandling, self).__init__(base)
+
+    def _parse_url(self, url):
+        (self._scheme,
+         self._username, self._password,
+         self._host, self._port, self._path) = self._split_url(url)
+
+    def _unparse_url(self, path):
+        """Return a URL for a path relative to this transport.
+        """
+        path = urllib.quote(path)
+        # handle homedir paths
+        if not path.startswith('/'):
+            path = "/~/" + path
+        netloc = urllib.quote(self._host)
+        if self._username is not None:
+            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
+        if self._port is not None:
+            netloc = '%s:%d' % (netloc, self._port)
+        return urlparse.urlunparse((self._scheme, netloc, path, '', '', ''))
+
+    def _split_url(self, url):
+        (scheme, username, password, host, port, path) = split_url(url)
+        ## assert scheme == 'sftp'
+
+        # the initial slash should be removed from the path, and treated
+        # as a homedir relative path (the path begins with a double slash
+        # if it is absolute).
+        # see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
+        # RBC 20060118 we are not using this as its too user hostile. instead
+        # we are following lftp and using /~/foo to mean '~/foo'.
+        # handle homedir paths
+        if path.startswith('/~/'):
+            path = path[3:]
+        elif path == '/~':
+            path = ''
+        return (scheme, username, password, host, port, path)
+
+    def abspath(self, relpath):
+        """Return the full url to the given relative path.
+        
+        @param relpath: the relative path or path components
+        @type relpath: str or list
+        """
+        return self._unparse_url(self._remote_path(relpath))
+    
+    def _remote_path(self, relpath):
+        """Return the path to be passed along the sftp protocol for relpath.
+        
+        :param relpath: is a urlencoded string.
+        """
+        return self._combine_paths(self._path, relpath)
+
+
+class SFTPTransport(SFTPUrlHandling):
     """Transport implementation for SFTP access."""
 
     _do_prefetch = _default_do_prefetch
@@ -141,11 +218,6 @@ class SFTPTransport(Transport):
     _max_request_size = 32768
 
     def __init__(self, base, clone_from=None):
-        assert base.startswith('sftp://')
-        self._parse_url(base)
-        base = self._unparse_url()
-        if base[-1] != '/':
-            base += '/'
         super(SFTPTransport, self).__init__(base)
         if clone_from is None:
             self._sftp_connect()
@@ -171,45 +243,117 @@ class SFTPTransport(Transport):
         else:
             return SFTPTransport(self.abspath(offset), self)
 
-    def abspath(self, relpath):
-        """
-        Return the full url to the given relative path.
-        
-        @param relpath: the relative path or path components
-        @type relpath: str or list
-        """
-        return self._unparse_url(self._remote_path(relpath))
-    
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
         
         relpath is a urlencoded string.
+
+        :return: a path prefixed with / for regular abspath-based urls, or a
+            path that does not begin with / for urls which begin with /~/.
         """
-        # FIXME: share the common code across transports
+        # how does this work? 
+        # it processes relpath with respect to 
+        # our state:
+        # firstly we create a path to evaluate: 
+        # if relpath is an abspath or homedir path, its the entire thing
+        # otherwise we join our base with relpath
+        # then we eliminate all empty segments (double //'s) outside the first
+        # two elements of the list. This avoids problems with trailing 
+        # slashes, or other abnormalities.
+        # finally we evaluate the entire path in a single pass
+        # '.'s are stripped,
+        # '..' result in popping the left most already 
+        # processed path (which can never be empty because of the check for
+        # abspath and homedir meaning that its not, or that we've used our
+        # path. If the pop would pop the root, we ignore it.
+
+        # Specific case examinations:
+        # remove the special casefor ~: if the current root is ~/ popping of it
+        # = / thus our seed for a ~ based path is ['', '~']
+        # and if we end up with [''] then we had basically ('', '..') (which is
+        # '/..' so we append '' if the length is one, and assert that the first
+        # element is still ''. Lastly, if we end with ['', '~'] as a prefix for
+        # the output, we've got a homedir path, so we strip that prefix before
+        # '/' joining the resulting list.
+        #
+        # case one: '/' -> ['', ''] cannot shrink
+        # case two: '/' + '../foo' -> ['', 'foo'] (take '', '', '..', 'foo')
+        #           and pop the second '' for the '..', append 'foo'
+        # case three: '/~/' -> ['', '~', ''] 
+        # case four: '/~/' + '../foo' -> ['', '~', '', '..', 'foo'],
+        #           and we want to get '/foo' - the empty path in the middle
+        #           needs to be stripped, then normal path manipulation will 
+        #           work.
+        # case five: '/..' ['', '..'], we want ['', '']
+        #            stripping '' outside the first two is ok
+        #            ignore .. if its too high up
+        #
+        # lastly this code is possibly reusable by FTP, but not reusable by
+        # local paths: ~ is resolvable correctly, nor by HTTP or the smart
+        # server: ~ is resolved remotely.
+        # 
+        # however, a version of this that acts on self.base is possible to be
+        # written which manipulates the URL in canonical form, and would be
+        # reusable for all transports, if a flag for allowing ~/ at all was
+        # provided.
         assert isinstance(relpath, basestring)
-        relpath = urlutils.unescape(relpath).split('/')
-        basepath = self._path.split('/')
-        if len(basepath) > 0 and basepath[-1] == '':
-            basepath = basepath[:-1]
+        relpath = urlutils.unescape(relpath)
 
-        for p in relpath:
-            if p == '..':
-                if len(basepath) == 0:
-                    # In most filesystems, a request for the parent
-                    # of root, just returns root.
-                    continue
-                basepath.pop()
-            elif p == '.':
-                continue # No-op
+        # case 1)
+        if relpath.startswith('/'):
+            # abspath - normal split is fine.
+            current_path = relpath.split('/')
+        elif relpath.startswith('~/'):
+            # root is homedir based: normal split and prefix '' to remote the
+            # special case
+            current_path = [''].extend(relpath.split('/'))
+        else:
+            # root is from the current directory:
+            if self._path.startswith('/'):
+                # abspath, take the regular split
+                current_path = []
             else:
-                basepath.append(p)
+                # homedir based, add the '', '~' not present in self._path
+                current_path = ['', '~']
+            # add our current dir
+            current_path.extend(self._path.split('/'))
+            # add the users relpath
+            current_path.extend(relpath.split('/'))
+        # strip '' segments that are not in the first one - the leading /.
+        to_process = current_path[:1]
+        for segment in current_path[1:]:
+            if segment != '':
+                to_process.append(segment)
 
-        path = '/'.join(basepath)
-        # mutter('relpath => remotepath %s => %s', relpath, path)
+        # process '.' and '..' segments into output_path.
+        output_path = []
+        for segment in to_process:
+            if segment == '..':
+                # directory pop. Remove a directory 
+                # as long as we are not at the root
+                if len(output_path) > 1:
+                    output_path.pop()
+                # else: pass
+                # cannot pop beyond the root, so do nothing
+            elif segment == '.':
+                continue # strip the '.' from the output.
+            else:
+                # this will append '' to output_path for the root elements,
+                # which is appropriate: its why we strip '' in the first pass.
+                output_path.append(segment)
+
+        # check output special cases:
+        if output_path == ['']:
+            # [''] -> ['', '']
+            output_path = ['', '']
+        elif output_path[:2] == ['', '~']:
+            # ['', '~', ...] -> ...
+            output_path = output_path[2:]
+        path = '/'.join(output_path)
         return path
 
     def relpath(self, abspath):
-        username, password, host, port, path = self._split_url(abspath)
+        scheme, username, password, host, port, path = self._split_url(abspath)
         error = []
         if (username != self._username):
             error.append('username mismatch')
@@ -263,13 +407,13 @@ class SFTPTransport(Transport):
             fp = self._sftp.file(path, mode='rb')
             readv = getattr(fp, 'readv', None)
             if readv:
-                return self._sftp_readv(fp, offsets)
+                return self._sftp_readv(fp, offsets, relpath)
             mutter('seek and read %s offsets', len(offsets))
-            return self._seek_and_read(fp, offsets)
+            return self._seek_and_read(fp, offsets, relpath)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
 
-    def _sftp_readv(self, fp, offsets):
+    def _sftp_readv(self, fp, offsets, relpath='<unknown>'):
         """Use the readv() member of fp to do async readv.
 
         And then read them using paramiko.readv(). paramiko.readv()
@@ -362,16 +506,22 @@ class SFTPTransport(Transport):
                 yield cur_offset_and_size[0], this_data
                 cur_offset_and_size = offset_stack.next()
 
+            # We read a coalesced entry, so mark it as done
+            cur_coalesced = None
             # Now that we've read all of the data for this coalesced section
             # on to the next
             cur_coalesced = cur_coalesced_stack.next()
 
-    def put(self, relpath, f, mode=None):
+        if cur_coalesced is not None:
+            raise errors.ShortReadvError(relpath, cur_coalesced.start,
+                cur_coalesced.length, len(data))
+
+    def put_file(self, relpath, f, mode=None):
         """
-        Copy the file-like or string object into the location.
+        Copy the file-like object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param f:       File-like object.
         :param mode: The final mode for the file
         """
         final_path = self._remote_path(relpath)
@@ -389,6 +539,19 @@ class SFTPTransport(Transport):
                 self._pump(f, fout)
             except (IOError, paramiko.SSHException), e:
                 self._translate_io_exception(e, tmp_abspath)
+            # XXX: This doesn't truly help like we would like it to.
+            #      The problem is that openssh strips sticky bits. So while we
+            #      can properly set group write permission, we lose the group
+            #      sticky bit. So it is probably best to stop chmodding, and
+            #      just tell users that they need to set the umask correctly.
+            #      The attr.st_mode = mode, in _sftp_open_exclusive
+            #      will handle when the user wants the final mode to be more 
+            #      restrictive. And then we avoid a round trip. Unless 
+            #      paramiko decides to expose an async chmod()
+
+            # This is designed to chmod() right before we close.
+            # Because we set_pipelined() earlier, theoretically we might 
+            # avoid the round trip for fout.close()
             if mode is not None:
                 self._sftp.chmod(tmp_abspath, mode)
             fout.close()
@@ -412,6 +575,83 @@ class SFTPTransport(Transport):
             # raise the original with its traceback if we can.
             raise
 
+    def _put_non_atomic_helper(self, relpath, writer, mode=None,
+                               create_parent_dir=False,
+                               dir_mode=None):
+        abspath = self._remote_path(relpath)
+
+        # TODO: jam 20060816 paramiko doesn't publicly expose a way to
+        #       set the file mode at create time. If it does, use it.
+        #       But for now, we just chmod later anyway.
+
+        def _open_and_write_file():
+            """Try to open the target file, raise error on failure"""
+            fout = None
+            try:
+                try:
+                    fout = self._sftp.file(abspath, mode='wb')
+                    fout.set_pipelined(True)
+                    writer(fout)
+                except (paramiko.SSHException, IOError), e:
+                    self._translate_io_exception(e, abspath,
+                                                 ': unable to open')
+
+                # This is designed to chmod() right before we close.
+                # Because we set_pipelined() earlier, theoretically we might 
+                # avoid the round trip for fout.close()
+                if mode is not None:
+                    self._sftp.chmod(abspath, mode)
+            finally:
+                if fout is not None:
+                    fout.close()
+
+        if not create_parent_dir:
+            _open_and_write_file()
+            return
+
+        # Try error handling to create the parent directory if we need to
+        try:
+            _open_and_write_file()
+        except NoSuchFile:
+            # Try to create the parent directory, and then go back to
+            # writing the file
+            parent_dir = os.path.dirname(abspath)
+            self._mkdir(parent_dir, dir_mode)
+            _open_and_write_file()
+
+    def put_file_non_atomic(self, relpath, f, mode=None,
+                            create_parent_dir=False,
+                            dir_mode=None):
+        """Copy the file-like object into the target location.
+
+        This function is not strictly safe to use. It is only meant to
+        be used when you already know that the target does not exist.
+        It is not safe, because it will open and truncate the remote
+        file. So there may be a time when the file has invalid contents.
+
+        :param relpath: The remote location to put the contents.
+        :param f:       File-like object.
+        :param mode:    Possible access permissions for new file.
+                        None means do not set remote permissions.
+        :param create_parent_dir: If we cannot create the target file because
+                        the parent directory does not exist, go ahead and
+                        create it, and then try again.
+        """
+        def writer(fout):
+            self._pump(f, fout)
+        self._put_non_atomic_helper(relpath, writer, mode=mode,
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
+
+    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+                             create_parent_dir=False,
+                             dir_mode=None):
+        def writer(fout):
+            fout.write(bytes)
+        self._put_non_atomic_helper(relpath, writer, mode=mode,
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
+
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
         queue = list(self.list_dir('.'))
@@ -424,21 +664,22 @@ class SFTPTransport(Transport):
             else:
                 yield relpath
 
+    def _mkdir(self, abspath, mode=None):
+        if mode is None:
+            local_mode = 0777
+        else:
+            local_mode = mode
+        try:
+            self._sftp.mkdir(abspath, local_mode)
+            if mode is not None:
+                self._sftp.chmod(abspath, mode=mode)
+        except (paramiko.SSHException, IOError), e:
+            self._translate_io_exception(e, abspath, ': unable to mkdir',
+                failure_exc=FileExists)
+
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
-        path = self._remote_path(relpath)
-        try:
-            # In the paramiko documentation, it says that passing a mode flag 
-            # will filtered against the server umask.
-            # StubSFTPServer does not do this, which would be nice, because it is
-            # what we really want :)
-            # However, real servers do use umask, so we really should do it that way
-            self._sftp.mkdir(path)
-            if mode is not None:
-                self._sftp.chmod(path, mode=mode)
-        except (paramiko.SSHException, IOError), e:
-            self._translate_io_exception(e, path, ': unable to mkdir',
-                failure_exc=FileExists)
+        self._mkdir(self._remote_path(relpath), mode=mode)
 
     def _translate_io_exception(self, e, path, more_info='', 
                                 failure_exc=PathError):
@@ -456,7 +697,7 @@ class SFTPTransport(Transport):
         """
         # paramiko seems to generate detailless errors.
         self._translate_error(e, path, raise_generic=False)
-        if hasattr(e, 'args'):
+        if getattr(e, 'args', None) is not None:
             if (e.args == ('No such file or directory',) or
                 e.args == ('No such file',)):
                 raise NoSuchFile(path, str(e) + more_info)
@@ -466,11 +707,11 @@ class SFTPTransport(Transport):
             if (e.args == ('Failure',)):
                 raise failure_exc(path, str(e) + more_info)
             mutter('Raising exception with args %s', e.args)
-        if hasattr(e, 'errno'):
+        if getattr(e, 'errno', None) is not None:
             mutter('Raising exception with errno %s', e.errno)
         raise e
 
-    def append(self, relpath, f, mode=None):
+    def append_file(self, relpath, f, mode=None):
         """
         Append the text in the file-like object into the final
         location.
@@ -582,41 +823,6 @@ class SFTPTransport(Transport):
         # that we have taken the lock.
         return SFTPLock(relpath, self)
 
-    def _unparse_url(self, path=None):
-        if path is None:
-            path = self._path
-        path = urllib.quote(path)
-        # handle homedir paths
-        if not path.startswith('/'):
-            path = "/~/" + path
-        netloc = urllib.quote(self._host)
-        if self._username is not None:
-            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
-        if self._port is not None:
-            netloc = '%s:%d' % (netloc, self._port)
-        return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
-
-    def _split_url(self, url):
-        (scheme, username, password, host, port, path) = split_url(url)
-        assert scheme == 'sftp'
-
-        # the initial slash should be removed from the path, and treated
-        # as a homedir relative path (the path begins with a double slash
-        # if it is absolute).
-        # see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
-        # RBC 20060118 we are not using this as its too user hostile. instead
-        # we are following lftp and using /~/foo to mean '~/foo'.
-        # handle homedir paths
-        if path.startswith('/~/'):
-            path = path[3:]
-        elif path == '/~':
-            path = ''
-        return (username, password, host, port, path)
-
-    def _parse_url(self, url):
-        (self._username, self._password,
-         self._host, self._port, self._path) = self._split_url(url)
-
     def _sftp_connect(self):
         """Connect to the remote sftp server.
         After this, self._sftp should have a valid connection (or
@@ -641,6 +847,10 @@ class SFTPTransport(Transport):
         :param abspath: The remote absolute path where the file should be opened
         :param mode: The mode permissions bits for the new file
         """
+        # TODO: jam 20060816 Paramiko >= 1.6.2 (probably earlier) supports
+        #       using the 'x' flag to indicate SFTP_FLAG_EXCL.
+        #       However, there is no way to set the permission mode at open 
+        #       time using the sftp_client.file() functionality.
         path = self._sftp._adjust_cwd(abspath)
         # mutter('sftp abspath %s => %s', abspath, path)
         attr = SFTPAttributes()
@@ -658,6 +868,12 @@ class SFTPTransport(Transport):
             self._translate_io_exception(e, abspath, ': unable to open',
                 failure_exc=FileExists)
 
+    def _can_roundtrip_unix_modebits(self):
+        if sys.platform == 'win32':
+            # anyone else?
+            return False
+        else:
+            return True
 
 # ------------- server test implementation --------------
 import threading
@@ -806,13 +1022,14 @@ class SocketDelay(object):
 class SFTPServer(Server):
     """Common code for SFTP server facilities."""
 
-    def __init__(self):
+    def __init__(self, server_interface=StubServer):
         self._original_vendor = None
         self._homedir = None
         self._server_homedir = None
         self._listener = None
         self._root = None
         self._vendor = ssh.ParamikoVendor()
+        self._server_interface = server_interface
         # sftp server logs
         self.logs = []
         self.add_latency = 0
@@ -843,7 +1060,7 @@ class SFTPServer(Server):
         f.close()
         host_key = paramiko.RSAKey.from_private_key_file(key_file)
         ssh_server.add_server_key(host_key)
-        server = StubServer(self)
+        server = self._server_interface(self)
         ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer,
                                          StubSFTPServer, root=self._root,
                                          home=self._server_homedir)
@@ -903,7 +1120,6 @@ class SFTPServerWithoutSSH(SFTPServer):
         # Re-import these as locals, so that they're still accessible during
         # interpreter shutdown (when all module globals get set to None, leading
         # to confusing errors like "'NoneType' object has no attribute 'error'".
-        import socket, errno
         class FakeChannel(object):
             def get_transport(self):
                 return self

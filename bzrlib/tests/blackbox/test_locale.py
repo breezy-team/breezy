@@ -19,7 +19,7 @@
 import os
 import sys
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 
 
 class TestLocale(TestCaseWithTransport):
@@ -43,7 +43,8 @@ class TestLocale(TestCaseWithTransport):
     def test_log_C(self):
         out, err = self.run_bzr_subprocess('--no-aliases', '--no-plugins',
                '-q', 'log', '--log-format=long', 'tree',
-               env_changes={'LANG':'C', 'BZR_PROGRESS_BAR':'none'})
+               env_changes={'LANG':'C', 'BZR_PROGRESS_BAR':'none',
+                            'LC_ALL':None, 'LC_CTYPE':None, 'LANGUAGE':None})
         self.assertEqual('', err)
         self.assertEqualDiff("""\
 ------------------------------------------------------------
@@ -58,12 +59,13 @@ message:
     def test_log_BOGUS(self):
         out, err = self.run_bzr_subprocess('--no-aliases', '--no-plugins',
                '-q', 'log', '--log-format=long', 'tree',
-               env_changes={'LANG':'BOGUS', 'BZR_PROGRESS_BAR':'none'})
+               env_changes={'LANG':'BOGUS', 'BZR_PROGRESS_BAR':'none',
+                            'LC_ALL':None, 'LC_CTYPE':None, 'LANGUAGE':None})
         # XXX: This depends on the exact formatting of a locale.Error
         # as the first part of the string. It may be a little tempermental
         self.assertEqualDiff("""\
 bzr: warning: unsupported locale setting
-  Could not what text encoding to use.
+  Could not determine what text encoding to use.
   This error usually means your Python interpreter
   doesn't support the locale set by $LANG (BOGUS)
   Continuing with ascii encoding.

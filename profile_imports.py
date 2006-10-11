@@ -115,16 +115,19 @@ def timed_import(name, globals, locals, fromlist):
     frame = sys._getframe(1)
     frame_name = frame.f_globals.get('__name__', '<unknown>')
     extra = ''
-    cur_frame = 1
     if frame_name.endswith('demandload'):
         # If this was demandloaded, we have 3 frames to ignore
-        extra = ' (demandload)'
+        extra = '(demandload) '
         frame = sys._getframe(4)
-        cur_frame = 4
+        frame_name = frame.f_globals.get('__name__', '<unknown>')
+    elif frame_name.endswith('lazy_import'):
+        # If this was lazily imported, we have 3 frames to ignore
+        extra = '[l] '
+        frame = sys._getframe(4)
         frame_name = frame.f_globals.get('__name__', '<unknown>')
     frame_lineno = frame.f_lineno
 
-    this = stack_add(name+extra, frame_name, frame_lineno, scope_name)
+    this = stack_add(extra + name, frame_name, frame_lineno, scope_name)
 
     tstart = time.time()
     try:
@@ -145,9 +148,15 @@ def timed_compile(*args, **kwargs):
     # And who is requesting this?
     frame = sys._getframe(2)
     frame_name = frame.f_globals.get('__name__', '<unknown>')
-    frame_lineno = frame.f_lineno
 
-    this = stack_add(repr(args[0]), frame_name, frame_lineno)
+    extra = ''
+    if frame_name.endswith('lazy_regex'):
+        # If this was lazily compiled, we have 3 more frames to ignore
+        extra = '[l] '
+        frame = sys._getframe(5)
+        frame_name = frame.f_globals.get('__name__', '<unknown>')
+    frame_lineno = frame.f_lineno
+    this = stack_add(extra+repr(args[0]), frame_name, frame_lineno)
 
     tstart = time.time()
     try:

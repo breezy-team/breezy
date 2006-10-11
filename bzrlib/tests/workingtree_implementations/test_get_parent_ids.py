@@ -30,22 +30,19 @@ class TestGetParentIds(TestCaseWithWorkingTree):
         t2 = t.bzrdir.sprout('t2').open_workingtree()
         rev2_id = t2.commit('foo', allow_pointless=True)
         self.assertEqual([rev2_id], t2.get_parent_ids())
-        self.merge(t2.branch, t)
+        t.merge_from_branch(t2.branch)
         self.assertEqual([rev1_id, rev2_id], t.get_parent_ids())
 
     def test_pending_merges(self):
-        """Test the correspondence between pending merges and get_parent_ids."""
+        """Test the correspondence between set pending merges and get_parent_ids."""
         wt = self.make_branch_and_tree('.')
         self.assertEqual([], wt.get_parent_ids())
-        self.assertEqual([], wt.pending_merges())
         # the first pending merge replaces the 'last revision' because
         # 'last revision' is shorthand for 'left most parent'
         wt.add_pending_merge('foo@azkhazan-123123-abcabc')
-        self.assertEqual([], wt.pending_merges())
         self.assertEqual(['foo@azkhazan-123123-abcabc'], wt.get_parent_ids())
         # adding a merge which is already in the parents list gets ignored.
         wt.add_pending_merge('foo@azkhazan-123123-abcabc')
-        self.assertEqual([], wt.pending_merges())
         self.assertEqual(['foo@azkhazan-123123-abcabc'], wt.get_parent_ids())
         # adding a different merge results in it being appended to the list -
         # order is preserved.
@@ -53,5 +50,3 @@ class TestGetParentIds(TestCaseWithWorkingTree):
         self.assertEqual(['foo@azkhazan-123123-abcabc',
             'wibble@fofof--20050401--1928390812'],
             wt.get_parent_ids())
-        self.assertEqual(['wibble@fofof--20050401--1928390812'],
-            wt.pending_merges())

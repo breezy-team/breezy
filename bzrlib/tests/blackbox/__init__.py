@@ -60,6 +60,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_ignored',
                      'bzrlib.tests.blackbox.test_info',
                      'bzrlib.tests.blackbox.test_init',
+                     'bzrlib.tests.blackbox.test_inventory',
                      'bzrlib.tests.blackbox.test_locale',
                      'bzrlib.tests.blackbox.test_log',
                      'bzrlib.tests.blackbox.test_logformats',
@@ -79,6 +80,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_revision_history',
                      'bzrlib.tests.blackbox.test_revision_info',
                      'bzrlib.tests.blackbox.test_selftest',
+                     'bzrlib.tests.blackbox.test_serve',
                      'bzrlib.tests.blackbox.test_shared_repository',
                      'bzrlib.tests.blackbox.test_sign_my_commits',
                      'bzrlib.tests.blackbox.test_status',
@@ -87,6 +89,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_uncommit',
                      'bzrlib.tests.blackbox.test_update',
                      'bzrlib.tests.blackbox.test_upgrade',
+                     'bzrlib.tests.blackbox.test_version_info',
                      'bzrlib.tests.blackbox.test_versioning',
                      'bzrlib.tests.blackbox.test_whoami',
                      ]

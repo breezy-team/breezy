@@ -84,7 +84,7 @@ def quotefn(f):
     Windows."""
     # TODO: I'm not really sure this is the best format either.x
     global _QUOTE_RE
-    if _QUOTE_RE == None:
+    if _QUOTE_RE is None:
         _QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/\\_~-])')
         
     if _QUOTE_RE.search(f):
@@ -150,7 +150,7 @@ lexists = getattr(os.path, 'lexists', None)
 if lexists is None:
     def lexists(f):
         try:
-            if hasattr(os, 'lstat'):
+            if getattr(os, 'lstat') is not None:
                 os.lstat(f)
             else:
                 os.stat(f)
@@ -190,12 +190,12 @@ def fancy_rename(old, new, rename_func, unlink_func):
         pass
     except IOError, e:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
-        # function raises an IOError with errno == None when a rename fails.
+        # function raises an IOError with errno is None when a rename fails.
         # This then gets caught here.
         if e.errno not in (None, errno.ENOENT, errno.ENOTDIR):
             raise
     except Exception, e:
-        if (not hasattr(e, 'errno') 
+        if (getattr(e, 'errno', None) is None
             or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
             raise
     else:
@@ -370,7 +370,7 @@ def get_terminal_encoding():
 
 
 def normalizepath(f):
-    if hasattr(os.path, 'realpath'):
+    if getattr(os.path, 'realpath', None) is not None:
         F = realpath
     else:
         F = abspath
@@ -505,7 +505,7 @@ def file_iterator(input_file, readsize=32768):
 
 
 def sha_file(f):
-    if hasattr(f, 'tell'):
+    if getattr(f, 'tell', None) is not None:
         assert f.tell() == 0
     s = sha.new()
     BUFSIZE = 128<<10
@@ -555,7 +555,7 @@ def compare_files(a, b):
 def local_time_offset(t=None):
     """Return offset of local zone from GMT, either at present or at time t."""
     # python2.3 localtime() can't take None
-    if t == None:
+    if t is None:
         t = time.time()
         
     if time.localtime(t).tm_isdst and time.daylight:
@@ -574,7 +574,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         tt = time.gmtime(t)
         offset = 0
     elif timezone == 'original':
-        if offset == None:
+        if offset is None:
             offset = 0
         tt = time.gmtime(t + offset)
     elif timezone == 'local':
@@ -596,6 +596,54 @@ def compact_date(when):
     return time.strftime('%Y%m%d%H%M%S', time.gmtime(when))
     
 
+def format_delta(delta):
+    """Get a nice looking string for a time delta.
+
+    :param delta: The time difference in seconds, can be positive or negative.
+        positive indicates time in the past, negative indicates time in the
+        future. (usually time.time() - stored_time)
+    :return: String formatted to show approximate resolution
+    """
+    delta = int(delta)
+    if delta >= 0:
+        direction = 'ago'
+    else:
+        direction = 'in the future'
+        delta = -delta
+
+    seconds = delta
+    if seconds < 90: # print seconds up to 90 seconds
+        if seconds == 1:
+            return '%d second %s' % (seconds, direction,)
+        else:
+            return '%d seconds %s' % (seconds, direction)
+
+    minutes = int(seconds / 60)
+    seconds -= 60 * minutes
+    if seconds == 1:
+        plural_seconds = ''
+    else:
+        plural_seconds = 's'
+    if minutes < 90: # print minutes, seconds up to 90 minutes
+        if minutes == 1:
+            return '%d minute, %d second%s %s' % (
+                    minutes, seconds, plural_seconds, direction)
+        else:
+            return '%d minutes, %d second%s %s' % (
+                    minutes, seconds, plural_seconds, direction)
+
+    hours = int(minutes / 60)
+    minutes -= 60 * hours
+    if minutes == 1:
+        plural_minutes = ''
+    else:
+        plural_minutes = 's'
+
+    if hours == 1:
+        return '%d hour, %d minute%s %s' % (hours, minutes,
+                                            plural_minutes, direction)
+    return '%d hours, %d minute%s %s' % (hours, minutes,
+                                         plural_minutes, direction)
 
 def filesize(f):
     """Return size of given open file."""
@@ -611,10 +659,10 @@ try:
 except (NotImplementedError, AttributeError):
     # If python doesn't have os.urandom, or it doesn't work,
     # then try to first pull random data from /dev/urandom
-    if os.path.exists("/dev/urandom"):
+    try:
         rand_bytes = file('/dev/urandom', 'rb').read
     # Otherwise, use this hack as a last resort
-    else:
+    except (IOError, OSError):
         # not well seeded, but better than nothing
         def rand_bytes(n):
             import random
@@ -676,7 +724,7 @@ def splitpath(p):
 def joinpath(p):
     assert isinstance(p, list)
     for f in p:
-        if (f == '..') or (f == None) or (f == ''):
+        if (f == '..') or (f is None) or (f == ''):
             raise BzrError("sorry, %r not allowed in path" % f)
     return pathjoin(*p)
 
@@ -726,7 +774,7 @@ def delete_any(full_path):
 
 
 def has_symlinks():
-    if hasattr(os, 'symlink'):
+    if getattr(os, 'symlink', None) is not None:
         return True
     else:
         return False
@@ -867,8 +915,28 @@ def terminal_width():
 
     return width
 
+
 def supports_executable():
     return sys.platform != "win32"
+
+
+def set_or_unset_env(env_variable, value):
+    """Modify the environment, setting or removing the env_variable.
+
+    :param env_variable: The environment variable in question
+    :param value: The value to set the environment to. If None, then
+        the variable will be removed.
+    :return: The original value of the environment variable.
+    """
+    orig_val = os.environ.get(env_variable)
+    if value is None:
+        if orig_val is not None:
+            del os.environ[env_variable]
+    else:
+        if isinstance(value, unicode):
+            value = value.encode(bzrlib.user_encoding)
+        os.environ[env_variable] = value
+    return orig_val
 
 
 _validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
@@ -1032,7 +1100,7 @@ def get_user_encoding():
         _cached_user_encoding = locale.getpreferredencoding()
     except locale.Error, e:
         sys.stderr.write('bzr: warning: %s\n'
-                         '  Could not what text encoding to use.\n'
+                         '  Could not determine what text encoding to use.\n'
                          '  This error usually means your Python interpreter\n'
                          '  doesn\'t support the locale set by $LANG (%s)\n'
                          "  Continuing with ascii encoding.\n"

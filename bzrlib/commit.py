@@ -61,6 +61,8 @@
 
 # TODO: If commit fails, leave the message in a file somewhere.
 
+# TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
+# the rest of the code; add a deprecation of the old name.
 
 import os
 import re
@@ -69,8 +71,11 @@ import time
 
 from cStringIO import StringIO
 
+from bzrlib import (
+    errors,
+    tree,
+    )
 import bzrlib.config
-import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
@@ -245,11 +250,17 @@ class Commit(object):
             self._check_bound_branch()
 
             # check for out of date working trees
-            # if we are bound, then self.branch is the master branch and this
-            # test is thus all we need.
+            try:
+                first_tree_parent = self.work_tree.get_parent_ids()[0]
+            except IndexError:
+                # if there are no parents, treat our parent as 'None'
+                # this is so that we still consier the master branch
+                # - in a checkout scenario the tree may have no
+                # parents but the branch may do.
+                first_tree_parent = None
             master_last = self.master_branch.last_revision()
-            if (master_last is not None and 
-                master_last != self.work_tree.last_revision()):
+            if (master_last is not None and
+                master_last != first_tree_parent):
                 raise errors.OutOfDateTree(self.work_tree)
     
             if strict:
@@ -269,6 +280,11 @@ class Commit(object):
             self.work_inv = self.work_tree.inventory
             self.basis_tree = self.work_tree.basis_tree()
             self.basis_inv = self.basis_tree.inventory
+            if specific_files is not None:
+                # Ensure specified files are versioned
+                # (We don't actually need the ids here)
+                tree.find_ids_across_trees(specific_files, 
+                                           [self.basis_tree, self.work_tree])
             # one to finish, one for rev and inventory, and one for each
             # inventory entry, and the same for the new inventory.
             # note that this estimate is too long when we do a partial tree
@@ -289,10 +305,7 @@ class Commit(object):
             self._populate_new_inv()
             self._report_deletes()
 
-            if not (self.allow_pointless
-                    or len(self.parents) > 1
-                    or self.builder.new_inventory != self.basis_inv):
-                raise PointlessCommit()
+            self._check_pointless()
 
             self._emit_progress_update()
             # TODO: Now the new inventory is known, check for conflicts and
@@ -319,11 +332,8 @@ class Commit(object):
             # and now do the commit locally.
             self.branch.append_revision(self.rev_id)
 
-            # if the builder gave us the revisiontree it created back, we
-            # could use it straight away here.
-            # TODO: implement this.
-            self.work_tree.set_parent_trees([(self.rev_id,
-                self.branch.repository.revision_tree(self.rev_id))])
+            rev_tree = self.builder.revision_tree()
+            self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             # now the work tree is up to date with the branch
             
             self.reporter.completed(self.branch.revno(), self.rev_id)
@@ -339,6 +349,56 @@ class Commit(object):
         finally:
             self._cleanup()
         return self.rev_id
+
+    def _any_real_changes(self):
+        """Are there real changes between new_inventory and basis?
+
+        For trees without rich roots, inv.root.revision changes every commit.
+        But if that is the only change, we want to treat it as though there
+        are *no* changes.
+        """
+        new_entries = self.builder.new_inventory.iter_entries()
+        basis_entries = self.basis_inv.iter_entries()
+        new_path, new_root_ie = new_entries.next()
+        basis_path, basis_root_ie = basis_entries.next()
+
+        # This is a copy of InventoryEntry.__eq__ only leaving out .revision
+        def ie_equal_no_revision(this, other):
+            return ((this.file_id == other.file_id)
+                    and (this.name == other.name)
+                    and (this.symlink_target == other.symlink_target)
+                    and (this.text_sha1 == other.text_sha1)
+                    and (this.text_size == other.text_size)
+                    and (this.text_id == other.text_id)
+                    and (this.parent_id == other.parent_id)
+                    and (this.kind == other.kind)
+                    and (this.executable == other.executable)
+                    )
+        if not ie_equal_no_revision(new_root_ie, basis_root_ie):
+            return True
+
+        for new_ie, basis_ie in zip(new_entries, basis_entries):
+            if new_ie != basis_ie:
+                return True
+
+        # No actual changes present
+        return False
+
+    def _check_pointless(self):
+        if self.allow_pointless:
+            return
+        # A merge with no effect on files
+        if len(self.parents) > 1:
+            return
+        # Shortcut, if the number of entries changes, then we obviously have
+        # a change
+        if len(self.builder.new_inventory) != len(self.basis_inv):
+            return
+        # If length == 1, then we only have the root entry. Which means
+        # that there is no real difference (only the root could be different)
+        if (len(self.builder.new_inventory) != 1 and self._any_real_changes()):
+            return
+        raise PointlessCommit()
 
     def _check_bound_branch(self):
         """Check to see if the local branch is bound.
@@ -462,17 +522,18 @@ class Commit(object):
         """
         specific = self.specific_files
         deleted_ids = []
+        deleted_paths = set()
         for path, ie in self.work_inv.iter_entries():
+            if is_inside_any(deleted_paths, path):
+                # The tree will delete the required ids recursively.
+                continue
             if specific and not is_inside_any(specific, path):
                 continue
             if not self.work_tree.has_filename(path):
+                deleted_paths.add(path)
                 self.reporter.missing(path)
-                deleted_ids.append((path, ie.file_id))
-        if deleted_ids:
-            deleted_ids.sort(reverse=True)
-            for path, file_id in deleted_ids:
-                del self.work_inv[file_id]
-            self.work_tree._write_inventory(self.work_inv)
+                deleted_ids.append(ie.file_id)
+        self.work_tree.unversion(deleted_ids)
 
     def _populate_new_inv(self):
         """Build revision inventory.
