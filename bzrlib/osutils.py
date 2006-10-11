@@ -659,10 +659,10 @@ try:
 except (NotImplementedError, AttributeError):
     # If python doesn't have os.urandom, or it doesn't work,
     # then try to first pull random data from /dev/urandom
-    if os.path.exists("/dev/urandom"):
+    try:
         rand_bytes = file('/dev/urandom', 'rb').read
     # Otherwise, use this hack as a last resort
-    else:
+    except (IOError, OSError):
         # not well seeded, but better than nothing
         def rand_bytes(n):
             import random
