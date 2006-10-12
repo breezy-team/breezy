@@ -3,9 +3,10 @@ IN DEVELOPMENT
   IMPROVEMENTS:
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
 
-    * Added help topics to the bzr help system
-
-    * On line documentation of the revision spec (see bzr help revisionspec)
+    * Added ``bzr help topics`` to the bzr help system. This gives a
+      location for general information, outside of a specific command.
+      This includes updates for ``bzr help revisionspec`` the first topic
+      included. (Goffredo Baroncelli, John Arbash Meinel, #42714)
 
   INTERNALS:
 
