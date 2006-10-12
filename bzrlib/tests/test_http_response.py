@@ -351,6 +351,20 @@ Content-Type: text/plain; charset=UTF-8\r
 mbp@sourcefrog.net-20050309040929-eee0eb3e6d1e762""")
 
 
+_single_range_no_content_type = (206, """HTTP/1.1 206 Partial Content\r
+Date: Tue, 11 Jul 2006 04:45:22 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
+ETag: "238a3c-16ec2-805c5540"\r
+Accept-Ranges: bytes\r
+Content-Length: 100\r
+Content-Range: bytes 100-199/93890\r
+Connection: close\r
+\r
+""", """mbp@sourcefrog.net-20050309040815-13242001617e4a06
+mbp@sourcefrog.net-20050309040929-eee0eb3e6d1e762""")
+
+
 _multipart_range_response = (206, """HTTP/1.1 206 Partial Content\r
 Date: Tue, 11 Jul 2006 04:49:48 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
@@ -508,6 +522,12 @@ class TestExtractHeader(TestCase):
         self.check_header('Content-Range', 'bytes 100-199/93890')
         self.check_header('Content-Type', 'text/plain; charset=UTF-8')
 
+    def test_single_range_no_content(self):
+        self.use_response(_single_range_no_content_type)
+
+        self.check_header('Content-Length', '100')
+        self.check_header('Content-Range', 'bytes 100-199/93890')
+
     def test_multi_range(self):
         self.use_response(_multipart_range_response)
 
@@ -597,6 +617,15 @@ class TestHandleResponse(TestCase):
         out.seek(100)
         self.assertEqual(_single_range_response[2], out.read(100))
 
+    def test_single_range_no_content(self):
+        out = self.get_response(_single_range_no_content_type)
+        self.assertIsInstance(out, response.HttpRangeResponse)
+
+        self.assertRaises(errors.InvalidRange, out.read, 20)
+
+        out.seek(100)
+        self.assertEqual(_single_range_no_content_type[2], out.read(100))
+
     def test_multi_range(self):
         out = self.get_response(_multipart_range_response)
         self.assertIsInstance(out, response.HttpMultipartRangeResponse)
@@ -640,14 +669,6 @@ class TestHandleResponse(TestCase):
         self.assertRaises(errors.NoSuchFile,
             response.handle_response, 'http://missing', a_response[0], headers,
                                       StringIO(a_response[2]))
-
-    def test_missing_content_type(self):
-        a_response = _single_range_response
-        headers = http._extract_headers(a_response[1], 'http://nocontent')
-        del headers['Content-Type']
-        self.assertRaises(errors.InvalidHttpContentType,
-            response.handle_response, 'http://nocontent', a_response[0],
-                                      headers, StringIO(a_response[2]))
 
     def test_missing_content_range(self):
         a_response = _single_range_response

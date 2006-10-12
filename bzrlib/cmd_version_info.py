@@ -16,12 +16,15 @@
 
 """Commands for generating snapshot information about a bzr tree."""
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
     branch,
     errors,
     version_info_formats,
     workingtree,
     )
+""")
 from bzrlib.commands import Command
 from bzrlib.option import Option
 

@@ -3,6 +3,9 @@ import stat
 import sys
 
 import bzrlib
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.add import smart_add_tree
 from bzrlib.builtins import merge
 from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
@@ -10,8 +13,8 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError, NoDiff3)
 import bzrlib.inventory as inventory
 from bzrlib.merge import Merge3Merger, Diff3Merger, WeaveMerger
-from bzrlib.osutils import (file_kind, getcwd, mkdtemp, pathjoin, rename, rmtree,
-                            sha_file, 
+from bzrlib.osutils import (file_kind, getcwd, pathjoin, rename,
+                            sha_file,
                             )
 from bzrlib.transform import TreeTransform
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
@@ -20,7 +23,7 @@ from bzrlib.workingtree import WorkingTree
 
 class MergeBuilder(object):
     def __init__(self, dir=None):
-        self.dir = mkdtemp(prefix="merge-test", dir=dir)
+        self.dir = osutils.mkdtemp(prefix="merge-test", dir=dir)
         def wt(name):
            path = pathjoin(self.dir, name)
            os.mkdir(path)
@@ -171,7 +174,7 @@ class MergeBuilder(object):
 
     def cleanup(self):
         self.unlock()
-        rmtree(self.dir)
+        osutils.rmtree(self.dir)
 
 
 class MergeTest(TestCaseWithTransport):

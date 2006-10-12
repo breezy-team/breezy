@@ -27,21 +27,27 @@
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"
 
-
-import collections
-import os.path
+import os
 import re
 import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import collections
 import tarfile
-import types
-from warnings import warn
 
 import bzrlib
-from bzrlib import errors, osutils
-from bzrlib.osutils import (pumpfile, quotefn, splitpath, joinpath,
-                            pathjoin, sha_strings)
-from bzrlib.errors import (NotVersionedError, InvalidEntryName,
-                           BzrError, BzrCheckError, BinaryFile)
+from bzrlib import (
+    errors,
+    osutils,
+    symbol_versioning,
+    )
+""")
+
+from bzrlib.errors import (
+    BzrCheckError,
+    BzrError,
+    )
 from bzrlib.trace import mutter
 
 
@@ -82,7 +88,7 @@ class InventoryEntry(object):
     InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None)
     >>> i.add(InventoryFile('2323', 'hello.c', parent_id='123'))
     InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None)
-    >>> shouldbe = {0: '', 1: 'src', 2: pathjoin('src','hello.c')}
+    >>> shouldbe = {0: '', 1: 'src', 2: 'src/hello.c'}
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
     ... 
@@ -246,7 +252,7 @@ class InventoryEntry(object):
 
     def get_tar_item(self, root, dp, now, tree):
         """Get a tarfile item and a file stream for its content."""
-        item = tarfile.TarInfo(pathjoin(root, dp).encode('utf8'))
+        item = tarfile.TarInfo(osutils.pathjoin(root, dp).encode('utf8'))
         # TODO: would be cool to actually set it to the timestamp of the
         # revision it was last changed
         item.mtime = now
@@ -281,7 +287,7 @@ class InventoryEntry(object):
         """
         assert isinstance(name, basestring), name
         if '/' in name or '\\' in name:
-            raise InvalidEntryName(name=name)
+            raise errors.InvalidEntryName(name=name)
         self.executable = False
         self.revision = None
         self.text_sha1 = None
@@ -311,7 +317,7 @@ class InventoryEntry(object):
         
         This is a template method - implement _put_on_disk in subclasses.
         """
-        fullpath = pathjoin(dest, dp)
+        fullpath = osutils.pathjoin(dest, dp)
         self._put_on_disk(fullpath, tree)
         # mutter("  export {%s} kind %s to %s", self.file_id,
         #         self.kind, fullpath)
@@ -514,9 +520,9 @@ class RootEntry(InventoryEntry):
         self.parent_id = None
         self.name = u''
         self.revision = None
-        warn('RootEntry is deprecated as of bzr 0.10.  Please use '
-             'InventoryDirectory instead.',
-            DeprecationWarning, stacklevel=2)
+        symbol_versioning.warn('RootEntry is deprecated as of bzr 0.10.'
+                               '  Please use InventoryDirectory instead.',
+                               DeprecationWarning, stacklevel=2)
 
     def __eq__(self, other):
         if not isinstance(other, RootEntry):
@@ -645,7 +651,7 @@ class InventoryFile(InventoryEntry):
             else:
                 text_diff(to_label, to_text,
                           from_label, from_text, output_to)
-        except BinaryFile:
+        except errors.BinaryFile:
             if reverse:
                 label_pair = (to_label, from_label)
             else:
@@ -677,7 +683,7 @@ class InventoryFile(InventoryEntry):
 
     def _put_on_disk(self, fullpath, tree):
         """See InventoryEntry._put_on_disk."""
-        pumpfile(tree.get_file(self.file_id), file(fullpath, 'wb'))
+        osutils.pumpfile(tree.get_file(self.file_id), file(fullpath, 'wb'))
         if tree.is_executable(self.file_id):
             os.chmod(fullpath, 0755)
 
@@ -982,7 +988,7 @@ class Inventory(object):
             kids = dir_ie.children.items()
             kids.sort()
             for name, ie in kids:
-                child_path = pathjoin(dir_path, name)
+                child_path = osutils.pathjoin(dir_path, name)
                 accum.append((child_path, ie))
                 if ie.kind == 'directory':
                     descend(ie, child_path)
@@ -1001,7 +1007,7 @@ class Inventory(object):
             kids.sort()
 
             for name, child_ie in kids:
-                child_path = pathjoin(parent_path, name)
+                child_path = osutils.pathjoin(parent_path, name)
                 descend(child_ie, child_path)
         descend(self.root, u'')
         return accum
@@ -1068,7 +1074,7 @@ class Inventory(object):
 
         if entry.name in parent.children:
             raise BzrError("%s is already versioned" %
-                    pathjoin(self.id2path(parent.file_id), entry.name))
+                    osutils.pathjoin(self.id2path(parent.file_id), entry.name))
 
         self._byid[entry.file_id] = entry
         parent.children[entry.name] = entry
@@ -1093,7 +1099,7 @@ class Inventory(object):
             parent_path = parts[:-1]
             parent_id = self.path2id(parent_path)
             if parent_id is None:
-                raise NotVersionedError(path=parent_path)
+                raise errors.NotVersionedError(path=parent_path)
         ie = make_entry(kind, parts[-1], parent_id, file_id)
         return self.add(ie)
 
@@ -1193,8 +1199,8 @@ class Inventory(object):
 
         Returns None IFF the path is not found.
         """
-        if isinstance(name, types.StringTypes):
-            name = splitpath(name)
+        if isinstance(name, basestring):
+            name = osutils.splitpath(name)
 
         # mutter("lookup path %r" % name)
 

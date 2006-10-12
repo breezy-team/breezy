@@ -3,13 +3,26 @@ IN DEVELOPMENT
   IMPROVEMENTS:
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
 
+    * ``bzr`` now uses lazy importing to reduce the startup time. This has
+      a moderate effect on lots of actions, especially ones that have
+      little to do. For example ``bzr rocks`` time is down to 116ms from
+      283ms. (John Arbash Meinel)
+
   INTERNALS:
 
     * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
       can take a ``working_dir='foo'`` parameter, which will change directory 
       for the command. (John Arbash Meinel)
 
+    * ``bzrlib.lazy_regex.lazy_compile`` can be used to create a proxy
+      around a regex, which defers compilation until first use. 
+      (John Arbash Meinel)
+
   BUG FIXES:
+
+    * Don't require ``Content-Type`` in range responses. Assume they are a
+      single range if ``Content-Type`` does not exist.
+      (John Arbash Meinel, #62473)
 
     * bzr branch/pull no longer complain about progress bar cleanup when
       interrupted during fetch.  (Aaron Bentley, #54000)
