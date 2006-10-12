@@ -146,14 +146,14 @@ class TreeDelta(object):
 @deprecated_function(zero_nine)
 def compare_trees(old_tree, new_tree, want_unchanged=False,
                   specific_files=None, extra_trees=None,
-                  require_versioned=False, include_root=False):
+                  require_versioned=False):
     """compare_trees was deprecated in 0.10. Please see Tree.changes_from."""
     return new_tree.changes_from(old_tree,
         want_unchanged=want_unchanged,
         specific_files=specific_files,
         extra_trees=extra_trees,
         require_versioned=require_versioned,
-        include_root=include_root)
+        include_root=False)
 
 
 def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,

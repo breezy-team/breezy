@@ -973,17 +973,15 @@ class MalformedTransform(BzrNewError):
 
 
 class NoFinalPath(BzrNewError):
-    """No final name for trans_id %(trans_id)r"""
+    """No final name for trans_id %(trans_id)r
+    file-id: %(file_id)r"
+    root trans-id: %(root_trans_id)r 
+    """
 
     def __init__(self, trans_id, transform):
         self.trans_id = trans_id
         self.file_id = transform.final_file_id(trans_id)
         self.root_trans_id = transform.root
-
-    def __str__():
-        return (BzrNewError.str(self) + 
-                "\nfile-id: %(file_id)r"
-                "\nroot trans-id: %(root_trans_id)r" % self.__dict__)
 
 
 class BzrBadParameter(BzrNewError):

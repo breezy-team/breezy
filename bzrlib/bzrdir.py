@@ -1664,8 +1664,6 @@ class ConvertBzrDir4To5(Converter):
             entries = inv.iter_entries()
             entries.next()
             for path, ie in entries:
-                if inv.is_root(ie.file_id):
-                    continue
                 assert getattr(ie, 'revision', None) is not None, \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
@@ -1684,10 +1682,9 @@ class ConvertBzrDir4To5(Converter):
         mutter('converting texts of revision {%s}',
                rev_id)
         parent_invs = map(self._load_updated_inventory, present_parents)
-        for file_id in inv:
-            if inv.is_root(file_id):
-                continue
-            ie = inv[file_id]
+        entries = inv.iter_entries()
+        entries.next()
+        for path, ie in entries:
             self._convert_file_version(rev, ie, parent_invs)
 
     def _convert_file_version(self, rev, ie, parent_invs):

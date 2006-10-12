@@ -580,13 +580,8 @@ class Commit(object):
                 else:
                     # this entry is new and not being committed
                     continue
-            try:
-                self.builder.record_entry_contents(ie, self.parent_invs, 
-                    path, self.work_tree)
-            except:
-                raise
-                raise repr((self.builder.new_inventory.root,
-                self.work_inv.root, ie))
+            self.builder.record_entry_contents(ie, self.parent_invs, 
+                path, self.work_tree)
             # describe the nature of the change that has occurred relative to
             # the basis inventory.
             if (self.basis_inv.has_id(ie.file_id)):
