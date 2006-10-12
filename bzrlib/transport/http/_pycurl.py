@@ -214,7 +214,6 @@ class PyCurlTransport(HttpTransportBase):
         try:
             curl.perform()
         except pycurl.error, e:
-            # XXX: There seem to be no symbolic constants for these values.
             url = curl.getinfo(pycurl.EFFECTIVE_URL)
             mutter('got pycurl error: %s, %s, %s, url: %s ',
                     e[0], _pycurl_errors.errorcode[e[0]], e, url)

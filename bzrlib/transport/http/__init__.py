@@ -153,9 +153,6 @@ class HttpTransportBase(Transport):
         if base[-1] != '/':
             base = base + '/'
         super(HttpTransportBase, self).__init__(base)
-        # In the future we might actually connect to the remote host
-        # rather than using get_url
-        # self._connection = None
         (apparent_proto, self._host,
             self._path, self._parameters,
             self._query, self._fragment) = urlparse.urlparse(self.base)
@@ -496,7 +493,7 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         self.send_header('Accept-Ranges', 'bytes')
         self.send_header("Content-Length", "%d" % length)
 
-        self.send_header("Content-type", 'application/octet-stream')
+        self.send_header("Content-Type", 'application/octet-stream')
         self.send_header("Content-Range", "bytes %d-%d/%d" % (start,
                                                               end,
                                                               file_size))
