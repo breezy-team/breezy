@@ -20,6 +20,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Don't require ``Content-Type`` in range responses. Assume they are a
+      single range if ``Content-Type`` does not exist.
+      (John Arbash Meinel, #62473)
+
     * bzr branch/pull no longer complain about progress bar cleanup when
       interrupted during fetch.  (Aaron Bentley, #54000)
 

@@ -251,10 +251,12 @@ def handle_response(url, code, headers, data):
         try:
             content_type = headers['Content-Type']
         except KeyError:
-            raise errors.InvalidHttpContentType(url, '',
-                msg='Missing Content-Type')
+            # We can't be multipart if there is no Content-Type header
+            is_multipart = False
+        else:
+            is_multipart = _is_multipart(content_type)
 
-        if _is_multipart(content_type):
+        if is_multipart:
             # Full fledged multipart response
             return HttpMultipartRangeResponse(url, content_type, data)
         else:
