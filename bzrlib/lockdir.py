@@ -98,6 +98,9 @@ import os
 import time
 from cStringIO import StringIO
 
+from bzrlib import (
+    errors,
+    )
 import bzrlib.config
 from bzrlib.errors import (
         DirectoryNotEmpty,
@@ -342,11 +345,15 @@ class LockDir(object):
         import socket
         # XXX: is creating this here inefficient?
         config = bzrlib.config.GlobalConfig()
+        try:
+            user = config.user_email()
+        except errors.NoEmailInUsername:
+            user = config.username()
         s = Stanza(hostname=socket.gethostname(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
                    nonce=self.nonce,
-                   user=config.user_email(),
+                   user=user,
                    )
         return s.to_string()
 

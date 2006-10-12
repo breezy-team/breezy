@@ -30,7 +30,13 @@ displays no output.
 
 import sys
 
-import bzrlib.progress
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    progress,
+    )
+""")
+
 from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
 
 
@@ -118,15 +124,15 @@ class SilentUIFactory(CLIUIFactory):
     @deprecated_method(zero_eight)
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""
-        return bzrlib.progress.DummyProgress()
+        return progress.DummyProgress()
 
     def get_password(self, prompt='', **kwargs):
         return None
 
     def nested_progress_bar(self):
         if self._progress_bar_stack is None:
-            self._progress_bar_stack = bzrlib.progress.ProgressBarStack(
-                klass=bzrlib.progress.DummyProgress)
+            self._progress_bar_stack = progress.ProgressBarStack(
+                klass=progress.DummyProgress)
         return self._progress_bar_stack.get_nested()
 
     def clear_term(self):
