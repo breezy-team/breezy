@@ -31,20 +31,27 @@ from bzrlib.tests import (
     TestCase,
     TestSkipped,
     )
+from bzrlib.tests.HttpServer import (
+    HttpServer,
+    HttpServer_PyCurl,
+    HttpServer_urllib,
+    )
+from bzrlib.tests.HTTPTestUtil import (
+    BadProtocolRequestHandler,
+    BadStatusRequestHandler,
+    InvalidStatusRequestHandler,
+    TestCaseWithWebserver,
+    WallRequestHandler,
+    )
 from bzrlib.transport import (
     get_transport,
     Transport,
     )
 from bzrlib.transport.http import (
     extract_auth,
-    BadProtocolRequestHandler,
-    BadStatusRequestHandler,
     HttpTransportBase,
-    InvalidStatusRequestHandler,
-    WallRequestHandler,
     )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 
 
 class FakeManager (object):
@@ -98,17 +105,13 @@ class TestHttpUrls(TestCase):
 
     def test_http_impl_urls(self):
         """There are servers which ask for particular clients to connect"""
+        server = HttpServer_PyCurl()
         try:
-            from bzrlib.transport.http._pycurl import HttpServer_PyCurl
-            server = HttpServer_PyCurl()
-            try:
-                server.setUp()
-                url = server.get_url()
-                self.assertTrue(url.startswith('http+pycurl://'))
-            finally:
-                server.tearDown()
-        except DependencyNotPresent:
-            raise TestSkipped('pycurl not present')
+            server.setUp()
+            url = server.get_url()
+            self.assertTrue(url.startswith('http+pycurl://'))
+        finally:
+            server.tearDown()
 
 
 class TestHttpConnections(object):
@@ -257,7 +260,7 @@ class TestWallServer(object):
     """Tests exceptions during the connection phase"""
 
     def create_transport_readonly_server(self):
-        return bzrlib.transport.http.HttpServer(WallRequestHandler)
+        return HttpServer(WallRequestHandler)
 
     def test_http_has(self):
         server = self.get_readonly_server()
@@ -286,7 +289,7 @@ class TestBadStatusServer(object):
     """Tests bad status from server."""
 
     def create_transport_readonly_server(self):
-        return bzrlib.transport.http.HttpServer(BadStatusRequestHandler)
+        return HttpServer(BadStatusRequestHandler)
 
     def test_http_has(self):
         server = self.get_readonly_server()
@@ -318,7 +321,7 @@ class TestInvalidStatusServer(TestBadStatusServer):
     """
 
     def create_transport_readonly_server(self):
-        return bzrlib.transport.http.HttpServer(InvalidStatusRequestHandler)
+        return HttpServer(InvalidStatusRequestHandler)
 
 
 class TestInvalidStatusServer_urllib(TestInvalidStatusServer,
@@ -338,7 +341,7 @@ class TestBadProtocolServer(object):
     """Tests bad status from server."""
 
     def create_transport_readonly_server(self):
-        return bzrlib.transport.http.HttpServer(BadProtocolRequestHandler)
+        return HttpServer(BadProtocolRequestHandler)
 
     def test_http_has(self):
         server = self.get_readonly_server()
@@ -364,3 +367,79 @@ class TestBadProtocolServer_urllib(TestBadProtocolServer,
 #    """Tests BadProtocolServer for pycurl implementation"""
 
 
+class TestRangesServer(object):
+    """Tests range requests against a server.
+
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithWebserver.
+
+    We can't inherit directly from TestCaseWithWebserver or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete.
+    """
+
+    def setUp(self):
+        TestCaseWithWebserver.setUp(self)
+        transport = self.get_transport()
+        if transport.is_readonly():
+            file('a', 'w').write('0123456789')
+        else:
+            transport.put_bytes('a', '0123456789')
+
+    def test_single_range(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        content = t.readv(_file_10, )
+
+        self.assertRaises(errors.InvalidRange, out.read, 20)
+
+        out.seek(100)
+        self.assertEqual(_single_range_response[2], out.read(100))
+
+    def test_single_range_no_content(self):
+        out = self.get_response(_single_range_no_content_type)
+        self.assertIsInstance(out, response.HttpRangeResponse)
+
+        self.assertRaises(errors.InvalidRange, out.read, 20)
+
+        out.seek(100)
+        self.assertEqual(_single_range_no_content_type[2], out.read(100))
+
+    def test_multi_range(self):
+        out = self.get_response(_multipart_range_response)
+        self.assertIsInstance(out, response.HttpMultipartRangeResponse)
+
+        # Just make sure we can read the right contents
+        out.seek(0)
+        out.read(255)
+
+        out.seek(1000)
+        out.read(1050)
+
+    def test_multi_squid_range(self):
+        out = self.get_response(_multipart_squid_range_response)
+        self.assertIsInstance(out, response.HttpMultipartRangeResponse)
+
+        # Just make sure we can read the right contents
+        out.seek(0)
+        out.read(100)
+
+        out.seek(300)
+        out.read(200)
+
+    def test_full_text_no_content_type(self):
+        # We should not require Content-Type for a full response
+        a_response = _full_text_response
+        headers = http._extract_headers(a_response[1], 'http://foo')
+        del headers['Content-Type']
+        out = response.handle_response('http://foo', a_response[0], headers,
+                                        StringIO(a_response[2]))
+        self.assertEqual(_full_text_response[2], out.read())
+
+    def test_missing_content_range(self):
+        a_response = _single_range_response
+        headers = http._extract_headers(a_response[1], 'http://nocontent')
+        del headers['Content-Range']
+        self.assertRaises(errors.InvalidHttpResponse,
+            response.handle_response, 'http://nocontent', a_response[0],
+                                      headers, StringIO(a_response[2]))

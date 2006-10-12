@@ -486,9 +486,10 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
+        from bzrlib.tests.HttpServer import HttpServer
         from bzrlib.transport import get_transport
         from bzrlib.transport.local import LocalRelpathServer
-        from bzrlib.transport.http import HttpServer, HttpTransportBase
+        from bzrlib.transport.http import HttpTransportBase
         self.transport_server = LocalRelpathServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.

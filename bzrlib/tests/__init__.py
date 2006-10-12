@@ -75,6 +75,7 @@ from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
 from bzrlib.tests import TestUtil
+from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
@@ -1523,8 +1524,8 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        if not self.transport_server == bzrlib.transport.memory.MemoryServer:
-            self.transport_readonly_server = bzrlib.transport.http.HttpServer
+        if not self.transport_server == MemoryServer:
+            self.transport_readonly_server = HttpServer
 
 
 def filter_suite_by_re(suite, pattern):

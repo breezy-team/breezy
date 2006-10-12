@@ -56,9 +56,7 @@ import urllib2
 import urlparse
 import sys
 
-from bzrlib import (
-    __version__ as bzrlib_version,
-    )
+from bzrlib import __version__ as bzrlib_version
 from bzrlib.errors import (
     BzrError,
     ConnectionError,

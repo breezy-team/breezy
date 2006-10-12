@@ -26,16 +26,22 @@
 import os
 from cStringIO import StringIO
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    __version__ as bzrlib_version,
+    )
 import bzrlib
-from bzrlib.errors import (TransportNotPossible, NoSuchFile,
-                           TransportError, ConnectionError,
+from bzrlib.errors import (NoSuchFile,
+                           ConnectionError,
                            DependencyNotPresent)
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
-from bzrlib.transport.http import (HttpTransportBase, HttpServer,
-                                   _extract_headers,
-                                   response, _pycurl_errors)
+from bzrlib.transport.http import (
+    _extract_headers,
+    HttpTransportBase,
+    _pycurl_errors,
+    response,
+    )
 
 try:
     import pycurl
@@ -157,7 +163,8 @@ class PyCurlTransport(HttpTransportBase):
         if code == 404:
             raise NoSuchFile(abspath)
         if code != 200:
-            self._raise_curl_http_error(curl, 'expected 200 or 404 for full response.')
+            self._raise_curl_http_error(
+                curl, 'expected 200 or 404 for full response.')
 
         return code, data
 
@@ -228,18 +235,8 @@ class PyCurlTransport(HttpTransportBase):
             raise
 
 
-class HttpServer_PyCurl(HttpServer):
-    """Subclass of HttpServer that gives http+pycurl urls.
-
-    This is for use in testing: connections to this server will always go
-    through pycurl where possible.
-    """
-
-    # urls returned by this server should require the pycurl client impl
-    _url_protocol = 'http+pycurl'
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
+    from bzrlib.tests.HttpServer import HttpServer_PyCurl
     return [(PyCurlTransport, HttpServer_PyCurl),
             ]

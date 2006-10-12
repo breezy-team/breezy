@@ -20,32 +20,14 @@ There are separate implementation modules for each http client implementation.
 """
 
 from cStringIO import StringIO
-import errno
 import mimetools
-import os
-import posixpath
-import random
 import re
-import sys
 import urlparse
 import urllib
-from warnings import warn
-
-# TODO: load these only when running http tests
-import BaseHTTPServer
-from SimpleHTTPServer import SimpleHTTPRequestHandler
-import socket
-import threading
-import time
 
 from bzrlib import errors
-from bzrlib.errors import (TransportNotPossible, NoSuchFile,
-                           TransportError, ConnectionError, InvalidURL)
-from bzrlib.branch import Branch
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport, register_transport, Server
-from bzrlib.transport.http.response import (HttpMultipartRangeResponse,
-                                            HttpRangeResponse)
+from bzrlib.transport import Transport
 from bzrlib.ui import ui_factory
 
 
@@ -169,7 +151,7 @@ class HttpTransportBase(Transport):
         """
         assert isinstance(relpath, basestring)
         if isinstance(relpath, unicode):
-            raise InvalidURL(relpath, 'paths must not be unicode.')
+            raise errors.InvalidURL(relpath, 'paths must not be unicode.')
         if isinstance(relpath, basestring):
             relpath_parts = relpath.split('/')
         else:
@@ -296,25 +278,25 @@ class HttpTransportBase(Transport):
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like object.
         """
-        raise TransportNotPossible('http PUT not supported')
+        raise errors.TransportNotPossible('http PUT not supported')
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
-        raise TransportNotPossible('http does not support mkdir()')
+        raise errors.TransportNotPossible('http does not support mkdir()')
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""
-        raise TransportNotPossible('http does not support rmdir()')
+        raise errors.TransportNotPossible('http does not support rmdir()')
 
     def append_file(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """
-        raise TransportNotPossible('http does not support append()')
+        raise errors.TransportNotPossible('http does not support append()')
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
-        raise TransportNotPossible('http does not support copy()')
+        raise errors.TransportNotPossible('http does not support copy()')
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -328,18 +310,19 @@ class HttpTransportBase(Transport):
         # the remote location is the same, and rather than download, and
         # then upload, it could just issue a remote copy_this command.
         if isinstance(other, HttpTransportBase):
-            raise TransportNotPossible('http cannot be the target of copy_to()')
+            raise errors.TransportNotPossible(
+                'http cannot be the target of copy_to()')
         else:
             return super(HttpTransportBase, self).\
                     copy_to(relpaths, other, mode=mode, pb=pb)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
-        raise TransportNotPossible('http does not support move()')
+        raise errors.TransportNotPossible('http does not support move()')
 
     def delete(self, relpath):
         """Delete the item at relpath"""
-        raise TransportNotPossible('http does not support delete()')
+        raise errors.TransportNotPossible('http does not support delete()')
 
     def is_readonly(self):
         """See Transport.is_readonly."""
@@ -352,7 +335,7 @@ class HttpTransportBase(Transport):
     def stat(self, relpath):
         """Return the stat information for a file.
         """
-        raise TransportNotPossible('http does not support stat()')
+        raise errors.TransportNotPossible('http does not support stat()')
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
@@ -373,7 +356,7 @@ class HttpTransportBase(Transport):
 
         :return: A lock object, which should be passed to Transport.unlock()
         """
-        raise TransportNotPossible('http does not support lock_write()')
+        raise errors.TransportNotPossible('http does not support lock_write()')
 
     def clone(self, offset=None):
         """Return a new HttpTransportBase with root at self.base + offset
@@ -403,346 +386,3 @@ class HttpTransportBase(Transport):
             strings.append('-%d' % tail_amount)
 
         return ','.join(strings)
-
-
-#---------------- test server facilities ----------------
-# TODO: load these only when running tests
-# FIXME: By moving them to HTTPTestUtil.py ?
-
-
-class WebserverNotAvailable(Exception):
-    pass
-
-
-class BadWebserverPath(ValueError):
-    def __str__(self):
-        return 'path %s is not in %s' % self.args
-
-
-class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
-
-    def log_message(self, format, *args):
-        self.server.test_case.log('webserver - %s - - [%s] %s "%s" "%s"',
-                                  self.address_string(),
-                                  self.log_date_time_string(),
-                                  format % args,
-                                  self.headers.get('referer', '-'),
-                                  self.headers.get('user-agent', '-'))
-
-    def handle_one_request(self):
-        """Handle a single HTTP request.
-
-        You normally don't need to override this method; see the class
-        __doc__ string for information on how to handle specific HTTP
-        commands such as GET and POST.
-
-        """
-        for i in xrange(1,11): # Don't try more than 10 times
-            try:
-                self.raw_requestline = self.rfile.readline()
-            except socket.error, e:
-                if e.args[0] in (errno.EAGAIN, errno.EWOULDBLOCK):
-                    # omitted for now because some tests look at the log of
-                    # the server and expect to see no errors.  see recent
-                    # email thread. -- mbp 20051021. 
-                    ## self.log_message('EAGAIN (%d) while reading from raw_requestline' % i)
-                    time.sleep(0.01)
-                    continue
-                raise
-            else:
-                break
-        if not self.raw_requestline:
-            self.close_connection = 1
-            return
-        if not self.parse_request(): # An error code has been sent, just exit
-            return
-        mname = 'do_' + self.command
-        if getattr(self, mname, None) is None:
-            self.send_error(501, "Unsupported method (%r)" % self.command)
-            return
-        method = getattr(self, mname)
-        method()
-
-    _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)$')
-    _tail_regexp = re.compile(r'^-(?P<tail>\d+)$')
-
-    def parse_ranges(self, ranges_header):
-        """Parse the range header value and returns ranges and tail"""
-        tail = 0
-        ranges = []
-        assert ranges_header.startswith('bytes=')
-        ranges_header = ranges_header[len('bytes='):]
-        for range_str in ranges_header.split(','):
-            range_match = self._range_regexp.match(range_str)
-            if range_match is not None:
-                ranges.append((int(range_match.group('start')),
-                               int(range_match.group('end'))))
-            else:
-                tail_match = self._tail_regexp.match(range_str)
-                if tail_match is not None:
-                    tail = int(tail_match.group('tail'))
-        return tail, ranges
-
-    def send_range_content(self, file, start, length):
-        file.seek(start)
-        self.wfile.write(file.read(length))
-
-    def get_single_range(self, file, file_size, start, end):
-        self.send_response(206)
-        length = end - start + 1
-        self.send_header('Accept-Ranges', 'bytes')
-        self.send_header("Content-Length", "%d" % length)
-
-        self.send_header("Content-Type", 'application/octet-stream')
-        self.send_header("Content-Range", "bytes %d-%d/%d" % (start,
-                                                              end,
-                                                              file_size))
-        self.end_headers()
-        self.send_range_content(file, start, length)
-
-    def get_multiple_ranges(self, file, file_size, ranges):
-        self.send_response(206)
-        self.send_header('Accept-Ranges', 'bytes')
-        boundary = "%d" % random.randint(0,0x7FFFFFFF)
-        self.send_header("Content-Type",
-                         "multipart/byteranges; boundary=%s" % boundary)
-        self.end_headers()
-        for (start, end) in ranges:
-            self.wfile.write("--%s\r\n" % boundary)
-            self.send_header("Content-type", 'application/octet-stream')
-            self.send_header("Content-Range", "bytes %d-%d/%d" % (start,
-                                                                  end,
-                                                                  file_size))
-            self.end_headers()
-            self.send_range_content(file, start, end - start + 1)
-            self.wfile.write("--%s\r\n" % boundary)
-            pass
-
-    def do_GET(self):
-        """Serve a GET request.
-
-        Handles the Range header.
-        """
-
-        path = self.translate_path(self.path)
-        ranges_header_value = self.headers.get('Range')
-        if ranges_header_value is None or os.path.isdir(path):
-            # Let the mother class handle most cases
-            return SimpleHTTPRequestHandler.do_GET(self)
-
-        try:
-            # Always read in binary mode. Opening files in text
-            # mode may cause newline translations, making the
-            # actual size of the content transmitted *less* than
-            # the content-length!
-            file = open(path, 'rb')
-        except IOError:
-            self.send_error(404, "File not found")
-            return None
-
-        file_size = os.fstat(file.fileno())[6]
-        tail, ranges = self.parse_ranges(ranges_header_value)
-        # Normalize tail into ranges
-        if tail != 0:
-            ranges.append((file_size - tail, file_size))
-
-        ranges_valid = True
-        if len(ranges) == 0:
-            ranges_valid = False
-        else:
-            for (start, end) in ranges:
-                if start >= file_size or end >= file_size:
-                    ranges_valid = False
-                    break
-        if not ranges_valid:
-            # RFC2616 14-16 says that invalid Range headers
-            # should be ignored and in that case, the whole file
-            # should be returned as if no Range header was
-            # present
-            file.close() # Will be reopened by the following call
-            return SimpleHTTPRequestHandler.do_GET(self)
-
-        if len(ranges) == 1:
-            (start, end) = ranges[0]
-            self.get_single_range(file, file_size, start, end)
-        else:
-            self.get_multiple_ranges(file, file_size, ranges)
-        file.close()
-
-    if sys.platform == 'win32':
-        # On win32 you cannot access non-ascii filenames without
-        # decoding them into unicode first.
-        # However, under Linux, you can access bytestream paths
-        # without any problems. If this function was always active
-        # it would probably break tests when LANG=C was set
-        def translate_path(self, path):
-            """Translate a /-separated PATH to the local filename syntax.
-
-            For bzr, all url paths are considered to be utf8 paths.
-            On Linux, you can access these paths directly over the bytestream
-            request, but on win32, you must decode them, and access them
-            as Unicode files.
-            """
-            # abandon query parameters
-            path = urlparse.urlparse(path)[2]
-            path = posixpath.normpath(urllib.unquote(path))
-            path = path.decode('utf-8')
-            words = path.split('/')
-            words = filter(None, words)
-            path = os.getcwdu()
-            for word in words:
-                drive, word = os.path.splitdrive(word)
-                head, word = os.path.split(word)
-                if word in (os.curdir, os.pardir): continue
-                path = os.path.join(path, word)
-            return path
-
-
-class TestingHTTPServer(BaseHTTPServer.HTTPServer):
-    def __init__(self, server_address, RequestHandlerClass, test_case):
-        BaseHTTPServer.HTTPServer.__init__(self, server_address,
-                                                RequestHandlerClass)
-        self.test_case = test_case
-
-
-class HttpServer(Server):
-    """A test server for http transports.
-
-    Subclasses can provide a specific request handler.
-    """
-
-    # used to form the url that connects to this server
-    _url_protocol = 'http'
-
-    # Subclasses can provide a specific request handler
-    def __init__(self, request_handler=TestingHTTPRequestHandler):
-        Server.__init__(self)
-        self.request_handler = request_handler
-
-    def _http_start(self):
-        httpd = None
-        httpd = TestingHTTPServer(('localhost', 0),
-                                  self.request_handler,
-                                  self)
-        host, port = httpd.socket.getsockname()
-        self._http_base_url = '%s://localhost:%s/' % (self._url_protocol, port)
-        self._http_starting.release()
-        httpd.socket.settimeout(0.1)
-
-        while self._http_running:
-            try:
-                httpd.handle_request()
-            except socket.timeout:
-                pass
-
-    def _get_remote_url(self, path):
-        path_parts = path.split(os.path.sep)
-        if os.path.isabs(path):
-            if path_parts[:len(self._local_path_parts)] != \
-                   self._local_path_parts:
-                raise BadWebserverPath(path, self.test_dir)
-            remote_path = '/'.join(path_parts[len(self._local_path_parts):])
-        else:
-            remote_path = '/'.join(path_parts)
-
-        self._http_starting.acquire()
-        self._http_starting.release()
-        return self._http_base_url + remote_path
-
-    def log(self, format, *args):
-        """Capture Server log output."""
-        self.logs.append(format % args)
-
-    def setUp(self):
-        """See bzrlib.transport.Server.setUp."""
-        self._home_dir = os.getcwdu()
-        self._local_path_parts = self._home_dir.split(os.path.sep)
-        self._http_starting = threading.Lock()
-        self._http_starting.acquire()
-        self._http_running = True
-        self._http_base_url = None
-        self._http_thread = threading.Thread(target=self._http_start)
-        self._http_thread.setDaemon(True)
-        self._http_thread.start()
-        self._http_proxy = os.environ.get("http_proxy")
-        if self._http_proxy is not None:
-            del os.environ["http_proxy"]
-        self.logs = []
-
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
-        self._http_running = False
-        self._http_thread.join()
-        if self._http_proxy is not None:
-            import os
-            os.environ["http_proxy"] = self._http_proxy
-
-    def get_url(self):
-        """See bzrlib.transport.Server.get_url."""
-        return self._get_remote_url(self._home_dir)
-
-    def get_bogus_url(self):
-        """See bzrlib.transport.Server.get_bogus_url."""
-        # this is chosen to try to prevent trouble with proxies, weird dns,
-        # etc
-        return 'http://127.0.0.1:1/'
-
-
-class WallRequestHandler(TestingHTTPRequestHandler):
-    """Whatever request comes in, close the connection"""
-
-    def handle_one_request(self):
-        """Handle a single HTTP request, by abruptly closing the connection"""
-        self.close_connection = 1
-
-
-class BadStatusRequestHandler(TestingHTTPRequestHandler):
-    """Whatever request comes in, returns a bad status"""
-
-    def parse_request(self):
-        """Fakes handling a single HTTP request, returns a bad status"""
-        ignored = TestingHTTPRequestHandler.parse_request(self)
-        import socket
-        try:
-            self.send_response(0, "Bad status")
-            self.end_headers()
-        except socket.error, e:
-            if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
-                # We don't want to pollute the test reuslts with
-                # spurious server errors while test succeed. In
-                # our case, it may occur that the test have
-                # already read the 'Bad Status' and closed the
-                # socket while we are still trying to send some
-                # headers... So the test is ok but if we raise
-                # the exception the output is dirty. So we don't
-                # raise, but we close the connection, just to be
-                # safe :)
-                self.close_connection = 1
-                pass
-            else:
-                raise
-        return False
-
-
-class InvalidStatusRequestHandler(TestingHTTPRequestHandler):
-    """Whatever request comes in, returns am invalid status"""
-
-    def parse_request(self):
-        """Fakes handling a single HTTP request, returns a bad status"""
-        ignored = TestingHTTPRequestHandler.parse_request(self)
-        self.wfile.write("Invalid status line\r\n")
-        return False
-
-
-class BadProtocolRequestHandler(TestingHTTPRequestHandler):
-    """Whatever request comes in, returns a bad protocol version"""
-
-    def parse_request(self):
-        """Fakes handling a single HTTP request, returns a bad status"""
-        ignored = TestingHTTPRequestHandler.parse_request(self)
-        # Returns an invalid protocol version, but curl just
-        # ignores it and those cannot be tested.
-        self.wfile.write("%s %d %s\r\n" % ('HTTP/0.0',
-                                           404,
-                                           'Look at my protocol version'))
-        return False

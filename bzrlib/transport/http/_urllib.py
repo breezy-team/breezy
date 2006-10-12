@@ -14,22 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import errno
-import urllib, urllib2
-import errno
 from cStringIO import StringIO
 
 from bzrlib import ui
-from bzrlib.errors import (TransportNotPossible,
-                           NoSuchFile,
-                           BzrError,
-                           TransportError,
-                           ConnectionError,
-                           )
+from bzrlib.errors import NoSuchFile
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
-from bzrlib.transport.http import (HttpTransportBase,
-                                   HttpServer)
+from bzrlib.transport.http import HttpTransportBase
 # TODO: handle_response should be integrated into the _urllib2_wrappers
 from bzrlib.transport.http.response import handle_response
 from bzrlib.transport.http._urllib2_wrappers import (
@@ -178,18 +169,8 @@ class HttpTransport_urllib(HttpTransportBase):
             return False
 
 
-class HttpServer_urllib(HttpServer):
-    """Subclass of HttpServer that gives http+urllib urls.
-
-    This is for use in testing: connections to this server will always go
-    through urllib where possible.
-    """
-
-    # urls returned by this server should require the urllib client impl
-    _url_protocol = 'http+urllib'
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
+    from bzrlib.tests.HttpServer import HttpServer_urllib
     return [(HttpTransport_urllib, HttpServer_urllib),
             ]
