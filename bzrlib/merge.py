@@ -17,9 +17,11 @@
 
 import os
 import errno
-from tempfile import mkdtemp
 import warnings
 
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
 from bzrlib.errors import (BzrCommandError,
@@ -37,7 +39,7 @@ from bzrlib.errors import (BzrCommandError,
                            )
 from bzrlib.merge3 import Merge3
 import bzrlib.osutils
-from bzrlib.osutils import rename, pathjoin, rmtree
+from bzrlib.osutils import rename, pathjoin
 from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
 from bzrlib.textfile import check_text_lines
@@ -897,7 +899,7 @@ class Diff3Merger(Merge3Merger):
         will be dumped, and a will be conflict noted.
         """
         import bzrlib.patch
-        temp_dir = mkdtemp(prefix="bzr-")
+        temp_dir = osutils.mkdtemp(prefix="bzr-")
         try:
             new_file = pathjoin(temp_dir, "new")
             this = self.dump_file(temp_dir, "this", self.this_tree, file_id)
@@ -915,9 +917,9 @@ class Diff3Merger(Merge3Merger):
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
                 self._dump_conflicts(name, parent_id, file_id)
-            self._raw_conflicts.append(('text conflict', trans_id))
+                self._raw_conflicts.append(('text conflict', trans_id))
         finally:
-            rmtree(temp_dir)
+            osutils.rmtree(temp_dir)
 
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,

@@ -179,12 +179,6 @@ class PyCurlTransport(HttpTransportBase):
         # handle_response will raise NoSuchFile, etc based on the response code
         return code, response.handle_response(abspath, code, headers, data)
 
-    def _raise_curl_connection_error(self, curl):
-        curl_errno = curl.getinfo(pycurl.OS_ERRNO)
-        url = curl.getinfo(pycurl.EFFECTIVE_URL)
-        raise ConnectionError('curl connection error (%s) on %s'
-                              % (os.strerror(curl_errno), url))
-
     def _raise_curl_http_error(self, curl, info=None):
         code = curl.getinfo(pycurl.HTTP_CODE)
         url = curl.getinfo(pycurl.EFFECTIVE_URL)
@@ -220,8 +214,10 @@ class PyCurlTransport(HttpTransportBase):
             mutter('got pycurl error: %s, %s, %s, url: %s ',
                     e[0], _pycurl_errors.errorcode[e[0]], e, url)
             if e[0] in (_pycurl_errors.CURLE_COULDNT_RESOLVE_HOST,
-                        _pycurl_errors.CURLE_COULDNT_CONNECT):
-                self._raise_curl_connection_error(curl)
+                        _pycurl_errors.CURLE_COULDNT_CONNECT,
+                        _pycurl_errors.CURLE_COULDNT_RESOLVE_PROXY):
+                raise ConnectionError('curl connection error (%s)\non %s'
+                              % (e[1], url))
             # jam 20060713 The code didn't use to re-raise the exception here
             # but that seemed bogus
             raise
