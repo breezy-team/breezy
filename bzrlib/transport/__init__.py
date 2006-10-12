@@ -1177,6 +1177,8 @@ register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTran
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
+register_lazy_transport('chroot+', 'bzrlib.transport.chroot',
+                        'ChrootTransportDecorator')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
 register_lazy_transport('vfat+',

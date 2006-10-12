@@ -13,6 +13,10 @@ IN DEVELOPMENT
       around a regex, which defers compilation until first use. 
       (John Arbash Meinel)
 
+    * New ``ChrootTransportDecorator``, accessible via the ``chroot+`` url
+      prefix.  It disallows any access to locations above a set URL.  (Andrew
+      Bennetts)
+
   BUG FIXES:
 
     * bzr branch/pull no longer complain about progress bar cleanup when
