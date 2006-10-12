@@ -127,6 +127,8 @@ class TreeBuildEditor(svn.delta.Editor):
             pass
         elif name.startswith(svn.core.SVN_PROP_WC_PREFIX):
             pass
+        elif name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
+            pass
         else:
             mutter('unsupported dir property %r' % name)
 
