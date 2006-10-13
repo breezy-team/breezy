@@ -4,6 +4,11 @@ IN DEVELOPMENT
 
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
 
+    * ``bzr`` now uses lazy importing to reduce the startup time. This has
+      a moderate effect on lots of actions, especially ones that have
+      little to do. For example ``bzr rocks`` time is down to 116ms from
+      283ms. (John Arbash Meinel)
+
     * New Registry class to provide name-to-object registry-like support,
       for example for schemes where plugins can register new classes to
       do certain tasks (e.g. log formatters). Also provides lazy registration
@@ -21,6 +26,10 @@ IN DEVELOPMENT
       (John Arbash Meinel)
 
   BUG FIXES:
+
+    * Don't require ``Content-Type`` in range responses. Assume they are a
+      single range if ``Content-Type`` does not exist.
+      (John Arbash Meinel, #62473)
 
     * bzr branch/pull no longer complain about progress bar cleanup when
       interrupted during fetch.  (Aaron Bentley, #54000)

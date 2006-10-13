@@ -87,9 +87,7 @@ default_transport = LocalRelpathServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
-                      bzrlib.branch,
                       bzrlib.bundle.serializer,
-                      bzrlib.commands,
                       bzrlib.errors,
                       bzrlib.export,
                       bzrlib.inventory,
@@ -97,9 +95,7 @@ MODULES_TO_DOCTEST = [
                       bzrlib.lockdir,
                       bzrlib.merge3,
                       bzrlib.option,
-                      bzrlib.osutils,
                       bzrlib.store,
-                      bzrlib.transport,
                       ]
 
 
@@ -1691,7 +1687,11 @@ def test_suite():
     for m in MODULES_TO_TEST:
         suite.addTest(loader.loadTestsFromModule(m))
     for m in MODULES_TO_DOCTEST:
-        suite.addTest(doctest.DocTestSuite(m))
+        try:
+            suite.addTest(doctest.DocTestSuite(m))
+        except ValueError, e:
+            print '**failed to get doctest for: %s\n%s' %(m,e)
+            raise
     for name, plugin in bzrlib.plugin.all_plugins().items():
         if getattr(plugin, 'test_suite', None) is not None:
             suite.addTest(plugin.test_suite())
