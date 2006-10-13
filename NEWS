@@ -3,6 +3,9 @@ IN DEVELOPMENT
   IMPROVEMENTS:
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
 
+    * WSGI-compatible HTTP smart server.  See ``doc/http_smart_server.txt``.
+      (Andrew Bennetts)
+
   INTERNALS:
 
     * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``

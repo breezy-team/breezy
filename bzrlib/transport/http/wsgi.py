@@ -22,7 +22,7 @@ For more information about WSGI, see PEP 333:
 
 from cStringIO import StringIO
 
-from bzrlib.transport import get_transport, smart
+from bzrlib.transport import chroot, get_transport, smart
 from bzrlib.urlutils import local_path_to_url
     
 
@@ -86,7 +86,12 @@ class SmartWSGIApp(object):
         :param backing_transport: a transport.  Requests will be processed
             relative to this transport.
         """
-        self.backing_transport = backing_transport
+        # Use a ChrootTransportDecorator so that this web application won't
+        # accidentally let people access locations they shouldn't.
+        # e.g. consider a smart server request for "get /etc/passwd" or
+        # something.
+        self.backing_transport = chroot.ChrootTransportDecorator(
+            'chroot+' + backing_transport.base, _decorated=backing_transport)
 
     def __call__(self, environ, start_response):
         """WSGI application callable."""
@@ -96,7 +101,6 @@ class SmartWSGIApp(object):
 
         relpath = environ['bzrlib.relpath']
         transport = self.backing_transport.clone(relpath)
-        #assert transport.base.startswith(self.backing_transport.base)
         out_buffer = StringIO()
         smart_protocol_request = self.make_request(transport, out_buffer.write)
         request_data_length = int(environ['CONTENT_LENGTH'])

@@ -20,7 +20,7 @@ from cStringIO import StringIO
 
 from bzrlib import tests
 from bzrlib.transport.http import wsgi
-from bzrlib.transport import memory
+from bzrlib.transport import chroot, memory
 
 
 class TestWSGI(tests.TestCase):
@@ -69,11 +69,13 @@ class TestWSGI(tests.TestCase):
         self.headers = headers
 
     def test_construct(self):
-        wsgi.SmartWSGIApp(None)
+        app = wsgi.SmartWSGIApp(FakeTransport())
+        self.assertIsInstance(
+            app.backing_transport, chroot.ChrootTransportDecorator)
 
     def test_http_get_rejected(self):
         # GET requests are rejected.
-        app = wsgi.SmartWSGIApp(None)
+        app = wsgi.SmartWSGIApp(FakeTransport())
         environ = self.build_environ({'REQUEST_METHOD': 'GET'})
         iterable = app(environ, self.start_response)
         self.read_response(iterable)
@@ -198,6 +200,29 @@ class TestWSGI(tests.TestCase):
         self.assertEqual('200 OK', self.status)
         self.assertEqual('error\x01incomplete request\n', response)
 
+    def test_chrooting(self):
+        # Show that requests that try to access things outside of the base
+        # really will get intercepted by the ChrootTransportDecorator.
+        transport = memory.MemoryTransport()
+        transport.mkdir('foo')
+        transport.put_bytes('foo/bar', 'this is foo/bar')
+        wsgi_app = wsgi.SmartWSGIApp(transport.clone('foo'))
+
+        smart_request = StringIO('mkdir\x01/bad file\x01\n0\ndone\n')
+        environ = self.build_environ({
+            'REQUEST_METHOD': 'POST',
+            'CONTENT_LENGTH': len(smart_request.getvalue()),
+            'wsgi.input': smart_request,
+            'bzrlib.relpath': '.',
+        })
+        iterable = wsgi_app(environ, self.start_response)
+        response = self.read_response(iterable)
+        self.assertEqual('200 OK', self.status)
+        self.assertEqual(
+            "error\x01Path '/bad file' is not a child of "
+            "path 'memory:///foo/'\n",
+            response)
+
 
 class FakeRequest(object):
     
@@ -218,6 +243,10 @@ class FakeTransport(object):
 
     def __init__(self):
         self.calls = []
+        self.base = 'fake:///'
+
+    def abspath(self, relpath):
+        return 'fake:///' + relpath
 
     def clone(self, relpath):
         self.calls.append(('clone', relpath))
