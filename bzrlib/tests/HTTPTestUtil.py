@@ -83,6 +83,16 @@ class BadProtocolRequestHandler(TestingHTTPRequestHandler):
         return False
 
 
+class ForbiddenRequestHandler(TestingHTTPRequestHandler):
+    """Whatever request comes in, returns a 403 code"""
+
+    def parse_request(self):
+        """Handle a single HTTP request, by replying we cannot handle it"""
+        ignored = TestingHTTPRequestHandler.parse_request(self)
+        self.send_error(403)
+        return False
+
+
 class TestCaseWithWebserver(TestCaseWithTransport):
     """A support class that provides readonly urls that are http://.
 

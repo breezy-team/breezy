@@ -22,11 +22,7 @@
 import socket
 
 import bzrlib
-from bzrlib.errors import (
-    DependencyNotPresent,
-    ConnectionError,
-    InvalidHttpResponse,
-    )
+from bzrlib import errors
 from bzrlib.tests import (
     TestCase,
     TestSkipped,
@@ -39,6 +35,7 @@ from bzrlib.tests.HttpServer import (
 from bzrlib.tests.HTTPTestUtil import (
     BadProtocolRequestHandler,
     BadStatusRequestHandler,
+    ForbiddenRequestHandler,
     InvalidStatusRequestHandler,
     TestCaseWithWebserver,
     WallRequestHandler,
@@ -167,7 +164,7 @@ class TestHttpConnections(object):
             s = socket.socket()
             s.bind(('localhost', 0))
             t = self._transport('http://%s:%s/' % s.getsockname())
-            self.assertRaises(ConnectionError, t.has, 'foo/bar')
+            self.assertRaises(errors.ConnectionError, t.has, 'foo/bar')
         finally:
             socket.setdefaulttimeout(default_timeout)
 
@@ -178,7 +175,7 @@ class TestWithTransport_pycurl(object):
         try:
             from bzrlib.transport.http._pycurl import PyCurlTransport
             return PyCurlTransport
-        except DependencyNotPresent:
+        except errors.DependencyNotPresent:
             raise TestSkipped('pycurl not present')
 
     _transport = property(_get_pycurl_maybe)
@@ -265,16 +262,16 @@ class TestWallServer(object):
     def test_http_has(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        self.assertRaises(ConnectionError, t.has, 'foo/bar')
+        self.assertRaises(errors.ConnectionError, t.has, 'foo/bar')
 
     def test_http_get(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        self.assertRaises(ConnectionError, t.get, 'foo/bar')
+        self.assertRaises(errors.ConnectionError, t.get, 'foo/bar')
 
 
 class TestWallServer_urllib(TestWallServer, TestCaseWithWebserver):
-    """Tests WallServer for urllib implementation"""
+    """Tests "wall" server for urllib implementation"""
 
     _transport = HttpTransport_urllib
 
@@ -282,7 +279,7 @@ class TestWallServer_urllib(TestWallServer, TestCaseWithWebserver):
 class TestWallServer_pycurl(TestWithTransport_pycurl,
                             TestWallServer,
                             TestCaseWithWebserver):
-    """Tests WallServer for pycurl implementation"""
+    """Tests "wall" server for pycurl implementation"""
 
 
 class TestBadStatusServer(object):
@@ -294,16 +291,16 @@ class TestBadStatusServer(object):
     def test_http_has(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        self.assertRaises(InvalidHttpResponse, t.has, 'foo/bar')
+        self.assertRaises(errors.InvalidHttpResponse, t.has, 'foo/bar')
 
     def test_http_get(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        self.assertRaises(InvalidHttpResponse, t.get, 'foo/bar')
+        self.assertRaises(errors.InvalidHttpResponse, t.get, 'foo/bar')
 
 
 class TestBadStatusServer_urllib(TestBadStatusServer, TestCaseWithWebserver):
-    """Tests BadStatusServer for urllib implementation"""
+    """Tests bad status server for urllib implementation"""
 
     _transport = HttpTransport_urllib
 
@@ -311,7 +308,7 @@ class TestBadStatusServer_urllib(TestBadStatusServer, TestCaseWithWebserver):
 class TestBadStatusServer_pycurl(TestWithTransport_pycurl,
                                  TestBadStatusServer,
                                  TestCaseWithWebserver):
-    """Tests BadStatusServer for pycurl implementation"""
+    """Tests bad status server for pycurl implementation"""
 
 
 class TestInvalidStatusServer(TestBadStatusServer):
@@ -326,7 +323,7 @@ class TestInvalidStatusServer(TestBadStatusServer):
 
 class TestInvalidStatusServer_urllib(TestInvalidStatusServer,
                                      TestCaseWithWebserver):
-    """Tests InvalidStatusServer for urllib implementation"""
+    """Tests invalid status server for urllib implementation"""
 
     _transport = HttpTransport_urllib
 
@@ -334,11 +331,11 @@ class TestInvalidStatusServer_urllib(TestInvalidStatusServer,
 class TestInvalidStatusServer_pycurl(TestWithTransport_pycurl,
                                      TestInvalidStatusServer,
                                      TestCaseWithWebserver):
-    """Tests InvalidStatusServer for pycurl implementation"""
+    """Tests invalid status server for pycurl implementation"""
 
 
 class TestBadProtocolServer(object):
-    """Tests bad status from server."""
+    """Tests bad protocol from server."""
 
     def create_transport_readonly_server(self):
         return HttpServer(BadProtocolRequestHandler)
@@ -346,17 +343,17 @@ class TestBadProtocolServer(object):
     def test_http_has(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        self.assertRaises(InvalidHttpResponse, t.has, 'foo/bar')
+        self.assertRaises(errors.InvalidHttpResponse, t.has, 'foo/bar')
 
     def test_http_get(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        self.assertRaises(InvalidHttpResponse, t.get, 'foo/bar')
+        self.assertRaises(errors.InvalidHttpResponse, t.get, 'foo/bar')
 
 
 class TestBadProtocolServer_urllib(TestBadProtocolServer,
                                    TestCaseWithWebserver):
-    """Tests BadProtocolServer for urllib implementation"""
+    """Tests bad protocol server for urllib implementation"""
 
     _transport = HttpTransport_urllib
 
@@ -364,4 +361,34 @@ class TestBadProtocolServer_urllib(TestBadProtocolServer,
 #class TestBadProtocolServer_pycurl(TestWithTransport_pycurl,
 #                                   TestBadProtocolServer,
 #                                   TestCaseWithWebserver):
-#    """Tests BadProtocolServer for pycurl implementation"""
+#    """Tests bad protocol server for pycurl implementation"""
+
+
+class TestForbiddenServer(object):
+    """Tests forbidden server"""
+
+    def create_transport_readonly_server(self):
+        return HttpServer(ForbiddenRequestHandler)
+
+    def test_http_has(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(errors.TransportError, t.has, 'foo/bar')
+
+    def test_http_get(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(errors.TransportError, t.get, 'foo/bar')
+
+
+class TestForbiddenServer_urllib(TestForbiddenServer, TestCaseWithWebserver):
+    """Tests forbidden server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestForbiddenServer_pycurl(TestWithTransport_pycurl,
+                                 TestForbiddenServer,
+                                 TestCaseWithWebserver):
+    """Tests forbidden server for pycurl implementation"""
+

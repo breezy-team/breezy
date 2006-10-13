@@ -20,6 +20,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Give nicer error message when an http server returns a 403
+      error code. (Vincent Ladeuil, # 57644).
+
     * Don't require ``Content-Type`` in range responses. Assume they are a
       single range if ``Content-Type`` does not exist.
       (John Arbash Meinel, #62473)

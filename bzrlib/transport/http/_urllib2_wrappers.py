@@ -57,12 +57,7 @@ import urlparse
 import sys
 
 from bzrlib import __version__ as bzrlib_version
-from bzrlib.errors import (
-    BzrError,
-    ConnectionError,
-    InvalidHttpResponse,
-    NoSuchFile,
-    )
+from bzrlib import errors
 
 
 # We define our own Response class to keep our httplib pipe clean
@@ -220,7 +215,7 @@ class ConnectionHandler(urllib2.BaseHandler):
         if not host:
             # Just a bit of paranoia here, this should have been
             # handled in the higher levels
-            raise InvalidURL(request.get_full_url(), 'no host given.')
+            raise errors.InvalidURL(request.get_full_url(), 'no host given.')
 
         # We create a connection (but it will not connect yet)
         connection = http_connection_class(host)
@@ -331,9 +326,9 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             convert_to_addinfourl = True
         except (httplib.BadStatusLine, httplib.UnknownProtocol), exception:
             # A bogus server was encountered
-            raise InvalidHttpResponse(request.get_full_url(),
-                                      'Bad status line received',
-                                      orig_error=exception)
+            raise errors.InvalidHttpResponse(request.get_full_url(),
+                                             'Bad status line received',
+                                             orig_error=exception)
         except (socket.error, httplib.HTTPException), exception:
             # httplib.HTTPException should indicate a bug in the
             # urllib implementation, somewhow the httplib
@@ -365,10 +360,10 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 response = self.do_open(http_class, request, False)
                 convert_to_addinfourl = False
             else:
-                my_exception = ConnectionError(msg= 'while sending %s %s:'
-                                               % (request.get_method(),
-                                                  request.get_selector()),
-                                               orig_error=exception)
+                my_exception = errors.ConnectionError(
+                    msg= 'while sending %s %s:' % (request.get_method(),
+                                                   request.get_selector()),
+                    orig_error=exception)
                 if self._debuglevel > 0:
                     print 'On connection: [%r]' % request.connection
                     method = request.get_method()
@@ -620,14 +615,17 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
 
     def http_error_default(self, req, fp, code, msg, hdrs):
         if code == 404:
-            raise NoSuchFile(req.get_selector(),
-                             extra=HTTPError(req.get_full_url(), code, msg,
-                                             hdrs, fp))
+            raise errors.NoSuchFile(req.get_selector(),
+                                    extra=HTTPError(req.get_full_url(),
+                                                    code, msg,
+                                                    hdrs, fp))
+        elif code == 403:
+            raise errors.TransportError('Server refuses to fullfil the request')
         else:
             # TODO: A test is needed to exercise that code path
-            raise InvalidHttpResponse(req.get_full_url(),
-                                      'Unable to handle http code %d: %s'
-                                      % (code, msg))
+            raise errors.InvalidHttpResponse(req.get_full_url(),
+                                             'Unable to handle http code %d: %s'
+                                             % (code, msg))
 
 class Opener(object):
     """A wrapper around urllib2.build_opener

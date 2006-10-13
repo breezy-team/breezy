@@ -194,12 +194,17 @@ class PyCurlTransport(HttpTransportBase):
     def _raise_curl_http_error(self, curl, info=None):
         code = curl.getinfo(pycurl.HTTP_CODE)
         url = curl.getinfo(pycurl.EFFECTIVE_URL)
-        if info is None:
-            msg = ''
+        # Some error codes can be handled the same way for all
+        # requests
+        if code == 403:
+            raise errors.TransportError('Server refuses to fullfil the request')
         else:
-            msg = ': ' + info
-        raise errors.InvalidHttpResponse(url, 'Unable to handle http code %d%s'
-                                              % (code,msg))
+            if info is None:
+                msg = ''
+            else:
+                msg = ': ' + info
+            raise errors.InvalidHttpResponse(
+                url, 'Unable to handle http code %d%s' % (code,msg))
 
     def _set_curl_options(self, curl):
         """Set options for all requests"""
