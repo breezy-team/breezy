@@ -26,14 +26,17 @@ The Transport returned has methods to read, write and manipulate files within
 it.
 """
 
+from cStringIO import StringIO
+import re
+import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import errno
 from collections import deque
 from copy import deepcopy
-from cStringIO import StringIO
-import re
 from stat import S_ISDIR
-import sys
-from unittest import TestSuite
+import unittest
 import urllib
 import urlparse
 import warnings
@@ -45,8 +48,8 @@ from bzrlib import (
     symbol_versioning,
     urlutils,
     )
-from bzrlib.errors import DependencyNotPresent
-from bzrlib.osutils import pumpfile
+""")
+
 from bzrlib.symbol_versioning import (
         deprecated_passed,
         deprecated_method,
@@ -262,7 +265,7 @@ class Transport(object):
         """
         assert not isinstance(from_file, basestring), \
             '_pump should only be called on files not %s' % (type(from_file,))
-        pumpfile(from_file, to_file)
+        osutils.pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
         """Try to figure out how many entries are in multi,
@@ -323,15 +326,12 @@ class Transport(object):
 
         Examples::
 
-            >>> t = Transport('/')
-            >>> t._combine_paths('/home/sarah', 'project/foo')
-            '/home/sarah/project/foo'
-            >>> t._combine_paths('/home/sarah', '../../etc')
-            '/etc'
-            >>> t._combine_paths('/home/sarah', '/etc')
-            '/etc'
-            >>> t._combine_paths('/home/sarah', '../../../etc')
-            '/etc'
+            t._combine_paths('/home/sarah', 'project/foo')
+                => '/home/sarah/project/foo'
+            t._combine_paths('/home/sarah', '../../etc')
+                => '/etc'
+            t._combine_paths('/home/sarah', '/etc')
+                => '/etc'
 
         :param base_path: urlencoded path for the transport root; typically a 
              URL but need not contain scheme/host/etc.
@@ -450,9 +450,22 @@ class Transport(object):
     def get_smart_client(self):
         """Return a smart client for this transport if possible.
 
+        A smart client doesn't imply the presence of a smart server: it implies
+        that the smart protocol can be tunnelled via this transport.
+
         :raises NoSmartServer: if no smart server client is available.
         """
         raise errors.NoSmartServer(self.base)
+
+    def get_smart_medium(self):
+        """Return a smart client medium for this transport if possible.
+
+        A smart medium doesn't imply the presence of a smart server: it implies
+        that the smart protocol can be tunnelled via this transport.
+
+        :raises NoSmartMedium: if no smart server medium is available.
+        """
+        raise errors.NoSmartMedium(self)
 
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
@@ -1037,7 +1050,7 @@ def _try_transport_factories(base, factory_list):
     for factory in factory_list:
         try:
             return factory(base), None
-        except DependencyNotPresent, e:
+        except errors.DependencyNotPresent, e:
             mutter("failed to instantiate transport %r for %r: %r" %
                     (factory, base, e))
             last_err = e
@@ -1090,7 +1103,7 @@ class TransportTestProviderAdapter(object):
     """
 
     def adapt(self, test):
-        result = TestSuite()
+        result = unittest.TestSuite()
         for klass, server_factory in self._test_permutations():
             new_test = deepcopy(test)
             new_test.transport_class = klass
