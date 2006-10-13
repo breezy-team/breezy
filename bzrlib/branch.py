@@ -15,8 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from copy import deepcopy
 from cStringIO import StringIO
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from copy import deepcopy
 from unittest import TestSuite
 from warnings import warn
 
@@ -26,24 +29,26 @@ from bzrlib import (
         cache_utf8,
         errors,
         lockdir,
+        lockable_files,
         osutils,
-        revision,
+        revision as _mod_revision,
         transport,
         tree,
         ui,
         urlutils,
         )
-from bzrlib.config import TreeConfig
-from bzrlib.decorators import needs_read_lock, needs_write_lock
-import bzrlib.errors as errors
-from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches, 
-                           HistoryMissing, InvalidRevisionId, 
-                           InvalidRevisionNumber, LockError, NoSuchFile, 
-                           NoSuchRevision, NoWorkingTree, NotVersionedError,
-                           NotBranchError, UninitializableFormat, 
-                           UnlistableStore, UnlistableBranch, 
-                           )
+from bzrlib.config import BranchConfig, TreeConfig
 from bzrlib.lockable_files import LockableFiles, TransportLock
+""")
+
+from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches,
+                           HistoryMissing, InvalidRevisionId,
+                           InvalidRevisionNumber, LockError, NoSuchFile,
+                           NoSuchRevision, NoWorkingTree, NotVersionedError,
+                           NotBranchError, UninitializableFormat,
+                           UnlistableStore, UnlistableBranch,
+                           )
 from bzrlib.symbol_versioning import (deprecated_function,
                                       deprecated_method,
                                       DEPRECATED_PARAMETER,
@@ -148,7 +153,7 @@ class Branch(object):
         pass
 
     def get_config(self):
-        return bzrlib.config.BranchConfig(self)
+        return BranchConfig(self)
 
     def _get_nick(self):
         return self.get_config().get_nickname()
@@ -222,7 +227,7 @@ class Branch(object):
                     last_revision = from_history[-1]
                 else:
                     # no history in the source branch
-                    last_revision = revision.NULL_REVISION
+                    last_revision = _mod_revision.NULL_REVISION
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
                                          pb=nested_pb)
@@ -729,8 +734,8 @@ class BzrBranchFormat4(BranchFormat):
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        control_files = LockableFiles(branch_transport, 'branch-lock',
-                                      TransportLock)
+        control_files = lockable_files.LockableFiles(branch_transport,
+                             'branch-lock', lockable_files.TransportLock)
         control_files.create_lock()
         control_files.lock_write()
         try:
@@ -790,7 +795,8 @@ class BzrBranchFormat5(BranchFormat):
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        control_files = LockableFiles(branch_transport, 'lock', lockdir.LockDir)
+        control_files = lockable_files.LockableFiles(branch_transport, 'lock',
+                                                     lockdir.LockDir)
         control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
@@ -815,7 +821,8 @@ class BzrBranchFormat5(BranchFormat):
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
         transport = a_bzrdir.get_branch_transport(None)
-        control_files = LockableFiles(transport, 'lock', lockdir.LockDir)
+        control_files = lockable_files.LockableFiles(transport, 'lock',
+                                                     lockdir.LockDir)
         return BzrBranch5(_format=self,
                           _control_files=control_files,
                           a_bzrdir=a_bzrdir,
@@ -1129,7 +1136,7 @@ class BzrBranch(Branch):
         # make a new revision history from the graph
         current_rev_id = revision_id
         new_history = []
-        while current_rev_id not in (None, revision.NULL_REVISION):
+        while current_rev_id not in (None, _mod_revision.NULL_REVISION):
             new_history.append(current_rev_id)
             current_rev_id_parents = stop_graph[current_rev_id]
             try:
