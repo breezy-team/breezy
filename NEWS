@@ -44,6 +44,12 @@ IN DEVELOPMENT
 
    * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
 
+    * ``bzr cat`` can look up contents of removed or renamed files. If the
+      pathname is ambiguous, i.e. the files in the old and new trees have
+      different id's, the user needs to use "--old" or "--new" to distinguish
+      between them. If the pathname refers to a single file, the options are
+      unnecessary. (Cheuksan Edward Wang #30190)
+
   TESTING:
 
     * New test base class TestCaseWithMemoryTransport offers memory-only

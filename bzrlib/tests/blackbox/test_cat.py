@@ -61,3 +61,27 @@ class TestCat(TestCaseInTempDir):
         bzr('cat', 'a', retcode=3)
         bzr('cat', 'a', '-r', 'revno:1:branch-that-does-not-exist', retcode=3)
         
+    def test_cat_different_id(self): 
+        """'cat' works with old and new files"""
+
+        def bzr(*args, **kwargs):
+            return self.run_bzr(*args, **kwargs)[0]
+
+        bzr('init')
+        open('a', 'wb').write('foo\n')
+        open('c', 'wb').write('baz\n')
+        open('d', 'wb').write('bar\n')
+        bzr('add', 'a', 'c', 'd')
+        bzr('commit', '-m', '1')
+
+        os.remove('d')
+        bzr('remove', 'd');
+        bzr('rename', 'a', 'b');
+        bzr('rename', 'c', 'a');
+        bzr('commit', '-m', '2')
+
+        # get to the old file automatically
+        self.assertEquals(bzr('cat', 'd', '-r', '1'), 'bar\n')
+
+        self.assertEquals(bzr('cat', 'a', '-r', '1', '--old'), 'foo\n')
+        self.assertEquals(bzr('cat', 'a', '-r', '1', '--new'), 'baz\n')

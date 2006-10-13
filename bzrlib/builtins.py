@@ -1675,13 +1675,20 @@ class cmd_export(Command):
 class cmd_cat(Command):
     """Write a file's text from a previous revision."""
 
-    takes_options = ['revision']
+    takes_options = ['revision',
+                     Option('old', help='The path name in the old tree.'),
+                     Option('new', help='The path name in the current tree.')]
     takes_args = ['filename']
 
     @display_command
-    def run(self, filename, revision=None):
+    def run(self, filename, revision=None, old=False, new=False):
         if revision is not None and len(revision) != 1:
-            raise errors.BzrCommandError("bzr cat --revision takes exactly one number")
+            raise errors.BzrCommandError("bzr cat --revision takes exactly"
+                                        " one number")
+        if old and new:
+            raise errors.BzrCommandError("You cannot use --old and "
+                                        "--new at the same time.")
+                
         tree = None
         try:
             tree, relpath = WorkingTree.open_containing(filename)
@@ -1697,7 +1704,41 @@ class cmd_cat(Command):
             revision_id = b.last_revision()
         else:
             revision_id = revision[0].in_history(b).rev_id
-        b.print_file(relpath, revision_id)
+
+        cur_file_id = tree.path2id(relpath)
+        rev_tree = b.repository.revision_tree(revision_id)
+        old_file_id = rev_tree.path2id(relpath)
+        
+        if new:
+            if cur_file_id is None:
+                raise errors.BzrCommandError("%r is not present in revision %s"
+                                                % (filename, revision_id))
+            else:
+                rev_tree.print_file(cur_file_id)
+                return
+
+        if old:
+            if old_file_id is None:
+                raise errors.BzrCommandError("%r is not present in revision %s"
+                                                % (filename, revision_id))
+            else:
+                rev_tree.print_file(old_file_id)
+                return
+        
+        if cur_file_id is not None:
+            if old_file_id is not None:
+                if cur_file_id == old_file_id:
+                    rev_tree.print_file(cur_file_id)
+                else:
+                    raise errors.BzrCommandError('Old and new files are'
+                                ' different. Please specify --old or --new')
+            else:
+                rev_tree.print_file(cur_file_id)
+        elif old_file_id is not None:
+            rev_tree.print_file(old_file_id)
+        else:
+            raise errors.BzrCommandError("%r is not present in revision %s" %
+                                         (filename, revision_id))
 
 
 class cmd_local_time_offset(Command):
