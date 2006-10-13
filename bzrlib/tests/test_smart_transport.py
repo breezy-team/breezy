@@ -1254,7 +1254,7 @@ class TestSmartProtocol(tests.TestCase):
         self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
             '1,2\n3,4\n100,200', self.client_protocol, self.smart_server_request)
 
-    def test_accept_bytes_to_protocol(self):
+    def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = StringIO()
         protocol = smart.SmartServerRequestProtocolOne(None, out_stream.write)
         protocol.accept_bytes('abc')
@@ -1263,7 +1263,7 @@ class TestSmartProtocol(tests.TestCase):
         self.assertEqual("error\x01Generic bzr smart protocol error: bad request"
             " u'abc'\n", out_stream.getvalue())
         self.assertTrue(protocol.has_dispatched)
-        self.assertEqual(1, protocol.next_read_size())
+        self.assertEqual(0, protocol.next_read_size())
 
     def test_accept_bytes_with_invalid_utf8_to_protocol(self):
         out_stream = StringIO()
@@ -1275,7 +1275,7 @@ class TestSmartProtocol(tests.TestCase):
             "one or more arguments of request '\\xdd\\n' are not valid UTF-8\n",
             out_stream.getvalue())
         self.assertTrue(protocol.has_dispatched)
-        self.assertEqual(1, protocol.next_read_size())
+        self.assertEqual(0, protocol.next_read_size())
 
     def test_accept_body_bytes_to_protocol(self):
         protocol = self.build_protocol_waiting_for_body()
@@ -1328,13 +1328,10 @@ class TestSmartProtocol(tests.TestCase):
         self.assertEqual("hello\n", protocol.excess_buffer)
         self.assertEqual("", protocol.in_buffer)
 
-    def test_sync_with_request_sets_finished_reading(self):
-        protocol = smart.SmartServerRequestProtocolOne(None, None)
-        request = smart.SmartServerRequestHandler(None)
-        protocol.sync_with_request(request)
+    def test__send_response_sets_finished_reading(self):
+        protocol = smart.SmartServerRequestProtocolOne(None, lambda x: None)
         self.assertEqual(1, protocol.next_read_size())
-        request.finished_reading = True
-        protocol.sync_with_request(request)
+        protocol._send_response(('x',))
         self.assertEqual(0, protocol.next_read_size())
 
     def test_query_version(self):

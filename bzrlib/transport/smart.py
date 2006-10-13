@@ -269,7 +269,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
     def __init__(self, backing_transport, write_func):
         self._backing_transport = backing_transport
         self.excess_buffer = ''
-        self._finished_reading = False
+        self._finished = False
         self.in_buffer = ''
         self.has_dispatched = False
         self.request = None
@@ -301,16 +301,15 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                     self.in_buffer = ''
                     self._send_response(self.request.response.args,
                         self.request.response.body)
-                self.sync_with_request(self.request)
             except KeyboardInterrupt:
                 raise
             except Exception, exception:
                 # everything else: pass to client, flush, and quit
                 self._send_response(('error', str(exception)))
-                return None
+                return
 
         if self.has_dispatched:
-            if self._finished_reading:
+            if self._finished:
                 # nothing to do.XXX: this routine should be a single state 
                 # machine too.
                 self.excess_buffer += self.in_buffer
@@ -326,7 +325,6 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 self.request.end_of_body()
                 assert self.request.finished_reading, \
                     "no more body, request not finished"
-            self.sync_with_request(self.request)
             if self.request.response is not None:
                 self._send_response(self.request.response.args,
                     self.request.response.body)
@@ -338,17 +336,16 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
 
     def _send_response(self, args, body=None):
         """Send a smart server response down the output stream."""
+        assert not self._finished, 'response already sent'
+        self._finished = True
         self._write_func(_encode_tuple(args))
         if body is not None:
             assert isinstance(body, str), 'body must be a str'
             bytes = self._encode_bulk_data(body)
             self._write_func(bytes)
 
-    def sync_with_request(self, request):
-        self._finished_reading = request.finished_reading
-        
     def next_read_size(self):
-        if self._finished_reading:
+        if self._finished:
             return 0
         if self._body_decoder is None:
             return 1
