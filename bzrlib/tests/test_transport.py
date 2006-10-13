@@ -182,8 +182,9 @@ class TestMemoryTransport(TestCase):
         self.assertEqual("memory:///", transport.base)
         self.assertEqual("memory:///", transport.abspath('/'))
 
-    def test_relpath(self):
+    def test_abspath_of_relpath_starting_at_root(self):
         transport = MemoryTransport()
+        self.assertEqual("memory:///foo", transport.abspath('/foo'))
 
     def test_append_and_get(self):
         transport = MemoryTransport()
