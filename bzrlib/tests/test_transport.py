@@ -103,6 +103,17 @@ class TestTransport(TestCase):
         finally:
             _set_protocol_handlers(saved_handlers)
 
+    def test__combine_paths(self):
+        t = Transport('/')
+        self.assertEqual('/home/sarah/project/foo',
+                         t._combine_paths('/home/sarah', 'project/foo'))
+        self.assertEqual('/etc',
+                         t._combine_paths('/home/sarah', '../../etc'))
+        self.assertEqual('/etc',
+                         t._combine_paths('/home/sarah', '../../../etc'))
+        self.assertEqual('/etc',
+                         t._combine_paths('/home/sarah', '/etc'))
+
 
 class TestCoalesceOffsets(TestCase):
     

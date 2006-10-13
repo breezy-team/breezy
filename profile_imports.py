@@ -82,7 +82,7 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
         # scope_name, frame_name, frame_lineno
         out_file.write('%5.1f %5.1f %s %-35s\t@ %s:%d\n'
             % (info[-1]*1000., mod_time*1000., '+'*info[0], 
-               cur[1][:40], info[1], info[2]))
+               cur[1][:35], info[1], info[2]))
 
         if sorted:
             c_times.sort()
@@ -125,6 +125,8 @@ def timed_import(name, globals, locals, fromlist):
         extra = '[l] '
         frame = sys._getframe(4)
         frame_name = frame.f_globals.get('__name__', '<unknown>')
+    if fromlist:
+        extra += ' [%s]' % (', '.join(map(str, fromlist)),)
     frame_lineno = frame.f_lineno
 
     this = stack_add(extra + name, frame_name, frame_lineno, scope_name)
