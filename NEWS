@@ -30,6 +30,10 @@ IN DEVELOPMENT
       around a regex, which defers compilation until first use. 
       (John Arbash Meinel)
 
+    * ``TestCase.run_bzr_subprocess`` defaults to supplying the
+      ``--no-plugins`` parameter to ensure test reproducability, and avoid
+      problems with system-wide installed plugins. (John Arbash Meinel)
+
   BUG FIXES:
 
     * Don't require ``Content-Type`` in range responses. Assume they are a

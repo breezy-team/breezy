@@ -320,6 +320,7 @@ should be only in the command-line tool.
 
 Writing tests
 =============
+
 In general tests should be placed in a file named test_FOO.py where 
 FOO is the logical thing under test. That file should be placed in the
 tests subdirectory under the package being tested.
@@ -353,6 +354,11 @@ When writing blackbox tests please honour the following conventions:
     to isolate knock-on effects throughout the blackbox test suite when a
     command changes its name or signature. Ideally only the tests for a
     given command are affected when a given command is changed.
+
+ 4. If you have a test which does actually require running bzr in a
+    subprocess you can use ``run_bzr_subprocess``. By default the spawned
+    process will not load plugins unless ``--allow-plugins`` is supplied.
+
 
 Doctests
 --------
