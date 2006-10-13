@@ -4,6 +4,11 @@ IN DEVELOPMENT
 
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
 
+    * New connection: ``bzr+http://`` which supports tunnelling the smart
+      protocol over an HTTP connection. If writing is enabled on the bzr
+      server, then you can write over the http connection.
+      (Andrew Bennetts)
+
     * ``bzr`` now uses lazy importing to reduce the startup time. This has
       a moderate effect on lots of actions, especially ones that have
       little to do. For example ``bzr rocks`` time is down to 116ms from
