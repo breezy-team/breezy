@@ -50,15 +50,17 @@ form.
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
 
-
-import errno
 import os
 import sys
 import re
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import errno
 import logging
+""")
 
 import bzrlib
-from bzrlib.errors import BzrError, BzrNewError
 from bzrlib.symbol_versioning import (deprecated_function,
         zero_nine,
         )

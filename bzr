@@ -50,7 +50,6 @@ if hasattr(os, "unsetenv"):
     os.unsetenv(REINVOKE)
 
 
-
 profiling = False
 if '--profile-imports' in sys.argv:
     sys.argv.remove('--profile-imports')
@@ -70,6 +69,9 @@ except ImportError, e:
 
 import bzrlib.inspect_for_copy
 bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
+
+import bzrlib.lazy_regex
+bzrlib.lazy_regex.install_lazy_compile()
 
 import bzrlib.commands
 import bzrlib.trace
