@@ -1116,6 +1116,8 @@ class TransportTests(TestTransportImplementation):
         # that have aliasing problems like symlinks should go in backend
         # specific test cases.
         transport = self.get_transport()
+        if isinstance(transport, chroot.ChrootTransportDecorator):
+            raise TestSkipped("ChrootTransportDecorator disallows clone('..')")
         
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
@@ -1125,6 +1127,9 @@ class TransportTests(TestTransportImplementation):
 
         # the abspath of "/" and "/foo/.." should result in the same location
         self.assertEqual(transport.abspath("/"), transport.abspath("/foo/.."))
+
+        self.assertEqual(transport.clone("/").abspath('foo'),
+                         transport.abspath("/foo"))
 
     def test_local_abspath(self):
         transport = self.get_transport()
