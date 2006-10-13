@@ -560,6 +560,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 return
             bytes = self._in.read(bytes_to_read)
             if bytes == '':
+
                 # Connection has been closed.
                 self.finished = True
                 self._out.flush()
@@ -635,10 +636,12 @@ class SmartServerRequestHandler(object):
         return SmartServerResponse(('ok', '1'))
 
     def do_has(self, relpath):
+        relpath = relpath.encode('utf-8')
         r = self._backing_transport.has(relpath) and 'yes' or 'no'
         return SmartServerResponse((r,))
 
     def do_get(self, relpath):
+        relpath = relpath.encode('utf-8')
         backing_bytes = self._backing_transport.get_bytes(relpath)
         return SmartServerResponse(('ok',), backing_bytes)
 
@@ -651,7 +654,7 @@ class SmartServerRequestHandler(object):
 
     def do_append(self, relpath, mode):
         self._converted_command = True
-        self._relpath = relpath
+        self._relpath = relpath.encode('utf-8')
         self._mode = self._deserialise_optional_mode(mode)
         self._end_of_body_handler = self._handle_do_append_end
     
@@ -661,29 +664,33 @@ class SmartServerRequestHandler(object):
         self.response = SmartServerResponse(('appended', '%d' % old_length))
 
     def do_delete(self, relpath):
+        relpath = relpath.encode('utf-8')
         self._backing_transport.delete(relpath)
 
-    def do_iter_files_recursive(self, abspath):
-        # XXX: the path handling needs some thought.
-        #relpath = self._backing_transport.relpath(abspath)
-        transport = self._backing_transport.clone(abspath)
+    def do_iter_files_recursive(self, relpath):
+        relpath = relpath.encode('utf-8')
+        transport = self._backing_transport.clone(relpath)
         filenames = transport.iter_files_recursive()
         return SmartServerResponse(('names',) + tuple(filenames))
 
     def do_list_dir(self, relpath):
+        relpath = relpath.encode('utf-8')
         filenames = self._backing_transport.list_dir(relpath)
         return SmartServerResponse(('names',) + tuple(filenames))
 
     def do_mkdir(self, relpath, mode):
+        relpath = relpath.encode('utf-8')
         self._backing_transport.mkdir(relpath,
                                       self._deserialise_optional_mode(mode))
 
     def do_move(self, rel_from, rel_to):
+        rel_from = rel_from.encode('utf-8')
+        rel_to = rel_to.encode('utf-8')
         self._backing_transport.move(rel_from, rel_to)
 
     def do_put(self, relpath, mode):
         self._converted_command = True
-        self._relpath = relpath
+        self._relpath = relpath.encode('utf-8')
         self._mode = self._deserialise_optional_mode(mode)
         self._end_of_body_handler = self._handle_do_put
 
@@ -705,7 +712,7 @@ class SmartServerRequestHandler(object):
     def do_put_non_atomic(self, relpath, mode, create_parent, dir_mode):
         self._converted_command = True
         self._end_of_body_handler = self._handle_put_non_atomic
-        self._relpath = relpath
+        self._relpath = relpath.encode('utf-8')
         self._dir_mode = self._deserialise_optional_mode(dir_mode)
         self._mode = self._deserialise_optional_mode(mode)
         # a boolean would be nicer XXX
@@ -722,7 +729,7 @@ class SmartServerRequestHandler(object):
     def do_readv(self, relpath):
         self._converted_command = True
         self._end_of_body_handler = self._handle_readv_offsets
-        self._relpath = relpath
+        self._relpath = relpath.encode('utf-8')
 
     def end_of_body(self):
         """No more body data will be received."""
@@ -738,12 +745,16 @@ class SmartServerRequestHandler(object):
         self.response = SmartServerResponse(('readv',), backing_bytes)
         
     def do_rename(self, rel_from, rel_to):
+        rel_from = rel_from.encode('utf-8')
+        rel_to = rel_to.encode('utf-8')
         self._backing_transport.rename(rel_from, rel_to)
 
     def do_rmdir(self, relpath):
+        relpath = relpath.encode('utf-8')
         self._backing_transport.rmdir(relpath)
 
     def do_stat(self, relpath):
+        relpath = relpath.encode('utf-8')
         stat = self._backing_transport.stat(relpath)
         return SmartServerResponse(('stat', str(stat.st_size), oct(stat.st_mode)))
         
