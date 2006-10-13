@@ -87,9 +87,7 @@ default_transport = LocalRelpathServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
-                      bzrlib.branch,
                       bzrlib.bundle.serializer,
-                      bzrlib.commands,
                       bzrlib.errors,
                       bzrlib.export,
                       bzrlib.inventory,
@@ -97,9 +95,7 @@ MODULES_TO_DOCTEST = [
                       bzrlib.lockdir,
                       bzrlib.merge3,
                       bzrlib.option,
-                      bzrlib.osutils,
                       bzrlib.store,
-                      bzrlib.transport,
                       ]
 
 
@@ -1312,9 +1308,9 @@ class TestCaseWithMemoryTransport(TestCase):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
-    def make_branch_and_memory_tree(self, relpath):
+    def make_branch_and_memory_tree(self, relpath, format=None):
         """Create a branch on the default transport and a MemoryTree for it."""
-        b = self.make_branch(relpath)
+        b = self.make_branch(relpath, format=format)
         return memorytree.MemoryTree.create_on_branch(b)
 
     def overrideEnvironmentForTesting(self):
@@ -1637,6 +1633,7 @@ def test_suite():
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lazy_import',
+                   'bzrlib.tests.test_lazy_regex',
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
@@ -1655,6 +1652,7 @@ def test_suite():
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
+                   'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
@@ -1708,7 +1706,11 @@ def test_suite():
     for m in MODULES_TO_TEST:
         suite.addTest(loader.loadTestsFromModule(m))
     for m in MODULES_TO_DOCTEST:
-        suite.addTest(doctest.DocTestSuite(m))
+        try:
+            suite.addTest(doctest.DocTestSuite(m))
+        except ValueError, e:
+            print '**failed to get doctest for: %s\n%s' %(m,e)
+            raise
     for name, plugin in bzrlib.plugin.all_plugins().items():
         if getattr(plugin, 'test_suite', None) is not None:
             suite.addTest(plugin.test_suite())
