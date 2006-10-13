@@ -379,8 +379,8 @@ class TestRunBzrSubprocessCommands(TestCaseWithTransport):
         self.assertEqual(['--no-plugins'], command[2:])
 
     def test_allow_plugins(self):
-        self.assertRaises(_DontSpawnProcess, self.run_bzr_subprocess)
-        self.run_bzr_subprocess(allow_plugins=True)
+        self.assertRaises(_DontSpawnProcess,
+                          self.run_bzr_subprocess, allow_plugins=True)
         command = self._popen_args[0]
         self.assertEqual([], command[2:])
 
