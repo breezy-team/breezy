@@ -115,8 +115,8 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         # note that we dont have a try:finally here because of two reasons:
         # firstly there will only be errors reported if the test fails, and 
         # when it fails thats ok as long as the test suite cleanup still works,
-        # which it will as the lock objects are released (thats wher ethe 
-        # warning comes from.  Secondly, its hard in this test to be 
+        # which it will as the lock objects are released (thats where the 
+        # warning comes from.  Secondly, it is hard in this test to be 
         # sure that we've got the right interactions between try:finally
         # and the lock/unlocks we are doing.
         getattr(tree, methodname)()

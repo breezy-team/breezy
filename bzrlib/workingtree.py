@@ -1503,9 +1503,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def read_working_inventory(self):
         """Read the working inventory.
         
-        :raises errors.InventoryModified: When the current in memory
-            inventory has been modified, read_working_inventory will
-            fail.
+        :raises errors.InventoryModified: read_working_inventory will fail
+            when the current in memory inventory has been modified.
         """
         # conceptually this should be an implementation detail of the tree. 
         # XXX: Deprecate this.
@@ -2104,7 +2103,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                 wt.set_parent_trees([(revision_id, basis_tree)])
             transform.build_tree(basis_tree, wt)
         finally:
-            # unlock in this order so that the unlock-triggers-flush in
+            # Unlock in this order so that the unlock-triggers-flush in
             # WorkingTree is given a chance to fire.
             control_files.unlock()
             wt.unlock()
