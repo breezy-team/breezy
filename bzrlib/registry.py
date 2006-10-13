@@ -18,7 +18,7 @@
 
 
 class _ObjectGetter(object):
-    """Hang onto an object, and return it on request.
+    """Maintain a reference to an object, and return the object on request.
 
     This is used by Registry to make plain objects function similarly
     to lazily imported objects.
@@ -70,9 +70,17 @@ class _LazyObjectGetter(_ObjectGetter):
 class Registry(object):
     """A class that registers objects to a name.
 
-    This is designed such that you can register objects in a lazy fashion,
-    so that they can be imported later. While still having the help text
-    available right away.
+    There are many places that want to collect related objects and access them
+    by a key. This class is designed to allow registering the mapping from key
+    to object. It goes one step further, and allows registering a name to a
+    hypothetical object which has not been imported yet. It also supports
+    adding additional information at registration time so that decisions can be
+    made without having to import the object (which may be expensive).
+
+    The functions 'get', 'get_info', and 'get_help' also support a
+    'default_key' (settable through my_registry.default_key = XXX, XXX must
+    already be registered.) Calling my_registry.get() or my_registry.get(None),
+    will return the entry for the default key.
     """
 
     def __init__(self):
@@ -144,6 +152,10 @@ class Registry(object):
             will be returned instead, if it exists. Otherwise KeyError will be
             raised.
         :return: The previously registered object.
+        :raises ImportError: If the object was registered lazily, and there are
+            problems during import.
+        :raises AttributeError: If registered lazily, and the module does not
+            contain the registered member.
         """
         return self._dict[self._get_key_or_default(key)].get_obj()
 
@@ -196,4 +208,4 @@ class Registry(object):
 
     default_key = property(_get_default_key, _set_default_key,
                             doc="Current value of the default key."
-                                "Can be set to any existing key.")
+                                " Can be set to any existing key.")
