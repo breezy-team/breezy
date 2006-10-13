@@ -928,11 +928,17 @@ class TestCase(unittest.TestCase):
             The values must be strings. The change will only occur in the
             child, so you don't need to fix the environment after running.
         :param universal_newlines: Convert CRLF => LF
+        :param allow_plugins: By default the subprocess is run with
+            --no-plugins to ensure test reproducibility. Also, it is possible
+            for system-wide plugins to create unexpected output on stderr,
+            which can cause unnecessary test failures.
         """
         env_changes = kwargs.get('env_changes', {})
         working_dir = kwargs.get('working_dir', None)
+        allow_plugins = kwargs.get('allow_plugins', False)
         process = self.start_bzr_subprocess(args, env_changes=env_changes,
-                                            working_dir=working_dir)
+                                            working_dir=working_dir,
+                                            allow_plugins=allow_plugins)
         # We distinguish between retcode=None and retcode not passed.
         supplied_retcode = kwargs.get('retcode', 0)
         return self.finish_bzr_subprocess(process, retcode=supplied_retcode,
@@ -941,7 +947,8 @@ class TestCase(unittest.TestCase):
 
     def start_bzr_subprocess(self, process_args, env_changes=None,
                              skip_if_plan_to_signal=False,
-                             working_dir=None):
+                             working_dir=None,
+                             allow_plugins=False):
         """Start bzr in a subprocess for testing.
 
         This starts a new Python interpreter and runs bzr in there.
@@ -958,6 +965,7 @@ class TestCase(unittest.TestCase):
             child, so you don't need to fix the environment after running.
         :param skip_if_plan_to_signal: raise TestSkipped when true and os.kill
             is not available.
+        :param allow_plugins: If False (default) pass --no-plugins to bzr.
 
         :returns: Popen object for the started process.
         """
@@ -989,14 +997,25 @@ class TestCase(unittest.TestCase):
             # so we will avoid using it on all platforms, just to
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
-            process = Popen([sys.executable, bzr_path] + list(process_args),
-                             stdin=PIPE, stdout=PIPE, stderr=PIPE)
+            command = [sys.executable, bzr_path]
+            if not allow_plugins:
+                command.append('--no-plugins')
+            command.extend(process_args)
+            process = self._popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         finally:
             restore_environment()
             if cwd is not None:
                 os.chdir(cwd)
 
         return process
+
+    def _popen(self, *args, **kwargs):
+        """Place a call to Popen.
+
+        Allows tests to override this method to intercept the calls made to
+        Popen for introspection.
+        """
+        return Popen(*args, **kwargs)
 
     def get_bzr_path(self):
         """Return the path of the 'bzr' executable for this test suite."""
@@ -1297,9 +1316,9 @@ class TestCaseWithMemoryTransport(TestCase):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
-    def make_branch_and_memory_tree(self, relpath):
+    def make_branch_and_memory_tree(self, relpath, format=None):
         """Create a branch on the default transport and a MemoryTree for it."""
-        b = self.make_branch(relpath)
+        b = self.make_branch(relpath, format=format)
         return memorytree.MemoryTree.create_on_branch(b)
 
     def overrideEnvironmentForTesting(self):
@@ -1648,6 +1667,7 @@ def test_suite():
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
+                   'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',

@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from cStringIO import StringIO
 import errno
 import socket
 
@@ -21,6 +22,10 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.HttpServer import (
     HttpServer,
     TestingHTTPRequestHandler,
+    )
+from bzrlib.transport import (
+    get_transport,
+    smart,
     )
 
 
@@ -91,6 +96,48 @@ class ForbiddenRequestHandler(TestingHTTPRequestHandler):
         ignored = TestingHTTPRequestHandler.parse_request(self)
         self.send_error(403)
         return False
+
+
+class HTTPServerWithSmarts(HttpServer):
+    """HTTPServerWithSmarts extends the HttpServer with POST methods that will
+    trigger a smart server to execute with a transport rooted at the rootdir of
+    the HTTP server.
+    """
+
+    def __init__(self):
+        HttpServer.__init__(self, SmartRequestHandler)
+
+
+class SmartRequestHandler(TestingHTTPRequestHandler):
+    """Extend TestingHTTPRequestHandler to support smart client POSTs."""
+
+    def do_POST(self):
+        """Hand the request off to a smart server instance."""
+        self.send_response(200)
+        self.send_header("Content-type", "application/octet-stream")
+        transport = get_transport(self.server.test_case._home_dir)
+        # TODO: We might like to support streaming responses.  1.0 allows no
+        # Content-length in this case, so for integrity we should perform our
+        # own chunking within the stream.
+        # 1.1 allows chunked responses, and in this case we could chunk using
+        # the HTTP chunking as this will allow HTTP persistence safely, even if
+        # we have to stop early due to error, but we would also have to use the
+        # HTTP trailer facility which may not be widely available.
+        out_buffer = StringIO()
+        smart_protocol_request = smart.SmartServerRequestProtocolOne(
+                transport, out_buffer.write)
+        # if this fails, we should return 400 bad request, but failure is
+        # failure for now - RBC 20060919
+        data_length = int(self.headers['Content-Length'])
+        # Perhaps there should be a SmartServerHTTPMedium that takes care of
+        # feeding the bytes in the http request to the smart_protocol_request,
+        # but for now it's simpler to just feed the bytes directly.
+        smart_protocol_request.accept_bytes(self.rfile.read(data_length))
+        assert smart_protocol_request.next_read_size() == 0, (
+            "not finished reading, but all data sent to protocol.")
+        self.send_header("Content-Length", str(len(out_buffer.getvalue())))
+        self.end_headers()
+        self.wfile.write(out_buffer.getvalue())
 
 
 class TestCaseWithWebserver(TestCaseWithTransport):

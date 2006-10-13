@@ -27,7 +27,10 @@ import urllib
 
 from bzrlib import errors
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport
+from bzrlib.transport import (
+    smart,
+    Transport,
+    )
 from bzrlib.ui import ui_factory
 
 
@@ -110,7 +113,7 @@ def _extract_headers(header_text, url):
     return m
 
 
-class HttpTransportBase(Transport):
+class HttpTransportBase(Transport, smart.SmartClientMedium):
     """Base class for http implementations.
 
     Does URL parsing, etc, but not any network IO.
@@ -162,8 +165,9 @@ class HttpTransportBase(Transport):
         else:
             # Except for the root, no trailing slashes are allowed
             if len(relpath_parts) > 1 and relpath_parts[-1] == '':
-                raise ValueError("path %r within branch %r seems to be a directory"
-                                 % (relpath, self._path))
+                raise ValueError(
+                    "path %r within branch %r seems to be a directory"
+                    % (relpath, self._path))
             basepath = self._path.split('/')
             if len(basepath) > 0 and basepath[-1] == '':
                 basepath = basepath[:-1]
@@ -226,6 +230,17 @@ class HttpTransportBase(Transport):
         """
         raise NotImplementedError(self._get)
 
+    def get_request(self):
+        return SmartClientHTTPMediumRequest(self)
+
+    def get_smart_medium(self):
+        """See Transport.get_smart_medium.
+
+        HttpTransportBase directly implements the minimal interface of
+        SmartMediumClient, so this returns self.
+        """
+        return self
+
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
@@ -271,6 +286,17 @@ class HttpTransportBase(Transport):
             prev_end = end
 
         return combined
+
+    def _post(self, body_bytes):
+        """POST body_bytes to .bzr/smart on this transport.
+        
+        :returns: (response code, response body file-like object).
+        """
+        # TODO: Requiring all the body_bytes to be available at the beginning of
+        # the POST may require large client buffers.  It would be nice to have
+        # an interface that allows streaming via POST when possible (and
+        # degrades to a local buffer when not).
+        raise NotImplementedError(self._post)
 
     def put_file(self, relpath, f, mode=None):
         """Copy the file-like object into the location.
@@ -386,3 +412,30 @@ class HttpTransportBase(Transport):
             strings.append('-%d' % tail_amount)
 
         return ','.join(strings)
+
+    def send_http_smart_request(self, bytes):
+        code, body_filelike = self._post(bytes)
+        assert code == 200, 'unexpected HTTP response code %r' % (code,)
+        return body_filelike
+
+
+class SmartClientHTTPMediumRequest(smart.SmartClientMediumRequest):
+    """A SmartClientMediumRequest that works with an HTTP medium."""
+
+    def __init__(self, medium):
+        smart.SmartClientMediumRequest.__init__(self, medium)
+        self._buffer = ''
+
+    def _accept_bytes(self, bytes):
+        self._buffer += bytes
+
+    def _finished_writing(self):
+        data = self._medium.send_http_smart_request(self._buffer)
+        self._response_body = data
+
+    def _read_bytes(self, count):
+        return self._response_body.read(count)
+
+    def _finished_reading(self):
+        """See SmartClientMediumRequest._finished_reading."""
+        pass

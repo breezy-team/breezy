@@ -81,7 +81,10 @@ class HttpTransport_urllib(HttpTransportBase):
                                               request.user, request.password)
 
     def _perform(self, request):
-        """Send the request to the server and handles common errors."""
+        """Send the request to the server and handles common errors.
+
+        :returns: urllib2 Response object
+        """
         if self._connection is not None:
             # Give back shared info
             request.connection = self._connection
@@ -132,6 +135,15 @@ class HttpTransport_urllib(HttpTransportBase):
             self._connection.fake_close()
             raise NoSuchFile(abspath)
 
+        data = handle_response(abspath, code, response.headers, response)
+        # Close response to free the httplib.HTTPConnection pipeline
+        self._connection.fake_close()
+        return code, data
+
+    def _post(self, body_bytes):
+        abspath = self._real_abspath('.bzr/smart')
+        response = self._perform(Request('POST', abspath, body_bytes))
+        code = response.code
         data = handle_response(abspath, code, response.headers, response)
         # Close response to free the httplib.HTTPConnection pipeline
         self._connection.fake_close()

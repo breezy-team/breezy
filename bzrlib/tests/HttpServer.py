@@ -237,11 +237,14 @@ class HttpServer(Server):
         Server.__init__(self)
         self.request_handler = request_handler
 
-    def _http_start(self):
-        httpd = None
-        httpd = TestingHTTPServer(('localhost', 0),
+    def _get_httpd(self):
+        return TestingHTTPServer(('localhost', 0),
                                   self.request_handler,
                                   self)
+
+    def _http_start(self):
+        httpd = None
+        httpd = self._get_httpd()
         host, port = httpd.socket.getsockname()
         self._http_base_url = '%s://localhost:%s/' % (self._url_protocol, port)
         self._http_starting.release()
