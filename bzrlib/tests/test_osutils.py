@@ -23,8 +23,11 @@ import stat
 import sys
 
 import bzrlib
+from bzrlib import (
+    errors,
+    osutils,
+    )
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
-import bzrlib.osutils as osutils
 from bzrlib.tests import (
         StringIOWrapper,
         TestCase, 
@@ -78,6 +81,14 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual(type(result), str)
         self.assertContainsRe(result, r'^[a-z0-9]{100}$')
 
+    def test_is_inside(self):
+        is_inside = osutils.is_inside
+        self.assertTrue(is_inside('src', 'src/foo.c'))
+        self.assertFalse(is_inside('src', 'srccontrol'))
+        self.assertTrue(is_inside('src', 'src/a/a/a/foo.c'))
+        self.assertTrue(is_inside('foo.c', 'foo.c'))
+        self.assertFalse(is_inside('foo.c', ''))
+        self.assertTrue(is_inside('', 'foo.c'))
 
     def test_rmtree(self):
         # Check to remove tree with read-only files/dirs
@@ -311,6 +322,18 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         except (IOError, OSError), e:
             self.assertEqual(errno.ENOENT, e.errno)
 
+    def test_splitpath(self):
+        def check(expected, path):
+            self.assertEqual(expected, osutils.splitpath(path))
+
+        check(['a'], 'a')
+        check(['a', 'b'], 'a/b')
+        check(['a', 'b'], 'a/./b')
+        check(['a', '.b'], 'a/.b')
+        check(['a', '.b'], 'a\\.b')
+
+        self.assertRaises(errors.BzrError, osutils.splitpath, 'a/../b')
+
 
 class TestMacFuncsDirs(TestCaseInTempDir):
     """Test mac special functions that require directories."""
@@ -335,6 +358,7 @@ class TestMacFuncsDirs(TestCaseInTempDir):
 
         os.chdir(u'Ba\u030agfors')
         self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
+
 
 class TestSplitLines(TestCase):
 

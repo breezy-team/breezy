@@ -95,6 +95,7 @@ class PyCurlTransport(HttpTransportBase):
         abspath = self._real_abspath(relpath)
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
+        curl.setopt(pycurl.HTTPGET, 1)
         # don't want the body - ie just do a HEAD request
         # This means "NO BODY" not 'nobody'
         curl.setopt(pycurl.NOBODY, 1)
@@ -115,6 +116,14 @@ class PyCurlTransport(HttpTransportBase):
             return self._get_full(relpath)
     
     def _setup_get_request(self, curl, relpath):
+        # Make sure we do a GET request. versions > 7.14.1 also set the
+        # NO BODY flag, but we'll do it ourselves in case it is an older
+        # pycurl version
+        curl.setopt(pycurl.NOBODY, 0)
+        curl.setopt(pycurl.HTTPGET, 1)
+        return self._setup_request(curl, relpath)
+
+    def _setup_request(self, curl, relpath):
         """Do the common setup stuff for making a request
 
         :param curl: The curl object to place the request on
@@ -127,11 +136,6 @@ class PyCurlTransport(HttpTransportBase):
         abspath = self._real_abspath(relpath)
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
-        # Make sure we do a GET request. versions > 7.14.1 also set the
-        # NO BODY flag, but we'll do it ourselves in case it is an older
-        # pycurl version
-        curl.setopt(pycurl.NOBODY, 0)
-        curl.setopt(pycurl.HTTPGET, 1)
 
         data = StringIO()
         header = StringIO()
@@ -179,6 +183,22 @@ class PyCurlTransport(HttpTransportBase):
         # handle_response will raise NoSuchFile, etc based on the response code
         return code, response.handle_response(abspath, code, headers, data)
 
+    def _post(self, body_bytes):
+        fake_file = StringIO(body_bytes)
+        curl = self._base_curl
+        # Other places that use _base_curl for GET requests explicitly set
+        # HTTPGET, so it should be safe to re-use the same object for both GETs
+        # and POSTs.
+        curl.setopt(pycurl.POST, 1)
+        curl.setopt(pycurl.POSTFIELDSIZE, len(body_bytes))
+        curl.setopt(pycurl.READFUNCTION, fake_file.read)
+        abspath, data, header = self._setup_request(curl, '.bzr/smart')
+        self._curl_perform(curl)
+        data.seek(0)
+        code = curl.getinfo(pycurl.HTTP_CODE)
+        headers = _extract_headers(header.getvalue(), abspath)
+        return code, response.handle_response(abspath, code, headers, data)
+
     def _raise_curl_http_error(self, curl, info=None):
         code = curl.getinfo(pycurl.HTTP_CODE)
         url = curl.getinfo(pycurl.EFFECTIVE_URL)
@@ -194,9 +214,12 @@ class PyCurlTransport(HttpTransportBase):
         # There's no way in http/1.0 to say "must revalidate"; we don't want
         # to force it to always retrieve.  so just turn off the default Pragma
         # provided by Curl.
+        # Also, we override the Expect: header so that pycurl will send the POST
+        # body immediately.
         headers = ['Cache-control: max-age=0',
                    'Pragma: no-cache',
-                   'Connection: Keep-Alive']
+                   'Connection: Keep-Alive',
+                   'Expect: ',]
         ## curl.setopt(pycurl.VERBOSE, 1)
         # TODO: maybe include a summary of the pycurl version
         ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__,)
