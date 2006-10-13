@@ -16,6 +16,7 @@
 
 from cStringIO import StringIO
 import errno
+from SimpleHTTPServer import SimpleHTTPRequestHandler
 import socket
 
 from bzrlib.tests import TestCaseWithTransport
@@ -138,6 +139,25 @@ class SmartRequestHandler(TestingHTTPRequestHandler):
         self.send_header("Content-Length", str(len(out_buffer.getvalue())))
         self.end_headers()
         self.wfile.write(out_buffer.getvalue())
+
+
+class SingleRangeRequestHandler(TestingHTTPRequestHandler):
+    """Always reply to range request as if they were single.
+
+    Don't be explicit about it, just to annoy the clients.
+    """
+
+    def get_multiple_ranges(self, file, file_size, ranges):
+        """Answer as if it was a single range request and ignores the rest"""
+        (start, end) = ranges[0]
+        return self.get_single_range(file, file_size, start, end)
+
+
+class NoRangeRequestHandler(TestingHTTPRequestHandler):
+    """Ignore range requests without notice"""
+
+    # Just bypass the range handling done by TestingHTTPRequestHandler
+    do_GET = SimpleHTTPRequestHandler.do_GET
 
 
 class TestCaseWithWebserver(TestCaseWithTransport):

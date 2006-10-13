@@ -57,24 +57,6 @@ class TransportTests(TestTransportImplementation):
         """Check that transport.get(relpath).read() == content."""
         self.assertEqualDiff(content, transport.get(relpath).read())
 
-    def assertListRaises(self, excClass, func, *args, **kwargs):
-        """Fail unless excClass is raised when the iterator from func is used.
-        
-        Many transport functions can return generators this makes sure
-        to wrap them in a list() call to make sure the whole generator
-        is run, and that the proper exception is raised.
-        """
-        try:
-            list(func(*args, **kwargs))
-        except excClass:
-            return
-        else:
-            if getattr(excClass,'__name__', None) is not None:
-                excName = excClass.__name__
-            else:
-                excName = str(excClass)
-            raise self.failureException, "%s not raised" % excName
-
     def test_has(self):
         t = self.get_transport()
 

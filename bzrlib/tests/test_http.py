@@ -39,6 +39,8 @@ from bzrlib.tests.HTTPTestUtil import (
     BadStatusRequestHandler,
     ForbiddenRequestHandler,
     InvalidStatusRequestHandler,
+    NoRangeRequestHandler,
+    SingleRangeRequestHandler,
     TestCaseWithWebserver,
     WallRequestHandler,
     )
@@ -513,3 +515,98 @@ class TestRecordingServer(TestCase):
         self.assertEqual('HTTP/1.1 200 OK\r\n',
                          sock.recv(4096, socket.MSG_WAITALL))
         self.assertEqual('abc', server.received_bytes)
+
+
+class TestRangeRequestServer(object):
+    """Test the http connections.
+
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithWebserver.
+
+    We can't inherit directly from TestCaseWithWebserver or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete.
+    """
+
+    def setUp(self):
+        TestCaseWithWebserver.setUp(self)
+        self.build_tree(['0123456789',],
+                        line_endings='binary',
+                        transport=self.get_transport())
+
+    """Tests readv requests against server"""
+
+    def test_readv(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        l = list(t.readv('0123456789', ((0, 1), (1, 1), (3, 2), (9, 1))))
+        self.assertEqual(l[0], (0, '0'))
+        self.assertEqual(l[1], (1, '1'))
+        self.assertEqual(l[2], (3, '34'))
+        self.assertEqual(l[3], (9, '9'))
+
+    def test_readv_out_of_order(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        l = list(t.readv('0123456789', ((1, 1), (9, 1), (0, 1), (3, 2))))
+        self.assertEqual(l[0], (1, '1'))
+        self.assertEqual(l[1], (9, '9'))
+        self.assertEqual(l[2], (0, '0'))
+        self.assertEqual(l[3], (3, '34'))
+
+    def test_readv_short_read(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+
+        # This is intentionally reading off the end of the file
+        # since we are sure that it cannot get there
+        self.assertListRaises((errors.ShortReadvError, AssertionError),
+                              t.readv, '0123456789', [(1,1), (8,10)])
+
+        # This is trying to seek past the end of the file, it should
+        # also raise a special error
+        self.assertListRaises(errors.ShortReadvError,
+                              t.readv, '0123456789', [(12,2)])
+
+
+class TestSingleRangeRequestServer(TestRangeRequestServer):
+    """Test readv against a server which accept only single range requests"""
+
+    def create_transport_readonly_server(self):
+        return HttpServer(SingleRangeRequestHandler)
+
+
+class TestSingleRangeRequestServer_urllib(TestSingleRangeRequestServer,
+                                          TestCaseWithWebserver):
+    """Tests single range requests accepting server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestSingleRangeRequestServer_pycurl(TestWithTransport_pycurl,
+                                          TestSingleRangeRequestServer,
+                                          TestCaseWithWebserver):
+    """Tests single range requests accepting server for pycurl implementation"""
+
+
+class TestNoRangeRequestServer(TestRangeRequestServer):
+    """Test readv against a server which do not accept range requests"""
+
+    def create_transport_readonly_server(self):
+        return HttpServer(NoRangeRequestHandler)
+
+
+class TestNoRangeRequestServer_urllib(TestNoRangeRequestServer,
+                                      TestCaseWithWebserver):
+    """Tests range requests refusing server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
+                               TestNoRangeRequestServer,
+                               TestCaseWithWebserver):
+    """Tests range requests refusing server for pycurl implementation"""
+
+
+

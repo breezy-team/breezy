@@ -572,6 +572,24 @@ class TestCase(unittest.TestCase):
             raise AssertionError("value(s) %r not present in container %r" % 
                                  (missing, superlist))
 
+    def assertListRaises(self, excClass, func, *args, **kwargs):
+        """Fail unless excClass is raised when the iterator from func is used.
+        
+        Many functions can return generators this makes sure
+        to wrap them in a list() call to make sure the whole generator
+        is run, and that the proper exception is raised.
+        """
+        try:
+            list(func(*args, **kwargs))
+        except excClass:
+            return
+        else:
+            if getattr(excClass,'__name__', None) is not None:
+                excName = excClass.__name__
+            else:
+                excName = str(excClass)
+            raise self.failureException, "%s not raised" % excName
+
     def assertIs(self, left, right):
         if not (left is right):
             raise AssertionError("%r is not %r." % (left, right))
