@@ -933,8 +933,8 @@ class TestCase(unittest.TestCase):
         :param universal_newlines: Convert CRLF => LF
         :param allow_plugins: By default the subprocess is run with
             --no-plugins to ensure test reproducibility. Also, it is possible
-            for system-wide plugins to create stipple on stderr, which can
-            cause unnecessary test failures.
+            for system-wide plugins to create unexpected output on stderr,
+            which can cause unnecessary test failures.
         """
         env_changes = kwargs.get('env_changes', {})
         working_dir = kwargs.get('working_dir', None)
@@ -1014,8 +1014,9 @@ class TestCase(unittest.TestCase):
 
     def _popen(self, *args, **kwargs):
         """Place a call to Popen.
-        This allows tests to inspect what is going on, without having to
-        actually spawn Popen.
+
+        Allows tests to override this method to intercept the calls made to
+        Popen for introspection.
         """
         return Popen(*args, **kwargs)
 
