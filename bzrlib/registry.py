@@ -38,7 +38,10 @@ class _ObjectGetter(object):
 
 
 class _LazyObjectGetter(_ObjectGetter):
-    """Keep a record of a future object, and on request load it."""
+    """Keep a record of a possible object.
+
+    When requested, load and return it.
+    """
 
     __slots__ = ['_module_name', '_member_name', '_imported']
 
@@ -51,8 +54,8 @@ class _LazyObjectGetter(_ObjectGetter):
     def get_obj(self):
         """Get the referenced object.
 
-        If not imported yet, this will import the requested module.
-        Further requests will just return the already imported object.
+        Upon first request, the object will be imported. Future requests will
+        return the imported object.
         """
         if not self._imported:
             self._do_import()
@@ -99,14 +102,14 @@ class Registry(object):
         :param obj: The object to register.
         :param help: Help text for this entry. This may be a string or
                 a callable. If it is a callable, it should take two
-                parameters, this registry and the key that the help was
-                registered under.
+                parameters (registry, key): this registry and the key that 
+                the help was registered under.
         :param info: More information for this entry. Registry.get_info()
-                can be used to get this information. It is meant as an
-                opaque storage location.
-        :param override_existing: If True, replace the existing object
-                with the new one. If False, if there is already something
-                registered with the same key, raise a KeyError
+                can be used to get this information. Registry treats this as an
+                opaque storage location (it is defined by the caller).
+        :param override_existing: Raise KeyErorr if False and something has
+                already been registered for that key. If True, ignore if there
+                is an existing key (always register the new value).
         """
         if not override_existing:
             if key in self._dict:
@@ -120,8 +123,8 @@ class Registry(object):
         """Register a new object to be loaded on request.
 
         :param module_name: The python path to the module. Such as 'os.path'.
-        :param member_name: The member of the module to return, if empty or 
-                None get() will return the module itself.
+        :param member_name: The member of the module to return.  If empty or 
+                None, get() will return the module itself.
         :param help: Help text for this entry. This may be a string or
                 a callable.
         :param info: More information for this entry. Registry 
