@@ -67,14 +67,23 @@ class TestCommands(ExternalBase):
         self.assertEquals(self.capture('unknowns'), 'foo.blah\n')
         self.runbzr('ignore *.blah')
         self.assertEquals(self.capture('unknowns'), '')
-        self.assertEquals('*.blah\n', open('.bzrignore', 'rU').read())
+        self.check_file_contents('.bzrignore', '*.blah\n')
 
         # 'ignore' works when then .bzrignore file already exists
         file('garh', 'wt').write('garh')
         self.assertEquals(self.capture('unknowns'), 'garh\n')
         self.runbzr('ignore garh')
         self.assertEquals(self.capture('unknowns'), '')
-        self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\ngarh\n')
+        self.check_file_contents('.bzrignore', '*.blah\ngarh\n')
+       
+    def test_ignore_multiple_arguments(self): 
+        """'ignore' works with multiple arguments"""
+        self.runbzr('init')
+        self.build_tree(['a','b','c','d'])
+        self.assertEquals(self.capture('unknowns'), 'a\nb\nc\nd\n')
+        self.runbzr('ignore a b c')
+        self.assertEquals(self.capture('unknowns'), 'd\n')
+        self.check_file_contents('.bzrignore', 'a\nb\nc\n')
         
     def test_ignore_old_defaults(self):
         out, err = self.run_bzr('ignore', '--old-default-rules')

@@ -1529,7 +1529,7 @@ class cmd_unknowns(Command):
 
 
 class cmd_ignore(Command):
-    """Ignore a command or pattern.
+    """Ignore specified files or patterns.
 
     To remove patterns from the ignore list, edit the .bzrignore file.
 
@@ -1547,21 +1547,22 @@ class cmd_ignore(Command):
         bzr ignore '*.class'
     """
     # TODO: Complain if the filename is absolute
-    takes_args = ['name_pattern?']
+    takes_args = ['name_pattern*']
     takes_options = [
                      Option('old-default-rules',
                             help='Out the ignore rules bzr < 0.9 always used.')
                      ]
     
-    def run(self, name_pattern=None, old_default_rules=None):
+    def run(self, name_pattern_list=None, old_default_rules=None):
         from bzrlib.atomicfile import AtomicFile
         if old_default_rules is not None:
             # dump the rules and exit
             for pattern in ignores.OLD_DEFAULTS:
                 print pattern
             return
-        if name_pattern is None:
-            raise errors.BzrCommandError("ignore requires a NAME_PATTERN")
+        if name_pattern_list is None or name_pattern_list == []:
+            raise errors.BzrCommandError("ignore requires at least one "
+                                  "NAME_PATTERN or --old-default-rules")
         tree, relpath = WorkingTree.open_containing(u'.')
         ifn = tree.abspath('.bzrignore')
         if os.path.exists(ifn):
@@ -1578,9 +1579,10 @@ class cmd_ignore(Command):
 
         if igns and igns[-1] != '\n':
             igns += '\n'
-        igns += name_pattern + '\n'
+        for name_pattern in name_pattern_list:
+            igns += name_pattern + '\n'
 
-        f = AtomicFile(ifn, 'wt')
+        f = AtomicFile(ifn, 'wb')
         try:
             f.write(igns.encode('utf-8'))
             f.commit()
