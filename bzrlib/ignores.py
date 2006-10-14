@@ -99,7 +99,7 @@ def parse_ignore_file(f):
     """Read in all of the lines in the file and turn it into an ignore list"""
     ignored = set()
     for line in f.read().decode('utf8').split('\n'):
-        line = line.rstrip('\r\n')
+        line = line.rstrip('/\r\n')
         if not line or line.startswith('#'):
             continue
         ignored.add(line)
@@ -163,6 +163,7 @@ def add_unique_user_ignores(new_ignores):
     ignored = get_user_ignores()
     to_add = []
     for ignore in new_ignores:
+        ignore = ignore.rstrip('/')
         if ignore not in ignored:
             ignored.add(ignore)
             to_add.append(ignore)

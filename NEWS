@@ -62,6 +62,9 @@ IN DEVELOPMENT
 
     * ``bzr ignore`` takes multiple arguments. (Cheuksan Edward Wang #29488)
 
+    * ``bzr ignore`` strips trailing slashes in patterns.
+      Also ``bzr ignore`` rejects absolute paths. (Kent Gibson, #4559)
+
   TESTING:
 
     * New test base class TestCaseWithMemoryTransport offers memory-only
