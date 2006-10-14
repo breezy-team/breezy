@@ -21,7 +21,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
 
     def make_branch_and_tree(self, relpath, format=None):
         if format is None:
-            format = self.get_knit2_format()
+            format = bzrdir.get_knit2_format()
         return tests.TestCaseWithTransport.make_branch_and_tree(self, relpath, 
                                                           format)
 
