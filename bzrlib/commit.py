@@ -557,6 +557,7 @@ class Commit(object):
         # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
         entries = self.work_inv.iter_entries()
+        assert self.work_inv.root is not None
         if not self.builder.record_root_entry:
             symbol_versioning.warn('CommitBuilders should support recording'
                 ' the root entry as of bzr 0.10.', DeprecationWarning, 

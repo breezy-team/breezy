@@ -35,8 +35,11 @@ class TestAncestry(TestCaseWithMemoryTransport):
         """Test ancestry file when just committing."""
         tree = self.make_branch_and_memory_tree('.')
         branch = tree.branch
+        tree.lock_write()
+        tree.add('')
         rev_id_one = tree.commit('one')
         rev_id_two = tree.commit('two', allow_pointless=True)
+        tree.unlock()
 
         self.assertAncestryEqual([None, rev_id_one, rev_id_two],
             rev_id_two, branch)
