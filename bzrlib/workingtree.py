@@ -164,7 +164,7 @@ def gen_file_id(name):
 
 def gen_root_id():
     """Return a new tree-root file id."""
-    return gen_file_id('TREE_ROOT')
+    return gen_file_id('tree_root')
 
 
 class TreeEntry(object):
