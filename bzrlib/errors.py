@@ -270,6 +270,16 @@ class DirectoryNotEmpty(PathError):
     """Directory not empty: %(path)r%(extra)s"""
 
 
+class ReadingCompleted(BzrNewError):
+    """The MediumRequest '%(request)s' has already had finish_reading called upon it - the request has been completed and no more data may be read."""
+
+    is_user_error = False
+
+    def __init__(self, request):
+        BzrNewError.__init__(self)
+        self.request = request
+
+
 class ResourceBusy(PathError):
     """Device or resource busy: %(path)r%(extra)s"""
 
@@ -802,9 +812,19 @@ class KnitCorrupt(KnitError):
 
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""
+
     def __init__(self, format):
         BzrNewError.__init__(self)
         self.format = format
+
+
+
+class TooManyConcurrentRequests(BzrNewError):
+    """The medium '%(medium)s' has reached its concurrent request limit. Be sure to finish_writing and finish_reading on the current request that is open."""
+
+    def __init__(self, medium):
+        BzrNewError.__init__(self)
+        self.medium = medium
 
 
 class TransportError(BzrNewError):
@@ -911,6 +931,26 @@ class WorkingTreeNotRevision(BzrError):
                           " unchanged." % tree.basedir)
 
 
+class WritingCompleted(BzrNewError):
+    """The MediumRequest '%(request)s' has already had finish_writing called upon it - accept bytes may not be called anymore."""
+
+    is_user_error = False
+
+    def __init__(self, request):
+        BzrNewError.__init__(self)
+        self.request = request
+
+
+class WritingNotComplete(BzrNewError):
+    """The MediumRequest '%(request)s' has not has finish_writing called upon it - until the write phase is complete no data may be read."""
+
+    is_user_error = False
+
+    def __init__(self, request):
+        BzrNewError.__init__(self)
+        self.request = request
+
+
 class CantReprocessAndShowBase(BzrNewError):
     """Can't reprocess and show base.
 Reprocessing obscures relationship of conflicting lines to base."""
@@ -929,6 +969,14 @@ class NotConflicted(BzrNewError):
     def __init__(self, filename):
         BzrNewError.__init__(self)
         self.filename = filename
+
+
+class MediumNotConnected(BzrNewError):
+    """The medium '%(medium)s' is not connected."""
+
+    def __init__(self, medium):
+        BzrNewError.__init__(self)
+        self.medium = medium
 
 
 class MustUseDecorated(Exception):
@@ -1234,6 +1282,14 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
 
     def __init__(self, msg):
         BadInventoryFormat.__init__(self, msg=msg)
+
+
+class NoSmartMedium(BzrNewError):
+    """The transport '%(transport)s' cannot tunnel the smart protocol."""
+
+    def __init__(self, transport):
+        BzrNewError.__init__(self)
+        self.transport = transport
 
 
 class NoSmartServer(NotBranchError):

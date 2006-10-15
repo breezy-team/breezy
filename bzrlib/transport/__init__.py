@@ -446,9 +446,22 @@ class Transport(object):
     def get_smart_client(self):
         """Return a smart client for this transport if possible.
 
+        A smart client doesn't imply the presence of a smart server: it implies
+        that the smart protocol can be tunnelled via this transport.
+
         :raises NoSmartServer: if no smart server client is available.
         """
         raise errors.NoSmartServer(self.base)
+
+    def get_smart_medium(self):
+        """Return a smart client medium for this transport if possible.
+
+        A smart medium doesn't imply the presence of a smart server: it implies
+        that the smart protocol can be tunnelled via this transport.
+
+        :raises NoSmartMedium: if no smart server medium is available.
+        """
+        raise errors.NoSmartMedium(self)
 
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.

@@ -251,7 +251,11 @@ def handle_response(url, code, headers, data):
         try:
             content_type = headers['Content-Type']
         except KeyError:
-            # We can't be multipart if there is no Content-Type header
+            # When there is no content-type header we treat
+            # the response as being of type 'application/octet-stream' as per
+            # RFC2616 section 7.2.1.
+            # Therefore it is obviously not multipart
+            content_type = 'application/octet-stream'
             is_multipart = False
         else:
             is_multipart = _is_multipart(content_type)
