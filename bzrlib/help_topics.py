@@ -26,46 +26,60 @@ import sys
 _HELP_TOPICS={}
 
 
-def add_topic(name, obj, comment):
-    """add a new topic, obj can be a function or a text; comment is a text"""
-    _HELP_TOPICS[name]=(obj, comment)
+def add_topic(topic, detail, summary):
+    """Add documentation for a new topic.
 
+    :param topic:  Name of documentation entry.
+    :param detail:  Function or string object providing detailed
+    documentation for topic.  Function interface is detail(topic, outfile).
+    :param summary:  String providing single-line documentation for topic.
 
-def write_topic(name, outfile=sys.stdout):
+    """
+    _HELP_TOPICS[topic]=(detail, summary)
+
+def write_topic(topic, outfile=sys.stdout):
     """write to outfile the topic named "name"""
-    obj, comment = _HELP_TOPICS[name]
+    obj, comment = _HELP_TOPICS[topic]
     if callable(obj):
-        obj(name, outfile)
+        obj(topic, outfile)
     else:
         outfile.write(obj)
 
 
 def is_topic(name):
     """is "name" a topic ?"""
-    return name in _HELP_TOPICS
+    return name in _HELP_TOPICS.keys( )
 
 
 def get_topics_list( ):
     """return a dict like {topic_name:topi_comment}"""
-    return _HELP_TOPICS
+    return _HELP_TOPICS.keys( )
+
+def get_topic_summary(topic):
+    """return the topic summary"""
+    obj, summary = _HELP_TOPICS[topic]
+    return summary
+    
+
+
 
 
 #----------------------------------------------------
 
-def _help_on_topics(name, outfile):
+def _help_on_topics(dummy, outfile):
     """Write out the help for topics to outfile"""
 
     topics = get_topics_list()
     lmax = max(len(topic) for topic in topics)
         
     for topic in topics:
-        obj, comment = topics[topic]
+        summary = get_topic_summary(topic)
         spaces = " " * (lmax-len(topic))
-        outfile.write("%s%s %s\n" % (topic, spaces, comment))
+        outfile.write("%s%s %s\n" % (topic, spaces, summary))
 
 
 def _help_on_revisionspec(name, outfile):
-    """Write out the help for revison spec information"""
+    """"Write the summary help for all documented topics to outfile."""
     import bzrlib.revisionspec
 
     outfile.write("\nRevision prefix specifier:"

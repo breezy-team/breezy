@@ -316,7 +316,7 @@ class RevisionSpec_revid(RevisionSpec):
     revision id in the ancestry of the branch. 
     Including merges, and pending merges.
     examples:
-      revid:aaaa@bbbb-123456789 -> Select revision 'aaa@bbb-123456789'
+      revid:aaaa@bbbb-123456789 -> Select revision 'aaaa@bbbb-123456789'
     """    
     prefix = 'revid:'
 
@@ -334,7 +334,7 @@ class RevisionSpec_last(RevisionSpec):
     """Selects the nth revision from the end.
 
     Supply a positive number to get the nth revision from the end.
-    This is the same as suppling negative numbers to the 'revno:' spec.
+    This is the same as supplying negative numbers to the 'revno:' spec.
     examples:
       last:1        -> return the last revision
       last:3        -> return the revision 2 before the end.
@@ -377,7 +377,7 @@ class RevisionSpec_before(RevisionSpec):
     examples:
       before:1913    -> Return the parent of revno 1913 (revno 1912)
       before:revid:aaaa@bbbb-1234567890  -> return the parent of revision
-                                            aaa@bbb-1234567890
+                                            aaaa@bbbb-1234567890
       bzr diff -r before:revid:aaaa..revid:aaaa
             -> Find the changes between revision 'aaaa' and its parent.
                (what changes did 'aaaa' introduce)
@@ -544,7 +544,7 @@ class RevisionSpec_ancestor(RevisionSpec):
 
     examples:
       ancestor:/path/to/branch
-      bzr diff -r ancestor:../../mainline/branch
+      $ bzr diff -r ancestor:../../mainline/branch
     """
     prefix = 'ancestor:'
 

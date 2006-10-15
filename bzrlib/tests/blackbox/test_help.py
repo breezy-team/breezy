@@ -37,12 +37,19 @@ class TestHelp(ExternalBase):
         out, err = self.run_bzr('help', 'topics')
         self.assertContainsRe(out, 'basic')
         self.assertContainsRe(out, 'topics')
+        self.assertContainsRe(out, 'commands')
+        self.assertContainsRe(out, 'revisionspec')
 
     def test_help_revisionspec(self):
         """Smoke test for 'bzr help revisionspec'"""
         out, err = self.run_bzr('help', 'revisionspec')
         self.assertContainsRe(out, 'revno:')
         self.assertContainsRe(out, 'date:')
+        self.assertContainsRe(out, 'revid:')
+        self.assertContainsRe(out, 'last:')
+        self.assertContainsRe(out, 'before:')
+        self.assertContainsRe(out, 'ancestor:')
+        self.assertContainsRe(out, 'branch:')
 
     def test_help_commands(self):
         dash_help  = self.runbzr('--help commands')[0]
