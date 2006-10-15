@@ -61,19 +61,26 @@ h=help
 up=pull
 """
 
+import os
+import sys
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import errno
 from fnmatch import fnmatch
-import os
 import re
-import sys
 from StringIO import StringIO
 
 import bzrlib
-from bzrlib import errors, urlutils
-from bzrlib.osutils import pathjoin
-from bzrlib.trace import mutter, warning
+from bzrlib import (
+    errors,
+    osutils,
+    urlutils,
+    )
 import bzrlib.util.configobj.configobj as configobj
+""")
+
+from bzrlib.trace import mutter, warning
 
 
 CHECK_IF_POSSIBLE=0
@@ -255,6 +262,18 @@ class IniBasedConfig(Config):
             raise errors.ParseConfigError(e.errors, e.config.filename)
         return self._parser
 
+    def _get_matching_sections(self):
+        """Return an ordered list of (section_name, extra_path) pairs.
+
+        If the section contains inherited configuration, extra_path is
+        a string containing the additional path components.
+        """
+        section = self._get_section()
+        if section is not None:
+            return [(section, '')]
+        else:
+            return []
+
     def _get_section(self):
         """Override this to define the section used by the config."""
         return "DEFAULT"
@@ -277,11 +296,13 @@ class IniBasedConfig(Config):
 
     def _get_user_option(self, option_name):
         """See Config._get_user_option."""
-        try:
-            return self._get_parser().get_value(self._get_section(),
-                                                option_name)
-        except KeyError:
-            pass
+        for (section, extra_path) in self._get_matching_sections():
+            try:
+                return self._get_parser().get_value(section, option_name)
+            except KeyError:
+                pass
+        else:
+            return None
 
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
@@ -379,13 +400,8 @@ class LocationConfig(IniBasedConfig):
             location = urlutils.local_path_from_url(location)
         self.location = location
 
-    def _get_section(self):
-        """Get the section we should look in for config items.
-
-        Returns None if none exists. 
-        TODO: perhaps return a NullSection that thunks through to the 
-              global config.
-        """
+    def _get_matching_sections(self):
+        """Return an ordered list of section names matching this location."""
         sections = self._get_parser()
         location_names = self.location.split('/')
         if self.location.endswith('/'):
@@ -422,11 +438,19 @@ class LocationConfig(IniBasedConfig):
                         continue
                 except KeyError:
                     pass
-            matches.append((len(section_names), section))
-        if not len(matches):
-            return None
+            matches.append((len(section_names), section,
+                            '/'.join(location_names[len(section_names):])))
         matches.sort(reverse=True)
-        return matches[0][1]
+        sections = []
+        for (length, section, extra_path) in matches:
+            sections.append((section, extra_path))
+            # should we stop looking for parent configs here?
+            try:
+                if self._get_parser()[section].as_bool('ignore_parents'):
+                    break
+            except KeyError:
+                pass
+        return sections
 
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
@@ -599,32 +623,32 @@ def config_dir():
             base = os.environ.get('HOME', None)
         if base is None:
             raise errors.BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
-        return pathjoin(base, 'bazaar', '2.0')
+        return osutils.pathjoin(base, 'bazaar', '2.0')
     else:
         # cygwin, linux, and darwin all have a $HOME directory
         if base is None:
             base = os.path.expanduser("~")
-        return pathjoin(base, ".bazaar")
+        return osutils.pathjoin(base, ".bazaar")
 
 
 def config_filename():
     """Return per-user configuration ini file filename."""
-    return pathjoin(config_dir(), 'bazaar.conf')
+    return osutils.pathjoin(config_dir(), 'bazaar.conf')
 
 
 def branches_config_filename():
     """Return per-user configuration ini file filename."""
-    return pathjoin(config_dir(), 'branches.conf')
+    return osutils.pathjoin(config_dir(), 'branches.conf')
 
 
 def locations_config_filename():
     """Return per-user configuration ini file filename."""
-    return pathjoin(config_dir(), 'locations.conf')
+    return osutils.pathjoin(config_dir(), 'locations.conf')
 
 
 def user_ignore_config_filename():
     """Return the user default ignore filename"""
-    return pathjoin(config_dir(), 'ignore')
+    return osutils.pathjoin(config_dir(), 'ignore')
 
 
 def _auto_user_id():
@@ -698,8 +722,7 @@ def extract_email_address(e):
     """
     m = re.search(r'[\w+.-]+@[\w+.-]+', e)
     if not m:
-        raise errors.BzrError("%r doesn't seem to contain "
-                              "a reasonable email address" % e)
+        raise errors.NoEmailInUsername(e)
     return m.group(0)
 
 

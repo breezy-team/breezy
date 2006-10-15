@@ -145,3 +145,12 @@ class TestMemoryTree(TestCaseWithTransport):
         tree.unversion(['foo-id'])
         self.assertFalse(tree.has_id('foo-id'))
         tree.unlock()
+
+    def test_last_revision(self):
+        """There should be a last revision method we can call."""
+        tree = self.make_branch_and_memory_tree('branch')
+        tree.lock_write()
+        tree.add('')
+        rev_id = tree.commit('first post')
+        tree.unlock()
+        self.assertEqual(rev_id, tree.last_revision())

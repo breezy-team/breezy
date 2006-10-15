@@ -556,6 +556,7 @@ class Commit(object):
         # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
         # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
+        assert self.work_inv.root is not None
         entries = self.work_inv.iter_entries()
         if not self.builder.record_root_entry:
             symbol_versioning.warn('CommitBuilders should support recording'
@@ -580,13 +581,8 @@ class Commit(object):
                 else:
                     # this entry is new and not being committed
                     continue
-            try:
-                self.builder.record_entry_contents(ie, self.parent_invs, 
-                    path, self.work_tree)
-            except:
-                raise
-                raise repr((self.builder.new_inventory.root,
-                self.work_inv.root, ie))
+            self.builder.record_entry_contents(ie, self.parent_invs, 
+                path, self.work_tree)
             # describe the nature of the change that has occurred relative to
             # the basis inventory.
             if (self.basis_inv.has_id(ie.file_id)):

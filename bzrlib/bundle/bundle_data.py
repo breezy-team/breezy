@@ -648,10 +648,7 @@ class BundleTree(Tree):
 
         assert self.base_tree is not None
         base_inv = self.base_tree.inventory
-        try:
-            inv = Inventory(None, self.revision_id)
-        except TypeError:
-            inv = Inventory(revision_id=self.revision_id)
+        inv = Inventory(None, self.revision_id)
 
         def add_entry(file_id):
             path = self.id2path(file_id)
