@@ -96,7 +96,7 @@ class BundleSerializerV08(BundleSerializer):
 
     def check_compatible(self):
         if self.source.supports_rich_root():
-            raise errors.IncompatibleFormat('0.8', repr(self.source))
+            raise errors.IncompatibleBundleFormat('0.8', repr(self.source))
 
     def write(self, source, revision_ids, forced_bases, f):
         """Write the bundless to the supplied files.

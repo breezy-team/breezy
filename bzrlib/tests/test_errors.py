@@ -24,6 +24,10 @@ from bzrlib import (
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
+# TODO: Make sure builtin exception class formats are consistent - e.g. should
+# or shouldn't end with a full stop, etc.
+
+
 class TestErrors(TestCaseWithTransport):
 
     def test_no_repo(self):
@@ -53,16 +57,39 @@ class TestErrors(TestCaseWithTransport):
                              repo.bzrdir.root_transport.base,
                              str(error))
 
+    def test_bzrnewerror_is_deprecated(self):
+        class DeprecatedError(errors.BzrNewError):
+            pass
+        self.callDeprecated(['BzrNewError was deprecated in bzr 0.12; '
+             'please convert DeprecatedError to use BzrError instead'],
+            DeprecatedError)
 
-class PassThroughError(errors.BzrNewError):
-    """Pass through %(foo)s and %(bar)s"""
+    def test_bzrerror_from_literal_string(self):
+        # Some code constructs BzrError from a literal string, in which case
+        # no further formatting is done.  (I'm not sure raising the base class
+        # is a great idea, but if the exception is not intended to be caught
+        # perhaps no more is needed.)
+        try:
+            raise errors.BzrError('this is my errors; %d is not expanded')
+        except errors.BzrError, e:
+            self.assertEqual('this is my errors; %d is not expanded', str(e))
+
+
+class PassThroughError(errors.BzrError):
+    
+    _fmt = """Pass through %(foo)s and %(bar)s"""
 
     def __init__(self, foo, bar):
-        errors.BzrNewError.__init__(self, foo=foo, bar=bar)
+        errors.BzrError.__init__(self, foo=foo, bar=bar)
 
 
-class ErrorWithBadFormat(errors.BzrNewError):
-    """One format specifier: %(thing)s"""
+class ErrorWithBadFormat(errors.BzrError):
+
+    _fmt = """One format specifier: %(thing)s"""
+
+
+class ErrorWithNoFormat(errors.BzrError):
+    """This class has a docstring but no format string."""
 
 
 class TestErrorFormatting(TestCase):
@@ -77,13 +104,20 @@ class TestErrorFormatting(TestCase):
         s = str(e)
         self.assertEqual('Pass through \xc2\xb5 and bar', s)
 
+    def test_missing_format_string(self):
+        # Code naively converted from BzrNewError might still try to 
+        # use the docstring as the format string
+        e = ErrorWithNoFormat(param='randomvalue')
+        self.assertStartsWith(
+            str(e), 'Unprintable exception ErrorWithNoFormat')
+
     def test_mismatched_format_args(self):
         # Even though ErrorWithBadFormat's format string does not match the
         # arguments we constructing it with, we can still stringify an instance
         # of this exception. The resulting string will say its unprintable.
         e = ErrorWithBadFormat(not_thing='x')
         self.assertStartsWith(
-            str(e), 'Unprintable exception ErrorWithBadFormat(')
+            str(e), 'Unprintable exception ErrorWithBadFormat')
 
 
 class TestSpecificErrors(TestCase):

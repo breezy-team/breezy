@@ -1014,8 +1014,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     rename(self.abspath(f), self.abspath(dest_path))
                 except OSError, e:
                     raise BzrError("failed to rename %r to %r: %s" %
-                                   (f, dest_path, e[1]),
-                            ["rename rolled back"])
+                                   (f, dest_path, e[1]))
         except:
             # restore the inventory on error
             self._set_inventory(orig_inv)
@@ -1067,8 +1066,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         except OSError, e:
             inv.rename(file_id, from_parent, from_name)
             raise BzrError("failed to rename %r to %r: %s"
-                    % (from_abs, to_abs, e[1]),
-                    ["rename rolled back"])
+                    % (from_abs, to_abs, e[1]))
         self._write_inventory(inv)
 
     @needs_read_lock

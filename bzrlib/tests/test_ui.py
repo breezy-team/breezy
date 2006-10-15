@@ -189,6 +189,10 @@ class UITests(TestCase):
             self.apply_redirected(
                 None, factory.stdout, factory.stdout, factory.get_boolean, "what do you want")
             )
+        # FIXME: This assumes the factory's going to produce a spinner-style
+        # progress bar, but it won't if this is run from a dumb terminal (e.g.
+        # from inside gvim.) -- mbp 20061014
+        #
         # use a regular expression so that we don't depend on the particular
         # screen width - could also set and restore $COLUMN if that has
         # priority on all platforms, but it doesn't at present.
@@ -198,4 +202,4 @@ class UITests(TestCase):
             "\r   *" 
             "\rwhat do you want\\? \\[y/n\\]:what do you want\\? \\[y/n\\]:", 
             output):
-            self.fail("didn't match factory output %r, %s" % (factory, output))
+            self.fail("didn't match factory output %r, %r" % (factory, output))

@@ -371,10 +371,44 @@ match, like so::
 Errors and exceptions
 =====================
 
-Errors are handled through Python exceptions.  They can represent user
-errors, environmental errors or program bugs.  Sometimes we can't be sure
-at the time it's raised which case applies.  See bzrlib/errors.py for 
-details on the error-handling practices.
+Errors are handled through Python exceptions.
+
+We broadly classify errors as either being either the user's fault or our
+fault.  If we think it's our fault, we show a backtrace, an invitation to
+report the bug, and possibly other details.  This is the default for
+errors that aren't specifically recognized as being caused by a user
+error.
+
+User errors are things such as referring to a file or location that
+doesn't exist.  The user could potentially fix them themselves, so they
+get a short but helpful message.  User errors either have the
+``is_user_error`` property set, or are of particular classes such as
+KeyboardInterrupt.
+
+Many errors originate as "environmental errors" which are raised by Python
+or builtin libraries -- for example IOError.  These are treated as being
+our fault, unless they're caught in a particular tight scope where we know
+that they indicate a user errors.  For example if the repository format
+is not found, the user probably gave the wrong path or URL.  But if one of
+the files inside the repository is not found, then it's our fault --
+either there's a bug in bzr, or something complicated has gone wrong in
+the environment that means one internal file was deleted.
+
+Many errors are defined in ``bzrlib/errors.py`` but it's OK for new errors
+to be added near the place where they are used.
+
+Exceptions are formatted for the user by conversion to a string
+(eventually calling their ``__str__`` method.)  As a convenience the
+``._fmt`` member can be used as a template which will be mapped to the
+error's instance dict.
+
+New exception classes should be defined when callers might want to catch
+that exception specifically, or when it needs a substantially different
+format string.
+
+Exception strings should start with a capital letter and should not have a
+final fullstop.
+
 
 
 Jargon

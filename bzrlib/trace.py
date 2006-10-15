@@ -58,7 +58,7 @@ import re
 import logging
 
 import bzrlib
-from bzrlib.errors import BzrError, BzrNewError
+from bzrlib.errors import BzrError
 from bzrlib.symbol_versioning import (deprecated_function,
         zero_nine,
         )
