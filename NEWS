@@ -18,6 +18,8 @@ IN DEVELOPMENT
       around a regex, which defers compilation until first use. 
       (John Arbash Meinel)
 
+    * Newly-initialized trees have unique root ids.  (Aaron Bentley)
+
   BUG FIXES:
 
     * Don't require ``Content-Type`` in range responses. Assume they are a
