@@ -47,9 +47,12 @@ class TestAncestry(TestCaseWithMemoryTransport):
 
     def test_none_is_always_an_ancestor(self):
         tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
         # note this is tested before any commits are done.
         self.assertTrue(is_ancestor(None, None, tree.branch))
         rev_id = tree.commit('one')
+        tree.unlock()
         self.assertTrue(is_ancestor(None, None, tree.branch))
         self.assertTrue(is_ancestor(rev_id, None, tree.branch))
         self.assertFalse(is_ancestor(None, rev_id, tree.branch))
