@@ -25,6 +25,7 @@ from bzrlib.workingtree import WorkingTree
 import os
 import format
 import checkout
+from repository import MAPPING_VERSION
 import tree
 from tests import TestCaseWithSubversionRepository, RENAMES
 
@@ -124,8 +125,9 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_add("dc/bl")
         self.client_commit("dc", "Bla")
         tree = WorkingTree.open("dc")
-        self.assertEqual("svn-v1:1@%s-" % tree.branch.repository.uuid,
-                         tree.basis_tree().get_revision_id())
+        self.assertEqual(
+            "svn-v%d:1@%s-" % (MAPPING_VERSION, tree.branch.repository.uuid),
+            tree.basis_tree().get_revision_id())
 
     def test_move(self):
         self.make_client_and_bzrdir('a', 'dc')
@@ -261,9 +263,11 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_add("dc/bl")
         
         tree = WorkingTree.open("dc")
-        tree.set_pending_merges(["svn-v1:1@a-uuid-foo-branch%2fpath", "c"])
-        self.assertEqual("svn-v1:1@a-uuid-foo-branch%2fpath\tc\n", 
-                         self.client_get_prop("dc", "bzr:merge"))
+        tree.set_pending_merges([
+            "svn-v%d:1@a-uuid-foo-branch%%2fpath" % MAPPING_VERSION, "c"])
+        self.assertEqual(
+                "svn-v%d:1@a-uuid-foo-branch%%2fpath\tc\n" % MAPPING_VERSION, 
+                self.client_get_prop("dc", "bzr:merge"))
 
     def test_set_pending_merges_svk(self):
         self.make_client_and_bzrdir('a', 'dc')
@@ -271,7 +275,8 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_add("dc/bl")
         
         tree = WorkingTree.open("dc")
-        tree.set_pending_merges(["svn-v1:1@a-uuid-foo-branch%2fpath", "c"])
+        tree.set_pending_merges([
+            "svn-v%d:1@a-uuid-foo-branch%%2fpath" % MAPPING_VERSION, "c"])
         self.assertEqual("a-uuid-foo:/branch/path:1\n", 
                          self.client_get_prop("dc", "svk:merge"))
 
@@ -282,14 +287,16 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree = WorkingTree.open("dc")
         orig_tree = tree.basis_tree()
         tree.commit(message="data")
-        self.assertEqual("svn-v1:1@%s-" % tree.branch.repository.uuid, 
-                         tree.basis_tree().get_revision_id())
+        self.assertEqual(
+                "svn-v%d:1@%s-" % (MAPPING_VERSION, tree.branch.repository.uuid), 
+                tree.basis_tree().get_revision_id())
         delta = tree.basis_tree().changes_from(orig_tree)
         self.assertTrue(delta.has_changed())
         tree = WorkingTree.open("dc")
         delta = tree.basis_tree().changes_from(tree)
-        self.assertEqual("svn-v1:1@%s-" % tree.branch.repository.uuid, 
-                         tree.basis_tree().get_revision_id())
+        self.assertEqual(
+             "svn-v%d:1@%s-" % (MAPPING_VERSION, tree.branch.repository.uuid), 
+             tree.basis_tree().get_revision_id())
         self.assertFalse(delta.has_changed())
 
     def test_status(self):

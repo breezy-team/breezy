@@ -24,6 +24,7 @@ import os
 import svn.core, svn.client
 
 import format
+from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
@@ -41,7 +42,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = bzrdir.open_branch()
         repos = bzrdir.open_repository()
 
-        self.assertEqual("svn-v1:1@%s-" % repos.uuid, branch.last_revision())
+        self.assertEqual("svn-v%d:1@%s-" % (MAPPING_VERSION, repos.uuid), 
+                branch.last_revision())
 
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "My Message")
@@ -49,7 +51,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
-        self.assertEqual("svn-v1:2@%s-" % repos.uuid, branch.last_revision())
+        self.assertEqual("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid), 
+                branch.last_revision())
 
     def test_revision_history(self):
         repos_url = self.make_client('a', 'dc')
@@ -64,7 +67,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
-        self.assertEqual(["svn-v1:1@%s-" % repos.uuid], branch.revision_history())
+        self.assertEqual(["svn-v%d:1@%s-" % (MAPPING_VERSION, repos.uuid)], 
+                branch.revision_history())
 
         self.build_tree({'dc/foo': "data34"})
         self.client_commit("dc", "My Message")
@@ -73,8 +77,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos = Repository.open("svn+"+repos_url)
 
         self.assertEqual([
-            "svn-v1:1@%s-" % repos.uuid, 
-            "svn-v1:2@%s-" % repos.uuid],
+            "svn-v%d:1@%s-" % (MAPPING_VERSION, repos.uuid), 
+            "svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid)],
             branch.revision_history())
 
     def test_get_nick(self):
@@ -317,11 +321,12 @@ foohosts""")
 
         uuid = "6f95bc5c-e18d-4021-aca8-49ed51dbcb75"
         tree = newbranch.repository.revision_tree(
-                "svn-v1:7@%s-branches%%2ffoobranch" % uuid)
+                "svn-v%d:7@%s-branches%%2ffoobranch" % (MAPPING_VERSION, uuid))
 
         weave = tree.get_weave(tree.inventory.path2id("hosts"))
-        self.assertEqual(['svn-v1:6@%s-branches%%2ffoobranch' % uuid, 
-                          'svn-v1:7@%s-branches%%2ffoobranch' % uuid],
+        self.assertEqual([
+            'svn-v%d:6@%s-branches%%2ffoobranch' % (MAPPING_VERSION, uuid), 
+            'svn-v%d:7@%s-branches%%2ffoobranch' % (MAPPING_VERSION, uuid)],
                           weave.versions())
  
 
@@ -361,13 +366,14 @@ foohosts""")
 
         uuid = olddir.open_repository().uuid
         tree = newbranch.repository.revision_tree(
-                "svn-v1:6@%s-branches%%2ffoobranch" % uuid)
+                "svn-v%d:6@%s-branches%%2ffoobranch" % (MAPPING_VERSION, uuid))
 
         weave = tree.get_weave(tree.inventory.path2id("hosts"))
-        self.assertEqual(['svn-v1:1@%s-trunk' % uuid, 
-                          'svn-v1:2@%s-trunk' % uuid, 
-                          'svn-v1:3@%s-trunk' % uuid, 
-                          'svn-v1:6@%s-branches%%2ffoobranch' % uuid],
+        self.assertEqual([
+            'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, uuid), 
+            'svn-v%d:2@%s-trunk' % (MAPPING_VERSION, uuid), 
+            'svn-v%d:3@%s-trunk' % (MAPPING_VERSION, uuid), 
+            'svn-v%d:6@%s-branches%%2ffoobranch' % (MAPPING_VERSION, uuid)],
                           weave.versions())
  
     def test_fetch_branch(self):

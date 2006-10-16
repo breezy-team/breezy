@@ -23,6 +23,7 @@ from bzrlib.tests import TestSkipped, TestCase
 
 import format
 from fileids import SimpleFileIdMap
+from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository, RENAMES
 
 class TestComplexFileids(TestCaseWithSubversionRepository):
@@ -47,8 +48,10 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
 
         repository = Repository.open("svn+"+repos_url)
 
-        inv1 = repository.get_inventory("svn-v1:1@%s-" % repository.uuid)
-        inv2 = repository.get_inventory("svn-v1:2@%s-" % repository.uuid)
+        inv1 = repository.get_inventory(
+                "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
+        inv2 = repository.get_inventory(
+                "svn-v%d:2@%s-" % (MAPPING_VERSION, repository.uuid))
         mutter('inv1: %r' % inv1.entries())
         mutter('inv2: %r' % inv2.entries())
         if RENAMES:
@@ -72,8 +75,10 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         bzrdir = BzrDir.open("svn+%s" % repos_url)
         repository = bzrdir.open_repository()
 
-        inv1 = repository.get_inventory("svn-v1:1@%s-" % repository.uuid)
-        inv2 = repository.get_inventory("svn-v1:2@%s-" % repository.uuid)
+        inv1 = repository.get_inventory(
+                "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
+        inv2 = repository.get_inventory(
+                "svn-v%d:2@%s-" % (MAPPING_VERSION, repository.uuid))
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("bar"))
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("blie"))
         self.assertIs(None, inv1.path2id("bar"))
@@ -90,8 +95,10 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         bzrdir = BzrDir.open("svn+%s" % repos_url)
         repository = bzrdir.open_repository()
 
-        inv1 = repository.get_inventory("svn-v1:1@%s-" % repository.uuid)
-        inv2 = repository.get_inventory("svn-v1:2@%s-" % repository.uuid)
+        inv1 = repository.get_inventory(
+                "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
+        inv2 = repository.get_inventory(
+                "svn-v%d:2@%s-" % (MAPPING_VERSION, repository.uuid))
         self.assertNotEqual(None, inv1.path2id("foo"))
         self.assertIs(None, inv2.path2id("foo"))
 
@@ -108,8 +115,10 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         bzrdir = BzrDir.open("svn+"+repos_url)
         repository = bzrdir.open_repository()
 
-        inv1 = repository.get_inventory("svn-v1:1@%s-" % repository.uuid)
-        inv2 = repository.get_inventory("svn-v1:2@%s-" % repository.uuid)
+        inv1 = repository.get_inventory(
+                "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
+        inv2 = repository.get_inventory(
+                "svn-v%d:2@%s-" % (MAPPING_VERSION, repository.uuid))
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("foo"))
 
     def test_copy_branch(self):
@@ -124,29 +133,35 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         bzrdir = BzrDir.open("svn+"+repos_url + "/branches/mybranch")
         repository = bzrdir.open_repository()
 
-        inv1 = repository.get_inventory("svn-v1:1@%s-trunk" % repository.uuid)
-        inv2 = repository.get_inventory("svn-v1:2@%s-branches%%2fmybranch" % 
-                                        repository.uuid)
+        inv1 = repository.get_inventory(
+                "svn-v%d:1@%s-trunk" % (MAPPING_VERSION, repository.uuid))
+        inv2 = repository.get_inventory(
+                "svn-v%d:2@%s-branches%%2fmybranch" % (MAPPING_VERSION, repository.uuid))
         self.assertEqual(inv1.path2id("dir"), inv2.path2id("dir"))
         self.assertEqual(inv1.path2id("dir/file"), inv2.path2id("dir/file"))
 
         fileid, revid = repository.path_to_file_id(2, 
                             "branches/mybranch/dir/file")
         self.assertEqual(fileid, inv1.path2id("dir/file"))
-        self.assertEqual("svn-v1:1@%s-trunk" % repository.uuid, revid)
+        self.assertEqual(
+                "svn-v%d:1@%s-trunk" % (MAPPING_VERSION, repository.uuid), 
+                revid)
 
 class TestFileMapping(TestCase):
     def apply_mappings(self, mappings, find_children=None):
         map = {}
-        for r in mappings:
+        revids = mappings.keys()
+        revids.sort()
+        for r in revids:
             map = SimpleFileIdMap._apply_changes(map, r, mappings[r], 
                                                  find_children)
         return map
 
     def test_simple(self):
-        map = self.apply_mappings({"svn-v1:1@uuid-": {"foo": ('A', None, None)}})
-        self.assertEqual({'': ('TREE_ROOT', 'svn-v1:1@uuid-'), 
-                               'foo': ('svn-v1:1@uuid--foo', 'svn-v1:1@uuid-')
+        map = self.apply_mappings({"svn-v%d:1@uuid-" % MAPPING_VERSION: {"foo": ('A', None, None)}})
+        self.assertEqual({'': ('TREE_ROOT', "svn-v%d:1@uuid-" % MAPPING_VERSION), 
+                               'foo': ("svn-v%d:1@uuid--foo" % MAPPING_VERSION, 
+                                       "svn-v%d:1@uuid-" % MAPPING_VERSION)
                          }, map)
 
     def test_copy(self):
@@ -155,10 +170,12 @@ class TestFileMapping(TestCase):
                 yield "foo/blie"
                 yield "foo/bla"
         map = self.apply_mappings(
-                {"svn-v1:1@uuid-": {"foo": ('A', None, None), 
+                {"svn-v%d:1@uuid-" % MAPPING_VERSION: {
+                                   "foo": ('A', None, None), 
                                    "foo/blie": ('A', None, None),
                                    "foo/bla": ('A', None, None)},
-                "svn-v1:2@uuid-": {"foob": ('A', 'foo', 1), 
+                "svn-v%d:2@uuid-" % MAPPING_VERSION: {
+                                   "foob": ('A', 'foo', 1), 
                                    "foob/bla": ('M', None, None)}
                 }, find_children)
         self.assertTrue(map.has_key("foob/bla"))
@@ -166,8 +183,10 @@ class TestFileMapping(TestCase):
 
     def test_touchparent(self):
         map = self.apply_mappings(
-                {"svn-v1:1@uuid-": {"foo": ('A', None, None), 
+                {("svn-v%d:1@uuid-" % MAPPING_VERSION): {
+                                   "foo": ('A', None, None), 
                                    "foo/bla": ('A', None, None)},
-                "svn-v1:2@uuid-": {"foo/bla": ('M', None, None)}
+                 ("svn-v%d:2@uuid-" % MAPPING_VERSION): {
+                                   "foo/bla": ('M', None, None)}
                 })
-        self.assertEqual("svn-v1:2@uuid-", map["foo"][1])
+        self.assertEqual("svn-v%d:2@uuid-" % MAPPING_VERSION, map["foo"][1])

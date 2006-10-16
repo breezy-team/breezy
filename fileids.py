@@ -77,7 +77,7 @@ class FileIdMap(object):
     """
     def __init__(self, log, cache_dir):
         self._log = log
-        self.cache_dict = shelve.open(os.path.join(cache_dir, 'fileids-v1'))
+        self.cache_dict = shelve.open(os.path.join(cache_dir, 'fileids-v2'))
 
     def save(self, revid, parent_revids, _map):
         mutter('saving file id map for %r' % revid)
@@ -157,7 +157,7 @@ class SimpleFileIdMap(FileIdMap):
         for p in sorted_paths:
             data = changes[p]
             if data[0] in ('D', 'R'):
-                assert map.has_key(p)
+                assert map.has_key(p), "No map entry %s to delete/replace" % p
                 del map[p]
                 # Delete all children of p as well
                 for c in map.keys():
@@ -178,14 +178,14 @@ class SimpleFileIdMap(FileIdMap):
             elif data[0] == 'M':
                 if p == "":
                     map[p] = (ROOT_ID, "")
-                assert map.has_key(p)
+                assert map.has_key(p), "Map has no item %s to modify" % p
                 map[p] = map[p][0], revid
             
             # Mark all parent paths as changed
             parts = p.split("/")
             for i in range(1, len(parts)):
                 parent = "/".join(parts[0:len(parts)-i])
-                assert map.has_key(parent)
+                assert map.has_key(parent), "Parent item %s of %s doesn't exist in map" % (parent, p)
                 if map[parent][1] == revid:
                     break
                 map[parent] = map[parent][0], revid

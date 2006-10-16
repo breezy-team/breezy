@@ -23,6 +23,7 @@ import os
 
 from tests import TestCaseWithSubversionRepository
 from bzrlib.plugins.svn.dumpfile import SvnDumpFile
+from repository import MAPPING_VERSION
 
 class TestDumpFile(TestCaseWithSubversionRepository):
     def test_open_empty(self):
@@ -106,4 +107,4 @@ data
 """)
         branch = Branch.open(filename + "/trunk")
         self.assertEqual("file://%s/trunk" % filename, branch.base)
-        self.assertEqual("svn-v1:1@6987ef2d-cd6b-461f-9991-6f1abef3bd59-trunk", branch.last_revision())
+        self.assertEqual("svn-v%d:1@6987ef2d-cd6b-461f-9991-6f1abef3bd59-trunk" % MAPPING_VERSION, branch.last_revision())

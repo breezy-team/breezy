@@ -40,7 +40,7 @@ import branch
 import logwalker
 from tree import SvnRevisionTree
 
-MAPPING_VERSION = 1
+MAPPING_VERSION = 2
 REVISION_ID_PREFIX = "svn-v%d:" % MAPPING_VERSION
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_SVK_MERGE = 'svk:merge'
