@@ -33,6 +33,14 @@ import bzrlib.branch
 from bzrlib.tests import TestCase, TestSkipped
 
 
+# Technically, lsprof.py should be in bzrlib/util, but
+# historical reasons put it in bzrlib, and make it difficult
+# to move in a compatible manner
+COPYRIGHT_EXCEPTIONS = ['bzrlib/lsprof.py']
+
+LICENSE_EXCEPTIONS = ['bzrlib/lsprof.py']
+
+
 class TestSourceHelper(TestCase):
 
     def source_file_name(self, package):
@@ -118,14 +126,25 @@ class TestSource(TestSourceHelper):
                 f.close()
             yield fname, text
 
-    def is_exception(self, fname):
+    def is_copyright_exception(self, fname):
         """Certain files are allowed to be different"""
         if '/util/' in fname:
             # We don't require external utilities to be (C) Canonical Ltd
             return True
 
-        exceptions = ['bzrlib/lsprof.py']
-        for exc in exceptions:
+        for exc in COPYRIGHT_EXCEPTIONS:
+            if fname.endswith(exc):
+                return True
+
+        return False
+
+    def is_license_exception(self, fname):
+        """Certain files are allowed to be different"""
+        if '/util/' in fname:
+            # We don't require external utilities to be (C) Canonical Ltd
+            return True
+
+        for exc in LICENSE_EXCEPTIONS:
             if fname.endswith(exc):
                 return True
 
@@ -145,7 +164,7 @@ class TestSource(TestSourceHelper):
             )
 
         for fname, text in self.get_source_file_contents():
-            if self.is_exception(fname):
+            if self.is_copyright_exception(fname):
                 continue
             match = copyright_canonical_re.search(text)
             if not match:
@@ -163,8 +182,13 @@ class TestSource(TestSourceHelper):
         if incorrect:
             help_text = ["Some files have missing or incorrect copyright"
                          " statements.",
-                         "Please add '# Copyright (C) 2006 Canonical Ltd'"
-                         " to these files:",
+                         "",
+                         "Please either add them to the list of"
+                         " COPYRIGHT_EXCEPTIONS in"
+                         " bzrlib/tests/test_source.py",
+                         # this is broken to prevent a false match
+                         "or add '# Copyright (C)"
+                         " 2006 Canonical Ltd' to these files:",
                          "",
                         ]
             for fname, comment in incorrect:
@@ -195,14 +219,18 @@ class TestSource(TestSourceHelper):
         gpl_re = re.compile(re.escape(gpl_txt), re.MULTILINE)
 
         for fname, text in self.get_source_file_contents():
-            if self.is_exception(fname):
+            if self.is_license_exception(fname):
                 continue
             if not gpl_re.search(text):
                 incorrect.append(fname)
 
         if incorrect:
             help_text = ['Some files have missing or incomplete GPL statement',
-                         'Please fix the following files to have text:',
+                         "",
+                         "Please either add them to the list of"
+                         " LICENSE_EXCEPTIONS in"
+                         " bzrlib/tests/test_source.py",
+                         "Or add the following text to the beginning:",
                          gpl_txt
                         ]
             for fname in incorrect:
