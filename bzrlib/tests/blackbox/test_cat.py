@@ -21,10 +21,9 @@
 
 import os
 
-from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests.blackbox import ExternalBase
 
-class TestCat(TestCaseInTempDir):
+class TestCat(ExternalBase):
 
     def test_cat(self):
 
@@ -61,9 +60,9 @@ class TestCat(TestCaseInTempDir):
         bzr('cat', 'a', retcode=3)
         bzr('cat', 'a', '-r', 'revno:1:branch-that-does-not-exist', retcode=3)
         
-def test_cat_different_id(self):
+    def test_cat_different_id(self):
         """'cat' works with old and new files"""
-        tree = self.make_branch_and_tree('a tree')
+        tree = self.make_branch_and_tree('.')
         # the files are named after their path in the revision and
         # current trees later in the test case
         # a-rev-tree is special because it appears in both the revision
