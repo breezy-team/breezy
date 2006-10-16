@@ -1,7 +1,8 @@
 This document specifies mapping between Subversion and Bazaar semantics.
 
-Revision: 1
+Revision: 2
 Jelmer Vernooij <jelmer@samba.org>, June 2006.
+Updated October 2006.
 
 == Branch paths ==
 
@@ -44,7 +45,7 @@ including the branch path (trunk, branches/SAMBA_4_0, etc) in the
 revision-id. Example revision id:
 
 {{{
-svn-v1:14323@0c0555d6-39d7-0310-84fc-f1cc0bd64818-trunk
+svn-v2:14323@0c0555d6-39d7-0310-84fc-f1cc0bd64818-trunk
 }}}
 
 The version number is used to distinguish between versions of the mapping 
@@ -61,7 +62,7 @@ and whitespace characters are all urlencoded. Example revision id for
 branches/foobranch:
 
 {{{
-svn-v1:14323@0c0555d6-39d7-0310-84fc-f1cc0bd64818-branches%2ffoobranch
+svn-v2:14323@0c0555d6-39d7-0310-84fc-f1cc0bd64818-branches%2ffoobranch
 }}}
 
 == File ids ==
@@ -125,3 +126,11 @@ for this yet.
 == Signatures ==
 
 NEXT VERSION: GPG Signatures for commits will be stored in the SVN revision property 'bzr:gpg-signature'. 
+
+= Revisions =
+
+Revision 1 was the original version of this document.
+
+Revision 2 uses real file ids for the tree root rather than the hardcoded 
+"TREE_ROOT" and enforces UTF-8-valid characters for everything except file 
+contents.
