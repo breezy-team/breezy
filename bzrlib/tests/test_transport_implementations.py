@@ -1119,6 +1119,9 @@ class TransportTests(TestTransportImplementation):
         # the abspath of "/" and "/foo/.." should result in the same location
         self.assertEqual(transport.abspath("/"), transport.abspath("/foo/.."))
 
+        self.assertEqual(transport.clone("/").abspath('foo'),
+                         transport.abspath("/foo"))
+
     def test_local_abspath(self):
         transport = self.get_transport()
         try:
