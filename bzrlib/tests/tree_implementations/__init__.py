@@ -38,7 +38,7 @@ from bzrlib.tests import (
                           TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
-from bzrlib.tree import RevisionTree
+from bzrlib.revisiontree import RevisionTree
 from bzrlib.workingtree import (WorkingTreeFormat,
                                 WorkingTreeTestProviderAdapter,
                                 _legacy_formats,
