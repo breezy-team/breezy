@@ -223,7 +223,8 @@ class BundleInfo(object):
             if repository.has_revision(revision_id):
                 testament = StrictTestament.from_revision(repository, 
                                                           revision_id)
-                local_sha1 = testament.as_sha1()
+                local_sha1 = self._testament_sha1_from_revision(repository,
+                                                                revision_id)
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For revision id {%s}' 
                             'local: %s, bundle: %s' % (revision_id, local_sha1, sha1))
@@ -281,7 +282,7 @@ class BundleInfo(object):
         rev_info = self.get_revision_info(revision_id)
         assert rev.revision_id == rev_info.revision_id
         assert rev.revision_id == revision_id
-        sha1 = StrictTestament(rev, inventory).as_sha1()
+        sha1 = self._testament_sha1(rev, inventory)
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev.revision_id in rev_to_sha1:
@@ -539,7 +540,7 @@ class BundleTree(Tree):
             return None
         if old_path in self.deleted:
             return None
-        if hasattr(self.base_tree, 'path2id'):
+        if getattr(self.base_tree, 'path2id', None) is not None:
             return self.base_tree.path2id(old_path)
         else:
             return self.base_tree.inventory.path2id(old_path)
@@ -577,7 +578,8 @@ class BundleTree(Tree):
                 then be cached.
         """
         base_id = self.old_contents_id(file_id)
-        if base_id is not None:
+        if (base_id is not None and
+            base_id != self.base_tree.inventory.root.file_id):
             patch_original = self.base_tree.get_file(base_id)
         else:
             patch_original = None
@@ -646,22 +648,16 @@ class BundleTree(Tree):
 
         assert self.base_tree is not None
         base_inv = self.base_tree.inventory
-        root_id = base_inv.root.file_id
-        try:
-            # New inventories have a unique root_id
-            inv = Inventory(root_id, self.revision_id)
-        except TypeError:
-            inv = Inventory(revision_id=self.revision_id)
-        inv.root.revision = self.get_last_changed(root_id)
+        inv = Inventory(None, self.revision_id)
 
         def add_entry(file_id):
             path = self.id2path(file_id)
             if path is None:
                 return
-            parent_path = dirname(path)
-            if parent_path == u'':
-                parent_id = root_id
+            if path == '':
+                parent_id = None
             else:
+                parent_path = dirname(path)
                 parent_id = self.path2id(parent_path)
 
             kind = self.get_kind(file_id)
@@ -688,8 +684,6 @@ class BundleTree(Tree):
 
         sorted_entries = self.sorted_path_id()
         for path, file_id in sorted_entries:
-            if file_id == inv.root.file_id:
-                continue
             add_entry(file_id)
 
         return inv

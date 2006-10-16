@@ -19,42 +19,43 @@ from cStringIO import StringIO
 import os
 import sys
 
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.branch import Branch
 from bzrlib.revision import is_ancestor
 
 
-class TestAncestry(TestCaseWithTransport):
+class TestAncestry(TestCaseWithMemoryTransport):
+
+    def assertAncestryEqual(self, expected, revision_id, branch):
+        """Assert that the ancestry of revision_id in branch is as expected."""
+        ancestry = branch.repository.get_ancestry(revision_id)
+        self.assertEqual(expected, ancestry)
 
     def test_straightline_ancestry(self):
         """Test ancestry file when just committing."""
-        wt = self.make_branch_and_tree('.')
-        b = wt.branch
+        tree = self.make_branch_and_memory_tree('.')
+        branch = tree.branch
+        tree.lock_write()
+        tree.add('')
+        rev_id_one = tree.commit('one')
+        rev_id_two = tree.commit('two', allow_pointless=True)
+        tree.unlock()
 
-        wt.commit(message='one',
-                  allow_pointless=True,
-                  rev_id='tester@foo--1')
-
-        wt.commit(message='two',
-                  allow_pointless=True,
-                  rev_id='tester@foo--2')
-
-        ancs = b.repository.get_ancestry('tester@foo--2')
-        self.assertEqual([None, 'tester@foo--1', 'tester@foo--2'], ancs)
-        self.assertEqual([None, 'tester@foo--1'], 
-                         b.repository.get_ancestry('tester@foo--1'))
+        self.assertAncestryEqual([None, rev_id_one, rev_id_two],
+            rev_id_two, branch)
+        self.assertAncestryEqual([None, rev_id_one], rev_id_one, branch)
 
     def test_none_is_always_an_ancestor(self):
-        wt = self.make_branch_and_tree('.')
-        b = wt.branch
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
         # note this is tested before any commits are done.
-        self.assertEqual(True, is_ancestor(None, None, b))
-        wt.commit(message='one',
-                  allow_pointless=True,
-                  rev_id='tester@foo--1')
-        self.assertEqual(True, is_ancestor(None, None, b))
-        self.assertEqual(True, is_ancestor('tester@foo--1', None, b))
-        self.assertEqual(False, is_ancestor(None, 'tester@foo--1', b))
+        self.assertTrue(is_ancestor(None, None, tree.branch))
+        rev_id = tree.commit('one')
+        tree.unlock()
+        self.assertTrue(is_ancestor(None, None, tree.branch))
+        self.assertTrue(is_ancestor(rev_id, None, tree.branch))
+        self.assertFalse(is_ancestor(None, rev_id, tree.branch))
 
 
 # TODO: check that ancestry is updated to include indirectly merged revisions

@@ -56,7 +56,7 @@ not be changed without leaving a 'deprecated forwarder' behind. This even
 applies to modules and classes.
 
 If you wish to change the behaviour of a supported API in an incompatible
-way, you need to change its name as well. For instance, if I add a optional keyword
+way, you need to change its name as well. For instance, if I add an optional keyword
 parameter to branch.commit - that's fine. On the other hand, if I add a
 keyword parameter to branch.commit which is a *required* transaction
 object, I should rename the API - i.e. to 'branch.commit_transaction'. 
@@ -67,7 +67,7 @@ bzrlib.symbol_versioning module for decorators that take care of the
 details for you - such as updating the docstring, and issuing a warning
 when the old api is used.
 
-For unsupported API's, it does not hurt to follow this discipline, but its
+For unsupported API's, it does not hurt to follow this discipline, but it's
 not required. Minimally though, please try to rename things so that
 callers will at least get an AttributeError rather than weird results.
 
@@ -78,7 +78,7 @@ Standard parameter types
 There are some common requirements in the library: some parameters need to be
 unicode safe, some need byte strings, and so on. At the moment we have
 only codified one specific pattern: Parameters that need to be unicode
-should be check via 'bzrlib.osutils.safe_unicode'. This will coerce the
+should be checked via 'bzrlib.osutils.safe_unicode'. This will coerce the
 input into unicode in a consistent fashion, allowing trivial strings to be
 used for programmer convenience, but not performing unpredictably in the
 presence of different locales.
@@ -209,6 +209,78 @@ but they shouldn't be *named* like classes:
 > factory, then yes, foo_factory is what I would use.
 
 
+Registries
+----------
+
+Several places in Bazaar use (or will use) a registry, which is a 
+mapping from names to objects or classes.  The registry allows for 
+loading in registered code only when it's needed, and keeping
+associated information such as a help string or description.
+
+
+Lazy Imports
+------------
+
+To make startup time faster, we use the ``bzrlib.lazy_import`` module to
+delay importing modules until they are actually used. ``lazy_import`` uses
+the same syntax as regular python imports. So to import a few modules in a
+lazy fashion do::
+
+  from bzrlib.lazy_import import lazy_import
+  lazy_import(globals(), """
+  import os
+  import subprocess
+  import sys
+  import time
+
+  from bzrlib import (
+     errors,
+     transport,
+     revision as _mod_revision,
+     )
+  import bzrlib.transport
+  import bzrlib.xml5
+  """)
+
+At this point, all of these exist as a ``ImportReplacer`` object, ready to
+be imported once a member is accessed. Also, when importing a module into
+the local namespace, which is likely to clash with variable names, it is
+recommended to prefix it as ``_mod_<module>``. This makes it clean that
+the variable is a module, and these object should be hidden anyway, since
+they shouldn't be imported into other namespaces.
+
+
+Modules versus Members
+~~~~~~~~~~~~~~~~~~~~~~
+
+While it is possible for ``lazy_import()`` to import members of a module
+when using the ``from module import member`` syntax, it is recommended to
+only use that syntax to load sub modules ``from module import submodule``.
+This is because variables and classes can frequently be used without
+needing a sub-member for example::
+
+  lazy_import(globals(), """
+  from module import MyClass
+  """)
+
+  def test(x):
+      return isinstance(x, MyClass)
+
+This will incorrectly fail, because ``MyClass`` is a ``ImportReplacer``
+object, rather than the real class.
+
+
+Passing to other variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It also is incorrect to assign ``ImportReplacer`` objects to other variables.
+Because the replacer only knows about the original name, it is unable to
+replace other variables. The ``ImportReplacer`` class will raise an
+``IllegalUseOfScopeReplacer`` exception if it can figure out that this
+happened. But it requires accessing a member more than once from the new
+variable, so some bugs are not detected right away.
+
+
 Writing output
 ==============
 
@@ -248,6 +320,7 @@ should be only in the command-line tool.
 
 Writing tests
 =============
+
 In general tests should be placed in a file named test_FOO.py where 
 FOO is the logical thing under test. That file should be placed in the
 tests subdirectory under the package being tested.
@@ -279,8 +352,13 @@ When writing blackbox tests please honour the following conventions:
     the command. We do this so that the library api has continual pressure
     on it to be as functional as the command line in a simple manner, and
     to isolate knock-on effects throughout the blackbox test suite when a
-    command changes it name or signature. Ideally only the tests for a
+    command changes its name or signature. Ideally only the tests for a
     given command are affected when a given command is changed.
+
+ 4. If you have a test which does actually require running bzr in a
+    subprocess you can use ``run_bzr_subprocess``. By default the spawned
+    process will not load plugins unless ``--allow-plugins`` is supplied.
+
 
 Doctests
 --------
@@ -404,7 +482,7 @@ handled.  This parameter can take one of 3 values:
     that cannot be displayed.
   
   strict
-    Attempting to print and unprintable character will cause a UnicodeError.
+    Attempting to print an unprintable character will cause a UnicodeError.
     This is for commands that are intended more as scripting support, rather
     than plain user review.
     For exampl: ``bzr ls`` is designed to be used with shell scripting. One

@@ -35,12 +35,17 @@ not to clutter log files.
 # TODO: Optionally show elapsed time instead/as well as ETA; nicer
 # when the rate is unpredictable
 
-
 import sys
 import time
 import os
 
-import bzrlib.errors as errors
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    errors,
+    )
+""")
+
 from bzrlib.trace import mutter
 
 

@@ -19,22 +19,24 @@
 This is a fairly thin wrapper on regular file IO.
 """
 
-import errno
 import os
-import shutil
-import sys
 from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
-import tempfile
+import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import errno
+import shutil
 
 from bzrlib import (
     atomicfile,
     osutils,
     urlutils,
+    symbol_versioning,
     )
-from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename,
-                            check_legal_path, rmtree)
-from bzrlib.symbol_versioning import warn
 from bzrlib.trace import mutter
+""")
+
 from bzrlib.transport import Transport, Server
 
 
@@ -48,7 +50,8 @@ class LocalTransport(Transport):
     def __init__(self, base):
         """Set the base path where files will be stored."""
         if not base.startswith('file://'):
-            warn("Instantiating LocalTransport with a filesystem path"
+            symbol_versioning.warn(
+                "Instantiating LocalTransport with a filesystem path"
                 " is deprecated as of bzr 0.8."
                 " Please use bzrlib.transport.get_transport()"
                 " or pass in a file:// url.",
@@ -91,7 +94,8 @@ class LocalTransport(Transport):
         assert isinstance(relpath, basestring), (type(relpath), relpath)
         # jam 20060426 Using normpath on the real path, because that ensures
         #       proper handling of stuff like
-        path = normpath(pathjoin(self._local_base, urlutils.unescape(relpath)))
+        path = osutils.normpath(osutils.pathjoin(
+                    self._local_base, urlutils.unescape(relpath)))
         return urlutils.local_path_to_url(path)
 
     def local_abspath(self, relpath):
@@ -145,7 +149,7 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self._abspath(relpath)
-            check_legal_path(path)
+            osutils.check_legal_path(path)
             fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
@@ -165,7 +169,7 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self._abspath(relpath)
-            check_legal_path(path)
+            osutils.check_legal_path(path)
             fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
@@ -177,7 +181,8 @@ class LocalTransport(Transport):
 
     def _put_non_atomic_helper(self, relpath, writer,
                                mode=None,
-                               create_parent_dir=False):
+                               create_parent_dir=False,
+                               dir_mode=None):
         """Common functionality information for the put_*_non_atomic.
 
         This tracks all the create_parent_dir stuff.
@@ -206,10 +211,7 @@ class LocalTransport(Transport):
             parent_dir = os.path.dirname(abspath)
             if not parent_dir:
                 self._translate_error(e, relpath)
-            try:
-                os.mkdir(parent_dir)
-            except (IOError, OSError), e:
-                self._translate_error(e, relpath)
+            self._mkdir(parent_dir, mode=dir_mode)
             # We created the parent directory, lets try to open the
             # file again
             try:
@@ -227,7 +229,8 @@ class LocalTransport(Transport):
             os.close(fd)
 
     def put_file_non_atomic(self, relpath, f, mode=None,
-                            create_parent_dir=False):
+                            create_parent_dir=False,
+                            dir_mode=None):
         """Copy the file-like object into the target location.
 
         This function is not strictly safe to use. It is only meant to
@@ -246,14 +249,16 @@ class LocalTransport(Transport):
         def writer(fd):
             self._pump_to_fd(f, fd)
         self._put_non_atomic_helper(relpath, writer, mode=mode,
-                                    create_parent_dir=create_parent_dir)
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
 
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
-                             create_parent_dir=False):
+                             create_parent_dir=False, dir_mode=None):
         def writer(fd):
             os.write(fd, bytes)
         self._put_non_atomic_helper(relpath, writer, mode=mode,
-                                    create_parent_dir=create_parent_dir)
+                                    create_parent_dir=create_parent_dir,
+                                    dir_mode=dir_mode)
 
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree."""
@@ -267,23 +272,25 @@ class LocalTransport(Transport):
             else:
                 yield relpath
 
-    def mkdir(self, relpath, mode=None):
-        """Create a directory at the given path."""
-        path = relpath
+    def _mkdir(self, abspath, mode=None):
+        """Create a real directory, filtering through mode"""
+        if mode is None:
+            # os.mkdir() will filter through umask
+            local_mode = 0777
+        else:
+            local_mode = mode
         try:
-            if mode is None:
-                # os.mkdir() will filter through umask
-                local_mode = 0777
-            else:
-                local_mode = mode
-            path = self._abspath(relpath)
-            os.mkdir(path, local_mode)
+            os.mkdir(abspath, local_mode)
             if mode is not None:
                 # It is probably faster to just do the chmod, rather than
                 # doing a stat, and then trying to compare
-                os.chmod(path, mode)
+                os.chmod(abspath, mode)
         except (IOError, OSError),e:
-            self._translate_error(e, path)
+            self._translate_error(e, abspath)
+
+    def mkdir(self, relpath, mode=None):
+        """Create a directory at the given path."""
+        self._mkdir(self._abspath(relpath), mode=mode)
 
     def _get_append_file(self, relpath, mode=None):
         """Call os.open() for the given relpath"""
@@ -363,7 +370,7 @@ class LocalTransport(Transport):
 
         try:
             # this version will delete the destination if necessary
-            rename(path_from, path_to)
+            osutils.rename(path_from, path_to)
         except (IOError, OSError),e:
             # TODO: What about path_to?
             self._translate_error(e, path_from)

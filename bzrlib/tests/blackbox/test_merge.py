@@ -52,6 +52,7 @@ class TestMerge(ExternalBase):
         os.mkdir('a')
         os.chdir('a')
         self.example_branch()
+        ancestor = Branch.open('.').revno()
         os.chdir('..')
         self.runbzr('branch a b')
         os.chdir('b')
@@ -79,6 +80,18 @@ class TestMerge(ExternalBase):
         b_tip = b.last_revision()
         self.failUnless(a.branch.repository.has_revision(b_tip))
         self.assertEqual([a_tip, b_tip], a.get_parent_ids())
+        self.runbzr('revert --no-backup')
+        out, err = self.runbzr('merge -r revno:1:./hello', retcode=3)
+        self.assertTrue("Not a branch" in err)
+        self.runbzr('merge -r revno:%d:./..revno:%d:../b'
+                    %(ancestor,b.revno()))
+        self.assertEquals(a.get_parent_ids(), 
+                          [a.branch.last_revision(), b.last_revision()])
+        self.check_file_contents('goodbye', 'quux')
+        self.runbzr('revert --no-backup')
+        self.runbzr('merge -r revno:%d:../b'%b.revno())
+        self.assertEquals(a.get_parent_ids(),
+                          [a.branch.last_revision(), b.last_revision()])
         a_tip = a.commit('merged')
         self.runbzr('merge ../b -r last:1')
         self.assertEqual([a_tip], a.get_parent_ids())
@@ -194,10 +207,10 @@ class TestMerge(ExternalBase):
         file('../bundle', 'wb').write(self.runbzr('bundle ../branch_a')[0])
         os.chdir('../branch_a')
         self.runbzr('merge ../bundle', retcode=1)
-        testament_a = Testament.from_revision(tree_a.branch.repository, 
-                                              tree_b.last_revision())
+        testament_a = Testament.from_revision(tree_a.branch.repository,
+                                              tree_b.get_parent_ids()[0])
         testament_b = Testament.from_revision(tree_b.branch.repository,
-                                              tree_b.last_revision())
+                                              tree_b.get_parent_ids()[0])
         self.assertEqualDiff(testament_a.as_text(),
                          testament_b.as_text())
         tree_a.set_conflicts(ConflictList())

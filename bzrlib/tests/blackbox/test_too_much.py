@@ -40,13 +40,14 @@ import re
 import sys
 
 import bzrlib
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import (
     has_symlinks,
     pathjoin,
-    rmtree,
     terminal_width,
     )
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
@@ -147,75 +148,6 @@ class TestCommands(ExternalBase):
         test.runbzr('add goodbye')
         test.runbzr('commit -m setup goodbye')
 
-    def test_export(self):
-        os.mkdir('branch')
-        os.chdir('branch')
-        self.example_branch()
-        self.runbzr('export ../latest')
-        self.assertEqual(file('../latest/goodbye', 'rt').read(), 'baz')
-        self.runbzr('export ../first -r 1')
-        self.assert_(not os.path.exists('../first/goodbye'))
-        self.assertEqual(file('../first/hello', 'rt').read(), 'foo')
-        self.runbzr('export ../first.gz -r 1')
-        self.assertEqual(file('../first.gz/hello', 'rt').read(), 'foo')
-        self.runbzr('export ../first.bz2 -r 1')
-        self.assertEqual(file('../first.bz2/hello', 'rt').read(), 'foo')
-
-        from tarfile import TarFile
-        self.runbzr('export ../first.tar -r 1')
-        self.assert_(os.path.isfile('../first.tar'))
-        tf = TarFile('../first.tar')
-        self.assert_('first/hello' in tf.getnames(), tf.getnames())
-        self.assertEqual(tf.extractfile('first/hello').read(), 'foo')
-        self.runbzr('export ../first.tar.gz -r 1')
-        self.assert_(os.path.isfile('../first.tar.gz'))
-        self.runbzr('export ../first.tbz2 -r 1')
-        self.assert_(os.path.isfile('../first.tbz2'))
-        self.runbzr('export ../first.tar.bz2 -r 1')
-        self.assert_(os.path.isfile('../first.tar.bz2'))
-        self.runbzr('export ../first.tar.tbz2 -r 1')
-        self.assert_(os.path.isfile('../first.tar.tbz2'))
-
-        from bz2 import BZ2File
-        tf = TarFile('../first.tar.tbz2', 
-                     fileobj=BZ2File('../first.tar.tbz2', 'r'))
-        self.assert_('first.tar/hello' in tf.getnames(), tf.getnames())
-        self.assertEqual(tf.extractfile('first.tar/hello').read(), 'foo')
-        self.runbzr('export ../first2.tar -r 1 --root pizza')
-        tf = TarFile('../first2.tar')
-        self.assert_('pizza/hello' in tf.getnames(), tf.getnames())
-
-        from zipfile import ZipFile
-        self.runbzr('export ../first.zip -r 1')
-        self.failUnlessExists('../first.zip')
-        zf = ZipFile('../first.zip')
-        self.assert_('first/hello' in zf.namelist(), zf.namelist())
-        self.assertEqual(zf.read('first/hello'), 'foo')
-
-        self.runbzr('export ../first2.zip -r 1 --root pizza')
-        zf = ZipFile('../first2.zip')
-        self.assert_('pizza/hello' in zf.namelist(), zf.namelist())
-        
-        self.runbzr('export ../first-zip --format=zip -r 1')
-        zf = ZipFile('../first-zip')
-        self.assert_('first-zip/hello' in zf.namelist(), zf.namelist())
-
-    def test_inventory(self):
-        bzr = self.runbzr
-        def output_equals(value, *args):
-            out = self.runbzr(['inventory'] + list(args), backtick=True)
-            self.assertEquals(out, value)
-
-        bzr('init')
-        open('a', 'wb').write('hello\n')
-        os.mkdir('b')
-
-        bzr('add a b')
-        bzr('commit -m add')
-
-        output_equals('a\n', '--kind', 'file')
-        output_equals('b\n', '--kind', 'directory')
-
     def test_pull_verbose(self):
         """Pull changes from one branch to another and watch the output."""
 
@@ -277,7 +209,7 @@ class TestCommands(ExternalBase):
         self.runbzr('pull')
         self.runbzr('pull ../c')
         self.runbzr('branch ../c ../d')
-        rmtree('../c')
+        osutils.rmtree('../c')
         self.runbzr('pull')
         os.chdir('../b')
         self.runbzr('pull')
