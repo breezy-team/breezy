@@ -1,0 +1,57 @@
+==========================
+Using ``bzr version-info``
+==========================
+
+Overview
+========
+
+This document describes ways of using ``bzr version-info`` as part of a
+build routine to embed version information into a final project.
+
+
+Python Project
+==============
+
+TODO: Figure out how to attach into ``setup.py``
+
+
+If using a Makefile to build your project, you can generate the version
+information file as simply as::
+
+  library/_version.py:
+        bzr version-info --format=python > library/_version.py
+
+This generates a file which contains 3 dictionaries:
+
+  `version_info`: A dictionary containing the basic information about the
+                  current state.
+
+  revisions: A dictionary listing all of the revisions in the history of
+             the tree, along with the commit times and commit message.
+             This defaults to being empty unless ``--all`` or
+             ``--include-history`` is supplied. This is useful if you
+             want to track what bugfixes, etc, might be included in the
+             released version. But for many projects it is more
+             information than they need.
+
+  `file_revisions`: A dictionary listing the last-modified revision for
+                    all files in the project. This can be used similarly
+                    to how ``$Id$`` keywords are used in CVS controlled
+                    files. The last modified date can be determined by
+                    looking in the ``revisions`` map. This is also empty by
+                    default, and enabled only by ``--all`` or
+                    ``--include-file-revisions``.
+
+Check Clean
+===========
+
+Most information about the contents of the project can be cheaply
+determined by just reading the revision entry. However, it can be useful
+to know if the working tree was completely up-to-date when it was
+packaged, or if there was a local modification. By supplying either
+``--all`` or ``--check-clean``, ``bzr`` will inspect the working tree, and
+set the ``clean`` flag in ``version_info``, as well as set entries in
+``file_revisions`` as ``modified`` where appropriate.
+
+.. 
+   vim: tw=74 ft=rst spell spelllang=en_us

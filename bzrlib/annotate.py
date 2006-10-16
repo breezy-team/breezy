@@ -29,7 +29,7 @@ import sys
 import time
 
 from bzrlib.config import extract_email_address
-from bzrlib.errors import BzrError
+from bzrlib.errors import NoEmailInUsername
 
 
 def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
@@ -39,7 +39,10 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
 
     prevanno=''
     annotation = list(_annotate_file(branch, rev_id, file_id))
-    max_origin_len = max(len(origin) for origin in set(x[1] for x in annotation))
+    if len(annotation) == 0:
+        max_origin_len = 0
+    else:
+        max_origin_len = max(len(origin) for origin in set(x[1] for x in annotation))
     for (revno_str, author, date_str, line_rev_id, text ) in annotation:
         if verbose:
             anno = '%5s %-*s %8s ' % (revno_str, max_origin_len, author, date_str)
@@ -78,6 +81,6 @@ def _annotate_file(branch, rev_id, file_id ):
             author = rev.committer
             try:
                 author = extract_email_address(author)
-            except BzrError:
+            except NoEmailInUsername:
                 pass        # use the whole name
         yield (revno_str, author, date_str, origin, text)

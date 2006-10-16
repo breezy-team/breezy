@@ -25,18 +25,27 @@
 from bzrlib.trace import mutter, warning
 
 try:
-    from cElementTree import (ElementTree, SubElement, Element,
-                              XMLTreeBuilder, fromstring, tostring)
-    import elementtree
+    try:
+        # it's in this package in python2.5
+        from xml.etree.cElementTree import (ElementTree, SubElement, Element,
+            XMLTreeBuilder, fromstring, tostring)
+        import xml.etree as elementtree
+    except ImportError:
+        from cElementTree import (ElementTree, SubElement, Element,
+                                  XMLTreeBuilder, fromstring, tostring)
+        import elementtree
+    ParseError = SyntaxError
 except ImportError:
     mutter('WARNING: using slower ElementTree; consider installing cElementTree'
            " and make sure it's on your PYTHONPATH")
+    # this copy is shipped with bzr
     from util.elementtree.ElementTree import (ElementTree, SubElement,
                                               Element, XMLTreeBuilder,
                                               fromstring, tostring)
     import util.elementtree as elementtree
+    from xml.parsers.expat import ExpatError as ParseError
 
-from bzrlib.errors import BzrError
+from bzrlib import errors
 
 
 class Serializer(object):
@@ -50,10 +59,16 @@ class Serializer(object):
         return tostring(self._pack_inventory(inv)) + '\n'
 
     def read_inventory_from_string(self, xml_string):
-        return self._unpack_inventory(fromstring(xml_string))
+        try:
+            return self._unpack_inventory(fromstring(xml_string))
+        except ParseError, e:
+            raise errors.UnexpectedInventoryFormat(e)
 
     def read_inventory(self, f):
-        return self._unpack_inventory(self._read_element(f))
+        try:
+            return self._unpack_inventory(self._read_element(f))
+        except ParseError, e:
+            raise errors.UnexpectedInventoryFormat(e)
 
     def write_revision(self, rev, f):
         self._write_element(self._pack_revision(rev), f)

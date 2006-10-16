@@ -50,14 +50,17 @@ form.
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
 
-
-import errno
 import os
 import sys
+import re
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import errno
 import logging
+""")
 
 import bzrlib
-from bzrlib.errors import BzrError, BzrNewError
 from bzrlib.symbol_versioning import (deprecated_function,
         zero_nine,
         )
@@ -93,7 +96,7 @@ error =     _bzr_logger.error
 def mutter(fmt, *args):
     if _trace_file is None:
         return
-    if hasattr(_trace_file, 'closed') and _trace_file.closed:
+    if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
         return
 
     if isinstance(fmt, unicode):
@@ -168,9 +171,6 @@ def log_exception(msg=None):
     """
     if msg:
         error(msg)
-    else:
-        exc_str = format_exception_short(sys.exc_info())
-        error(exc_str)
     log_exception_quietly()
 
 
@@ -288,7 +288,8 @@ def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
     import traceback
     exc_type, exc_object, exc_tb = exc_info
-    print >>err_file, "bzr: ERROR: %s: %s" % (exc_type, exc_object)
+    print >>err_file, "bzr: ERROR: %s.%s: %s" % (
+        exc_type.__module__, exc_type.__name__, exc_object)
     print >>err_file
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
     print >>err_file

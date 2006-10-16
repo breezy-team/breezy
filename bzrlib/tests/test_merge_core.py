@@ -3,6 +3,9 @@ import stat
 import sys
 
 import bzrlib
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.add import smart_add_tree
 from bzrlib.builtins import merge
 from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
@@ -10,24 +13,28 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError, NoDiff3)
 import bzrlib.inventory as inventory
 from bzrlib.merge import Merge3Merger, Diff3Merger, WeaveMerger
-from bzrlib.osutils import (file_kind, getcwd, mkdtemp, pathjoin, rename, rmtree,
-                            sha_file, 
+from bzrlib.osutils import (file_kind, getcwd, pathjoin, rename,
+                            sha_file,
                             )
 from bzrlib.transform import TreeTransform
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
-from bzrlib.workingtree import WorkingTree
+from bzrlib.workingtree import WorkingTree, gen_root_id
 
 
 class MergeBuilder(object):
     def __init__(self, dir=None):
-        self.dir = mkdtemp(prefix="merge-test", dir=dir)
+        self.dir = osutils.mkdtemp(prefix="merge-test", dir=dir)
+        self.tree_root = gen_root_id()
         def wt(name):
            path = pathjoin(self.dir, name)
            os.mkdir(path)
            wt = bzrlib.bzrdir.BzrDir.create_standalone_workingtree(path)
+           # the tests perform pulls, so need a branch that is writeable.
+           wt.lock_write()
+           wt.set_root_id(self.tree_root)
            tt = TreeTransform(wt)
            return wt, tt
-        self.base, self.base_tt = wt('base') 
+        self.base, self.base_tt = wt('base')
         self.this, self.this_tt = wt('this')
         self.other, self.other_tt = wt('other')
 
@@ -162,8 +169,14 @@ class MergeBuilder(object):
             new_inventory[file_id] = path
         return new_inventory
 
+    def unlock(self):
+        self.base.unlock()
+        self.this.unlock()
+        self.other.unlock()
+
     def cleanup(self):
-        rmtree(self.dir)
+        self.unlock()
+        osutils.rmtree(self.dir)
 
 
 class MergeTest(TestCaseWithTransport):
@@ -171,16 +184,16 @@ class MergeTest(TestCaseWithTransport):
     def test_change_name(self):
         """Test renames"""
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "hello1", True)
+        builder.add_file("1", builder.tree_root, "name1", "hello1", True)
         builder.change_name("1", other="name2")
-        builder.add_file("2", "TREE_ROOT", "name3", "hello2", True)
+        builder.add_file("2", builder.tree_root, "name3", "hello2", True)
         builder.change_name("2", base="name4")
-        builder.add_file("3", "TREE_ROOT", "name5", "hello3", True)
+        builder.add_file("3", builder.tree_root, "name5", "hello3", True)
         builder.change_name("3", this="name6")
         builder.merge()
         builder.cleanup()
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "hello1", False)
+        builder.add_file("1", builder.tree_root, "name1", "hello1", False)
         builder.change_name("1", other="name2", this="name3")
         conflicts = builder.merge()
         self.assertEqual(conflicts, [PathConflict('name3', 'name2', '1')])
@@ -188,19 +201,20 @@ class MergeTest(TestCaseWithTransport):
 
     def test_merge_one(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "hello1", True)
+        builder.add_file("1", builder.tree_root, "name1", "hello1", True)
         builder.change_contents("1", other="text4")
-        builder.add_file("2", "TREE_ROOT", "name2", "hello1", True)
+        builder.add_file("2", builder.tree_root, "name2", "hello1", True)
         builder.change_contents("2", other="text4")
         builder.merge(interesting_ids=["1"])
         self.assertEqual(builder.this.get_file("1").read(), "text4" )
         self.assertEqual(builder.this.get_file("2").read(), "hello1" )
+        builder.cleanup()
         
     def test_file_moves(self):
         """Test moves"""
         builder = MergeBuilder(getcwd())
-        builder.add_dir("1", "TREE_ROOT", "dir1")
-        builder.add_dir("2", "TREE_ROOT", "dir2")
+        builder.add_dir("1", builder.tree_root, "dir1")
+        builder.add_dir("2", builder.tree_root, "dir2")
         builder.add_file("3", "1", "file1", "hello1", True)
         builder.add_file("4", "1", "file2", "hello2", True)
         builder.add_file("5", "1", "file3", "hello3", True)
@@ -211,9 +225,9 @@ class MergeTest(TestCaseWithTransport):
         builder.cleanup()
 
         builder = MergeBuilder(getcwd())
-        builder.add_dir("1", "TREE_ROOT", "dir1")
-        builder.add_dir("2", "TREE_ROOT", "dir2")
-        builder.add_dir("3", "TREE_ROOT", "dir3")
+        builder.add_dir("1", builder.tree_root, "dir1")
+        builder.add_dir("2", builder.tree_root, "dir2")
+        builder.add_dir("3", builder.tree_root, "dir3")
         builder.add_file("4", "1", "file1", "hello1", False)
         builder.change_parent("4", other="2", this="3")
         conflicts = builder.merge()
@@ -240,7 +254,7 @@ class MergeTest(TestCaseWithTransport):
     def test_reprocess_weave(self):
         # Reprocess works on weaves, and behaves as expected
         builder = MergeBuilder(getcwd())
-        builder.add_file('a', 'TREE_ROOT', 'blah', 'a', False)
+        builder.add_file('a', builder.tree_root, 'blah', 'a', False)
         builder.change_contents('a', this='b\nc\nd\ne\n', other='z\nc\nd\ny\n')
         builder.merge(WeaveMerger, reprocess=True)
         expected = """<<<<<<< TREE
@@ -257,8 +271,7 @@ y
 >>>>>>> MERGE-SOURCE
 """
         self.assertEqualDiff(builder.this.get_file("a").read(), expected)
-
- 
+        builder.cleanup()
 
     def do_contents_test(self, merge_factory):
         """Test merging with specified ContentsChange factory"""
@@ -268,33 +281,39 @@ y
 
     def contents_test_success(self, merge_factory):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
         builder.change_contents("1", other="text4")
-        builder.add_file("2", "TREE_ROOT", "name3", "text2", False)
+        builder.add_file("2", builder.tree_root, "name3", "text2", False)
         builder.change_contents("2", base="text5")
-        builder.add_file("3", "TREE_ROOT", "name5", "text3", True)
-        builder.add_file("4", "TREE_ROOT", "name6", "text4", True)
+        builder.add_file("3", builder.tree_root, "name5", "text3", True)
+        builder.add_file("4", builder.tree_root, "name6", "text4", True)
         builder.remove_file("4", base=True)
-        builder.add_file("5", "TREE_ROOT", "name7", "a\nb\nc\nd\ne\nf\n", True)
+        builder.add_file("5", builder.tree_root, "name7", "a\nb\nc\nd\ne\nf\n",
+                         True)
         builder.change_contents("5", other="a\nz\nc\nd\ne\nf\n", 
                                      this="a\nb\nc\nd\ne\nz\n")
-        builder.merge(merge_factory)
-        self.assertEqual(builder.this.get_file("1").read(), "text4" )
-        self.assertEqual(builder.this.get_file("2").read(), "text2" )
-        self.assertEqual(builder.this.get_file("5").read(), 
-                         "a\nz\nc\nd\ne\nz\n")
-        self.assertIs(builder.this.is_executable("1"), True)
-        self.assertIs(builder.this.is_executable("2"), False)
-        self.assertIs(builder.this.is_executable("3"), True)
+        conflicts = builder.merge(merge_factory)
+        try:
+            self.assertEqual([], conflicts)
+            self.assertEqual("text4", builder.this.get_file("1").read())
+            self.assertEqual("text2", builder.this.get_file("2").read())
+            self.assertEqual("a\nz\nc\nd\ne\nz\n", 
+                             builder.this.get_file("5").read())
+            self.assertTrue(builder.this.is_executable("1"))
+            self.assertFalse(builder.this.is_executable("2"))
+            self.assertTrue(builder.this.is_executable("3"))
+        except:
+            builder.unlock()
+            raise
         return builder
 
     def contents_test_conflicts(self, merge_factory):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
         builder.change_contents("1", other="text4", this="text3")
-        builder.add_file("2", "TREE_ROOT", "name2", "text1", True)
+        builder.add_file("2", builder.tree_root, "name2", "text1", True)
         builder.change_contents("2", other="\x00", this="text3")
-        builder.add_file("3", "TREE_ROOT", "name3", "text5", False)
+        builder.add_file("3", builder.tree_root, "name3", "text5", False)
         builder.change_perms("3", this=True)
         builder.change_contents('3', this='moretext')
         builder.remove_file('3', other=True)
@@ -308,7 +327,7 @@ y
     def test_symlink_conflicts(self):
         if sys.platform != "win32":
             builder = MergeBuilder(getcwd())
-            builder.add_symlink("2", "TREE_ROOT", "name2", "target1")
+            builder.add_symlink("2", builder.tree_root, "name2", "target1")
             builder.change_target("2", other="target4", base="text3")
             conflicts = builder.merge()
             self.assertEqual(conflicts, [ContentsConflict('name2', 
@@ -318,9 +337,9 @@ y
     def test_symlink_merge(self):
         if sys.platform != "win32":
             builder = MergeBuilder(getcwd())
-            builder.add_symlink("1", "TREE_ROOT", "name1", "target1")
-            builder.add_symlink("2", "TREE_ROOT", "name2", "target1")
-            builder.add_symlink("3", "TREE_ROOT", "name3", "target1")
+            builder.add_symlink("1", builder.tree_root, "name1", "target1")
+            builder.add_symlink("2", builder.tree_root, "name2", "target1")
+            builder.add_symlink("3", builder.tree_root, "name3", "target1")
             builder.change_target("1", this="target2")
             builder.change_target("2", base="target2")
             builder.change_target("3", other="target2")
@@ -332,20 +351,20 @@ y
 
     def test_no_passive_add(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
         builder.remove_file("1", this=True)
         builder.merge()
         builder.cleanup()
 
     def test_perms_merge(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
         builder.change_perms("1", other=False)
-        builder.add_file("2", "TREE_ROOT", "name2", "text2", True)
+        builder.add_file("2", builder.tree_root, "name2", "text2", True)
         builder.change_perms("2", base=False)
-        builder.add_file("3", "TREE_ROOT", "name3", "text3", True)
+        builder.add_file("3", builder.tree_root, "name3", "text3", True)
         builder.change_perms("3", this=False)
-        builder.add_file('4', 'TREE_ROOT', 'name4', 'text4', False)
+        builder.add_file('4', builder.tree_root, 'name4', 'text4', False)
         builder.change_perms('4', this=True)
         builder.remove_file('4', base=True)
         builder.merge()
@@ -356,21 +375,22 @@ y
 
     def test_new_suffix(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
         builder.change_contents("1", other="text3")
-        builder.add_file("2", "TREE_ROOT", "name1.new", "text2", True)
+        builder.add_file("2", builder.tree_root, "name1.new", "text2", True)
         builder.merge()
         os.lstat(builder.this.id2abspath("2"))
         builder.cleanup()
 
     def test_spurious_conflict(self):
         builder = MergeBuilder(getcwd())
-        builder.add_file("1", "TREE_ROOT", "name1", "text1", False)
+        builder.add_file("1", builder.tree_root, "name1", "text1", False)
         builder.remove_file("1", other=True)
-        builder.add_file("2", "TREE_ROOT", "name1", "text1", False, this=False, 
-                         base=False)
+        builder.add_file("2", builder.tree_root, "name1", "text1", False, 
+                         this=False, base=False)
         conflicts = builder.merge()
         self.assertEqual(conflicts, []) 
+        builder.cleanup()
 
 
 class FunctionalMergeTest(TestCaseWithTransport):

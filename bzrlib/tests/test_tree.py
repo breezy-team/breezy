@@ -62,10 +62,11 @@ class RecordingOptimiser(InterTree):
     calls = []
 
     def compare(self, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False):
+        extra_trees=None, require_versioned=False, include_root=False):
         self.calls.append(
             ('compare', self.source, self.target, want_unchanged,
-             specific_files, extra_trees, require_versioned)
+             specific_files, extra_trees, require_versioned, 
+             include_root)
             )
     
     @classmethod
@@ -79,7 +80,7 @@ class TestTree(TestCaseWithTransport):
         """This test tests the way Tree.compare() uses InterTree."""
         old_optimisers = InterTree._optimisers
         try:
-            InterTree._optimisers = set()
+            InterTree._optimisers = []
             RecordingOptimiser.calls = []
             InterTree.register_optimiser(RecordingOptimiser)
             tree = self.make_branch_and_tree('1')
@@ -88,19 +89,32 @@ class TestTree(TestCaseWithTransport):
             # trivial usage
             tree.changes_from(tree2)
             # pass in all optional arguments by position
-            tree.changes_from(tree2, 'unchanged', 'specific', 'extra', 'require')
+            tree.changes_from(tree2, 'unchanged', 'specific', 'extra', 
+                              'require', True)
             # pass in all optional arguments by keyword
             tree.changes_from(tree2,
                 specific_files='specific',
                 want_unchanged='unchanged',
                 extra_trees='extra',
                 require_versioned='require',
+                include_root=True,
                 )
         finally:
             InterTree._optimisers = old_optimisers
         self.assertEqual(
             [
-             ('compare', tree2, tree, False, None, None, False),
-             ('compare', tree2, tree, 'unchanged', 'specific', 'extra', 'require'),
-             ('compare', tree2, tree, 'unchanged', 'specific', 'extra', 'require'),
+             ('compare', tree2, tree, False, None, None, False, False),
+             ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
+              'require', True),
+             ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
+              'require', True),
             ], RecordingOptimiser.calls)
+
+    def test_changes_from_with_root(self):
+        """Ensure the include_root option does what's expected."""
+        wt = self.make_branch_and_tree('.')
+        delta = wt.changes_from(wt.basis_tree())
+        self.assertEqual(len(delta.added), 0)
+        delta = wt.changes_from(wt.basis_tree(), wt, include_root=True)
+        self.assertEqual(len(delta.added), 1)
+        self.assertEqual(delta.added[0][0], '')

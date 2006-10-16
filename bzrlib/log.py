@@ -386,7 +386,7 @@ class LongLogFormatter(LogFormatter):
             message = rev.message.rstrip('\r\n')
             for l in message.split('\n'):
                 print >>to_file,  indent+'  ' + l
-        if delta != None:
+        if delta is not None:
             delta.show(to_file, self.show_ids)
 
 
@@ -412,7 +412,7 @@ class ShortLogFormatter(LogFormatter):
 
         # TODO: Why not show the modified files in a shorter form as
         # well? rewrap them single lines of appropriate length
-        if delta != None:
+        if delta is not None:
             delta.show(to_file, self.show_ids)
         print >>to_file, ''
 

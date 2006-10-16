@@ -15,6 +15,7 @@
 
 """Tests for the test framework."""
 
+import cStringIO
 import os
 from StringIO import StringIO
 import sys
@@ -22,23 +23,31 @@ import time
 import unittest
 import warnings
 
-from bzrlib import osutils
 import bzrlib
+from bzrlib import (
+    bzrdir,
+    memorytree,
+    osutils,
+    repository,
+    )
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
                           ChrootedTestCase,
                           TestCase,
                           TestCaseInTempDir,
+                          TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
                           TestSkipped,
                           TestSuite,
                           TextTestRunner,
                           )
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import zero_ten, zero_eleven
 from bzrlib.trace import note
+from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.version import _get_bzr_source_tree
 
 
@@ -60,7 +69,8 @@ class MetaTestLog(TestCase):
         """Test logs are captured when a test fails."""
         self.log('a test message')
         self._log_file.flush()
-        self.assertContainsRe(self._get_log(), 'a test message\n')
+        self.assertContainsRe(self._get_log(keep_log_file=True),
+                              'a test message\n')
 
 
 class TestTreeShape(TestCaseInTempDir):
@@ -420,6 +430,57 @@ class TestInterTreeProviderAdapter(TestCase):
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
+
+class TestTestCaseInTempDir(TestCaseInTempDir):
+
+    def test_home_is_not_working(self):
+        self.assertNotEqual(self.test_dir, self.test_home_dir)
+        cwd = osutils.getcwd()
+        self.assertEqual(self.test_dir, cwd)
+        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+
+
+class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
+
+    def test_home_is_non_existant_dir_under_root(self):
+        """The test_home_dir for TestCaseWithMemoryTransport is missing.
+
+        This is because TestCaseWithMemoryTransport is for tests that do not
+        need any disk resources: they should be hooked into bzrlib in such a 
+        way that no global settings are being changed by the test (only a 
+        few tests should need to do that), and having a missing dir as home is
+        an effective way to ensure that this is the case.
+        """
+        self.assertEqual(self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
+            self.test_home_dir)
+        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        
+    def test_cwd_is_TEST_ROOT(self):
+        self.assertEqual(self.test_dir, self.TEST_ROOT)
+        cwd = osutils.getcwd()
+        self.assertEqual(self.test_dir, cwd)
+
+    def test_make_branch_and_memory_tree(self):
+        """In TestCaseWithMemoryTransport we should not make the branch on disk.
+
+        This is hard to comprehensively robustly test, so we settle for making
+        a branch and checking no directory was created at its relpath.
+        """
+        tree = self.make_branch_and_memory_tree('dir')
+        self.failIfExists('dir')
+        self.assertIsInstance(tree, memorytree.MemoryTree)
+
+    def test_make_branch_and_memory_tree_with_format(self):
+        """make_branch_and_memory_tree should accept a format option."""
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormat7()
+        tree = self.make_branch_and_memory_tree('dir', format=format)
+        self.failIfExists('dir')
+        self.assertIsInstance(tree, memorytree.MemoryTree)
+        self.assertEqual(format.repository_format.__class__,
+            tree.branch.repository._format.__class__)
+
+
 class TestTestCaseWithTransport(TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
@@ -462,6 +523,21 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertIsDirectory('a_dir', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'a_file', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'not_here', t)
+
+
+class TestTestCaseTransports(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestTestCaseTransports, self).setUp()
+        self.transport_server = MemoryServer
+
+    def test_make_bzrdir_preserves_transport(self):
+        t = self.get_transport()
+        result_bzrdir = self.make_bzrdir('subdir')
+        self.assertIsInstance(result_bzrdir.transport, 
+                              MemoryTransport)
+        # should not be on disk, should only be in memory
+        self.failIfExists('subdir')
 
 
 class TestChrootedTest(ChrootedTestCase):
@@ -719,8 +795,70 @@ class TestRunner(TestCase):
         output_string = output.getvalue()
         self.assertContainsRe(output_string, "--date [0-9.]+")
         if workingtree is not None:
-            revision_id = workingtree.last_revision()
+            revision_id = workingtree.get_parent_ids()[0]
             self.assertEndsWith(output_string.rstrip(), revision_id)
+
+    def test_success_log_deleted(self):
+        """Successful tests have their log deleted"""
+
+        class LogTester(TestCase):
+
+            def test_success(self):
+                self.log('this will be removed\n')
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_success')
+        result = self.run_test_runner(runner, test)
+
+        log = test._get_log()
+        self.assertEqual("DELETED log file to reduce memory footprint", log)
+        self.assertEqual('', test._log_contents)
+        self.assertIs(None, test._log_file_name)
+
+    def test_fail_log_kept(self):
+        """Failed tests have their log kept"""
+
+        class LogTester(TestCase):
+
+            def test_fail(self):
+                self.log('this will be kept\n')
+                self.fail('this test fails')
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_fail')
+        result = self.run_test_runner(runner, test)
+
+        text = sio.getvalue()
+        self.assertContainsRe(text, 'this will be kept')
+        self.assertContainsRe(text, 'this test fails')
+
+        log = test._get_log()
+        self.assertContainsRe(log, 'this will be kept')
+        self.assertEqual(log, test._log_contents)
+
+    def test_error_log_kept(self):
+        """Tests with errors have their log kept"""
+
+        class LogTester(TestCase):
+
+            def test_error(self):
+                self.log('this will be kept\n')
+                raise ValueError('random exception raised')
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_error')
+        result = self.run_test_runner(runner, test)
+
+        text = sio.getvalue()
+        self.assertContainsRe(text, 'this will be kept')
+        self.assertContainsRe(text, 'random exception raised')
+
+        log = test._get_log()
+        self.assertContainsRe(log, 'this will be kept')
+        self.assertEqual(log, test._log_contents)
 
 
 class TestTestCase(TestCase):
@@ -892,6 +1030,27 @@ class TestConvenienceMakers(TestCaseWithTransport):
                               bzrlib.bzrdir.BzrDirMetaFormat1)
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
                               bzrlib.bzrdir.BzrDirFormat6)
+
+    def test_make_branch_and_memory_tree(self):
+        # we should be able to get a new branch and a mutable tree from
+        # TestCaseWithTransport
+        tree = self.make_branch_and_memory_tree('a')
+        self.assertIsInstance(tree, bzrlib.memorytree.MemoryTree)
+
+
+class TestSFTPMakeBranchAndTree(TestCaseWithSFTPServer):
+
+    def test_make_tree_for_sftp_branch(self):
+        """Transports backed by local directories create local trees."""
+
+        tree = self.make_branch_and_tree('t1')
+        base = tree.bzrdir.root_transport.base
+        self.failIf(base.startswith('sftp'),
+                'base %r is on sftp but should be local' % base)
+        self.assertEquals(tree.bzrdir.root_transport,
+                tree.branch.bzrdir.root_transport)
+        self.assertEquals(tree.bzrdir.root_transport,
+                tree.branch.repository.bzrdir.root_transport)
 
 
 class TestSelftest(TestCase):
