@@ -123,6 +123,11 @@ parents of a commit.
 This means svk and bzr _should be_ interoperable. However, there are no tests 
 for this yet. 
 
+== Revision properties ==
+
+Bazaar revision properties are stored in the file properties of the 
+branch path in Subversion. Their names are prefixed with "bzr:revprop:"
+
 == Signatures ==
 
 NEXT VERSION: GPG Signatures for commits will be stored in the SVN revision property 'bzr:gpg-signature'. 
