@@ -311,7 +311,7 @@ class InterSvnRepository(InterRepository):
             if parent_revid is None:
                 parent_id_map = {"": (ROOT_ID, None)}
                 id_map = self.source.get_fileid_map(revnum, branch)
-                parent_inv = Inventory()
+                parent_inv = Inventory(ROOT_ID)
             elif prev_revid != parent_revid:
                 parent_id_map = self.source.get_fileid_map(parent_revnum, parent_branch)
                 id_map = self.source.get_fileid_map(revnum, branch)

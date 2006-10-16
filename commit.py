@@ -88,7 +88,7 @@ class SvnCommitBuilder(CommitBuilder):
                 self.branch.last_revision() in parents)
 
         if self.branch.last_revision() is None:
-            self.old_inv = Inventory()
+            self.old_inv = Inventory(ROOT_ID)
         else:
             self.old_inv = self.repository.get_inventory(
                                self.branch.last_revision())

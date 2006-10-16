@@ -56,11 +56,11 @@ class SvnRevisionTree(RevisionTree):
         self._repository = repository
         self._revision_id = revision_id
         if revision_id == NULL_REVISION:
-            self._inventory = Inventory()
+            self._inventory = Inventory(ROOT_ID)
             self._inventory.revision_id = NULL_REVISION
         else:
             (self.branch_path, self.revnum) = repository.parse_revision_id(revision_id)
-            self._inventory = Inventory()
+            self._inventory = Inventory(ROOT_ID)
             self._inventory.revision_id = revision_id
             self.id_map = repository.get_fileid_map(self.revnum, self.branch_path)
             self.editor = TreeBuildEditor(self)

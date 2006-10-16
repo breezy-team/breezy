@@ -323,7 +323,7 @@ See http://bazaar-vcs.org/BzrSvn for details.
             revision_id = NULL_REVISION
 
         if revision_id == NULL_REVISION:
-            inventory = Inventory()
+            inventory = Inventory(ROOT_ID)
 
         return SvnRevisionTree(self, revision_id, inventory)
 
