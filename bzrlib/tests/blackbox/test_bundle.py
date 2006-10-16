@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
