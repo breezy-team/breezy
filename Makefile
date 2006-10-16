@@ -1,7 +1,7 @@
 all:
 
 check:
-	./bzr selftest -v $(tests)
+	python -Werror ./bzr selftest -v $(tests)
 	@echo "Running all tests with no locale."
 	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -v $(tests)
 
