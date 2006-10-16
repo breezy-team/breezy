@@ -15,12 +15,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import codecs
-import errno
 import os
+import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import stat
 import socket
-import sys
 import warnings
 
 from bzrlib import (
@@ -28,11 +29,11 @@ from bzrlib import (
     osutils,
     symbol_versioning,
     )
-from bzrlib.osutils import rename
+""")
 
 # not forksafe - but we dont fork.
 _pid = os.getpid()
-_hostname = socket.gethostname()
+_hostname = None
 
 
 class AtomicFile(object):
@@ -47,9 +48,14 @@ class AtomicFile(object):
     __slots__ = ['tmpfilename', 'realfilename', '_fd']
 
     def __init__(self, filename, mode='wb', new_mode=None):
+        global _hostname
+
         self._fd = None
         assert mode in ('wb', 'wt'), \
             "invalid AtomicFile mode %r" % mode
+
+        if _hostname is None:
+            _hostname = socket.gethostname()
 
         self.tmpfilename = '%s.%d.%s.tmp' % (filename, _pid, _hostname)
 
@@ -102,7 +108,7 @@ class AtomicFile(object):
     def commit(self):
         """Close the file and move to final name."""
         self._close_tmpfile('commit')
-        rename(self.tmpfilename, self.realfilename)
+        osutils.rename(self.tmpfilename, self.realfilename)
 
     def abort(self):
         """Discard temporary file without committing changes."""

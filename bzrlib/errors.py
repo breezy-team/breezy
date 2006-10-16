@@ -890,6 +890,14 @@ class ParseConfigError(BzrError):
         BzrError.__init__(self, message)
 
 
+class NoEmailInUsername(BzrNewError):
+    """%(username)r does not seem to contain a reasonable email address"""
+
+    def __init__(self, username):
+        BzrNewError.__init__(self)
+        self.username = username
+
+
 class SigningFailed(BzrError):
     def __init__(self, command_line):
         BzrError.__init__(self, "Failed to gpg sign data with command '%s'"

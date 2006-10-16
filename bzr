@@ -32,7 +32,7 @@ except AttributeError:
 
 REINVOKE = "__BZR_REINVOKE"
 NEED_VERS = (2, 4)
-KNOWN_PYTHONS = ('python2.4',)
+KNOWN_PYTHONS = ('python2.4', 'python2.5')
 
 if version_info < NEED_VERS:
     if not os.environ.has_key(REINVOKE):
@@ -48,7 +48,6 @@ if version_info < NEED_VERS:
     sys.exit(1)
 if hasattr(os, "unsetenv"):
     os.unsetenv(REINVOKE)
-
 
 
 profiling = False
@@ -70,6 +69,9 @@ except ImportError, e:
 
 import bzrlib.inspect_for_copy
 bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
+
+import bzrlib.lazy_regex
+bzrlib.lazy_regex.install_lazy_compile()
 
 import bzrlib.commands
 import bzrlib.trace

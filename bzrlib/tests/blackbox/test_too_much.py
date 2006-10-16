@@ -40,13 +40,14 @@ import re
 import sys
 
 import bzrlib
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import (
     has_symlinks,
     pathjoin,
-    rmtree,
     terminal_width,
     )
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
@@ -208,7 +209,7 @@ class TestCommands(ExternalBase):
         self.runbzr('pull')
         self.runbzr('pull ../c')
         self.runbzr('branch ../c ../d')
-        rmtree('../c')
+        osutils.rmtree('../c')
         self.runbzr('pull')
         os.chdir('../b')
         self.runbzr('pull')

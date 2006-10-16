@@ -28,35 +28,40 @@ directories.
 # TODO: Can we move specific formats into separate modules to make this file
 # smaller?
 
-from copy import deepcopy
 from cStringIO import StringIO
 import os
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from copy import deepcopy
 from stat import S_ISDIR
-from unittest import TestSuite
+import unittest
 
 import bzrlib
-import bzrlib.errors as errors
-from bzrlib.lockable_files import LockableFiles, TransportLock
-from bzrlib.lockdir import LockDir
+from bzrlib import (
+    errors,
+    lockable_files,
+    lockdir,
+    revision as _mod_revision,
+    urlutils,
+    xml4,
+    xml5,
+    )
 from bzrlib.osutils import (
-                            abspath,
-                            pathjoin,
-                            safe_unicode,
-                            sha_strings,
-                            sha_string,
-                            )
-import bzrlib.revision
+    safe_unicode,
+    sha_strings,
+    sha_string,
+    )
 from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
-from bzrlib.trace import mutter
 from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import get_transport
-from bzrlib.transport.local import LocalTransport
-import bzrlib.urlutils as urlutils
 from bzrlib.weave import Weave
-from bzrlib.xml4 import serializer_v4
-import bzrlib.xml5
+""")
+
+from bzrlib.trace import mutter
+from bzrlib.transport.local import LocalTransport
 
 
 class BzrDir(object):
@@ -188,7 +193,7 @@ class BzrDir(object):
     def _make_tail(self, url):
         head, tail = urlutils.split(url)
         if tail and tail != '.':
-            t = bzrlib.transport.get_transport(head)
+            t = get_transport(head)
             try:
                 t.mkdir(tail)
             except errors.FileExists:
@@ -210,7 +215,7 @@ class BzrDir(object):
                     "not one of %r" % cls)
         head, tail = urlutils.split(base)
         if tail and tail != '.':
-            t = bzrlib.transport.get_transport(head)
+            t = get_transport(head)
             try:
                 t.mkdir(tail)
             except errors.FileExists:
@@ -340,6 +345,21 @@ class BzrDir(object):
         revision_id: create it as of this revision id.
         """
         raise NotImplementedError(self.create_workingtree)
+
+    def destroy_workingtree(self):
+        """Destroy the working tree at this BzrDir.
+
+        Formats that do not support this may raise UnsupportedOperation.
+        """
+        raise NotImplementedError(self.destroy_workingtree)
+
+    def destroy_workingtree_metadata(self):
+        """Destroy the control files for the working tree at this BzrDir.
+
+        The contents of working tree files are not affected.
+        Formats that do not support this may raise UnsupportedOperation.
+        """
+        raise NotImplementedError(self.destroy_workingtree_metadata)
 
     def find_repository(self):
         """Find the repository that should be used for a_bzrdir.
@@ -675,9 +695,10 @@ class BzrDirPreSplitOut(BzrDir):
     def __init__(self, _transport, _format):
         """See BzrDir.__init__."""
         super(BzrDirPreSplitOut, self).__init__(_transport, _format)
-        assert self._format._lock_class == TransportLock
+        assert self._format._lock_class == lockable_files.TransportLock
         assert self._format._lock_file_name == 'branch-lock'
-        self._control_files = LockableFiles(self.get_branch_transport(None),
+        self._control_files = lockable_files.LockableFiles(
+                                            self.get_branch_transport(None),
                                             self._format._lock_file_name,
                                             self._format._lock_class)
 
@@ -727,11 +748,20 @@ class BzrDirPreSplitOut(BzrDir):
         # done on this format anyway. So - acceptable wart.
         result = self.open_workingtree()
         if revision_id is not None:
-            if revision_id == bzrlib.revision.NULL_REVISION:
+            if revision_id == _mod_revision.NULL_REVISION:
                 result.set_parent_ids([])
             else:
                 result.set_parent_ids([revision_id])
         return result
+
+    def destroy_workingtree(self):
+        """See BzrDir.destroy_workingtree."""
+        raise errors.UnsupportedOperation(self.destroy_workingtree, self)
+
+    def destroy_workingtree_metadata(self):
+        """See BzrDir.destroy_workingtree_metadata."""
+        raise errors.UnsupportedOperation(self.destroy_workingtree_metadata, 
+                                          self)
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
@@ -878,9 +908,21 @@ class BzrDirMeta1(BzrDir):
         from bzrlib.workingtree import WorkingTreeFormat
         return WorkingTreeFormat.get_default_format().initialize(self, revision_id)
 
+    def destroy_workingtree(self):
+        """See BzrDir.destroy_workingtree."""
+        wt = self.open_workingtree()
+        repository = wt.branch.repository
+        empty = repository.revision_tree(bzrlib.revision.NULL_REVISION)
+        wt.revert([], old_tree=empty)
+        self.destroy_workingtree_metadata()
+
+    def destroy_workingtree_metadata(self):
+        self.transport.delete_tree('checkout')
+
     def _get_mkdir_mode(self):
         """Figure out the mode to use when creating a bzrdir subdir."""
-        temp_control = LockableFiles(self.transport, '', TransportLock)
+        temp_control = lockable_files.LockableFiles(self.transport, '',
+                                     lockable_files.TransportLock)
         return temp_control._dir_mode
 
     def get_branch_transport(self, branch_format):
@@ -1062,7 +1104,8 @@ class BzrDirFormat(object):
         """Initialize a new bzrdir in the base directory of a Transport."""
         # Since we don't have a .bzr directory, inherit the
         # mode from the root directory
-        temp_control = LockableFiles(transport, '', TransportLock)
+        temp_control = lockable_files.LockableFiles(transport,
+                            '', lockable_files.TransportLock)
         temp_control._transport.mkdir('.bzr',
                                       # FIXME: RBC 20060121 don't peek under
                                       # the covers
@@ -1077,8 +1120,8 @@ class BzrDirFormat(object):
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
-        control_files = LockableFiles(control, self._lock_file_name, 
-                                      self._lock_class)
+        control_files = lockable_files.LockableFiles(control,
+                            self._lock_file_name, self._lock_class)
         control_files.create_lock()
         control_files.lock_write()
         try:
@@ -1187,7 +1230,7 @@ class BzrDirFormat4(BzrDirFormat):
     removed in format 5; write support for this format has been removed.
     """
 
-    _lock_class = TransportLock
+    _lock_class = lockable_files.TransportLock
 
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
@@ -1237,7 +1280,7 @@ class BzrDirFormat5(BzrDirFormat):
        Unhashed stores in the repository.
     """
 
-    _lock_class = TransportLock
+    _lock_class = lockable_files.TransportLock
 
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
@@ -1296,7 +1339,7 @@ class BzrDirFormat6(BzrDirFormat):
      - Format 6 repositories [always]
     """
 
-    _lock_class = TransportLock
+    _lock_class = lockable_files.TransportLock
 
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
@@ -1356,7 +1399,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
      - Format 7 repositories [optional]
     """
 
-    _lock_class = LockDir
+    _lock_class = lockdir.LockDir
 
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
@@ -1416,7 +1459,7 @@ class BzrDirTestProviderAdapter(object):
         self._formats = formats
     
     def adapt(self, test):
-        result = TestSuite()
+        result = unittest.TestSuite()
         for format in self._formats:
             new_test = deepcopy(test)
             new_test.transport_server = self._transport_server
@@ -1520,8 +1563,9 @@ class ConvertBzrDir4To5(Converter):
         self.bzrdir.transport.delete_tree('text-store')
 
     def _convert_working_inv(self):
-        inv = serializer_v4.read_inventory(self.branch.control_files.get('inventory'))
-        new_inv_xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
+        inv = xml4.serializer_v4.read_inventory(
+                    self.branch.control_files.get('inventory'))
+        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
         # FIXME inventory is a working tree change.
         self.branch.control_files.put('inventory', StringIO(new_inv_xml))
 
@@ -1553,7 +1597,7 @@ class ConvertBzrDir4To5(Converter):
                                                       prefixed=False,
                                                       compressed=True))
         try:
-            transaction = bzrlib.transactions.WriteTransaction()
+            transaction = WriteTransaction()
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update('write revision', i, len(self.converted_revs))
                 _revision_store.add_revision(self.revisions[rev_id], transaction)
@@ -1585,7 +1629,7 @@ class ConvertBzrDir4To5(Converter):
     def _load_old_inventory(self, rev_id):
         assert rev_id not in self.converted_revs
         old_inv_xml = self.branch.repository.inventory_store.get(rev_id).read()
-        inv = serializer_v4.read_inventory_from_string(old_inv_xml)
+        inv = xml4.serializer_v4.read_inventory_from_string(old_inv_xml)
         inv.revision_id = rev_id
         rev = self.revisions[rev_id]
         if rev.inventory_sha1:
@@ -1596,7 +1640,7 @@ class ConvertBzrDir4To5(Converter):
     def _load_updated_inventory(self, rev_id):
         assert rev_id in self.converted_revs
         inv_xml = self.inv_weave.get_text(rev_id)
-        inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(inv_xml)
+        inv = xml5.serializer_v5.read_inventory_from_string(inv_xml)
         return inv
 
     def _convert_one_rev(self, rev_id):
@@ -1618,7 +1662,7 @@ class ConvertBzrDir4To5(Converter):
                 assert getattr(ie, 'revision', None) is not None, \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
-        new_inv_xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
+        new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
         new_inv_sha1 = sha_string(new_inv_xml)
         self.inv_weave.add_lines(rev.revision_id, 
                                  present_parents,
@@ -1836,10 +1880,10 @@ class ConvertBzrDir6ToMeta(Converter):
     def make_lock(self, name):
         """Make a lock for the new control dir name."""
         self.step('Make %s lock' % name)
-        ld = LockDir(self.bzrdir.transport, 
-                     '%s/lock' % name,
-                     file_modebits=self.file_mode,
-                     dir_modebits=self.dir_mode)
+        ld = lockdir.LockDir(self.bzrdir.transport,
+                             '%s/lock' % name,
+                             file_modebits=self.file_mode,
+                             dir_modebits=self.dir_mode)
         ld.create()
 
     def move_entry(self, new_dir, entry):

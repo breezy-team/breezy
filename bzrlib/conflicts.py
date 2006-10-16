@@ -20,20 +20,25 @@
 # point down
 
 import os
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import errno
 
-import bzrlib
-from bzrlib.commands import register_command
-from bzrlib.errors import BzrCommandError, NotConflicted, UnsupportedOperation
+from bzrlib import (
+    commands,
+    errors,
+    osutils,
+    rio,
+    )
+""")
 from bzrlib.option import Option
-from bzrlib.osutils import rename, delete_any
-from bzrlib.rio import Stanza
 
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 
 
-class cmd_conflicts(bzrlib.commands.Command):
+class cmd_conflicts(commands.Command):
     """List files with conflicts.
 
     Merge will do its best to combine the changes in two branches, but there
@@ -55,7 +60,7 @@ class cmd_conflicts(bzrlib.commands.Command):
             print conflict
 
 
-class cmd_resolve(bzrlib.commands.Command):
+class cmd_resolve(commands.Command):
     """Mark a conflict as resolved.
 
     Merge will do its best to combine the changes in two branches, but there
@@ -76,12 +81,14 @@ class cmd_resolve(bzrlib.commands.Command):
         from bzrlib.workingtree import WorkingTree
         if all:
             if file_list:
-                raise BzrCommandError("If --all is specified, no FILE may be provided")
+                raise errors.BzrCommandError("If --all is specified,"
+                                             " no FILE may be provided")
             tree = WorkingTree.open_containing('.')[0]
             resolve(tree)
         else:
             if file_list is None:
-                raise BzrCommandError("command 'resolve' needs one or more FILE, or --all")
+                raise errors.BzrCommandError("command 'resolve' needs one or"
+                                             " more FILE, or --all")
             tree = WorkingTree.open_containing(file_list[0])[0]
             to_resolve = [tree.relpath(p) for p in file_list]
             resolve(tree, to_resolve)
@@ -99,7 +106,7 @@ def resolve(tree, paths=None, ignore_misses=False):
                 tree_conflicts.select_conflicts(tree, paths, ignore_misses)
         try:
             tree.set_conflicts(new_conflicts)
-        except UnsupportedOperation:
+        except errors.UnsupportedOperation:
             pass
         selected_conflicts.remove_files(tree)
     finally:
@@ -113,7 +120,7 @@ def restore(filename):
     """
     conflicted = False
     try:
-        rename(filename + ".THIS", filename)
+        osutils.rename(filename + ".THIS", filename)
         conflicted = True
     except OSError, e:
         if e.errno != errno.ENOENT:
@@ -131,7 +138,7 @@ def restore(filename):
         if e.errno != errno.ENOENT:
             raise
     if not conflicted:
-        raise NotConflicted(filename)
+        raise errors.NotConflicted(filename)
 
 
 class ConflictList(object):
@@ -198,7 +205,7 @@ class ConflictList(object):
                 continue
             for suffix in CONFLICT_SUFFIXES:
                 try:
-                    delete_any(tree.abspath(conflict.path+suffix))
+                    osutils.delete_any(tree.abspath(conflict.path+suffix))
                 except OSError, e:
                     if e.errno != errno.ENOENT:
                         raise
@@ -261,7 +268,7 @@ class Conflict(object):
         self.file_id = file_id
 
     def as_stanza(self):
-        s = Stanza(type=self.typestring, path=self.path)
+        s = rio.Stanza(type=self.typestring, path=self.path)
         if self.file_id is not None:
             s.add('file_id', self.file_id)
         return s

@@ -22,14 +22,19 @@ and for applying a changeset.
 
 import sys
 
-from bzrlib.branch import Branch
-from bzrlib.commands import Command, register_command
-import bzrlib.errors as errors
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    branch,
+    errors,
+    urlutils,
+    )
+from bzrlib.revision import common_ancestor
+""")
+
+from bzrlib.commands import Command
 from bzrlib.option import Option
-from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
-                             NULL_REVISION)
 from bzrlib.trace import note
-from bzrlib import urlutils
 
 
 class cmd_send_changeset(Command):
@@ -57,7 +62,7 @@ class cmd_send_changeset(Command):
                 raise BzrCommandError('We do not support rollup-changesets yet.')
             revision = revision[0]
 
-        b = Branch.open_containing('.')
+        b = branch.Branch.open_containing('.')
 
         if not to:
             try:
@@ -98,7 +103,7 @@ class cmd_bundle_revisions(Command):
         from bzrlib import user_encoding
         from bzrlib.bundle.serializer import write_bundle
 
-        target_branch = Branch.open_containing(u'.')[0]
+        target_branch = branch.Branch.open_containing(u'.')[0]
 
         if base is None:
             base_specified = False
@@ -132,7 +137,7 @@ class cmd_bundle_revisions(Command):
                 # we must format with 'ascii' to be safe
                 note('Using saved location: %s',
                      urlutils.unescape_for_display(base, 'ascii'))
-            base_branch = Branch.open(base)
+            base_branch = branch.Branch.open(base)
 
             # We don't want to lock the same branch across
             # 2 different branches
@@ -173,7 +178,7 @@ class cmd_verify_changeset(Command):
         from read_changeset import read_changeset
         #from bzrlib.xml import serializer_v4
 
-        b, relpath = Branch.open_containing('.')
+        b, relpath = branch.Branch.open_containing('.')
 
         if filename is None or filename == '-':
             f = sys.stdin

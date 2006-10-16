@@ -3,11 +3,20 @@ IN DEVELOPMENT
   IMPROVEMENTS:
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
 
+    * ``bzr`` now uses lazy importing to reduce the startup time. This has
+      a moderate effect on lots of actions, especially ones that have
+      little to do. For example ``bzr rocks`` time is down to 116ms from
+      283ms. (John Arbash Meinel)
+
   INTERNALS:
 
     * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
       can take a ``working_dir='foo'`` parameter, which will change directory 
       for the command. (John Arbash Meinel)
+
+    * ``bzrlib.lazy_regex.lazy_compile`` can be used to create a proxy
+      around a regex, which defers compilation until first use. 
+      (John Arbash Meinel)
 
   BUG FIXES:
 
@@ -28,6 +37,19 @@ IN DEVELOPMENT
 
     * Leave HttpTransportBase daughter classes decides how they
       implement cloning. (Vincent Ladeuil, #61606)
+
+   * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
+
+  TESTING:
+
+    * New test base class TestCaseWithMemoryTransport offers memory-only
+      testing facilities: its not suitable for tests that need to mutate disk
+      state, but most tests should not need that and should be converted to
+      TestCaseWithMemoryTransport. (Robert Collins)
+
+bzr 0.11  2006-10-02
+
+    * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
 
 bzr 0.11rc2  2006-09-27
 

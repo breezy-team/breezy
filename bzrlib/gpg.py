@@ -17,16 +17,20 @@
 
 """GPG signing and checking logic."""
 
-import errno
 import os
-import subprocess
 import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import errno
+import subprocess
 
 from bzrlib import (
     errors,
     trace,
     ui,
     )
+""")
 
 
 class DisabledGPGStrategy(object):

@@ -100,6 +100,13 @@ class TestTransport(TestCase):
         finally:
             _set_protocol_handlers(saved_handlers)
 
+    def test__combine_paths(self):
+        t = Transport('/')
+        self.assertEqual('/home/sarah/project/foo',
+                         t._combine_paths('/home/sarah', 'project/foo'))
+        self.assertEqual('/etc',
+                         t._combine_paths('/home/sarah', '../../etc'))
+
 
 class TestCoalesceOffsets(TestCase):
     
@@ -415,7 +422,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         base_url = self._server.get_url()
         # try getting the transport via the regular interface:
         t = get_transport(base_url)
-        if not isinstance(t, self.transport_class): 
+        if not isinstance(t, self.transport_class):
             # we did not get the correct transport class type. Override the
             # regular connection behaviour by direct construction.
             t = self.transport_class(base_url)

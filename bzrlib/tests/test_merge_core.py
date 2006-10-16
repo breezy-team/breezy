@@ -19,6 +19,9 @@ import stat
 import sys
 
 import bzrlib
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.add import smart_add_tree
 from bzrlib.builtins import merge
 from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
@@ -26,8 +29,8 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError, NoDiff3)
 import bzrlib.inventory as inventory
 from bzrlib.merge import Merge3Merger, Diff3Merger, WeaveMerger
-from bzrlib.osutils import (file_kind, getcwd, mkdtemp, pathjoin, rename, rmtree,
-                            sha_file, 
+from bzrlib.osutils import (file_kind, getcwd, pathjoin, rename,
+                            sha_file,
                             )
 from bzrlib.transform import TreeTransform
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
@@ -36,7 +39,7 @@ from bzrlib.workingtree import WorkingTree
 
 class MergeBuilder(object):
     def __init__(self, dir=None):
-        self.dir = mkdtemp(prefix="merge-test", dir=dir)
+        self.dir = osutils.mkdtemp(prefix="merge-test", dir=dir)
         def wt(name):
            path = pathjoin(self.dir, name)
            os.mkdir(path)
@@ -180,11 +183,14 @@ class MergeBuilder(object):
             new_inventory[file_id] = path
         return new_inventory
 
-    def cleanup(self):
+    def unlock(self):
         self.base.unlock()
         self.this.unlock()
         self.other.unlock()
-        rmtree(self.dir)
+
+    def cleanup(self):
+        self.unlock()
+        osutils.rmtree(self.dir)
 
 
 class MergeTest(TestCaseWithTransport):
@@ -299,14 +305,19 @@ y
         builder.add_file("5", "TREE_ROOT", "name7", "a\nb\nc\nd\ne\nf\n", True)
         builder.change_contents("5", other="a\nz\nc\nd\ne\nf\n", 
                                      this="a\nb\nc\nd\ne\nz\n")
-        builder.merge(merge_factory)
-        self.assertEqual(builder.this.get_file("1").read(), "text4" )
-        self.assertEqual(builder.this.get_file("2").read(), "text2" )
-        self.assertEqual(builder.this.get_file("5").read(), 
-                         "a\nz\nc\nd\ne\nz\n")
-        self.assertIs(builder.this.is_executable("1"), True)
-        self.assertIs(builder.this.is_executable("2"), False)
-        self.assertIs(builder.this.is_executable("3"), True)
+        conflicts = builder.merge(merge_factory)
+        try:
+            self.assertEqual([], conflicts)
+            self.assertEqual("text4", builder.this.get_file("1").read())
+            self.assertEqual("text2", builder.this.get_file("2").read())
+            self.assertEqual("a\nz\nc\nd\ne\nz\n", 
+                             builder.this.get_file("5").read())
+            self.assertTrue(builder.this.is_executable("1"))
+            self.assertFalse(builder.this.is_executable("2"))
+            self.assertTrue(builder.this.is_executable("3"))
+        except:
+            builder.unlock()
+            raise
         return builder
 
     def contents_test_conflicts(self, merge_factory):

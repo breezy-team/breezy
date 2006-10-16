@@ -61,19 +61,26 @@ h=help
 up=pull
 """
 
+import os
+import sys
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import errno
 from fnmatch import fnmatch
-import os
 import re
-import sys
 from StringIO import StringIO
 
 import bzrlib
-from bzrlib import errors, urlutils
-from bzrlib.osutils import pathjoin
-from bzrlib.trace import mutter, warning
+from bzrlib import (
+    errors,
+    osutils,
+    urlutils,
+    )
 import bzrlib.util.configobj.configobj as configobj
+""")
+
+from bzrlib.trace import mutter, warning
 
 
 CHECK_IF_POSSIBLE=0
@@ -599,32 +606,32 @@ def config_dir():
             base = os.environ.get('HOME', None)
         if base is None:
             raise errors.BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
-        return pathjoin(base, 'bazaar', '2.0')
+        return osutils.pathjoin(base, 'bazaar', '2.0')
     else:
         # cygwin, linux, and darwin all have a $HOME directory
         if base is None:
             base = os.path.expanduser("~")
-        return pathjoin(base, ".bazaar")
+        return osutils.pathjoin(base, ".bazaar")
 
 
 def config_filename():
     """Return per-user configuration ini file filename."""
-    return pathjoin(config_dir(), 'bazaar.conf')
+    return osutils.pathjoin(config_dir(), 'bazaar.conf')
 
 
 def branches_config_filename():
     """Return per-user configuration ini file filename."""
-    return pathjoin(config_dir(), 'branches.conf')
+    return osutils.pathjoin(config_dir(), 'branches.conf')
 
 
 def locations_config_filename():
     """Return per-user configuration ini file filename."""
-    return pathjoin(config_dir(), 'locations.conf')
+    return osutils.pathjoin(config_dir(), 'locations.conf')
 
 
 def user_ignore_config_filename():
     """Return the user default ignore filename"""
-    return pathjoin(config_dir(), 'ignore')
+    return osutils.pathjoin(config_dir(), 'ignore')
 
 
 def _auto_user_id():
@@ -698,8 +705,7 @@ def extract_email_address(e):
     """
     m = re.search(r'[\w+.-]+@[\w+.-]+', e)
     if not m:
-        raise errors.BzrError("%r doesn't seem to contain "
-                              "a reasonable email address" % e)
+        raise errors.NoEmailInUsername(e)
     return m.group(0)
 
 
