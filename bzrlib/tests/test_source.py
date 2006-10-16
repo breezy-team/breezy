@@ -156,7 +156,7 @@ class TestSource(TestSourceHelper):
         # and that is okay.
         incorrect = []
 
-        copyright_re = re.compile('#\\s*copyright.*\n', re.I)
+        copyright_re = re.compile('#\\s*copyright.*(?=\n)', re.I)
         copyright_canonical_re = re.compile(
             r'# Copyright \(C\) ' # Opening "# Copyright (C)"
             r'(\d+)(, \d+)*' # Followed by a series of dates
