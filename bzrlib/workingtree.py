@@ -2070,11 +2070,35 @@ class WorkingTree4(WorkingTree3):
             hc.write()
 
         if _inventory is None:
-            self._set_inventory(self.read_working_inventory())
+            self._inventory_is_modified = False
+            self.read_working_inventory()
         else:
-            self._set_inventory(_inventory)
+            # the caller of __init__ has provided an inventory,
+            # we assume they know what they are doing - as its only
+            # the Format factory and creation methods that are
+            # permitted to do this.
+            self._set_inventory(_inventory, dirty=False)
         self._dirty = None
         self._parent_revisions = None
+        self._dirstate = None
+
+    def current_dirstate(self):
+        """Return the current dirstate object. 
+
+        This is not part of the tree interface and only exposed for ease of
+        testing.
+
+        :raises errors.NotWriteLocked: when not in a lock. 
+            XXX: This should probably be errors.NotLocked.
+        """
+        if not self._control_files._lock_count:
+            raise errors.NotWriteLocked(self)
+        if self._dirstate is not None:
+            return self._dirstate
+        local_path = self.bzrdir.get_workingtree_transport(None
+            ).local_abspath('dirstate')
+        self._dirstate = dirstate.DirState.on_file(local_path)
+        return self._dirstate
 
     def _new_tree(self):
         """Initialize the state in this tree to be a new tree."""
@@ -2088,11 +2112,11 @@ class WorkingTree4(WorkingTree3):
 
         WorkingTree4 supplies revision_trees for any basis tree.
         """
-        local_path = self.bzrdir.get_workingtree_transport(None).local_abspath('dirstate')
-        self._dirstate = dirstate.DirState.on_file(local_path)
-        parent_ids = self._dirstate.get_parent_ids()
+        dirstate = self.current_dirstate()
+        parent_ids = dirstate.get_parent_ids()
         if revision_id not in parent_ids:
             raise errors.NoSuchRevisionInTree(self, revision_id)
+        raise NotImplementedError(self.revision_tree)
 
     @needs_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
@@ -2125,15 +2149,23 @@ class WorkingTree4(WorkingTree3):
             If tree is None, then that element is treated as an unreachable
             parent tree - i.e. a ghost.
         """
+        dirstate = self.current_dirstate()
         if len(parents_list) > 0:
             if not allow_leftmost_as_ghost and parents_list[0][1] is None:
                 raise errors.GhostRevisionUnusableHere(leftmost_id)
-            leftmost_id = parents_list[0][0]
-            #self.set_last_revision(leftmost_id)
-        else:
-            self.set_last_revision(None)
-        merges = [revid for revid, tree in parents_list[1:]]
-        self._control_files.put_utf8('pending-merges', '\n'.join(merges))
+        real_trees = []
+        ghosts = []
+        # convert absent trees to the null tree, which we convert back to 
+        # missing on access.
+        for rev_id, tree in parents_list:
+            if tree is not None:
+                real_trees.append((rev_id, tree))
+            else:
+                real_trees.append((rev_id,
+                    self.branch.repository.revision_tree(None)))
+                ghosts.append(rev_id)
+        dirstate.set_parent_trees(real_trees, ghosts=ghosts)
+        self._dirty = True
 
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
@@ -2144,48 +2176,17 @@ class WorkingTree4(WorkingTree3):
             # dirstate updates.
             if self._control_files._lock_mode == 'w':
                 if self._dirty:
-                    self._write_dirstate()
+                    self.flush()
+            self._dirstate = None
         # reverse order of locking.
         try:
             return self._control_files.unlock()
         finally:
             self.branch.unlock()
 
-    def _write_dirstate(self):
+    def flush(self):
         """Write the full dirstate to disk."""
-        # in progress - not ready yet.
-        return
-        state_header = 'Bzr dirstate format 1'
-        checksum_line = ''
-        lines = [state_header, checksum_line]
-        lines.append("%s" % " ".join(self._parent_revisions))
-        kind_map = {
-            'root_directory':'r',
-            'file':'f',
-            'directory':'d',
-            'link':'l',
-            }
-        # root is not yielded by iter_entries_by_dir
-        entry = self._inventory.root
-        lines.append(kind_map[entry.kind])
-        lines.append('') # dir stats dont matter.
-        lines.append('') # and they have no sha1/link target
-        lines.append(entry.file_id)
-        lines.append('/')
-        lines.append('null:')
-        lines.append('')
-        lines.append('')
-        lines.append('')
-        lines.append('')
-        lines.append('')
-        lines.append('')
-        for path, entry in self._inventory.iter_entries_by_dir():
-            lines.append(kind_map[entry.kind])
-            lines.append(path)
-            # lines.append(entry.stat_blob)
-            # lines.append(entry.dirstate_value)
-
-        self._control_files.put_utf8('dirstate', '\n'.join(lines))
+        self.current_dirstate().save()
         
 
 def get_conflicted_stem(path):
@@ -2511,7 +2512,6 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
             wt._write_inventory(inv)
             wt.set_root_id(inv.root.file_id)
             wt.set_last_revision(revision_id)
-            wt.set_pending_merges([])
             build_tree(wt.basis_tree(), wt)
         finally:
             control_files.unlock()

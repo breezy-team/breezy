@@ -49,39 +49,12 @@ Locking:
  because we wont want to restat all files on disk just because a lock was
  acquired, yet we cannot trust the data after the previous lock was released.
 
-DirState State machines? Strategy needed ?
- We have a number of key states:
-  A memory object exists, disk data untouched.
-  B have read just the parents details to answer common queries
-  C have read the entire dirstate, so can answer questions about the tree
-    from memory
-  D have altered some part of the directory data, can incrementally save.
-    i.e. have refreshed a stat hit for a single file.
-  E (full-dirty) have altered some part of the directory data, cannot
-  incrementally save.  I.e. have added or deleted a file, or added or deleted
-  parents to the dirstate itself.
-
- currently _header_read = True means the header is read, can be in B through E
-           _clean = True means the in memory representation is exactly whats
-                    on disk - C
-           _clean = False -> A or B or D or E
-           _header_read = False means A
-
 Memory representation:
-Each row will be a tuple that has:
- current_row_data_tuple, parent_list
-current_row_data = [dirname, basename, fullkind, fileid, size, packed-stat, linkvalue]
-parents_list = [(revision, kind, dirname, basename, size, executable_bool, sha1) ...]
-row = (current_data, parents_list)
-
-Still need to address how rows are managed:
 open questions:
- vector of all rows or one vector per directory ?
- vector of all rows allows trivial bisection to find paths
  vecter of all directories, and vector of the childen ?
    i.e. 
-     (data for root), 
-     [
+     root_row = (direntry for root, [parent_direntries_for_root]), 
+     dirblocks = [
      ('', ['data for achild', 'data for bchild', 'data for cchild'])
      ('dir', ['achild', 'cchild', 'echild'])
      ]
@@ -158,26 +131,47 @@ class DirState(object):
      # of using int conversion rather than a dict here. AND BLAME ANDREW IF
      # it is faster.
 
+    NOT_IN_MEMORY = 0
+    IN_MEMORY_UNMODIFIED = 1
+    IN_MEMORY_MODIFIED = 2
+
     def __init__(self):
-        self._header_read = False
-        self._clean = False
+        # _header_state and _dirblock_state represent the current state
+        # of the dirstate metadata and the per-row data respectiely.
+        # NOT_IN_MEMORY indicates that no data is in memory
+        # IN_MEMORY_UNMODIFIED indicates that what we have in memory
+        #   is the same as is on disk
+        # IN_MEMORY_MODIFIED indicates that we have a modified version
+        #   of what is on disk. 
+        # In future we will add more granularity, for instance _dirblock_state
+        # will probably support partially-in-memory as a separate variable,
+        # allowing for partially-in-memory unmodified and partially-in-memory
+        # modified states.
+        self._header_state = DirState.NOT_IN_MEMORY
+        self._dirblock_state = DirState.NOT_IN_MEMORY
+        self._dirblocks = []
+        self._ghosts = []
         self._parents = []
+        self._state_file=None
 
     def add_parent_tree(self, tree_id, tree):
         """Add tree as a parent to this dirstate."""
+        self._read_dirblocks_if_needed()
         self._parents.append(tree_id)
-        self._clean = False
+        self._header_state = DirState.IN_MEMORY_MODIFIED
+        if tree is None:
+            self._ghosts.append(tree_id)
 
     @staticmethod
-    def from_tree(tree):
+    def from_tree(tree, dir_state_filename):
         """Create a dirstate from a bzr Tree.
 
         :param tree: The tree which should provide parent information and
             inventory ids.
         """
+        # XXX: aka the big ugly.
         result = DirState()
-
-        lines = []
+        result._state_file = open(dir_state_filename, 'wb+')
 
         _encode = base64.encodestring
 
@@ -190,45 +184,38 @@ class DirState(object):
         for parent_id in parent_ids:
             parent_trees.append(tree.branch.repository.revision_tree(parent_id))
 
-        lines.append(result._get_parents_line(parent_ids))
         # FIXME: is this utf8 safe?
 
         to_minikind = DirState._kind_to_minikind
         to_yesno = DirState._to_yesno
 
         st = os.lstat(tree.basedir)
-        null_parent_info = '\0'.join((
-                    'null:'
-                    , '', ''
-                    , ''
-                    , ''
-                    , ''
-                    , ''
-                    ))
-            #, 'd', gen_root_id().encode('utf8')
         root_info = [
             '', '' # No path
-            , 'd', tree.inventory.root.file_id.encode('utf8')
-            , str(st.st_size)
+            , 'directory', tree.inventory.root.file_id.encode('utf8')
+            , 0 # no point having a size for dirs.
             , pack_stat(st)
             , '' # No sha
-            ] + [null_parent_info]*num_parents
-#       disabled because the root entry has no revision attribute set.
-#        for parent_tree in parent_trees:
-#            root_info.append('\0'.join((
-#                    parent_tree.inventory.root.revision.encode('utf8'),
-#                    '', '',
-#                    '',
-#                    '',
-#                    '',
-#                    '',
-#                    )))
+            ]
+        root_parents = []
+        for parent_tree in parent_trees:
+            root_parents.append((
+                    parent_tree.inventory.root.revision.encode('utf8'),
+                    'directory', '',
+                    '',
+                    '',
+                    False,
+                    '',
+                    ))
             
-        lines.append('\0'.join(root_info))
-
+        root_row = (root_info, root_parents)
+        dirblocks = []
         for dirinfo, block in tree.walkdirs():
-
+            # dirinfo is path, id
             to_remove = []
+            # add the row for this block
+            block_row = []
+            dirblocks.append((dirinfo[0], block_row))
             for relpath, name, kind, st, fileid, versionedkind in block:
                 if fileid is None:
                     # unversioned file, skip
@@ -264,30 +251,42 @@ class DirState(object):
                 row_data = (dirname.encode('utf8'), basename.encode('utf8'),
                     kind, fileid.encode('utf8'), st.st_size, pack_stat(st),
                     s)
-                row_tuple = (row_data, parent_info)
-                lines.append(result._row_to_line(row_tuple))
+                block_row.append((row_data, parent_info))
 
             # It isn't safe to remove entries while we are iterating
             # over the same list, so remove them now
             for entry in to_remove:
                 block.remove(entry)
 
-        result.lines = result._get_output_lines(lines)
-        result._header_read = True
-        result._clean = True
+        #lines.append(result._get_parents_line(parent_ids))
+        #lines.append(result._get_ghosts_line([]))
+        result._set_data(parent_ids, root_row, dirblocks)
+        result.save()
         return result
+
+    def get_ghosts(self):
+        """Return a list of the parent tree revision ids that are ghosts."""
+        self._read_header_if_needed()
+        return self._ghosts
 
     def get_lines(self):
         """Serialise the entire dirstate to a sequence of lines."""
-        if self._clean:
-            return self.lines
+        if (self._header_state == DirState.IN_MEMORY_UNMODIFIED and
+            self._dirblock_state == DirState.IN_MEMORY_UNMODIFIED):
+            # read whats on disk.
+            self._state_file.seek(0)
+            return self._state_file.readlines()
         lines = []
         lines.append(self._get_parents_line(self.get_parent_ids()))
+        lines.append(self._get_ghosts_line(self._ghosts))
         # append the root line which is special cased
-        lines.append(self._row_to_line(self._root_row))
-        self.lines = self._get_output_lines(lines)
-        return self.lines
+        lines.extend(map(self._row_to_line, self._iter_rows()))
+        return self._get_output_lines(lines)
 
+    def _get_ghosts_line(self, ghost_ids):
+        """Create a line for the state file for ghost information."""
+        return '\0'.join([str(len(ghost_ids))] + ghost_ids)
+        
     def _get_parents_line(self, parent_ids):
         """Create a line for the state file for parents information."""
         return '\0'.join([str(len(parent_ids))] + parent_ids)
@@ -307,26 +306,37 @@ class DirState(object):
         :param path: The name of the file for the dirstate.
         :return: A DirState object.
         """
-        # This constructs a new DirState object on a path, sets the state_file
+        # This constructs a new DirState object on a path, sets the _state_file
         # to a new empty file for that path. It then calls _set_data() with our
         # stock empty dirstate information - a root with ROOT_ID, no children,
         # and no parents. Finally it calls save() to ensure that this data will
         # persist.
         result = DirState()
-        result.state_file = open(path, 'wb+')
-        # a new root directory, with a pack_stat that is just noise and will 
+        result._state_file = open(path, 'wb+')
+        # a new root directory, with a pack_stat (the x's) that is just noise and will 
         # never match the output of base64 encode.
-        root_row_data = ('', '', 'directory', bzrlib.inventory.ROOT_ID, 0, 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', '')
+        root_row_data = ('', '', 'directory', bzrlib.inventory.ROOT_ID, 0, 'x'*32, '')
         root_parents = []
         root_row = (root_row_data, root_parents)
-        empty_tree_data = [('', [])] # root dir contents - no entries.
-        result._set_data(root_row, empty_tree_data)
+        empty_tree_dirblocks = [('', [])] # root dir contents - no entries.
+        result._set_data([], root_row, empty_tree_dirblocks)
         try:
             result.save()
         except:
-            result.state_file.close()
+            result._state_file.close()
             raise
         return result
+
+    def _iter_rows(self):
+        """Iterate over all the row data in the dirstate.
+
+        Each yelt item is a tuple of (row_data, parent_data_list).
+        """
+        self._read_dirblocks_if_needed()
+        yield self._root_row
+        for directory in self._dirblocks:
+            for row in directory[1]:
+                yield row
 
     def _get_output_lines(self, lines):
         """format lines for final output.
@@ -338,8 +348,8 @@ class DirState(object):
         lines.append('') # a final newline
         inventory_text = '\0\n\0'.join(lines)
         output_lines.append('adler32: %s\n' % (zlib.adler32(inventory_text),))
-        # -2, 1 for num parents, 1 for final newline
-        num_entries = len(lines)-2
+        # -3, 1 for num parents, 1 for ghosts, 1 for final newline
+        num_entries = len(lines)-3
         output_lines.append('num_entries: %s\n' % (num_entries,))
         output_lines.append(inventory_text)
         return output_lines
@@ -348,13 +358,69 @@ class DirState(object):
     def on_file(path):
         """Construct a DirState on the file at path path."""
         result = DirState()
-        result.state_file = open(path, 'rb+')
+        result._state_file = open(path, 'rb+')
         return result
 
-    def _read_all(self):
-        """Read the entire state."""
-        self._read_header()
-        
+    def _read_dirblocks_if_needed(self):
+        """Read in all the dirblocks from the file if they are not in memory."""
+        self._read_header_if_needed()
+        if self._dirblock_state == DirState.NOT_IN_MEMORY:
+            # the _state_file pointer will be positioned at the start of the 
+            # dirblocks.
+            text = self._state_file.read()
+            # TODO: check the adler checksums. adler_measured = zlib.adler32(text)
+
+            fields = text.split('\0')
+            # Remove the last blank entry
+            trailing = fields.pop()
+            assert trailing == ''
+            # consider turning fields into a tuple.
+
+            # skip the first field which is the trailing null from the header.
+            cur = 1
+            field_count = len(fields)
+            # Each line now has an extra '\n' field which is not used
+            # so we just skip over it
+            # number of fields per dir_entry + number of fields per parent_entry + newline
+            num_parents = len(self._parents)
+            entry_size = 7 + (7 * num_parents) + 1
+            expected_field_count = entry_size * self._num_entries
+            # is the file too short ?
+            assert field_count - cur == expected_field_count, \
+                'field count incorrect %s != %s' % (expected_field_count, field_count)
+
+            # Fast path the case where there are 1 or 2 parents
+            if num_parents == 0:
+                entries = [(fields[pos:pos+7], []) for pos in xrange(cur, field_count, entry_size)]
+            elif num_parents == 1:
+                entries = [(fields[pos:pos+7], [fields[pos+7:pos+14],])
+                    for pos in xrange(cur, field_count, entry_size)]
+            elif num_parents == 2:
+                entries = [(fields[pos:pos+7], [
+                            fields[pos+7:pos+14],
+                            fields[pos+14:pos+21],])
+                    for pos in xrange(cur, field_count, entry_size)]
+            else:
+                raise NotImplementedError(self._read_dirblocks_if_needed)
+                entries = [tuple(
+                        [fields[chunk:chunk+7] for chunk in xrange(pos, pos+entry_size-1, 7)])
+                    for pos in xrange(cur, field_count, entry_size)
+                ]
+
+            assert len(entries) == self._num_entries, '%s != %s entries' % (len(entries),
+                self._num_entries)
+            entry_iter = iter(entries)
+            self._root_row = entry_iter.next()
+            # convert the minikind to kind
+            self._root_row[0][2] = self._minikind_to_kind[self._root_row[0][2]]
+            # convert the size to an int
+            self._root_row[0][4] = int(self._root_row[0][4])
+            # TODO parent converion
+            # TODO dirblock population
+            for entry in entry_iter:
+                # do something here
+                pass
+
     def _read_header(self):
         """This reads in the metadata header, and the parent ids.
 
@@ -364,16 +430,22 @@ class DirState(object):
         :return: (expected adler checksum, number of entries, parent list)
         """
         self._read_prelude()
-        parent_line = self.state_file.readline()
+        parent_line = self._state_file.readline()
         info = parent_line.split('\0')
         num_parents = int(info[0])
         assert num_parents == len(info)-2, 'incorrect parent info line'
-
         self._parents = [p.decode('utf8') for p in info[1:-1]]
+
+        ghost_line = self._state_file.readline()
+        info = ghost_line.split('\0')
+        num_ghosts = int(info[1])
+        assert num_ghosts == len(info)-3, 'incorrect ghost info line'
+        self._ghosts = [p.decode('utf8') for p in info[2:-1]]
+        self._header_state = DirState.IN_MEMORY_UNMODIFIED
 
     def _read_header_if_needed(self):
         """Read the header of the dirstate file if needed."""
-        if self._header_read is False:
+        if self._header_state == DirState.NOT_IN_MEMORY:
             self._read_header()
 
     def _read_prelude(self):
@@ -385,15 +457,15 @@ class DirState(object):
         The next entry in the file should be the number of parents,
         and their ids. Followed by a newline.
         """
-        header = self.state_file.readline()
+        header = self._state_file.readline()
         assert header == '#bazaar dirstate flat format 1\n', \
             'invalid header line: %r' % (header,)
-        adler_line = self.state_file.readline()
+        adler_line = self._state_file.readline()
         assert adler_line.startswith('adler32: '), 'missing adler32 checksum'
         self.adler_expected = int(adler_line[len('adler32: '):-1])
-        num_entries_line = self.state_file.readline()
+        num_entries_line = self._state_file.readline()
         assert num_entries_line.startswith('num_entries: '), 'missing num_entries line'
-        self.num_entries = int(num_entries_line[len('num_entries: '):-1])
+        self._num_entries = int(num_entries_line[len('num_entries: '):-1])
     
     def _row_to_line(self, row):
         """Serialize row to a NULL delimited line ready for _get_output_lines.
@@ -418,22 +490,49 @@ class DirState(object):
     
     def save(self):
         """Save any pending changes created during this session."""
-        self.state_file.seek(0)
-        self.state_file.writelines(self.get_lines())
-        self.state_file.flush()
-        self._clean = True
+        if (self._header_state == DirState.IN_MEMORY_MODIFIED or
+            self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
+            self._state_file.seek(0)
+            self._state_file.writelines(self.get_lines())
+            self._state_file.flush()
+            self._header_state = DirState.IN_MEMORY_UNMODIFIED
+            self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
-    def _set_data(self, root_row, tree_data):
-        """Set the full dirstate data to root_row and tree_data.
+    def _set_data(self, parent_ids, root_row, dirblocks):
+        """Set the full dirstate data in memory.
 
         This is an internal function used to completely replace the objects
         in memory state. It puts the dirstate into state 'full-dirty'.
+
+        :param parent_ids: A list of parent tree revision ids.
+        :param root_row: The root row - a tuple of the root direntry and the
+            list of matching direntries from the parent_ids trees.
+        :param dirblocks: A list containing one tuple for each directory in the
+            tree. Each tuple contains the directory path and a list of
+            row data in the same format as root_row.
         """
         # our memory copy is now authoritative.
-        self._header_read = True
-        self._clean = False
+        self._dirblocks = dirblocks
         self._root_row = root_row
-        # should save tree_data.
+        self._header_state = DirState.IN_MEMORY_MODIFIED
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._parents = list(parent_ids)
+
+    def set_parent_trees(self, trees, ghosts):
+        """Set the parent trees for the dirstate.
+
+        :param trees: A list of revision_id, tree tuples. tree must be provided
+            even if the revision_id refers to a ghost: supply an empty tree in 
+            this case.
+        :param ghosts: A list of the revision_ids that are ghosts at the time
+            of setting.
+        """ 
+        # TODO regenerate self._dirblocks and self._root_row
+        self._read_dirblocks_if_needed()
+        self._parents = [rev_id for rev_id, tree in trees]
+        self._ghosts = list(ghosts)
+        self._header_state = DirState.IN_MEMORY_MODIFIED
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
 
 def pack_stat(st, _encode=base64.encodestring, _pack=struct.pack):

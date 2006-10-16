@@ -405,6 +405,42 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # check it fails
         self.assertRaises(errors.NoSuchRevision, tree.revision_tree, rev1)
 
+    def test_no_dirstate_outside_lock(self):
+        # temporary test until the code is mature enough to test from outside.
+        """Getting a dirstate object fails if there is no lock."""
+        def lock_and_call_current_dirstate(tree, lock_method):
+            getattr(tree, lock_method)()
+            tree.current_dirstate()
+            tree.unlock()
+        tree = self.make_workingtree()
+        self.assertRaises(errors.NotWriteLocked, tree.current_dirstate)
+        lock_and_call_current_dirstate(tree, 'lock_read')
+        self.assertRaises(errors.NotWriteLocked, tree.current_dirstate)
+        lock_and_call_current_dirstate(tree, 'lock_write')
+        self.assertRaises(errors.NotWriteLocked, tree.current_dirstate)
+        lock_and_call_current_dirstate(tree, 'lock_tree_write')
+        self.assertRaises(errors.NotWriteLocked, tree.current_dirstate)
+
+    def test_new_dirstate_on_new_lock(self):
+        # until we have detection for when a dirstate can be reused, we
+        # want to reparse dirstate on every new lock.
+        known_dirstates = set()
+        def lock_and_compare_all_current_dirstate(tree, lock_method):
+            getattr(tree, lock_method)()
+            state = tree.current_dirstate()
+            self.assertFalse(state in known_dirstates)
+            known_dirstates.add(state)
+            tree.unlock()
+        tree = self.make_workingtree()
+        # lock twice with each type to prevent silly per-lock-type bugs.
+        # each lock and compare looks for a unique state object.
+        lock_and_compare_all_current_dirstate(tree, 'lock_read')
+        lock_and_compare_all_current_dirstate(tree, 'lock_read')
+        lock_and_compare_all_current_dirstate(tree, 'lock_tree_write')
+        lock_and_compare_all_current_dirstate(tree, 'lock_tree_write')
+        lock_and_compare_all_current_dirstate(tree, 'lock_write')
+        lock_and_compare_all_current_dirstate(tree, 'lock_write')
+
 
 class TestFormat2WorkingTree(TestCaseWithTransport):
     """Tests that are specific to format 2 trees."""

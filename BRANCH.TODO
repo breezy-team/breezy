@@ -2,3 +2,5 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 Set the introduction version of WorkingTreeFormat4 in workingtree.py.
+
+optimise dirstate to not write data for ghost parents - and stop set_parent_trees needing to do the weird hack of making empty trees to pass in.
