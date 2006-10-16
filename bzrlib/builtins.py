@@ -1715,17 +1715,13 @@ class cmd_cat(Command):
                                                 % (filename, revision_id))
             else:
                 rev_tree.print_file(cur_file_id)
-                return
-
-        if old:
+        elif old:
             if old_file_id is None:
                 raise errors.BzrCommandError("%r is not present in revision %s"
                                                 % (filename, revision_id))
             else:
                 rev_tree.print_file(old_file_id)
-                return
-        
-        if cur_file_id is not None:
+        elif cur_file_id is not None:
             if old_file_id is not None:
                 if cur_file_id == old_file_id:
                     rev_tree.print_file(cur_file_id)

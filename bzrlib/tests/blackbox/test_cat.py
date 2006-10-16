@@ -80,6 +80,15 @@ class TestCat(TestCaseInTempDir):
         bzr('rename', 'c', 'a');
         bzr('commit', '-m', '2')
 
+        # new file is not present
+        bzr('cat', 'c', '-r', '1', '--new', retcode=3)
+
+        # old file is not present
+        bzr('cat', 'b', '-r', '1', '--old', retcode=3)
+
+        # files are different
+        bzr('cat', 'a', '-r', '1', retcode=3)
+
         # get to the old file automatically
         self.assertEquals(bzr('cat', 'd', '-r', '1'), 'bar\n')
 
