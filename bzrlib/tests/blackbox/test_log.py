@@ -136,6 +136,7 @@ class TestLogMerges(ExternalBase):
 #message:
 #  merge branch 1
 #    ------------------------------------------------------------
+#    revno: 1.1.2  
 #    merged: foo@example.com-20060328113140-91f43cfb46dc2863
 #    committer: Robert Collins <foo@example.com>
 #    branch nick: child
@@ -143,6 +144,7 @@ class TestLogMerges(ExternalBase):
 #    message:
 #      merge branch 2
 #        ------------------------------------------------------------
+#        revno: 1.1.1.1
 #        merged: foo@example.com-20060328113140-1ba24f850a0ef573
 #        committer: Robert Collins <foo@example.com>
 #        branch nick: smallerchild
@@ -150,6 +152,7 @@ class TestLogMerges(ExternalBase):
 #        message:
 #          branch 2
 #    ------------------------------------------------------------
+#    revno: 1.1.1
 #    merged: foo@example.com-20060328113140-5749a4757a8ac792
 #    committer: Robert Collins <foo@example.com>
 #    branch nick: child
@@ -165,11 +168,17 @@ class TestLogMerges(ExternalBase):
 #  first post
 #""", out)
         # but we dont have a nice pattern matcher hooked up yet, so:
-        # we check for the indenting of the commit message:
+        # we check for the indenting of the commit message and the 
+        # revision numbers 
+        self.assertTrue('revno: 2' in out)
         self.assertTrue('  merge branch 1' in out)
+        self.assertTrue('    revno: 1.1.2' in out)
         self.assertTrue('      merge branch 2' in out)
+        self.assertTrue('        revno: 1.1.1.1' in out)
         self.assertTrue('          branch 2' in out)
+        self.assertTrue('    revno: 1.1.1' in out)
         self.assertTrue('      branch 1' in out)
+        self.assertTrue('revno: 1' in out)
         self.assertTrue('  first post' in out)
         self.assertEqual('', err)
 

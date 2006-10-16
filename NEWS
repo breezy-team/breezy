@@ -2,6 +2,14 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr log`` now shows dotted-decimal revision numbers for all revisions,
+      rather than just showing a decimal revision number for revisions on the
+      mainline. These revision numbers are not yet accepted as input into bzr
+      commands such as log, diff etc. (Robert Collins)
+
+    * revisions can now be specified using dotted-decimal revision numbers.
+      For instance, ``bzr diff -r 1.2.1..1.2.3. (Robert Collins)
+
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
 
     * New connection: ``bzr+http://`` which supports tunnelling the smart
@@ -19,6 +27,11 @@ IN DEVELOPMENT
       do certain tasks (e.g. log formatters). Also provides lazy registration
       to allow modules to be loaded on request. (John Arbash Meinel, Adeodato
       Simó)
+
+  API INCOMPATABILITY:
+  
+    * LogFormatter subclasses show now expect the 'revno' parameter to 
+      show() to be a string rather than an int. (Robert Collins)
 
   INTERNALS:
 
@@ -234,6 +247,7 @@ bzr 0.11rc1  2006-09-25
       NoSuchFile and forcing the caller to repeat their request.
       (John Arbash Meinel)
 
+<<<<<<< TREE
     * WorkingTree has a new api ``unversion`` which allow the unversioning of
       entries by their file id. (Robert Collins)
 
@@ -285,6 +299,16 @@ bzr 0.11rc1  2006-09-25
       Transport. (Andrew Bennetts, Martin Pool)
 
 bzr 0.10  2006-08-29
+=======
+    * bzrlib.tsort.merge_sorted now accepts 'generate_revnos'. This parameter
+      will cause it to add another column to its output, which contains the
+      dotted-decimal revno for each revision, as a tuple. (Robert Collins)
+
+    * LogFormatter.show_merge is deprecated in favour of
+      LogFormatter.show_merge_revno. (Robert Collins)
+
+bzr 0.10.0RC1  2006-08-28
+>>>>>>> MERGE-SOURCE
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
