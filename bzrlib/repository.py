@@ -605,7 +605,8 @@ class Repository(object):
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
-            return RevisionTree(self, Inventory(), _mod_revision.NULL_REVISION)
+            return RevisionTree(self, Inventory(root_id=None), 
+                                _mod_revision.NULL_REVISION)
         else:
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)

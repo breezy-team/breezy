@@ -24,8 +24,13 @@ import time
 import unittest
 import warnings
 
-from bzrlib import osutils, memorytree
 import bzrlib
+from bzrlib import (
+    bzrdir,
+    memorytree,
+    osutils,
+    repository,
+    )
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
                           ChrootedTestCase,
@@ -465,6 +470,16 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         tree = self.make_branch_and_memory_tree('dir')
         self.failIfExists('dir')
         self.assertIsInstance(tree, memorytree.MemoryTree)
+
+    def test_make_branch_and_memory_tree_with_format(self):
+        """make_branch_and_memory_tree should accept a format option."""
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormat7()
+        tree = self.make_branch_and_memory_tree('dir', format=format)
+        self.failIfExists('dir')
+        self.assertIsInstance(tree, memorytree.MemoryTree)
+        self.assertEqual(format.repository_format.__class__,
+            tree.branch.repository._format.__class__)
 
 
 class TestTestCaseWithTransport(TestCaseWithTransport):

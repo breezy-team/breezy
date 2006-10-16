@@ -360,6 +360,32 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         self.assertEqual(cwd, osutils.getcwd())
 
 
+class _DontSpawnProcess(Exception):
+    """A simple exception which just allows us to skip unnecessary steps"""
+
+
+class TestRunBzrSubprocessCommands(TestCaseWithTransport):
+
+    def _popen(self, *args, **kwargs):
+        """Record the command that is run, so that we can ensure it is correct"""
+        self._popen_args = args
+        self._popen_kwargs = kwargs
+        raise _DontSpawnProcess()
+
+    def test_run_bzr_subprocess_no_plugins(self):
+        self.assertRaises(_DontSpawnProcess, self.run_bzr_subprocess)
+        command = self._popen_args[0]
+        self.assertEqual(sys.executable, command[0])
+        self.assertEqual(self.get_bzr_path(), command[1])
+        self.assertEqual(['--no-plugins'], command[2:])
+
+    def test_allow_plugins(self):
+        self.assertRaises(_DontSpawnProcess,
+                          self.run_bzr_subprocess, allow_plugins=True)
+        command = self._popen_args[0]
+        self.assertEqual([], command[2:])
+
+
 class TestBzrSubprocess(TestCaseWithTransport):
 
     def test_start_and_stop_bzr_subprocess(self):

@@ -86,13 +86,15 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         :param empty_tree: A working tree with no content and no parents to
             modify.
         """
+        empty_tree.set_root_id('empty-root-id')
         return self._convert_tree(empty_tree, converter)
 
     def _make_abc_tree(self, tree):
         """setup an abc content tree."""
         files = ['a', 'b/', 'b/c']
-        self.build_tree(files, line_endings='binary',
+        self.build_tree(files, line_endings='binary', 
                         transport=tree.bzrdir.root_transport)
+        tree.set_root_id('root-id')
         tree.add(files, ['a-id', 'b-id', 'c-id'])
 
     def get_tree_no_parents_abc_content(self, tree, converter=None):

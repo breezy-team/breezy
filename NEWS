@@ -1,12 +1,24 @@
 IN DEVELOPMENT
 
   IMPROVEMENTS:
+
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
+
+    * New connection: ``bzr+http://`` which supports tunnelling the smart
+      protocol over an HTTP connection. If writing is enabled on the bzr
+      server, then you can write over the http connection.
+      (Andrew Bennetts)
 
     * ``bzr`` now uses lazy importing to reduce the startup time. This has
       a moderate effect on lots of actions, especially ones that have
       little to do. For example ``bzr rocks`` time is down to 116ms from
       283ms. (John Arbash Meinel)
+
+    * New Registry class to provide name-to-object registry-like support,
+      for example for schemes where plugins can register new classes to
+      do certain tasks (e.g. log formatters). Also provides lazy registration
+      to allow modules to be loaded on request. (John Arbash Meinel, Adeodato
+      Simó)
 
   INTERNALS:
 
@@ -18,7 +30,17 @@ IN DEVELOPMENT
       around a regex, which defers compilation until first use. 
       (John Arbash Meinel)
 
+    * ``TestCase.run_bzr_subprocess`` defaults to supplying the
+      ``--no-plugins`` parameter to ensure test reproducability, and avoid
+      problems with system-wide installed plugins. (John Arbash Meinel)
+
+    * Newly-initialized trees have unique root ids.  (Aaron Bentley)
+
   BUG FIXES:
+
+    * Don't require ``Content-Type`` in range responses. Assume they are a
+      single range if ``Content-Type`` does not exist.
+      (John Arbash Meinel, #62473)
 
     * bzr branch/pull no longer complain about progress bar cleanup when
       interrupted during fetch.  (Aaron Bentley, #54000)
@@ -46,6 +68,10 @@ IN DEVELOPMENT
       testing facilities: its not suitable for tests that need to mutate disk
       state, but most tests should not need that and should be converted to
       TestCaseWithMemoryTransport. (Robert Collins)
+
+    * ``TestCase.make_branch_and_memory_tree`` now takes a format
+      option to set the BzrDir, Repository and Branch formats of the
+      created objects. (Robert Collins, John Arbash Meinel)
 
 bzr 0.11  2006-10-02
 

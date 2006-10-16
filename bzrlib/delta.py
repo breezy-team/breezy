@@ -152,14 +152,14 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
         want_unchanged=want_unchanged,
         specific_files=specific_files,
         extra_trees=extra_trees,
-        require_versioned=require_versioned)
+        require_versioned=require_versioned,
+        include_root=False)
 
 
 def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,
                    include_root):
 
     from osutils import is_inside_any
-    
     old_inv = old_tree.inventory
     new_inv = new_tree.inventory
     delta = TreeDelta()
