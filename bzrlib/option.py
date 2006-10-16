@@ -263,6 +263,7 @@ _global_option('reprocess', help='Reprocess to reduce spurious conflicts')
 _global_option('kind', type=str)
 _global_option('dry-run',
                help="show what would be done, but don't actually do anything")
+_global_option('name-from-revision', help='The path name in the old tree.')
 
 
 def _global_short(short_name, long_name):
