@@ -5,7 +5,7 @@ from distutils.core import setup
 setup(name='bzr-svn',
       description='Support for Subversion branches in Bazaar-NG',
       keywords='plugin bzr svn',
-      version='0.1',
+      version='0.2',
       url='http://bazaar-vcs.org/BzrForeignBranches/Subversion',
       download_url='http://bazaar-vcs.org/BzrSvn',
       license='GPL',
