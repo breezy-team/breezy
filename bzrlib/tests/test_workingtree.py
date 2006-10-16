@@ -173,9 +173,10 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         t = control.get_workingtree_transport(None)
         self.assertEqualDiff('Bazaar-NG Working Tree format 3',
                              t.get('format').read())
-        self.assertEqualDiff('<inventory format="5">\n'
-                             '</inventory>\n',
-                             t.get('inventory').read())
+        self.assertContainsRe(t.get('inventory').read(), 
+                              '<inventory file_id="[^"]*" format="5">\n'
+                              '</inventory>\n',
+                             )
         self.assertEqualDiff('### bzr hashcache v5\n',
                              t.get('stat-cache').read())
         self.assertFalse(t.has('inventory.basis'))

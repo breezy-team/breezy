@@ -167,8 +167,9 @@ class MemoryTree(mutabletree.MutableTree):
         self._file_transport = MemoryTransport()
         # TODO copy the revision trees content, or do it lazy, or something.
         inventory_entries = self._inventory.iter_entries()
-        inventory_entries.next()
         for path, entry in inventory_entries:
+            if path == '':
+                continue
             if entry.kind == 'directory':
                 self._file_transport.mkdir(path)
             elif entry.kind == 'file':

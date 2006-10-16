@@ -21,7 +21,7 @@ from stat import S_ISREG
 from bzrlib import bzrdir, errors
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
-                           ExistingLimbo, ImmortalLimbo)
+                           ExistingLimbo, ImmortalLimbo, NoFinalPath)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
                             delete_any)
@@ -457,7 +457,10 @@ class TreeTransform(object):
         try:
             return self._new_name[trans_id]
         except KeyError:
-            return os.path.basename(self._tree_id_paths[trans_id])
+            try:
+                return os.path.basename(self._tree_id_paths[trans_id])
+            except KeyError:
+                raise NoFinalPath(trans_id, self)
 
     def by_parent(self):
         """Return a map of parent: children for known parents.
@@ -570,7 +573,10 @@ class TreeTransform(object):
             parent_id = trans_id
             while parent_id is not ROOT_PARENT:
                 seen.add(parent_id)
-                parent_id = self.final_parent(parent_id)
+                try:
+                    parent_id = self.final_parent(parent_id)
+                except KeyError:
+                    break
                 if parent_id == trans_id:
                     conflicts.append(('parent loop', trans_id))
                 if parent_id in seen:
@@ -958,6 +964,8 @@ def build_tree(tree, wt):
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
+    if tree.inventory.root is not None:
+        wt.set_root_id(tree.inventory.root.file_id)
     tt = TreeTransform(wt)
     divert = set()
     try:
@@ -1232,6 +1240,9 @@ def revert(working_tree, target_tree, filenames, backups=False,
         basis_tree = None
         try:
             for id_num, file_id in enumerate(wt_interesting):
+                if (working_tree.inventory.is_root(file_id) and 
+                    len(target_tree.inventory) == 0):
+                    continue
                 child_pb.update("New file check", id_num+1, 
                                 len(sorted_interesting))
                 if file_id not in target_tree:

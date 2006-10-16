@@ -165,7 +165,7 @@ def gen_file_id(name):
 
 def gen_root_id():
     """Return a new tree-root file id."""
-    return gen_file_id('TREE_ROOT')
+    return gen_file_id('tree_root')
 
 
 class TreeEntry(object):
@@ -554,6 +554,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_read_lock
     def copy_content_into(self, tree, revision_id=None):
         """Copy the current content and user files of this tree into tree."""
+        tree.set_root_id(self.get_root_id())
         if revision_id is None:
             merge.transform_tree(tree, self)
         else:
@@ -1188,6 +1189,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                 basis_tree,
                                 this_tree=self,
                                 pb=pb)
+                    if (basis_tree.inventory.root is None and
+                        new_basis_tree.inventory.root is not None):
+                        self.set_root_id(new_basis_tree.inventory.root.file_id)
                 finally:
                     pb.finished()
                 # TODO - dedup parents list with things merged by pull ?
@@ -1641,23 +1645,30 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def update(self):
         """Update a working tree along its branch.
 
-        This will update the branch if its bound too, which means we have multiple trees involved:
-        The new basis tree of the master.
-        The old basis tree of the branch.
-        The old basis tree of the working tree.
-        The current working tree state.
-        pathologically all three may be different, and non ancestors of each other.
-        Conceptually we want to:
-        Preserve the wt.basis->wt.state changes
-        Transform the wt.basis to the new master basis.
-        Apply a merge of the old branch basis to get any 'local' changes from it into the tree.
-        Restore the wt.basis->wt.state changes.
+        This will update the branch if its bound too, which means we have
+        multiple trees involved:
+
+        - The new basis tree of the master.
+        - The old basis tree of the branch.
+        - The old basis tree of the working tree.
+        - The current working tree state.
+
+        Pathologically, all three may be different, and non-ancestors of each
+        other.  Conceptually we want to:
+
+        - Preserve the wt.basis->wt.state changes
+        - Transform the wt.basis to the new master basis.
+        - Apply a merge of the old branch basis to get any 'local' changes from
+          it into the tree.
+        - Restore the wt.basis->wt.state changes.
 
         There isn't a single operation at the moment to do that, so we:
-        Merge current state -> basis tree of the master w.r.t. the old tree basis.
-        Do a 'normal' merge of the old branch basis if it is relevant.
+        - Merge current state -> basis tree of the master w.r.t. the old tree
+          basis.
+        - Do a 'normal' merge of the old branch basis if it is relevant.
         """
         old_tip = self.branch.update()
+
         # here if old_tip is not None, it is the old tip of the branch before
         # it was updated from the master branch. This should become a pending
         # merge in the working tree to preserve the user existing work.  we
@@ -1677,6 +1688,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # merge tree state up to new branch tip.
             basis = self.basis_tree()
             to_tree = self.branch.basis_tree()
+            if basis.inventory.root is None:
+                self.set_root_id(to_tree.inventory.root.file_id)
             result += merge.merge_inner(
                                   self.branch,
                                   to_tree,
@@ -2014,8 +2027,10 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                          _internal=True,
                          _format=self,
                          _bzrdir=a_bzrdir)
-        wt.set_root_id(inv.root.file_id)
         basis_tree = branch.repository.revision_tree(revision)
+        if basis_tree.inventory.root is not None:
+            wt.set_root_id(basis_tree.inventory.root.file_id)
+        # set the parent list and cache the basis tree.
         wt.set_parent_trees([(revision, basis_tree)])
         transform.build_tree(basis_tree, wt)
         return wt
@@ -2085,7 +2100,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
-        inv = Inventory()
+        inv = Inventory(root_id=gen_root_id())
         wt = WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
@@ -2095,8 +2110,10 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          _control_files=control_files)
         wt.lock_tree_write()
         try:
-            wt.set_root_id(inv.root.file_id)
             basis_tree = branch.repository.revision_tree(revision_id)
+            # only set an explicit root id if there is one to set.
+            if basis_tree.inventory.root is not None:
+                wt.set_root_id(basis_tree.inventory.root.file_id)
             if revision_id == NULL_REVISION:
                 wt.set_parent_trees([])
             else:
