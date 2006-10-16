@@ -85,12 +85,13 @@ class TestMerge(ExternalBase):
         self.assertTrue("Not a branch" in err)
         self.runbzr('merge -r revno:%d:./..revno:%d:../b'
                     %(ancestor,b.revno()))
-        self.assertEquals(a.pending_merges(), [b.last_revision()])
+        self.assertEquals(a.get_parent_ids(), 
+                          [a.branch.last_revision(), b.last_revision()])
         self.check_file_contents('goodbye', 'quux')
         self.runbzr('revert --no-backup')
         self.runbzr('merge -r revno:%d:../b'%b.revno())
-        self.assertEquals(a.pending_merges(),
-                          [b.last_revision()])
+        self.assertEquals(a.get_parent_ids(),
+                          [a.branch.last_revision(), b.last_revision()])
         a_tip = a.commit('merged')
         self.runbzr('merge ../b -r last:1')
         self.assertEqual([a_tip], a.get_parent_ids())

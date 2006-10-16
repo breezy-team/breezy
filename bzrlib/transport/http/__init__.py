@@ -39,7 +39,13 @@ from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError, InvalidURL)
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport, register_transport, Server
+from bzrlib.transport import (
+    get_transport,
+    register_transport,
+    Server,
+    smart,
+    Transport,
+    )
 from bzrlib.transport.http.response import (HttpMultipartRangeResponse,
                                             HttpRangeResponse)
 from bzrlib.ui import ui_factory
@@ -119,7 +125,7 @@ def _extract_headers(header_text, url):
     return m
 
 
-class HttpTransportBase(Transport):
+class HttpTransportBase(Transport, smart.SmartClientMedium):
     """Base class for http implementations.
 
     Does URL parsing, etc, but not any network IO.
@@ -238,6 +244,17 @@ class HttpTransportBase(Transport):
         """
         raise NotImplementedError(self._get)
 
+    def get_request(self):
+        return SmartClientHTTPMediumRequest(self)
+
+    def get_smart_medium(self):
+        """See Transport.get_smart_medium.
+
+        HttpTransportBase directly implements the minimal interface of
+        SmartMediumClient, so this returns self.
+        """
+        return self
+
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
@@ -283,6 +300,17 @@ class HttpTransportBase(Transport):
             prev_end = end
 
         return combined
+
+    def _post(self, body_bytes):
+        """POST body_bytes to .bzr/smart on this transport.
+        
+        :returns: (response code, response body file-like object).
+        """
+        # TODO: Requiring all the body_bytes to be available at the beginning of
+        # the POST may require large client buffers.  It would be nice to have
+        # an interface that allows streaming via POST when possible (and
+        # degrades to a local buffer when not).
+        raise NotImplementedError(self._post)
 
     def put_file(self, relpath, f, mode=None):
         """Copy the file-like object into the location.
@@ -371,13 +399,14 @@ class HttpTransportBase(Transport):
 
     def clone(self, offset=None):
         """Return a new HttpTransportBase with root at self.base + offset
-        For now HttpTransportBase does not actually connect, so just return
-        a new HttpTransportBase object.
+
+        We leave the daughter classes take advantage of the hint
+        that it's a cloning not a raw creation.
         """
         if offset is None:
-            return self.__class__(self.base)
+            return self.__class__(self.base, self)
         else:
-            return self.__class__(self.abspath(offset))
+            return self.__class__(self.abspath(offset), self)
 
     @staticmethod
     def range_header(ranges, tail_amount):
@@ -397,6 +426,33 @@ class HttpTransportBase(Transport):
 
         return ','.join(strings)
 
+    def send_http_smart_request(self, bytes):
+        code, body_filelike = self._post(bytes)
+        assert code == 200, 'unexpected HTTP response code %r' % (code,)
+        return body_filelike
+
+
+class SmartClientHTTPMediumRequest(smart.SmartClientMediumRequest):
+    """A SmartClientMediumRequest that works with an HTTP medium."""
+
+    def __init__(self, medium):
+        smart.SmartClientMediumRequest.__init__(self, medium)
+        self._buffer = ''
+
+    def _accept_bytes(self, bytes):
+        self._buffer += bytes
+
+    def _finished_writing(self):
+        data = self._medium.send_http_smart_request(self._buffer)
+        self._response_body = data
+
+    def _read_bytes(self, count):
+        return self._response_body.read(count)
+        
+    def _finished_reading(self):
+        """See SmartClientMediumRequest._finished_reading."""
+        pass
+        
 
 #---------------- test server facilities ----------------
 # TODO: load these only when running tests
@@ -502,11 +558,13 @@ class HttpServer(Server):
         Server.__init__(self)
         self.request_handler = request_handler
 
-    def _http_start(self):
-        httpd = None
-        httpd = TestingHTTPServer(('localhost', 0),
+    def _get_httpd(self):
+        return TestingHTTPServer(('localhost', 0),
                                   self.request_handler,
                                   self)
+
+    def _http_start(self):
+        httpd = self._get_httpd()
         host, port = httpd.socket.getsockname()
         self._http_base_url = '%s://localhost:%s/' % (self._url_protocol, port)
         self._http_starting.release()
@@ -569,4 +627,46 @@ class HttpServer(Server):
         # this is chosen to try to prevent trouble with proxies, weird dns,
         # etc
         return 'http://127.0.0.1:1/'
+
+
+class HTTPServerWithSmarts(HttpServer):
+    """HTTPServerWithSmarts extends the HttpServer with POST methods that will
+    trigger a smart server to execute with a transport rooted at the rootdir of
+    the HTTP server.
+    """
+
+    def __init__(self):
+        HttpServer.__init__(self, SmartRequestHandler)
+
+
+class SmartRequestHandler(TestingHTTPRequestHandler):
+    """Extend TestingHTTPRequestHandler to support smart client POSTs."""
+
+    def do_POST(self):
+        """Hand the request off to a smart server instance."""
+        self.send_response(200)
+        self.send_header("Content-type", "application/octet-stream")
+        transport = get_transport(self.server.test_case._home_dir)
+        # TODO: We might like to support streaming responses.  1.0 allows no
+        # Content-length in this case, so for integrity we should perform our
+        # own chunking within the stream.
+        # 1.1 allows chunked responses, and in this case we could chunk using
+        # the HTTP chunking as this will allow HTTP persistence safely, even if
+        # we have to stop early due to error, but we would also have to use the
+        # HTTP trailer facility which may not be widely available.
+        out_buffer = StringIO()
+        smart_protocol_request = smart.SmartServerRequestProtocolOne(
+                transport, out_buffer.write)
+        # if this fails, we should return 400 bad request, but failure is
+        # failure for now - RBC 20060919
+        data_length = int(self.headers['Content-Length'])
+        # Perhaps there should be a SmartServerHTTPMedium that takes care of
+        # feeding the bytes in the http request to the smart_protocol_request,
+        # but for now it's simpler to just feed the bytes directly.
+        smart_protocol_request.accept_bytes(self.rfile.read(data_length))
+        assert smart_protocol_request.next_read_size() == 0, (
+            "not finished reading, but all data sent to protocol.")
+        self.send_header("Content-Length", str(len(out_buffer.getvalue())))
+        self.end_headers()
+        self.wfile.write(out_buffer.getvalue())
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -26,16 +26,47 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_inventory_modified(self):
+        error = errors.InventoryModified("a tree to be repred")
+        self.assertEqualDiff("The current inventory for the tree 'a tree to "
+            "be repred' has been modified, so a clean inventory cannot be "
+            "read without data loss.",
+            str(error))
+
+    def test_medium_not_connected(self):
+        error = errors.MediumNotConnected("a medium")
+        self.assertEqualDiff(
+            "The medium 'a medium' is not connected.", str(error))
+        
     def test_no_repo(self):
         dir = bzrdir.BzrDir.create(self.get_url())
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1, str(error).find((dir.transport.clone('..').base)))
         self.assertEqual(-1, str(error).find((dir.transport.base)))
         
+    def test_no_smart_medium(self):
+        error = errors.NoSmartMedium("a transport")
+        self.assertEqualDiff("The transport 'a transport' cannot tunnel the "
+            "smart protocol.",
+            str(error))
+
     def test_no_such_id(self):
         error = errors.NoSuchId("atree", "anid")
         self.assertEqualDiff("The file id anid is not present in the tree "
             "atree.",
+            str(error))
+
+    def test_not_write_locked(self):
+        error = errors.NotWriteLocked('a thing to repr')
+        self.assertEqualDiff("'a thing to repr' is not write locked but needs "
+            "to be.",
+            str(error))
+
+    def test_too_many_concurrent_requests(self):
+        error = errors.TooManyConcurrentRequests("a medium")
+        self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
+            "request limit. Be sure to finish_writing and finish_reading on "
+            "the current request that is open.",
             str(error))
 
     def test_up_to_date(self):
@@ -52,6 +83,27 @@ class TestErrors(TestCaseWithTransport):
                              "Please run bzr reconcile on this repository." %
                              repo.bzrdir.root_transport.base,
                              str(error))
+
+    def test_reading_completed(self):
+        error = errors.ReadingCompleted("a request")
+        self.assertEqualDiff("The MediumRequest 'a request' has already had "
+            "finish_reading called upon it - the request has been completed and"
+            " no more data may be read.",
+            str(error))
+
+    def test_writing_completed(self):
+        error = errors.WritingCompleted("a request")
+        self.assertEqualDiff("The MediumRequest 'a request' has already had "
+            "finish_writing called upon it - accept bytes may not be called "
+            "anymore.",
+            str(error))
+
+    def test_writing_not_completed(self):
+        error = errors.WritingNotComplete("a request")
+        self.assertEqualDiff("The MediumRequest 'a request' has not has "
+            "finish_writing called upon it - until the write phase is complete"
+            " no data may be read.",
+            str(error))
 
 
 class PassThroughError(errors.BzrNewError):
@@ -85,3 +137,10 @@ class TestErrorFormatting(TestCase):
         self.assertStartsWith(
             str(e), 'Unprintable exception ErrorWithBadFormat(')
 
+
+class TestSpecificErrors(TestCase):
+    
+    def test_transport_not_possible(self):
+        e = errors.TransportNotPossible('readonly', 'original error')
+        self.assertEqual('Transport operation not possible:'
+                         ' readonly original error', str(e))

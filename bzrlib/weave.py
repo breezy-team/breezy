@@ -75,6 +75,9 @@ import sha
 import time
 import warnings
 
+from bzrlib import (
+    progress,
+    )
 from bzrlib.trace import mutter
 from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         RevisionAlreadyPresent,
@@ -664,7 +667,8 @@ class Weave(VersionedFile):
         """_walk has become visit, a supported api."""
         return self._walk_internal()
 
-    def iter_lines_added_or_present_in_versions(self, version_ids=None):
+    def iter_lines_added_or_present_in_versions(self, version_ids=None,
+                                                pb=None):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         if version_ids is None:
             version_ids = self.versions()

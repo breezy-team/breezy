@@ -6,6 +6,118 @@ IN DEVELOPMENT
       the 'Range' header, we avoid the need to use two different curl objects
       (and two connections to the same server). (Vincent Ladeuil)
 
+    * ``bzr log`` now shows dotted-decimal revision numbers for all revisions,
+      rather than just showing a decimal revision number for revisions on the
+      mainline. These revision numbers are not yet accepted as input into bzr
+      commands such as log, diff etc. (Robert Collins)
+
+    * revisions can now be specified using dotted-decimal revision numbers.
+      For instance, ``bzr diff -r 1.2.1..1.2.3. (Robert Collins)
+
+    * ``bzr help commands`` output is now shorter (Aaron Bentley)
+
+    * New connection: ``bzr+http://`` which supports tunnelling the smart
+      protocol over an HTTP connection. If writing is enabled on the bzr
+      server, then you can write over the http connection.
+      (Andrew Bennetts)
+
+    * ``bzr`` now uses lazy importing to reduce the startup time. This has
+      a moderate effect on lots of actions, especially ones that have
+      little to do. For example ``bzr rocks`` time is down to 116ms from
+      283ms. (John Arbash Meinel)
+
+    * New Registry class to provide name-to-object registry-like support,
+      for example for schemes where plugins can register new classes to
+      do certain tasks (e.g. log formatters). Also provides lazy registration
+      to allow modules to be loaded on request. (John Arbash Meinel, Adeodato
+      Simó)
+
+  API INCOMPATABILITY:
+  
+    * LogFormatter subclasses show now expect the 'revno' parameter to 
+      show() to be a string rather than an int. (Robert Collins)
+
+  INTERNALS:
+
+    * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
+      can take a ``working_dir='foo'`` parameter, which will change directory 
+      for the command. (John Arbash Meinel)
+
+    * ``bzrlib.lazy_regex.lazy_compile`` can be used to create a proxy
+      around a regex, which defers compilation until first use. 
+      (John Arbash Meinel)
+
+    * ``TestCase.run_bzr_subprocess`` defaults to supplying the
+      ``--no-plugins`` parameter to ensure test reproducability, and avoid
+      problems with system-wide installed plugins. (John Arbash Meinel)
+
+    * Newly-initialized trees have unique root ids.  (Aaron Bentley)
+
+    * ``WorkingTree.set_root_id(None)`` is now deprecated. Please
+      pass in inventory.ROOT_ID if you want the default root id value.
+      (Robert Collins, John Arbash Meinel)
+
+    * New method ``WorkingTree.flush()`` which will write the current memory
+      inventory out to disk. At the same time, read_working_inventory will
+      no longer trash the current tree inventory if it has been modified within
+      the current lock, and the tree will now ``flush()`` automatically on
+      ``unlock()``. ``WorkingTree.set_root_id()`` has been updated to take
+      advantage of this functionality. (Robert Collins, John Arbash Meinel)
+
+  BUG FIXES:
+
+    * Don't require ``Content-Type`` in range responses. Assume they are a
+      single range if ``Content-Type`` does not exist.
+      (John Arbash Meinel, #62473)
+
+    * bzr branch/pull no longer complain about progress bar cleanup when
+      interrupted during fetch.  (Aaron Bentley, #54000)
+
+    * ``WorkingTree.set_parent_trees()`` uses the trees to directly write
+      the basis inventory, rather than going through the repository. This
+      allows us to have 1 inventory read, and 2 inventory writes when
+      committing a new tree. (John Arbash Meinel)
+
+    * When reverting, files that are not locally modified that do not exist
+      in the target are deleted, not just unversioned (Aaron Bentley)
+
+    * When trying to acquire a lock, don't fail immediately. Instead, try
+      a few times (up to 1 hour) before timing out. Also, report why the
+      lock is unavailable (John Arbash Meinel, #43521, #49556)
+
+    * Leave HttpTransportBase daughter classes decides how they
+      implement cloning. (Vincent Ladeuil, #61606)
+
+   * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
+
+  TESTING:
+
+    * New test base class TestCaseWithMemoryTransport offers memory-only
+      testing facilities: its not suitable for tests that need to mutate disk
+      state, but most tests should not need that and should be converted to
+      TestCaseWithMemoryTransport. (Robert Collins)
+
+    * ``TestCase.make_branch_and_memory_tree`` now takes a format
+      option to set the BzrDir, Repository and Branch formats of the
+      created objects. (Robert Collins, John Arbash Meinel)
+
+bzr 0.11  2006-10-02
+
+    * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
+
+bzr 0.11rc2  2006-09-27
+
+  BUG FIXES:
+
+    * Test suite hangs on windows fixed. (Andrew Bennets, Alexander Belchenko).
+    
+    * Commit performance regression fixed. (Aaron Bentley, Robert Collins, John
+      Arbash Meinel).
+
+bzr 0.11rc1  2006-09-25
+
+  IMPROVEMENTS:
+
     * Knit files now wait to create their contents until the first data is
       added. The old code used to create an empty .knit and a .kndx with just
       the header. However, this caused a lot of extra round trips over sftp.
@@ -39,7 +151,27 @@ IN DEVELOPMENT
       which processes these requests. (Andrew Bennetts, Robert Collins, Martin
       Pool)
 
+    * New command ``bzr version-info`` which can be used to get a summary
+      of the current state of the tree. This is especially useful as part
+      of a build commands. See ``doc/version_info.txt`` for more information 
+      (John Arbash Meinel)
+
   BUG FIXES:
+
+    * 'bzr inventory [FILE...]' allows restricting the file list to a
+      specific set of files. (John Arbash Meinel, #3631)
+
+    * Don't abort when annotating empty files (John Arbash Meinel, #56814)
+
+    * Add ``Stanza.to_unicode()`` which can be passed to another Stanza
+      when nesting stanzas. Also, add ``read_stanza_unicode`` to handle when
+      reading a nested Stanza. (John Arbash Meinel)
+
+    * Transform._set_mode() needs to stat the right file. 
+      (John Arbash Meinel, #56549)
+
+    * Raise WeaveFormatError rather than StopIteration when trying to read
+      an empty Weave file. (John Arbash Meinel, #46871)
 
     * Don't access e.code for generic URLErrors, only HTTPErrors have .code.
       (Vincent Ladeuil, #59835)
@@ -72,6 +204,17 @@ IN DEVELOPMENT
       other branch, and will not push or pull between the two branches.
       API users will need to perform a push or pull or update operation if they
       require branch synchronisation to take place. (Robert Collins, #47344)
+
+    * When creating a tarball or zipfile export, export unicode names as utf-8
+      paths. This may not work perfectly on all platforms, but has the best
+      chance of working in the common case. (John Arbash Meinel, #56816)
+
+    * When committing, only files that exist in working tree or basis tree
+      may be specified (Aaron Bentley, #50793)
+
+  PORTABILITY:
+
+    * Fixes to run on Python 2.5 (Brian M. Carlson, Martin Pool, Marien Zwart)
 
   INTERNALS:
 
@@ -108,6 +251,7 @@ IN DEVELOPMENT
       NoSuchFile and forcing the caller to repeat their request.
       (John Arbash Meinel)
 
+<<<<<<< TREE
     * WorkingTree has a new api ``unversion`` which allow the unversioning of
       entries by their file id. (Robert Collins)
 
@@ -120,7 +264,7 @@ IN DEVELOPMENT
       needs_tree_write_lock is provided in the workingtree module. Like the
       needs_read_lock and needs_write_lock decorators this allows static 
       declaration of the locking requirements of a function to ensure that
-      a lock is taken out for casual scripts. (Robert Collins)
+      a lock is taken out for casual scripts. (Robert Collins, #54107)
 
     * All WorkingTree methods which write to the tree, but not to the branch
       have been converted to use ``needs_tree_write_lock`` rather than 
@@ -159,6 +303,16 @@ IN DEVELOPMENT
       Transport. (Andrew Bennetts, Martin Pool)
 
 bzr 0.10  2006-08-29
+=======
+    * bzrlib.tsort.merge_sorted now accepts 'generate_revnos'. This parameter
+      will cause it to add another column to its output, which contains the
+      dotted-decimal revno for each revision, as a tuple. (Robert Collins)
+
+    * LogFormatter.show_merge is deprecated in favour of
+      LogFormatter.show_merge_revno. (Robert Collins)
+
+bzr 0.10.0RC1  2006-08-28
+>>>>>>> MERGE-SOURCE
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a

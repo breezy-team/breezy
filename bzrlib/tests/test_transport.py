@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -100,6 +100,17 @@ class TestTransport(TestCase):
         finally:
             _set_protocol_handlers(saved_handlers)
 
+    def test__combine_paths(self):
+        t = Transport('/')
+        self.assertEqual('/home/sarah/project/foo',
+                         t._combine_paths('/home/sarah', 'project/foo'))
+        self.assertEqual('/etc',
+                         t._combine_paths('/home/sarah', '../../etc'))
+        self.assertEqual('/etc',
+                         t._combine_paths('/home/sarah', '../../../etc'))
+        self.assertEqual('/etc',
+                         t._combine_paths('/home/sarah', '/etc'))
+
 
 class TestCoalesceOffsets(TestCase):
     
@@ -179,8 +190,9 @@ class TestMemoryTransport(TestCase):
         self.assertEqual("memory:///", transport.base)
         self.assertEqual("memory:///", transport.abspath('/'))
 
-    def test_relpath(self):
+    def test_abspath_of_relpath_starting_at_root(self):
         transport = MemoryTransport()
+        self.assertEqual("memory:///foo", transport.abspath('/foo'))
 
     def test_append_and_get(self):
         transport = MemoryTransport()
@@ -415,7 +427,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         base_url = self._server.get_url()
         # try getting the transport via the regular interface:
         t = get_transport(base_url)
-        if not isinstance(t, self.transport_class): 
+        if not isinstance(t, self.transport_class):
             # we did not get the correct transport class type. Override the
             # regular connection behaviour by direct construction.
             t = self.transport_class(base_url)

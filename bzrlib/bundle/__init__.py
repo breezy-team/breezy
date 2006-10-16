@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,10 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    errors,
+    urlutils,
+    )
 from bzrlib.bundle.serializer import read_bundle
-import bzrlib.errors as errors
-import bzrlib.urlutils
-import bzrlib.transport
+from bzrlib.transport import get_transport
+""")
 
 
 def read_bundle_from_url(url):
@@ -26,7 +31,7 @@ def read_bundle_from_url(url):
     :return: A BundleReader, may raise NotABundle if the target 
             is not a proper bundle.
     """
-    url, filename = bzrlib.urlutils.split(url, exclude_trailing_slash=False)
+    url, filename = urlutils.split(url, exclude_trailing_slash=False)
     if not filename:
         # A path to a directory was passed in
         # definitely not a bundle
@@ -36,7 +41,7 @@ def read_bundle_from_url(url):
     # Some transports cannot detect that we are trying to read a
     # directory until we actually issue read() on the handle.
     try:
-        t = bzrlib.transport.get_transport(url)
+        t = get_transport(url)
         f = t.get(filename)
         return read_bundle(f)
     except (errors.TransportError, errors.PathError), e:

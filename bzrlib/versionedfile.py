@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -19,17 +19,21 @@
 
 """Versioned text file storage api."""
 
-
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from copy import deepcopy
-from unittest import TestSuite
+import unittest
 
+from bzrlib import (
+    errors,
+    tsort,
+    ui,
+    )
+from bzrlib.transport.memory import MemoryTransport
+""")
 
-import bzrlib.errors as errors
 from bzrlib.inter import InterObject
 from bzrlib.textmerge import TextMerge
-from bzrlib.transport.memory import MemoryTransport
-from bzrlib.tsort import topo_sort
-from bzrlib import ui
 from bzrlib.symbol_versioning import (deprecated_function,
         deprecated_method,
         zero_eight,
@@ -403,7 +407,8 @@ class VersionedFile(object):
             version_ids,
             ignore_missing)
 
-    def iter_lines_added_or_present_in_versions(self, version_ids=None):
+    def iter_lines_added_or_present_in_versions(self, version_ids=None, 
+                                                pb=None):
         """Iterate over the lines in the versioned file from version_ids.
 
         This may return lines from other versions, and does not return the
@@ -411,6 +416,10 @@ class VersionedFile(object):
         during development to include the version that the versioned file
         thinks is relevant, but given that such hints are just guesses,
         its better not to have it if we don't need it.
+
+        If a progress bar is supplied, it may be used to indicate progress.
+        The caller is responsible for cleaning up progress bars (because this
+        is an iterator).
 
         NOTES: Lines are normalised: they will all have \n terminators.
                Lines are returned in arbitrary order.
@@ -468,7 +477,7 @@ class VersionedFile(object):
         """
         raise NotImplementedError(VersionedFile.plan_merge)
         
-    def weave_merge(self, plan, a_marker=TextMerge.A_MARKER, 
+    def weave_merge(self, plan, a_marker=TextMerge.A_MARKER,
                     b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
@@ -585,7 +594,7 @@ class InterVersionedFile(InterObject):
             target = temp_source
         version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         graph = self.source.get_graph(version_ids)
-        order = topo_sort(graph.items())
+        order = tsort.topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
         parent_texts = {}
         try:
@@ -672,7 +681,7 @@ class InterVersionedFileTestProviderAdapter(object):
         self._formats = formats
     
     def adapt(self, test):
-        result = TestSuite()
+        result = unittest.TestSuite()
         for (interversionedfile_class,
              versionedfile_factory,
              versionedfile_factory_to) in self._formats:
