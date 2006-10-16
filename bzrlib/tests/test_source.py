@@ -33,12 +33,14 @@ import bzrlib.branch
 from bzrlib.tests import TestCase, TestSkipped
 
 
-# Technically, lsprof.py should be in bzrlib/util, but
-# historical reasons put it in bzrlib, and make it difficult
-# to move in a compatible manner
+# Files which are listed here will be skipped when testing for Copyright (or
+# GPL) statements.
 COPYRIGHT_EXCEPTIONS = ['bzrlib/lsprof.py']
 
 LICENSE_EXCEPTIONS = ['bzrlib/lsprof.py']
+# Technically, 'bzrlib/lsprof.py' should be 'bzrlib/util/lsprof.py',
+# (we do not check bzrlib/util/, since that is code bundled from elsewhere)
+# but for compatibility with previous releases, we don't want to move it.
 
 
 class TestSourceHelper(TestCase):
