@@ -2,6 +2,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * PyCurlTransport now use a single curl object. By specifying explicitly
+      the 'Range' header, we avoid the need to use two different curl objects
+      (and two connections to the same server). (Vincent Ladeuil)
+
     * Knit files now wait to create their contents until the first data is
       added. The old code used to create an empty .knit and a .kndx with just
       the header. However, this caused a lot of extra round trips over sftp.
