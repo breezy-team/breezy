@@ -2100,7 +2100,12 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
-        inv = Inventory(root_id=gen_root_id())
+        # WorkingTree3 can handle an inventory which has a unique root id.
+        # as of bzr 0.12. However, bzr 0.11 and earlier fail to handle
+        # those trees. And because there isn't a format bump inbetween, we
+        # are maintaining compatibility with older clients.
+        # inv = Inventory(root_id=gen_root_id())
+        inv = Inventory()
         wt = WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
