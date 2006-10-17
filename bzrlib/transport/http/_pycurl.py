@@ -154,7 +154,8 @@ class PyCurlTransport(HttpTransportBase):
         if code == 404:
             raise NoSuchFile(abspath)
         if code != 200:
-            self._raise_curl_http_error(curl, 'expected 200 or 404 for full response.')
+            self._raise_curl_http_error(
+                curl, 'expected 200 or 404 for full response.')
 
         return code, data
 
@@ -164,7 +165,7 @@ class PyCurlTransport(HttpTransportBase):
         abspath, data, header = self._setup_get_request(curl, relpath)
 
         self._curl_perform(curl, ['Range: bytes=%s'
-                                  % self.range_header(ranges, tail_amount) ])
+                                  % self.range_header(ranges, tail_amount)])
         data.seek(0)
 
         code = curl.getinfo(pycurl.HTTP_CODE)
