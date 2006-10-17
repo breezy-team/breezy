@@ -125,7 +125,7 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
     # _proto: "http" or "https"
     # _qualified_proto: may have "+pycurl", etc
 
-    def __init__(self, base):
+    def __init__(self, base, from_transport=None):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
         if not proto_match:
@@ -142,6 +142,16 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
             self._path, self._parameters,
             self._query, self._fragment) = urlparse.urlparse(self.base)
         self._qualified_proto = apparent_proto
+        # range hint is handled dynamically throughout the life
+        # of the object. We start by trying mulri-range requests
+        # and if the server returns bougs results, we retry with
+        # single range requests and, finally, we forget about
+        # range if the server really can't understand. Once
+        # aquired, this piece of info is propogated to clones.
+        if from_transport is not None:
+            self._range_hint = from_transport._range_hint
+        else:
+            self._range_hint = 'multi'
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -252,12 +262,41 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
                 relpath, len(offsets), ranges)
         code, f = self._get(relpath, ranges)
         for start, size in offsets:
-            f.seek(start, (start < 0) and 2 or 0)
-            start = f.tell()
-            data = f.read(size)
-            if len(data) != size:
-                raise errors.ShortReadvError(relpath, start, size,
-                                             actual=len(data))
+            try_again = True
+            while try_again:
+                try_again = False
+                f.seek(start, (start < 0) and 2 or 0)
+                start = f.tell()
+                try:
+                    data = f.read(size)
+                    if len(data) != size:
+                        raise errors.ShortReadvError(relpath, start, size,
+                                                     actual=len(data))
+                except (errors.InvalidRange, errors.ShortReadvError):
+                    # The server does not gives us enough data or
+                    # bogus-looking result, let's try again with
+                    # a simpler request if possible.
+                    if self._range_hint == 'multi':
+                        self._range_hint = 'single'
+                        mutter('Retry %s with single range request' % relpath)
+                        try_again = True
+                    elif self._range_hint == 'single':
+                        self._range_hint = None
+                        mutter('Retry %s without ranges' % relpath)
+                        try_again = True
+                    if try_again:
+                        # Note that since the offsets and the
+                        # ranges may not be in the same order we
+                        # dont't try to calculate a restricted
+                        # single range encompassing unprocessed
+                        # offsets. Note that we replace 'f' here
+                        # and that it may need cleaning one day
+                        # before being thrown that way.
+                        code, f = self._get(relpath, ranges)
+                    else:
+                        # We tried all the tricks, nothing worked
+                        raise
+
             yield start, data
 
     @staticmethod
@@ -395,14 +434,43 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         else:
             return self.__class__(self.abspath(offset), self)
 
+    def attempted_range_header(self, ranges, tail_amount):
+        """Prepare a HTTP Range header at a level the server should accept"""
+
+        if self._range_hint == 'multi':
+            # Nothing to do here
+            return self.range_header(ranges, tail_amount)
+        elif self._range_hint == 'single':
+            # Combine all the requested ranges into a single
+            # encompassing one
+            if len(ranges) > 0:
+                start, ignored = ranges[0]
+                ignored, end = ranges[-1]
+                if tail_amount not in (0, None):
+                    # Nothing we can do here to combine ranges
+                    # with tail_amount, just returns None. The
+                    # whole file should be downloaded.
+                    return None
+                else:
+                    return self.range_header([(start, end)], 0)
+            else:
+                # Only tail_amount, requested, leave range_header
+                # do its work
+                return self.range_header(ranges, tail_amount)
+        else:
+            return None
+
     @staticmethod
     def range_header(ranges, tail_amount):
         """Turn a list of bytes ranges into a HTTP Range header value.
 
-        :param offsets: A list of byte ranges, (start, end). An empty list
-        is not accepted.
+        :param ranges: A list of byte ranges, (start, end).
+        :param tail_amount: The amount to get from the end of the file.
 
         :return: HTTP range header string.
+
+        At least a non-empty ranges *or* a tail_amount must be
+        provided.
         """
         strings = []
         for start, end in ranges:

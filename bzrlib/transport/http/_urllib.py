@@ -45,13 +45,11 @@ class HttpTransport_urllib(HttpTransportBase):
         """Set the base path where files will be stored."""
         super(HttpTransport_urllib, self).__init__(base)
         if from_transport is not None:
-            self._accept_ranges = from_transport._accept_ranges
             self._connection = from_transport._connection
             self._user = from_transport._user
             self._password = from_transport._password
             self._opener = from_transport._opener
         else:
-            self._accept_ranges = True
             self._connection = None
             self._user = None
             self._password = None
@@ -123,8 +121,10 @@ class HttpTransport_urllib(HttpTransportBase):
         abspath = self._real_abspath(relpath)
         headers = {}
         if ranges or tail_amount:
-            bytes = 'bytes=' + self.range_header(ranges, tail_amount)
-            headers = {'Range': bytes}
+            range_header = self.attempted_range_header(ranges, tail_amount)
+            if range_header is not None:
+                bytes = 'bytes=' + range_header
+                headers = {'Range': bytes}
 
         request = Request('GET', abspath, None, headers)
         response = self._perform(request)

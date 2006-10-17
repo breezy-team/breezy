@@ -302,7 +302,7 @@ class TestPost(TestCase):
         url = '%s://%s:%s/' % (scheme, server.host, server.port)
         try:
             http_transport = get_transport(url)
-        except UnsupportedProtocol:
+        except errors.UnsupportedProtocol:
             raise TestSkipped('%s not available' % scheme)
         code, response = http_transport._post('abc def end-of-body')
         self.assertTrue(
@@ -530,16 +530,14 @@ class TestRangeRequestServer(object):
 
     def setUp(self):
         TestCaseWithWebserver.setUp(self)
-        self.build_tree(['0123456789',],
-                        line_endings='binary',
-                        transport=self.get_transport())
+        self.build_tree_contents([('a', '0123456789')],)
 
     """Tests readv requests against server"""
 
     def test_readv(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        l = list(t.readv('0123456789', ((0, 1), (1, 1), (3, 2), (9, 1))))
+        l = list(t.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
         self.assertEqual(l[0], (0, '0'))
         self.assertEqual(l[1], (1, '1'))
         self.assertEqual(l[2], (3, '34'))
@@ -548,7 +546,7 @@ class TestRangeRequestServer(object):
     def test_readv_out_of_order(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        l = list(t.readv('0123456789', ((1, 1), (9, 1), (0, 1), (3, 2))))
+        l = list(t.readv('a', ((1, 1), (9, 1), (0, 1), (3, 2))))
         self.assertEqual(l[0], (1, '1'))
         self.assertEqual(l[1], (9, '9'))
         self.assertEqual(l[2], (0, '0'))
@@ -561,12 +559,12 @@ class TestRangeRequestServer(object):
         # This is intentionally reading off the end of the file
         # since we are sure that it cannot get there
         self.assertListRaises((errors.ShortReadvError, AssertionError),
-                              t.readv, '0123456789', [(1,1), (8,10)])
+                              t.readv, 'a', [(1,1), (8,10)])
 
         # This is trying to seek past the end of the file, it should
         # also raise a special error
         self.assertListRaises(errors.ShortReadvError,
-                              t.readv, '0123456789', [(12,2)])
+                              t.readv, 'a', [(12,2)])
 
 
 class TestSingleRangeRequestServer(TestRangeRequestServer):
@@ -607,6 +605,5 @@ class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
                                TestNoRangeRequestServer,
                                TestCaseWithWebserver):
     """Tests range requests refusing server for pycurl implementation"""
-
 
 

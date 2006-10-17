@@ -73,9 +73,8 @@ class PyCurlTransport(HttpTransportBase):
 
     PyCurl is a Python binding to the C "curl" multiprotocol client.
 
-    This transport can be significantly faster than the builtin Python client. 
-    Advantages include: DNS caching, connection keepalive, and ability to 
-    set headers to allow caching.
+    This transport can be significantly faster than the builtin
+    Python client.  Advantages include: DNS caching.
     """
 
     def __init__(self, base, from_transport=None):
@@ -185,7 +184,12 @@ class PyCurlTransport(HttpTransportBase):
         curl = self._range_curl
         abspath, data, header = self._setup_get_request(curl, relpath)
 
-        curl.setopt(pycurl.RANGE, self.range_header(ranges, tail_amount))
+        range_header = self.attempted_range_header(ranges, tail_amount)
+        if range_header is None:
+            # Forget ranges, the server can't handle them
+            return self._get_full(relpath)
+
+        curl.setopt(pycurl.RANGE, range_header)
         self._curl_perform(curl)
         data.seek(0)
 
