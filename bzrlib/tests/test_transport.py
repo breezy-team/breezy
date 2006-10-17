@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -106,6 +106,10 @@ class TestTransport(TestCase):
                          t._combine_paths('/home/sarah', 'project/foo'))
         self.assertEqual('/etc',
                          t._combine_paths('/home/sarah', '../../etc'))
+        self.assertEqual('/etc',
+                         t._combine_paths('/home/sarah', '../../../etc'))
+        self.assertEqual('/etc',
+                         t._combine_paths('/home/sarah', '/etc'))
 
 
 class TestCoalesceOffsets(TestCase):
@@ -186,8 +190,9 @@ class TestMemoryTransport(TestCase):
         self.assertEqual("memory:///", transport.base)
         self.assertEqual("memory:///", transport.abspath('/'))
 
-    def test_relpath(self):
+    def test_abspath_of_relpath_starting_at_root(self):
         transport = MemoryTransport()
+        self.assertEqual("memory:///foo", transport.abspath('/foo'))
 
     def test_append_and_get(self):
         transport = MemoryTransport()

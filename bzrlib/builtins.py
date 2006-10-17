@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1291,6 +1291,8 @@ class cmd_added(Command):
         for file_id in inv:
             if file_id in basis_inv:
                 continue
+            if inv.is_root(file_id) and len(basis_inv) == 0:
+                continue
             path = inv.id2path(file_id)
             if not os.access(osutils.abspath(path), os.F_OK):
                 continue
@@ -1503,7 +1505,7 @@ class cmd_ls(Command):
             tree = tree.branch.repository.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
 
-        for fp, fc, kind, fid, entry in tree.list_files():
+        for fp, fc, kind, fid, entry in tree.list_files(include_root=False):
             if fp.startswith(relpath):
                 fp = fp[len(relpath):]
                 if non_recursive and '/' in fp:
@@ -2326,11 +2328,11 @@ class cmd_remerge(Command):
                     for name, ie in tree.inventory.iter_entries(file_id):
                         interesting_ids.add(ie.file_id)
                 new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
+            else:
+                restore_files = [c.path for c in conflicts]
             _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_ids)
             tree.set_conflicts(ConflictList(new_conflicts))
-            if file_list is None:
-                restore_files = list(tree.iter_conflicts())
-            else:
+            if file_list is not None:
                 restore_files = file_list
             for filename in restore_files:
                 try:

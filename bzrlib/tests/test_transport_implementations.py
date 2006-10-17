@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1100,6 +1100,9 @@ class TransportTests(TestTransportImplementation):
 
         # the abspath of "/" and "/foo/.." should result in the same location
         self.assertEqual(transport.abspath("/"), transport.abspath("/foo/.."))
+
+        self.assertEqual(transport.clone("/").abspath('foo'),
+                         transport.abspath("/foo"))
 
     def test_local_abspath(self):
         transport = self.get_transport()
