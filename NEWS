@@ -64,9 +64,6 @@ IN DEVELOPMENT
 
    * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
 
-    * The smart server now dispatches commands with non-ascii paths correctly.
-      (Andrew Bennetts)
-
   TESTING:
 
     * New test base class TestCaseWithMemoryTransport offers memory-only
