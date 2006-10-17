@@ -48,7 +48,7 @@ IN DEVELOPMENT
       problems with system-wide installed plugins. (John Arbash Meinel)
 
     * Unique tree root ids are now supported. Newly created trees still
-      use the old id for compatibility with bzr versions before 0.12.
+      use the common root id for compatibility with bzr versions before 0.12.
       (Aaron Bentley)
 
     * ``WorkingTree.set_root_id(None)`` is now deprecated. Please
