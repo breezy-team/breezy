@@ -2329,7 +2329,10 @@ class cmd_remerge(Command):
                         interesting_ids.add(ie.file_id)
                 new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
             else:
-                restore_files = [c.path for c in conflicts]
+                # Remerge only supports resolving contents conflicts
+                allowed_conflicts = ('text conflict', 'contents conflict')
+                restore_files = [c.path for c in conflicts
+                                 if c.typestring in allowed_conflicts]
             _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_ids)
             tree.set_conflicts(ConflictList(new_conflicts))
             if file_list is not None:
