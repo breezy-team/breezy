@@ -17,6 +17,7 @@
 import os
 import sys
 
+from bzrlib import bzrdir, repository
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.builtins import merge
@@ -25,6 +26,7 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
 from bzrlib.trace import mutter
+from bzrlib.upgrade import Convert
 from bzrlib.workingtree import WorkingTree
 
 
@@ -112,6 +114,33 @@ class TestFetch(TestCaseWithTransport):
     def test_fetch_self(self):
         wt = self.make_branch_and_tree('br')
         self.assertEqual(wt.branch.fetch(wt.branch), (0, []))
+
+    def test_fetch_root_knit(self):
+        """Ensure that knit2 updates the root knit
+        
+        This tests the case where the root has been changed
+        """
+        knit1 = bzrdir.BzrDirMetaFormat1()
+        knit1.repository_format = repository.RepositoryFormatKnit1()
+        knit2 = bzrdir.BzrDirMetaFormat1()
+        knit2.repository_format = repository.RepositoryFormatKnit2()
+        tree = self.make_branch_and_tree('tree', knit1)
+        tree.set_root_id('tree-root')
+        tree.commit('rev1', rev_id='rev1')
+        tree.commit('rev2', rev_id='rev2')
+        Convert(tree.basedir, knit2)
+        tree = WorkingTree.open(tree.basedir)
+        branch = self.make_branch('branch', format=knit2)
+        branch.pull(tree.branch, stop_revision='rev1')
+        repo = branch.repository
+        root_weave = repo.weave_store.get_weave('tree-root',
+                                                repo.get_transaction())
+        self.assertTrue('rev1' in root_weave)
+        self.assertTrue('rev2' not in root_weave)
+        branch.pull(tree.branch)
+        root_weave = repo.weave_store.get_weave('tree-root',
+                                                repo.get_transaction())
+        self.assertTrue('rev2' in root_weave)
 
 
 class TestMergeFetch(TestCaseWithTransport):
