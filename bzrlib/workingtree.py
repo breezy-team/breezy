@@ -1641,7 +1641,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         raise NotImplementedError(self.unlock)
 
-    @needs_write_lock
     def update(self):
         """Update a working tree along its branch.
 
@@ -1667,8 +1666,28 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
           basis.
         - Do a 'normal' merge of the old branch basis if it is relevant.
         """
-        old_tip = self.branch.update()
+        if self.branch.get_master_branch() is not None:
+            self.lock_write()
+            update_branch = True
+        else:
+            self.lock_tree_write()
+            update_branch = False
+        try:
+            if update_branch:
+                old_tip = self.branch.update()
+            else:
+                old_tip = None
+            return self._update_tree(old_tip)
+        finally:
+            self.unlock()
 
+    @needs_tree_write_lock
+    def _update_tree(self, old_tip=None):
+        """Update a tree to the master branch.
+
+        :param old_tip: if supplied, the previous tip revision the branch,
+            before it was changed to the master branch's tip.
+        """
         # here if old_tip is not None, it is the old tip of the branch before
         # it was updated from the master branch. This should become a pending
         # merge in the working tree to preserve the user existing work.  we
