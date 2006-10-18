@@ -233,17 +233,12 @@ def _decode_tuple(req_line):
         return None
     if req_line[-1] != '\n':
         raise errors.SmartProtocolError("request %r not terminated" % req_line)
-    try:
-        return tuple((a.decode('utf-8') for a in req_line[:-1].split('\x01')))
-    except UnicodeDecodeError:
-        raise errors.SmartProtocolError(
-            "one or more arguments of request %r are not valid UTF-8"
-            % req_line)
+    return tuple(req_line[:-1].split('\x01'))
 
 
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
-    return '\x01'.join((a.encode('utf-8') for a in args)) + '\n'
+    return '\x01'.join(args) + '\n'
 
 
 class SmartProtocolBase(object):
@@ -557,7 +552,6 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 return
             bytes = self._in.read(bytes_to_read)
             if bytes == '':
-
                 # Connection has been closed.
                 self.finished = True
                 self._out.flush()
@@ -633,12 +627,10 @@ class SmartServerRequestHandler(object):
         return SmartServerResponse(('ok', '1'))
 
     def do_has(self, relpath):
-        relpath = relpath.encode('utf-8')
         r = self._backing_transport.has(relpath) and 'yes' or 'no'
         return SmartServerResponse((r,))
 
     def do_get(self, relpath):
-        relpath = relpath.encode('utf-8')
         backing_bytes = self._backing_transport.get_bytes(relpath)
         return SmartServerResponse(('ok',), backing_bytes)
 
@@ -651,7 +643,7 @@ class SmartServerRequestHandler(object):
 
     def do_append(self, relpath, mode):
         self._converted_command = True
-        self._relpath = relpath.encode('utf-8')
+        self._relpath = relpath
         self._mode = self._deserialise_optional_mode(mode)
         self._end_of_body_handler = self._handle_do_append_end
     
@@ -661,33 +653,27 @@ class SmartServerRequestHandler(object):
         self.response = SmartServerResponse(('appended', '%d' % old_length))
 
     def do_delete(self, relpath):
-        relpath = relpath.encode('utf-8')
         self._backing_transport.delete(relpath)
 
     def do_iter_files_recursive(self, relpath):
-        relpath = relpath.encode('utf-8')
         transport = self._backing_transport.clone(relpath)
         filenames = transport.iter_files_recursive()
         return SmartServerResponse(('names',) + tuple(filenames))
 
     def do_list_dir(self, relpath):
-        relpath = relpath.encode('utf-8')
         filenames = self._backing_transport.list_dir(relpath)
         return SmartServerResponse(('names',) + tuple(filenames))
 
     def do_mkdir(self, relpath, mode):
-        relpath = relpath.encode('utf-8')
         self._backing_transport.mkdir(relpath,
                                       self._deserialise_optional_mode(mode))
 
     def do_move(self, rel_from, rel_to):
-        rel_from = rel_from.encode('utf-8')
-        rel_to = rel_to.encode('utf-8')
         self._backing_transport.move(rel_from, rel_to)
 
     def do_put(self, relpath, mode):
         self._converted_command = True
-        self._relpath = relpath.encode('utf-8')
+        self._relpath = relpath
         self._mode = self._deserialise_optional_mode(mode)
         self._end_of_body_handler = self._handle_do_put
 
@@ -709,7 +695,7 @@ class SmartServerRequestHandler(object):
     def do_put_non_atomic(self, relpath, mode, create_parent, dir_mode):
         self._converted_command = True
         self._end_of_body_handler = self._handle_put_non_atomic
-        self._relpath = relpath.encode('utf-8')
+        self._relpath = relpath
         self._dir_mode = self._deserialise_optional_mode(dir_mode)
         self._mode = self._deserialise_optional_mode(mode)
         # a boolean would be nicer XXX
@@ -726,7 +712,7 @@ class SmartServerRequestHandler(object):
     def do_readv(self, relpath):
         self._converted_command = True
         self._end_of_body_handler = self._handle_readv_offsets
-        self._relpath = relpath.encode('utf-8')
+        self._relpath = relpath
 
     def end_of_body(self):
         """No more body data will be received."""
@@ -742,16 +728,12 @@ class SmartServerRequestHandler(object):
         self.response = SmartServerResponse(('readv',), backing_bytes)
         
     def do_rename(self, rel_from, rel_to):
-        rel_from = rel_from.encode('utf-8')
-        rel_to = rel_to.encode('utf-8')
         self._backing_transport.rename(rel_from, rel_to)
 
     def do_rmdir(self, relpath):
-        relpath = relpath.encode('utf-8')
         self._backing_transport.rmdir(relpath)
 
     def do_stat(self, relpath):
-        relpath = relpath.encode('utf-8')
         stat = self._backing_transport.stat(relpath)
         return SmartServerResponse(('stat', str(stat.st_size), oct(stat.st_mode)))
         
@@ -810,9 +792,11 @@ class SmartServerRequestHandler(object):
             # with a plain string
             str_or_unicode = e.object
             if isinstance(str_or_unicode, unicode):
-                val = u'u:' + str_or_unicode
+                # XXX: UTF-8 might have \x01 (our seperator byte) in it.  We
+                # should escape it somehow.
+                val = 'u:' + str_or_unicode.encode('utf-8')
             else:
-                val = u's:' + str_or_unicode.encode('base64')
+                val = 's:' + str_or_unicode.encode('base64')
             # This handles UnicodeEncodeError or UnicodeDecodeError
             return SmartServerResponse((e.__class__.__name__,
                     e.encoding, val, str(e.start), str(e.end), e.reason))
@@ -1229,7 +1213,7 @@ class SmartTransport(transport.Transport):
             end = int(resp[4])
             reason = str(resp[5]) # reason must always be a string
             if val.startswith('u:'):
-                val = val[2:]
+                val = val[2:].decode('utf-8')
             elif val.startswith('s:'):
                 val = val[2:].decode('base64')
             if what == 'UnicodeDecodeError':

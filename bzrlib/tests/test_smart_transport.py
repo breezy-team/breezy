@@ -951,7 +951,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
     def test_put_bytes_non_atomic(self):
         """'put_...' should set finished_reading after reading the bytes."""
         handler = smart.SmartServerRequestHandler(self.get_transport())
-        handler.dispatch_command('put_non_atomic', (u'a-file', u'', u'F', u''))
+        handler.dispatch_command('put_non_atomic', ('a-file', '', 'F', ''))
         self.assertFalse(handler.finished_reading)
         handler.accept_body('1234')
         self.assertFalse(handler.finished_reading)
@@ -965,7 +965,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         """'readv' should set finished_reading after reading offsets."""
         self.build_tree(['a-file'])
         handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
-        handler.dispatch_command('readv', (u'a-file', ))
+        handler.dispatch_command('readv', ('a-file', ))
         self.assertFalse(handler.finished_reading)
         handler.accept_body('2,')
         self.assertFalse(handler.finished_reading)
@@ -980,7 +980,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         """'readv' when a short read occurs sets the response appropriately."""
         self.build_tree(['a-file'])
         handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
-        handler.dispatch_command('readv', (u'a-file', ))
+        handler.dispatch_command('readv', ('a-file', ))
         # read beyond the end of the file.
         handler.accept_body('100,1')
         handler.end_of_body()
@@ -988,132 +988,6 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         self.assertEqual(('ShortReadvError', 'a-file', '100', '1', '0'),
             handler.response.args)
         self.assertEqual(None, handler.response.body)
-
-
-class SmartServerRequestHandlerUnicodeTests(tests.TestCaseWithTransport):
-    """Test unicode relpaths passed to the request handler.
-
-    SmartServerRequestProtocolOne decodes requests into a tuple of unicode
-    objects.  That tuple is then passed to the request handler's
-    dispatch_command method.  This test case is for testing that unicode paths
-    are handled correctly by the request handler.
-    """
-
-    def test_get_file(self):
-        self.build_tree([u'\N{INTERROBANG}'], line_endings='binary')
-        handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
-        handler.dispatch_command('get', (u'\N{INTERROBANG}',))
-        self.assertEqual(('ok',), handler.response.args)
-        self.assertEqual(
-            u'contents of \N{INTERROBANG}\n'.encode('utf-8'),
-            handler.response.body)
-
-    def test_has(self):
-        self.build_tree([u'\N{INTERROBANG}'])
-        handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
-        handler.dispatch_command('has', (u'\N{INTERROBANG}',))
-        self.assertEqual(('yes',), handler.response.args)
-
-    def test_append(self):
-        handler = smart.SmartServerRequestHandler(self.get_transport())
-        handler.dispatch_command('append', (u'\N{INTERROBANG}', ''))
-        handler.accept_body('abc\n')
-        handler.end_of_body()
-        self.assertEqual(('appended', '0'), handler.response.args)
-        self.check_file_contents(u'\N{INTERROBANG}'.encode('utf-8'), 'abc\n')
-
-    def test_delete(self):
-        self.build_tree([u'\N{INTERROBANG}'])
-        handler = smart.SmartServerRequestHandler(self.get_transport())
-        handler.dispatch_command('delete', (u'\N{INTERROBANG}',))
-        self.assertEqual(('ok',), handler.response.args)
-        self.failIfExists(u'\N{INTERROBANG}'.encode('utf-8'))
-
-    def test_iter_files_recursive(self):
-        self.build_tree([
-            u'\N{INTERROBANG}/',
-            u'\N{INTERROBANG}/one',
-            u'\N{INTERROBANG}/two',
-            ])
-        handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
-        handler.dispatch_command('iter_files_recursive', (u'\N{INTERROBANG}',))
-        self.assertEqual('names', handler.response.args[0])
-        self.assertEqual(set(['one', 'two']), set(handler.response.args[1:]))
-
-    def test_list_dir(self):
-        self.build_tree([
-            u'\N{INTERROBANG}/',
-            u'\N{INTERROBANG}/one',
-            u'\N{INTERROBANG}/two',
-            ])
-        handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
-        handler.dispatch_command('list_dir', (u'\N{INTERROBANG}',))
-        self.assertEqual('names', handler.response.args[0])
-        self.assertEqual(set(['one', 'two']), set(handler.response.args[1:]))
-
-    def test_mkdir(self):
-        handler = smart.SmartServerRequestHandler(self.get_transport())
-        handler.dispatch_command('mkdir', (u'\N{INTERROBANG}', ''))
-        self.assertEqual(('ok',), handler.response.args)
-        self.failUnlessExists(u'\N{INTERROBANG}'.encode('utf-8'))
-
-    def test_move(self):
-        self.build_tree([u'one\N{INTERROBANG}'])
-        handler = smart.SmartServerRequestHandler(self.get_transport())
-        handler.dispatch_command(
-            'move', (u'one\N{INTERROBANG}', u'two\N{INTERROBANG}',))
-        self.assertEqual(('ok',), handler.response.args)
-        self.failIfExists(u'one\N{INTERROBANG}'.encode('utf-8'))
-        self.failUnlessExists(u'two\N{INTERROBANG}'.encode('utf-8'))
-
-    def test_put(self):
-        handler = smart.SmartServerRequestHandler(self.get_transport())
-        handler.dispatch_command('put', (u'\N{INTERROBANG}', ''))
-        handler.accept_body('abc\n')
-        handler.end_of_body()
-        self.assertEqual(('ok',), handler.response.args)
-        self.check_file_contents(u'\N{INTERROBANG}'.encode('utf-8'), 'abc\n')
-
-    def test_put_non_atomic(self):
-        handler = smart.SmartServerRequestHandler(self.get_transport())
-        handler.dispatch_command(
-            'put_non_atomic', (u'\N{INTERROBANG}', '', 'F', ''))
-        handler.accept_body('abc\n')
-        handler.end_of_body()
-        self.assertEqual(('ok',), handler.response.args)
-        self.check_file_contents(u'\N{INTERROBANG}'.encode('utf-8'), 'abc\n')
-
-    def test_readv(self):
-        self.build_tree([u'\N{INTERROBANG}'])
-        handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
-        handler.dispatch_command('readv', (u'\N{INTERROBANG}',))
-        handler.accept_body('2,3')
-        handler.end_of_body()
-        self.assertEqual(('readv', ), handler.response.args)
-        # co - nte - nt of a-file is the file contents we are extracting from.
-        self.assertEqual('nte', handler.response.body)
-
-    def test_rename(self):
-        self.build_tree([u'one\N{INTERROBANG}'])
-        handler = smart.SmartServerRequestHandler(self.get_transport())
-        handler.dispatch_command(
-            'rename', (u'one\N{INTERROBANG}', u'two\N{INTERROBANG}',))
-        self.assertEqual(('ok',), handler.response.args)
-        self.failIfExists(u'one\N{INTERROBANG}'.encode('utf-8'))
-        self.failUnlessExists(u'two\N{INTERROBANG}'.encode('utf-8'))
-
-    def test_rmdir(self):
-        self.build_tree([u'\N{INTERROBANG}/'])
-        handler = smart.SmartServerRequestHandler(self.get_transport())
-        handler.dispatch_command('rmdir', (u'\N{INTERROBANG}',))
-        self.assertEqual(('ok',), handler.response.args)
-        self.failIfExists(u'\N{INTERROBANG}'.encode('utf-8'))
-
-    def test_stat(self):
-        self.build_tree([u'\N{INTERROBANG}'])
-        handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
-        handler.dispatch_command('stat', (u'\N{INTERROBANG}',))
-        self.assertEqual('stat', handler.response.args[0])
 
 
 class SmartTransportRegistration(tests.TestCase):
@@ -1261,19 +1135,7 @@ class TestSmartProtocol(tests.TestCase):
         self.assertEqual('abc', protocol.in_buffer)
         protocol.accept_bytes('\n')
         self.assertEqual("error\x01Generic bzr smart protocol error: bad request"
-            " u'abc'\n", out_stream.getvalue())
-        self.assertTrue(protocol.has_dispatched)
-        self.assertEqual(0, protocol.next_read_size())
-
-    def test_accept_bytes_with_invalid_utf8_to_protocol(self):
-        out_stream = StringIO()
-        protocol = smart.SmartServerRequestProtocolOne(None, out_stream.write)
-        # the byte 0xdd is not a valid UTF-8 string.
-        protocol.accept_bytes('\xdd\n')
-        self.assertEqual(
-            "error\x01Generic bzr smart protocol error: "
-            "one or more arguments of request '\\xdd\\n' are not valid UTF-8\n",
-            out_stream.getvalue())
+            " 'abc'\n", out_stream.getvalue())
         self.assertTrue(protocol.has_dispatched)
         self.assertEqual(0, protocol.next_read_size())
 
