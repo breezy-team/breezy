@@ -64,6 +64,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Avoid circular imports by creating a deprecated function for
+      ``bzrlib.tree.RevisionTree``. Callers should have been using
+      ``bzrlib.revisontree.RevisionTree`` anyway. (John Arbash Meinel, #63360)
+
     * Don't require ``Content-Type`` in range responses. Assume they are a
       single range if ``Content-Type`` does not exist.
       (John Arbash Meinel, #62473)

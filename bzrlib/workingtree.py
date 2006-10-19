@@ -423,8 +423,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 xml = self.read_basis_inventory()
                 inv = xml6.serializer_v6.read_inventory_from_string(xml)
                 if inv is not None and inv.revision_id == revision_id:
-                    return bzrlib.tree.RevisionTree(self.branch.repository,
-                                                    inv, revision_id)
+                    return bzrlib.revisiontree.RevisionTree(
+                        self.branch.repository, inv, revision_id)
             except (NoSuchFile, errors.BadInventoryFormat):
                 pass
         # No cached copy available, retrieve from the repository.
