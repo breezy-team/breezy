@@ -21,6 +21,7 @@ import stat
 from cStringIO import StringIO
 
 import bzrlib
+from bzrlib import urlutils
 from bzrlib.errors import (NoSuchFile, FileExists,
                            TransportNotPossible,
                            ConnectionError,
@@ -38,6 +39,9 @@ from bzrlib.transport import (_CoalescedOffset,
                               )
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.local import LocalTransport
+
+
+# TODO: Should possibly split transport-specific tests into their own files.
 
 
 class TestTransport(TestCase):
@@ -337,8 +341,8 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
         server = fakenfs.FakeNFSServer()
         server.setUp()
         try:
-            # the server should be a relpath localhost server
-            self.assertEqual(server.get_url(), 'fakenfs+.')
+            # the url should be decorated appropriately
+            self.assertStartsWith(server.get_url(), 'fakenfs+')
             # and we should be able to get a transport for it
             transport = get_transport(server.get_url())
             # which must be a FakeNFSTransportDecorator instance.
@@ -432,3 +436,25 @@ class TestTransportImplementation(TestCaseInTempDir):
             # regular connection behaviour by direct construction.
             t = self.transport_class(base_url)
         return t
+
+
+class TestLocalTransports(TestCase):
+
+    def test_get_transport_from_abspath(self):
+        here = os.path.abspath('.')
+        t = get_transport(here)
+        self.assertIsInstance(t, LocalTransport)
+        self.assertEquals(t.base, urlutils.local_path_to_url(here) + '/')
+
+    def test_get_transport_from_relpath(self):
+        here = os.path.abspath('.')
+        t = get_transport('.')
+        self.assertIsInstance(t, LocalTransport)
+        self.assertEquals(t.base, urlutils.local_path_to_url('.') + '/')
+
+    def test_get_transport_from_local_url(self):
+        here = os.path.abspath('.')
+        here_url = urlutils.local_path_to_url(here) + '/'
+        t = get_transport(here_url)
+        self.assertIsInstance(t, LocalTransport)
+        self.assertEquals(t.base, here_url)
