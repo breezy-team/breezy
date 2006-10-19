@@ -1,8 +1,9 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -56,10 +57,10 @@ added:
         self._bzr_editor = os.environ.get('BZR_EDITOR', None)
 
     def tearDown(self):
-        if self._bzr_editor != None:
+        if self._bzr_editor is not None:
             os.environ['BZR_EDITOR'] = self._bzr_editor
         else:
-            if os.environ.get('BZR_EDITOR', None) != None:
+            if os.environ.get('BZR_EDITOR', None) is not None:
                 del os.environ['BZR_EDITOR']
         super(MsgEditorTest, self).tearDown()
 

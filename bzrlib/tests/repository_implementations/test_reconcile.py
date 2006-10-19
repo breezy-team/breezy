@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -56,7 +56,8 @@ class TestsNeedingReweave(TestReconcile):
         t = get_transport(self.get_url())
         # an empty inventory with no revision for testing with.
         repo = self.make_repository('inventory_without_revision')
-        inv = Inventory()
+        inv = Inventory(revision_id='missing')
+        inv.root.revision = 'missing'
         repo.add_inventory('missing', inv, [])
 
         # an empty inventory with no revision for testing with.
@@ -64,8 +65,9 @@ class TestsNeedingReweave(TestReconcile):
         # that all the cached data is correctly converted into ghost links
         # and the referenced inventory still cleaned.
         repo = self.make_repository('inventory_without_revision_and_ghost')
-        inv = Inventory()
         repo.add_inventory('missing', inv, [])
+        inv = Inventory(revision_id='references_missing')
+        inv.root.revision = 'references_missing'
         sha1 = repo.add_inventory('references_missing', inv, ['missing'])
         rev = Revision(timestamp=0,
                        timezone=None,
@@ -79,6 +81,8 @@ class TestsNeedingReweave(TestReconcile):
         # a inventory with no parents and the revision has parents..
         # i.e. a ghost.
         repo = self.make_repository('inventory_one_ghost')
+        inv = Inventory(revision_id='ghost')
+        inv.root.revision = 'ghost'
         sha1 = repo.add_inventory('ghost', inv, [])
         rev = Revision(timestamp=0,
                        timezone=None,
@@ -92,6 +96,8 @@ class TestsNeedingReweave(TestReconcile):
         # a inventory with a ghost that can be corrected now.
         t.copy_tree('inventory_one_ghost', 'inventory_ghost_present')
         repo = bzrlib.repository.Repository.open('inventory_ghost_present')
+        inv = Inventory(revision_id='the_ghost')
+        inv.root.revision = 'the_ghost'
         sha1 = repo.add_inventory('the_ghost', inv, [])
         rev = Revision(timestamp=0,
                        timezone=None,
@@ -265,7 +271,8 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
         # now setup the wrong-first parent case
         repo = tree.branch.repository
-        inv = Inventory()
+        inv = Inventory(revision_id='wrong-first-parent')
+        inv.root.revision = 'wrong-first-parent'
         sha1 = repo.add_inventory('wrong-first-parent', inv, ['2', '1'])
         rev = Revision(timestamp=0,
                        timezone=None,
@@ -278,7 +285,8 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
         # now setup the wrong-secondary parent case
         repo = repo_secondary
-        inv = Inventory()
+        inv = Inventory(revision_id='wrong-secondary-parent')
+        inv.root.revision = 'wrong-secondary-parent'
         sha1 = repo.add_inventory('wrong-secondary-parent', inv, ['1', '3', '2'])
         rev = Revision(timestamp=0,
                        timezone=None,

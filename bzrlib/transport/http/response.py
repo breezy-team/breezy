@@ -1,5 +1,4 @@
-# Copyright (C) 2006 Michael Ellerman
-#           modified by John Arbash Meinel (Canonical Ltd)
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,6 +59,8 @@ class ResponseRange(object):
                                  self._ent_start, self._ent_end,
                                  self._data_start)
 
+    __repr__ = __str__
+
 
 class RangeFile(object):
     """File-like object that allow access to partial available data.
@@ -96,6 +97,8 @@ class RangeFile(object):
         i = bisect(self._ranges, self._pos) - 1
 
         if i < 0 or self._pos > self._ranges[i]._ent_end:
+            mutter('Bisect for pos: %s failed. Found offset: %d, ranges:%s',
+                   self._pos, i, self._ranges)
             raise errors.InvalidRange(self._path, self._pos)
 
         r = self._ranges[i]
@@ -134,7 +137,7 @@ class HttpRangeResponse(RangeFile):
 
     # TODO: jam 20060706 Consider compiling these regexes on demand
     _CONTENT_RANGE_RE = re.compile(
-        '\s*([^\s]+)\s+([0-9]+)-([0-9]+)/([0-9]+)\s*$')
+        r'\s*([^\s]+)\s+([0-9]+)-([0-9]+)/([0-9]+)\s*$')
 
     def __init__(self, path, content_range, input_file):
         # mutter("parsing 206 non-multipart response for %s", path)
@@ -175,7 +178,7 @@ class HttpMultipartRangeResponse(RangeFile):
     """A multi-range HTTP response."""
     
     _CONTENT_TYPE_RE = re.compile(
-        '^\s*multipart/byteranges\s*;\s*boundary\s*=\s*(.*?)\s*$')
+        r'^\s*multipart/byteranges\s*;\s*boundary\s*=\s*("?)([^"]*?)\1\s*$')
     
     # Start with --<boundary>\r\n
     # and ignore all headers ending in \r\n
@@ -195,6 +198,7 @@ class HttpMultipartRangeResponse(RangeFile):
         RangeFile.__init__(self, path, input_file)
 
         self.boundary_regex = self._parse_boundary(content_type, path)
+        # mutter('response:\n%r', self._data)
 
         for match in self.boundary_regex.finditer(self._data):
             ent_start, ent_end = HttpRangeResponse._parse_range(match.group(1),
@@ -216,7 +220,7 @@ class HttpMultipartRangeResponse(RangeFile):
             raise errors.InvalidHttpContentType(path, ctype,
                     "Expected multipart/byteranges with boundary")
 
-        boundary = match.group(1)
+        boundary = match.group(2)
         # mutter('multipart boundary is %s', boundary)
         pattern = HttpMultipartRangeResponse._BOUNDARY_PATT
         return re.compile(pattern % re.escape(boundary),
@@ -246,10 +250,16 @@ def handle_response(url, code, headers, data):
         try:
             content_type = headers['Content-Type']
         except KeyError:
-            raise errors.InvalidHttpContentType(url, '',
-                msg='Missing Content-Type')
+            # When there is no content-type header we treat
+            # the response as being of type 'application/octet-stream' as per
+            # RFC2616 section 7.2.1.
+            # Therefore it is obviously not multipart
+            content_type = 'application/octet-stream'
+            is_multipart = False
+        else:
+            is_multipart = _is_multipart(content_type)
 
-        if _is_multipart(content_type):
+        if is_multipart:
             # Full fledged multipart response
             return HttpMultipartRangeResponse(url, content_type, data)
         else:

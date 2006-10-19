@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -89,6 +89,25 @@ class TestLog(ExternalBase):
         log = self.runbzr("log -r 1..3")[0]
         self.assertEquals(self.full_log, log)
 
+    def test_log_revno_n_path(self):
+        os.mkdir('branch1')
+        os.chdir('branch1')
+        self._prepare()
+        os.chdir('..')
+        os.mkdir('branch2')
+        os.chdir('branch2')
+        self._prepare()
+        os.chdir('..')
+        log = self.runbzr("log -r revno:2:branch1..revno:3:branch2",
+                          retcode=3)[0]
+        log = self.runbzr("log -r revno:1:branch2..revno:3:branch2")[0]
+        self.assertEquals(self.full_log, log)
+        log = self.runbzr("log -r revno:1:branch2")[0]
+        self.assertTrue('revno: 1\n' in log)
+        self.assertTrue('revno: 2\n' not in log)
+        self.assertTrue('branch nick: branch2\n' in log)
+        self.assertTrue('branch nick: branch1\n' not in log)
+        
 
 class TestLogMerges(ExternalBase):
 
@@ -117,6 +136,7 @@ class TestLogMerges(ExternalBase):
 #message:
 #  merge branch 1
 #    ------------------------------------------------------------
+#    revno: 1.1.2  
 #    merged: foo@example.com-20060328113140-91f43cfb46dc2863
 #    committer: Robert Collins <foo@example.com>
 #    branch nick: child
@@ -124,6 +144,7 @@ class TestLogMerges(ExternalBase):
 #    message:
 #      merge branch 2
 #        ------------------------------------------------------------
+#        revno: 1.1.1.1
 #        merged: foo@example.com-20060328113140-1ba24f850a0ef573
 #        committer: Robert Collins <foo@example.com>
 #        branch nick: smallerchild
@@ -131,6 +152,7 @@ class TestLogMerges(ExternalBase):
 #        message:
 #          branch 2
 #    ------------------------------------------------------------
+#    revno: 1.1.1
 #    merged: foo@example.com-20060328113140-5749a4757a8ac792
 #    committer: Robert Collins <foo@example.com>
 #    branch nick: child
@@ -146,11 +168,17 @@ class TestLogMerges(ExternalBase):
 #  first post
 #""", out)
         # but we dont have a nice pattern matcher hooked up yet, so:
-        # we check for the indenting of the commit message:
+        # we check for the indenting of the commit message and the 
+        # revision numbers 
+        self.assertTrue('revno: 2' in out)
         self.assertTrue('  merge branch 1' in out)
+        self.assertTrue('    revno: 1.1.2' in out)
         self.assertTrue('      merge branch 2' in out)
+        self.assertTrue('        revno: 1.1.1.1' in out)
         self.assertTrue('          branch 2' in out)
+        self.assertTrue('    revno: 1.1.1' in out)
         self.assertTrue('      branch 1' in out)
+        self.assertTrue('revno: 1' in out)
         self.assertTrue('  first post' in out)
         self.assertEqual('', err)
 

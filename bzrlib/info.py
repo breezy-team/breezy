@@ -1,15 +1,15 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -31,7 +31,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
 def plural(n, base='', pl=None):
     if n == 1:
         return base
-    elif pl != None:
+    elif pl is not None:
         return pl
     else:
         return 's'
@@ -173,7 +173,10 @@ def _show_missing_revisions_working(working):
     work_inv = working.inventory
     delta = working.changes_from(basis, want_unchanged=True)
     history = branch.revision_history()
-    tree_last_id = working.last_revision()
+    try:
+        tree_last_id = working.get_parent_ids()[0]
+    except IndexError:
+        tree_last_id = None
 
     if len(history) and tree_last_id != history[-1]:
         tree_last_revno = branch.revision_id_to_revno(tree_last_id)
@@ -207,9 +210,10 @@ def _show_working_stats(working):
     print '  %8d ignored' % ignore_cnt
 
     dir_cnt = 0
-    entries = work_inv.iter_entries()
-    entries.next()
-    dir_cnt = sum(1 for path, ie in entries if ie.kind == 'directory')
+    for file_id in work_inv:
+        if (work_inv.get_file_kind(file_id) == 'directory' and 
+            not work_inv.is_root(file_id)):
+            dir_cnt += 1
     print '  %8d versioned %s' \
           % (dir_cnt,
              plural(dir_cnt, 'subdirectory', 'subdirectories'))

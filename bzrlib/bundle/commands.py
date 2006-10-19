@@ -1,4 +1,18 @@
-#!/usr/bin/env python
+# Copyright (C) 2006 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """\
 This is an attempt to take the internal delta object, and represent
 it as a single-file text-only changeset.
@@ -8,15 +22,19 @@ and for applying a changeset.
 
 import sys
 
-from bzrlib.branch import Branch
-from bzrlib.commands import Command, register_command
-import bzrlib.errors as errors
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    branch,
+    errors,
+    urlutils,
+    )
+from bzrlib.revision import common_ancestor
+""")
+
+from bzrlib.commands import Command
 from bzrlib.option import Option
-from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
-                             NULL_REVISION)
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note
-from bzrlib import urlutils
 
 
 class cmd_send_changeset(Command):
@@ -44,7 +62,7 @@ class cmd_send_changeset(Command):
                 raise BzrCommandError('We do not support rollup-changesets yet.')
             revision = revision[0]
 
-        b = Branch.open_containing('.')
+        b = branch.Branch.open_containing('.')
 
         if not to:
             try:
@@ -85,7 +103,7 @@ class cmd_bundle_revisions(Command):
         from bzrlib import user_encoding
         from bzrlib.bundle.serializer import write_bundle
 
-        target_branch = Branch.open_containing(u'.')[0]
+        target_branch = branch.Branch.open_containing(u'.')[0]
 
         if base is None:
             base_specified = False
@@ -119,7 +137,7 @@ class cmd_bundle_revisions(Command):
                 # we must format with 'ascii' to be safe
                 note('Using saved location: %s',
                      urlutils.unescape_for_display(base, 'ascii'))
-            base_branch = Branch.open(base)
+            base_branch = branch.Branch.open(base)
 
             # We don't want to lock the same branch across
             # 2 different branches
@@ -160,7 +178,7 @@ class cmd_verify_changeset(Command):
         from read_changeset import read_changeset
         #from bzrlib.xml import serializer_v4
 
-        b, relpath = Branch.open_containing('.')
+        b, relpath = branch.Branch.open_containing('.')
 
         if filename is None or filename == '-':
             f = sys.stdin

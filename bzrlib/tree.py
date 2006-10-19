@@ -19,10 +19,12 @@
 
 import os
 from cStringIO import StringIO
-from warnings import warn
 
 import bzrlib
-from bzrlib import delta
+from bzrlib import (
+    delta,
+    symbol_versioning,
+    )
 from bzrlib.decorators import needs_read_lock
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib import errors
@@ -54,7 +56,7 @@ class Tree(object):
     """
     
     def changes_from(self, other, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False):
+        extra_trees=None, require_versioned=False, include_root=False):
         """Return a TreeDelta of the changes from other to this tree.
 
         :param other: A tree to compare with.
@@ -81,6 +83,7 @@ class Tree(object):
             specific_files=specific_files,
             extra_trees=extra_trees,
             require_versioned=require_versioned,
+            include_root=include_root
             )
     
     def conflicts(self):
@@ -119,6 +122,18 @@ class Tree(object):
     def id2path(self, file_id):
         return self.inventory.id2path(file_id)
 
+    def is_control_filename(self, filename):
+        """True if filename is the name of a control file in this tree.
+        
+        :param filename: A filename within the tree. This is a relative path
+        from the root of this tree.
+
+        This is true IF and ONLY IF the filename is part of the meta data
+        that bzr controls in this tree. I.E. a random .bzr directory placed
+        on disk will not be a control file for this tree.
+        """
+        return self.bzrdir.is_control_filename(filename)
+
     def iter_entries_by_dir(self):
         """Walk the tree in 'by_dir' order.
 
@@ -135,6 +150,10 @@ class Tree(object):
     def _get_inventory(self):
         return self._inventory
     
+    def get_file(self, file_id):
+        """Return a file object for the file file_id in the tree."""
+        raise NotImplementedError(self.get_file)
+    
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path))
 
@@ -147,7 +166,7 @@ class Tree(object):
         fp = fingerprint_file(f)
         f.seek(0)
         
-        if ie.text_size != None:
+        if ie.text_size is not None:
             if ie.text_size != fp['size']:
                 raise BzrError("mismatched size for file %r in %r" % (ie.file_id, self._store),
                         ["inventory expects %d bytes" % ie.text_size,
@@ -160,6 +179,9 @@ class Tree(object):
                      "file is actually %s" % fp['sha1'],
                      "store is probably damaged/corrupt"])
 
+    def path2id(self, path):
+        """Return the id for path in this tree."""
+        return self._inventory.path2id(path)
 
     def print_file(self, file_id):
         """Print file with id `file_id` to stdout."""
@@ -191,17 +213,13 @@ class Tree(object):
         return set((p for p in paths if not pred(p)))
 
 
-# for compatibility
-from bzrlib.revisiontree import RevisionTree
- 
-
 class EmptyTree(Tree):
 
     def __init__(self):
-        self._inventory = Inventory()
-        warn('EmptyTree is deprecated as of bzr 0.9 please use '
-            'repository.revision_tree instead.',
-            DeprecationWarning, stacklevel=2)
+        self._inventory = Inventory(root_id=None)
+        symbol_versioning.warn('EmptyTree is deprecated as of bzr 0.9 please'
+                               ' use repository.revision_tree instead.',
+                               DeprecationWarning, stacklevel=2)
 
     def get_parent_ids(self):
         return []
@@ -216,11 +234,11 @@ class EmptyTree(Tree):
         assert self._inventory[file_id].kind == "directory"
         return "directory"
 
-    def list_files(self):
+    def list_files(self, include_root=False):
         return iter([])
     
     def __contains__(self, file_id):
-        return file_id in self._inventory
+        return (file_id in self._inventory)
 
     def get_file_sha1(self, file_id, path=None):
         return None
@@ -375,11 +393,11 @@ class InterTree(InterObject):
     will pass through to InterTree as appropriate.
     """
 
-    _optimisers = set()
+    _optimisers = []
 
     @needs_read_lock
     def compare(self, want_unchanged=False, specific_files=None,
-        extra_trees=None, require_versioned=False):
+        extra_trees=None, require_versioned=False, include_root=False):
         """Return the changes from source to target.
 
         :return: A TreeDelta.
@@ -407,4 +425,18 @@ class InterTree(InterObject):
             # _compare_trees would think we want a complete delta
             return delta.TreeDelta()
         return delta._compare_trees(self.source, self.target, want_unchanged,
-            specific_file_ids)
+            specific_file_ids, include_root)
+
+
+# This was deprecated before 0.12, but did not have an official warning
+@symbol_versioning.deprecated_function(symbol_versioning.zero_twelve)
+def RevisionTree(*args, **kwargs):
+    """RevisionTree has moved to bzrlib.revisiontree.RevisionTree()
+
+    Accessing it as bzrlib.tree.RevisionTree has been deprecated as of
+    bzr 0.12.
+    """
+    from bzrlib.revisiontree import RevisionTree as _RevisionTree
+    return _RevisionTree(*args, **kwargs)
+ 
+

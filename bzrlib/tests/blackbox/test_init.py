@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ class TestInit(ExternalBase):
         self.assertEqual('', out)
         self.assertContainsRe(err,
             r'^bzr: ERROR: .*'
-            '\[Errno 2\] No such file or directory: ')
+            '\[Errno 2\] No such file or directory')
         
         os.mkdir('subdir2')
         out, err = self.run_bzr('init', 'subdir2')

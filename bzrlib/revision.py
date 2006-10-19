@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -118,7 +118,7 @@ def is_ancestor(revision_id, candidate_id, branch):
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
     """
-    return candidate_id in branch.repository.get_ancestry(revision_id)
+    return (candidate_id in branch.repository.get_ancestry(revision_id))
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
@@ -154,7 +154,7 @@ def find_present_ancestors(revision_id, revision_source):
     anc_iter = enumerate(iter_ancestors(revision_id, revision_source,
                          only_present=True))
     for anc_order, (anc_id, anc_distance) in anc_iter:
-        if not found_ancestors.has_key(anc_id):
+        if anc_id not in found_ancestors:
             found_ancestors[anc_id] = (anc_order, anc_distance)
     return found_ancestors
     

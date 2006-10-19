@@ -1,8 +1,9 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,14 +21,19 @@ and returning some interesting data about them such as ancestors
 and ghosts information.
 """
 
-
-from copy import deepcopy
 from cStringIO import StringIO
-from unittest import TestSuite
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from copy import deepcopy
+import unittest
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    xml5,
+    )
+""")
 from bzrlib.trace import mutter
 
 
@@ -46,7 +52,7 @@ class RevisionStoreTestProviderAdapter(object):
         self._factories = factories
     
     def adapt(self, test):
-        result = TestSuite()
+        result = unittest.TestSuite()
         for factory in self._factories:
             new_test = deepcopy(test)
             new_test.transport_server = self._transport_server
@@ -76,7 +82,7 @@ class RevisionStore(object):
 
     def __init__(self, serializer=None):
         if serializer is None:
-            serializer = bzrlib.xml5.serializer_v5
+            serializer = xml5.serializer_v5
         self._serializer = serializer
 
     def add_revision(self, revision, transaction):

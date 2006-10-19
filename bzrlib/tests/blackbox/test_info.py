@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,6 +21,7 @@
 import sys
 
 import bzrlib
+from bzrlib import repository
 from bzrlib.osutils import format_date
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
@@ -133,7 +134,9 @@ Revision store:
         # Branch and bind to standalone, needs upgrade to metadir
         # (creates backup as unknown)
         branch1.bzrdir.sprout('bound')
-        bzrlib.upgrade.upgrade('bound', bzrlib.bzrdir.BzrDirMetaFormat1())
+        knit1_format = bzrlib.bzrdir.BzrDirMetaFormat1()
+        knit1_format.repository_format = repository.RepositoryFormatKnit1()
+        bzrlib.upgrade.upgrade('bound', knit1_format)
         branch3 = bzrlib.bzrdir.BzrDir.open('bound').open_branch()
         branch3.bind(branch1)
         bound_tree = branch3.bzrdir.open_workingtree()
@@ -186,7 +189,7 @@ Revision store:
 
         # Checkout standalone (same as above, but does not have parent set)
         old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirMetaFormat1())
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(knit1_format)
         branch4 = bzrlib.bzrdir.BzrDir.create_branch_convenience('checkout')
         bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
         branch4.bind(branch1)
@@ -1200,7 +1203,7 @@ Revision store:
         transport.mkdir('tree')
         transport.mkdir('tree/checkout')
         co_branch = bzrlib.bzrdir.BzrDir.create_branch_convenience('tree/checkout',
-                                    format=bzrlib.bzrdir.BzrDirMetaFormat1())
+            format=bzrlib.bzrdir.BzrDirMetaFormat1())
         co_branch.bind(repo_branch)
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')

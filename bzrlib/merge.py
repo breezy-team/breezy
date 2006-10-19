@@ -17,9 +17,11 @@
 
 import os
 import errno
-from tempfile import mkdtemp
 import warnings
 
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
 from bzrlib.errors import (BzrCommandError,
@@ -37,13 +39,14 @@ from bzrlib.errors import (BzrCommandError,
                            )
 from bzrlib.merge3 import Merge3
 import bzrlib.osutils
-from bzrlib.osutils import rename, pathjoin, rmtree
+from bzrlib.osutils import rename, pathjoin
 from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
-                              FinalPaths, create_by_entry, unique_add)
+                              FinalPaths, create_by_entry, unique_add,
+                              ROOT_PARENT)
 from bzrlib.versionedfile import WeaveMerge
 from bzrlib import ui
 
@@ -183,10 +186,16 @@ class Merger(object):
         ancestry = self.this_branch.repository.get_ancestry(self.this_basis)
         if self.other_rev_id in ancestry:
             return
-        self.this_tree.add_pending_merge(self.other_rev_id)
+        self.this_tree.add_parent_tree((self.other_rev_id, self.other_tree))
 
     def set_other(self, other_revision):
-        other_branch, self.other_tree = _get_tree(other_revision, 
+        """Set the revision and tree to merge from.
+
+        This sets the other_tree, other_rev_id, other_basis attributes.
+
+        :param other_revision: The [path, revision] list to merge from.
+        """
+        other_branch, self.other_tree = _get_tree(other_revision,
                                                   self.this_branch)
         if other_revision[1] == -1:
             self.other_rev_id = other_branch.last_revision()
@@ -208,6 +217,10 @@ class Merger(object):
         self.set_base([None, None])
 
     def set_base(self, base_revision):
+        """Set the base revision to use for the merge.
+
+        :param base_revision: A 2-list containing a path and revision number.
+        """
         mutter("doing merge() with no base_revision specified")
         if base_revision == [None, None]:
             try:
@@ -363,7 +376,7 @@ class Merge3Merger(object):
         else:
             all_ids = set(base_tree)
             all_ids.update(other_tree)
-        working_tree.lock_write()
+        working_tree.lock_tree_write()
         self.tt = TreeTransform(working_tree, self.pb)
         try:
             self.pp.next_phase()
@@ -376,7 +389,7 @@ class Merge3Merger(object):
                     self.merge_executable(file_id, file_status)
             finally:
                 child_pb.finished()
-                
+            self.fix_root()
             self.pp.next_phase()
             child_pb = ui.ui_factory.nested_progress_bar()
             try:
@@ -397,6 +410,33 @@ class Merge3Merger(object):
             self.tt.finalize()
             working_tree.unlock()
             self.pb.clear()
+
+    def fix_root(self):
+        try:
+            self.tt.final_kind(self.tt.root)
+        except NoSuchFile:
+            self.tt.cancel_deletion(self.tt.root)
+        if self.tt.final_file_id(self.tt.root) is None:
+            self.tt.version_file(self.tt.tree_file_id(self.tt.root), 
+                                 self.tt.root)
+        if self.other_tree.inventory.root is None:
+            return
+        other_root_file_id = self.other_tree.inventory.root.file_id
+        other_root = self.tt.trans_id_file_id(other_root_file_id)
+        if other_root == self.tt.root:
+            return
+        try:
+            self.tt.final_kind(other_root)
+        except NoSuchFile:
+            return
+        self.reparent_children(self.other_tree.inventory.root, self.tt.root)
+        self.tt.cancel_creation(other_root)
+        self.tt.cancel_versioning(other_root)
+
+    def reparent_children(self, ie, target):
+        for thing, child in ie.children.iteritems():
+            trans_id = self.tt.trans_id_file_id(child.file_id)
+            self.tt.adjust_path(self.tt.final_name(trans_id), target, trans_id)
 
     def write_modified(self, results):
         modified_hashes = {}
@@ -508,9 +548,10 @@ class Merge3Merger(object):
                         "conflict": other_entry}
         trans_id = self.tt.trans_id_file_id(file_id)
         parent_id = winner_entry[parent_id_winner].parent_id
-        parent_trans_id = self.tt.trans_id_file_id(parent_id)
-        self.tt.adjust_path(winner_entry[name_winner].name, parent_trans_id,
-                            trans_id)
+        if parent_id is not None:
+            parent_trans_id = self.tt.trans_id_file_id(parent_id)
+            self.tt.adjust_path(winner_entry[name_winner].name, 
+                                parent_trans_id, trans_id)
 
     def merge_contents(self, file_id):
         """Performa a merge on file_id contents."""
@@ -858,7 +899,7 @@ class Diff3Merger(Merge3Merger):
         will be dumped, and a will be conflict noted.
         """
         import bzrlib.patch
-        temp_dir = mkdtemp(prefix="bzr-")
+        temp_dir = osutils.mkdtemp(prefix="bzr-")
         try:
             new_file = pathjoin(temp_dir, "new")
             this = self.dump_file(temp_dir, "this", self.this_tree, file_id)
@@ -876,9 +917,9 @@ class Diff3Merger(Merge3Merger):
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
                 self._dump_conflicts(name, parent_id, file_id)
-            self._raw_conflicts.append(('text conflict', trans_id))
+                self._raw_conflicts.append(('text conflict', trans_id))
         finally:
-            rmtree(temp_dir)
+            osutils.rmtree(temp_dir)
 
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
@@ -913,7 +954,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
         assert not interesting_ids, ('Only supply interesting_ids'
                                      ' or interesting_files')
         merger._set_interesting_files(interesting_files)
-    merger.show_base = show_base 
+    merger.show_base = show_base
     merger.reprocess = reprocess
     merger.other_rev_id = other_rev_id
     merger.other_basis = other_rev_id

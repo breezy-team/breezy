@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -292,10 +292,10 @@ class TestPull(ExternalBase):
         self.assertEqualDiff(tree_a.branch.revision_history(),
                              tree_b.branch.revision_history())
 
-        testament_a = Testament.from_revision(tree_a.branch.repository, 
-                                              tree_a.last_revision())
+        testament_a = Testament.from_revision(tree_a.branch.repository,
+                                              tree_a.get_parent_ids()[0])
         testament_b = Testament.from_revision(tree_b.branch.repository,
-                                              tree_b.last_revision())
+                                              tree_b.get_parent_ids()[0])
         self.assertEqualDiff(testament_a.as_text(),
                              testament_b.as_text())
 

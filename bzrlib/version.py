@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,5 +63,5 @@ def _get_bzr_source_tree():
     try:
         from bzrlib.workingtree import WorkingTree
         return WorkingTree.open_containing(__file__)[0]
-    except errors.NotBranchError:
+    except (errors.NotBranchError, errors.UnknownFormatError):
         return None

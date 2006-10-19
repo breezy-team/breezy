@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Development Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,8 +29,10 @@ class TestStatus(TestCaseWithTransport):
         tree = self.make_branch_and_tree('a')
         tree.commit('empty commit')
         tree2 = self.make_branch_and_tree('b')
-        tree2.branch.fetch(tree.branch)
-        tree2.set_pending_merges([tree.last_revision()])
+        # set a left most parent that is not a present commit
+        tree2.add_parent_tree_id('some-ghost', allow_leftmost_as_ghost=True)
+        # do a merge
+        tree2.merge_from_branch(tree.branch)
         output = StringIO()
         show_pending_merges(tree2, output)
         self.assertContainsRe(output.getvalue(), 'empty commit')
@@ -42,5 +44,7 @@ class TestStatus(TestCaseWithTransport):
         r2_id = tree.commit('two', allow_pointless=True)
         r2_tree = tree.branch.repository.revision_tree(r2_id)
         output = StringIO()
-        show_tree_status(tree, to_file=output, revision=[RevisionSpec("revid:%s" % r1_id), RevisionSpec("revid:%s" % r2_id)])
+        show_tree_status(tree, to_file=output,
+                     revision=[RevisionSpec.from_string("revid:%s" % r1_id),
+                               RevisionSpec.from_string("revid:%s" % r2_id)])
         # return does not matter as long as it did not raise.

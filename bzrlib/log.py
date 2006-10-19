@@ -54,7 +54,9 @@ all the changes since the previous revision that touched hello.c.
 from itertools import izip
 import re
 
+from bzrlib import symbol_versioning
 import bzrlib.errors as errors
+from bzrlib.symbol_versioning import deprecated_method, zero_eleven
 from bzrlib.trace import mutter
 from bzrlib.tsort import merge_sort
 
@@ -202,10 +204,20 @@ def _show_log(branch,
         mainline_revs.insert(0, None)
     else:
         mainline_revs.insert(0, which_revs[start_revision-2][1])
-    if getattr(lf, 'show_merge', None) is not None:
-        include_merges = True 
+    # how should we show merged revisions ?
+    # old api: show_merge. New api: show_merge_revno
+    show_merge_revno = getattr(lf, 'show_merge_revno', None)
+    show_merge = getattr(lf, 'show_merge', None)
+    if show_merge is None and show_merge_revno is None:
+        # no merged-revno support
+        include_merges = False
     else:
-        include_merges = False 
+        include_merges = True
+    if show_merge is not None and show_merge_revno is None:
+        # tell developers to update their code
+        symbol_versioning.warn('LogFormatters should provide show_merge_revno '
+            'instead of show_merge since bzr 0.11.',
+            DeprecationWarning, stacklevel=3)
     view_revisions = list(get_view_revisions(mainline_revs, rev_nos, branch,
                           direction, include_merges=include_merges))
 
@@ -253,7 +265,10 @@ def _show_log(branch,
 
             lf.show(revno, rev, delta)
         else:
-            lf.show_merge(rev, merge_depth)
+            if show_merge_revno is None:
+                lf.show_merge(rev, merge_depth)
+            else:
+                lf.show_merge_revno(rev, merge_depth, revno)
 
 
 def get_view_revisions(mainline_revs, rev_nos, branch, direction,
@@ -267,12 +282,13 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
         if direction == 'reverse':
             revision_ids.reverse()
         for revision_id in revision_ids:
-            yield revision_id, rev_nos[revision_id], 0
+            yield revision_id, str(rev_nos[revision_id]), 0
         return
     merge_sorted_revisions = merge_sort(
         branch.repository.get_revision_graph(mainline_revs[-1]),
         mainline_revs[-1],
-        mainline_revs)
+        mainline_revs,
+        generate_revno=True)
 
     if direction == 'forward':
         # forward means oldest first.
@@ -282,8 +298,8 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
 
     revision_history = branch.revision_history()
 
-    for sequence, rev_id, merge_depth, end_of_merge in merge_sorted_revisions:
-        yield rev_id, rev_nos.get(rev_id), merge_depth
+    for sequence, rev_id, merge_depth, revno, end_of_merge in merge_sorted_revisions:
+        yield rev_id, '.'.join(map(str, revno)), merge_depth
 
 
 def reverse_by_depth(merge_sorted_revisions, _depth=0):
@@ -329,8 +345,14 @@ class LongLogFormatter(LogFormatter):
     def show(self, revno, rev, delta):
         return self._show_helper(revno=revno, rev=rev, delta=delta)
 
+    @deprecated_method(zero_eleven)
     def show_merge(self, rev, merge_depth):
         return self._show_helper(rev=rev, indent='    '*merge_depth, merged=True, delta=None)
+
+    def show_merge_revno(self, rev, merge_depth, revno):
+        """Show a merged revision rev, with merge_depth and a revno."""
+        return self._show_helper(rev=rev, revno=revno,
+            indent='    '*merge_depth, merged=True, delta=None)
 
     def _show_helper(self, rev=None, revno=None, indent='', merged=False, delta=None):
         """Show a revision, either merged or not."""
@@ -338,7 +360,7 @@ class LongLogFormatter(LogFormatter):
         to_file = self.to_file
         print >>to_file,  indent+'-' * 60
         if revno is not None:
-            print >>to_file,  'revno:', revno
+            print >>to_file,  indent+'revno:', revno
         if merged:
             print >>to_file,  indent+'merged:', rev.revision_id
         elif self.show_ids:
@@ -364,7 +386,7 @@ class LongLogFormatter(LogFormatter):
             message = rev.message.rstrip('\r\n')
             for l in message.split('\n'):
                 print >>to_file,  indent+'  ' + l
-        if delta != None:
+        if delta is not None:
             delta.show(to_file, self.show_ids)
 
 
@@ -375,7 +397,7 @@ class ShortLogFormatter(LogFormatter):
         to_file = self.to_file
         date_str = format_date(rev.timestamp, rev.timezone or 0,
                             self.show_timezone)
-        print >>to_file, "%5d %s\t%s" % (revno, self.short_committer(rev),
+        print >>to_file, "%5s %s\t%s" % (revno, self.short_committer(rev),
                 format_date(rev.timestamp, rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
                            show_offset=False))
@@ -390,7 +412,7 @@ class ShortLogFormatter(LogFormatter):
 
         # TODO: Why not show the modified files in a shorter form as
         # well? rewrap them single lines of appropriate length
-        if delta != None:
+        if delta is not None:
             delta.show(to_file, self.show_ids)
         print >>to_file, ''
 
@@ -428,7 +450,7 @@ class LineLogFormatter(LogFormatter):
         out = []
         if revno:
             # show revno only when is not None
-            out.append("%d:" % revno)
+            out.append("%s:" % revno)
         out.append(self.truncate(self.short_committer(rev), 20))
         out.append(self.date_string(rev))
         out.append(rev.get_summary())

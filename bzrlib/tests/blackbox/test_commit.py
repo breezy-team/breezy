@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -187,7 +187,7 @@ class TestCommit(ExternalBase):
             other_tree.commit('modify all sample files and dirs.')
         finally:
             other_tree.unlock()
-        self.merge(other_tree.branch, this_tree)
+        this_tree.merge_from_branch(other_tree.branch)
         os.chdir('this')
         out,err = self.run_bzr("commit", "-m", "added")
         os.chdir('..')

@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,7 +21,7 @@
 import os
 import sys
 
-import bzrlib.errors as errors
+from bzrlib import errors, ui
 import bzrlib.gpg as gpg
 from bzrlib.tests import TestCase, TestCaseInTempDir
 
@@ -44,11 +44,9 @@ class TestCommandLine(TestCase):
         my_gpg = gpg.GPGStrategy(FakeConfig())
         self.assertRaises(errors.SigningFailed, my_gpg.sign, 'content')
 
-    def test_returns_output(self):
-        # This test needs a 'cat' command or similar to work.
+    def assertProduces(self, content):
+        # This needs a 'cat' command or similar to work.
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        content = "some content\nwith newlines\n"
-
         if sys.platform == 'win32':
             # Windows doesn't come with cat, and we don't require it
             # so lets try using python instead.
@@ -63,6 +61,24 @@ class TestCommandLine(TestCase):
         else:
             my_gpg._command_line = lambda:['cat', '-']
             self.assertEqual(content, my_gpg.sign(content))
+
+    def test_returns_output(self):
+        content = "some content\nwith newlines\n"
+        self.assertProduces(content)
+
+    def test_clears_progress(self):
+        content = "some content\nwith newlines\n"
+        old_clear_term = ui.ui_factory.clear_term
+        clear_term_called = [] 
+        def clear_term():
+            old_clear_term()
+            clear_term_called.append(True)
+        ui.ui_factory.clear_term = clear_term
+        try:
+            self.assertProduces(content)
+        finally:
+            ui.ui_factory.clear_term = old_clear_term
+        self.assertEqual([True], clear_term_called)
 
 
 class TestDisabled(TestCase):

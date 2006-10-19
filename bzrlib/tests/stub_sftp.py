@@ -153,12 +153,13 @@ class StubSFTPServer (SFTPServerInterface):
     def open(self, path, flags, attr):
         path = self._realpath(path)
         try:
-            if hasattr(os, 'O_BINARY'):
-                flags |= os.O_BINARY
+            flags |= getattr(os, 'O_BINARY', 0)
             if getattr(attr, 'st_mode', None):
                 fd = os.open(path, flags, attr.st_mode)
             else:
-                fd = os.open(path, flags)
+                # os.open() defaults to 0777 which is
+                # an odd default mode for files
+                fd = os.open(path, flags, 0666)
         except OSError, e:
             return SFTPServer.convert_errno(e.errno)
 

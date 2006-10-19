@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,6 +46,15 @@ class TestSetup(TestCase):
         """
         if not os.path.isfile('setup.py'):
             raise TestSkipped('There is no setup.py file in current directory')
+        try:
+            import distutils.sysconfig
+            makefile_path = distutils.sysconfig.get_makefile_filename()
+            if not os.path.exists(makefile_path):
+                raise TestSkipped('You must have the python Makefile installed to run this test.'
+                                  ' Usually this can be found by installing "python-dev"')
+        except ImportError:
+            raise TestSkipped('You must have distutils installed to run this test.'
+                              ' Usually this can be found by installing "python-dev"')
         self.log('test_build running in %s' % os.getcwd())
         install_dir = tempfile.mkdtemp()
         # setup.py must be run from the root source directory, but the tests

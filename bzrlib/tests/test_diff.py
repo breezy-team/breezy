@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Development Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -9,7 +9,7 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -115,7 +115,11 @@ class TestDiff(TestCase):
         try:
             os.environ['LANG'] = 'C'
             lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
-            self.assertEqual(['Binary files old and new differ\n', '\n'], lines)
+            # Older versions of diffutils say "Binary files", newer
+            # versions just say "Files".
+            self.assertContainsRe(lines[0],
+                                  '(Binary f|F)iles old and new differ\n')
+            self.assertEquals(lines[1:], ['\n'])
         finally:
             if orig_lang is None:
                 del os.environ['LANG']

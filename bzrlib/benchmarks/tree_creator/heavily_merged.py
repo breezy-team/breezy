@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,11 +59,11 @@ class HeavilyMergedTreeCreator(TreeCreator):
                 for i in xrange(250):
                     revision_id = tree.commit('no-changes commit %d-a' % i)
                     tree2.branch.fetch(tree.branch, revision_id)
-                    tree2.set_pending_merges([revision_id])
+                    tree2.add_parent_tree_id(revision_id)
                     revision_id = tree2.commit('no-changes commit %d-b' % i)
                     tree.branch.fetch(tree2.branch, revision_id)
-                    tree.set_pending_merges([revision_id])
-                tree.set_pending_merges([])
+                    tree.add_parent_tree_id(revision_id)
+                tree.set_parent_ids(tree.get_parent_ids()[:1])
             finally:
                 tree2.unlock()
         finally:

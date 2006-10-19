@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -71,14 +71,14 @@ class TestAnnotate(TestCaseWithTransport):
 ''')
 
     def test_annotate_cmd_revision(self):
-        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r 1'])
+        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r1'])
         self.assertEquals(err, '')
         self.assertEqualDiff(out, '''\
     1 test@us | my helicopter
 ''')
 
     def test_annotate_cmd_revision3(self):
-        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r 3'])
+        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r3'])
         self.assertEquals(err, '')
         self.assertEqualDiff(out, '''\
     1 test@us | my helicopter
@@ -86,14 +86,24 @@ class TestAnnotate(TestCaseWithTransport):
 ''')
 
     def test_annotate_cmd_unknown_revision(self):
-        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r 10'],
+        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r', '10'],
                                          retcode=3)
         self.assertEquals(out, '')
-        self.assertContainsRe(err, 'has no revision 10')
+        self.assertContainsRe(err, 'Requested revision: \'10\' does not exist')
 
     def test_annotate_cmd_two_revisions(self):
-        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r 1..2'],
+        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r1..2'],
                                          retcode=3)
         self.assertEquals(out, '')
         self.assertEquals(err, 'bzr: ERROR: bzr annotate --revision takes'
                                ' exactly 1 argument\n')
+
+    def test_annotate_empty_file(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/empty', '')])
+        tree.add('empty')
+        tree.commit('add empty file')
+
+        os.chdir('tree')
+        out, err = self.run_bzr('annotate', 'empty')
+        self.assertEqual('', out)

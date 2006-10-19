@@ -54,11 +54,14 @@ class HttpTransport_urllib(HttpTransportBase):
         # so nothing to do with from_transport
 
     def _get(self, relpath, ranges, tail_amount=0):
+        return self._request(relpath, 'GET', ranges, tail_amount=tail_amount)
+
+    def _request(self, relpath, method, ranges, tail_amount=0, body=None):
         path = relpath
         try:
             path = self._real_abspath(relpath)
-            resp = self._get_url_impl(path, method='GET', ranges=ranges,
-                                      tail_amount=tail_amount)
+            resp = self._get_url_impl(path, method=method, ranges=ranges,
+                                      tail_amount=tail_amount, body=body)
             return resp.code, response.handle_response(path,
                                 resp.code, resp.headers, resp)
         except urllib2.HTTPError, e:
@@ -67,16 +70,16 @@ class HttpTransport_urllib(HttpTransportBase):
                 raise NoSuchFile(path, extra=e)
             raise
         except (BzrError, IOError), e:
-            if hasattr(e, 'errno'):
+            if getattr(e, 'errno', None) is not None:
                 mutter('io error: %s %s for has url: %r',
                     e.errno, errno.errorcode.get(e.errno), path)
                 if e.errno == errno.ENOENT:
                     raise NoSuchFile(path, extra=e)
-            raise ConnectionError(msg = "Error retrieving %s: %s" 
-                             % (self.abspath(relpath), str(e)),
-                             orig_error=e)
+            raise ConnectionError(msg = "Error retrieving %s: %s"
+                                  % (self.abspath(relpath), str(e)),
+                                  orig_error=e)
 
-    def _get_url_impl(self, url, method, ranges, tail_amount=0):
+    def _get_url_impl(self, url, method, ranges, tail_amount=0, body=None):
         """Actually pass get request into urllib
 
         :returns: urllib Response object
@@ -87,6 +90,8 @@ class HttpTransport_urllib(HttpTransportBase):
         opener = urllib2.build_opener(auth_handler)
         request = Request(url)
         request.method = method
+        if body is not None:
+            request.add_data(body)
         request.add_header('Pragma', 'no-cache')
         request.add_header('Cache-control', 'max-age=0')
         request.add_header('User-Agent',
@@ -96,6 +101,9 @@ class HttpTransport_urllib(HttpTransportBase):
             request.add_header('Range', bytes)
         response = opener.open(request)
         return response
+
+    def _post(self, body_bytes):
+        return self._request('.bzr/smart', 'POST', [], body=body_bytes)
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -113,10 +121,13 @@ class HttpTransport_urllib(HttpTransportBase):
             f.read()
             f.close()
             return True
-        except urllib2.URLError, e:
-            mutter('url error code: %s for has url: %r', e.code, abspath)
+        except urllib2.HTTPError, e:
+            mutter('url error code: %s, for has url: %r', e.code, abspath)
             if e.code == 404:
                 return False
+            raise
+        except urllib2.URLError, e:
+            mutter('url error: %s, for has url: %r', e.reason, abspath)
             raise
         except IOError, e:
             mutter('io error: %s %s for has url: %r',

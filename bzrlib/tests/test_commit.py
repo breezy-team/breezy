@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,14 +18,18 @@
 import os
 
 import bzrlib
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import (
+    errors,
+    lockdir,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
-from bzrlib.workingtree import WorkingTree
 from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import BranchConfig
 from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed, 
                            LockContention)
+from bzrlib.tests import TestCaseWithTransport
+from bzrlib.workingtree import WorkingTree
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -407,10 +411,14 @@ class TestCommit(TestCaseWithTransport):
         bound = master.sprout('bound')
         wt = bound.open_workingtree()
         wt.branch.set_bound_location(os.path.realpath('master'))
+
+        orig_default = lockdir._DEFAULT_TIMEOUT_SECONDS
         master_branch.lock_write()
         try:
+            lockdir._DEFAULT_TIMEOUT_SECONDS = 1
             self.assertRaises(LockContention, wt.commit, 'silly')
         finally:
+            lockdir._DEFAULT_TIMEOUT_SECONDS = orig_default
             master_branch.unlock()
 
     def test_commit_bound_merge(self):
@@ -436,7 +444,7 @@ class TestCommit(TestCaseWithTransport):
         # do a merge into the bound branch from other, and then change the
         # content file locally to force a new revision (rather than using the
         # revision from other). This forces extra processing in commit.
-        self.merge(other_tree.branch, bound_tree)
+        bound_tree.merge_from_branch(other_tree.branch)
         self.build_tree_contents([('bound/content_file', 'change in bound\n')])
 
         # before #34959 was fixed, this failed with 'revision not present in
@@ -490,7 +498,7 @@ class TestCommit(TestCaseWithTransport):
             other_tree.commit('modify all sample files and dirs.')
         finally:
             other_tree.unlock()
-        self.merge(other_tree.branch, this_tree)
+        this_tree.merge_from_branch(other_tree.branch)
         reporter = CapturingReporter()
         this_tree.commit('do the commit', reporter=reporter)
         self.assertEqual([
@@ -543,3 +551,9 @@ class TestCommit(TestCaseWithTransport):
         timestamp = rev.timestamp
         timestamp_1ms = round(timestamp, 3)
         self.assertEqual(timestamp_1ms, timestamp)
+
+    def test_commit_unversioned_specified(self):
+        """Commit should raise if specified files isn't in basis or worktree"""
+        tree = self.make_branch_and_tree('.')
+        self.assertRaises(errors.PathsNotVersionedError, tree.commit, 
+                          'message', specific_files=['bogus'])

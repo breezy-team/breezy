@@ -1,4 +1,4 @@
-# Copyright (C) 2004-2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,12 +19,20 @@ import os
 import sys
 import tempfile
 
-from bzrlib import inventory
-from bzrlib.builtins import merge
+from bzrlib import (
+    bzrdir,
+    errors,
+    inventory,
+    repository,
+    treebuilder,
+    )
+from bzrlib.builtins import _merge_helper
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
+from bzrlib.bundle.serializer.v08 import BundleSerializerV08
+from bzrlib.bundle.serializer.v09 import BundleSerializerV09
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
 from bzrlib.errors import (BzrError, TestamentMismatch, NotABundle, BadBundle, 
@@ -301,15 +309,69 @@ class BTreeTester(TestCase):
             [inventory.ROOT_ID, 'a', 'b', 'd', 'e'])
 
 
-class BundleTester(TestCaseWithTransport):
+class BundleTester1(TestCaseWithTransport):
+
+    def test_mismatched_bundle(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        serializer = BundleSerializerV08('0.8')
+        b = self.make_branch('.', format=format)
+        self.assertRaises(errors.IncompatibleFormat, serializer.write, 
+                          b.repository, [], {}, StringIO())
+
+    def test_matched_bundle(self):
+        """Don't raise IncompatibleFormat for knit2 and bundle0.9"""
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        serializer = BundleSerializerV09('0.9')
+        b = self.make_branch('.', format=format)
+        serializer.write(b.repository, [], {}, StringIO())
+
+    def test_mismatched_model(self):
+        """Try copying a bundle from knit2 to knit1"""
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        source = self.make_branch_and_tree('source', format=format)
+        source.commit('one', rev_id='one-id')
+        source.commit('two', rev_id='two-id')
+        text = StringIO()
+        write_bundle(source.branch.repository, 'two-id', None, text, 
+                     format='0.9')
+        text.seek(0)
+
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit1()
+        target = self.make_branch('target', format=format)
+        self.assertRaises(errors.IncompatibleRevision, install_bundle, 
+                          target.repository, read_bundle(text))
+
+
+class V08BundleTester(TestCaseWithTransport):
+
+    format = '0.8'
+
+    def bzrdir_format(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit1()
+        return format
+
+    def make_branch_and_tree(self, path, format=None):
+        if format is None:
+            format = self.bzrdir_format()
+        return TestCaseWithTransport.make_branch_and_tree(self, path, format)
+
+    def make_branch(self, path, format=None):
+        if format is None:
+            format = self.bzrdir_format()
+        return TestCaseWithTransport.make_branch(self, path, format)
 
     def create_bundle_text(self, base_rev_id, rev_id):
         bundle_txt = StringIO()
         rev_ids = write_bundle(self.b1.repository, rev_id, base_rev_id, 
-                               bundle_txt)
+                               bundle_txt, format=self.format)
         bundle_txt.seek(0)
         self.assertEqual(bundle_txt.readline(), 
-                         '# Bazaar revision bundle v0.8\n')
+                         '# Bazaar revision bundle v%s\n' % self.format)
         self.assertEqual(bundle_txt.readline(), '#\n')
 
         rev = self.b1.repository.get_revision(rev_id)
@@ -391,9 +453,10 @@ class BundleTester(TestCaseWithTransport):
         else:
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)
-        tree = BzrDir.create_standalone_workingtree(checkout_dir)
+        tree = self.make_branch_and_tree(checkout_dir)
         s = StringIO()
-        ancestors = write_bundle(self.b1.repository, rev_id, None, s)
+        ancestors = write_bundle(self.b1.repository, rev_id, None, s,
+                                 format=self.format)
         s.seek(0)
         assert isinstance(s.getvalue(), str), (
             "Bundle isn't a bytestring:\n %s..." % repr(s.getvalue())[:40])
@@ -432,7 +495,9 @@ class BundleTester(TestCaseWithTransport):
         sure everything matches the builtin branch.
         """
         to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
+        original_parents = to_tree.get_parent_ids()
         repository = to_tree.branch.repository
+        original_parents = to_tree.get_parent_ids()
         self.assertIs(repository.has_revision(base_rev_id), True)
         for rev in info.real_revisions:
             self.assert_(not repository.has_revision(rev.revision_id),
@@ -448,8 +513,8 @@ class BundleTester(TestCaseWithTransport):
         self.assert_(to_tree.branch.repository.has_revision(info.target))
         # Do we also want to verify that all the texts have been added?
 
-        self.assert_(info.target in to_tree.pending_merges())
-
+        self.assertEqual(original_parents + [info.target],
+            to_tree.get_parent_ids())
 
         rev = info.real_revisions[-1]
         base_tree = self.b1.repository.revision_tree(rev.revision_id)
@@ -569,9 +634,14 @@ class BundleTester(TestCaseWithTransport):
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-5', 'a@cset-0-6')
         other = self.get_checkout('a@cset-0-5')
+        tree1_inv = self.tree1.branch.repository.get_inventory_xml(
+            'a@cset-0-5')
+        tree2_inv = other.branch.repository.get_inventory_xml('a@cset-0-5')
+        self.assertEqualDiff(tree1_inv, tree2_inv)
         other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
         other.commit('rename file', rev_id='a@cset-0-6b')
-        merge([other.basedir, -1], [None, None], this_dir=self.tree1.basedir)
+        _merge_helper([other.basedir, -1], [None, None],
+                      this_dir=self.tree1.basedir)
         self.tree1.commit(u'Merge', rev_id='a@cset-0-7',
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-6', 'a@cset-0-7')
@@ -579,7 +649,7 @@ class BundleTester(TestCaseWithTransport):
     def test_symlink_bundle(self):
         if not has_symlinks():
             raise TestSkipped("No symlink support")
-        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
         tt = TreeTransform(self.tree1)
         tt.new_symlink('link', tt.root, 'bar/foo', 'link-1')
@@ -609,7 +679,7 @@ class BundleTester(TestCaseWithTransport):
         self.get_valid_bundle('l@cset-0-3', 'l@cset-0-4')
 
     def test_binary_bundle(self):
-        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
         tt = TreeTransform(self.tree1)
         
@@ -651,7 +721,7 @@ class BundleTester(TestCaseWithTransport):
         self.get_valid_bundle(None, 'b@cset-0-4')
 
     def test_last_modified(self):
-        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
         tt = TreeTransform(self.tree1)
         tt.new_file('file', tt.root, 'file', 'file')
@@ -672,14 +742,15 @@ class BundleTester(TestCaseWithTransport):
         tt.create_file('file2', trans_id)
         tt.apply()
         other.commit('modify text in another tree', rev_id='a@lmod-0-2b')
-        merge([other.basedir, -1], [None, None], this_dir=self.tree1.basedir)
+        _merge_helper([other.basedir, -1], [None, None],
+                      this_dir=self.tree1.basedir)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-3',
                           verbose=False)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-4')
         bundle = self.get_valid_bundle('a@lmod-0-2a', 'a@lmod-0-4')
 
     def test_hide_history(self):
-        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
         open('b1/one', 'wb').write('one\n')
@@ -691,7 +762,7 @@ class BundleTester(TestCaseWithTransport):
         self.tree1.commit('modify', rev_id='a@cset-0-3')
         bundle_file = StringIO()
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
-                               'a@cset-0-1', bundle_file)
+                               'a@cset-0-1', bundle_file, format=self.format)
         self.assertNotContainsRe(bundle_file.getvalue(), 'two')
         self.assertContainsRe(bundle_file.getvalue(), 'one')
         self.assertContainsRe(bundle_file.getvalue(), 'three')
@@ -783,11 +854,14 @@ class BundleTester(TestCaseWithTransport):
         bundle = self.get_valid_bundle(None, 'white-4')
 
     def test_alt_timezone_bundle(self):
-        self.tree1 = self.make_branch_and_tree('b1')
+        self.tree1 = self.make_branch_and_memory_tree('b1')
         self.b1 = self.tree1.branch
+        builder = treebuilder.TreeBuilder()
 
-        self.build_tree(['b1/newfile'])
-        self.tree1.add(['newfile'])
+        self.tree1.lock_write()
+        builder.start_tree(self.tree1)
+        builder.build(['newfile'])
+        builder.finish_tree()
 
         # Asia/Colombo offset = 5 hours 30 minutes
         self.tree1.commit('non-hour offset timezone', rev_id='tz-1',
@@ -799,6 +873,7 @@ class BundleTester(TestCaseWithTransport):
         self.assertEqual('Mon 2006-07-10 20:51:26.000000000 +0530', rev.date)
         self.assertEqual(19800, rev.timezone)
         self.assertEqual(1152544886.0, rev.timestamp)
+        self.tree1.unlock()
 
     def test_bundle_root_id(self):
         self.tree1 = self.make_branch_and_tree('b1')
@@ -807,6 +882,26 @@ class BundleTester(TestCaseWithTransport):
         bundle = self.get_valid_bundle(None, 'revid1')
         tree = bundle.revision_tree(self.b1.repository, 'revid1')
         self.assertEqual('revid1', tree.inventory.root.revision)
+
+
+class V09BundleKnit2Tester(V08BundleTester):
+
+    format = '0.9'
+
+    def bzrdir_format(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit2()
+        return format
+
+
+class V09BundleKnit1Tester(V08BundleTester):
+
+    format = '0.9'
+
+    def bzrdir_format(self):
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormatKnit1()
+        return format
 
 
 class MungedBundleTester(TestCaseWithTransport):

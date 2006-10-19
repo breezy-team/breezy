@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -111,7 +111,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         #-------- end J -----------
 
-        self.merge(b1, main_wt)
+        main_wt.merge_from_branch(b1)
         main_wt.commit("merge branch1, rev-11", rev_id="rev-C")
 
         #-------- end C -----------
@@ -126,14 +126,14 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         #-------- end K -----------
 
+        main_wt.merge_from_branch(b1)
         self.touch("main/b")
-        self.merge(b1, main_wt)
         # D gets some funky characters to make sure the unescaping works
         main_wt.commit("merge branch1, rev-12", rev_id="rev-<D>")
 
         # end D
 
-        self.merge(branch2_branch, main_wt)
+        main_wt.merge_from_branch(branch2_branch)
         main_wt.commit("merge branch1, rev-22",  rev_id="rev-G")
 
         # end G
@@ -173,13 +173,22 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             self.branch.repository.fileids_altered_by_revision_ids(
                 ['rev-G', 'rev-F', 'rev-C', 'rev-B', 'rev-<D>', 'rev-K', 'rev-J']))
 
+    def fileids_altered_by_revision_ids(self, revision_ids):
+        """This is a wrapper to strip TREE_ROOT if it occurs"""
+        repo = self.branch.repository
+        root_id = self.branch.basis_tree().inventory.root.file_id
+        result = repo.fileids_altered_by_revision_ids(revision_ids)
+        if root_id in result:
+            del result[root_id]
+        return result
+
     def test_fileids_altered_by_revision_ids(self):
         self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-A']),
              'b-file-id-2006-01-01-defg': set(['rev-A']),
              'c-funky<file-id> quiji%bo': set(['rev-A']),
              }, 
-            self.branch.repository.fileids_altered_by_revision_ids(["rev-A"]))
+            self.fileids_altered_by_revision_ids(["rev-A"]))
         self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-B'])
              }, 
@@ -245,7 +254,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         set_executability(branch2_wt, 'b', True)
         branch2_wt.commit("branch2, Commit one", rev_id="rev-J")
 
-        self.merge(branch2_branch, main_wt)
+        main_wt.merge_from_branch(branch2_branch)
         set_executability(main_wt, 'b', False)
         main_wt.commit("merge branch1, rev-22",  rev_id="rev-G")
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -146,12 +146,20 @@ class TestRegexes(TestCase):
 
     def test_content_type_re(self):
         self.regex = response.HttpMultipartRangeResponse._CONTENT_TYPE_RE
-        self.assertRegexMatches(('xxyyzz',),
+        self.assertRegexMatches(('', 'xxyyzz'),
                                 'multipart/byteranges; boundary = xxyyzz')
-        self.assertRegexMatches(('xxyyzz',),
+        self.assertRegexMatches(('', 'xxyyzz'),
                                 'multipart/byteranges;boundary=xxyyzz')
-        self.assertRegexMatches(('xx yy zz',),
+        self.assertRegexMatches(('', 'xx yy zz'),
                                 ' multipart/byteranges ; boundary= xx yy zz ')
+        self.assertRegexMatches(('"', 'xx yy zz'),
+                                ' multipart/byteranges ; boundary= "xx yy zz" ')
+        self.assertEqual(None,
+                         self.regex.match(
+                             ' multipart/byteranges ; boundary= "xx yy zz '))
+        self.assertEqual(None,
+                         self.regex.match(
+                             ' multipart/byteranges ; boundary= xx yy zz" '))
         self.assertEqual(None,
                 self.regex.match('multipart byteranges;boundary=xx'))
 
@@ -343,6 +351,20 @@ Content-Type: text/plain; charset=UTF-8\r
 mbp@sourcefrog.net-20050309040929-eee0eb3e6d1e762""")
 
 
+_single_range_no_content_type = (206, """HTTP/1.1 206 Partial Content\r
+Date: Tue, 11 Jul 2006 04:45:22 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
+ETag: "238a3c-16ec2-805c5540"\r
+Accept-Ranges: bytes\r
+Content-Length: 100\r
+Content-Range: bytes 100-199/93890\r
+Connection: close\r
+\r
+""", """mbp@sourcefrog.net-20050309040815-13242001617e4a06
+mbp@sourcefrog.net-20050309040929-eee0eb3e6d1e762""")
+
+
 _multipart_range_response = (206, """HTTP/1.1 206 Partial Content\r
 Date: Tue, 11 Jul 2006 04:49:48 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
@@ -389,7 +411,38 @@ mbp@sourcefrog.net-20050314025539-637a636692c055cf
 mbp@sourcefrog.net-20050314025737-55eb441f430ab4ba
 mbp@sourcefrog.net-20050314025901-d74aa93bb7ee8f62
 mbp@source\r
---418470f848b63279b--\r\n'
+--418470f848b63279b--\r
+""")
+
+_multipart_squid_range_response = (206, """HTTP/1.0 206 Partial Content\r
+Date: Thu, 31 Aug 2006 21:16:22 GMT\r
+Server: Apache/2.2.2 (Unix) DAV/2\r
+Last-Modified: Thu, 31 Aug 2006 17:57:06 GMT\r
+Accept-Ranges: bytes\r
+Content-Type: multipart/byteranges; boundary="squid/2.5.STABLE12:C99323425AD4FE26F726261FA6C24196"\r
+Content-Length: 598\r
+X-Cache: MISS from localhost.localdomain\r
+X-Cache-Lookup: HIT from localhost.localdomain:3128\r
+Proxy-Connection: keep-alive\r
+\r
+""",
+"""\r
+--squid/2.5.STABLE12:C99323425AD4FE26F726261FA6C24196\r
+Content-Type: text/plain\r
+Content-Range: bytes 0-99/18672\r
+\r
+# bzr knit index 8
+
+scott@netsplit.com-20050708230047-47c7868f276b939f fulltext 0 863  :
+scott@netsp\r
+--squid/2.5.STABLE12:C99323425AD4FE26F726261FA6C24196\r
+Content-Type: text/plain\r
+Content-Range: bytes 300-499/18672\r
+\r
+com-20050708231537-2b124b835395399a :
+scott@netsplit.com-20050820234126-551311dbb7435b51 line-delta 1803 479 .scott@netsplit.com-20050820232911-dc4322a084eadf7e :
+scott@netsplit.com-20050821213706-c86\r
+--squid/2.5.STABLE12:C99323425AD4FE26F726261FA6C24196--\r
 """)
 
 
@@ -469,12 +522,26 @@ class TestExtractHeader(TestCase):
         self.check_header('Content-Range', 'bytes 100-199/93890')
         self.check_header('Content-Type', 'text/plain; charset=UTF-8')
 
+    def test_single_range_no_content(self):
+        self.use_response(_single_range_no_content_type)
+
+        self.check_header('Content-Length', '100')
+        self.check_header('Content-Range', 'bytes 100-199/93890')
+
     def test_multi_range(self):
         self.use_response(_multipart_range_response)
 
         self.check_header('Content-Length', '1534')
         self.check_header('Content-Type',
                           'multipart/byteranges; boundary=418470f848b63279b')
+
+    def test_multi_squid_range(self):
+        self.use_response(_multipart_squid_range_response)
+
+        self.check_header('Content-Length', '598')
+        self.check_header('Content-Type',
+                          'multipart/byteranges; '\
+                          'boundary="squid/2.5.STABLE12:C99323425AD4FE26F726261FA6C24196"')
 
     def test_redirect(self):
         """We default to returning the last group of headers in the file."""
@@ -550,6 +617,15 @@ class TestHandleResponse(TestCase):
         out.seek(100)
         self.assertEqual(_single_range_response[2], out.read(100))
 
+    def test_single_range_no_content(self):
+        out = self.get_response(_single_range_no_content_type)
+        self.assertIsInstance(out, response.HttpRangeResponse)
+
+        self.assertRaises(errors.InvalidRange, out.read, 20)
+
+        out.seek(100)
+        self.assertEqual(_single_range_no_content_type[2], out.read(100))
+
     def test_multi_range(self):
         out = self.get_response(_multipart_range_response)
         self.assertIsInstance(out, response.HttpMultipartRangeResponse)
@@ -560,6 +636,17 @@ class TestHandleResponse(TestCase):
 
         out.seek(1000)
         out.read(1050)
+
+    def test_multi_squid_range(self):
+        out = self.get_response(_multipart_squid_range_response)
+        self.assertIsInstance(out, response.HttpMultipartRangeResponse)
+
+        # Just make sure we can read the right contents
+        out.seek(0)
+        out.read(100)
+
+        out.seek(300)
+        out.read(200)
 
     def test_invalid_response(self):
         self.assertRaises(errors.InvalidHttpResponse,
@@ -582,14 +669,6 @@ class TestHandleResponse(TestCase):
         self.assertRaises(errors.NoSuchFile,
             response.handle_response, 'http://missing', a_response[0], headers,
                                       StringIO(a_response[2]))
-
-    def test_missing_content_type(self):
-        a_response = _single_range_response
-        headers = http._extract_headers(a_response[1], 'http://nocontent')
-        del headers['Content-Type']
-        self.assertRaises(errors.InvalidHttpContentType,
-            response.handle_response, 'http://nocontent', a_response[0],
-                                      headers, StringIO(a_response[2]))
 
     def test_missing_content_range(self):
         a_response = _single_range_response

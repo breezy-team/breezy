@@ -1,6 +1,18 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
-# Distributed under the GNU General Public Licence v2
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 # \subsection{\emph{rio} - simple text metaformat}
 # 
@@ -171,6 +183,28 @@ class Stanza(object):
         """Return stanza as a single string"""
         return ''.join(self.to_lines())
 
+    def to_unicode(self):
+        """Return stanza as a single Unicode string.
+
+        This is most useful when adding a Stanza to a parent Stanza
+        """
+        if not self.items:
+            return u''
+
+        result = []
+        for tag, value in self.items:
+            if value == '':
+                result.append(tag + ': \n')
+            elif '\n' in value:
+                # don't want splitlines behaviour on empty lines
+                val_lines = value.split('\n')
+                result.append(tag + ': ' + val_lines[0] + '\n')
+                for line in val_lines[1:]:
+                    result.append('\t' + line + '\n')
+            else:
+                result.append(tag + ': ' + value + '\n')
+        return u''.join(result)
+
     def write(self, to_file):
         """Write stanza to a file"""
         to_file.writelines(self.to_lines())
@@ -223,17 +257,41 @@ def read_stanza(line_iter):
 
     The raw lines must be in utf-8 encoding.
     """
-    items = []
+    unicode_iter = (line.decode('utf-8') for line in line_iter)
+    return read_stanza_unicode(unicode_iter)
+
+
+def read_stanza_unicode(unicode_iter):
+    """Read a Stanza from a list of lines or a file.
+
+    The lines should already be in unicode form. This returns a single
+    stanza that was read. If there is a blank line at the end of the Stanza,
+    it is consumed. It is not an error for there to be no blank line at
+    the end of the iterable. If there is a blank line at the beginning,
+    this is treated as an empty Stanza and None is returned.
+
+    Only the stanza lines and the trailing blank (if any) are consumed
+    from the unicode_iter
+
+    :param unicode_iter: A iterable, yeilding Unicode strings. See read_stanza
+        if you have a utf-8 encoded string.
+    :return: A Stanza object if there are any lines in the file.
+        None otherwise
+    """
     stanza = Stanza()
     tag = None
     accum_value = None
-    for line in line_iter:
-        if line == None or line == '':
+    
+    # TODO: jam 20060922 This code should raise real errors rather than
+    #       using 'assert' to process user input, or raising ValueError
+    #       rather than a more specific error.
+
+    for line in unicode_iter:
+        if line is None or line == '':
             break       # end of file
         if line == '\n':
             break       # end of stanza
-        line = line.decode('utf-8')
-        assert line[-1] == '\n'
+        assert line.endswith('\n')
         real_l = line
         if line[0] == '\t': # continues previous value
             if tag is None:
@@ -245,11 +303,13 @@ def read_stanza(line_iter):
             try:
                 colon_index = line.index(': ')
             except ValueError:
-                raise ValueError('tag/value separator not found in line %r' % real_l)
+                raise ValueError('tag/value separator not found in line %r'
+                                 % real_l)
             tag = str(line[:colon_index])
             assert valid_tag(tag), \
                     "invalid rio tag %r" % tag
             accum_value = line[colon_index+2:-1]
+
     if tag is not None: # add last tag-value
         stanza.add(tag, accum_value)
         return stanza

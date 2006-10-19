@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ def _get_editor():
         yield e
         
     for varname in 'VISUAL', 'EDITOR':
-        if os.environ.has_key(varname):
+        if varname in os.environ:
             yield os.environ[varname]
 
     if sys.platform == 'win32':

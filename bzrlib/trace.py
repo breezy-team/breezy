@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,14 +50,17 @@ form.
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
 
-
-import errno
 import os
 import sys
+import re
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import errno
 import logging
+""")
 
 import bzrlib
-from bzrlib.errors import BzrError, BzrNewError
 from bzrlib.symbol_versioning import (deprecated_function,
         zero_nine,
         )
@@ -93,21 +96,26 @@ error =     _bzr_logger.error
 def mutter(fmt, *args):
     if _trace_file is None:
         return
-    if hasattr(_trace_file, 'closed') and _trace_file.closed:
+    if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
         return
+
+    if isinstance(fmt, unicode):
+        fmt = fmt.encode('utf8')
+
     if len(args) > 0:
         # It seems that if we do ascii % (unicode, ascii) we can
         # get a unicode cannot encode ascii error, so make sure that "fmt"
         # is a unicode string
-        out = unicode(fmt) % args
+        real_args = []
+        for arg in args:
+            if isinstance(arg, unicode):
+                arg = arg.encode('utf8')
+            real_args.append(arg)
+        out = fmt % tuple(real_args)
     else:
         out = fmt
     out += '\n'
-    try:
-        _trace_file.write(out)
-    except UnicodeError, e:
-        warning('UnicodeError: %s', e)
-        _trace_file.write(repr(out))
+    _trace_file.write(out)
     # TODO: jam 20051227 Consider flushing the trace file to help debugging
     #_trace_file.flush()
 debug = mutter
@@ -137,7 +145,8 @@ def open_tracefile(tracefilename='~/.bzr.log'):
     _rollover_trace_maybe(trace_fname)
     try:
         LINE_BUFFERED = 1
-        tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
+        #tf = codecs.open(trace_fname, 'at', 'utf8', buffering=LINE_BUFFERED)
+        tf = open(trace_fname, 'at', LINE_BUFFERED)
         _bzr_log_file = tf
         if tf.tell() == 0:
             tf.write("\nthis is a debug log for diagnosing/reporting problems in bzr\n")
@@ -162,9 +171,6 @@ def log_exception(msg=None):
     """
     if msg:
         error(msg)
-    else:
-        exc_str = format_exception_short(sys.exc_info())
-        error(exc_str)
     log_exception_quietly()
 
 
@@ -282,7 +288,8 @@ def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
     import traceback
     exc_type, exc_object, exc_tb = exc_info
-    print >>err_file, "bzr: ERROR: %s: %s" % (exc_type, exc_object)
+    print >>err_file, "bzr: ERROR: %s.%s: %s" % (
+        exc_type.__module__, exc_type.__name__, exc_object)
     print >>err_file
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
     print >>err_file

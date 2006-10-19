@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -142,3 +142,16 @@ class TestDeprecationWarnings(TestCase):
         self.assertEqual(False,
                          symbol_versioning.deprecated_passed(
                             symbol_versioning.DEPRECATED_PARAMETER))
+
+    def test_deprecation_string(self):
+        """We can get a deprecation string for a method or function."""
+        self.assertEqual('bzrlib.tests.test_symbol_versioning.'
+            'TestDeprecationWarnings.test_deprecation_string was deprecated in '
+            'version 0.11.',
+            symbol_versioning.deprecation_string(
+            self.test_deprecation_string, symbol_versioning.zero_eleven))
+        self.assertEqual('bzrlib.symbol_versioning.deprecated_function was '
+            'deprecated in version 0.11.',
+            symbol_versioning.deprecation_string(
+                symbol_versioning.deprecated_function,
+                symbol_versioning.zero_eleven))

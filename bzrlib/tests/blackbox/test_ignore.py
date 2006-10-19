@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,10 @@ import os
 import re
 import sys
 
-from bzrlib import ignores
+from bzrlib import (
+    ignores,
+    osutils,
+    )
 import bzrlib
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
@@ -30,7 +33,6 @@ from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import (
     has_symlinks,
     pathjoin,
-    rmtree,
     terminal_width,
     )
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
@@ -47,7 +49,7 @@ class TestCommands(ExternalBase):
 
         # is_ignored() will now create the user global ignore file
         # if it doesn't exist, so make sure we ignore it in our tests
-        ignores._set_user_ignores(['*.tmp', './.bazaar'])
+        ignores._set_user_ignores(['*.tmp'])
 
         self.build_tree_contents(
             [('foo.tmp', '.tmp files are ignored by default'),

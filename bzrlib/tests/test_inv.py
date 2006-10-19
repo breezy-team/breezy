@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -434,7 +434,7 @@ class TestPreviousHeads(TestCaseWithTransport):
         self.assertEqual(self.branch.revision_history(), ['A'])
         self.wt.commit('another add of file', rev_id='C')
         self.inv_C = self.branch.repository.get_inventory('C')
-        self.wt.add_pending_merge('B')
+        self.wt.add_parent_tree_id('B')
         self.wt.commit('merge in B', rev_id='D')
         self.inv_D = self.branch.repository.get_inventory('D')
         self.file_active = self.wt.inventory['fileid']
@@ -544,3 +544,19 @@ class TestRevert(TestCaseWithTransport):
         os.unlink('b1/a')
         wt.revert([])
         self.assertEqual(len(wt.inventory), 1)
+
+
+class TestIsRoot(TestCase):
+    """Ensure our root-checking code is accurate."""
+
+    def test_is_root(self):
+        inv = Inventory('TREE_ROOT')
+        self.assertTrue(inv.is_root('TREE_ROOT'))
+        self.assertFalse(inv.is_root('booga'))
+        inv.root.file_id = 'booga'
+        self.assertFalse(inv.is_root('TREE_ROOT'))
+        self.assertTrue(inv.is_root('booga'))
+        # works properly even if no root is set
+        inv.root = None
+        self.assertFalse(inv.is_root('TREE_ROOT'))
+        self.assertFalse(inv.is_root('booga'))

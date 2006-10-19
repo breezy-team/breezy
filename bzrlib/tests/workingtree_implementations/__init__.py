@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 # -*- coding: utf-8 -*-
 #
@@ -56,11 +56,19 @@ def test_suite():
         'bzrlib.tests.workingtree_implementations.test_changes_from',
         'bzrlib.tests.workingtree_implementations.test_commit',
         'bzrlib.tests.workingtree_implementations.test_executable',
+        'bzrlib.tests.workingtree_implementations.test_flush',
         'bzrlib.tests.workingtree_implementations.test_get_parent_ids',
         'bzrlib.tests.workingtree_implementations.test_is_control_filename',
         'bzrlib.tests.workingtree_implementations.test_is_ignored',
         'bzrlib.tests.workingtree_implementations.test_locking',
+        'bzrlib.tests.workingtree_implementations.test_merge_from_branch',
+        'bzrlib.tests.workingtree_implementations.test_parents',
         'bzrlib.tests.workingtree_implementations.test_pull',
+        'bzrlib.tests.workingtree_implementations.test_put_file',
+        'bzrlib.tests.workingtree_implementations.test_mkdir',
+        'bzrlib.tests.workingtree_implementations.test_read_working_inventory',
+        'bzrlib.tests.workingtree_implementations.test_set_root_id',
+        'bzrlib.tests.workingtree_implementations.test_unversion',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]
     adapter = WorkingTreeTestProviderAdapter(

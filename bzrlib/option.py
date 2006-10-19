@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,12 +17,18 @@
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
-import optparse
 import re
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import optparse
+
+from bzrlib import (
+    errors,
+    revisionspec,
+    )
+""")
 from bzrlib.trace import warning
-from bzrlib.revisionspec import RevisionSpec
-from bzrlib.errors import BzrCommandError
 
 
 def _parse_revision_str(revstr):
@@ -32,25 +38,25 @@ def _parse_revision_str(revstr):
     each revision specifier supplied.
 
     >>> _parse_revision_str('234')
-    [<RevisionSpec_int 234>]
+    [<RevisionSpec_revno 234>]
     >>> _parse_revision_str('234..567')
-    [<RevisionSpec_int 234>, <RevisionSpec_int 567>]
+    [<RevisionSpec_revno 234>, <RevisionSpec_revno 567>]
     >>> _parse_revision_str('..')
     [<RevisionSpec None>, <RevisionSpec None>]
     >>> _parse_revision_str('..234')
-    [<RevisionSpec None>, <RevisionSpec_int 234>]
+    [<RevisionSpec None>, <RevisionSpec_revno 234>]
     >>> _parse_revision_str('234..')
-    [<RevisionSpec_int 234>, <RevisionSpec None>]
+    [<RevisionSpec_revno 234>, <RevisionSpec None>]
     >>> _parse_revision_str('234..456..789') # Maybe this should be an error
-    [<RevisionSpec_int 234>, <RevisionSpec_int 456>, <RevisionSpec_int 789>]
+    [<RevisionSpec_revno 234>, <RevisionSpec_revno 456>, <RevisionSpec_revno 789>]
     >>> _parse_revision_str('234....789') #Error ?
-    [<RevisionSpec_int 234>, <RevisionSpec None>, <RevisionSpec_int 789>]
+    [<RevisionSpec_revno 234>, <RevisionSpec None>, <RevisionSpec_revno 789>]
     >>> _parse_revision_str('revid:test@other.com-234234')
     [<RevisionSpec_revid revid:test@other.com-234234>]
     >>> _parse_revision_str('revid:test@other.com-234234..revid:test@other.com-234235')
     [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revid revid:test@other.com-234235>]
     >>> _parse_revision_str('revid:test@other.com-234234..23')
-    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_int 23>]
+    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revno 23>]
     >>> _parse_revision_str('date:2005-04-12')
     [<RevisionSpec_date date:2005-04-12>]
     >>> _parse_revision_str('date:2005-04-12 12:24:33')
@@ -60,40 +66,30 @@ def _parse_revision_str(revstr):
     >>> _parse_revision_str('date:2005-04-12,12:24:33')
     [<RevisionSpec_date date:2005-04-12,12:24:33>]
     >>> _parse_revision_str('-5..23')
-    [<RevisionSpec_int -5>, <RevisionSpec_int 23>]
+    [<RevisionSpec_revno -5>, <RevisionSpec_revno 23>]
     >>> _parse_revision_str('-5')
-    [<RevisionSpec_int -5>]
+    [<RevisionSpec_revno -5>]
     >>> _parse_revision_str('123a')
     Traceback (most recent call last):
       ...
-    BzrError: No namespace registered for string: '123a'
+    NoSuchRevisionSpec: No namespace registered for string: '123a'
     >>> _parse_revision_str('abc')
     Traceback (most recent call last):
       ...
-    BzrError: No namespace registered for string: 'abc'
+    NoSuchRevisionSpec: No namespace registered for string: 'abc'
     >>> _parse_revision_str('branch:../branch2')
     [<RevisionSpec_branch branch:../branch2>]
     >>> _parse_revision_str('branch:../../branch2')
     [<RevisionSpec_branch branch:../../branch2>]
     >>> _parse_revision_str('branch:../../branch2..23')
-    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_int 23>]
+    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_revno 23>]
     """
     # TODO: Maybe move this into revisionspec.py
-    old_format_re = re.compile('\d*:\d*')
-    m = old_format_re.match(revstr)
     revs = []
-    if m:
-        warning('Colon separator for revision numbers is deprecated.'
-                ' Use .. instead')
-        for rev in revstr.split(':'):
-            if rev:
-                revs.append(RevisionSpec(int(rev)))
-            else:
-                revs.append(RevisionSpec(None))
-    else:
-        sep = re.compile("\\.\\.(?!/)")
-        for x in sep.split(revstr):
-            revs.append(RevisionSpec(x or None))
+    # split on the first .. that is not followed by a / ?
+    sep = re.compile("\\.\\.(?!/)")
+    for x in sep.split(revstr):
+        revs.append(revisionspec.RevisionSpec.from_string(x or None))
     return revs
 
 
@@ -111,7 +107,7 @@ def get_merge_type(typestring):
         type_list = '\n'.join(lines)
         msg = "No known merge type %s. Supported types are:\n%s" %\
             (typestring, type_list)
-        raise BzrCommandError(msg)
+        raise errors.BzrCommandError(msg)
 
 class Option(object):
     """Description of a command line option"""
@@ -202,7 +198,7 @@ class OptionParser(optparse.OptionParser):
     DEFAULT_VALUE = object()
 
     def error(self, message):
-        raise BzrCommandError(message)
+        raise errors.BzrCommandError(message)
 
 
 def get_optparser(options):

@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -104,6 +104,17 @@ class TestTransport(TestCase):
         finally:
             _set_protocol_handlers(saved_handlers)
 
+    def test__combine_paths(self):
+        t = Transport('/')
+        self.assertEqual('/home/sarah/project/foo',
+                         t._combine_paths('/home/sarah', 'project/foo'))
+        self.assertEqual('/etc',
+                         t._combine_paths('/home/sarah', '../../etc'))
+        self.assertEqual('/etc',
+                         t._combine_paths('/home/sarah', '../../../etc'))
+        self.assertEqual('/etc',
+                         t._combine_paths('/home/sarah', '/etc'))
+
 
 class TestCoalesceOffsets(TestCase):
     
@@ -172,37 +183,44 @@ class TestMemoryTransport(TestCase):
     def test_clone(self):
         transport = MemoryTransport()
         self.assertTrue(isinstance(transport, MemoryTransport))
+        self.assertEqual("memory:///", transport.clone("/").base)
 
     def test_abspath(self):
         transport = MemoryTransport()
         self.assertEqual("memory:///relpath", transport.abspath('relpath'))
 
-    def test_relpath(self):
+    def test_abspath_of_root(self):
         transport = MemoryTransport()
+        self.assertEqual("memory:///", transport.base)
+        self.assertEqual("memory:///", transport.abspath('/'))
+
+    def test_abspath_of_relpath_starting_at_root(self):
+        transport = MemoryTransport()
+        self.assertEqual("memory:///foo", transport.abspath('/foo'))
 
     def test_append_and_get(self):
         transport = MemoryTransport()
-        transport.append('path', StringIO('content'))
+        transport.append_bytes('path', 'content')
         self.assertEqual(transport.get('path').read(), 'content')
-        transport.append('path', StringIO('content'))
+        transport.append_file('path', StringIO('content'))
         self.assertEqual(transport.get('path').read(), 'contentcontent')
 
     def test_put_and_get(self):
         transport = MemoryTransport()
-        transport.put('path', StringIO('content'))
+        transport.put_file('path', StringIO('content'))
         self.assertEqual(transport.get('path').read(), 'content')
-        transport.put('path', StringIO('content'))
+        transport.put_bytes('path', 'content')
         self.assertEqual(transport.get('path').read(), 'content')
 
     def test_append_without_dir_fails(self):
         transport = MemoryTransport()
         self.assertRaises(NoSuchFile,
-                          transport.append, 'dir/path', StringIO('content'))
+                          transport.append_bytes, 'dir/path', 'content')
 
     def test_put_without_dir_fails(self):
         transport = MemoryTransport()
         self.assertRaises(NoSuchFile,
-                          transport.put, 'dir/path', StringIO('content'))
+                          transport.put_file, 'dir/path', StringIO('content'))
 
     def test_get_missing(self):
         transport = MemoryTransport()
@@ -214,13 +232,13 @@ class TestMemoryTransport(TestCase):
 
     def test_has_present(self):
         transport = MemoryTransport()
-        transport.append('foo', StringIO('content'))
+        transport.append_bytes('foo', 'content')
         self.assertEquals(True, transport.has('foo'))
 
     def test_mkdir(self):
         transport = MemoryTransport()
         transport.mkdir('dir')
-        transport.append('dir/path', StringIO('content'))
+        transport.append_bytes('dir/path', 'content')
         self.assertEqual(transport.get('dir/path').read(), 'content')
 
     def test_mkdir_missing_parent(self):
@@ -242,16 +260,16 @@ class TestMemoryTransport(TestCase):
     def test_iter_files_recursive(self):
         transport = MemoryTransport()
         transport.mkdir('dir')
-        transport.put('dir/foo', StringIO('content'))
-        transport.put('dir/bar', StringIO('content'))
-        transport.put('bar', StringIO('content'))
+        transport.put_bytes('dir/foo', 'content')
+        transport.put_bytes('dir/bar', 'content')
+        transport.put_bytes('bar', 'content')
         paths = set(transport.iter_files_recursive())
         self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
 
     def test_stat(self):
         transport = MemoryTransport()
-        transport.put('foo', StringIO('content'))
-        transport.put('bar', StringIO('phowar'))
+        transport.put_bytes('foo', 'content')
+        transport.put_bytes('bar', 'phowar')
         self.assertEqual(7, transport.stat('foo').st_size)
         self.assertEqual(6, transport.stat('bar').st_size)
 
@@ -413,7 +431,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         base_url = self._server.get_url()
         # try getting the transport via the regular interface:
         t = get_transport(base_url)
-        if not isinstance(t, self.transport_class): 
+        if not isinstance(t, self.transport_class):
             # we did not get the correct transport class type. Override the
             # regular connection behaviour by direct construction.
             t = self.transport_class(base_url)

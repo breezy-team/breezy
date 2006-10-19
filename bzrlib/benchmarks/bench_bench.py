@@ -1,8 +1,9 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -34,7 +35,7 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
         # on roberts machine: this originally took:  7372ms/ 7479ms
         # with the LocalTransport._abspath call:     3730ms/ 3778ms
         # with AtomicFile tuning:                    2888ms/ 2926ms
-        # switching to transport.append:             1468ms/ 2849ms
+        # switching to transport.append_bytes:       1468ms/ 2849ms
         self.time(self.make_kernel_like_tree)
 
     def test_02_make_kernel_like_tree(self):

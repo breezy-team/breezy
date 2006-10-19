@@ -1,4 +1,4 @@
-# (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -186,6 +186,21 @@ class TestInterRepository(TestCaseWithInterRepository):
         from_tree.add('filename', 'funky-chars<>%&;"\'')
         from_tree.commit('commit filename')
         to_repo = self.make_to_repository('to')
+        to_repo.fetch(from_tree.branch.repository, from_tree.get_parent_ids()[0])
+
+    def test_fetch_no_inventory_revision(self):
+        """Old inventories lack revision_ids, so simulate this"""
+        from_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/filename'])
+        from_tree.add('filename', 'funky-chars<>%&;"\'')
+        from_tree.commit('commit filename')
+        old_deserialise = from_tree.branch.repository.deserialise_inventory
+        def deserialise(revision_id, text):
+            inventory = old_deserialise(revision_id, text)
+            inventory.revision_id = None
+            return inventory
+        from_tree.branch.repository.deserialise_inventory = deserialise
+        to_repo = self.make_to_repository('to')
         to_repo.fetch(from_tree.branch.repository, from_tree.last_revision())
 
 
@@ -248,7 +263,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         # repository.
 
         # 'ghost' is a ghost in missing_ghost and not in with_ghost_rev
-        inv = Inventory()
+        inv = Inventory(revision_id='ghost')
+        inv.root.revision = 'ghost'
         repo = self.make_repository('with_ghost_rev')
         sha1 = repo.add_inventory('ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
@@ -261,6 +277,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         repo.add_revision('ghost', rev)
          
         repo = self.make_to_repository('missing_ghost')
+        inv = Inventory(revision_id='with_ghost')
+        inv.root.revision = 'with_ghost'
         sha1 = repo.add_inventory('with_ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,

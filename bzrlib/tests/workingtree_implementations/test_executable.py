@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -75,7 +75,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         # TODO: Maybe this should be a blackbox test
         dir2 = self.wt.branch.bzrdir.clone('b2', revision_id='r1')
         wt2 = dir2.open_workingtree()
-        self.assertEqual('r1', wt2.last_revision())
+        self.assertEqual(['r1'], wt2.get_parent_ids())
         self.assertEqual('r1', wt2.branch.last_revision())
         return wt2
 
@@ -149,7 +149,7 @@ class TestExecutable(TestCaseWithWorkingTree):
 
         # Make sure pull will delete the files
         wt2.pull(self.wt.branch)
-        self.assertEquals('r2', wt2.last_revision())
+        self.assertEquals(['r2'], wt2.get_parent_ids())
         self.assertEquals('r2', wt2.branch.last_revision())
         self.check_empty(wt2)
 
@@ -163,7 +163,7 @@ class TestExecutable(TestCaseWithWorkingTree):
         self.check_exist(self.wt)
 
         wt2.pull(self.wt.branch)
-        self.assertEquals('r3', wt2.last_revision())
+        self.assertEquals(['r3'], wt2.get_parent_ids())
         self.assertEquals('r3', wt2.branch.last_revision())
         self.check_exist(wt2)
 

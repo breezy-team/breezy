@@ -1,3 +1,5 @@
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -12,16 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
 from bzrlib.xml_serializer import ElementTree, SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 import bzrlib.inventory as inventory
 from bzrlib.revision import Revision        
 from bzrlib.errors import BzrError
-
-
-
-
 
 
 class _Serializer_v4(Serializer):
@@ -51,12 +48,12 @@ class _Serializer_v4(Serializer):
         e.set('file_id', ie.file_id)
         e.set('kind', ie.kind)
 
-        if ie.text_size != None:
+        if ie.text_size is not None:
             e.set('text_size', '%d' % ie.text_size)
 
         for f in ['text_id', 'text_sha1', 'symlink_target']:
             v = getattr(ie, f)
-            if v != None:
+            if v is not None:
                 e.set(f, v)
 
         # to be conservative, we don't externalize the root pointers
@@ -92,7 +89,7 @@ class _Serializer_v4(Serializer):
         ## nodes in the root directory, but it's cleaner to use one
         ## internally.
         parent_id = elt.get('parent_id')
-        if parent_id == None:
+        if parent_id is None:
             parent_id = ROOT_ID
 
         kind = elt.get('kind')

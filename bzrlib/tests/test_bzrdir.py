@@ -4,12 +4,12 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -94,7 +94,7 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
         """Create a bzr dir."""
         t = get_transport(url)
         t.mkdir('.bzr')
-        t.put('.bzr/branch-format', StringIO(self.get_format_string()))
+        t.put_bytes('.bzr/branch-format', self.get_format_string())
         return SampleBzrDir(t, self)
 
     def is_supported(self):
@@ -129,7 +129,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_find_format_unknown_format(self):
         t = get_transport(self.get_url())
         t.mkdir('.bzr')
-        t.put('.bzr/branch-format', StringIO())
+        t.put_bytes('.bzr/branch-format', '')
         self.assertRaises(UnknownFormatError,
                           bzrdir.BzrDirFormat.find_format,
                           get_transport('.'))
@@ -391,6 +391,28 @@ class ChrootedTests(TestCaseWithTransport):
         branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
             get_transport(self.get_readonly_url('g/p/q')))
         self.assertEqual('g/p/q', relpath)
+
+    def test_open_from_transport(self):
+        # transport pointing at bzrdir should give a bzrdir with root transport
+        # set to the given transport
+        control = bzrdir.BzrDir.create(self.get_url())
+        transport = get_transport(self.get_url())
+        opened_bzrdir = bzrdir.BzrDir.open_from_transport(transport)
+        self.assertEqual(transport.base, opened_bzrdir.root_transport.base)
+        self.assertIsInstance(opened_bzrdir, bzrdir.BzrDir)
+        
+    def test_open_from_transport_no_bzrdir(self):
+        transport = get_transport(self.get_url())
+        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport,
+                          transport)
+
+    def test_open_from_transport_bzrdir_in_parent(self):
+        control = bzrdir.BzrDir.create(self.get_url())
+        transport = get_transport(self.get_url())
+        transport.mkdir('subdir')
+        transport = transport.clone('subdir')
+        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport,
+                          transport)
 
 
 class TestMeta1DirFormat(TestCaseWithTransport):

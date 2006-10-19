@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,7 +58,7 @@ class TestCheckout(ExternalBase):
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = bzrdir.BzrDir.open('checkout')
-        self.assertEqual('1', result.open_workingtree().last_revision())
+        self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
         self.failIfExists('checkout/added_in_2')
 
     def test_checkout_light_dash_r(self):
@@ -66,7 +66,7 @@ class TestCheckout(ExternalBase):
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = bzrdir.BzrDir.open('checkout')
-        self.assertEqual('1', result.open_workingtree().last_revision())
+        self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
         self.failIfExists('checkout/added_in_2')
 
     def test_checkout_reconstitutes_working_trees(self):
