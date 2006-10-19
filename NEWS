@@ -50,7 +50,9 @@ IN DEVELOPMENT
       ``--no-plugins`` parameter to ensure test reproducability, and avoid
       problems with system-wide installed plugins. (John Arbash Meinel)
 
-    * Newly-initialized trees have unique root ids.  (Aaron Bentley)
+    * Unique tree root ids are now supported. Newly created trees still
+      use the common root id for compatibility with bzr versions before 0.12.
+      (Aaron Bentley)
 
     * ``WorkingTree.set_root_id(None)`` is now deprecated. Please
       pass in inventory.ROOT_ID if you want the default root id value.
@@ -72,6 +74,10 @@ IN DEVELOPMENT
       range one. If it fails too, forget about ranges. Remember that until 
       the death of the transport and propagates that to the clones.
       (Vincent Ladeuil, #62276, #62029).
+
+    * Avoid circular imports by creating a deprecated function for
+      ``bzrlib.tree.RevisionTree``. Callers should have been using
+      ``bzrlib.revisontree.RevisionTree`` anyway. (John Arbash Meinel, #63360)
 
     * Don't require ``Content-Type`` in range responses. Assume they are a
       single range if ``Content-Type`` does not exist.
@@ -265,7 +271,6 @@ bzr 0.11rc1  2006-09-25
       NoSuchFile and forcing the caller to repeat their request.
       (John Arbash Meinel)
 
-<<<<<<< TREE
     * WorkingTree has a new api ``unversion`` which allow the unversioning of
       entries by their file id. (Robert Collins)
 
@@ -317,7 +322,7 @@ bzr 0.11rc1  2006-09-25
       Transport. (Andrew Bennetts, Martin Pool)
 
 bzr 0.10  2006-08-29
-=======
+
     * bzrlib.tsort.merge_sorted now accepts 'generate_revnos'. This parameter
       will cause it to add another column to its output, which contains the
       dotted-decimal revno for each revision, as a tuple. (Robert Collins)
@@ -326,7 +331,6 @@ bzr 0.10  2006-08-29
       LogFormatter.show_merge_revno. (Robert Collins)
 
 bzr 0.10.0RC1  2006-08-28
->>>>>>> MERGE-SOURCE
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a

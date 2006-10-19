@@ -504,9 +504,9 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
     def test_get_readonly_url_http(self):
         from bzrlib.tests.HttpServer import HttpServer
         from bzrlib.transport import get_transport
-        from bzrlib.transport.local import LocalRelpathServer
+        from bzrlib.transport.local import LocalURLServer
         from bzrlib.transport.http import HttpTransportBase
-        self.transport_server = LocalRelpathServer
+        self.transport_server = LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
         url = self.get_readonly_url()

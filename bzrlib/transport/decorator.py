@@ -164,9 +164,9 @@ class DecoratorServer(Server):
             self._made_server = False
             self._server = server
         else:
-            from bzrlib.transport.local import LocalRelpathServer
+            from bzrlib.transport.local import LocalURLServer
             self._made_server = True
-            self._server = LocalRelpathServer()
+            self._server = LocalURLServer()
             self._server.setUp()
 
     def tearDown(self):
