@@ -92,6 +92,9 @@ IN DEVELOPMENT
 
    * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
 
+   * mv correctly handles paths that traverse symlinks. 
+     (Aaron Bentley, #66964)
+
   TESTING:
 
     * New test base class TestCaseWithMemoryTransport offers memory-only

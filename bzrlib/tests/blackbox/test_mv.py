@@ -18,6 +18,7 @@
 
 import os
 
+from bzrlib import workingtree
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -128,3 +129,13 @@ class TestMove(TestCaseWithTransport):
 
         self.run_bzr('move', 'a', 'b')
         self.run_bzr('rename', 'b', 'a')
+
+    def test_mv_through_symlinks(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b'])
+        os.symlink('a', 'c')
+        os.symlink('.', 'd')
+        tree.add(['a', 'a/b', 'c'], ['a-id', 'b-id', 'c-id'])
+        self.run_bzr('mv', 'c/b', 'b')
+        tree = workingtree.WorkingTree.open('.')
+        self.assertEqual('b-id', tree.path2id('b'))
