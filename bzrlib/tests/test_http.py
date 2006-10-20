@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,24 +19,81 @@
 
 # TODO: Should be renamed to bzrlib.transport.http.tests?
 
+import errno
+import select
 import socket
+import threading
 
 import bzrlib
-from bzrlib.errors import DependencyNotPresent
+from bzrlib.errors import DependencyNotPresent, UnsupportedProtocol
 from bzrlib.tests import TestCase, TestSkipped
-from bzrlib.transport import Transport
+from bzrlib.transport import get_transport, Transport
 from bzrlib.transport.http import extract_auth, HttpTransportBase
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 
 
-class FakeManager (object):
+class FakeManager(object):
 
     def __init__(self):
         self.credentials = []
         
     def add_password(self, realm, host, username, password):
         self.credentials.append([realm, host, username, password])
+
+
+class RecordingServer(object):
+    """A fake HTTP server.
+    
+    It records the bytes sent to it, and replies with a 200.
+    """
+
+    def __init__(self, expect_body_tail=None):
+        """Constructor.
+
+        :type expect_body_tail: str
+        :param expect_body_tail: a reply won't be sent until this string is
+            received.
+        """
+        self._expect_body_tail = expect_body_tail
+        self.host = None
+        self.port = None
+        self.received_bytes = ''
+
+    def setUp(self):
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.bind(('127.0.0.1', 0))
+        self.host, self.port = self._sock.getsockname()
+        self._ready = threading.Event()
+        self._thread = threading.Thread(target=self._accept_read_and_reply)
+        self._thread.setDaemon(True)
+        self._thread.start()
+        self._ready.wait(5)
+
+    def _accept_read_and_reply(self):
+        self._sock.listen(1)
+        self._ready.set()
+        self._sock.settimeout(5)
+        try:
+            conn, address = self._sock.accept()
+            # On win32, the accepted connection will be non-blocking to start
+            # with because we're using settimeout.
+            conn.setblocking(True)
+            while not self.received_bytes.endswith(self._expect_body_tail):
+                self.received_bytes += conn.recv(4096)
+            conn.sendall('HTTP/1.1 200 OK\r\n')
+        except socket.timeout:
+            # Make sure the client isn't stuck waiting for us to e.g. accept.
+            self._sock.close()
+
+    def tearDown(self):
+        try:
+            self._sock.close()
+        except socket.error:
+            # We might have already closed it.  We don't care.
+            pass
+        self.host = None
+        self.port = None
 
 
 class TestHttpUrls(TestCase):
@@ -125,6 +182,13 @@ class TestHttpMixins(object):
         self.assertTrue(server.logs[0].find(
             '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s' % bzrlib.__version__) > -1)
 
+    def test_get_smart_medium(self):
+        # For HTTP, get_smart_medium should return the transport object.
+        server = self.get_readonly_server()
+        http_transport = self._transport(server.get_url())
+        medium = http_transport.get_smart_medium()
+        self.assertIs(medium, http_transport)
+        
 
 class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
 
@@ -158,7 +222,6 @@ class TestHttpConnections_pycurl(TestCaseWithWebserver, TestHttpMixins):
     def setUp(self):
         TestCaseWithWebserver.setUp(self)
         self._prep_tree()
-
 
 
 class TestHttpTransportRegistration(TestCase):
@@ -197,6 +260,34 @@ class TestOffsets(TestCase):
         self.assertEqual([[10, 12], [22, 26]], ranges)
 
 
+class TestPost(TestCase):
+
+    def _test_post_body_is_received(self, scheme):
+        server = RecordingServer(expect_body_tail='end-of-body')
+        server.setUp()
+        self.addCleanup(server.tearDown)
+        url = '%s://%s:%s/' % (scheme, server.host, server.port)
+        try:
+            http_transport = get_transport(url)
+        except UnsupportedProtocol:
+            raise TestSkipped('%s not available' % scheme)
+        code, response = http_transport._post('abc def end-of-body')
+        self.assertTrue(
+            server.received_bytes.startswith('POST /.bzr/smart HTTP/1.'))
+        self.assertTrue('content-length: 19\r' in server.received_bytes.lower())
+        # The transport should not be assuming that the server can accept
+        # chunked encoding the first time it connects, because HTTP/1.1, so we
+        # check for the literal string.
+        self.assertTrue(
+            server.received_bytes.endswith('\r\n\r\nabc def end-of-body'))
+
+    def test_post_body_is_received_urllib(self):
+        self._test_post_body_is_received('http+urllib')
+
+    def test_post_body_is_received_pycurl(self):
+        self._test_post_body_is_received('http+pycurl')
+
+
 class TestRangeHeader(TestCase):
     """Test range_header method"""
 
@@ -220,3 +311,34 @@ class TestRangeHeader(TestCase):
         self.check_header('0-9,300-5000,-50',
                           ranges=[(0,9), (300,5000)],
                           tail=50)
+
+        
+class TestRecordingServer(TestCase):
+
+    def test_create(self):
+        server = RecordingServer(expect_body_tail=None)
+        self.assertEqual('', server.received_bytes)
+        self.assertEqual(None, server.host)
+        self.assertEqual(None, server.port)
+
+    def test_setUp_and_tearDown(self):
+        server = RecordingServer(expect_body_tail=None)
+        server.setUp()
+        try:
+            self.assertNotEqual(None, server.host)
+            self.assertNotEqual(None, server.port)
+        finally:
+            server.tearDown()
+        self.assertEqual(None, server.host)
+        self.assertEqual(None, server.port)
+
+    def test_send_receive_bytes(self):
+        server = RecordingServer(expect_body_tail='c')
+        server.setUp()
+        self.addCleanup(server.tearDown)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((server.host, server.port))
+        sock.sendall('abc')
+        self.assertEqual('HTTP/1.1 200 OK\r\n',
+                         sock.recv(4096, socket.MSG_WAITALL))
+        self.assertEqual('abc', server.received_bytes)

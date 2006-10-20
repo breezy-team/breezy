@@ -19,22 +19,24 @@
 This is a fairly thin wrapper on regular file IO.
 """
 
-import errno
 import os
-import shutil
-import sys
 from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
-import tempfile
+import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import errno
+import shutil
 
 from bzrlib import (
     atomicfile,
     osutils,
     urlutils,
+    symbol_versioning,
     )
-from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename,
-                            check_legal_path, rmtree)
-from bzrlib.symbol_versioning import warn
 from bzrlib.trace import mutter
+""")
+
 from bzrlib.transport import Transport, Server
 
 
@@ -48,7 +50,8 @@ class LocalTransport(Transport):
     def __init__(self, base):
         """Set the base path where files will be stored."""
         if not base.startswith('file://'):
-            warn("Instantiating LocalTransport with a filesystem path"
+            symbol_versioning.warn(
+                "Instantiating LocalTransport with a filesystem path"
                 " is deprecated as of bzr 0.8."
                 " Please use bzrlib.transport.get_transport()"
                 " or pass in a file:// url.",
@@ -91,7 +94,8 @@ class LocalTransport(Transport):
         assert isinstance(relpath, basestring), (type(relpath), relpath)
         # jam 20060426 Using normpath on the real path, because that ensures
         #       proper handling of stuff like
-        path = normpath(pathjoin(self._local_base, urlutils.unescape(relpath)))
+        path = osutils.normpath(osutils.pathjoin(
+                    self._local_base, urlutils.unescape(relpath)))
         return urlutils.local_path_to_url(path)
 
     def local_abspath(self, relpath):
@@ -145,7 +149,7 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self._abspath(relpath)
-            check_legal_path(path)
+            osutils.check_legal_path(path)
             fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
@@ -165,7 +169,7 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self._abspath(relpath)
-            check_legal_path(path)
+            osutils.check_legal_path(path)
             fp = atomicfile.AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
@@ -366,7 +370,7 @@ class LocalTransport(Transport):
 
         try:
             # this version will delete the destination if necessary
-            rename(path_from, path_to)
+            osutils.rename(path_from, path_to)
         except (IOError, OSError),e:
             # TODO: What about path_to?
             self._translate_error(e, path_from)
@@ -470,24 +474,12 @@ class LocalTransport(Transport):
             return True
 
 
-class LocalRelpathServer(Server):
-    """A pretend server for local transports, using relpaths."""
-
-    def get_url(self):
-        """See Transport.Server.get_url."""
-        return "."
-
-
-class LocalAbspathServer(Server):
-    """A pretend server for local transports, using absolute paths."""
-
-    def get_url(self):
-        """See Transport.Server.get_url."""
-        return os.path.abspath("")
-
-
 class LocalURLServer(Server):
-    """A pretend server for local transports, using file:// urls."""
+    """A pretend server for local transports, using file:// urls.
+    
+    Of course no actual server is required to access the local filesystem, so
+    this just exists to tell the test code how to get to it.
+    """
 
     def get_url(self):
         """See Transport.Server.get_url."""
@@ -496,7 +488,6 @@ class LocalURLServer(Server):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(LocalTransport, LocalRelpathServer),
-            (LocalTransport, LocalAbspathServer),
+    return [
             (LocalTransport, LocalURLServer),
             ]

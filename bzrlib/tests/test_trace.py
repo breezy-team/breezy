@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -87,22 +87,22 @@ class TestTrace(TestCase):
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
-        mutter(u'the unicode character for benzene is \N{BENZENE RING}')
-        self._log_file.flush()
-        self.assertContainsRe(self._get_log(), 'the unicode character',)
+        self.log(u'the unicode character for benzene is \N{BENZENE RING}')
+        self.assertContainsRe(self._get_log(keep_log_file=True),
+                              "the unicode character for benzene is")
     
     def test_trace_argument_unicode(self):
         """Write a Unicode argument to the trace log"""
         mutter(u'the unicode character for benzene is %s', u'\N{BENZENE RING}')
-        self._log_file.flush()
-        self.assertContainsRe(self._get_log(), 'the unicode character')
+        self.assertContainsRe(self._get_log(keep_log_file=True),
+                              'the unicode character')
 
     def test_trace_argument_utf8(self):
         """Write a Unicode argument to the trace log"""
         mutter(u'the unicode character for benzene is %s',
                u'\N{BENZENE RING}'.encode('utf-8'))
-        self._log_file.flush()
-        self.assertContainsRe(self._get_log(), 'the unicode character')
+        self.assertContainsRe(self._get_log(keep_log_file=True),
+                              'the unicode character')
 
     def test_report_broken_pipe(self):
         try:
@@ -119,11 +119,7 @@ class TestTrace(TestCase):
         mutter(u'Writing a greek mu (\xb5) works in a unicode string')
         mutter('But fails in an ascii string \xb5')
         mutter('and in an ascii argument: %s', '\xb5')
-        # TODO: jam 20051227 mutter() doesn't flush the log file, and
-        #       self._get_log() opens the file directly and reads it.
-        #       So we need to manually flush the log file
-        self._log_file.flush()
-        log = self._get_log()
+        log = self._get_log(keep_log_file=True)
         self.assertContainsRe(log, 'Writing a greek mu')
         self.assertContainsRe(log, "But fails in an ascii string")
         self.assertContainsRe(log, u"ascii argument: \xb5")

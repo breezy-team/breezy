@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,7 +49,8 @@ class TestDeprecationWarning(TestCaseInTempDir):
             os.mkdir('foo')
             bzrdir.BzrDirFormat5().initialize('foo')
             out, err = self.run_bzr("status", "foo")
-            self.assertContainsRe(self._get_log(), "bzr upgrade")
+            self.assertContainsRe(self._get_log(keep_log_file=True),
+                                  "bzr upgrade")
         finally:
             repository._deprecation_warning_done = True
 

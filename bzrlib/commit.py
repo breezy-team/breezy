@@ -71,8 +71,11 @@ import time
 
 from cStringIO import StringIO
 
+from bzrlib import (
+    errors,
+    tree,
+    )
 import bzrlib.config
-import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
@@ -83,7 +86,7 @@ from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any,
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
-from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
+from bzrlib.inventory import Inventory, InventoryEntry
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
@@ -122,6 +125,8 @@ class ReportCommitToLog(NullCommitReporter):
 
     def snapshot_change(self, change, path):
         if change == 'unchanged':
+            return
+        if change == 'added' and path == '':
             return
         note("%s %s", change, path)
 
@@ -277,6 +282,11 @@ class Commit(object):
             self.work_inv = self.work_tree.inventory
             self.basis_tree = self.work_tree.basis_tree()
             self.basis_inv = self.basis_tree.inventory
+            if specific_files is not None:
+                # Ensure specified files are versioned
+                # (We don't actually need the ids here)
+                tree.find_ids_across_trees(specific_files, 
+                                           [self.basis_tree, self.work_tree])
             # one to finish, one for rev and inventory, and one for each
             # inventory entry, and the same for the new inventory.
             # note that this estimate is too long when we do a partial tree
@@ -324,11 +334,8 @@ class Commit(object):
             # and now do the commit locally.
             self.branch.append_revision(self.rev_id)
 
-            # if the builder gave us the revisiontree it created back, we
-            # could use it straight away here.
-            # TODO: implement this.
-            self.work_tree.set_parent_trees([(self.rev_id,
-                self.branch.repository.revision_tree(self.rev_id))])
+            rev_tree = self.builder.revision_tree()
+            self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])
             # now the work tree is up to date with the branch
             
             self.reporter.completed(self.branch.revno(), self.rev_id)
@@ -345,6 +352,40 @@ class Commit(object):
             self._cleanup()
         return self.rev_id
 
+    def _any_real_changes(self):
+        """Are there real changes between new_inventory and basis?
+
+        For trees without rich roots, inv.root.revision changes every commit.
+        But if that is the only change, we want to treat it as though there
+        are *no* changes.
+        """
+        new_entries = self.builder.new_inventory.iter_entries()
+        basis_entries = self.basis_inv.iter_entries()
+        new_path, new_root_ie = new_entries.next()
+        basis_path, basis_root_ie = basis_entries.next()
+
+        # This is a copy of InventoryEntry.__eq__ only leaving out .revision
+        def ie_equal_no_revision(this, other):
+            return ((this.file_id == other.file_id)
+                    and (this.name == other.name)
+                    and (this.symlink_target == other.symlink_target)
+                    and (this.text_sha1 == other.text_sha1)
+                    and (this.text_size == other.text_size)
+                    and (this.text_id == other.text_id)
+                    and (this.parent_id == other.parent_id)
+                    and (this.kind == other.kind)
+                    and (this.executable == other.executable)
+                    )
+        if not ie_equal_no_revision(new_root_ie, basis_root_ie):
+            return True
+
+        for new_ie, basis_ie in zip(new_entries, basis_entries):
+            if new_ie != basis_ie:
+                return True
+
+        # No actual changes present
+        return False
+
     def _check_pointless(self):
         if self.allow_pointless:
             return
@@ -353,10 +394,15 @@ class Commit(object):
             return
         # work around the fact that a newly-initted tree does differ from its
         # basis
+        if len(self.basis_inv) == 0 and len(self.builder.new_inventory) == 1:
+            raise PointlessCommit()
+        # Shortcut, if the number of entries changes, then we obviously have
+        # a change
         if len(self.builder.new_inventory) != len(self.basis_inv):
             return
-        if (len(self.builder.new_inventory) != 1 and
-            self.builder.new_inventory != self.basis_inv):
+        # If length == 1, then we only have the root entry. Which means
+        # that there is no real difference (only the root could be different)
+        if (len(self.builder.new_inventory) != 1 and self._any_real_changes()):
             return
         raise PointlessCommit()
 
@@ -510,6 +556,7 @@ class Commit(object):
         # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
         # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
+        assert self.work_inv.root is not None
         entries = self.work_inv.iter_entries()
         if not self.builder.record_root_entry:
             symbol_versioning.warn('CommitBuilders should support recording'
@@ -534,7 +581,6 @@ class Commit(object):
                 else:
                     # this entry is new and not being committed
                     continue
-
             self.builder.record_entry_contents(ie, self.parent_invs, 
                 path, self.work_tree)
             # describe the nature of the change that has occurred relative to

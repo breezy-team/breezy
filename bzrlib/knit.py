@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # Written by Martin Pool.
 # Modified by Johan Rydberg <jrydberg@gnu.org>
 # Modified by Robert Collins <robert.collins@canonical.com>
@@ -77,6 +77,7 @@ import bzrlib
 from bzrlib import (
     cache_utf8,
     errors,
+    progress,
     )
 from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
         InvalidRevisionId, KnitCorrupt, KnitHeaderError, \
@@ -798,10 +799,13 @@ class KnitVersionedFile(VersionedFile):
             text_map[version_id] = text 
         return text_map, final_content 
 
-    def iter_lines_added_or_present_in_versions(self, version_ids=None):
+    def iter_lines_added_or_present_in_versions(self, version_ids=None, 
+                                                pb=None):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         if version_ids is None:
             version_ids = self.versions()
+        if pb is None:
+            pb = progress.DummyProgress()
         # we don't care about inclusions, the caller cares.
         # but we need to setup a list of records to visit.
         # we need version_id, position, length
@@ -819,33 +823,26 @@ class KnitVersionedFile(VersionedFile):
                 data_pos, length = self._index.get_position(version_id)
                 version_id_records.append((version_id, data_pos, length))
 
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
         count = 0
         total = len(version_id_records)
-        try:
+        pb.update('Walking content.', count, total)
+        for version_id, data, sha_value in \
+            self._data.read_records_iter(version_id_records):
             pb.update('Walking content.', count, total)
-            for version_id, data, sha_value in \
-                self._data.read_records_iter(version_id_records):
-                pb.update('Walking content.', count, total)
-                method = self._index.get_method(version_id)
-                version_idx = self._index.lookup(version_id)
-                assert method in ('fulltext', 'line-delta')
-                if method == 'fulltext':
-                    content = self.factory.parse_fulltext(data, version_idx)
-                    for line in content.text():
+            method = self._index.get_method(version_id)
+            version_idx = self._index.lookup(version_id)
+            assert method in ('fulltext', 'line-delta')
+            if method == 'fulltext':
+                content = self.factory.parse_fulltext(data, version_idx)
+                for line in content.text():
+                    yield line
+            else:
+                delta = self.factory.parse_line_delta(data, version_idx)
+                for start, end, count, lines in delta:
+                    for origin, line in lines:
                         yield line
-                else:
-                    delta = self.factory.parse_line_delta(data, version_idx)
-                    for start, end, count, lines in delta:
-                        for origin, line in lines:
-                            yield line
-                count +=1
-            pb.update('Walking content.', total, total)
-            pb.finished()
-        except:
-            pb.update('Walking content.', total, total)
-            pb.finished()
-            raise
+            count +=1
+        pb.update('Walking content.', total, total)
         
     def num_versions(self):
         """See VersionedFile.num_versions()."""

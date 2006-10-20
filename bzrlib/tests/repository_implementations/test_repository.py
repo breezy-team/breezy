@@ -30,7 +30,7 @@ from bzrlib.errors import (FileExists,
                            UninitializableFormat,
                            NotBranchError,
                            )
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
@@ -70,6 +70,15 @@ class TestRepository(TestCaseWithRepository):
         tree_b = repo_b.revision_tree('rev1')
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
+
+    def test_supports_rich_root(self):
+        tree = self.make_branch_and_tree('a')
+        tree.commit('')
+        second_revision = tree.commit('')
+        inv = tree.branch.repository.revision_tree(second_revision).inventory
+        rich_root = (inv.root.revision != second_revision)
+        self.assertEqual(rich_root, 
+                         tree.branch.repository.supports_rich_root())
 
     def test_clone_specific_format(self):
         """todo"""
@@ -148,13 +157,18 @@ class TestRepository(TestCaseWithRepository):
 
     def test_revision_tree(self):
         wt = self.make_branch_and_tree('.')
+        wt.set_root_id('fixed-root')
         wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = wt.branch.repository.revision_tree('revision-1')
-        self.assertEqual(list(tree.list_files()), [])
+        self.assertEqual('revision-1', tree.inventory.root.revision) 
+        expected = InventoryDirectory('fixed-root', '', None)
+        expected.revision = 'revision-1'
+        self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
+                         list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(None)
-        self.assertEqual([], list(tree.list_files()))
+        self.assertEqual([], list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
-        self.assertEqual([], list(tree.list_files()))
+        self.assertEqual([], list(tree.list_files(include_root=True)))
 
     def test_fetch(self):
         # smoke test fetch to ensure that the convenience function works.
@@ -579,7 +593,7 @@ class TestEscaping(TestCaseWithTransport):
         FOO_ID = 'foo<:>ID'
         REV_ID = 'revid-1'
         wt = self.make_branch_and_tree('repo')
-        self.build_tree(["repo/foo"])
+        self.build_tree(["repo/foo"], line_endings='binary')
         # add file with id containing wierd characters
         wt.add(['foo'], [FOO_ID])
         wt.commit('this is my new commit', rev_id=REV_ID)

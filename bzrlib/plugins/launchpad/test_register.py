@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -70,6 +70,9 @@ class InstrumentedXMLRPCConnection(object):
 
 
 class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
+
+    # Python 2.5's xmlrpclib looks for this.
+    _use_datetime = False
 
     def __init__(self, testcase):
         self.testcase = testcase

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 # -*- coding: utf-8 -*-
 #

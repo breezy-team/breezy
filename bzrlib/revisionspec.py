@@ -24,6 +24,7 @@ from bzrlib import (
     revision,
     symbol_versioning,
     trace,
+    tsort,
     )
 
 
@@ -152,9 +153,11 @@ class RevisionSpec(object):
         else:
             # RevisionSpec_revno is special cased, because it is the only
             # one that directly handles plain integers
+            # TODO: This should not be special cased rather it should be
+            # a method invocation on spectype.canparse()
             global _revno_regex
             if _revno_regex is None:
-                _revno_regex = re.compile(r'-?\d+(:.*)?$')
+                _revno_regex = re.compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
             if _revno_regex.match(spec) is not None:
                 return RevisionSpec_revno(spec, _internal=True)
 
@@ -199,6 +202,8 @@ class RevisionSpec(object):
         if branch:
             revs = branch.revision_history()
         else:
+            # this should never trigger.
+            # TODO: make it a deprecated code path. RBC 20060928
             revs = None
         return self._match_on_and_check(branch, revs)
 
@@ -255,26 +260,57 @@ class RevisionSpec_revno(RevisionSpec):
         else:
             try:
                 revno = int(revno_spec)
-            except ValueError, e:
-                raise errors.InvalidRevisionSpec(self.user_spec,
-                                                 branch, e)
+                dotted = False
+            except ValueError:
+                # dotted decimal. This arguably should not be here
+                # but the from_string method is a little primitive 
+                # right now - RBC 20060928
+                try:
+                    match_revno = tuple((int(number) for number in revno_spec.split('.')))
+                except ValueError, e:
+                    raise errors.InvalidRevisionSpec(self.user_spec, branch, e)
+
+                dotted = True
 
         if branch_spec:
+            # the user has override the branch to look in.
+            # we need to refresh the revision_history map and
+            # the branch object.
             from bzrlib.branch import Branch
             branch = Branch.open(branch_spec)
             # Need to use a new revision history
             # because we are using a specific branch
             revs = branch.revision_history()
 
-        if revno < 0:
-            if (-revno) >= len(revs):
-                revno = 1
+        if dotted:
+            branch.lock_read()
+            try:
+                last_rev = branch.last_revision()
+                merge_sorted_revisions = tsort.merge_sort(
+                    branch.repository.get_revision_graph(last_rev),
+                    last_rev,
+                    generate_revno=True)
+                def match(item):
+                    return item[3] == match_revno
+                revisions = filter(match, merge_sorted_revisions)
+            finally:
+                branch.unlock()
+            if len(revisions) != 1:
+                return RevisionInfo(branch, None, None)
             else:
-                revno = len(revs) + revno + 1
-        try:
-            revision_id = branch.get_rev_id(revno, revs)
-        except errors.NoSuchRevision:
-            raise errors.InvalidRevisionSpec(self.user_spec, branch)
+                # there is no traditional 'revno' for dotted-decimal revnos.
+                # so for  API compatability we return None.
+                return RevisionInfo(branch, None, revisions[0][1])
+        else:
+            if revno < 0:
+                if (-revno) >= len(revs):
+                    revno = 1
+                else:
+                    revno = len(revs) + revno + 1
+            try:
+                revision_id = branch.get_rev_id(revno, revs)
+            except errors.NoSuchRevision:
+                raise errors.InvalidRevisionSpec(self.user_spec, branch)
         return RevisionInfo(branch, revno, revision_id)
         
     def needs_branch(self):

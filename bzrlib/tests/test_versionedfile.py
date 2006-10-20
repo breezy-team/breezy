@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -24,7 +24,10 @@
 from StringIO import StringIO
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    progress,
+    )
 from bzrlib.errors import (
                            RevisionNotPresent, 
                            RevisionAlreadyPresent,
@@ -543,6 +546,17 @@ class VersionedFileTestMixIn(object):
         # versions in the weave 
         # the ordering here is to make a tree so that dumb searches have
         # more changes to muck up.
+
+        class InstrumentedProgress(progress.DummyProgress):
+
+            def __init__(self):
+
+                progress.DummyProgress.__init__(self)
+                self.updates = []
+
+            def update(self, msg=None, current=None, total=None):
+                self.updates.append((msg, current, total))
+
         vf = self.get_file()
         # add a base to get included
         vf.add_lines('base', [], ['base\n'])
@@ -556,7 +570,7 @@ class VersionedFileTestMixIn(object):
         vf.add_lines('otherchild',
                      ['lancestor', 'base'],
                      ['base\n', 'lancestor\n', 'otherchild\n'])
-        def iter_with_versions(versions):
+        def iter_with_versions(versions, expected):
             # now we need to see what lines are returned, and how often.
             lines = {'base\n':0,
                      'lancestor\n':0,
@@ -564,18 +578,32 @@ class VersionedFileTestMixIn(object):
                      'child\n':0,
                      'otherchild\n':0,
                      }
+            progress = InstrumentedProgress()
             # iterate over the lines
-            for line in vf.iter_lines_added_or_present_in_versions(versions):
+            for line in vf.iter_lines_added_or_present_in_versions(versions, 
+                pb=progress):
                 lines[line] += 1
+            if []!= progress.updates: 
+                self.assertEqual(expected, progress.updates)
             return lines
-        lines = iter_with_versions(['child', 'otherchild'])
+        lines = iter_with_versions(['child', 'otherchild'], 
+                                   [('Walking content.', 0, 2), 
+                                    ('Walking content.', 0, 2), 
+                                    ('Walking content.', 3, 2), 
+                                    ('Walking content.', 2, 2)])
         # we must see child and otherchild
         self.assertTrue(lines['child\n'] > 0)
         self.assertTrue(lines['otherchild\n'] > 0)
         # we dont care if we got more than that.
         
         # test all lines
-        lines = iter_with_versions(None)
+        lines = iter_with_versions(None, [('Walking content.', 0, 5), 
+                                          ('Walking content.', 0, 5), 
+                                          ('Walking content.', 1, 5), 
+                                          ('Walking content.', 2, 5), 
+                                          ('Walking content.', 2, 5), 
+                                          ('Walking content.', 3, 5), 
+                                          ('Walking content.', 5, 5)])
         # all lines must be seen at least once
         self.assertTrue(lines['base\n'] > 0)
         self.assertTrue(lines['lancestor\n'] > 0)
