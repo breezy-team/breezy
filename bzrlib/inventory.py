@@ -1204,7 +1204,10 @@ class Inventory(object):
             return None
         for f in name:
             try:
-                cie = parent.children[f]
+                children = getattr(parent, 'children', None)
+                if children == None:
+                    return None
+                cie = children[f]
                 assert cie.name == f
                 assert cie.parent_id == parent.file_id
                 parent = cie
