@@ -338,6 +338,8 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
         branch = revision.branch
         return branch.repository.revision_tree(revision_id)
     if old_revision_spec is None:
+        if tree.last_revision() != tree.branch.last_revision():
+            warning("working tree is out of date, run 'bzr update'")
         old_tree = tree.basis_tree()
     else:
         old_tree = spec_tree(old_revision_spec)
