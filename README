@@ -118,23 +118,17 @@ depending on whether you want to use merge mode or not.
 First the common start create a directory to hold your work. This is not
 absolutely necessary, but as you still get all the power of bzr when using 
 this plugin, so you might want to branch etc. and so this will be useful 
-later on.
-
-::
+later on::
 
   $ mkdir path/to/project
 
 If you are going to be using branches then the following is a good optimisation
-you can use
-
-::
+you can use::
 
   $ bzr init-repo --trees path/to/project
 
 Now create your global config file if you want to change something like the
-builder in use, or have aglobal result directory or similar.
-
-::
+builder in use, or have aglobal result directory or similar::
 
   $ echo "[BUILDDEB]" > ~/.bazaar/builddeb.conf
   $ $EDITOR ~/.bazaar/builddeb.conf
@@ -152,9 +146,7 @@ Using merge mode
 ~~~~~~~~~~~~~~~~
 
 If you want to use merge mode you need to create a tarballs directory for
-the ``.orig.tar.gz`` files. 
-
-:: 
+the ``.orig.tar.gz`` files:: 
 
   $ cd path/to/project
   $ mkdir tarballs
@@ -162,18 +154,14 @@ the ``.orig.tar.gz`` files.
 Then copy the ``.orig.tar.gz`` file for the current version in to this 
 directory.
 
-Now create the branch for the ``debian/`` directory. 
-
-::
+Now create the branch for the ``debian/`` directory::
 
   $ bzr init project
 
 Now you can either create a ``project/debian/`` directory for all the files, 
 or add them in the ``project`` directory.
     
-Now tell bzr-builddeb that this is a merge mode project.
-
-:: 
+Now tell bzr-builddeb that this is a merge mode project:: 
 
   $ cd project/
   $ mkdir .bzr-builddeb/
@@ -193,16 +181,12 @@ this.
 Non-merge mode
 ~~~~~~~~~~~~~~
 
-This is a little simpler to set up. Create the branch for the project.
-
-::
+This is a little simpler to set up. Create the branch for the project::
 
   $ cd path/to/project
   $ bzr init project
 
-Now add all the project files to the branch, and add the to bzr.
-
-::
+Now add all the project files to the branch, and add the to bzr::
 
   $ cd project
   $ bzr add
@@ -214,7 +198,7 @@ Now you are ready to build using the plugin.
 Building a Package
 ------------------
 
-Once your pacakge is set up then building it is easy. Run the following 
+Once your package is set up then building it is easy. Run the following 
 command from the top-level of the project branch, after checking in all 
 changes::
 
@@ -243,9 +227,7 @@ binary``).
 If you are running in merge mode, and you have a large upstream tarball, and
 you do not want to unpack it at every build you can speed things up even more.
 This involves reusing the tarball each build, so saving the need to unpack it.
-To do this run
-
-::
+To do this run::
 
   $ bzr --export-only 
 
