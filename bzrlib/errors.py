@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -183,6 +183,14 @@ class InvalidRevisionId(BzrNewError):
         self.branch = branch
 
 
+class InventoryModified(BzrNewError):
+    """The current inventory for the tree %(tree)r has been modified, so a clean inventory cannot be read without data loss."""
+
+    def __init__(self, tree):
+        BzrNewError.__init__(self)
+        self.tree = tree
+
+
 class NoSuchId(BzrNewError):
     """The file id %(file_id)s is not present in the tree %(tree)s."""
     
@@ -210,6 +218,14 @@ class NotLocalUrl(BzrNewError):
     def __init__(self, url):
         BzrNewError.__init__(self)
         self.url = url
+
+
+class NotWriteLocked(BzrNewError):
+    """%(not_locked)r is not write locked but needs to be."""
+
+    def __init__(self, not_locked):
+        BzrNewError.__init__(self)
+        self.not_locked = not_locked
 
 
 class BzrCommandError(BzrNewError):

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ from bzrlib import symbol_versioning
 import bzrlib.trace
 from bzrlib.transport import get_transport
 import bzrlib.transport
-from bzrlib.transport.local import LocalRelpathServer
+from bzrlib.transport.local import LocalURLServer
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
@@ -83,7 +83,7 @@ from bzrlib.tests.treeshape import build_tree_contents
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
-default_transport = LocalRelpathServer
+default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [

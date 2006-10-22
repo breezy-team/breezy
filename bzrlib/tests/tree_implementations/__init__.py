@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ from bzrlib.tests import (
                           TestSuite,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
-from bzrlib.tree import RevisionTree
+from bzrlib.revisiontree import RevisionTree
 from bzrlib.workingtree import (WorkingTreeFormat,
                                 WorkingTreeTestProviderAdapter,
                                 _legacy_formats,

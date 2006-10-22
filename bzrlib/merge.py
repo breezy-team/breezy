@@ -376,7 +376,7 @@ class Merge3Merger(object):
         else:
             all_ids = set(base_tree)
             all_ids.update(other_tree)
-        working_tree.lock_write()
+        working_tree.lock_tree_write()
         self.tt = TreeTransform(working_tree, self.pb)
         try:
             self.pp.next_phase()

@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -849,7 +849,11 @@ class cmd_update(Command):
 
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
-        tree.lock_write()
+        master = tree.branch.get_master_branch()
+        if master is not None:
+            tree.lock_write()
+        else:
+            tree.lock_tree_write()
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
             last_rev = tree.last_revision()
@@ -2328,11 +2332,14 @@ class cmd_remerge(Command):
                     for name, ie in tree.inventory.iter_entries(file_id):
                         interesting_ids.add(ie.file_id)
                 new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
+            else:
+                # Remerge only supports resolving contents conflicts
+                allowed_conflicts = ('text conflict', 'contents conflict')
+                restore_files = [c.path for c in conflicts
+                                 if c.typestring in allowed_conflicts]
             _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_ids)
             tree.set_conflicts(ConflictList(new_conflicts))
-            if file_list is None:
-                restore_files = list(tree.iter_conflicts())
-            else:
+            if file_list is not None:
                 restore_files = file_list
             for filename in restore_files:
                 try:

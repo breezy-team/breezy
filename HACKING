@@ -78,10 +78,57 @@ Standard parameter types
 There are some common requirements in the library: some parameters need to be
 unicode safe, some need byte strings, and so on. At the moment we have
 only codified one specific pattern: Parameters that need to be unicode
-should be checked via 'bzrlib.osutils.safe_unicode'. This will coerce the
+should be checked via ``bzrlib.osutils.safe_unicode``. This will coerce the
 input into unicode in a consistent fashion, allowing trivial strings to be
 used for programmer convenience, but not performing unpredictably in the
 presence of different locales.
+
+
+Copyright
+---------
+
+The copyright policy for bzr was recently made clear in this email (edited
+for grammatical correctness)::
+
+    The attached patch cleans up the copyright and license statements in
+    the bzr source. It also adds tests to help us remember to add them
+    with the correct text.
+
+    We had the problem that lots of our files were "Copyright Canonical
+    Development Ltd" which is not a real company, and some other variations
+    on this theme. Also, some files were missing the GPL statements.
+    
+    I want to be clear about the intent of this patch, since copyright can
+    be a little controversial.
+    
+    1) The big motivation for this is not to shut out the community, but
+    just to clean up all of the invalid copyright statements.
+    
+    2) It has been the general policy for bzr that we want a single
+    copyright holder for all of the core code. This is following the model
+    set by the FSF, which makes it easier to update the code to a new
+    license in case problems are encountered. (For example, if we want to
+    upgrade the project universally to GPL v3 it is much simpler if there is
+    a single copyright holder). It also makes it clearer if copyright is
+    ever debated, there is a single holder, which makes it easier to defend
+    in court, etc. (I think the FSF position is that if you assign them
+    copyright, they can defend it in court rather than you needing to, and
+    I'm sure Canonical would do the same).
+    As such, Canonical has requested copyright assignments from all of the
+    major contributers.
+    
+    3) If someone wants to add code and not attribute it to Canonical, there
+    is a specific list of files that are excluded from this check. And the
+    test failure indicates where that is, and how to update it.
+    
+    4) If anyone feels that I changed a copyright statement incorrectly, just
+    let me know, and I'll be happy to correct it. Whenever you have large
+    mechanical changes like this, it is possible to make some mistakes.
+    
+    Just to reiterate, this is a community project, and it is meant to stay
+    that way. Core bzr code is copyright Canonical for legal reasons, and
+    the tests are just there to help us maintain that.
+
 
 Documentation
 =============

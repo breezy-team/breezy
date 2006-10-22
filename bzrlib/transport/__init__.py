@@ -330,6 +330,8 @@ class Transport(object):
                 => '/home/sarah/project/foo'
             t._combine_paths('/home/sarah', '../../etc')
                 => '/etc'
+            t._combine_paths('/home/sarah', '/etc')
+                => '/etc'
 
         :param base_path: urlencoded path for the transport root; typically a 
              URL but need not contain scheme/host/etc.
@@ -361,6 +363,8 @@ class Transport(object):
             elif p != '':
                 base_parts.append(p)
         path = '/'.join(base_parts)
+        if not path.startswith('/'):
+            path = '/' + path
         return path
 
     def relpath(self, abspath):
