@@ -75,6 +75,10 @@ IN DEVELOPMENT
       the death of the transport and propagates that to the clones.
       (Vincent Ladeuil, #62276, #62029).
 
+    * Handles user/passwords supplied in url from command
+      line (for the urllib implementation). Don't request already
+      known passwords (Vincent Ladeuil, #42383, #44647, #48527)
+
     * Avoid circular imports by creating a deprecated function for
       ``bzrlib.tree.RevisionTree``. Callers should have been using
       ``bzrlib.revisontree.RevisionTree`` anyway. (John Arbash Meinel, #63360)
@@ -173,10 +177,6 @@ bzr 0.11rc1  2006-09-25
       (John Arbash Meinel)
 
   BUG FIXES:
-
-    * Handles user/passwords supplied in url from command
-      line. Don't request already known passwords (Vincent
-      Ladeuil, #42383, #44647, #48527)
 
     * 'bzr inventory [FILE...]' allows restricting the file list to a
       specific set of files. (John Arbash Meinel, #3631)
