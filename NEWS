@@ -51,7 +51,9 @@ IN DEVELOPMENT
       ``--no-plugins`` parameter to ensure test reproducability, and avoid
       problems with system-wide installed plugins. (John Arbash Meinel)
 
-    * Newly-initialized trees have unique root ids.  (Aaron Bentley)
+    * Unique tree root ids are now supported. Newly created trees still
+      use the common root id for compatibility with bzr versions before 0.12.
+      (Aaron Bentley)
 
     * ``WorkingTree.set_root_id(None)`` is now deprecated. Please
       pass in inventory.ROOT_ID if you want the default root id value.
@@ -65,6 +67,10 @@ IN DEVELOPMENT
       advantage of this functionality. (Robert Collins, John Arbash Meinel)
 
   BUG FIXES:
+
+    * Avoid circular imports by creating a deprecated function for
+      ``bzrlib.tree.RevisionTree``. Callers should have been using
+      ``bzrlib.revisontree.RevisionTree`` anyway. (John Arbash Meinel, #63360)
 
     * Don't require ``Content-Type`` in range responses. Assume they are a
       single range if ``Content-Type`` does not exist.

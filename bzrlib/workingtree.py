@@ -423,8 +423,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 xml = self.read_basis_inventory()
                 inv = xml6.serializer_v6.read_inventory_from_string(xml)
                 if inv is not None and inv.revision_id == revision_id:
-                    return bzrlib.tree.RevisionTree(self.branch.repository,
-                                                    inv, revision_id)
+                    return bzrlib.revisiontree.RevisionTree(
+                        self.branch.repository, inv, revision_id)
             except (NoSuchFile, errors.BadInventoryFormat):
                 pass
         # No cached copy available, retrieve from the repository.
@@ -1641,7 +1641,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         raise NotImplementedError(self.unlock)
 
-    @needs_write_lock
     def update(self):
         """Update a working tree along its branch.
 
@@ -1667,8 +1666,28 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
           basis.
         - Do a 'normal' merge of the old branch basis if it is relevant.
         """
-        old_tip = self.branch.update()
+        if self.branch.get_master_branch() is not None:
+            self.lock_write()
+            update_branch = True
+        else:
+            self.lock_tree_write()
+            update_branch = False
+        try:
+            if update_branch:
+                old_tip = self.branch.update()
+            else:
+                old_tip = None
+            return self._update_tree(old_tip)
+        finally:
+            self.unlock()
 
+    @needs_tree_write_lock
+    def _update_tree(self, old_tip=None):
+        """Update a tree to the master branch.
+
+        :param old_tip: if supplied, the previous tip revision the branch,
+            before it was changed to the master branch's tip.
+        """
         # here if old_tip is not None, it is the old tip of the branch before
         # it was updated from the master branch. This should become a pending
         # merge in the working tree to preserve the user existing work.  we
@@ -2100,7 +2119,12 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
-        inv = Inventory(root_id=gen_root_id())
+        # WorkingTree3 can handle an inventory which has a unique root id.
+        # as of bzr 0.12. However, bzr 0.11 and earlier fail to handle
+        # those trees. And because there isn't a format bump inbetween, we
+        # are maintaining compatibility with older clients.
+        # inv = Inventory(root_id=gen_root_id())
+        inv = Inventory()
         wt = WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,

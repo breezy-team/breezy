@@ -130,8 +130,9 @@ class TestSource(TestSourceHelper):
 
     def is_copyright_exception(self, fname):
         """Certain files are allowed to be different"""
-        if '/util/' in fname:
-            # We don't require external utilities to be (C) Canonical Ltd
+        if '/util/' in fname or '/plugins/' in fname:
+            # We don't ask that external utilities or plugins be
+            # (C) Canonical Ltd
             return True
 
         for exc in COPYRIGHT_EXCEPTIONS:
@@ -142,8 +143,9 @@ class TestSource(TestSourceHelper):
 
     def is_license_exception(self, fname):
         """Certain files are allowed to be different"""
-        if '/util/' in fname:
-            # We don't require external utilities to be (C) Canonical Ltd
+        if '/util/' in fname or '/plugins/' in fname:
+            # We don't ask that external utilities or plugins be
+            # (C) Canonical Ltd
             return True
 
         for exc in LICENSE_EXCEPTIONS:
