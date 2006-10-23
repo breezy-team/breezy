@@ -62,12 +62,13 @@ IN DEVELOPMENT
       ``unlock()``. ``WorkingTree.set_root_id()`` has been updated to take
       advantage of this functionality. (Robert Collins, John Arbash Meinel)
 
-    * bzrlib.tsort.merge_sorted now accepts 'generate_revnos'. This parameter
-      will cause it to add another column to its output, which contains the
-      dotted-decimal revno for each revision, as a tuple. (Robert Collins)
+    * ``bzrlib.tsort.merge_sorted`` now accepts ``generate_revnos``. This
+      parameter will cause it to add another column to its output, which
+      contains the dotted-decimal revno for each revision, as a tuple.
+      (Robert Collins)
 
-    * LogFormatter.show_merge is deprecated in favour of
-      LogFormatter.show_merge_revno. (Robert Collins)
+    * ``LogFormatter.show_merge`` is deprecated in favour of
+      ``LogFormatter.show_merge_revno``. (Robert Collins)
 
   BUG FIXES:
 
@@ -1362,8 +1363,8 @@ bzr 0.6 2005-10-28
     * Config options have moved from bzrlib.osutils to bzrlib.config.
       Configuration is now done via the config.Config interface:
       Depending on whether you have a Branch, a Location or no information
-      available, construct a *Config, and use its signature_checking,
-      username and user_email methods. (Robert Collins)
+      available, construct a ``*Config``, and use its ``signature_checking``,
+      ``username`` and ``user_email`` methods. (Robert Collins)
 
     * Plugins are now loaded under bzrlib.plugins, not bzrlib.plugin, and
       they are made available for other plugins to use. You should not 
