@@ -62,6 +62,13 @@ IN DEVELOPMENT
       ``unlock()``. ``WorkingTree.set_root_id()`` has been updated to take
       advantage of this functionality. (Robert Collins, John Arbash Meinel)
 
+    * bzrlib.tsort.merge_sorted now accepts 'generate_revnos'. This parameter
+      will cause it to add another column to its output, which contains the
+      dotted-decimal revno for each revision, as a tuple. (Robert Collins)
+
+    * LogFormatter.show_merge is deprecated in favour of
+      LogFormatter.show_merge_revno. (Robert Collins)
+
   BUG FIXES:
 
     * Avoid circular imports by creating a deprecated function for
@@ -257,7 +264,6 @@ bzr 0.11rc1  2006-09-25
       NoSuchFile and forcing the caller to repeat their request.
       (John Arbash Meinel)
 
-<<<<<<< TREE
     * WorkingTree has a new api ``unversion`` which allow the unversioning of
       entries by their file id. (Robert Collins)
 
@@ -309,16 +315,6 @@ bzr 0.11rc1  2006-09-25
       Transport. (Andrew Bennetts, Martin Pool)
 
 bzr 0.10  2006-08-29
-=======
-    * bzrlib.tsort.merge_sorted now accepts 'generate_revnos'. This parameter
-      will cause it to add another column to its output, which contains the
-      dotted-decimal revno for each revision, as a tuple. (Robert Collins)
-
-    * LogFormatter.show_merge is deprecated in favour of
-      LogFormatter.show_merge_revno. (Robert Collins)
-
-bzr 0.10.0RC1  2006-08-28
->>>>>>> MERGE-SOURCE
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
