@@ -1090,3 +1090,23 @@ def get_user_encoding():
     if _cached_user_encoding is None:
         _cached_user_encoding = 'ascii'
     return _cached_user_encoding
+
+
+def recv_all(socket, bytes):
+    """Receive an exact number of bytes.
+
+    Regular Socket.recv() may return less than the requested number of bytes,
+    dependning on what's in the OS buffer.  MSG_WAITALL is not available
+    on all platforms, but this should work everywhere.  This will return
+    less than the requested amount if the remote end closes.
+
+    This isn't optimized and is intended mostly for use in testing.
+    """
+    b = ''
+    while len(b) < bytes:
+        new = socket.recv(bytes - len(b))
+        if new == '':
+            break # eof
+        b += new
+    return b
+
