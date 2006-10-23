@@ -228,7 +228,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
 # choke on a Unicode string containing a relative path if
 # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
 # string.
-_fs_enc = sys.getfilesystemencoding()
+_fs_enc = sys.getfilesystemencoding() or 'utf-8'
 def _posix_abspath(path):
     # jam 20060426 rather than encoding to fsencoding
     # copy posixpath.abspath, but use os.getcwdu instead
