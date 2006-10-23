@@ -221,7 +221,8 @@ class PyCurlTransport(HttpTransportBase):
         # Some error codes can be handled the same way for all
         # requests
         if code == 403:
-            raise errors.TransportError('Server refuses to fullfil the request')
+            raise errors.TransportError(
+                'Server refuses to fullfil the request for: %s' % url)
         else:
             if info is None:
                 msg = ''
