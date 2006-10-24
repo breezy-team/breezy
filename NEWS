@@ -2,6 +2,15 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+  INTERNALS:
+
+  BUG FIXES:
+
+
+bzr 0.12rc1  2006-10-23
+
+  IMPROVEMENTS:
+
     * ``bzr log`` now shows dotted-decimal revision numbers for all revisions,
       rather than just showing a decimal revision number for revisions on the
       mainline. These revision numbers are not yet accepted as input into bzr
