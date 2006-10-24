@@ -69,7 +69,7 @@ class Response(httplib.HTTPResponse):
     """
 
     # Some responses have bodies in which we have no interest
-    _body_ignored_responses = [301,302, 303, 307, 401,]
+    _body_ignored_responses = [301,302, 303, 307, 401, 403, 404]
 
     def __init__(self, *args, **kwargs):
         httplib.HTTPResponse.__init__(self, *args, **kwargs)
@@ -97,7 +97,7 @@ class Response(httplib.HTTPResponse):
                 # reset by peer' error if there is indeed no body
                 # and the server closed the connection just after
                 # having issued the response headers (even if the
-                # heaers indicate a Content-Type...)
+                # headers indicate a Content-Type...)
                 body = self.fp.read(self.length)
                 if self.debuglevel > 0:
                     print "Consumed body: [%s]" % body
@@ -289,11 +289,8 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         # we have data to send.
         return request
 
-
-    def do_open(self, http_class, request, first_try=True):
-        """See urllib2.AbstractHTTPHandler.do_open for the general idea.
-
-        The request will be retried once if it fails.
+    def retry_or_raise(self, http_class, request, first_try):
+        """Retry the request (once) or raise the exception.
 
         urllib2 raises exception of application level kind, we
         just have to translate them.
@@ -302,7 +299,78 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
         formatted dialog, loss of connexion or socket level
         problems). In that case we should issue the request again
         (httplib will close and reopen a new connection if
-        needed).        
+        needed).
+        """
+        # When an exception occurs, we give back the original
+        # Traceback or the bugs are hard to diagnose.
+        exc_type, exc_val, exc_tb = sys.exc_info()
+        if exc_type == socket.gaierror:
+            # No need to retry, that will not help
+            raise errors.ConnectionError("Couldn't resolve host '%s'"
+                                         % request.get_origin_req_host(),
+                                         orig_error=exc_val)
+        else:
+            if first_try:
+                if self._debuglevel > 0:
+                    print 'Received exception: [%r]' % exc_val
+                    print '  On connection: [%r]' % request.connection
+                    method = request.get_method()
+                    url = request.get_full_url()
+                    print '  Will retry, %s %r' % (method, url)
+                request.connection.close()
+                response = self.do_open(http_class, request, False)
+                convert_to_addinfourl = False
+            else:
+                if exc_type in (httplib.BadStatusLine, httplib.UnknownProtocol):
+                    # httplib.BadStatusLine and
+                    # httplib.UnknownProtocol indicates that a
+                    # bogus server was encountered or a bad
+                    # connection (i.e. transient errors) is
+                    # experimented, we have already retried once
+                    # for that request so we raise the exception.
+                    my_exception = errors.InvalidHttpResponse(
+                        request.get_full_url(),
+                        'Bad status line received',
+                        orig_error=exc_val)
+                else:
+                    # All other exception are considered connection related.
+
+                    # httplib.HTTPException should indicate a bug
+                    # in the urllib implementation, somewhow the
+                    # httplib pipeline is in an incorrect state,
+                    # we retry in hope that this will correct the
+                    # problem but that may need investigation
+                    # (note that no such bug is known as of
+                    # 20061005 --vila).
+
+                    # socket errors generally occurs for reasons
+                    # far outside our scope, so closing the
+                    # connection and retrying is the best we can
+                    # do.
+
+                    # FIXME: and then there is HTTPError raised by:
+                    # - HTTPDefaultErrorHandler (we define our own)
+                    # - HTTPRedirectHandler.redirect_request 
+                    # - AbstractDigestAuthHandler.http_error_auth_reqed
+
+                    my_exception = errors.ConnectionError(
+                        msg= 'while sending %s %s:' % (request.get_method(),
+                                                       request.get_selector()),
+                        orig_error=exc_val)
+
+                if self._debuglevel > 0:
+                    print 'On connection: [%r]' % request.connection
+                    method = request.get_method()
+                    url = request.get_full_url()
+                    print '  Failed again, %s %r' % (method, url)
+                    print '  Will raise: [%r]' % my_exception
+                raise my_exception, None, exc_tb
+        return response, convert_to_addinfourl
+
+    def do_open(self, http_class, request, first_try=True):
+        """See urllib2.AbstractHTTPHandler.do_open for the general idea.
+
+        The request will be retried once if it fails.
         """
         connection = request.connection
         assert connection is not None, \
@@ -324,58 +392,11 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 print 'Request sent: [%r]' % request
             response = connection.getresponse()
             convert_to_addinfourl = True
-        except (httplib.BadStatusLine, httplib.UnknownProtocol), exception:
-            # A bogus server was encountered
-            raise errors.InvalidHttpResponse(request.get_full_url(),
-                                             'Bad status line received',
-                                             orig_error=exception)
-        except socket.gaierror, exception:
-            # No need to retry, that will not help
-            raise errors.ConnectionError("Couldn't resolve host '%s'"
-                                         % request.get_origin_req_host(),
-                                         orig_error=exception)
-        except (socket.error, httplib.HTTPException), exception:
-            # httplib.HTTPException should indicate a bug in the
-            # urllib implementation, somewhow the httplib
-            # pipeline is in an incorrect state, we retry in hope
-            # that will correct the problem but that may need
-            # investigation (note that no such bug is known as of
-            # 20061005 --vila).
-
-            # socket errors generally occurs for reasons far
-            # outside our scope, so closing the connection and
-            # retrying is the best we can do.
-
-        # FIXME: and then there is HTTPError raised by:
-        # - HTTPDefaultErrorHandler (we define our own)
-        # - HTTPRedirectHandler.redirect_request 
-        # - AbstractDigestAuthHandler.http_error_auth_reqed
-
-        # When an exception occurs, give back the original
-        # Traceback or the bugs are hard to diagnose.
-            exc_type, exc_val, exc_tb = sys.exc_info()
-            if first_try:
-                if self._debuglevel > 0:
-                    print 'Received exception: [%r]' % exception
-                    print '  On connection: [%r]' % request.connection
-                    method = request.get_method()
-                    url = request.get_full_url()
-                    print '  Will retry, %s %r' % (method, url)
-                connection.close()
-                response = self.do_open(http_class, request, False)
-                convert_to_addinfourl = False
-            else:
-                my_exception = errors.ConnectionError(
-                    msg= 'while sending %s %s:' % (request.get_method(),
-                                                   request.get_selector()),
-                    orig_error=exception)
-                if self._debuglevel > 0:
-                    print 'On connection: [%r]' % request.connection
-                    method = request.get_method()
-                    url = request.get_full_url()
-                    print '  Failed again, %s %r' % (method, url)
-                    print '  Will raise: [%r]' % my_exception
-                raise my_exception, None, exc_tb
+        except (socket.gaierror, httplib.BadStatusLine, httplib.UnknownProtocol,
+                socket.error, httplib.HTTPException):
+            response, convert_to_addinfourl = self.retry_or_raise(http_class,
+                                                                  request,
+                                                                  first_try)
 
 # FIXME: HTTPConnection does not fully support 100-continue (the
 # server responses are just ignored)

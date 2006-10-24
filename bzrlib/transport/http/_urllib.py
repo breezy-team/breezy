@@ -131,7 +131,6 @@ class HttpTransport_urllib(HttpTransportBase):
 
         code = response.code
         if code == 404: # not found
-            # FIXME: Check that there is really no message to be read
             self._connection.fake_close()
             raise NoSuchFile(abspath)
 
