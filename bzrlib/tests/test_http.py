@@ -25,6 +25,7 @@ import threading
 
 import bzrlib
 from bzrlib import errors
+from bzrlib import osutils
 from bzrlib.tests import (
     TestCase,
     TestSkipped,
@@ -513,7 +514,7 @@ class TestRecordingServer(TestCase):
         sock.connect((server.host, server.port))
         sock.sendall('abc')
         self.assertEqual('HTTP/1.1 200 OK\r\n',
-                         sock.recv(4096, socket.MSG_WAITALL))
+                         osutils.recv_all(sock, 4096))
         self.assertEqual('abc', server.received_bytes)
 
 

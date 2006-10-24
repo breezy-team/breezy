@@ -97,7 +97,7 @@ class SmartClientMediumTests(tests.TestCase):
         """
         def _receive_bytes_on_server():
             connection, address = sock.accept()
-            bytes.append(connection.recv(3, socket.MSG_WAITALL))
+            bytes.append(osutils.recv_all(connection, 3))
             connection.close()
         t = threading.Thread(target=_receive_bytes_on_server)
         t.start()
