@@ -329,6 +329,11 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             raise errors.InvalidHttpResponse(request.get_full_url(),
                                              'Bad status line received',
                                              orig_error=exception)
+        except socket.gaierror, exception:
+            # No need to retry, that will not help
+            raise errors.ConnectionError("Couldn't resolve host '%s'"
+                                         % request.get_origin_req_host(),
+                                         orig_error=exception)
         except (socket.error, httplib.HTTPException), exception:
             # httplib.HTTPException should indicate a bug in the
             # urllib implementation, somewhow the httplib
