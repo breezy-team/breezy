@@ -164,7 +164,7 @@ class DavResponse(Response):
     def __init__(self, *args, **kwargs):
         Response.__init__(self, *args, **kwargs)
         self._body_ignored_responses += [201, 204,
-                                         403, 405, 409, 412,
+                                         405, 409, 412,
                                          999, # FIXME: <cough>
                                          ]
 
@@ -222,12 +222,13 @@ class DavOpener(Opener):
 class HttpDavTransport(HttpTransport_urllib):
     """An transport able to put files using http[s] on a DAV server.
 
-    Implementation base on python urllib2 and httplib.
     We don't try to implement the whole WebDAV protocol. Just the minimum
     needed for bzr.
     """
+
     _debuglevel = 0
     _opener_class = DavOpener
+
     def __init__(self, base, from_transport=None):
         assert base.startswith('https+webdav') or base.startswith('http+webdav')
         super(HttpDavTransport, self).__init__(base, from_transport)
@@ -532,7 +533,14 @@ class HttpDavTransport(HttpTransport_urllib):
 
     def append_bytes(self, relpath, bytes, mode=None):
         """See Transport.append_bytes"""
-        if self._accept_ranges:
+        if self._range_hint is not None:
+            # TODO: We reuse the _range_hint handled by bzr core,
+            # unless someone can show me a server implementing
+            # range for write but not for read. But we may, on
+            # our own, try to handle a similar flag for write
+            # ranges supported by a given server. Or at least,
+            # detect that ranges are not correctly handled and
+            # fallback to no ranges.
             before = self._append_by_head_put(relpath, bytes)
         else:
             before = self._append_by_get_put(relpath, bytes)

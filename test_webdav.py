@@ -51,9 +51,9 @@ from bzrlib.transport import(
     get_transport,
     split_url
     )
-from bzrlib.transport.http import (
+from bzrlib.tests.HttpServer import (
+    HttpServer,
     TestingHTTPRequestHandler,
-    HttpServer
     )
 
 class TestingDAVRequestHandler(TestingHTTPRequestHandler):
