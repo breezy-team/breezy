@@ -1205,7 +1205,7 @@ class Inventory(object):
         for f in name:
             try:
                 children = getattr(parent, 'children', None)
-                if children == None:
+                if children is None:
                     return None
                 cie = children[f]
                 assert cie.name == f
