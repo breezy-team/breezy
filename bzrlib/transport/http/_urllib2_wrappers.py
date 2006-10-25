@@ -321,6 +321,9 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                 response = self.do_open(http_class, request, False)
                 convert_to_addinfourl = False
             else:
+                if self._debuglevel > 0:
+                    print 'Received second exception: [%r]' % exc_val
+                    print '  On connection: [%r]' % request.connection
                 if exc_type in (httplib.BadStatusLine, httplib.UnknownProtocol):
                     # httplib.BadStatusLine and
                     # httplib.UnknownProtocol indicates that a
