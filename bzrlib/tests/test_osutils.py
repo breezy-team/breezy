@@ -198,6 +198,8 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertFormatedDelta('2 seconds in the future', -2)
 
     def test_real_parent(self):
+        if not osutils.has_symlinks():
+            raise TestSkipped('Symlinks are not supported on this platform')
         cwd = osutils.realpath('.')
         os.mkdir('bar')
         bar_path = osutils.pathjoin(cwd, 'bar')
