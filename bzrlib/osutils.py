@@ -1110,3 +1110,8 @@ def recv_all(socket, bytes):
         b += new
     return b
 
+def real_parent(path):
+    parent, base = os.path.split(path)
+    # The pathjoin for '.' is a workaround for Python bug #1213894.
+    # (initial path components aren't dereferenced)
+    return pathjoin(realpath(pathjoin('.', parent)), base)
