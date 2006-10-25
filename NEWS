@@ -5,6 +5,32 @@ IN DEVELOPMENT
     * urllib implements keep-alive connections and share them
       (Vincent Ladeuil, #53654)
 
+  INTERNALS:
+
+  BUG FIXES:
+
+    * Give nicer error message when an http server returns a 403
+      error code. (Vincent Ladeuil, #57644).
+
+    * When a multi-range http GET request fails, try a single
+      range one. If it fails too, forget about ranges. Remember that until 
+      the death of the transport and propagates that to the clones.
+      (Vincent Ladeuil, #62276, #62029).
+
+    * Handles user/passwords supplied in url from command
+      line (for the urllib implementation). Don't request already
+      known passwords (Vincent Ladeuil, #42383, #44647, #48527)
+
+  TESTING:
+
+    * TestingHTTPRequestHandler really handles the Range header
+      (previously it was ignoring it and returning the whole file,).
+
+
+bzr 0.12rc1  2006-10-23
+
+  IMPROVEMENTS:
+
     * ``bzr log`` now shows dotted-decimal revision numbers for all revisions,
       rather than just showing a decimal revision number for revisions on the
       mainline. These revision numbers are not yet accepted as input into bzr
@@ -75,18 +101,6 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
-    * Give nicer error message when an http server returns a 403
-      error code. (Vincent Ladeuil, #57644).
-
-    * When a multi-range http GET request fails, try a single
-      range one. If it fails too, forget about ranges. Remember that until 
-      the death of the transport and propagates that to the clones.
-      (Vincent Ladeuil, #62276, #62029).
-
-    * Handles user/passwords supplied in url from command
-      line (for the urllib implementation). Don't request already
-      known passwords (Vincent Ladeuil, #42383, #44647, #48527)
-
     * Avoid circular imports by creating a deprecated function for
       ``bzrlib.tree.RevisionTree``. Callers should have been using
       ``bzrlib.revisontree.RevisionTree`` anyway. (John Arbash Meinel,
@@ -125,9 +139,6 @@ IN DEVELOPMENT
       testing facilities: its not suitable for tests that need to mutate disk
       state, but most tests should not need that and should be converted to
       TestCaseWithMemoryTransport. (Robert Collins)
-
-    * TestingHTTPRequestHandler really handles the Range header
-      (previously it was ignoring it and returning the whole file,).
 
     * ``TestCase.make_branch_and_memory_tree`` now takes a format
       option to set the BzrDir, Repository and Branch formats of the
