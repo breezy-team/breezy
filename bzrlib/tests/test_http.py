@@ -121,6 +121,9 @@ class RecordingServer(object):
 
 class TestHttpUrls(TestCase):
 
+    # FIXME: Some of these tests should be done for both
+    # implementations
+
     def test_url_parsing(self):
         f = FakeManager()
         url = extract_auth('http://example.com', f)
@@ -237,6 +240,7 @@ class TestHttpConnections(object):
 
 class TestWithTransport_pycurl(object):
     """Test case to inherit from if pycurl is present"""
+
     def _get_pycurl_maybe(self):
         try:
             from bzrlib.transport.http._pycurl import PyCurlTransport
@@ -356,7 +360,13 @@ class TestWallServer(object):
     def test_http_has(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        self.assertRaises(errors.ConnectionError, t.has, 'foo/bar')
+        # Unfortunately httplib (see HTTPResponse._read_status
+        # for details) make no distinction between a closed
+        # socket and badly formatted status line, so we can't
+        # just test for ConnectionError, we have to test
+        # InvalidHttpResponse too.
+        self.assertRaises((errors.ConnectionError, errors.InvalidHttpResponse),
+                          t.has, 'foo/bar')
 
     def test_http_get(self):
         server = self.get_readonly_server()

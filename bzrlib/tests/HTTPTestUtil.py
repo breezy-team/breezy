@@ -36,14 +36,6 @@ class WallRequestHandler(TestingHTTPRequestHandler):
     def handle_one_request(self):
         """Handle a single HTTP request, by abruptly closing the connection"""
         self.close_connection = 1
-        # But informing higher levels that we *will* close, is
-        # not enough. There is a race condition when the client
-        # is able to try to read before the server can really
-        # close the socket. In that case the client will raise a
-        # InvalidHttpResponse instead of a ConnectionError. And
-        # we want to make it raise ConnectionError, so let's be a
-        # bit more brutal.
-        self.wfile.close()
 
 
 class BadStatusRequestHandler(TestingHTTPRequestHandler):

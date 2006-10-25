@@ -259,8 +259,8 @@ class PyCurlTransport(HttpTransportBase):
                     e[0], _pycurl_errors.errorcode[e[0]], e, url)
             if e[0] in (_pycurl_errors.CURLE_COULDNT_RESOLVE_HOST,
                         _pycurl_errors.CURLE_COULDNT_CONNECT,
-                        _pycurl_errors.CURLE_COULDNT_RESOLVE_PROXY,
-                        _pycurl_errors.CURLE_GOT_NOTHING):
+                        _pycurl_errors.CURLE_GOT_NOTHING,
+                        _pycurl_errors.CURLE_COULDNT_RESOLVE_PROXY):
                 raise ConnectionError('curl connection error (%s)\non %s'
                               % (e[1], url))
             # jam 20060713 The code didn't use to re-raise the exception here
