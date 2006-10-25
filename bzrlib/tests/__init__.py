@@ -1511,7 +1511,6 @@ class TestCaseWithTransport(TestCaseInTempDir):
     def setUp(self):
         super(TestCaseWithTransport, self).setUp()
         self.__server = None
-        self.transport_server = default_transport
 
 
 class ChrootedTestCase(TestCaseWithTransport):
