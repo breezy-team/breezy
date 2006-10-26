@@ -533,6 +533,8 @@ def run_bzr(argv):
             opt_builtin = True
         elif a in ('--quiet', '-q'):
             trace.be_quiet()
+        elif a.startswith('-D'):
+            bzrlib.debug_flags.add(a[2:])
         else:
             argv_copy.append(a)
         i += 1

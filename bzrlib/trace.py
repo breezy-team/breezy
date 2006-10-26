@@ -281,6 +281,13 @@ def report_exception(exc_info, err_file):
 
 # TODO: Should these be specially encoding the output?
 def report_user_error(exc_info, err_file):
+    """Report to err_file an error that's not an internal error.
+
+    These don't get a traceback unless -Derror was given.
+    """
+    if 'error' in bzrlib.debug_flags:
+        report_bug(exc_info, err_file)
+        return
     print >>err_file, "bzr: ERROR:", str(exc_info[1])
 
 
