@@ -73,19 +73,14 @@ class BundleLibraryLevelWriteBenchmark(Benchmark):
     """ Benchmarks for the write_bundle library function. """
 
     def _time_read_write(self):
-        print "timing"
         branch, relpath = Branch.open_containing("a")
         revision_history = branch.revision_history()
         bundle_text = StringIO()
-        print "starting write bundle"
         self.time(write_bundle, branch.repository, revision_history[-1],
                   NULL_REVISION, bundle_text)
-        print "stopped writing bundle"
         bundle_text.seek(0)
         target_tree = self.make_branch_and_tree('b')
-        print "starting reading bundle"
         bundle = self.time(read_bundle, bundle_text)
-        print "starting installing bundle"
         self.time(install_bundle, target_tree.branch.repository, bundle)
 
     def test_few_files_small_tree_1_revision(self):
