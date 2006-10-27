@@ -284,7 +284,7 @@ VI- Glossary
 Shared Repository
 -----------------
 
-Bazaar_ has the concept of a `Shared Repository`_. This is similar to the
+Bazaar_ has the concept of a "Shared Repository". This is similar to the
 concept of other RCS's repository. Such as in Subversion, where you have a
 remote repository, which is where all of the history is stored, and
 locally you don't have any history information, only a checkout of the
@@ -292,7 +292,7 @@ working tree files. Note that "Shared" in this context means shared
 between branches. It *may* be shared between people, but standalone
 branches can also be shared between people.
 
-In Bazaar_ terms, a `Shared Repository`_ is a location where multiple
+In Bazaar_ terms, a "Shared Repository" is a location where multiple
 branches can **share** their revision history information. Because Bazaar_
 wants to support decentralized workflows, it is possible for every branch
 to maintain its own revision history information. But this is often
