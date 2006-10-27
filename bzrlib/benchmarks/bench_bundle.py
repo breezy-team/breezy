@@ -118,12 +118,6 @@ class BundleLibraryLevelWriteBenchmark(Benchmark):
         self.commit_some_revisions(tree, files[:100], 1, 1)
         self._time_read_write()
 
-    def test_some_files_moderate_tree_100_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(100, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:100], 100, 1)
-        self._time_read_write()
-
     def test_few_files_big_tree_1_revision(self):
         os.mkdir("a")
         tree, files = self.create_with_commits(1000, 1, directory_name="a")
@@ -142,11 +136,6 @@ class BundleLibraryLevelWriteBenchmark(Benchmark):
         self.commit_some_revisions(tree, files[:100], 1, 1)
         self._time_read_write()
 
-    def test_some_files_big_tree_100_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(1000, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:100], 100, 1)
-        self._time_read_write()
 
 
 class BundleLibraryLevelInstallBenchmark(Benchmark):
@@ -193,12 +182,6 @@ class BundleLibraryLevelInstallBenchmark(Benchmark):
         self.commit_some_revisions(tree, files[:100], 1, 1)
         self._time_read_write()
 
-    def test_some_files_moderate_tree_100_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(100, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:100], 100, 1)
-        self._time_read_write()
-
     def test_few_files_big_tree_1_revision(self):
         os.mkdir("a")
         tree, files = self.create_with_commits(1000, 1, directory_name="a")
@@ -217,12 +200,6 @@ class BundleLibraryLevelInstallBenchmark(Benchmark):
         self.commit_some_revisions(tree, files[:100], 1, 1)
         self._time_read_write()
 
-    def test_some_files_big_tree_100_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(1000, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:100], 100, 1)
-        self._time_read_write()
-
 
 if __name__ == '__main__':
     # USE the following if you want to regenerate the above test functions 
@@ -232,6 +209,9 @@ if __name__ == '__main__':
             if bundlefiles > treesize:
                 continue
             for num_revisions in [1, 100]:
+                if num_revisions == 100 and bundlefiles == 100:
+                    # Skip the 100x100 tests.
+                    continue
                 code = """\
     def test_%s_files_%s_tree_%s_revision(self):
         os.mkdir("a")
