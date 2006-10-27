@@ -75,17 +75,18 @@ def internal_tree_files(file_list, default_branch=u'.'):
 
     :param file_list: Filenames to convert.  
 
-    :param default_branch: Fallback tree path to use if file_list is empty or None.
+    :param default_branch: Fallback tree path to use if file_list is empty or
+        None.
 
     :return: workingtree, [relative_paths]
     """
     if file_list is None or len(file_list) == 0:
         return WorkingTree.open_containing(default_branch)[0], file_list
-    tree = WorkingTree.open_containing(file_list[0])[0]
+    tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
     new_list = []
     for filename in file_list:
         try:
-            new_list.append(tree.relpath(filename))
+            new_list.append(tree.relpath(osutils.dereference_path(filename)))
         except errors.PathNotChild:
             raise errors.FileInWrongBranch(tree.branch, filename)
     return tree, new_list

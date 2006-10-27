@@ -6,6 +6,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+   * mv correctly handles paths that traverse symlinks. 
+     (Aaron Bentley, #66964)
+
 
 bzr 0.12rc1  2006-10-23
 
