@@ -1110,7 +1110,14 @@ def recv_all(socket, bytes):
         b += new
     return b
 
-def real_parent(path):
+def dereference_path(path):
+    """Determine the real path to a file.
+
+    All parent elements are dereferenced.  But the file itself is not
+    dereferenced.
+    :param path: The original path.  May be absolute or relative.
+    :return: the real path *to* the file
+    """
     parent, base = os.path.split(path)
     # The pathjoin for '.' is a workaround for Python bug #1213894.
     # (initial path components aren't dereferenced)

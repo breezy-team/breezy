@@ -86,7 +86,7 @@ def internal_tree_files(file_list, default_branch=u'.'):
     new_list = []
     for filename in file_list:
         try:
-            new_list.append(tree.relpath(osutils.real_parent(filename)))
+            new_list.append(tree.relpath(osutils.dereference_path(filename)))
         except errors.PathNotChild:
             raise errors.FileInWrongBranch(tree.branch, filename)
     return tree, new_list
