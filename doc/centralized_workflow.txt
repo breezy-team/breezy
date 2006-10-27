@@ -2,108 +2,127 @@
 Centralized Workflow
 ====================
 
-Overview
-========
+I- Overview
+===========
 
-This document describes some basic workflow for using Bazaar_. This doesn't
-try to explain *why* every step is done, but more gives recommendations
-about what is considered a good way to work with Bazaar_.
-Bazaar_ is designed to be very flexible in workflows, from fully
-decentralized to mostly centralized.
-The practices here are meant to help ease the user into more advanced usage
-of Bazaar_, and allowing them to work in a mix of centralized and
-decentralized operation.
+This document describes a possible workflow for using Bazaar_. That of
+using Bazaar_, the distributed version control system, in a centralized
+manner. Bazaar_ is designed to be very flexible and allows several
+different workflows, from fully decentralized to mostly centralized.  The
+workflow used here is meant to ease a new user into more advanced usage of
+Bazaar_, and allows them to work in a mix of centralized and decentralized
+operations.
 
-In general, this document is meant for people in a work setting. Where
-several people are working on the same codebase, and want to work with
-eachother and keep in sync. However, this workflow is also applicable to a
-single developer, who might work on several machines, and wants to keep in
-sync with themselves.
+In general, this document is meant for users coming from a background of
+centralized version control systems such as CVS or subversion. It is
+common in work settings to have a single central server hosting the
+codebase, with several people working on this codebase, keeping their work
+in sync.  This workflow is also applicable to a single developer working
+on several different machines.
 
 .. _Bazaar: http://bazaar-vcs.org
 
 
-Initial Setup
-=============
+II- Initial Setup
+=================
 
 These are some reasonably simple steps to setup Bazaar_ so that it works
 well for you.
 
 
-Setting User Email
-------------------
+1- Setting User Email
+---------------------
 
 Your user identity is stored with each commit. While this doesn't have to
-be accurate, unique, or anything else, it will be used in log messages an
-annotations, so it is nice to have something real.::
+be accurate or unique, it will be used in log messages and
+annotations, so it is better to have something real.
 
-  % bzr whoami "John Doe <jdoe@organization.com>"
+::  
+
+   % bzr whoami "John Doe <jdoe@organization.com>"
 
 
-Setting up a local Repository
------------------------------
+2- Setting up a local Repository
+--------------------------------
 
 Bazaar_ branches generally copy the history information around with them,
 which is part of how you can work in a fully decentralized manner. As an
-optimization, it is possible for branches to combine their storage needs,
-so that you do not need to copy around all of this history information
-whenever you create a new branch.
+optimization, it is possible for related branches to combine their storage
+needs so that you do not need to copy around all of this history
+information whenever you create a new branch.
 
 The best way to do this is to create a `Shared Repository`_. In general,
 branches will share their storage if they exist in a subdirectory of a
-`Shared Repository`_.  So lets setup a `Shared Repository`_ in our home
+`Shared Repository`_.  So let's setup a `Shared Repository`_ in our home
 directory, thus all branches we create underneath will share their history
-storage.::
+storage.
+
+::
 
   % bzr init-repo --trees ~
 
 
-Setting up a remote Repository
-------------------------------
+3- Setting up a remote Repository
+---------------------------------
 
-Many times you want a location where data is stored separate from where
-you do your work. This workflow is required by centralized systems (CVS/SVN).
-Usually they are on separate machines, but not always. This is actually a
-pretty good setup, especially in a work environment. Because it ensures
-a central location where data can be backed up, and means that if something
-happens to a developer's machine, no committed work has been lost.
+Many times you want a location where data is stored separately from where
+you do your work. This workflow is required by centralized systems
+(CVS/SVN).  Usually they are on separate machines, but not always. This is
+actually a pretty good setup, especially in a work environment. Since it
+ensures a central location where data can be backed up, and means that if
+something happens to a developer's machine, no committed work has to be
+lost.
 
-So lets set up a shared location for our project. Again, we will use a
-`Shared Repository`_ to optimize disk usage.::
+So let's set up a shared location for our project on a remote machine
+called ``centralhost``. Again, we will use a
+`Shared Repository`_ to optimize disk usage.
+
+::
 
   % bzr init-repo --no-trees sftp://centralhost/srv/bzr/
 
 You can think of this step as similar to setting up a new cvsroot, or
-subversion repository (only obviously it is a little bit simpler).
+subversion repository.
 
 
-Starting to version an existing project
-=======================================
+III- Versioning an existing project
+===================================
 
-Now that we have a repository, lets get going with a new project. Most of
-the time, you will already have some code that you started working with,
+Now that we have a repository, let's create a versioned project. Most of
+the time, you will already have some code that you are working with,
 that you now want to version using Bazaar_. If the code was originally
 in source control, there are many ways to convert the project to Bazaar_
-without losing any history. However, this is outside of the scope of this
-document. See XXXReferenceConversionOfHistory_.
+without losing any history. However, this is outside the scope of this
+document. See `Tracking Upstream`_ for some possibilities (section
+"Converting and keeping history").
+
+.. _Tracking Upstream: http://bazaar-vcs.org/TrackingUpstream
+
+.. 
+   XXX: We really need a different document for discussing conversion of a
+   project. Right now TrackingUpstream is the best we have, though.
 
 
-Developer 1: Creating the first revision
-----------------------------------------
+1- Developer 1: Creating the first revision
+-------------------------------------------
 
 So first, we want to create a branch in our remote Repository, where we
 will want to host the project.  Let's assume we have a project named
-"sigil" that we want to start versioning, and create an empty branch::
+"sigil" that we want to start versioning.
+
+::
 
   % bzr init sftp://centralhost/srv/bzr/sigil
 
 This can be thought of as the "HEAD" branch in CVS terms, or as the "trunk"
-in Subversion terms. We typically call this the ``dev`` branch.
+in Subversion terms. We will call this the ``dev`` branch.
 
-I prefer working in a subdirectory of ``$HOME`` to avoid collisions with all
-the other stuff that ends up in ``$HOME``. Also, we will want a project
+I prefer working in a subdirectory of my home directory to avoid collisions with all
+the other files that end up there. Also, we will want a project
 directory where we can hold all of the different branches we end up
-working on::
+working on.
+
+::
 
   % cd ~
   % mkdir work
@@ -116,59 +135,66 @@ working on::
   % bzr add
   % bzr commit -m "Initial import of Sigil"
 
-There are many ways to setup your working directory, but the above way
-will makes it easy to handle working with feature/bugfix branches. And one
+
+In the example above, we created an empty branch (the ``/sigil`` branch)
+on ``centralhost``, and then checkout out this empty branch onto our
+workstation to add files from our existing project.
+There are many ways to setup your working directory, but the steps above
+make it easy to handle working with feature/bugfix branches. And one
 of the strong points of Bazaar_ is how well it works with branches.
 
 At this point, because you have a 'checkout' of the remote branch, any
-commits you make in ``dev/`` will automatically be saved both locally,
+commits you make in ``~/work/sigil/dev/`` will automatically be saved both locally,
 and on ``centralhost``.
 
 
-Developer N: Getting a working copy of the project
---------------------------------------------------
+2- Developer N: Getting a working copy of the project
+-----------------------------------------------------
 
 Since the first developer did all of the work of creating the project,
-all other developers can just get a checkout of that branch. They should
-still follow `Setting User Email`_ and `Setting up a local Repository`_.
+all other developers would just checkout that branch. **They should
+still follow** `1- Setting User Email`_ and `2- Setting up a local Repository`_.
 
-Then to get a copy of the current tip::
+To get a copy of the current development tree::
 
   % cd ~/work/sigil
   % bzr checkout sftp://centralhost/srv/bzr/sigil dev
 
 Now that two people both have a checkout of
 ``sftp://centralhost/srv/bzr/sigil``, there will be times when one of
-them is out of date with the current version. Bazaar_ will inform the user
-of this and prevent them from committing. To get up to date use ``bzr
-update``, which will update the tree with the remote changes. This may
-require resolving conflicts, in the case that the same files have been
-modified.
+the checkouts will be out of date with the current version.
+At commit time, Bazaar_ will inform the user of this and prevent them from
+committing. To get up to date, use ``bzr update`` to update the
+tree with the remote changes. This may require resolving conflicts, if the
+same files have been modified.
 
 
-Developing on separate branches
-===============================
+IV- Developing on separate branches
+===================================
 
 So far everyone is working and committing their changes into the same
-branch. Which means that everyone needs to update fairly regularly, and
+branch. This means that everyone needs to update fairly regularly and
 deal with other people's changes. Also, if one person commits something
-which breaks the codebase, then everyone has to deal with it.
+that breaks the codebase, then upon syncing, everyone will get the
+problem.
 
-Usually, it is better to do development on individual branches, and then
+Usually, it is better to do development on different branches, and then
 integrate those back into the main branch, once they are stable. This is
 one of the biggest changes from working with CVS/SVN. They both allow you
 to work on separate branches, but their merging algorithms are fairly
-weak, so it is difficult to keep things synchronized. Bazaar_ merges track
+weak, so it is difficult to keep things synchronized. Bazaar_ tracks
 what has already been merged, and can even apply changes to files that
 have been renamed.
 
 
-Creating and working on a new branch
-------------------------------------
+1- Creating and working on a new branch
+---------------------------------------
 
 We want to keep our changes available for other people, even if they
-aren't quite complete yet. So we will create a new public branch, and
-track it locally.::
+aren't quite complete yet. So we will create a new public branch on
+``centralhost``, and track it locally.
+
+::
 
   % cd ~/work/sigil
   % bzr branch sftp://centralhost/srv/bzr/sigil \
@@ -176,13 +202,17 @@ track it locally.::
   % bzr checkout sftp://centralhost/srv/bzr/sigil/doodle-fixes doodle-fixes
   % cd doodle-fixes
 
-We now have a place to make any fixes to doodles that we need. And we
-won't interrupt people who are working on other parts of the code.
-Because we have a checkout, any commits made in the ``doodle-fixes/`` will
-also show up on ``centralhost``. [#nestedbranches_]
-It is also completely possible to have 2 developers collaborate on one of
-these branches, just like they would have collaborated on the ``dev``
-branch.[#cbranch]_
+We now have a place to make any fixes we need to ``doodle``. And we would
+not interrupt people who are working on other parts of the code.  Because
+we have a checkout, any commits made in the ``~/work/sigil/doodle-fixes/``
+will also show up on ``centralhost``. [#nestedbranches]_ It is also
+possible to have 2 developers collaborate on one of these branches, just
+like they would have collaborated on the ``dev`` branch. [#cbranch]_
+
+.. [#nestedbranches] It may look odd to have a branch in a subdirectory of
+   another branch. This is just fine, and you can think of it as a
+   heirarchial namespace. Where the nested branch is derived from the
+   outer branch.
 
 .. [#cbranch] When using lots of independent branches, having to retype
    the full URL all the time takes a lot of typing. We are looking into
@@ -193,37 +223,32 @@ branch.[#cbranch]_
    Configuring ``cbranch`` is outside the scope of this document, but the
    final commands look like ``bzr cbranch dev my-feature-branch``
 
-.. [#nestedbranches] It may look odd to have a branch in a subdirectory of
-   another branch. However, this is just fine, and you can think of it as
-   a heirarchial namespace. Where the nested branch is derived from the
-   outer branch.
-
 .. _bzrtools: https://launchpad.net/products/bzrtools
 
 
-Merging changes back
---------------------
+2- Merging changes back
+-----------------------
 
-When it is decided that some of the changes in ``doodle-fixes`` is ready
-to be merged into the main tree, simply do::
+When it is decided that some of the changes in ``doodle-fixes`` are ready
+to be merged into the main branch, simply do::
 
   % cd ~/work/sigil/dev
   % bzr merge ../doodle-fixes
 
-Now the changes are available in the ``dev`` branch, but they haven't been
-committed yet. This is the time when you want to review the final changes,
-and make sure they are what you want. ``bzr status`` and ``bzr diff`` are
-good tools to use here. Also, there may be some conflicts in files, if
-there were changes made to the same file. Bazaar_ will prevent you from
-committing until you have resolved these conflicts. That way you don't
-accidentally commit the conflict markers. ``bzr status`` will show the
-conflicts along with the other changes, or you can use ``bzr conflicts``
-to just list conflicts. Use ``bzr resolve file/name`` or ``bzr resolve
---all`` once conflicts have been handled.[#resolve]_
-If you have a conflict that is particularly difficult to solve you may
-want to use the ``bzr remerge`` command. It will let you try different
-merge algorithms, as well as let you see the original source lines
-(``--show-base``).
+Now the changes are available in the ``dev`` branch, but they have not
+been committed yet. This is the time when you want to review the final
+changes, and double check the code to make sure it compiles cleanly and
+passes the test suite. The commands ``bzr status`` and ``bzr diff`` are
+good tools to use here. Also, this is the time to resolve any conflicts.
+Bazaar_ will prevent you from committing until you have resolved these
+conflicts. That way you don't accidentally commit the conflict markers.
+The command ``bzr status`` will show the conflicts along with the other
+changes, or you can use ``bzr conflicts`` to just list conflicts. Use
+``bzr resolve file/name`` or ``bzr resolve --all`` once conflicts have
+been handled. [#resolve]_ If you have a conflict that is particularly
+difficult to solve you may want to use the ``bzr remerge`` command. It
+will let you try different merge algorithms, as well as let you see the
+original source lines (``--show-base``).
 
 .. [#resolve] Some systems make you resolve conflicts as part of the merge
    process. We have found that it is usually easier to resolve conflicts
@@ -232,8 +257,8 @@ merge algorithms, as well as let you see the original source lines
    you resolve the problems.
 
 
-Recommended Branching
----------------------
+V- Recommended Branching
+------------------------
 
 One very common way to handle all of these branches is to give each
 developer their own branch, and their own place to work in the central
@@ -253,8 +278,8 @@ easily create a new feature branch for themselves with just[#cbranch]_::
   % bzr checkout sftp://centralhost/srv/bzr/sigil/user-a/feature myfeature
 
 
-Glossary
-========
+VI- Glossary
+============
 
 Shared Repository
 -----------------
@@ -271,7 +296,7 @@ In Bazaar_ terms, a `Shared Repository`_ is a location where multiple
 branches can **share** their revision history information. Because Bazaar_
 wants to support decentralized workflows, it is possible for every branch
 to maintain its own revision history information. But this is often
-inefficient, since often branches share history, and they might as well
+inefficient, since related branches share history, and they might as well
 share the storage as well.
 
 
