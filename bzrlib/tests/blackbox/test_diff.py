@@ -208,21 +208,6 @@ class TestDiff(ExternalBase):
         self.run_bzr('diff', 'hello1', retcode=1)
         self.run_bzr('diff', '-r', '0..1', 'hello1', retcode=1)
 
-    def test_diff_out_of_date(self):
-        """Simulate diff of out-of-date tree after remote push"""
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('a', 'foo\n')])
-        tree.lock_write()
-        try:
-            tree.add(['a'])
-            tree.commit('add test file')
-            # simulate what happens after a remote push
-            tree.set_last_revision("0")
-            out, err = self.run_bzr('diff', retcode=1)
-            self.assertEqual("working tree is out of date, run 'bzr update'\n",
-                             err)
-        finally:
-            tree.unlock()
 
 class TestCheckoutDiff(TestDiff):
 
