@@ -6,8 +6,13 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
-   * mv correctly handles paths that traverse symlinks. 
-     (Aaron Bentley, #66964)
+    * mv correctly handles paths that traverse symlinks. 
+      (Aaron Bentley, #66964)
+
+    * Pushing to a remote branch does not currently update the remote working
+      tree. After a remote push, ``bzr status`` and ``bzr diff`` on the remote
+      machine now show that the working tree is out of date.
+      (Cheuksan Edward Wang #48136)
 
 
 bzr 0.12rc1  2006-10-23
