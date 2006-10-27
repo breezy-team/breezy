@@ -68,6 +68,7 @@ class BundleBenchmark(Benchmark):
         os.chdir('branch_a')
         self.time(self.run_bzr, 'merge', '../bundle')
  
+
 class BundleLibraryLevelWriteBenchmark(Benchmark):
     """ Benchmarks for the write_bundle library function. """
 
@@ -99,12 +100,6 @@ class BundleLibraryLevelWriteBenchmark(Benchmark):
         self.commit_some_revisions(tree, files[:5], 100, 1)
         self._time_read_write()
 
-    def test_few_files_small_tree_1000_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(5, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:5], 1000, 1)
-        self._time_read_write()
-
     def test_few_files_moderate_tree_1_revision(self):
         os.mkdir("a")
         tree, files = self.create_with_commits(100, 1, directory_name="a")
@@ -115,12 +110,6 @@ class BundleLibraryLevelWriteBenchmark(Benchmark):
         os.mkdir("a")
         tree, files = self.create_with_commits(100, 1, directory_name="a")
         self.commit_some_revisions(tree, files[:5], 100, 1)
-        self._time_read_write()
-
-    def test_few_files_moderate_tree_1000_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(100, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:5], 1000, 1)
         self._time_read_write()
 
     def test_some_files_moderate_tree_1_revision(self):
@@ -135,12 +124,6 @@ class BundleLibraryLevelWriteBenchmark(Benchmark):
         self.commit_some_revisions(tree, files[:100], 100, 1)
         self._time_read_write()
 
-    def test_some_files_moderate_tree_1000_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(100, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:100], 1000, 1)
-        self._time_read_write()
-
     def test_few_files_big_tree_1_revision(self):
         os.mkdir("a")
         tree, files = self.create_with_commits(1000, 1, directory_name="a")
@@ -151,12 +134,6 @@ class BundleLibraryLevelWriteBenchmark(Benchmark):
         os.mkdir("a")
         tree, files = self.create_with_commits(1000, 1, directory_name="a")
         self.commit_some_revisions(tree, files[:5], 100, 1)
-        self._time_read_write()
-
-    def test_few_files_big_tree_1000_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(1000, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:5], 1000, 1)
         self._time_read_write()
 
     def test_some_files_big_tree_1_revision(self):
@@ -171,29 +148,6 @@ class BundleLibraryLevelWriteBenchmark(Benchmark):
         self.commit_some_revisions(tree, files[:100], 100, 1)
         self._time_read_write()
 
-    def test_some_files_big_tree_1000_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(1000, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:100], 1000, 1)
-        self._time_read_write()
-
-    def test_many_files_big_tree_1_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(1000, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:1000], 1, 1)
-        self._time_read_write()
-
-    def test_many_files_big_tree_100_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(1000, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:1000], 100, 1)
-        self._time_read_write()
-
-    def test_many_files_big_tree_1000_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(1000, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:1000], 1000, 1)
-        self._time_read_write()
 
 class BundleLibraryLevelInstallBenchmark(Benchmark):
     """ Benchmarks for the install_bundle library function. """
@@ -269,28 +223,15 @@ class BundleLibraryLevelInstallBenchmark(Benchmark):
         self.commit_some_revisions(tree, files[:100], 100, 1)
         self._time_read_write()
 
-    def test_many_files_big_tree_1_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(1000, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:1000], 1, 1)
-        self._time_read_write()
-
-    def test_many_files_big_tree_100_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(1000, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:1000], 100, 1)
-        self._time_read_write()
-
 
 if __name__ == '__main__':
     # USE the following if you want to regenerate the above test functions 
     for treesize, treesize_h in [(5, "small"), (100, "moderate"),
                                  (1000, "big")]:
-        for bundlefiles, bundlefiles_h in [(5, "few"), (100, "some"),
-                                           (1000, "many")]:
+        for bundlefiles, bundlefiles_h in [(5, "few"), (100, "some")]:
             if bundlefiles > treesize:
                 continue
-            for num_revisions in [1, 100, 1000]:
+            for num_revisions in [1, 100]:
                 code = """\
     def test_%s_files_%s_tree_%s_revision(self):
         os.mkdir("a")
@@ -300,6 +241,4 @@ if __name__ == '__main__':
 """ % (bundlefiles_h, treesize_h, num_revisions,
        treesize, bundlefiles, num_revisions)
                 print code
-
-
 
