@@ -151,7 +151,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('dir1')
         dir.create_repository()
         dir.create_branch()
-        wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
+        try:
+            wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
+        except errors.NotLocalUrl:
+            raise TestSkipped("cannot make working tree with transport %r"
+                              % dir.transport)
         self.assertEqual([], wt.get_parent_ids())
 
     def test_destroy_workingtree(self):

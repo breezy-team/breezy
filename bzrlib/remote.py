@@ -83,8 +83,8 @@ class RemoteBzrDir(BzrDir):
     def open_repository(self):
         return RemoteRepository(self, self._real_bzrdir.open_repository())
 
-    def open_branch(self):
-        real_branch = self._real_bzrdir.open_branch()
+    def open_branch(self, _unsupported=False):
+        real_branch = self._real_bzrdir.open_branch(unsupported=_unsupported)
         if real_branch.bzrdir is self._real_bzrdir:
             # This branch accessed through the smart server, so wrap the
             # file-level objects.
@@ -137,7 +137,9 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return 'bzr remote repository'
 
     def __eq__(self, other):
-        return self.get_format_description() == other.get_format_description()
+        return self.__class__ == other.__class__
+
+    rich_root_data = False
 
 
 class RemoteRepository(object):

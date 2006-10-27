@@ -1186,9 +1186,8 @@ class TestCaseWithMemoryTransport(TestCase):
             if self.transport_readonly_server is None:
                 # readonly decorator requested
                 # bring up the server
-                self.get_url()
                 self.__readonly_server = ReadonlyServer()
-                self.__readonly_server.setUp(self.__server)
+                self.__readonly_server.setUp(self.get_server())
             else:
                 self.__readonly_server = self.transport_readonly_server()
                 self.__readonly_server.setUp()
@@ -1511,7 +1510,6 @@ class TestCaseWithTransport(TestCaseInTempDir):
     def setUp(self):
         super(TestCaseWithTransport, self).setUp()
         self.__server = None
-        self.transport_server = default_transport
 
 
 class ChrootedTestCase(TestCaseWithTransport):

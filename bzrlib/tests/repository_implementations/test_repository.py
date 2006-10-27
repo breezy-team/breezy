@@ -21,7 +21,12 @@ import re
 import sys
 
 import bzrlib
-from bzrlib import bzrdir, errors, repository
+from bzrlib import (
+    bzrdir,
+    errors,
+    remote,
+    repository,
+    )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.delta import TreeDelta
 from bzrlib.errors import (FileExists,
@@ -206,7 +211,11 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual([], lines)
         b_branch = b_bzrdir.create_branch()
         b_branch.pull(tree_a.branch)
-        tree_b = b_bzrdir.create_workingtree()
+        try:
+            tree_b = b_bzrdir.create_workingtree()
+        except errors.NotLocalUrl:
+            raise TestSkipped("cannot make working tree with transport %r"
+                              % b_bzrdir.transport)
         tree_b.commit('no change', rev_id='rev2')
         rev2_tree = repo.revision_tree('rev2')
         self.assertEqual('rev1', rev2_tree.inventory.root.revision)
@@ -402,7 +411,7 @@ class TestRepository(TestCaseWithRepository):
     def test_upgrade_from_format4(self):
         from bzrlib.tests.test_upgrade import _upgrade_dir_template
         if self.repository_format.__class__ == repository.RepositoryFormat4:
-            raise TestSkipped('Cannot convert format-4 to itself')
+            return # no need to test upgrade to format 4
         self.build_tree_contents(_upgrade_dir_template)
         old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
         old_repo_format = old_repodir.open_repository()._format

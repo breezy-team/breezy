@@ -1812,10 +1812,6 @@ class InterSameDataRepository(InterRepository):
 
     @staticmethod
     def is_compatible(source, target):
-        if not isinstance(source, Repository):
-            return False
-        if not isinstance(target, Repository):
-            return False
         if source._format.rich_root_data == target._format.rich_root_data:
             return True
         else:
