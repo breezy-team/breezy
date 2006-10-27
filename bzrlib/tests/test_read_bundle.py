@@ -66,7 +66,6 @@ class TestReadBundleFromURL(TestTransportImplementation):
         wt = self.create_test_bundle()
         if wt is None:
             return
-        ## import pdb;pdb.set_trace()
         info = bzrlib.bundle.read_bundle_from_url(
                     self.get_url('test_bundle'))
         bundle_tree = info.revision_tree(wt.branch.repository, info.target)
