@@ -124,18 +124,11 @@ class BundleLibraryLevelWriteBenchmark(Benchmark):
         self.commit_some_revisions(tree, files[:5], 1, 1)
         self._time_read_write()
 
-    def test_few_files_big_tree_100_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(1000, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:5], 100, 1)
-        self._time_read_write()
-
     def test_some_files_big_tree_1_revision(self):
         os.mkdir("a")
         tree, files = self.create_with_commits(1000, 1, directory_name="a")
         self.commit_some_revisions(tree, files[:100], 1, 1)
         self._time_read_write()
-
 
 
 class BundleLibraryLevelInstallBenchmark(Benchmark):
@@ -188,12 +181,6 @@ class BundleLibraryLevelInstallBenchmark(Benchmark):
         self.commit_some_revisions(tree, files[:5], 1, 1)
         self._time_read_write()
 
-    def test_few_files_big_tree_100_revision(self):
-        os.mkdir("a")
-        tree, files = self.create_with_commits(1000, 1, directory_name="a")
-        self.commit_some_revisions(tree, files[:5], 100, 1)
-        self._time_read_write()
-
     def test_some_files_big_tree_1_revision(self):
         os.mkdir("a")
         tree, files = self.create_with_commits(1000, 1, directory_name="a")
@@ -209,8 +196,10 @@ if __name__ == '__main__':
             if bundlefiles > treesize:
                 continue
             for num_revisions in [1, 100]:
-                if num_revisions == 100 and bundlefiles == 100:
-                    # Skip the 100x100 tests.
+                if (num_revisions >= 100 and 
+                        (bundlefiles >= 100 or treesize >= 1000)):
+                    # Skip the 100x100x? tests.
+                    # And the 100x?x1000
                     continue
                 code = """\
     def test_%s_files_%s_tree_%s_revision(self):
