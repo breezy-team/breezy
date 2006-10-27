@@ -116,6 +116,11 @@ bzr 0.12rc1  2006-10-23
 
    * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
 
+    * Pushing to a remote branch does not currently update the remote working
+      tree. After a remote push, ``bzr status`` and ``bzr diff`` on the remote
+      machine now show that the working tree is out of date.
+      (Cheuksan Edward Wang #48136)
+
   TESTING:
 
     * New test base class TestCaseWithMemoryTransport offers memory-only
