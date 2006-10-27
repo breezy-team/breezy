@@ -24,9 +24,8 @@ from bzrlib import bzrdir
 from bzrlib.add import smart_add
 from bzrlib.benchmarks import Benchmark
 from bzrlib.branch import Branch
-from bzrlib.bundle import read_bundle
 from bzrlib.bundle.apply_bundle import install_bundle
-from bzrlib.bundle.serializer import write_bundle
+from bzrlib.bundle.serializer import read_bundle, write_bundle
 from bzrlib.revision import NULL_REVISION
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.workingtree import WorkingTree
