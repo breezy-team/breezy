@@ -2,6 +2,15 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+  INTERNALS:
+
+  BUG FIXES:
+
+
+bzr 0.12rc1  2006-10-23
+
+  IMPROVEMENTS:
+
     * ``bzr log`` now shows dotted-decimal revision numbers for all revisions,
       rather than just showing a decimal revision number for revisions on the
       mainline. These revision numbers are not yet accepted as input into bzr
@@ -62,11 +71,23 @@ IN DEVELOPMENT
       ``unlock()``. ``WorkingTree.set_root_id()`` has been updated to take
       advantage of this functionality. (Robert Collins, John Arbash Meinel)
 
+    * ``bzrlib.tsort.merge_sorted`` now accepts ``generate_revnos``. This
+      parameter will cause it to add another column to its output, which
+      contains the dotted-decimal revno for each revision, as a tuple.
+      (Robert Collins)
+
+    * ``LogFormatter.show_merge`` is deprecated in favour of
+      ``LogFormatter.show_merge_revno``. (Robert Collins)
+
   BUG FIXES:
 
     * Avoid circular imports by creating a deprecated function for
       ``bzrlib.tree.RevisionTree``. Callers should have been using
-      ``bzrlib.revisontree.RevisionTree`` anyway. (John Arbash Meinel, #63360)
+      ``bzrlib.revisontree.RevisionTree`` anyway. (John Arbash Meinel,
+      #63360, #66349)
+
+    * Don't use ``socket.MSG_WAITALL`` as it doesn't exist on all
+      platforms. (Martin Pool, #66356)
 
     * Don't require ``Content-Type`` in range responses. Assume they are a
       single range if ``Content-Type`` does not exist.
@@ -253,7 +274,6 @@ bzr 0.11rc1  2006-09-25
       NoSuchFile and forcing the caller to repeat their request.
       (John Arbash Meinel)
 
-<<<<<<< TREE
     * WorkingTree has a new api ``unversion`` which allow the unversioning of
       entries by their file id. (Robert Collins)
 
@@ -305,16 +325,6 @@ bzr 0.11rc1  2006-09-25
       Transport. (Andrew Bennetts, Martin Pool)
 
 bzr 0.10  2006-08-29
-=======
-    * bzrlib.tsort.merge_sorted now accepts 'generate_revnos'. This parameter
-      will cause it to add another column to its output, which contains the
-      dotted-decimal revno for each revision, as a tuple. (Robert Collins)
-
-    * LogFormatter.show_merge is deprecated in favour of
-      LogFormatter.show_merge_revno. (Robert Collins)
-
-bzr 0.10.0RC1  2006-08-28
->>>>>>> MERGE-SOURCE
   
   IMPROVEMENTS:
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
@@ -1362,8 +1372,8 @@ bzr 0.6 2005-10-28
     * Config options have moved from bzrlib.osutils to bzrlib.config.
       Configuration is now done via the config.Config interface:
       Depending on whether you have a Branch, a Location or no information
-      available, construct a *Config, and use its signature_checking,
-      username and user_email methods. (Robert Collins)
+      available, construct a ``*Config``, and use its ``signature_checking``,
+      ``username`` and ``user_email`` methods. (Robert Collins)
 
     * Plugins are now loaded under bzrlib.plugins, not bzrlib.plugin, and
       they are made available for other plugins to use. You should not 
