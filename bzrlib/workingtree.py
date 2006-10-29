@@ -1902,6 +1902,10 @@ class WorkingTree3(WorkingTree):
             self.branch.unlock()
 
 
+class WorkingTree4(WorkingTree3):
+    pass
+
+
 def get_conflicted_stem(path):
     for suffix in _mod_conflicts.CONFLICT_SUFFIXES:
         if path.endswith(suffix):
@@ -2097,6 +2101,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
     _lock_file_name = 'lock'
     _lock_class = LockDir
+    _tree_class = WorkingTree3
 
     def _open_control_files(self, a_bzrdir):
         transport = a_bzrdir.get_workingtree_transport(None)
@@ -2125,7 +2130,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         # are maintaining compatibility with older clients.
         # inv = Inventory(root_id=gen_root_id())
         inv = Inventory()
-        wt = WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
+        wt = self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
@@ -2173,20 +2178,36 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         :param a_bzrdir: the dir for the tree.
         :param control_files: the control files for the tree.
         """
-        return WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
-                           _internal=True,
-                           _format=self,
-                           _bzrdir=a_bzrdir,
-                           _control_files=control_files)
+        return self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
+                                _internal=True,
+                                _format=self,
+                                _bzrdir=a_bzrdir,
+                                _control_files=control_files)
 
     def __str__(self):
         return self.get_format_string()
+
+
+class WorkingTreeFormat4(WorkingTreeFormat3):
+    
+    """Working tree format that supports unique roots and nested trees"""
+
+    _tree_class = WorkingTree4
+
+    def get_format_string(self):
+        """See WorkingTreeFormat.get_format_string()."""
+        return "Bazaar-NG Working Tree format 4"
+
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 4"
 
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 __default_format = WorkingTreeFormat3()
 WorkingTreeFormat.register_format(__default_format)
+WorkingTreeFormat.register_format(WorkingTreeFormat4())
 WorkingTreeFormat.set_default_format(__default_format)
 _legacy_formats = [WorkingTreeFormat2(),
                    ]
