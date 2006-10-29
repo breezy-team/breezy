@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -92,6 +92,10 @@ class UIFactory(object):
         """
         raise NotImplementedError(self.get_boolean)
 
+    def show_progress_line(self, msg):
+        """Show one line of text that will be cleared."""
+        raise NotImplementedError(self.show_progress_line)
+
 
 class CLIUIFactory(UIFactory):
     """Common behaviour for command line UI factories."""
@@ -136,6 +140,12 @@ class SilentUIFactory(CLIUIFactory):
         return self._progress_bar_stack.get_nested()
 
     def clear_term(self):
+        pass
+
+    def show_progress_line(self, msg):
+        pass
+
+    def message(self, msg):
         pass
 
 

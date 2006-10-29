@@ -157,3 +157,9 @@ class TestUIFactory(ui.CLIUIFactory):
 
     def update(self, message, count=None, total=None):
         """See progress.ProgressBar.update()."""
+
+    def show_progress_line(self, message):
+        pass
+
+    def message(self, message):
+        self.stderr.write(message + '\n')

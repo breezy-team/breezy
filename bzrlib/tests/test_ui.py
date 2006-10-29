@@ -199,3 +199,13 @@ class UITests(TestCase):
             "\rwhat do you want\\? \\[y/n\\]:what do you want\\? \\[y/n\\]:", 
             output):
             self.fail("didn't match factory output %r, %s" % (factory, output))
+
+    def test_text_factory_progress_line(self):
+        out = StringIO()
+        err = StringIO()
+        ui = bzrlib.ui.text.TextUIFactory(stdout=out, stderr=err)
+        ui.show_progress_line('10/20 hello world')
+        self.assertContainsRe(err.getvalue(), 
+                '\r10/20 hello world')
+        ui.show_progress_line('20/20 hello world')
+        self.assertContainsRe(err.getvalue(), '\r20/20 hello world')
