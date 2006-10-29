@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -504,14 +504,14 @@ class TestCopyTree(TestCaseInTempDir):
     def test_copy_basic_tree(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         osutils.copy_tree('source', 'target')
-        self.assertEqual(['a', 'b'], os.listdir('target'))
+        self.assertEqual(['a', 'b'], sorted(os.listdir('target')))
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_target_exists(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c',
                          'target/'])
         osutils.copy_tree('source', 'target')
-        self.assertEqual(['a', 'b'], os.listdir('target'))
+        self.assertEqual(['a', 'b'], sorted(os.listdir('target')))
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
