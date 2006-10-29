@@ -1365,3 +1365,10 @@ class ImportNameCollision(BzrNewError):
     def __init__(self, name):
         BzrNewError.__init__(self)
         self.name = name
+
+
+class UnsupportedInventoryKind(BzrNewError):
+    """Unsupported entry kind %(kind)s"""
+
+    def __init__(self, kind):
+        self.kind = kind

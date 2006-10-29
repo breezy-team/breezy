@@ -22,7 +22,7 @@ from bzrlib import errors, inventory, osutils
 from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
 from bzrlib.inventory import (Inventory, ROOT_ID, InventoryFile,
-    InventoryDirectory, InventoryEntry)
+    InventoryDirectory, InventoryEntry, TreeReference)
 from bzrlib.osutils import (has_symlinks, rename, pathjoin, is_inside_any, 
     is_inside_or_parent_of_any)
 from bzrlib.tests import TestCase, TestCaseWithTransport
@@ -570,3 +570,11 @@ class TestIsRoot(TestCase):
         inv.root = None
         self.assertFalse(inv.is_root('TREE_ROOT'))
         self.assertFalse(inv.is_root('booga'))
+
+
+class TestTreeReference(TestCase):
+    
+    def test_create(self):
+        inv = Inventory('tree-root-123')
+        inv.add(TreeReference('nested-id', 'nested', parent_id='tree-root-123',
+                              revision='rev', reference_revision='rev2'))

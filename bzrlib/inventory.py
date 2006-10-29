@@ -331,7 +331,7 @@ class InventoryEntry(object):
 
     @staticmethod
     def versionable_kind(kind):
-        return (kind in ('file', 'directory', 'symlink'))
+        return (kind in ('file', 'directory', 'symlink', 'tree-reference'))
 
     def check(self, checker, rev_id, inv, tree):
         """Check this inventory entry is intact.
@@ -817,6 +817,16 @@ class InventoryLink(InventoryEntry):
         """See InventoryEntry._snapshot_text."""
         commit_builder.modified_link(
             self.file_id, file_parents, self.symlink_target)
+
+
+class TreeReference(InventoryEntry):
+    
+    kind = 'tree-reference'
+    
+    def __init__(self, file_id, name, parent_id, revision, reference_revision):
+        InventoryEntry.__init__(self, file_id, name, parent_id)
+        self.revision = revision
+        self.reference_revision = reference_revision
 
 
 class Inventory(object):

@@ -16,6 +16,11 @@
 
 from cStringIO import StringIO
 
+from bzrlib import (
+    errors, 
+    inventory, 
+    xml7,
+    )
 from bzrlib.tests import TestCase
 from bzrlib.inventory import Inventory, InventoryEntry
 from bzrlib.xml4 import serializer_v4
@@ -259,3 +264,25 @@ class TestSerializer(TestCase):
         txt = s_v5.write_revision_to_string(rev)
         new_rev = s_v5.read_revision_from_string(txt)
         self.assertEqual(props, new_rev.properties)
+
+    def test_tree_reference(self):
+        s_v5 = bzrlib.xml5.serializer_v5
+        s_v6 = bzrlib.xml6.serializer_v6
+        s_v7 = xml7.serializer_v7
+        inv = Inventory('tree-root-321')
+        inv.add(inventory.TreeReference('nested-id', 'nested', 'tree-root-321',
+                                        'rev-outer', 'rev-inner'))
+        self.assertRaises(errors.UnsupportedInventoryKind, 
+                          s_v5.write_inventory_to_string, inv)
+        self.assertRaises(errors.UnsupportedInventoryKind, 
+                          s_v6.write_inventory_to_string, inv)
+        txt = s_v7.write_inventory_to_string(inv)
+        inv2 = s_v7.read_inventory_from_string(txt)
+        self.assertEqual('tree-root-321', inv2['nested-id'].parent_id)
+        self.assertEqual('rev-outer', inv2['nested-id'].revision)
+        self.assertEqual('rev-inner', inv2['nested-id'].reference_revision)
+        self.assertRaises(errors.UnsupportedInventoryKind, 
+                          s_v6.read_inventory_from_string, txt)
+        self.assertRaises(errors.UnsupportedInventoryKind, 
+                          s_v5.read_inventory_from_string,
+                          txt.replace('format="6"', 'format="5"'))
