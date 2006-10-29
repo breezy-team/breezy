@@ -208,6 +208,12 @@ class NoWorkingTree(BzrNewError):
         self.base = base
 
 
+class WorkingTreeAlreadyPopulated(BzrNewError):
+    """Working tree already populated in %(base)s"""
+
+    is_user_error = False
+
+
 class NotBuilding(BzrNewError):
     """Not currently building a tree."""
 

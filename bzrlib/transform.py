@@ -960,7 +960,8 @@ def build_tree(tree, wt):
       it is silently replaced.
     - Otherwise, conflict resolution will move the old file to 'oldname.moved'.
     """
-    assert 2 > len(wt.inventory)
+    if len(wt.inventory) > 1:  # more than just a root
+        raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
