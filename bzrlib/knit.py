@@ -90,6 +90,7 @@ from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.tsort import topo_sort
 import bzrlib.weave
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
+import bzrlib.patiencediff
 
 
 # TODO: Split out code specific to this format into an associated object.
@@ -522,7 +523,8 @@ class KnitVersionedFile(VersionedFile):
             delta_seq = None
             for parent_id in parents:
                 merge_content = self._get_content(parent_id, parent_texts)
-                seq = KnitSequenceMatcher(None, merge_content.text(), content.text())
+                seq = bzrlib.patiencediff.PatienceSequenceMatcher(
+                                   None, merge_content.text(), content.text())
                 if delta_seq is None:
                     # setup a delta seq to reuse.
                     delta_seq = seq
@@ -539,7 +541,8 @@ class KnitVersionedFile(VersionedFile):
                 reference_content = self._get_content(parents[0], parent_texts)
                 new_texts = content.text()
                 old_texts = reference_content.text()
-                delta_seq = KnitSequenceMatcher(None, old_texts, new_texts)
+                delta_seq = bzrlib.patiencediff.PatienceSequenceMatcher(
+                                                 None, old_texts, new_texts)
             return self._make_line_delta(delta_seq, content)
 
     def _make_line_delta(self, delta_seq, new_content):
