@@ -63,7 +63,6 @@ class SelftestTests(TestCase):
                           _load_module_by_name,
                           'bzrlib.no-name-yet')
 
-
 class MetaTestLog(TestCase):
 
     def test_logging(self):

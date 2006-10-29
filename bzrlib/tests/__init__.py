@@ -219,7 +219,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         if setKeepLogfile is not None:
             setKeepLogfile()
         self.extractBenchmarkTime(test)
-        self.report_error(test)
+        self.report_error(test, err)
         if self.stop_early:
             self.stop()
 
@@ -231,7 +231,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         if setKeepLogfile is not None:
             setKeepLogfile()
         self.extractBenchmarkTime(test)
-        self.report_failure(test)
+        self.report_failure(test, err)
         if self.stop_early:
             self.stop()
 
@@ -294,13 +294,14 @@ class TextTestResult(ExtendedTestResult):
         a = '[%d' % self.count
         if self.num_tests is not None:
             a +='/%d' % self.num_tests
+        a += ' in %ds' % (time.time() - self._overall_start_time)
         if self.error_count:
             a += ', %d errors' % self.error_count
         if self.failure_count:
             a += ', %d failed' % self.failure_count
         if self.skip_count:
             a += ', %d skipped' % self.skip_count
-        a += ' in %ds]' % (time.time() - self._overall_start_time)
+        a += ']'
         return a
 
     def report_test_start(self, test):
@@ -310,23 +311,36 @@ class TextTestResult(ExtendedTestResult):
                 + ' ' 
                 + self._shortened_test_description(test))
 
-    def report_error(self, test):
+    def report_error(self, test, err):
         self.error_count += 1
-        self.ui.message('ERROR: %s\n' %
+        self.ui.message('ERROR: %s\n    %s\n' % (
             self._shortened_test_description(test),
-            )
+            err[1],
+            ))
 
-    def report_failure(self, test):
+    def report_failure(self, test, err):
         self.failure_count += 1
-        self.ui.message('FAIL: %s\n' % 
+        self.ui.message('FAIL: %s\n    %s\n' % (
             self._shortened_test_description(test),
-            )
+            err[1],
+            ))
 
     def report_skip(self, test, skip_excinfo):
         self.skip_count += 1
-        self.ui.message('SKIP: %s\n    %s\n' % (
-            self._shortened_test_description(test),
-            skip_excinfo[1]))
+        if False:
+            # at the moment these are mostly not things we can fix
+            # and so they just produce stipple; use the verbose reporter
+            # to see them.
+            if False:
+                # show test and reason for skip
+                self.ui.message('SKIP: %s\n    %s\n' % (
+                    self._shortened_test_description(test),
+                    skip_excinfo[1]))
+            else:
+                # since the class name was left behind in the still-visible
+                # progress bar...
+                self.ui.message('SKIP: %s' % (
+                    skip_excinfo[1]))
 
     def report_cleaning_up(self):
         self.ui.show_progress_line('cleaning up...')
@@ -355,13 +369,15 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.write(self._ellipsize_to_right(name, 60))
         self.stream.flush()
 
-    def report_error(self, test):
+    def report_error(self, test, err):
         self.error_count += 1
-        self.stream.writeln('ERROR %s\n' % self._testTimeString())
+        self.stream.writeln('ERROR %s\n    %s' 
+                % (self._testTimeString(), err[1]))
 
-    def report_failure(self, test):
+    def report_failure(self, test, err):
         self.failure_count += 1
-        self.stream.writeln('FAIL %s\n' % self._testTimeString())
+        self.stream.writeln('FAIL %s\n    %s'
+                % (self._testTimeString(), err[1]))
 
     def report_success(self, test):
         self.stream.writeln('   OK %s' % self._testTimeString())
