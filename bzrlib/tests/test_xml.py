@@ -134,6 +134,14 @@ _expected_inv_v5_root = """<inventory file_id="f&lt;" format="5" revision_id="mo
 </inventory>
 """
 
+_expected_inv_v7 = """<inventory format="7" revision_id="rev_outer">
+<directory file_id="tree-root-321" name="" revision="rev_outer" />
+<directory file_id="dir-id" name="dir" parent_id="tree-root-321" revision="rev_outer" />
+<file file_id="file-id" name="file" parent_id="tree-root-321" revision="rev_outer" />
+<symlink file_id="link-id" name="link" parent_id="tree-root-321" revision="rev_outer" />
+<tree-reference file_id="nested-id" name="nested" parent_id="tree-root-321" revision="rev_outer" reference_revision="rev_inner" />
+</inventory>
+"""
 
 class TestSerializer(TestCase):
     """Test XML serialization"""
@@ -265,6 +273,34 @@ class TestSerializer(TestCase):
         new_rev = s_v5.read_revision_from_string(txt)
         self.assertEqual(props, new_rev.properties)
 
+    def test_roundtrip_inventory_v7(self):
+        inv = Inventory('tree-root-321', revision_id='rev_outer')
+        inv.add(inventory.TreeReference('nested-id', 'nested', 'tree-root-321',
+                                        'rev_outer', 'rev_inner'))
+        inv.add(inventory.InventoryFile('file-id', 'file', 'tree-root-321'))
+        inv.add(inventory.InventoryDirectory('dir-id', 'dir', 
+                                             'tree-root-321'))
+        inv.add(inventory.InventoryLink('link-id', 'link', 'tree-root-321'))
+        inv['tree-root-321'].revision = 'rev_outer'
+        inv['dir-id'].revision = 'rev_outer'
+        inv['file-id'].revision = 'rev_outer'
+        inv['link-id'].revision = 'rev_outer'
+        txt = xml7.serializer_v7.write_inventory_to_string(inv)
+        self.assertEqualDiff(_expected_inv_v7, txt)
+        inv2 = xml7.serializer_v7.read_inventory_from_string(txt)
+        self.assertEqual(5, len(inv2))
+        for path, ie in inv.iter_entries():
+            self.assertEqual(ie, inv2[ie.file_id])
+
+    def test_wrong_format_v7(self):
+        """Can't accidentally open a file with wrong serializer"""
+        s_v6 = bzrlib.xml6.serializer_v6
+        s_v7 = xml7.serializer_v7
+        self.assertRaises(errors.UnexpectedInventoryFormat, 
+                          s_v7.read_inventory_from_string, _expected_inv_v5)
+        self.assertRaises(errors.UnexpectedInventoryFormat, 
+                          s_v6.read_inventory_from_string, _expected_inv_v7)
+
     def test_tree_reference(self):
         s_v5 = bzrlib.xml5.serializer_v5
         s_v6 = bzrlib.xml6.serializer_v6
@@ -282,7 +318,8 @@ class TestSerializer(TestCase):
         self.assertEqual('rev-outer', inv2['nested-id'].revision)
         self.assertEqual('rev-inner', inv2['nested-id'].reference_revision)
         self.assertRaises(errors.UnsupportedInventoryKind, 
-                          s_v6.read_inventory_from_string, txt)
+                          s_v6.read_inventory_from_string,
+                          txt.replace('format="7"', 'format="6"'))
         self.assertRaises(errors.UnsupportedInventoryKind, 
                           s_v5.read_inventory_from_string,
-                          txt.replace('format="6"', 'format="5"'))
+                          txt.replace('format="7"', 'format="5"'))

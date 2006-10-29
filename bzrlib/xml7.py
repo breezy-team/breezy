@@ -24,6 +24,7 @@ class Serializer_v7(xml6.Serializer_v6):
     """A Serializer that supports tree references"""
 
     supported_kinds = set(['file', 'directory', 'symlink', 'tree-reference'])
+    format_num = '7'
 
     def _unpack_entry(self, elt, none_parents):
         assert none_parents is True
