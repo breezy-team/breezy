@@ -35,7 +35,7 @@ __copyright__ = "Copyright 2005, 2006 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (0, 12, 0, 'candidate', 1)
+version_info = (0, 12, 0, 'final', 0)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
