@@ -4,6 +4,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Clean up ``bzr selftest --benchmark bundle`` to correct an import,
+      and remove benchmarks that take longer than 10min to run.
+      (John Arbash Meinel)
+  
   BUG FIXES:
 
     * mv correctly handles paths that traverse symlinks. 
