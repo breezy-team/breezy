@@ -1381,6 +1381,10 @@ class cmd_log(Command):
                     # either no tree, or is remote.
                     inv = b.basis_tree().inventory
                 file_id = inv.path2id(fp)
+                if file_id is None:
+                    raise errors.BzrCommandError(
+                        "Path does not have any revision history: %s" %
+                        location)
         else:
             # local dir only
             # FIXME ? log the current subdir only RBC 20060203 
