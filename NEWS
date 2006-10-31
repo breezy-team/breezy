@@ -10,6 +10,11 @@ IN DEVELOPMENT
   
   BUG FIXES:
 
+    * ``bzr ignore`` strips trailing slashes in patterns.
+      Also ``bzr ignore`` rejects absolute paths. (Kent Gibson, #4559)
+
+    * ``bzr ignore`` takes multiple arguments. (Cheuksan Edward Wang, #29488)
+
     * mv correctly handles paths that traverse symlinks. 
       (Aaron Bentley, #66964)
 
@@ -133,7 +138,7 @@ bzr 0.12rc1  2006-10-23
     * Leave HttpTransportBase daughter classes decides how they
       implement cloning. (Vincent Ladeuil, #61606)
 
-   * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
+    * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
 
   TESTING:
 
