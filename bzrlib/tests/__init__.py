@@ -286,9 +286,17 @@ class ExtendedTestResult(unittest._TextTestResult):
 class TextTestResult(ExtendedTestResult):
     """Displays progress and results of tests in text form"""
 
+    def __init__(self, *args, **kw):
+        ExtendedTestResult.__init__(self, *args, **kw)
+        self.pb = self.ui.nested_progress_bar()
+        self.pb.show_pct = False
+        self.pb.show_spinner = False
+        self.pb.show_eta = False, 
+        self.pb.show_count = False
+        self.pb.show_bar = False
+
     def report_starting(self):
-        self.ui.show_progress_line('[test 0/%d] starting tests...' 
-                % (self.num_tests))
+        self.pb.update('[test 0/%d] starting...' % (self.num_tests))
 
     def _progress_prefix_text(self):
         a = '[%d' % self.count
@@ -306,21 +314,21 @@ class TextTestResult(ExtendedTestResult):
 
     def report_test_start(self, test):
         self.count += 1
-        self.ui.show_progress_line(
+        self.pb.update(
                 self._progress_prefix_text()
                 + ' ' 
                 + self._shortened_test_description(test))
 
     def report_error(self, test, err):
         self.error_count += 1
-        self.ui.message('ERROR: %s\n    %s\n' % (
+        self.pb.note('ERROR: %s\n    %s\n' % (
             self._shortened_test_description(test),
             err[1],
             ))
 
     def report_failure(self, test, err):
         self.failure_count += 1
-        self.ui.message('FAIL: %s\n    %s\n' % (
+        self.pb.note('FAIL: %s\n    %s\n' % (
             self._shortened_test_description(test),
             err[1],
             ))
@@ -333,20 +341,19 @@ class TextTestResult(ExtendedTestResult):
             # to see them.
             if False:
                 # show test and reason for skip
-                self.ui.message('SKIP: %s\n    %s\n' % (
+                self.pb.note('SKIP: %s\n    %s\n' % (
                     self._shortened_test_description(test),
                     skip_excinfo[1]))
             else:
                 # since the class name was left behind in the still-visible
                 # progress bar...
-                self.ui.message('SKIP: %s' % (
-                    skip_excinfo[1]))
+                self.pb.note('SKIP: %s' % (skip_excinfo[1]))
 
     def report_cleaning_up(self):
-        self.ui.show_progress_line('cleaning up...')
+        self.pb.update('cleaning up...')
 
     def finished(self):
-        self.ui.clear_term()
+        self.pb.finished()
 
 
 class VerboseTestResult(ExtendedTestResult):

@@ -26,7 +26,6 @@ lazy_import(globals(), """
 import getpass
 
 from bzrlib import (
-    osutils,
     progress,
     )
 """)
@@ -61,7 +60,6 @@ class TextUIFactory(CLIUIFactory):
             self.stderr = sys.stderr
         else:
             self.stderr = stderr
-        self._simple_progress_active = False
 
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
@@ -106,36 +104,8 @@ class TextUIFactory(CLIUIFactory):
 
         This will, clear any progress bars, and leave the cursor at the
         leftmost position."""
-        if self._simple_progress_active:
-            self._clear_progress_line()
-            return
         if self._progress_bar_stack is None:
             return
         overall_pb = self._progress_bar_stack.bottom()
         if overall_pb is not None:
             overall_pb.clear()
-
-    def _clear_progress_line(self):
-        if False:
-            # erase it
-            width = osutils.terminal_width() - 1
-            self.stderr.write('\r')
-            self.stderr.write(' ' * width)
-            self.stderr.write('\r')
-        else:
-            # just leave it, and move to new line - more reliable and leaves
-            # it there for context
-            self.stderr.write('\n')
-        self._simple_progress_active = False
-
-    def show_progress_line(self, msg):
-        width = osutils.terminal_width() - 1
-        msg = msg[:width]
-        msg = msg.ljust(width)
-        self.stderr.write('\r' + msg)
-        self.stderr.flush()
-        self._simple_progress_active = True
-    
-    def message(self, msg):
-        self.clear_term()
-        self.stderr.write(msg + '\n')

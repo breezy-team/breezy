@@ -71,7 +71,7 @@ class UIFactory(object):
     def nested_progress_bar(self):
         """Return a nested progress bar.
 
-        When the bar has been finished with, it should be released bu calling
+        When the bar has been finished with, it should be released by calling
         bar.finished().
         """
         raise NotImplementedError(self.nested_progress_bar)
@@ -91,10 +91,6 @@ class UIFactory(object):
         :return: True or False for y/yes or n/no.
         """
         raise NotImplementedError(self.get_boolean)
-
-    def show_progress_line(self, msg):
-        """Show one line of text that will be cleared."""
-        raise NotImplementedError(self.show_progress_line)
 
 
 class CLIUIFactory(UIFactory):
@@ -140,12 +136,6 @@ class SilentUIFactory(CLIUIFactory):
         return self._progress_bar_stack.get_nested()
 
     def clear_term(self):
-        pass
-
-    def show_progress_line(self, msg):
-        pass
-
-    def message(self, msg):
         pass
 
 
