@@ -38,7 +38,9 @@ import bzrlib.ui
 try:
     import paramiko
 except ImportError, e:
-    raise ParamikoNotPresent(e)
+    # If we have an ssh subprocess, we don't strictly need paramiko for all ssh
+    # access
+    paramiko = None
 else:
     from paramiko.sftp_client import SFTPClient
 
@@ -250,7 +252,8 @@ class ParamikoVendor(SSHVendor):
             raise ConnectionError('Unable to invoke remote bzr %s:%d' %
                                   (host, port), e)
 
-register_ssh_vendor('paramiko', ParamikoVendor())
+if paramiko is not None:
+    register_ssh_vendor('paramiko', ParamikoVendor())
 
 
 class SubprocessVendor(SSHVendor):
