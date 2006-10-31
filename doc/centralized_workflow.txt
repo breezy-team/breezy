@@ -25,6 +25,8 @@ on several different machines.
 
 .. _Bazaar: http://bazaar-vcs.org
 
+.. contents::
+
 
 Initial Setup
 =============
