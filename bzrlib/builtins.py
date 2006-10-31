@@ -1686,13 +1686,15 @@ class cmd_export(Command):
 class cmd_cat(Command):
     """Write a file's text from a previous revision."""
 
-    takes_options = ['revision']
+    takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
 
     @display_command
-    def run(self, filename, revision=None):
+    def run(self, filename, revision=None, name_from_revision=False):
         if revision is not None and len(revision) != 1:
-            raise errors.BzrCommandError("bzr cat --revision takes exactly one number")
+            raise errors.BzrCommandError("bzr cat --revision takes exactly"
+                                        " one number")
+
         tree = None
         try:
             tree, relpath = WorkingTree.open_containing(filename)
@@ -1708,7 +1710,24 @@ class cmd_cat(Command):
             revision_id = b.last_revision()
         else:
             revision_id = revision[0].in_history(b).rev_id
-        b.print_file(relpath, revision_id)
+
+        cur_file_id = tree.path2id(relpath)
+        rev_tree = b.repository.revision_tree(revision_id)
+        old_file_id = rev_tree.path2id(relpath)
+        
+        if name_from_revision:
+            if old_file_id is None:
+                raise errors.BzrCommandError("%r is not present in revision %s"
+                                                % (filename, revision_id))
+            else:
+                rev_tree.print_file(old_file_id)
+        elif cur_file_id is not None:
+            rev_tree.print_file(cur_file_id)
+        elif old_file_id is not None:
+            rev_tree.print_file(old_file_id)
+        else:
+            raise errors.BzrCommandError("%r is not present in revision %s" %
+                                         (filename, revision_id))
 
 
 class cmd_local_time_offset(Command):

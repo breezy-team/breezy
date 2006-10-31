@@ -21,6 +21,12 @@ IN DEVELOPMENT
     * Running ``bzr log`` on nonexistent file gives an error instead of the
       entire log history. (Cheuksan Edward Wang #50793)
 
+    * ``bzr cat`` can look up contents of removed or renamed files. If the
+      pathname is ambiguous, i.e. the files in the old and new trees have
+      different id's, the default is the file in the new tree. The user can
+      use "--name-from-revision" to select the file in the old tree.
+      (Cheuksan Edward Wang, #30190)
+
 bzr 0.12  2006-10-30
 
   INTERNALS:
