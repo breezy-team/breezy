@@ -1652,6 +1652,8 @@ class cmd_export(Command):
     Root may be the top directory for tar, tgz and tbz2 formats. If none
     is given, the top directory will be the root name of the file.
 
+    If branch is omitted then the branch containing the CWD will be used.
+
     Note: export of tree with non-ascii filenames to zip is not supported.
 
      Supported formats       Autodetected by extension
@@ -1662,12 +1664,17 @@ class cmd_export(Command):
          tgz                      .tar.gz, .tgz
          zip                          .zip
     """
-    takes_args = ['dest']
+    takes_args = ['dest', 'branch?']
     takes_options = ['revision', 'format', 'root']
-    def run(self, dest, revision=None, format=None, root=None):
+    def run(self, dest, branch=None, revision=None, format=None, root=None):
         from bzrlib.export import export
-        tree = WorkingTree.open_containing(u'.')[0]
-        b = tree.branch
+
+        if branch is None:
+            tree = WorkingTree.open_containing(u'.')[0]
+            b = tree.branch
+        else:
+            b = Branch.open(branch)
+            
         if revision is None:
             # should be tree.last_revision  FIXME
             rev_id = b.last_revision()
