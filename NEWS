@@ -2,6 +2,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr export`` allows an optional branch parameter, to export a bzr
+      tree from some other url. For example:
+      ``bzr export bzr.tar.gz http://bazaar-vcs.org/bzr/bzr.dev``
+      (Daniel Silverstone)
+
   INTERNALS:
 
     * Clean up ``bzr selftest --benchmark bundle`` to correct an import,
