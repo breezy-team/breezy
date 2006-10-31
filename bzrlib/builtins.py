@@ -1544,10 +1544,13 @@ class cmd_ignore(Command):
 
     To remove patterns from the ignore list, edit the .bzrignore file.
 
+    Trailing slashes on patterns are ignored. 
     If the pattern contains a slash, it is compared to the whole path
     from the branch root.  Otherwise, it is compared to only the last
     component of the path.  To match a file only in the root directory,
     prepend './'.
+
+    Ignore patterns specifying absolute paths are not allowed.
 
     Ignore patterns are case-insensitive on case-insensitive systems.
 
@@ -1557,7 +1560,6 @@ class cmd_ignore(Command):
         bzr ignore ./Makefile
         bzr ignore '*.class'
     """
-    # TODO: Complain if the filename is absolute
     takes_args = ['name_pattern*']
     takes_options = [
                      Option('old-default-rules',
@@ -1571,9 +1573,13 @@ class cmd_ignore(Command):
             for pattern in ignores.OLD_DEFAULTS:
                 print pattern
             return
-        if name_pattern_list is None or name_pattern_list == []:
+        if not name_pattern_list:
             raise errors.BzrCommandError("ignore requires at least one "
                                   "NAME_PATTERN or --old-default-rules")
+        for name_pattern in name_pattern_list:
+            if name_pattern[0] == '/':
+                raise errors.BzrCommandError(
+                    "NAME_PATTERN should not be an absolute path")
         tree, relpath = WorkingTree.open_containing(u'.')
         ifn = tree.abspath('.bzrignore')
         if os.path.exists(ifn):
@@ -1591,7 +1597,7 @@ class cmd_ignore(Command):
         if igns and igns[-1] != '\n':
             igns += '\n'
         for name_pattern in name_pattern_list:
-            igns += name_pattern + '\n'
+            igns += name_pattern.rstrip('/') + '\n'
 
         f = AtomicFile(ifn, 'wb')
         try:

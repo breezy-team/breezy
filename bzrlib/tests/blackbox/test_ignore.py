@@ -43,6 +43,26 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCommands(ExternalBase):
 
+    def test_ignore_absolutes(self):
+        """'ignore' with an absolute path returns an error"""
+        self.runbzr('init')
+        self.run_bzr_error(('bzr: ERROR: NAME_PATTERN should not '
+                            'be an absolute path\n',),
+                           'ignore','/crud')
+        
+    def test_ignore_directories(self):
+        """ignoring a directory should ignore directory tree.
+
+        Also check that trailing slashes on directories are stripped.
+        """
+        self.runbzr('init')
+        self.build_tree(['dir1/', 'dir1/foo',
+                         'dir2/', 'dir2/bar',
+                         'dir3/', 'dir3/baz'])
+        self.runbzr('ignore dir1 dir2/')
+        self.check_file_contents('.bzrignore', 'dir1\ndir2\n')
+        self.assertEquals(self.capture('unknowns'), 'dir3\n')
+
     def test_ignore_patterns(self):
         self.runbzr('init')
         self.assertEquals(self.capture('unknowns'), '')
@@ -76,7 +96,7 @@ class TestCommands(ExternalBase):
         self.assertEquals(self.capture('unknowns'), '')
         self.check_file_contents('.bzrignore', '*.blah\ngarh\n')
        
-    def test_ignore_multiple_arguments(self): 
+    def test_ignore_multiple_arguments(self):
         """'ignore' works with multiple arguments"""
         self.runbzr('init')
         self.build_tree(['a','b','c','d'])
@@ -84,8 +104,16 @@ class TestCommands(ExternalBase):
         self.runbzr('ignore a b c')
         self.assertEquals(self.capture('unknowns'), 'd\n')
         self.check_file_contents('.bzrignore', 'a\nb\nc\n')
-        
+
+    def test_ignore_no_arguments(self):
+        """'ignore' with no arguments returns an error"""
+        self.runbzr('init')
+        self.run_bzr_error(('bzr: ERROR: ignore requires at least one '
+                            'NAME_PATTERN or --old-default-rules\n',),
+                           'ignore')
+
     def test_ignore_old_defaults(self):
         out, err = self.run_bzr('ignore', '--old-default-rules')
         self.assertContainsRe(out, 'CVS')
         self.assertEqual('', err)
+

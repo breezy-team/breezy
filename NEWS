@@ -10,6 +10,9 @@ IN DEVELOPMENT
   
   BUG FIXES:
 
+    * ``bzr ignore`` strips trailing slashes in patterns.
+      Also ``bzr ignore`` rejects absolute paths. (Kent Gibson, #4559)
+
     * ``bzr ignore`` takes multiple arguments. (Cheuksan Edward Wang, #29488)
 
     * mv correctly handles paths that traverse symlinks. 
