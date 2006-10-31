@@ -432,9 +432,7 @@ class TTYProgressBar(_BaseProgressBar):
             bar_str = ''
 
         m = spin_str + bar_str + self.last_msg + count_str + pct_str + eta_str
-
-        assert len(m) < self.width
-        self.to_file.write('\r' + m.ljust(self.width - 1))
+        self.to_file.write('\r%-*.*s' % (self.width - 1, self.width - 1, m))
         self._have_output = True
         #self.to_file.flush()
             
