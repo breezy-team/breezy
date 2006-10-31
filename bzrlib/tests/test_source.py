@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -114,6 +114,9 @@ class TestSource(TestSourceHelper):
         yield bzr_path
 
         for root, dirs, files in os.walk(bzrlib_dir):
+            for d in dirs:
+                if d.endswith('.tmp'):
+                    dirs.remove(d)
             for f in files:
                 if not f.endswith('.py'):
                     continue
@@ -153,6 +156,14 @@ class TestSource(TestSourceHelper):
                 return True
 
         return False
+
+    def test_tmpdir_not_in_source_files(self):
+        """When scanning for source files, we don't descend test tempdirs"""
+        for filename in self.get_source_files():
+            if re.search(r'test....\.tmp', filename):
+                self.fail("get_source_file() returned filename %r "
+                          "from within a temporary directory"
+                          % filename)
 
     def test_copyright(self):
         """Test that all .py files have a valid copyright statement"""
