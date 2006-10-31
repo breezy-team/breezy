@@ -144,3 +144,48 @@ class TestSpecificErrors(TestCase):
         e = errors.TransportNotPossible('readonly', 'original error')
         self.assertEqual('Transport operation not possible:'
                          ' readonly original error', str(e))
+
+    def assertSocketConnectionError(self, expected, *args, **kwargs):
+        """Check the formatting of a SocketConnectionError exception"""
+        e = errors.SocketConnectionError(*args, **kwargs)
+        self.assertEqual(expected, str(e))
+
+    def test_socket_connection_error(self):
+        """Test the formatting of SocketConnectionError"""
+
+        # There should be a default msg about failing to connect
+        # we only require a host name.
+        self.assertSocketConnectionError(
+            'Failed to connect to ahost',
+            'ahost')
+
+        # If port is None, we don't put :None
+        self.assertSocketConnectionError(
+            'Failed to connect to ahost',
+            'ahost', port=None)
+        # But if port is supplied we include it
+        self.assertSocketConnectionError(
+            'Failed to connect to ahost:22',
+            'ahost', port=22)
+
+        # We can also supply extra information about the error
+        # with or without a port
+        self.assertSocketConnectionError(
+            'Failed to connect to ahost:22; bogus error',
+            'ahost', port=22, orig_error='bogus error')
+        self.assertSocketConnectionError(
+            'Failed to connect to ahost; bogus error',
+            'ahost', orig_error='bogus error')
+        # An exception object can be passed rather than a string
+        orig_error = ValueError('bad value')
+        self.assertSocketConnectionError(
+            'Failed to connect to ahost; %s' % (str(orig_error),),
+            host='ahost', orig_error=orig_error)
+
+        # And we can supply a custom failure message
+        self.assertSocketConnectionError(
+            'Unable to connect to ssh host ahost:444; my_error',
+            host='ahost', port=444, msg='Unable to connect to ssh host',
+            orig_error='my_error')
+
+

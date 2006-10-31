@@ -23,6 +23,9 @@ IN DEVELOPMENT
     * mv correctly handles paths that traverse symlinks. 
       (Aaron Bentley, #66964)
 
+    * Give nicer looking error messages when failing to connect over ssh.
+      (John Arbash Meinel, #49172)
+
     * Pushing to a remote branch does not currently update the remote working
       tree. After a remote push, ``bzr status`` and ``bzr diff`` on the remote
       machine now show that the working tree is out of date.
