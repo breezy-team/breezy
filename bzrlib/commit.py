@@ -86,7 +86,7 @@ from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any,
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
-from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
+from bzrlib.inventory import Inventory, InventoryEntry
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
@@ -125,6 +125,8 @@ class ReportCommitToLog(NullCommitReporter):
 
     def snapshot_change(self, change, path):
         if change == 'unchanged':
+            return
+        if change == 'added' and path == '':
             return
         note("%s %s", change, path)
 
@@ -390,6 +392,10 @@ class Commit(object):
         # A merge with no effect on files
         if len(self.parents) > 1:
             return
+        # work around the fact that a newly-initted tree does differ from its
+        # basis
+        if len(self.basis_inv) == 0 and len(self.builder.new_inventory) == 1:
+            raise PointlessCommit()
         # Shortcut, if the number of entries changes, then we obviously have
         # a change
         if len(self.builder.new_inventory) != len(self.basis_inv):
@@ -550,6 +556,7 @@ class Commit(object):
         # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
         # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
+        assert self.work_inv.root is not None
         entries = self.work_inv.iter_entries()
         if not self.builder.record_root_entry:
             symbol_versioning.warn('CommitBuilders should support recording'
@@ -574,7 +581,6 @@ class Commit(object):
                 else:
                     # this entry is new and not being committed
                     continue
-
             self.builder.record_entry_contents(ie, self.parent_invs, 
                 path, self.work_tree)
             # describe the nature of the change that has occurred relative to

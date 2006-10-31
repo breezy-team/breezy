@@ -17,6 +17,7 @@
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
 from cStringIO import StringIO
+import errno
 import os
 from stat import S_ISDIR
 import sys
@@ -153,6 +154,24 @@ class TestBzrDir(TestCaseWithBzrDir):
         wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
         self.assertEqual([], wt.get_parent_ids())
 
+    def test_destroy_workingtree(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        tree.add('file')
+        tree.commit('first commit')
+        bzrdir = tree.bzrdir
+        try:
+            bzrdir.destroy_workingtree()
+        except errors.UnsupportedOperation:
+            raise TestSkipped('Format does not support destroying tree')
+        self.failIfExists('tree/file')
+        self.assertRaises(errors.NoWorkingTree, bzrdir.open_workingtree)
+        bzrdir.create_workingtree()
+        self.failUnlessExists('tree/file')
+        bzrdir.destroy_workingtree_metadata()
+        self.failUnlessExists('tree/file')
+        self.assertRaises(errors.NoWorkingTree, bzrdir.open_workingtree)
+            
     def test_clone_bzrdir_empty(self):
         dir = self.make_bzrdir('source')
         target = dir.clone(self.get_url('target'))
@@ -518,11 +537,28 @@ class TestBzrDir(TestCaseWithBzrDir):
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
         self.assertTrue(repo.has_revision('1'))
+        try:
+            self.assertIs(dir.open_branch().last_revision(), None)
+        except errors.NotBranchError:
+            pass
         target = self.sproutOrSkip(dir, self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
+        # testing inventory isn't reasonable for repositories
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/repository/inventory.knit',
+                                     './.bzr/inventory'
                                      ])
+        try:
+            # If we happen to have a tree, we'll guarantee everything
+            # except for the tree root is the same.
+            inventory_f = file(dir.transport.base+'inventory', 'rb')
+            self.assertContainsRe(inventory_f.read(), 
+                                  '<inventory file_id="TREE_ROOT[^"]*"'
+                                  ' format="5">\n</inventory>\n')
+            inventory_f.close()
+        except IOError, e:
+            if e.errno != errno.ENOENT:
+                raise
 
     def test_sprout_bzrdir_with_repository_to_shared(self):
         tree = self.make_branch_and_tree('commit_tree')

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # Written by Martin Pool.
 # Modified by Johan Rydberg <jrydberg@gnu.org>
 # Modified by Robert Collins <robert.collins@canonical.com>

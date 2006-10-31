@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -183,6 +183,14 @@ class InvalidRevisionId(BzrNewError):
         self.branch = branch
 
 
+class InventoryModified(BzrNewError):
+    """The current inventory for the tree %(tree)r has been modified, so a clean inventory cannot be read without data loss."""
+
+    def __init__(self, tree):
+        BzrNewError.__init__(self)
+        self.tree = tree
+
+
 class NoSuchId(BzrNewError):
     """The file id %(file_id)s is not present in the tree %(tree)s."""
     
@@ -210,6 +218,14 @@ class NotLocalUrl(BzrNewError):
     def __init__(self, url):
         BzrNewError.__init__(self)
         self.url = url
+
+
+class NotWriteLocked(BzrNewError):
+    """%(not_locked)r is not write locked but needs to be."""
+
+    def __init__(self, not_locked):
+        BzrNewError.__init__(self)
+        self.not_locked = not_locked
 
 
 class BzrCommandError(BzrNewError):
@@ -268,6 +284,16 @@ class FileExists(PathError):
 
 class DirectoryNotEmpty(PathError):
     """Directory not empty: %(path)r%(extra)s"""
+
+
+class ReadingCompleted(BzrNewError):
+    """The MediumRequest '%(request)s' has already had finish_reading called upon it - the request has been completed and no more data may be read."""
+
+    is_user_error = False
+
+    def __init__(self, request):
+        BzrNewError.__init__(self)
+        self.request = request
 
 
 class ResourceBusy(PathError):
@@ -802,9 +828,19 @@ class KnitCorrupt(KnitError):
 
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""
+
     def __init__(self, format):
         BzrNewError.__init__(self)
         self.format = format
+
+
+
+class TooManyConcurrentRequests(BzrNewError):
+    """The medium '%(medium)s' has reached its concurrent request limit. Be sure to finish_writing and finish_reading on the current request that is open."""
+
+    def __init__(self, medium):
+        BzrNewError.__init__(self)
+        self.medium = medium
 
 
 class TransportError(BzrNewError):
@@ -908,6 +944,14 @@ class ParseConfigError(BzrError):
         BzrError.__init__(self, message)
 
 
+class NoEmailInUsername(BzrNewError):
+    """%(username)r does not seem to contain a reasonable email address"""
+
+    def __init__(self, username):
+        BzrNewError.__init__(self)
+        self.username = username
+
+
 class SigningFailed(BzrError):
     def __init__(self, command_line):
         BzrError.__init__(self, "Failed to gpg sign data with command '%s'"
@@ -919,6 +963,26 @@ class WorkingTreeNotRevision(BzrError):
         BzrError.__init__(self, "The working tree for %s has changed since"
                           " last commit, but weave merge requires that it be"
                           " unchanged." % tree.basedir)
+
+
+class WritingCompleted(BzrNewError):
+    """The MediumRequest '%(request)s' has already had finish_writing called upon it - accept bytes may not be called anymore."""
+
+    is_user_error = False
+
+    def __init__(self, request):
+        BzrNewError.__init__(self)
+        self.request = request
+
+
+class WritingNotComplete(BzrNewError):
+    """The MediumRequest '%(request)s' has not has finish_writing called upon it - until the write phase is complete no data may be read."""
+
+    is_user_error = False
+
+    def __init__(self, request):
+        BzrNewError.__init__(self)
+        self.request = request
 
 
 class CantReprocessAndShowBase(BzrNewError):
@@ -939,6 +1003,14 @@ class NotConflicted(BzrNewError):
     def __init__(self, filename):
         BzrNewError.__init__(self)
         self.filename = filename
+
+
+class MediumNotConnected(BzrNewError):
+    """The medium '%(medium)s' is not connected."""
+
+    def __init__(self, medium):
+        BzrNewError.__init__(self)
+        self.medium = medium
 
 
 class MustUseDecorated(Exception):
@@ -980,6 +1052,18 @@ class DuplicateKey(BzrNewError):
 
 class MalformedTransform(BzrNewError):
     """Tree transform is malformed %(conflicts)r"""
+
+
+class NoFinalPath(BzrNewError):
+    """No final name for trans_id %(trans_id)r
+    file-id: %(file_id)r"
+    root trans-id: %(root_trans_id)r 
+    """
+
+    def __init__(self, trans_id, transform):
+        self.trans_id = trans_id
+        self.file_id = transform.final_file_id(trans_id)
+        self.root_trans_id = transform.root
 
 
 class BzrBadParameter(BzrNewError):
@@ -1232,6 +1316,14 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
 
     def __init__(self, msg):
         BadInventoryFormat.__init__(self, msg=msg)
+
+
+class NoSmartMedium(BzrNewError):
+    """The transport '%(transport)s' cannot tunnel the smart protocol."""
+
+    def __init__(self, transport):
+        BzrNewError.__init__(self)
+        self.transport = transport
 
 
 class NoSmartServer(NotBranchError):

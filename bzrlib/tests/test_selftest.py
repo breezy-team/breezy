@@ -1,8 +1,9 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,13 +24,19 @@ import time
 import unittest
 import warnings
 
-from bzrlib import osutils
 import bzrlib
+from bzrlib import (
+    bzrdir,
+    memorytree,
+    osutils,
+    repository,
+    )
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
                           ChrootedTestCase,
                           TestCase,
                           TestCaseInTempDir,
+                          TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
                           TestSkipped,
                           TestSuite,
@@ -434,6 +441,47 @@ class TestTestCaseInTempDir(TestCaseInTempDir):
         self.assertEqual(self.test_home_dir, os.environ['HOME'])
 
 
+class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
+
+    def test_home_is_non_existant_dir_under_root(self):
+        """The test_home_dir for TestCaseWithMemoryTransport is missing.
+
+        This is because TestCaseWithMemoryTransport is for tests that do not
+        need any disk resources: they should be hooked into bzrlib in such a 
+        way that no global settings are being changed by the test (only a 
+        few tests should need to do that), and having a missing dir as home is
+        an effective way to ensure that this is the case.
+        """
+        self.assertEqual(self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
+            self.test_home_dir)
+        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        
+    def test_cwd_is_TEST_ROOT(self):
+        self.assertEqual(self.test_dir, self.TEST_ROOT)
+        cwd = osutils.getcwd()
+        self.assertEqual(self.test_dir, cwd)
+
+    def test_make_branch_and_memory_tree(self):
+        """In TestCaseWithMemoryTransport we should not make the branch on disk.
+
+        This is hard to comprehensively robustly test, so we settle for making
+        a branch and checking no directory was created at its relpath.
+        """
+        tree = self.make_branch_and_memory_tree('dir')
+        self.failIfExists('dir')
+        self.assertIsInstance(tree, memorytree.MemoryTree)
+
+    def test_make_branch_and_memory_tree_with_format(self):
+        """make_branch_and_memory_tree should accept a format option."""
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormat7()
+        tree = self.make_branch_and_memory_tree('dir', format=format)
+        self.failIfExists('dir')
+        self.assertIsInstance(tree, memorytree.MemoryTree)
+        self.assertEqual(format.repository_format.__class__,
+            tree.branch.repository._format.__class__)
+
+
 class TestTestCaseWithTransport(TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
@@ -455,9 +503,9 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
 
     def test_get_readonly_url_http(self):
         from bzrlib.transport import get_transport
-        from bzrlib.transport.local import LocalRelpathServer
+        from bzrlib.transport.local import LocalURLServer
         from bzrlib.transport.http import HttpServer, HttpTransportBase
-        self.transport_server = LocalRelpathServer
+        self.transport_server = LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
         url = self.get_readonly_url()
@@ -984,7 +1032,7 @@ class TestConvenienceMakers(TestCaseWithTransport):
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
                               bzrlib.bzrdir.BzrDirFormat6)
 
-    def test_make_branch_and_mutable_tree(self):
+    def test_make_branch_and_memory_tree(self):
         # we should be able to get a new branch and a mutable tree from
         # TestCaseWithTransport
         tree = self.make_branch_and_memory_tree('a')

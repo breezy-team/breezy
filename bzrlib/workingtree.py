@@ -29,9 +29,6 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
-CONFLICT_HEADER_1 = "BZR conflict list format 1"
-
 # TODO: Give the workingtree sole responsibility for the working inventory;
 # remove the variable and references to it from the branch.  This may require
 # updating the commit code so as to update the inventory within the working
@@ -39,23 +36,40 @@ CONFLICT_HEADER_1 = "BZR conflict list format 1"
 # At the moment they may alias the inventory and have old copies of it in
 # memory.  (Now done? -- mbp 20060309)
 
-from binascii import hexlify
-import collections
-from copy import deepcopy
 from cStringIO import StringIO
-import errno
-import fnmatch
 import os
 import re
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import collections
+from copy import deepcopy
+import errno
+import fnmatch
 import stat
 from time import time
 import warnings
 
 import bzrlib
-from bzrlib import bzrdir, errors, ignores, osutils, urlutils
-from bzrlib.atomicfile import AtomicFile
+from bzrlib import (
+    bzrdir,
+    conflicts as _mod_conflicts,
+    errors,
+    ignores,
+    merge,
+    osutils,
+    textui,
+    transform,
+    urlutils,
+    xml5,
+    xml6,
+    )
 import bzrlib.branch
-from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
+from bzrlib.transport import get_transport
+import bzrlib.ui
+""")
+
+from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
@@ -67,29 +81,26 @@ from bzrlib.errors import (BzrCheckError,
                            MergeModifiedFormatError,
                            UnsupportedOperation,
                            )
-from bzrlib.inventory import InventoryEntry, Inventory
+from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
-from bzrlib.merge import merge_inner, transform_tree
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import (
-                            abspath,
-                            compact_date,
-                            file_kind,
-                            isdir,
-                            getcwd,
-                            pathjoin,
-                            pumpfile,
-                            safe_unicode,
-                            splitpath,
-                            rand_chars,
-                            normpath,
-                            realpath,
-                            relpath,
-                            rename,
-                            supports_executable,
-                            )
+    compact_date,
+    file_kind,
+    isdir,
+    pathjoin,
+    safe_unicode,
+    splitpath,
+    rand_chars,
+    normpath,
+    realpath,
+    supports_executable,
+    )
+from bzrlib.trace import mutter, note
+from bzrlib.transport.local import LocalTransport
+import bzrlib.tree
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import NULL_REVISION
 import bzrlib.revisiontree
@@ -101,14 +112,10 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         zero_eight,
         zero_eleven,
         )
-from bzrlib.trace import mutter, note
-from bzrlib.transform import build_tree
-from bzrlib.transport import get_transport
-from bzrlib.transport.local import LocalTransport
-from bzrlib.textui import show_status
-import bzrlib.ui
-import bzrlib.xml5
 
+
+MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
+CONFLICT_HEADER_1 = "BZR conflict list format 1"
 
 # the regex removes any weird characters; we don't escape them 
 # but rather just pull them out
@@ -158,7 +165,7 @@ def gen_file_id(name):
 
 def gen_root_id():
     """Return a new tree-root file id."""
-    return gen_file_id('TREE_ROOT')
+    return gen_file_id('tree_root')
 
 
 class TreeEntry(object):
@@ -253,7 +260,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self.basedir = wt.basedir
             self._control_files = wt._control_files
             self._hashcache = wt._hashcache
-            self._set_inventory(wt._inventory)
+            self._set_inventory(wt._inventory, dirty=False)
             self._format = wt._format
             self.bzrdir = wt.bzrdir
         from bzrlib.hashcache import HashCache
@@ -301,9 +308,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             hc.write()
 
         if _inventory is None:
-            self._set_inventory(self.read_working_inventory())
+            self._inventory_is_modified = False
+            self.read_working_inventory()
         else:
-            self._set_inventory(_inventory)
+            # the caller of __init__ has provided an inventory,
+            # we assume they know what they are doing - as its only
+            # the Format factory and creation methods that are
+            # permitted to do this.
+            self._set_inventory(_inventory, dirty=False)
 
     branch = property(
         fget=lambda self: self._branch,
@@ -324,9 +336,19 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._control_files.break_lock()
         self.branch.break_lock()
 
-    def _set_inventory(self, inv):
+    def _set_inventory(self, inv, dirty):
+        """Set the internal cached inventory.
+
+        :param inv: The inventory to set.
+        :param dirty: A boolean indicating whether the inventory is the same
+            logical inventory as whats on disk. If True the inventory is not
+            the same and should be written to disk or data will be lost, if
+            False then the inventory is the same as that on disk and any
+            serialisation would be unneeded overhead.
+        """
         assert inv.root is not None
         self._inventory = inv
+        self._inventory_is_modified = dirty
 
     @staticmethod
     def open(path=None, _unsupported=False):
@@ -399,10 +421,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             try:
                 xml = self.read_basis_inventory()
-                inv = bzrlib.xml6.serializer_v6.read_inventory_from_string(xml)
+                inv = xml6.serializer_v6.read_inventory_from_string(xml)
                 if inv is not None and inv.revision_id == revision_id:
-                    return bzrlib.tree.RevisionTree(self.branch.repository, 
-                                                    inv, revision_id)
+                    return bzrlib.revisiontree.RevisionTree(
+                        self.branch.repository, inv, revision_id)
             except (NoSuchFile, errors.BadInventoryFormat):
                 pass
         # No cached copy available, retrieve from the repository.
@@ -463,7 +485,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         The path may be absolute or relative. If its a relative path it is 
         interpreted relative to the python current working directory.
         """
-        return relpath(self.basedir, path)
+        return osutils.relpath(self.basedir, path)
 
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
@@ -497,10 +519,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 parents.append(l.rstrip('\n'))
         return parents
 
+    @needs_read_lock
     def get_root_id(self):
         """Return the id of this trees root"""
-        inv = self.read_working_inventory()
-        return inv.root.file_id
+        return self._inventory.root.file_id
         
     def _get_store_filename(self, file_id):
         ## XXX: badly named; this is not in the store at all
@@ -532,12 +554,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_read_lock
     def copy_content_into(self, tree, revision_id=None):
         """Copy the current content and user files of this tree into tree."""
+        tree.set_root_id(self.get_root_id())
         if revision_id is None:
-            transform_tree(tree, self)
+            merge.transform_tree(tree, self)
         else:
             # TODO now merge from tree.last_revision to revision (to preserve
             # user local changes)
-            transform_tree(tree, self)
+            merge.transform_tree(tree, self)
             tree.set_parent_ids([revision_id])
 
     def id2abspath(self, file_id):
@@ -843,6 +866,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             return '?'
 
+    def flush(self):
+        """Write the in memory inventory to disk."""
+        # TODO: Maybe this should only write on dirty ?
+        if self._control_files._lock_mode != 'w':
+            raise errors.NotWriteLocked(self)
+        sio = StringIO()
+        xml5.serializer_v5.write_inventory(self._inventory, sio)
+        sio.seek(0)
+        self._control_files.put('inventory', sio)
+        self._inventory_is_modified = False
+
     def list_files(self, include_root=False):
         """Recursively list all files as (path, class, kind, id, entry).
 
@@ -1004,21 +1038,24 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # create a file in this interval and then the rename might be
         # left half-done.  But we should have caught most problems.
         orig_inv = deepcopy(self.inventory)
+        original_modified = self._inventory_is_modified
         try:
+            if len(from_paths):
+                self._inventory_is_modified = True
             for f in from_paths:
                 name_tail = splitpath(f)[-1]
                 dest_path = pathjoin(to_name, name_tail)
                 result.append((f, dest_path))
                 inv.rename(inv.path2id(f), to_dir_id, name_tail)
                 try:
-                    rename(self.abspath(f), self.abspath(dest_path))
+                    osutils.rename(self.abspath(f), self.abspath(dest_path))
                 except OSError, e:
                     raise BzrError("failed to rename %r to %r: %s" %
                                    (f, dest_path, e[1]),
                             ["rename rolled back"])
         except:
             # restore the inventory on error
-            self._set_inventory(orig_inv)
+            self._set_inventory(orig_inv, dirty=original_modified)
             raise
         self._write_inventory(inv)
         return result
@@ -1063,7 +1100,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         from_abs = self.abspath(from_rel)
         to_abs = self.abspath(to_rel)
         try:
-            rename(from_abs, to_abs)
+            osutils.rename(from_abs, to_abs)
         except OSError, e:
             inv.rename(file_id, from_parent, from_name)
             raise BzrError("failed to rename %r to %r: %s"
@@ -1146,11 +1183,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 pb = bzrlib.ui.ui_factory.nested_progress_bar()
                 try:
                     new_basis_tree = self.branch.basis_tree()
-                    merge_inner(self.branch,
+                    merge.merge_inner(
+                                self.branch,
                                 new_basis_tree,
                                 basis_tree,
                                 this_tree=self,
                                 pb=pb)
+                    if (basis_tree.inventory.root is None and
+                        new_basis_tree.inventory.root is not None):
+                        self.set_root_id(new_basis_tree.inventory.root.file_id)
                 finally:
                     pb.finished()
                 # TODO - dedup parents list with things merged by pull ?
@@ -1428,7 +1469,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
         inventory.revision_id = revision_id
-        return bzrlib.xml6.serializer_v6.write_inventory_to_string(inventory)
+        return xml6.serializer_v6.write_inventory_to_string(inventory)
 
     def _cache_basis_inventory(self, new_revision):
         """Cache new_revision as the basis inventory."""
@@ -1464,12 +1505,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         
     @needs_read_lock
     def read_working_inventory(self):
-        """Read the working inventory."""
+        """Read the working inventory.
+        
+        :raises errors.InventoryModified: read_working_inventory will fail
+            when the current in memory inventory has been modified.
+        """
+        # conceptually this should be an implementation detail of the tree. 
+        # XXX: Deprecate this.
         # ElementTree does its own conversion from UTF-8, so open in
         # binary.
-        result = bzrlib.xml5.serializer_v5.read_inventory(
+        if self._inventory_is_modified:
+            raise errors.InventoryModified(self)
+        result = xml5.serializer_v5.read_inventory(
             self._control_files.get('inventory'))
-        self._set_inventory(result)
+        self._set_inventory(result, dirty=False)
         return result
 
     @needs_tree_write_lock
@@ -1507,7 +1556,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     new_status = 'I'
                 else:
                     new_status = '?'
-                show_status(new_status, inv[fid].kind, f, to_file=to_file)
+                textui.show_status(new_status, inv[fid].kind, f,
+                                   to_file=to_file)
             del inv[fid]
 
         self._write_inventory(inv)
@@ -1515,11 +1565,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_tree_write_lock
     def revert(self, filenames, old_tree=None, backups=True, 
                pb=DummyProgress()):
-        from transform import revert
-        from conflicts import resolve
+        from bzrlib.conflicts import resolve
         if old_tree is None:
             old_tree = self.basis_tree()
-        conflicts = revert(self, old_tree, filenames, backups, pb)
+        conflicts = transform.revert(self, old_tree, filenames, backups, pb)
         if not len(filenames):
             self.set_parent_ids(self.get_parent_ids()[:1])
             resolve(self)
@@ -1555,16 +1604,31 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_tree_write_lock
     def set_root_id(self, file_id):
         """Set the root id for this tree."""
-        inv = self.read_working_inventory()
+        # for compatability 
+        if file_id is None:
+            symbol_versioning.warn(symbol_versioning.zero_twelve
+                % 'WorkingTree.set_root_id with fileid=None',
+                DeprecationWarning,
+                stacklevel=3)
+            file_id = ROOT_ID
+        inv = self._inventory
         orig_root_id = inv.root.file_id
+        # TODO: it might be nice to exit early if there was nothing
+        # to do, saving us from trigger a sync on unlock.
+        self._inventory_is_modified = True
+        # we preserve the root inventory entry object, but
+        # unlinkit from the byid index
         del inv._byid[inv.root.file_id]
         inv.root.file_id = file_id
+        # and link it into the index with the new changed id.
         inv._byid[inv.root.file_id] = inv.root
+        # and finally update all children to reference the new id.
+        # XXX: this should be safe to just look at the root.children
+        # list, not the WHOLE INVENTORY.
         for fid in inv:
             entry = inv[fid]
             if entry.parent_id == orig_root_id:
                 entry.parent_id = inv.root.file_id
-        self._write_inventory(inv)
 
     def unlock(self):
         """See Branch.unlock.
@@ -1577,27 +1641,53 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         raise NotImplementedError(self.unlock)
 
-    @needs_write_lock
     def update(self):
         """Update a working tree along its branch.
 
-        This will update the branch if its bound too, which means we have multiple trees involved:
-        The new basis tree of the master.
-        The old basis tree of the branch.
-        The old basis tree of the working tree.
-        The current working tree state.
-        pathologically all three may be different, and non ancestors of each other.
-        Conceptually we want to:
-        Preserve the wt.basis->wt.state changes
-        Transform the wt.basis to the new master basis.
-        Apply a merge of the old branch basis to get any 'local' changes from it into the tree.
-        Restore the wt.basis->wt.state changes.
+        This will update the branch if its bound too, which means we have
+        multiple trees involved:
+
+        - The new basis tree of the master.
+        - The old basis tree of the branch.
+        - The old basis tree of the working tree.
+        - The current working tree state.
+
+        Pathologically, all three may be different, and non-ancestors of each
+        other.  Conceptually we want to:
+
+        - Preserve the wt.basis->wt.state changes
+        - Transform the wt.basis to the new master basis.
+        - Apply a merge of the old branch basis to get any 'local' changes from
+          it into the tree.
+        - Restore the wt.basis->wt.state changes.
 
         There isn't a single operation at the moment to do that, so we:
-        Merge current state -> basis tree of the master w.r.t. the old tree basis.
-        Do a 'normal' merge of the old branch basis if it is relevant.
+        - Merge current state -> basis tree of the master w.r.t. the old tree
+          basis.
+        - Do a 'normal' merge of the old branch basis if it is relevant.
         """
-        old_tip = self.branch.update()
+        if self.branch.get_master_branch() is not None:
+            self.lock_write()
+            update_branch = True
+        else:
+            self.lock_tree_write()
+            update_branch = False
+        try:
+            if update_branch:
+                old_tip = self.branch.update()
+            else:
+                old_tip = None
+            return self._update_tree(old_tip)
+        finally:
+            self.unlock()
+
+    @needs_tree_write_lock
+    def _update_tree(self, old_tip=None):
+        """Update a tree to the master branch.
+
+        :param old_tip: if supplied, the previous tip revision the branch,
+            before it was changed to the master branch's tip.
+        """
         # here if old_tip is not None, it is the old tip of the branch before
         # it was updated from the master branch. This should become a pending
         # merge in the working tree to preserve the user existing work.  we
@@ -1617,7 +1707,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # merge tree state up to new branch tip.
             basis = self.basis_tree()
             to_tree = self.branch.basis_tree()
-            result += merge_inner(self.branch,
+            if basis.inventory.root is None:
+                self.set_root_id(to_tree.inventory.root.file_id)
+            result += merge.merge_inner(
+                                  self.branch,
                                   to_tree,
                                   basis,
                                   this_tree=self)
@@ -1658,7 +1751,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 base_rev_id = None
             base_tree = self.branch.repository.revision_tree(base_rev_id)
             other_tree = self.branch.repository.revision_tree(old_tip)
-            result += merge_inner(self.branch,
+            result += merge.merge_inner(
+                                  self.branch,
                                   other_tree,
                                   base_tree,
                                   this_tree=self)
@@ -1667,12 +1761,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
-        sio = StringIO()
-        bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
-        sio.seek(0)
-        self._control_files.put('inventory', sio)
-        self._set_inventory(inv)
-        mutter('wrote working inventory')
+        self._set_inventory(inv, dirty=True)
+        self.flush()
 
     def set_conflicts(self, arg):
         raise UnsupportedOperation(self.set_conflicts, self)
@@ -1682,7 +1772,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_read_lock
     def conflicts(self):
-        conflicts = ConflictList()
+        conflicts = _mod_conflicts.ConflictList()
         for conflicted in self._iter_conflicts():
             text = True
             try:
@@ -1701,7 +1791,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     if text == False:
                         break
             ctype = {True: 'text conflict', False: 'contents conflict'}[text]
-            conflicts.append(Conflict.factory(ctype, path=conflicted,
+            conflicts.append(_mod_conflicts.Conflict.factory(ctype,
+                             path=conflicted,
                              file_id=self.path2id(conflicted)))
         return conflicts
 
@@ -1729,8 +1820,12 @@ class WorkingTree2(WorkingTree):
 
     def unlock(self):
         # we share control files:
-        if self._hashcache.needs_write and self._control_files._lock_count==3:
-            self._hashcache.write()
+        if self._control_files._lock_count == 3:
+            # _inventory_is_modified is always False during a read lock.
+            if self._inventory_is_modified:
+                self.flush()
+            if self._hashcache.needs_write:
+                self._hashcache.write()
         # reverse order of locking.
         try:
             return self._control_files.unlock()
@@ -1777,25 +1872,29 @@ class WorkingTree3(WorkingTree):
     def add_conflicts(self, new_conflicts):
         conflict_set = set(self.conflicts())
         conflict_set.update(set(list(new_conflicts)))
-        self.set_conflicts(ConflictList(sorted(conflict_set,
-                                               key=Conflict.sort_key)))
+        self.set_conflicts(_mod_conflicts.ConflictList(sorted(conflict_set,
+                                       key=_mod_conflicts.Conflict.sort_key)))
 
     @needs_read_lock
     def conflicts(self):
         try:
             confile = self._control_files.get('conflicts')
         except NoSuchFile:
-            return ConflictList()
+            return _mod_conflicts.ConflictList()
         try:
             if confile.next() != CONFLICT_HEADER_1 + '\n':
                 raise ConflictFormatError()
         except StopIteration:
             raise ConflictFormatError()
-        return ConflictList.from_stanzas(RioReader(confile))
+        return _mod_conflicts.ConflictList.from_stanzas(RioReader(confile))
 
     def unlock(self):
-        if self._hashcache.needs_write and self._control_files._lock_count==1:
-            self._hashcache.write()
+        if self._control_files._lock_count == 1:
+            # _inventory_is_modified is always False during a read lock.
+            if self._inventory_is_modified:
+                self.flush()
+            if self._hashcache.needs_write:
+                self._hashcache.write()
         # reverse order of locking.
         try:
             return self._control_files.unlock()
@@ -1804,7 +1903,7 @@ class WorkingTree3(WorkingTree):
 
 
 def get_conflicted_stem(path):
-    for suffix in CONFLICT_SUFFIXES:
+    for suffix in _mod_conflicts.CONFLICT_SUFFIXES:
         if path.endswith(suffix):
             return path[:-len(suffix)]
 
@@ -1916,7 +2015,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """
         sio = StringIO()
         inv = Inventory()
-        bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
+        xml5.serializer_v5.write_inventory(inv, sio)
         sio.seek(0)
         control_files.put('inventory', sio)
 
@@ -1947,11 +2046,12 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                          _internal=True,
                          _format=self,
                          _bzrdir=a_bzrdir)
-        wt._write_inventory(inv)
-        wt.set_root_id(inv.root.file_id)
         basis_tree = branch.repository.revision_tree(revision)
+        if basis_tree.inventory.root is not None:
+            wt.set_root_id(basis_tree.inventory.root.file_id)
+        # set the parent list and cache the basis tree.
         wt.set_parent_trees([(revision, basis_tree)])
-        build_tree(basis_tree, wt)
+        transform.build_tree(basis_tree, wt)
         return wt
 
     def __init__(self):
@@ -2019,7 +2119,12 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
-        inv = Inventory() 
+        # WorkingTree3 can handle an inventory which has a unique root id.
+        # as of bzr 0.12. However, bzr 0.11 and earlier fail to handle
+        # those trees. And because there isn't a format bump inbetween, we
+        # are maintaining compatibility with older clients.
+        # inv = Inventory(root_id=gen_root_id())
+        inv = Inventory()
         wt = WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
@@ -2029,17 +2134,20 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          _control_files=control_files)
         wt.lock_tree_write()
         try:
-            wt._write_inventory(inv)
-            wt.set_root_id(inv.root.file_id)
             basis_tree = branch.repository.revision_tree(revision_id)
-            if revision_id == bzrlib.revision.NULL_REVISION:
+            # only set an explicit root id if there is one to set.
+            if basis_tree.inventory.root is not None:
+                wt.set_root_id(basis_tree.inventory.root.file_id)
+            if revision_id == NULL_REVISION:
                 wt.set_parent_trees([])
             else:
                 wt.set_parent_trees([(revision_id, basis_tree)])
-            build_tree(basis_tree, wt)
+            transform.build_tree(basis_tree, wt)
         finally:
-            wt.unlock()
+            # Unlock in this order so that the unlock-triggers-flush in
+            # WorkingTree is given a chance to fire.
             control_files.unlock()
+            wt.unlock()
         return wt
 
     def __init__(self):

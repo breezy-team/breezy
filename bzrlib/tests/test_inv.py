@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -74,6 +74,16 @@ class TestInventory(TestCase):
         self.assertEqual(inv.path2id('src/bye.c'), 'bye-id')
         
         self.assert_('src-id' in inv)
+
+    def test_non_directory_children(self):
+        """Test path2id when a parent directory has no children"""
+        inv = inventory.Inventory('tree_root')
+        inv.add(inventory.InventoryFile('file-id','file', 
+                                        parent_id='tree_root'))
+        inv.add(inventory.InventoryLink('link-id','link', 
+                                        parent_id='tree_root'))
+        self.assertIs(None, inv.path2id('file/subfile'))
+        self.assertIs(None, inv.path2id('link/subfile'))
 
     def test_iter_entries(self):
         inv = Inventory()
@@ -544,3 +554,19 @@ class TestRevert(TestCaseWithTransport):
         os.unlink('b1/a')
         wt.revert([])
         self.assertEqual(len(wt.inventory), 1)
+
+
+class TestIsRoot(TestCase):
+    """Ensure our root-checking code is accurate."""
+
+    def test_is_root(self):
+        inv = Inventory('TREE_ROOT')
+        self.assertTrue(inv.is_root('TREE_ROOT'))
+        self.assertFalse(inv.is_root('booga'))
+        inv.root.file_id = 'booga'
+        self.assertFalse(inv.is_root('TREE_ROOT'))
+        self.assertTrue(inv.is_root('booga'))
+        # works properly even if no root is set
+        inv.root = None
+        self.assertFalse(inv.is_root('TREE_ROOT'))
+        self.assertFalse(inv.is_root('booga'))
