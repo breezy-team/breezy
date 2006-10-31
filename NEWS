@@ -28,6 +28,10 @@ IN DEVELOPMENT
       machine now show that the working tree is out of date.
       (Cheuksan Edward Wang #48136)
 
+    * Use patiencediff instead of difflib for determining deltas to insert
+      into knits. This avoids the O(N^3) behavior of difflib. Patience
+      diff should be O(N^2). (Cheuksan Edward Wang, #65714)
+
     * Running ``bzr log`` on nonexistent file gives an error instead of the
       entire log history. (Cheuksan Edward Wang #50793)
 
