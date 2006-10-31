@@ -18,6 +18,8 @@ IN DEVELOPMENT
       machine now show that the working tree is out of date.
       (Cheuksan Edward Wang #48136)
 
+    * Running ``bzr log`` on nonexistent file gives an error instead of the
+      entire log history. (Cheuksan Edward Wang #50793)
 
 bzr 0.12  2006-10-30
 
