@@ -197,6 +197,34 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertFormatedDelta('1 second in the future', -1)
         self.assertFormatedDelta('2 seconds in the future', -2)
 
+    def test_dereference_path(self):
+        if not osutils.has_symlinks():
+            raise TestSkipped('Symlinks are not supported on this platform')
+        cwd = osutils.realpath('.')
+        os.mkdir('bar')
+        bar_path = osutils.pathjoin(cwd, 'bar')
+        # Using './' to avoid bug #1213894 (first path component not
+        # dereferenced) in Python 2.4.1 and earlier
+        self.assertEqual(bar_path, osutils.realpath('./bar'))
+        os.symlink('bar', 'foo')
+        self.assertEqual(bar_path, osutils.realpath('./foo'))
+        
+        # Does not dereference terminal symlinks
+        foo_path = osutils.pathjoin(cwd, 'foo')
+        self.assertEqual(foo_path, osutils.dereference_path('./foo'))
+
+        # Dereferences parent symlinks
+        os.mkdir('bar/baz')
+        baz_path = osutils.pathjoin(bar_path, 'baz')
+        self.assertEqual(baz_path, osutils.dereference_path('./foo/baz'))
+
+        # Dereferences parent symlinks that are the first path element
+        self.assertEqual(baz_path, osutils.dereference_path('foo/baz'))
+
+        # Dereferences parent symlinks in absolute paths
+        foo_baz_path = osutils.pathjoin(foo_path, 'baz')
+        self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
+
 
 class TestSafeUnicode(TestCase):
 

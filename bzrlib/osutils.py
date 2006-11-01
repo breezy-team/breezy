@@ -228,7 +228,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
 # choke on a Unicode string containing a relative path if
 # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
 # string.
-_fs_enc = sys.getfilesystemencoding()
+_fs_enc = sys.getfilesystemencoding() or 'utf-8'
 def _posix_abspath(path):
     # jam 20060426 rather than encoding to fsencoding
     # copy posixpath.abspath, but use os.getcwdu instead
@@ -1090,3 +1090,35 @@ def get_user_encoding():
     if _cached_user_encoding is None:
         _cached_user_encoding = 'ascii'
     return _cached_user_encoding
+
+
+def recv_all(socket, bytes):
+    """Receive an exact number of bytes.
+
+    Regular Socket.recv() may return less than the requested number of bytes,
+    dependning on what's in the OS buffer.  MSG_WAITALL is not available
+    on all platforms, but this should work everywhere.  This will return
+    less than the requested amount if the remote end closes.
+
+    This isn't optimized and is intended mostly for use in testing.
+    """
+    b = ''
+    while len(b) < bytes:
+        new = socket.recv(bytes - len(b))
+        if new == '':
+            break # eof
+        b += new
+    return b
+
+def dereference_path(path):
+    """Determine the real path to a file.
+
+    All parent elements are dereferenced.  But the file itself is not
+    dereferenced.
+    :param path: The original path.  May be absolute or relative.
+    :return: the real path *to* the file
+    """
+    parent, base = os.path.split(path)
+    # The pathjoin for '.' is a workaround for Python bug #1213894.
+    # (initial path components aren't dereferenced)
+    return pathjoin(realpath(pathjoin('.', parent)), base)
