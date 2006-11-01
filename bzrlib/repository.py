@@ -605,7 +605,8 @@ class Repository(object):
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
-            return RevisionTree(self, Inventory(), _mod_revision.NULL_REVISION)
+            return RevisionTree(self, Inventory(root_id=None), 
+                                _mod_revision.NULL_REVISION)
         else:
             inv = self.get_revision_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
@@ -1183,10 +1184,12 @@ class RepositoryFormat(object):
 
         :param a_bzrdir: The bzrdir to put the new repository in it.
         :param shared: The repository should be initialized as a sharable one.
-
+        :returns: The new repository object.
+        
         This may raise UninitializableFormat if shared repository are not
         compatible the a_bzrdir.
         """
+        raise NotImplementedError(self.initialize)
 
     def is_supported(self):
         """Is this format supported?
@@ -1809,10 +1812,6 @@ class InterSameDataRepository(InterRepository):
 
     @staticmethod
     def is_compatible(source, target):
-        if not isinstance(source, Repository):
-            return False
-        if not isinstance(target, Repository):
-            return False
         if source._format.rich_root_data == target._format.rich_root_data:
             return True
         else:

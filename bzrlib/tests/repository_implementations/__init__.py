@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 # -*- coding: utf-8 -*-
 #
@@ -47,13 +47,29 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_repository',
         'bzrlib.tests.repository_implementations.test_revision',
         ]
-    adapter = RepositoryTestProviderAdapter(
-        default_transport,
-        # None here will cause a readonly decorator to be created
-        # by the TestCaseWithTransport.get_readonly_transport method.
-        None,
-        [(format, format._matchingbzrdir) for format in 
-         RepositoryFormat._formats.values() + _legacy_formats])
-    loader = TestLoader()
-    adapt_modules(test_repository_implementations, adapter, loader, result)
+
+    from bzrlib.transport.smart import SmartTCPServer_for_testing
+    from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
+    from bzrlib.repository import RepositoryFormatKnit1
+
+    transport_server = SmartTCPServer_for_testing
+    smart_server_suite = TestSuite()
+    adapt_to_smart_server = RepositoryTestProviderAdapter(transport_server, None,
+            [(RemoteRepositoryFormat(), RemoteBzrDirFormat())])
+    adapt_modules(test_repository_implementations,
+                  adapt_to_smart_server, 
+                  TestLoader(),
+                  smart_server_suite)
+    result.addTests(smart_server_suite)
+
+    ## adapter = RepositoryTestProviderAdapter(
+    ##     default_transport,
+    ##     # None here will cause a readonly decorator to be created
+    ##     # by the TestCaseWithTransport.get_readonly_transport method.
+    ##     None,
+    ##     [(format, format._matchingbzrdir) for format in 
+    ##      RepositoryFormat._formats.values() + _legacy_formats])
+    ## loader = TestLoader()
+    ## adapt_modules(test_repository_implementations, adapter, loader, result)
+
     return result

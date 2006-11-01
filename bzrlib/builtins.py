@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -75,17 +75,18 @@ def internal_tree_files(file_list, default_branch=u'.'):
 
     :param file_list: Filenames to convert.  
 
-    :param default_branch: Fallback tree path to use if file_list is empty or None.
+    :param default_branch: Fallback tree path to use if file_list is empty or
+        None.
 
     :return: workingtree, [relative_paths]
     """
     if file_list is None or len(file_list) == 0:
         return WorkingTree.open_containing(default_branch)[0], file_list
-    tree = WorkingTree.open_containing(file_list[0])[0]
+    tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
     new_list = []
     for filename in file_list:
         try:
-            new_list.append(tree.relpath(filename))
+            new_list.append(tree.relpath(osutils.dereference_path(filename)))
         except errors.PathNotChild:
             raise errors.FileInWrongBranch(tree.branch, filename)
     return tree, new_list
@@ -849,7 +850,11 @@ class cmd_update(Command):
 
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
-        tree.lock_write()
+        master = tree.branch.get_master_branch()
+        if master is not None:
+            tree.lock_write()
+        else:
+            tree.lock_tree_write()
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
             last_rev = tree.last_revision()
@@ -1291,6 +1296,8 @@ class cmd_added(Command):
         for file_id in inv:
             if file_id in basis_inv:
                 continue
+            if inv.is_root(file_id) and len(basis_inv) == 0:
+                continue
             path = inv.id2path(file_id)
             if not os.access(osutils.abspath(path), os.F_OK):
                 continue
@@ -1374,6 +1381,10 @@ class cmd_log(Command):
                     # either no tree, or is remote.
                     inv = b.basis_tree().inventory
                 file_id = inv.path2id(fp)
+                if file_id is None:
+                    raise errors.BzrCommandError(
+                        "Path does not have any revision history: %s" %
+                        location)
         else:
             # local dir only
             # FIXME ? log the current subdir only RBC 20060203 
@@ -1503,7 +1514,7 @@ class cmd_ls(Command):
             tree = tree.branch.repository.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
 
-        for fp, fc, kind, fid, entry in tree.list_files():
+        for fp, fc, kind, fid, entry in tree.list_files(include_root=False):
             if fp.startswith(relpath):
                 fp = fp[len(relpath):]
                 if non_recursive and '/' in fp:
@@ -1529,14 +1540,17 @@ class cmd_unknowns(Command):
 
 
 class cmd_ignore(Command):
-    """Ignore a command or pattern.
+    """Ignore specified files or patterns.
 
     To remove patterns from the ignore list, edit the .bzrignore file.
 
+    Trailing slashes on patterns are ignored. 
     If the pattern contains a slash, it is compared to the whole path
     from the branch root.  Otherwise, it is compared to only the last
     component of the path.  To match a file only in the root directory,
     prepend './'.
+
+    Ignore patterns specifying absolute paths are not allowed.
 
     Ignore patterns are case-insensitive on case-insensitive systems.
 
@@ -1546,22 +1560,26 @@ class cmd_ignore(Command):
         bzr ignore ./Makefile
         bzr ignore '*.class'
     """
-    # TODO: Complain if the filename is absolute
-    takes_args = ['name_pattern?']
+    takes_args = ['name_pattern*']
     takes_options = [
                      Option('old-default-rules',
                             help='Out the ignore rules bzr < 0.9 always used.')
                      ]
     
-    def run(self, name_pattern=None, old_default_rules=None):
+    def run(self, name_pattern_list=None, old_default_rules=None):
         from bzrlib.atomicfile import AtomicFile
         if old_default_rules is not None:
             # dump the rules and exit
             for pattern in ignores.OLD_DEFAULTS:
                 print pattern
             return
-        if name_pattern is None:
-            raise errors.BzrCommandError("ignore requires a NAME_PATTERN")
+        if not name_pattern_list:
+            raise errors.BzrCommandError("ignore requires at least one "
+                                  "NAME_PATTERN or --old-default-rules")
+        for name_pattern in name_pattern_list:
+            if name_pattern[0] == '/':
+                raise errors.BzrCommandError(
+                    "NAME_PATTERN should not be an absolute path")
         tree, relpath = WorkingTree.open_containing(u'.')
         ifn = tree.abspath('.bzrignore')
         if os.path.exists(ifn):
@@ -1578,9 +1596,10 @@ class cmd_ignore(Command):
 
         if igns and igns[-1] != '\n':
             igns += '\n'
-        igns += name_pattern + '\n'
+        for name_pattern in name_pattern_list:
+            igns += name_pattern.rstrip('/') + '\n'
 
-        f = AtomicFile(ifn, 'wt')
+        f = AtomicFile(ifn, 'wb')
         try:
             f.write(igns.encode('utf-8'))
             f.commit()
@@ -1641,6 +1660,8 @@ class cmd_export(Command):
     Root may be the top directory for tar, tgz and tbz2 formats. If none
     is given, the top directory will be the root name of the file.
 
+    If branch is omitted then the branch containing the CWD will be used.
+
     Note: export of tree with non-ascii filenames to zip is not supported.
 
      Supported formats       Autodetected by extension
@@ -1651,12 +1672,17 @@ class cmd_export(Command):
          tgz                      .tar.gz, .tgz
          zip                          .zip
     """
-    takes_args = ['dest']
+    takes_args = ['dest', 'branch?']
     takes_options = ['revision', 'format', 'root']
-    def run(self, dest, revision=None, format=None, root=None):
+    def run(self, dest, branch=None, revision=None, format=None, root=None):
         from bzrlib.export import export
-        tree = WorkingTree.open_containing(u'.')[0]
-        b = tree.branch
+
+        if branch is None:
+            tree = WorkingTree.open_containing(u'.')[0]
+            b = tree.branch
+        else:
+            b = Branch.open(branch)
+            
         if revision is None:
             # should be tree.last_revision  FIXME
             rev_id = b.last_revision()
@@ -1675,13 +1701,15 @@ class cmd_export(Command):
 class cmd_cat(Command):
     """Write a file's text from a previous revision."""
 
-    takes_options = ['revision']
+    takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
 
     @display_command
-    def run(self, filename, revision=None):
+    def run(self, filename, revision=None, name_from_revision=False):
         if revision is not None and len(revision) != 1:
-            raise errors.BzrCommandError("bzr cat --revision takes exactly one number")
+            raise errors.BzrCommandError("bzr cat --revision takes exactly"
+                                        " one number")
+
         tree = None
         try:
             tree, relpath = WorkingTree.open_containing(filename)
@@ -1697,7 +1725,24 @@ class cmd_cat(Command):
             revision_id = b.last_revision()
         else:
             revision_id = revision[0].in_history(b).rev_id
-        b.print_file(relpath, revision_id)
+
+        cur_file_id = tree.path2id(relpath)
+        rev_tree = b.repository.revision_tree(revision_id)
+        old_file_id = rev_tree.path2id(relpath)
+        
+        if name_from_revision:
+            if old_file_id is None:
+                raise errors.BzrCommandError("%r is not present in revision %s"
+                                                % (filename, revision_id))
+            else:
+                rev_tree.print_file(old_file_id)
+        elif cur_file_id is not None:
+            rev_tree.print_file(cur_file_id)
+        elif old_file_id is not None:
+            rev_tree.print_file(old_file_id)
+        else:
+            raise errors.BzrCommandError("%r is not present in revision %s" %
+                                         (filename, revision_id))
 
 
 class cmd_local_time_offset(Command):
@@ -2326,11 +2371,14 @@ class cmd_remerge(Command):
                     for name, ie in tree.inventory.iter_entries(file_id):
                         interesting_ids.add(ie.file_id)
                 new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
+            else:
+                # Remerge only supports resolving contents conflicts
+                allowed_conflicts = ('text conflict', 'contents conflict')
+                restore_files = [c.path for c in conflicts
+                                 if c.typestring in allowed_conflicts]
             _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_ids)
             tree.set_conflicts(ConflictList(new_conflicts))
-            if file_list is None:
-                restore_files = list(tree.iter_conflicts())
-            else:
+            if file_list is not None:
                 restore_files = file_list
             for filename in restore_files:
                 try:

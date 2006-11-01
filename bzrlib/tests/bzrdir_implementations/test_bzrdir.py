@@ -17,6 +17,7 @@
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
 from cStringIO import StringIO
+import errno
 import os
 from stat import S_ISDIR
 import sys
@@ -150,7 +151,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('dir1')
         dir.create_repository()
         dir.create_branch()
-        wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
+        try:
+            wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
+        except errors.NotLocalUrl:
+            raise TestSkipped("cannot make working tree with transport %r"
+                              % dir.transport)
         self.assertEqual([], wt.get_parent_ids())
 
     def test_destroy_workingtree(self):
@@ -536,11 +541,28 @@ class TestBzrDir(TestCaseWithBzrDir):
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
         self.assertTrue(repo.has_revision('1'))
+        try:
+            self.assertIs(dir.open_branch().last_revision(), None)
+        except errors.NotBranchError:
+            pass
         target = self.sproutOrSkip(dir, self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
+        # testing inventory isn't reasonable for repositories
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/repository/inventory.knit',
+                                     './.bzr/inventory'
                                      ])
+        try:
+            # If we happen to have a tree, we'll guarantee everything
+            # except for the tree root is the same.
+            inventory_f = file(dir.transport.base+'inventory', 'rb')
+            self.assertContainsRe(inventory_f.read(), 
+                                  '<inventory file_id="TREE_ROOT[^"]*"'
+                                  ' format="5">\n</inventory>\n')
+            inventory_f.close()
+        except IOError, e:
+            if e.errno != errno.ENOENT:
+                raise
 
     def test_sprout_bzrdir_with_repository_to_shared(self):
         tree = self.make_branch_and_tree('commit_tree')
@@ -963,7 +985,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         t = get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
-        self.failUnless(isinstance(made_repo, repository.Repository))
+        # Check that we have a repository object.
+        made_repo.has_revision('foo')
+
         self.assertEqual(made_control, made_repo.bzrdir)
 
     def test_create_repository_shared(self):
@@ -1048,13 +1072,17 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        # this has to be tested with local access as we still support creating 
+        # this has to be tested with local access as we still support creating
         # format 6 bzrdirs
-        t = get_transport('.')
-        made_control = self.bzrdir_format.initialize(t.base)
-        made_repo = made_control.create_repository()
-        made_branch = made_control.create_branch()
-        made_tree = made_control.create_workingtree()
+        t = self.get_transport()
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+            made_repo = made_control.create_repository()
+            made_branch = made_control.create_branch()
+            made_tree = made_control.create_workingtree()
+        except errors.NotLocalUrl:
+            raise TestSkipped("Can't initialize %r on transport %r"
+                              % (self.bzrdir_format, t))
         opened_tree = made_control.open_workingtree()
         self.assertEqual(made_control, opened_tree.bzrdir)
         self.failUnless(isinstance(opened_tree, made_tree.__class__))

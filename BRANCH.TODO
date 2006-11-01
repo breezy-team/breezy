@@ -8,3 +8,6 @@ like are not vetted, however.
 
 Similarly, the SmartWSGIApp should also be careful to disallow '..' and the
 like.
+
+We should test that we upgrade branches and repositories through the smart
+server.

@@ -21,7 +21,12 @@ import re
 import sys
 
 import bzrlib
-from bzrlib import bzrdir, errors, repository
+from bzrlib import (
+    bzrdir,
+    errors,
+    remote,
+    repository,
+    )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.delta import TreeDelta
 from bzrlib.errors import (FileExists,
@@ -30,7 +35,7 @@ from bzrlib.errors import (FileExists,
                            UninitializableFormat,
                            NotBranchError,
                            )
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
@@ -95,7 +100,7 @@ class TestRepository(TestCaseWithRepository):
         readonly_t = get_transport(self.get_readonly_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = self.repository_format.initialize(made_control)
-        self.failUnless(isinstance(made_repo, repository.Repository))
+        ## self.failUnless(isinstance(made_repo, repository.Repository))
         self.assertEqual(made_control, made_repo.bzrdir)
 
         # find it via bzrdir opening:
@@ -104,8 +109,8 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual(direct_opened_repo.__class__, made_repo.__class__)
         self.assertEqual(opened_control, direct_opened_repo.bzrdir)
 
-        self.failUnless(isinstance(direct_opened_repo._format,
-                        self.repository_format.__class__))
+        self.assertIsInstance(direct_opened_repo._format,
+                              self.repository_format.__class__)
         # find it via Repository.open
         opened_repo = repository.Repository.open(readonly_t.base)
         self.failUnless(isinstance(opened_repo, made_repo.__class__))
@@ -129,7 +134,9 @@ class TestRepository(TestCaseWithRepository):
         t = get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
-        self.failUnless(isinstance(made_repo, repository.Repository))
+        # Check that we have a repository object.
+        made_repo.has_revision('foo')
+        
         self.assertEqual(made_control, made_repo.bzrdir)
         
     def test_create_repository_shared(self):
@@ -147,19 +154,26 @@ class TestRepository(TestCaseWithRepository):
             # not all repository formats understand being shared, or
             # may only be shared in some circumstances.
             return
-        self.failUnless(isinstance(made_repo, repository.Repository))
+        # Check that we have a repository object.
+        made_repo.has_revision('foo')
+
         self.assertEqual(made_control, made_repo.bzrdir)
         self.assertTrue(made_repo.is_shared())
 
     def test_revision_tree(self):
         wt = self.make_branch_and_tree('.')
+        wt.set_root_id('fixed-root')
         wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = wt.branch.repository.revision_tree('revision-1')
-        self.assertEqual(list(tree.list_files()), [])
+        self.assertEqual('revision-1', tree.inventory.root.revision) 
+        expected = InventoryDirectory('fixed-root', '', None)
+        expected.revision = 'revision-1'
+        self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
+                         list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(None)
-        self.assertEqual([], list(tree.list_files()))
+        self.assertEqual([], list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
-        self.assertEqual([], list(tree.list_files()))
+        self.assertEqual([], list(tree.list_files(include_root=True)))
 
     def test_fetch(self):
         # smoke test fetch to ensure that the convenience function works.
@@ -197,7 +211,11 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual([], lines)
         b_branch = b_bzrdir.create_branch()
         b_branch.pull(tree_a.branch)
-        tree_b = b_bzrdir.create_workingtree()
+        try:
+            tree_b = b_bzrdir.create_workingtree()
+        except errors.NotLocalUrl:
+            raise TestSkipped("cannot make working tree with transport %r"
+                              % b_bzrdir.transport)
         tree_b.commit('no change', rev_id='rev2')
         rev2_tree = repo.revision_tree('rev2')
         self.assertEqual('rev1', rev2_tree.inventory.root.revision)
@@ -253,7 +271,9 @@ class TestRepository(TestCaseWithRepository):
             return
         made_repo.set_make_working_trees(False)
         result = made_control.clone(self.get_url('target'))
-        self.failUnless(isinstance(made_repo, repository.Repository))
+        # Check that we have a repository object.
+        made_repo.has_revision('foo')
+
         self.assertEqual(made_control, made_repo.bzrdir)
         self.assertTrue(result.open_repository().is_shared())
         self.assertFalse(result.open_repository().make_working_trees())
@@ -391,7 +411,9 @@ class TestRepository(TestCaseWithRepository):
     def test_upgrade_from_format4(self):
         from bzrlib.tests.test_upgrade import _upgrade_dir_template
         if self.repository_format.__class__ == repository.RepositoryFormat4:
-            raise TestSkipped('Cannot convert format-4 to itself')
+            return # no need to test upgrade to format 4
+        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
+            return # local conversion to/from RemoteObjects is irrelevant.
         self.build_tree_contents(_upgrade_dir_template)
         old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
         old_repo_format = old_repodir.open_repository()._format

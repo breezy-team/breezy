@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -109,3 +109,12 @@ class TestTree(TestCaseWithTransport):
              ('compare', tree2, tree, 'unchanged', 'specific', 'extra',
               'require', True),
             ], RecordingOptimiser.calls)
+
+    def test_changes_from_with_root(self):
+        """Ensure the include_root option does what's expected."""
+        wt = self.make_branch_and_tree('.')
+        delta = wt.changes_from(wt.basis_tree())
+        self.assertEqual(len(delta.added), 0)
+        delta = wt.changes_from(wt.basis_tree(), wt, include_root=True)
+        self.assertEqual(len(delta.added), 1)
+        self.assertEqual(delta.added[0][0], '')

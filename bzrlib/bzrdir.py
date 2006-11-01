@@ -82,6 +82,8 @@ class BzrDir(object):
         If there is a tree, the tree is opened and break_lock() called.
         Otherwise, branch is tried, and finally repository.
         """
+        # XXX: This seems more like a UI function than something that really
+        # belongs in this class.
         try:
             thing_to_unlock = self.open_workingtree()
         except (errors.NotLocalUrl, errors.NoWorkingTree):
@@ -685,7 +687,12 @@ class BzrDir(object):
         # TODO: jam 20060426 we probably need a test in here in the
         #       case that the newly sprouted branch is a remote one
         if result_repo is None or result_repo.make_working_trees():
-            result.create_workingtree()
+            wt = result.create_workingtree()
+            if wt.inventory.root is None:
+                try:
+                    wt.set_root_id(self.open_workingtree.get_root_id())
+                except errors.NoWorkingTree:
+                    pass
         return result
 
 
@@ -1054,7 +1061,7 @@ class BzrDirFormat(object):
 
     @classmethod
     def probe_transport(klass, transport):
-        """Return the .bzrdir style transport present at URL."""
+        """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get(".bzr/branch-format").read()
         except errors.NoSuchFile:
@@ -1701,7 +1708,8 @@ class ConvertBzrDir4To5(Converter):
                                                   entry_vf=w)
         for old_revision in previous_entries:
                 # if this fails, its a ghost ?
-                assert old_revision in self.converted_revs 
+                assert old_revision in self.converted_revs, \
+                    "Revision {%s} not in converted_revs" % old_revision
         self.snapshot_ie(previous_entries, ie, w, rev_id)
         del ie.text_id
         assert getattr(ie, 'revision', None) is not None

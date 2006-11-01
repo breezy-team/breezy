@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -26,6 +26,13 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_inventory_modified(self):
+        error = errors.InventoryModified("a tree to be repred")
+        self.assertEqualDiff("The current inventory for the tree 'a tree to "
+            "be repred' has been modified, so a clean inventory cannot be "
+            "read without data loss.",
+            str(error))
+
     def test_medium_not_connected(self):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
@@ -47,6 +54,12 @@ class TestErrors(TestCaseWithTransport):
         error = errors.NoSuchId("atree", "anid")
         self.assertEqualDiff("The file id anid is not present in the tree "
             "atree.",
+            str(error))
+
+    def test_not_write_locked(self):
+        error = errors.NotWriteLocked('a thing to repr')
+        self.assertEqualDiff("'a thing to repr' is not write locked but needs "
+            "to be.",
             str(error))
 
     def test_too_many_concurrent_requests(self):
@@ -131,3 +144,48 @@ class TestSpecificErrors(TestCase):
         e = errors.TransportNotPossible('readonly', 'original error')
         self.assertEqual('Transport operation not possible:'
                          ' readonly original error', str(e))
+
+    def assertSocketConnectionError(self, expected, *args, **kwargs):
+        """Check the formatting of a SocketConnectionError exception"""
+        e = errors.SocketConnectionError(*args, **kwargs)
+        self.assertEqual(expected, str(e))
+
+    def test_socket_connection_error(self):
+        """Test the formatting of SocketConnectionError"""
+
+        # There should be a default msg about failing to connect
+        # we only require a host name.
+        self.assertSocketConnectionError(
+            'Failed to connect to ahost',
+            'ahost')
+
+        # If port is None, we don't put :None
+        self.assertSocketConnectionError(
+            'Failed to connect to ahost',
+            'ahost', port=None)
+        # But if port is supplied we include it
+        self.assertSocketConnectionError(
+            'Failed to connect to ahost:22',
+            'ahost', port=22)
+
+        # We can also supply extra information about the error
+        # with or without a port
+        self.assertSocketConnectionError(
+            'Failed to connect to ahost:22; bogus error',
+            'ahost', port=22, orig_error='bogus error')
+        self.assertSocketConnectionError(
+            'Failed to connect to ahost; bogus error',
+            'ahost', orig_error='bogus error')
+        # An exception object can be passed rather than a string
+        orig_error = ValueError('bad value')
+        self.assertSocketConnectionError(
+            'Failed to connect to ahost; %s' % (str(orig_error),),
+            host='ahost', orig_error=orig_error)
+
+        # And we can supply a custom failure message
+        self.assertSocketConnectionError(
+            'Unable to connect to ssh host ahost:444; my_error',
+            host='ahost', port=444, msg='Unable to connect to ssh host',
+            orig_error='my_error')
+
+
