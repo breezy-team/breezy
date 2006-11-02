@@ -54,9 +54,6 @@ DEFAULT_IGNORE = deprecated_list(zero_nine, 'DEFAULT_IGNORE', [],
                     'Consider using bzrlib.ignores.add_unique_user_ignores'
                     ' or bzrlib.ignores.add_runtime_ignores')
 
-# Set of values that can enable printing particular debug messages
-debug_flags = set()
-
 def test_suite():
     import tests
     return tests.test_suite()

@@ -65,6 +65,10 @@ from bzrlib.symbol_versioning import (deprecated_function,
         zero_nine,
         )
 
+lazy_import(globals(), """
+from bzrlib import debug
+""")
+
 _file_handler = None
 _stderr_handler = None
 _stderr_quiet = False
@@ -118,7 +122,6 @@ def mutter(fmt, *args):
     _trace_file.write(out)
     # TODO: jam 20051227 Consider flushing the trace file to help debugging
     #_trace_file.flush()
-debug = mutter
 
 
 def _rollover_trace_maybe(trace_fname):
@@ -182,7 +185,7 @@ def log_exception_quietly():
     errors loading plugins.
     """
     import traceback
-    debug(traceback.format_exc())
+    mutter(traceback.format_exc())
 
 
 def enable_default_logging():
@@ -285,7 +288,7 @@ def report_user_error(exc_info, err_file):
 
     These don't get a traceback unless -Derror was given.
     """
-    if 'error' in bzrlib.debug_flags:
+    if 'error' in debug.debug_flags:
         report_bug(exc_info, err_file)
         return
     print >>err_file, "bzr: ERROR:", str(exc_info[1])
