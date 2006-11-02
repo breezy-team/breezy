@@ -2451,9 +2451,12 @@ class cmd_revert(Command):
 
 class cmd_assert_fail(Command):
     """Test reporting of assertion failures"""
+    # intended just for use in testing
+
     hidden = True
+
     def run(self):
-        assert False, "always fails"
+        raise AssertionError("always fails")
 
 
 class cmd_help(Command):
