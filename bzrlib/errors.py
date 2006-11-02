@@ -43,15 +43,16 @@ class BzrError(StandardError):
     """
     Base class for errors raised by bzrlib.
 
-    :cvar is_user_error: True if this is a user error and should be 
-    displayed concisely; false if this is bzr's fault and it should 
-    give a traceback.
+    :cvar internal_error: if true (or absent) this was probably caused by a
+    bzr bug and should be displayed with a traceback; if False this was
+    probably a user or environment error and they don't need the gory details.
+    (That can be overridden by -Derror on the command line.)
 
-    :cvar fmt: Format string to display the error; this is expanded
+    :cvar _fmt: Format string to display the error; this is expanded
     by the instance's dict.
     """
     
-    is_user_error = True
+    internal_error = False
 
     def __init__(self, msg=None, **kwds):
         """Construct a new BzrError.
@@ -68,8 +69,8 @@ class BzrError(StandardError):
         that subclasses override the __init__ method to require specific 
         parameters.
 
-        :param msg: Deprecated parameter for passing a format string 
-        when constructing.
+        :param msg: If given, this is the literal complete text for the error,
+        not subject to expansion.
         """
         StandardError.__init__(self)
         if msg is not None:
@@ -78,30 +79,49 @@ class BzrError(StandardError):
             ##         'in bzr 0.12; please raise a specific subclass instead',
             ##         DeprecationWarning,
             ##         stacklevel=2)
-            self._str = msg
+            self._preformatted_string = msg
         else:
-            self._str = None
+            self._preformatted_string = None
             for key, value in kwds.items():
                 setattr(self, key, value)
 
     def __str__(self):
-        s = getattr(self, '_str', None)
+        s = getattr(self, '_preformatted_string', None)
         if s is not None:
             # contains a preformatted message; must be cast to plain str
             return str(s)
         try:
-            # __str__() should always return a 'str' object
-            # never a 'unicode' object.
-            s = self._fmt % self.__dict__
-            if isinstance(s, unicode):
-                return s.encode('utf8')
-            return s
+            fmt = self._get_format_string()
+            if fmt:
+                s = fmt % self.__dict__
+                # __str__() should always return a 'str' object
+                # never a 'unicode' object.
+                if isinstance(s, unicode):
+                    return s.encode('utf8')
+                return s
         except (AttributeError, TypeError, NameError, ValueError, KeyError), e:
             return 'Unprintable exception %s: dict=%r, fmt=%r, error=%s' \
                 % (self.__class__.__name__,
                    self.__dict__,
                    getattr(self, '_fmt', None),
                    str(e))
+
+    def _get_format_string(self):
+        """Return format string for this exception or None"""
+        fmt = getattr(self, '_fmt', None)
+        if fmt is not None:
+            return fmt
+        fmt = getAttr(self, '__doc__', None)
+        if fmt is not None:
+            symbol_versioning.warn("%s uses it's docstring as a format, "
+                    "it should use _fmt instead" % self.__class__.__name__)
+            # TODO: This should be deprecated when all exceptions have
+            # been changed not to rely on this.
+            return 'Unprintable exception %s: dict=%r, fmt=%r' \
+                % (self.__class__.__name__,
+                   self.__dict__,
+                   getattr(self, '_fmt', None),
+                   )
 
 
 class BzrNewError(BzrError):
@@ -145,7 +165,7 @@ class BzrCheckError(BzrError):
     
     _fmt = "Internal check failed: %(message)s"
 
-    is_user_error = False
+    internal_error = True
 
     def __init__(self, message):
         BzrError.__init__(self)
@@ -156,7 +176,7 @@ class InvalidEntryName(BzrError):
     
     _fmt = "Invalid entry name: %(name)s"
 
-    is_user_error = False
+    internal_error = True
 
     def __init__(self, name):
         BzrError.__init__(self)
@@ -219,7 +239,7 @@ class NotLocalUrl(BzrError):
 class BzrCommandError(BzrError):
     """Error from user command"""
 
-    is_user_error = True
+    internal_error = False
 
     # Error from malformed user command; please avoid raising this as a
     # generic exception not caused by user input.
@@ -316,7 +336,7 @@ class ShortReadvError(PathError):
 
     _fmt = "readv() read %(actual)s bytes rather than %(length)s bytes at %(offset)s for %(path)s%(extra)s"
 
-    is_user_error = False
+    internal_error = True
 
     def __init__(self, path, offset, length, actual, extra=None):
         PathError.__init__(self, path, extra=extra)
@@ -329,7 +349,7 @@ class PathNotChild(BzrError):
 
     _fmt = "Path %(path)r is not a child of path %(base)r%(extra)s"
 
-    is_user_error = False
+    internal_error = True
 
     def __init__(self, path, base, extra=None):
         BzrError.__init__(self)
@@ -366,7 +386,7 @@ class AlreadyBranchError(PathError):
 class BranchExistsWithoutWorkingTree(PathError):
 
     _fmt = "Directory contains a branch, but no working tree \
-(use bzr checkout if you wish to build a working tree): %(path)s"""
+(use bzr checkout if you wish to build a working tree): %(path)s"
 
 
 class AtomicFileAlreadyClosed(PathError):
@@ -484,6 +504,7 @@ class ForbiddenControlFileError(BzrError):
 class LockError(BzrError):
 
     _fmt = "Lock error: %(message)s"
+
     # All exceptions from the lock/unlock functions should be from
     # this exception class.  They will be translated as necessary. The
     # original exception is available as e.original_error
@@ -496,6 +517,7 @@ class LockError(BzrError):
 class CommitNotPossible(LockError):
 
     _fmt = "A commit was attempted but we do not have a write lock open."
+
     def __init__(self):
         pass
 
@@ -503,6 +525,7 @@ class CommitNotPossible(LockError):
 class AlreadyCommitted(LockError):
 
     _fmt = "A rollback was requested, but is not able to be accomplished."
+
     def __init__(self):
         pass
 
@@ -510,6 +533,7 @@ class AlreadyCommitted(LockError):
 class ReadOnlyError(LockError):
 
     _fmt = "A write attempt was made in a read only transaction on %(obj)s"
+
     def __init__(self, obj):
         self.obj = obj
 
@@ -523,7 +547,7 @@ class ObjectNotLocked(LockError):
 
     _fmt = "%(obj)r is not locked"
 
-    is_user_error = False
+    internal_error = True
 
     # this can indicate that any particular object is not locked; see also
     # LockNotHeld which means that a particular *lock* object is not held by
@@ -535,6 +559,7 @@ class ObjectNotLocked(LockError):
 class ReadOnlyObjectDirtiedError(ReadOnlyError):
 
     _fmt = "Cannot change object %(obj)r in read only transaction"
+
     def __init__(self, obj):
         self.obj = obj
 
@@ -542,6 +567,7 @@ class ReadOnlyObjectDirtiedError(ReadOnlyError):
 class UnlockableTransport(LockError):
 
     _fmt = "Cannot lock: transport is read only: %(transport)s"
+
     def __init__(self, transport):
         self.transport = transport
 
@@ -609,7 +635,7 @@ class NoSuchRevision(BzrError):
 
     _fmt = "Branch %(branch)s has no revision %(revision)s"
 
-    is_user_error = False
+    internal_error = True
 
     def __init__(self, branch, revision):
         BzrError.__init__(self, branch=branch, revision=revision)
@@ -644,7 +670,7 @@ class DivergedBranches(BzrError):
     
     _fmt = "These branches have diverged.  Use the merge command to reconcile them."""
 
-    is_user_error = True
+    internal_error = False
 
     def __init__(self, branch1, branch2):
         self.branch1 = branch1
@@ -652,13 +678,15 @@ class DivergedBranches(BzrError):
 
 
 class UnrelatedBranches(BzrError):
-    "Branches have no common ancestor, and no merge base revision was specified."
 
-    is_user_error = True
+    _fmt = "Branches have no common ancestor, and no merge base revision was specified."
+
+    internal_error = False
 
 
 class NoCommonAncestor(BzrError):
-    "Revisions have no common ancestor: %(revision_a)s %(revision_b)s"
+    
+    _fmt = "Revisions have no common ancestor: %(revision_a)s %(revision_b)s"
 
     def __init__(self, revision_a, revision_b):
         self.revision_a = revision_a
@@ -684,6 +712,7 @@ class NotAncestor(BzrError):
 
 
 class InstallFailed(BzrError):
+
     def __init__(self, revisions):
         msg = "Could not install revisions:\n%s" % " ,".join(revisions)
         BzrError.__init__(self, msg)
@@ -691,6 +720,7 @@ class InstallFailed(BzrError):
 
 
 class AmbiguousBase(BzrError):
+
     def __init__(self, bases):
         warn("BzrError AmbiguousBase has been deprecated as of bzrlib 0.8.",
                 DeprecationWarning)
@@ -709,12 +739,14 @@ class NoCommits(BzrError):
 
 
 class UnlistableStore(BzrError):
+
     def __init__(self, store):
         BzrError.__init__(self, "Store %s is not listable" % store)
 
 
 
 class UnlistableBranch(BzrError):
+
     def __init__(self, br):
         BzrError.__init__(self, "Stores for branch %s are not listable" % br)
 
@@ -722,6 +754,7 @@ class UnlistableBranch(BzrError):
 class BoundBranchOutOfDate(BzrError):
 
     _fmt = "Bound branch %(branch)s is out of date with master branch %(master)s."
+
     def __init__(self, branch, master):
         BzrError.__init__(self)
         self.branch = branch
@@ -731,6 +764,7 @@ class BoundBranchOutOfDate(BzrError):
 class CommitToDoubleBoundBranch(BzrError):
 
     _fmt = "Cannot commit to branch %(branch)s. It is bound to %(master)s, which is bound to %(remote)s."
+
     def __init__(self, branch, master, remote):
         BzrError.__init__(self)
         self.branch = branch
@@ -741,6 +775,7 @@ class CommitToDoubleBoundBranch(BzrError):
 class OverwriteBoundBranch(BzrError):
 
     _fmt = "Cannot pull --overwrite to a branch which is bound %(branch)s"
+
     def __init__(self, branch):
         BzrError.__init__(self)
         self.branch = branch
@@ -749,6 +784,7 @@ class OverwriteBoundBranch(BzrError):
 class BoundBranchConnectionFailure(BzrError):
 
     _fmt = "Unable to connect to target of bound branch %(branch)s => %(target)s: %(error)s"
+
     def __init__(self, branch, target, error):
         BzrError.__init__(self)
         self.branch = branch
@@ -768,6 +804,7 @@ class WeaveError(BzrError):
 class WeaveRevisionAlreadyPresent(WeaveError):
 
     _fmt = "Revision {%(revision_id)s} already present in %(weave)s"
+
     def __init__(self, revision_id, weave):
 
         WeaveError.__init__(self)
@@ -963,11 +1000,12 @@ class InvalidHttpContentType(InvalidHttpResponse):
 
 
 class ConflictsInTree(BzrError):
-    def __init__(self):
-        BzrError.__init__(self, "Working tree has conflicts.")
+
+    _fmt = "Working tree has conflicts."
 
 
 class ParseConfigError(BzrError):
+
     def __init__(self, errors, filename):
         if filename is None:
             filename = ""
@@ -1012,6 +1050,7 @@ class CantReprocessAndShowBase(BzrError):
 class GraphCycleError(BzrError):
 
     _fmt = "Cycle in graph %(graph)r"
+
     def __init__(self, graph):
         BzrError.__init__(self)
         self.graph = graph
@@ -1027,15 +1066,14 @@ class NotConflicted(BzrError):
 
 
 class MustUseDecorated(Exception):
-    """A decorating function has requested its original command be used.
     
-    This should never escape bzr, so does not need to be printable.
-    """
-
+    _fmt = """A decorating function has requested its original command be used."""
+    
 
 class NoBundleFound(BzrError):
 
     _fmt = "No bundle was found in %(filename)s"
+
     def __init__(self, filename):
         BzrError.__init__(self)
         self.filename = filename
@@ -1044,6 +1082,7 @@ class NoBundleFound(BzrError):
 class BundleNotSupported(BzrError):
 
     _fmt = "Unable to handle bundle version %(version)s: %(msg)s"
+
     def __init__(self, version, msg):
         BzrError.__init__(self)
         self.version = version
@@ -1254,6 +1293,7 @@ Select one of: %(valid_types)s"""
 class UnsupportedOperation(BzrError):
 
     _fmt = "The method %(mname)s is not supported on objects of type %(tname)s."
+
     def __init__(self, method, method_self):
         self.method = method
         self.mname = method.__name__
@@ -1382,7 +1422,7 @@ class IllegalUseOfScopeReplacer(BzrError):
 
     _fmt = "ScopeReplacer object %(name)r was used incorrectly: %(msg)s%(extra)s"
 
-    is_user_error = False
+    internal_error = True
 
     def __init__(self, name, msg, extra=None):
         BzrError.__init__(self)
@@ -1398,7 +1438,7 @@ class InvalidImportLine(BzrError):
 
     _fmt = "Not a valid import statement: %(msg)\n%(text)s"
 
-    is_user_error = False
+    internal_error = True
 
     def __init__(self, text, msg):
         BzrError.__init__(self)
@@ -1410,7 +1450,7 @@ class ImportNameCollision(BzrError):
 
     _fmt = "Tried to import an object to the same name as an existing object. %(name)s"
 
-    is_user_error = False
+    internal_error = True
 
     def __init__(self, name):
         BzrError.__init__(self)
