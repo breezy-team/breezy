@@ -158,6 +158,10 @@ bzr 0.12rc1  2006-10-23
 
     * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
 
+    * If a commit fails, the commit message is stored in a file at the root of
+      the tree for later commit. (Cheuksan Edward Wang, Stefan Metzmacher,
+      #32054)
+
   TESTING:
 
     * New test base class TestCaseWithMemoryTransport offers memory-only
