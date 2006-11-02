@@ -51,6 +51,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_command_encoding',
                      'bzrlib.tests.blackbox.test_commit',
                      'bzrlib.tests.blackbox.test_conflicts',
+                     'bzrlib.tests.blackbox.test_debug',
                      'bzrlib.tests.blackbox.test_diff',
                      'bzrlib.tests.blackbox.test_exceptions',
                      'bzrlib.tests.blackbox.test_export',

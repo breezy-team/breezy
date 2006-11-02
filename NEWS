@@ -9,6 +9,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * New -D option given before the command line turns on debugging output
+      for particular areas.  -Derror shows tracebacks on all errors.
+      (Martin Pool)
+
     * Clean up ``bzr selftest --benchmark bundle`` to correct an import,
       and remove benchmarks that take longer than 10min to run.
       (John Arbash Meinel)
