@@ -29,6 +29,7 @@ from bzrlib import (
     check,
     delta,
     errors,
+    generate_ids,
     gpg,
     graph,
     knit,
@@ -2355,12 +2356,15 @@ class CommitBuilder(object):
             self.parents
             )
 
+    @staticmethod
+    def _sanitize_for_revision_id(text):
+        """This just removes whitespace, etc to make friendlier ids.
+        """
+
     def _gen_revision_id(self):
         """Return new revision-id."""
-        s = '%s-%s-' % (self._config.user_email(), 
-                        compact_date(self._timestamp))
-        s += hexlify(rand_bytes(8))
-        return s
+        return generate_ids.gen_revision_id(self._config.username(),
+                                            self._timestamp)
 
     def _generate_revision_if_needed(self):
         """Create a revision id if None was supplied.

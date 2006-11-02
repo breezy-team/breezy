@@ -55,6 +55,7 @@ from bzrlib import (
     bzrdir,
     conflicts as _mod_conflicts,
     errors,
+    generate_ids,
     ignores,
     merge,
     osutils,
@@ -111,61 +112,30 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         DEPRECATED_PARAMETER,
         zero_eight,
         zero_eleven,
+        zero_thirteen,
         )
 
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
 CONFLICT_HEADER_1 = "BZR conflict list format 1"
 
-# the regex removes any weird characters; we don't escape them 
-# but rather just pull them out
-_gen_file_id_re = re.compile(r'[^\w.]')
-_gen_id_suffix = None
-_gen_id_serial = 0
 
-
-def _next_id_suffix():
-    """Create a new file id suffix that is reasonably unique.
-    
-    On the first call we combine the current time with 64 bits of randomness
-    to give a highly probably globally unique number. Then each call in the same
-    process adds 1 to a serial number we append to that unique value.
-    """
-    # XXX TODO: change bzrlib.add.smart_add to call workingtree.add() rather 
-    # than having to move the id randomness out of the inner loop like this.
-    # XXX TODO: for the global randomness this uses we should add the thread-id
-    # before the serial #.
-    global _gen_id_suffix, _gen_id_serial
-    if _gen_id_suffix is None:
-        _gen_id_suffix = "-%s-%s-" % (compact_date(time()), rand_chars(16))
-    _gen_id_serial += 1
-    return _gen_id_suffix + str(_gen_id_serial)
-
-
+@deprecated_function(zero_thirteen)
 def gen_file_id(name):
     """Return new file id for the basename 'name'.
 
-    The uniqueness is supplied from _next_id_suffix.
+    Use bzrlib.generate_ids.gen_file_id() instead
     """
-    # The real randomness is in the _next_id_suffix, the
-    # rest of the identifier is just to be nice.
-    # So we:
-    # 1) Remove non-ascii word characters to keep the ids portable
-    # 2) squash to lowercase, so the file id doesn't have to
-    #    be escaped (case insensitive filesystems would bork for ids
-    #    that only differred in case without escaping).
-    # 3) truncate the filename to 20 chars. Long filenames also bork on some
-    #    filesystems
-    # 4) Removing starting '.' characters to prevent the file ids from
-    #    being considered hidden.
-    ascii_word_only = _gen_file_id_re.sub('', name.lower())
-    short_no_dots = ascii_word_only.lstrip('.')[:20]
-    return short_no_dots + _next_id_suffix()
+    return generate_ids.gen_file_id(name)
 
 
+@deprecated_function(zero_thirteen)
 def gen_root_id():
-    """Return a new tree-root file id."""
-    return gen_file_id('tree_root')
+    """Return a new tree-root file id.
+
+    This has been deprecated in favor of bzrlib.generate_ids.gen_root_id()
+    """
+    return generate_ids.gen_root_id()
 
 
 class TreeEntry(object):
@@ -850,7 +820,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
         if file_id is None:
-            file_id = gen_file_id(os.path.basename(path))
+            file_id = generate_ids.gen_file_id(os.path.basename(path))
         os.mkdir(self.abspath(path))
         self.add(path, file_id, 'directory')
         return file_id
