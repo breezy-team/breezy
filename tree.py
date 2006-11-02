@@ -25,7 +25,7 @@ import bzrlib.osutils as osutils
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
-from bzrlib.tree import RevisionTree
+from bzrlib.revisiontree import RevisionTree
 
 import os
 import md5
