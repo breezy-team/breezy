@@ -19,6 +19,11 @@ IN DEVELOPMENT
   
   BUG FIXES:
 
+    * _KnitIndex.add_versions() dictionary compresses revision ids as they
+      are added. This fixes bug where fetching remote revisions records
+      them as full references rather than integers. (John Arbash Meinel,
+      #64789)
+
     * ``bzr ignore`` strips trailing slashes in patterns.
       Also ``bzr ignore`` rejects absolute paths. (Kent Gibson, #4559)
 

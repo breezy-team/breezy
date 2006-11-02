@@ -1256,35 +1256,38 @@ class _KnitIndex(_KnitComponentFile):
         """
         lines = []
         encode_utf8 = cache_utf8.encode
-        for version_id, options, pos, size, parents in versions:
-            line = "\n%s %s %s %s %s :" % (encode_utf8(version_id),
-                                           ','.join(options),
-                                           pos,
-                                           size,
-                                           self._version_list_to_index(parents))
-            assert isinstance(line, str), \
-                'content must be utf-8 encoded: %r' % (line,)
-            lines.append(line)
-        if not self._need_to_create:
-            self._transport.append_bytes(self._filename, ''.join(lines))
-        else:
-            sio = StringIO()
-            sio.write(self.HEADER)
-            sio.writelines(lines)
-            sio.seek(0)
-            self._transport.put_file_non_atomic(self._filename, sio,
-                                create_parent_dir=self._create_parent_dir,
-                                mode=self._file_mode,
-                                dir_mode=self._dir_mode)
-            self._need_to_create = False
+        orig_history = self._history[:]
+        orig_cache = self._cache.copy()
 
-        # cache after writing, so that a failed write leads to missing cache
-        # entries not extra ones. XXX TODO: RBC 20060502 in the event of a 
-        # failure, reload the index or flush it or some such, to prevent
-        # writing records that did complete twice.
-        for version_id, options, pos, size, parents in versions:
-            self._cache_version(version_id, options, pos, size, parents)
-        
+        try:
+            for version_id, options, pos, size, parents in versions:
+                line = "\n%s %s %s %s %s :" % (encode_utf8(version_id),
+                                               ','.join(options),
+                                               pos,
+                                               size,
+                                               self._version_list_to_index(parents))
+                assert isinstance(line, str), \
+                    'content must be utf-8 encoded: %r' % (line,)
+                lines.append(line)
+                self._cache_version(version_id, options, pos, size, parents)
+            if not self._need_to_create:
+                self._transport.append_bytes(self._filename, ''.join(lines))
+            else:
+                sio = StringIO()
+                sio.write(self.HEADER)
+                sio.writelines(lines)
+                sio.seek(0)
+                self._transport.put_file_non_atomic(self._filename, sio,
+                                    create_parent_dir=self._create_parent_dir,
+                                    mode=self._file_mode,
+                                    dir_mode=self._dir_mode)
+                self._need_to_create = False
+        except:
+            # If any problems happen, restore the original values and re-raise
+            self._history = orig_history
+            self._cache = orig_cache
+            raise
+
     def has_version(self, version_id):
         """True if the version is in the index."""
         return (version_id in self._cache)
