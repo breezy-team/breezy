@@ -174,7 +174,7 @@ class TestBenchmarkTests(TestCaseWithTransport):
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
         self.assertEqual(
-            'running tests...\ntests passed\n',
+            'tests passed\n',
             err)
         benchfile = open(".perf_history", "rt")
         try:

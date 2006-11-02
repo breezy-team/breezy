@@ -2109,50 +2109,41 @@ class cmd_selftest(Command):
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
-        # we don't want progress meters from the tests to go to the
-        # real output; and we don't want log messages cluttering up
-        # the real logs.
-        save_ui = ui.ui_factory
         print '%10s: %s' % ('bzr', osutils.realpath(sys.argv[0]))
         print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
         print
-        info('running tests...')
+        if testspecs_list is not None:
+            pattern = '|'.join(testspecs_list)
+        else:
+            pattern = ".*"
+        if benchmark:
+            test_suite_factory = benchmarks.test_suite
+            if verbose is None:
+                verbose = True
+            # TODO: should possibly lock the history file...
+            benchfile = open(".perf_history", "at")
+        else:
+            test_suite_factory = None
+            if verbose is None:
+                verbose = False
+            benchfile = None
         try:
-            ui.ui_factory = ui.SilentUIFactory()
-            if testspecs_list is not None:
-                pattern = '|'.join(testspecs_list)
-            else:
-                pattern = ".*"
-            if benchmark:
-                test_suite_factory = benchmarks.test_suite
-                if verbose is None:
-                    verbose = True
-                # TODO: should possibly lock the history file...
-                benchfile = open(".perf_history", "at")
-            else:
-                test_suite_factory = None
-                if verbose is None:
-                    verbose = False
-                benchfile = None
-            try:
-                result = selftest(verbose=verbose, 
-                                  pattern=pattern,
-                                  stop_on_failure=one, 
-                                  keep_output=keep_output,
-                                  transport=transport,
-                                  test_suite_factory=test_suite_factory,
-                                  lsprof_timed=lsprof_timed,
-                                  bench_history=benchfile)
-            finally:
-                if benchfile is not None:
-                    benchfile.close()
-            if result:
-                info('tests passed')
-            else:
-                info('tests failed')
-            return int(not result)
+            result = selftest(verbose=verbose, 
+                              pattern=pattern,
+                              stop_on_failure=one, 
+                              keep_output=keep_output,
+                              transport=transport,
+                              test_suite_factory=test_suite_factory,
+                              lsprof_timed=lsprof_timed,
+                              bench_history=benchfile)
         finally:
-            ui.ui_factory = save_ui
+            if benchfile is not None:
+                benchfile.close()
+        if result:
+            info('tests passed')
+        else:
+            info('tests failed')
+        return int(not result)
 
 
 class cmd_version(Command):
