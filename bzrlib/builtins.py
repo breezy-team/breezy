@@ -1933,25 +1933,6 @@ class cmd_check(Command):
         check(branch, verbose)
 
 
-class cmd_scan_cache(Command):
-    hidden = True
-    def run(self):
-        from bzrlib.hashcache import HashCache
-
-        c = HashCache(u'.')
-        c.read()
-        c.scan()
-            
-        print '%6d stats' % c.stat_count
-        print '%6d in hashcache' % len(c._cache)
-        print '%6d files removed from cache' % c.removed_count
-        print '%6d hashes updated' % c.update_count
-        print '%6d files changed too recently to cache' % c.danger_count
-
-        if c.needs_write:
-            c.write()
-
-
 class cmd_upgrade(Command):
     """Upgrade branch storage to current format.
 
