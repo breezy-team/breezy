@@ -35,10 +35,32 @@ class TestCommit(ExternalBase):
         # If forced, it should succeed, but this is not tested here.
         self.run_bzr("init")
         self.build_tree(['hello.txt'])
-        result = self.run_bzr("commit", "-m", "empty", retcode=3)
-        self.assertEqual(('', 'bzr: ERROR: no changes to commit.'
-                              ' use --unchanged to commit anyhow\n'),
-                         result)
+        out,err = self.run_bzr("commit", "-m", "empty", retcode=3)
+        self.assertEqual('', out)
+        self.assertStartsWith(err, 'bzr: ERROR: no changes to commit.'
+                                  ' use --unchanged to commit anyhow\n')
+
+    def test_save_commit_message(self):
+        """Failed commit should save the message in a file"""
+        self.run_bzr("init")
+        out,err = self.run_bzr("commit", "-m", "message", retcode=3)
+        self.assertEqual('', out)
+        self.assertStartsWith(err, 'bzr: ERROR: no changes to commit.'
+                                  ' use --unchanged to commit anyhow\n'
+                                  'Commit message saved. To reuse the message,'
+                                  ' do\nbzr commit --file ')
+        message_file = re.compile('bzr-commit-\S*').search(err).group()
+        self.check_file_contents(message_file, 'message')
+
+    def test_commit_success(self):
+        """Successful commit should not leave behind a bzr-commit-* file"""
+        self.run_bzr("init")
+        self.run_bzr("commit", "--unchanged", "-m", "message")
+        self.assertEqual('', self.capture('unknowns'))
+
+        # same for unicode messages
+        self.run_bzr("commit", "--unchanged", "-m", u'foo\xb5')
+        self.assertEqual('', self.capture('unknowns'))
 
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
