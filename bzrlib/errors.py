@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -111,17 +111,19 @@ class BzrError(StandardError):
         fmt = getattr(self, '_fmt', None)
         if fmt is not None:
             return fmt
-        fmt = getAttr(self, '__doc__', None)
+        fmt = getattr(self, '__doc__', None)
         if fmt is not None:
-            symbol_versioning.warn("%s uses it's docstring as a format, "
-                    "it should use _fmt instead" % self.__class__.__name__)
+            symbol_versioning.warn("%s uses its docstring as a format, "
+                    "it should use _fmt instead" % self.__class__.__name__,
+                    DeprecationWarning)
             # TODO: This should be deprecated when all exceptions have
             # been changed not to rely on this.
-            return 'Unprintable exception %s: dict=%r, fmt=%r' \
-                % (self.__class__.__name__,
-                   self.__dict__,
-                   getattr(self, '_fmt', None),
-                   )
+            return fmt
+        return 'Unprintable exception %s: dict=%r, fmt=%r' \
+            % (self.__class__.__name__,
+               self.__dict__,
+               getattr(self, '_fmt', None),
+               )
 
 
 class BzrNewError(BzrError):
@@ -213,6 +215,17 @@ class NoSuchId(BzrError):
         self.tree = tree
 
 
+class InventoryModified(BzrError):
+
+    _fmt = ("The current inventory for the tree %(tree)r has been modified, "
+            "so a clean inventory cannot be read without data loss.")
+
+    internal_error = True
+
+    def __init__(self, tree):
+        self.tree = tree
+
+
 class NoWorkingTree(BzrError):
 
     _fmt = "No WorkingTree exists for %(base)s."
@@ -230,11 +243,19 @@ class NotBuilding(BzrError):
 class NotLocalUrl(BzrError):
 
     _fmt = "%(url)s is not a local path."
-    
+
     def __init__(self, url):
-        BzrError.__init__(self)
         self.url = url
 
+
+class WorkingTreeAlreadyPopulated(BzrError):
+
+    _fmt = """Working tree already populated in %(base)s"""
+
+    internal_error = True
+
+    def __init__(self, base):
+        self.base = base
 
 class BzrCommandError(BzrError):
     """Error from user command"""
@@ -258,6 +279,14 @@ class BzrCommandError(BzrError):
 
     def __str__(self):
         return self.msg
+
+
+class NotWriteLocked(BzrError):
+
+    _fmt = """%(not_locked)r is not write locked but needs to be."""
+
+    def __init__(self, not_locked):
+        self.not_locked = not_locked
 
 
 class BzrOptionError(BzrCommandError):
@@ -298,6 +327,18 @@ class FileExists(PathError):
 class DirectoryNotEmpty(PathError):
 
     _fmt = "Directory not empty: %(path)r%(extra)s"
+
+
+class ReadingCompleted(BzrError):
+    
+    _fmt = ("The MediumRequest '%(request)s' has already had finish_reading "
+            "called upon it - the request has been completed and no more "
+            "data may be read.")
+
+    internal_error = True
+
+    def __init__(self, request):
+        self.request = request
 
 
 class ResourceBusy(PathError):
@@ -937,6 +978,18 @@ class TransportError(BzrError):
         BzrError.__init__(self)
 
 
+class TooManyConcurrentRequests(BzrError):
+
+    _fmt = ("The medium '%(medium)s' has reached its concurrent request limit. "
+            "Be sure to finish_writing and finish_reading on the "
+            "current request that is open.")
+
+    internal_error = True
+
+    def __init__(self, medium):
+        self.medium = medium
+
+
 class SmartProtocolError(TransportError):
 
     _fmt = "Generic bzr smart protocol error: %(details)s"
@@ -954,6 +1007,25 @@ class TransportNotPossible(TransportError):
 class ConnectionError(TransportError):
 
     _fmt = "Connection error: %(msg)s %(orig_error)s"
+
+
+class SocketConnectionError(ConnectionError):
+
+    _fmt = "%(msg)s %(host)s%(port)s%(orig_error)s"
+
+    def __init__(self, host, port=None, msg=None, orig_error=None):
+        if msg is None:
+            msg = 'Failed to connect to'
+        if orig_error is None:
+            orig_error = ''
+        else:
+            orig_error = '; ' + str(orig_error)
+        ConnectionError.__init__(self, msg=msg, orig_error=orig_error)
+        self.host = host
+        if port is None:
+            self.port = ''
+        else:
+            self.port = ':%s' % port
 
 
 class ConnectionReset(TransportError):
@@ -1056,6 +1128,29 @@ class GraphCycleError(BzrError):
         self.graph = graph
 
 
+class WritingCompleted(BzrError):
+
+    _fmt = ("The MediumRequest '%(request)s' has already had finish_writing "
+            "called upon it - accept bytes may not be called anymore.")
+
+    internal_error = True
+
+    def __init__(self, request):
+        self.request = request
+
+
+class WritingNotComplete(BzrError):
+
+    _fmt = ("The MediumRequest '%(request)s' has not has finish_writing "
+            "called upon it - until the write phase is complete no "
+            "data may be read.")
+
+    internal_error = True
+
+    def __init__(self, request):
+        self.request = request
+
+
 class NotConflicted(BzrError):
 
     _fmt = "File %(filename)s is not conflicted."
@@ -1063,6 +1158,16 @@ class NotConflicted(BzrError):
     def __init__(self, filename):
         BzrError.__init__(self)
         self.filename = filename
+
+
+class MediumNotConnected(BzrError):
+
+    _fmt = """The medium '%(medium)s' is not connected."""
+
+    internal_error = True
+
+    def __init__(self, medium):
+        self.medium = medium
 
 
 class MustUseDecorated(Exception):
@@ -1111,10 +1216,22 @@ class MalformedTransform(BzrError):
     _fmt = "Tree transform is malformed %(conflicts)r"
 
 
+class NoFinalPath(BzrError):
+
+    _fmt = ("No final name for trans_id %(trans_id)r\n"
+            "file-id: %(file_id)r\n"
+            "root trans-id: %(root_trans_id)r\n")
+
+    def __init__(self, trans_id, transform):
+        self.trans_id = trans_id
+        self.file_id = transform.final_file_id(trans_id)
+        self.root_trans_id = transform.root
+
+
 class BzrBadParameter(BzrError):
 
     _fmt = "Bad parameter: %(param)r"
-    
+
     # This exception should never be thrown, but it is a base class for all
     # parameter-to-function errors.
 
@@ -1390,6 +1507,14 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
 
     def __init__(self, msg):
         BadInventoryFormat.__init__(self, msg=msg)
+
+
+class NoSmartMedium(BzrError):
+
+    _fmt = "The transport '%(transport)s' cannot tunnel the smart protocol."
+
+    def __init__(self, transport):
+        self.transport = transport
 
 
 class NoSmartServer(NotBranchError):

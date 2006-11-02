@@ -23,6 +23,7 @@ from bzrlib.osutils import is_inside_any
 from bzrlib.symbol_versioning import (deprecated_function,
         zero_eight,
         )
+from bzrlib.trace import warning
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
@@ -112,6 +113,8 @@ def show_tree_status(wt, show_unchanged=None,
     try:
         new_is_working_tree = True
         if revision is None:
+            if wt.last_revision() != wt.branch.last_revision():
+                warning("working tree is out of date, run 'bzr update'")
             new = wt
             old = new.basis_tree()
         elif len(revision) > 0:

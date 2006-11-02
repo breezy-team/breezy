@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,12 +17,18 @@
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
 
-import optparse
 import re
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import optparse
+
+from bzrlib import (
+    errors,
+    revisionspec,
+    )
+""")
 from bzrlib.trace import warning
-from bzrlib.revisionspec import RevisionSpec
-from bzrlib.errors import BzrCommandError
 
 
 def _parse_revision_str(revstr):
@@ -80,9 +86,10 @@ def _parse_revision_str(revstr):
     """
     # TODO: Maybe move this into revisionspec.py
     revs = []
+    # split on the first .. that is not followed by a / ?
     sep = re.compile("\\.\\.(?!/)")
     for x in sep.split(revstr):
-        revs.append(RevisionSpec.from_string(x or None))
+        revs.append(revisionspec.RevisionSpec.from_string(x or None))
     return revs
 
 
@@ -100,7 +107,7 @@ def get_merge_type(typestring):
         type_list = '\n'.join(lines)
         msg = "No known merge type %s. Supported types are:\n%s" %\
             (typestring, type_list)
-        raise BzrCommandError(msg)
+        raise errors.BzrCommandError(msg)
 
 class Option(object):
     """Description of a command line option"""
@@ -191,7 +198,7 @@ class OptionParser(optparse.OptionParser):
     DEFAULT_VALUE = object()
 
     def error(self, message):
-        raise BzrCommandError(message)
+        raise errors.BzrCommandError(message)
 
 
 def get_optparser(options):
@@ -257,6 +264,7 @@ _global_option('reprocess', help='Reprocess to reduce spurious conflicts')
 _global_option('kind', type=str)
 _global_option('dry-run',
                help="show what would be done, but don't actually do anything")
+_global_option('name-from-revision', help='The path name in the old tree.')
 
 
 def _global_short(short_name, long_name):

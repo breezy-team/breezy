@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,24 +28,33 @@
 # TODO: "--profile=cum", to change sort order.  Is there any value in leaving
 # the profile output behind so it can be interactively examined?
 
-import codecs
-import errno
 import os
-from warnings import warn
 import sys
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import codecs
+import errno
+from warnings import warn
+
 import bzrlib
-import bzrlib.errors as errors
-from bzrlib.errors import (BzrError,
-                           BzrCommandError,
-                           BzrCheckError,
-                           NotBranchError)
-from bzrlib import option
+from bzrlib import (
+    errors,
+    option,
+    osutils,
+    trace,
+    )
+""")
+
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_method,
+    zero_eight,
+    zero_eleven,
+    )
+# Compatibility
 from bzrlib.option import Option
-import bzrlib.osutils
-from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
-import bzrlib.trace
-from bzrlib.trace import mutter, note, log_error, warning, be_quiet
+
 
 plugin_cmds = {}
 
@@ -66,7 +75,7 @@ def register_command(cmd, decorate=False):
         k_unsquished = k
     if k_unsquished not in plugin_cmds:
         plugin_cmds[k_unsquished] = cmd
-        mutter('registered plugin command %s', k_unsquished)
+        trace.mutter('registered plugin command %s', k_unsquished)
         if decorate and k_unsquished in builtin_command_names():
             return _builtin_commands()[k_unsquished]
     elif decorate:
@@ -74,8 +83,8 @@ def register_command(cmd, decorate=False):
         plugin_cmds[k_unsquished] = cmd
         return result
     else:
-        log_error('Two plugins defined the same command: %r' % k)
-        log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
+        trace.log_error('Two plugins defined the same command: %r' % k)
+        trace.log_error('Not loading the one in %r' % sys.modules[cmd.__module__])
 
 
 def _squish_command_name(cmd):
@@ -150,7 +159,7 @@ def get_cmd_object(cmd_name, plugins_override=True):
     if cmd_obj:
         return cmd_obj
 
-    raise BzrCommandError('unknown command "%s"' % cmd_name)
+    raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
 
 
 class Command(object):
@@ -222,10 +231,10 @@ class Command(object):
 
         Maps from long option name to option object."""
         r = dict()
-        r['help'] = Option.OPTIONS['help']
+        r['help'] = option.Option.OPTIONS['help']
         for o in self.takes_options:
             if isinstance(o, basestring):
-                o = Option.OPTIONS[o]
+                o = option.Option.OPTIONS[o]
             r[o.name] = o
         return r
 
@@ -239,7 +248,7 @@ class Command(object):
             self.outf = sys.stdout
             return
 
-        output_encoding = bzrlib.osutils.get_terminal_encoding()
+        output_encoding = osutils.get_terminal_encoding()
 
         # use 'replace' so that we don't abort if trying to write out
         # in e.g. the default C locale.
@@ -316,6 +325,9 @@ class Command(object):
             return None
 
 
+# Technically, this function hasn't been use in a *really* long time
+# but we are only deprecating it now.
+@deprecated_function(zero_eleven)
 def parse_spec(spec):
     """
     >>> parse_spec(None)
@@ -385,29 +397,29 @@ def _match_argform(cmd, takes_args, args):
                 argdict[argname + '_list'] = None
         elif ap[-1] == '+':
             if not args:
-                raise BzrCommandError("command %r needs one or more %s"
-                        % (cmd, argname.upper()))
+                raise errors.BzrCommandError("command %r needs one or more %s"
+                                             % (cmd, argname.upper()))
             else:
                 argdict[argname + '_list'] = args[:]
                 args = []
         elif ap[-1] == '$': # all but one
             if len(args) < 2:
-                raise BzrCommandError("command %r needs one or more %s"
-                        % (cmd, argname.upper()))
+                raise errors.BzrCommandError("command %r needs one or more %s"
+                                             % (cmd, argname.upper()))
             argdict[argname + '_list'] = args[:-1]
             args[:-1] = []
         else:
             # just a plain arg
             argname = ap
             if not args:
-                raise BzrCommandError("command %r requires argument %s"
-                        % (cmd, argname.upper()))
+                raise errors.BzrCommandError("command %r requires argument %s"
+                               % (cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
             
     if args:
-        raise BzrCommandError("extra argument to command %s: %s"
-                              % (cmd, args[0]))
+        raise errors.BzrCommandError("extra argument to command %s: %s"
+                                     % (cmd, args[0]))
 
     return argdict
 
@@ -520,7 +532,7 @@ def run_bzr(argv):
         elif a == '--builtin':
             opt_builtin = True
         elif a in ('--quiet', '-q'):
-            be_quiet()
+            trace.be_quiet()
         else:
             argv_copy.append(a)
         i += 1
@@ -574,7 +586,7 @@ def run_bzr(argv):
         return ret or 0
     finally:
         # reset, in case we may do other commands later within the same process
-        be_quiet(False)
+        trace.be_quiet(False)
 
 def display_command(func):
     """Decorator that suppresses pipe/interrupt errors."""
@@ -602,7 +614,7 @@ def main(argv):
     bzrlib.ui.ui_factory = TextUIFactory()
     argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
     ret = run_bzr_catch_errors(argv)
-    mutter("return code %d", ret)
+    trace.mutter("return code %d", ret)
     return ret
 
 
@@ -614,7 +626,7 @@ def run_bzr_catch_errors(argv):
     except (KeyboardInterrupt, Exception), e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
-        bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)
+        trace.report_exception(sys.exc_info(), sys.stderr)
         if os.environ.get('BZR_PDB'):
             print '**** entering debugger'
             import pdb

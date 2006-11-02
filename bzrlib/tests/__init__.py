@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -70,10 +70,10 @@ from bzrlib import symbol_versioning
 import bzrlib.trace
 from bzrlib.transport import get_transport
 import bzrlib.transport
-from bzrlib.transport.local import LocalRelpathServer
+from bzrlib.transport.local import LocalURLServer
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.readonly import ReadonlyServer
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, note
 from bzrlib.tests import TestUtil
 from bzrlib.tests.TestUtil import (
                           TestSuite,
@@ -83,13 +83,11 @@ from bzrlib.tests.treeshape import build_tree_contents
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
-default_transport = LocalRelpathServer
+default_transport = LocalURLServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
-                      bzrlib.branch,
                       bzrlib.bundle.serializer,
-                      bzrlib.commands,
                       bzrlib.errors,
                       bzrlib.export,
                       bzrlib.inventory,
@@ -97,9 +95,7 @@ MODULES_TO_DOCTEST = [
                       bzrlib.lockdir,
                       bzrlib.merge3,
                       bzrlib.option,
-                      bzrlib.osutils,
                       bzrlib.store,
-                      bzrlib.transport,
                       ]
 
 
@@ -135,22 +131,26 @@ def packages_to_test():
             ]
 
 
-class _MyResult(unittest._TextTestResult):
-    """Custom TestResult.
+class ExtendedTestResult(unittest._TextTestResult):
+    """Accepts, reports and accumulates the results of running tests.
 
-    Shows output in a different format, including displaying runtime for tests.
+    Compared to this unittest version this class adds support for profiling,
+    benchmarking, stopping as soon as a test fails,  and skipping tests.
+    There are further-specialized subclasses for different types of display.
     """
+
     stop_early = False
     
-    def __init__(self, stream, descriptions, verbosity, pb=None,
-                 bench_history=None):
+    def __init__(self, stream, descriptions, verbosity,
+                 bench_history=None,
+                 num_tests=None,
+                 ):
         """Construct new TestResult.
 
         :param bench_history: Optionally, a writable file object to accumulate
             benchmark results.
         """
         unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
-        self.pb = pb
         if bench_history is not None:
             from bzrlib.version import _get_bzr_source_tree
             src_tree = _get_bzr_source_tree()
@@ -166,6 +166,13 @@ class _MyResult(unittest._TextTestResult):
                 revision_id = ''
             bench_history.write("--date %s %s\n" % (time.time(), revision_id))
         self._bench_history = bench_history
+        self.ui = bzrlib.ui.ui_factory
+        self.num_tests = num_tests
+        self.error_count = 0
+        self.failure_count = 0
+        self.skip_count = 0
+        self.count = 0
+        self._overall_start_time = time.time()
     
     def extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -187,52 +194,14 @@ class _MyResult(unittest._TextTestResult):
         """Format seconds as milliseconds with leading spaces."""
         return "%5dms" % (1000 * seconds)
 
-    def _ellipsise_unimportant_words(self, a_string, final_width,
-                                   keep_start=False):
-        """Add ellipses (sp?) for overly long strings.
-        
-        :param keep_start: If true preserve the start of a_string rather
-                           than the end of it.
-        """
-        if keep_start:
-            if len(a_string) > final_width:
-                result = a_string[:final_width-3] + '...'
-            else:
-                result = a_string
-        else:
-            if len(a_string) > final_width:
-                result = '...' + a_string[3-final_width:]
-            else:
-                result = a_string
-        return result.ljust(final_width)
+    def _shortened_test_description(self, test):
+        what = test.id()
+        what = re.sub(r'^bzrlib\.(tests|benchmark)\.', '', what)
+        return what
 
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
-        # In a short description, the important words are in
-        # the beginning, but in an id, the important words are
-        # at the end
-        SHOW_DESCRIPTIONS = False
-
-        if not self.showAll and self.dots and self.pb is not None:
-            final_width = 13
-        else:
-            final_width = osutils.terminal_width()
-            final_width = final_width - 15 - 8
-        what = None
-        if SHOW_DESCRIPTIONS:
-            what = test.shortDescription()
-            if what:
-                what = self._ellipsise_unimportant_words(what, final_width, keep_start=True)
-        if what is None:
-            what = test.id()
-            if what.startswith('bzrlib.tests.'):
-                what = what[13:]
-            what = self._ellipsise_unimportant_words(what, final_width)
-        if self.showAll:
-            self.stream.write(what)
-        elif self.dots and self.pb is not None:
-            self.pb.update(what, self.testsRun - 1, None)
-        self.stream.flush()
+        self.report_test_start(test)
         self._recordTestStartTime()
 
     def _recordTestStartTime(self):
@@ -249,16 +218,7 @@ class _MyResult(unittest._TextTestResult):
         if setKeepLogfile is not None:
             setKeepLogfile()
         self.extractBenchmarkTime(test)
-        if self.showAll:
-            self.stream.writeln("ERROR %s" % self._testTimeString())
-        elif self.dots and self.pb is None:
-            self.stream.write('E')
-        elif self.dots:
-            self.pb.update(self._ellipsise_unimportant_words('ERROR', 13), self.testsRun, None)
-            self.pb.note(self._ellipsise_unimportant_words(
-                            test.id() + ': ERROR',
-                            osutils.terminal_width()))
-        self.stream.flush()
+        self.report_error(test, err)
         if self.stop_early:
             self.stop()
 
@@ -270,16 +230,7 @@ class _MyResult(unittest._TextTestResult):
         if setKeepLogfile is not None:
             setKeepLogfile()
         self.extractBenchmarkTime(test)
-        if self.showAll:
-            self.stream.writeln(" FAIL %s" % self._testTimeString())
-        elif self.dots and self.pb is None:
-            self.stream.write('F')
-        elif self.dots:
-            self.pb.update(self._ellipsise_unimportant_words('FAIL', 13), self.testsRun, None)
-            self.pb.note(self._ellipsise_unimportant_words(
-                            test.id() + ': FAIL',
-                            osutils.terminal_width()))
-        self.stream.flush()
+        self.report_failure(test, err)
         if self.stop_early:
             self.stop()
 
@@ -290,28 +241,12 @@ class _MyResult(unittest._TextTestResult):
                 self._bench_history.write("%s %s\n" % (
                     self._formatTime(self._benchmarkTime),
                     test.id()))
-        if self.showAll:
-            self.stream.writeln('   OK %s' % self._testTimeString())
-            for bench_called, stats in getattr(test, '_benchcalls', []):
-                self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
-                stats.pprint(file=self.stream)
-        elif self.dots and self.pb is None:
-            self.stream.write('~')
-        elif self.dots:
-            self.pb.update(self._ellipsise_unimportant_words('OK', 13), self.testsRun, None)
-        self.stream.flush()
+        self.report_success(test)
         unittest.TestResult.addSuccess(self, test)
 
     def addSkipped(self, test, skip_excinfo):
         self.extractBenchmarkTime(test)
-        if self.showAll:
-            print >>self.stream, ' SKIP %s' % self._testTimeString()
-            print >>self.stream, '     %s' % skip_excinfo[1]
-        elif self.dots and self.pb is None:
-            self.stream.write('S')
-        elif self.dots:
-            self.pb.update(self._ellipsise_unimportant_words('SKIP', 13), self.testsRun, None)
-        self.stream.flush()
+        self.report_skip(test, skip_excinfo)
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
         try:
@@ -337,6 +272,130 @@ class _MyResult(unittest._TextTestResult):
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
+    def finished(self):
+        pass
+
+    def report_cleaning_up(self):
+        pass
+
+    def report_success(self, test):
+        pass
+
+
+class TextTestResult(ExtendedTestResult):
+    """Displays progress and results of tests in text form"""
+
+    def __init__(self, *args, **kw):
+        ExtendedTestResult.__init__(self, *args, **kw)
+        self.pb = self.ui.nested_progress_bar()
+        self.pb.show_pct = False
+        self.pb.show_spinner = False
+        self.pb.show_eta = False, 
+        self.pb.show_count = False
+        self.pb.show_bar = False
+
+    def report_starting(self):
+        self.pb.update('[test 0/%d] starting...' % (self.num_tests))
+
+    def _progress_prefix_text(self):
+        a = '[%d' % self.count
+        if self.num_tests is not None:
+            a +='/%d' % self.num_tests
+        a += ' in %ds' % (time.time() - self._overall_start_time)
+        if self.error_count:
+            a += ', %d errors' % self.error_count
+        if self.failure_count:
+            a += ', %d failed' % self.failure_count
+        if self.skip_count:
+            a += ', %d skipped' % self.skip_count
+        a += ']'
+        return a
+
+    def report_test_start(self, test):
+        self.count += 1
+        self.pb.update(
+                self._progress_prefix_text()
+                + ' ' 
+                + self._shortened_test_description(test))
+
+    def report_error(self, test, err):
+        self.error_count += 1
+        self.pb.note('ERROR: %s\n    %s\n' % (
+            self._shortened_test_description(test),
+            err[1],
+            ))
+
+    def report_failure(self, test, err):
+        self.failure_count += 1
+        self.pb.note('FAIL: %s\n    %s\n' % (
+            self._shortened_test_description(test),
+            err[1],
+            ))
+
+    def report_skip(self, test, skip_excinfo):
+        self.skip_count += 1
+        if False:
+            # at the moment these are mostly not things we can fix
+            # and so they just produce stipple; use the verbose reporter
+            # to see them.
+            if False:
+                # show test and reason for skip
+                self.pb.note('SKIP: %s\n    %s\n' % (
+                    self._shortened_test_description(test),
+                    skip_excinfo[1]))
+            else:
+                # since the class name was left behind in the still-visible
+                # progress bar...
+                self.pb.note('SKIP: %s' % (skip_excinfo[1]))
+
+    def report_cleaning_up(self):
+        self.pb.update('cleaning up...')
+
+    def finished(self):
+        self.pb.finished()
+
+
+class VerboseTestResult(ExtendedTestResult):
+    """Produce long output, with one line per test run plus times"""
+
+    def _ellipsize_to_right(self, a_string, final_width):
+        """Truncate and pad a string, keeping the right hand side"""
+        if len(a_string) > final_width:
+            result = '...' + a_string[3-final_width:]
+        else:
+            result = a_string
+        return result.ljust(final_width)
+
+    def report_starting(self):
+        self.stream.write('running %d tests...\n' % self.num_tests)
+
+    def report_test_start(self, test):
+        self.count += 1
+        name = self._shortened_test_description(test)
+        self.stream.write(self._ellipsize_to_right(name, 60))
+        self.stream.flush()
+
+    def report_error(self, test, err):
+        self.error_count += 1
+        self.stream.writeln('ERROR %s\n    %s' 
+                % (self._testTimeString(), err[1]))
+
+    def report_failure(self, test, err):
+        self.failure_count += 1
+        self.stream.writeln('FAIL %s\n    %s'
+                % (self._testTimeString(), err[1]))
+
+    def report_success(self, test):
+        self.stream.writeln('   OK %s' % self._testTimeString())
+        for bench_called, stats in getattr(test, '_benchcalls', []):
+            self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
+            stats.pprint(file=self.stream)
+        self.stream.flush()
+
+    def report_skip(self, test, skip_excinfo):
+        print >>self.stream, ' SKIP %s' % self._testTimeString()
+        print >>self.stream, '     %s' % skip_excinfo[1]
+
 
 class TextTestRunner(object):
     stop_on_failure = False
@@ -346,30 +405,28 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  keep_output=False,
-                 pb=None,
                  bench_history=None):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
         self.keep_output = keep_output
-        self.pb = pb
         self._bench_history = bench_history
-
-    def _makeResult(self):
-        result = _MyResult(self.stream,
-                           self.descriptions,
-                           self.verbosity,
-                           pb=self.pb,
-                           bench_history=self._bench_history)
-        result.stop_early = self.stop_on_failure
-        return result
 
     def run(self, test):
         "Run the given test case or test suite."
-        result = self._makeResult()
         startTime = time.time()
-        if self.pb is not None:
-            self.pb.update('Running tests', 0, test.countTestCases())
+        if self.verbosity == 1:
+            result_class = TextTestResult
+        elif self.verbosity >= 2:
+            result_class = VerboseTestResult
+        result = result_class(self.stream,
+                              self.descriptions,
+                              self.verbosity,
+                              bench_history=self._bench_history,
+                              num_tests=test.countTestCases(),
+                              )
+        result.stop_early = self.stop_on_failure
+        result.report_starting()
         test.run(result)
         stopTime = time.time()
         timeTaken = stopTime - startTime
@@ -390,8 +447,7 @@ class TextTestRunner(object):
             self.stream.writeln(")")
         else:
             self.stream.writeln("OK")
-        if self.pb is not None:
-            self.pb.update('Cleaning up', 0, 1)
+        result.report_cleaning_up()
         # This is still a little bogus, 
         # but only a little. Folk not using our testrunner will
         # have to delete their temp directories themselves.
@@ -412,16 +468,9 @@ class TextTestRunner(object):
                         sys.getfilesystemencoding())
                 osutils.rmtree(test_root)
         else:
-            if self.pb is not None:
-                self.pb.note("Failed tests working directories are in '%s'\n",
-                             test_root)
-            else:
-                self.stream.writeln(
-                    "Failed tests working directories are in '%s'\n" %
-                    test_root)
+            note("Failed tests working directories are in '%s'\n", test_root)
         TestCaseWithMemoryTransport.TEST_ROOT = None
-        if self.pb is not None:
-            self.pb.clear()
+        result.finished()
         return result
 
 
@@ -507,9 +556,19 @@ class TestCase(unittest.TestCase):
         unittest.TestCase.setUp(self)
         self._cleanEnvironment()
         bzrlib.trace.disable_default_logging()
+        self._silenceUI()
         self._startLogFile()
         self._benchcalls = []
         self._benchtime = None
+
+    def _silenceUI(self):
+        """Turn off UI for duration of test"""
+        # by default the UI is off; tests can turn it on if they want it.
+        saved = bzrlib.ui.ui_factory
+        def _restore():
+            bzrlib.ui.ui_factory = saved
+        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
+        self.addCleanup(_restore)
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -607,7 +666,7 @@ class TestCase(unittest.TestCase):
             a_callable(*args, **kwargs).
         """
         local_warnings = []
-        def capture_warnings(msg, cls, stacklevel=None):
+        def capture_warnings(msg, cls=None, stacklevel=None):
             # we've hooked into a deprecation specific callpath,
             # only deprecations should getting sent via it.
             self.assertEqual(cls, DeprecationWarning)
@@ -931,11 +990,17 @@ class TestCase(unittest.TestCase):
             The values must be strings. The change will only occur in the
             child, so you don't need to fix the environment after running.
         :param universal_newlines: Convert CRLF => LF
+        :param allow_plugins: By default the subprocess is run with
+            --no-plugins to ensure test reproducibility. Also, it is possible
+            for system-wide plugins to create unexpected output on stderr,
+            which can cause unnecessary test failures.
         """
         env_changes = kwargs.get('env_changes', {})
         working_dir = kwargs.get('working_dir', None)
+        allow_plugins = kwargs.get('allow_plugins', False)
         process = self.start_bzr_subprocess(args, env_changes=env_changes,
-                                            working_dir=working_dir)
+                                            working_dir=working_dir,
+                                            allow_plugins=allow_plugins)
         # We distinguish between retcode=None and retcode not passed.
         supplied_retcode = kwargs.get('retcode', 0)
         return self.finish_bzr_subprocess(process, retcode=supplied_retcode,
@@ -944,7 +1009,8 @@ class TestCase(unittest.TestCase):
 
     def start_bzr_subprocess(self, process_args, env_changes=None,
                              skip_if_plan_to_signal=False,
-                             working_dir=None):
+                             working_dir=None,
+                             allow_plugins=False):
         """Start bzr in a subprocess for testing.
 
         This starts a new Python interpreter and runs bzr in there.
@@ -961,6 +1027,7 @@ class TestCase(unittest.TestCase):
             child, so you don't need to fix the environment after running.
         :param skip_if_plan_to_signal: raise TestSkipped when true and os.kill
             is not available.
+        :param allow_plugins: If False (default) pass --no-plugins to bzr.
 
         :returns: Popen object for the started process.
         """
@@ -992,14 +1059,25 @@ class TestCase(unittest.TestCase):
             # so we will avoid using it on all platforms, just to
             # make sure the code path is used, and we don't break on win32
             cleanup_environment()
-            process = Popen([sys.executable, bzr_path] + list(process_args),
-                             stdin=PIPE, stdout=PIPE, stderr=PIPE)
+            command = [sys.executable, bzr_path]
+            if not allow_plugins:
+                command.append('--no-plugins')
+            command.extend(process_args)
+            process = self._popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         finally:
             restore_environment()
             if cwd is not None:
                 os.chdir(cwd)
 
         return process
+
+    def _popen(self, *args, **kwargs):
+        """Place a call to Popen.
+
+        Allows tests to override this method to intercept the calls made to
+        Popen for introspection.
+        """
+        return Popen(*args, **kwargs)
 
     def get_bzr_path(self):
         """Return the path of the 'bzr' executable for this test suite."""
@@ -1293,9 +1371,9 @@ class TestCaseWithMemoryTransport(TestCase):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
-    def make_branch_and_memory_tree(self, relpath):
+    def make_branch_and_memory_tree(self, relpath, format=None):
         """Create a branch on the default transport and a MemoryTree for it."""
-        b = self.make_branch(relpath)
+        b = self.make_branch(relpath, format=format)
         return memorytree.MemoryTree.create_on_branch(b)
 
     def overrideEnvironmentForTesting(self):
@@ -1496,7 +1574,6 @@ class TestCaseWithTransport(TestCaseInTempDir):
     def setUp(self):
         super(TestCaseWithTransport, self).setUp()
         self.__server = None
-        self.transport_server = default_transport
 
 
 class ChrootedTestCase(TestCaseWithTransport):
@@ -1532,15 +1609,12 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
         verbosity = 2
-        pb = None
     else:
         verbosity = 1
-        pb = progress.ProgressBar()
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity,
                             keep_output=keep_output,
-                            pb=pb,
                             bench_history=bench_history)
     runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
@@ -1618,6 +1692,7 @@ def test_suite():
                    'bzrlib.tests.test_inv',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lazy_import',
+                   'bzrlib.tests.test_lazy_regex',
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
@@ -1636,6 +1711,7 @@ def test_suite():
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
+                   'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',
@@ -1689,7 +1765,11 @@ def test_suite():
     for m in MODULES_TO_TEST:
         suite.addTest(loader.loadTestsFromModule(m))
     for m in MODULES_TO_DOCTEST:
-        suite.addTest(doctest.DocTestSuite(m))
+        try:
+            suite.addTest(doctest.DocTestSuite(m))
+        except ValueError, e:
+            print '**failed to get doctest for: %s\n%s' %(m,e)
+            raise
     for name, plugin in bzrlib.plugin.all_plugins().items():
         if getattr(plugin, 'test_suite', None) is not None:
             suite.addTest(plugin.test_suite())

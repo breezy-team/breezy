@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,7 +50,6 @@ if hasattr(os, "unsetenv"):
     os.unsetenv(REINVOKE)
 
 
-
 profiling = False
 if '--profile-imports' in sys.argv:
     sys.argv.remove('--profile-imports')
@@ -71,10 +70,13 @@ except ImportError, e:
 import bzrlib.inspect_for_copy
 bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
 
+import bzrlib.lazy_regex
+bzrlib.lazy_regex.install_lazy_compile()
+
 import bzrlib.commands
 import bzrlib.trace
 
-if bzrlib.version_info[:3] != (0, 12, 0):
+if bzrlib.version_info[:3] != (0, 13, 0):
     sys.stderr.write("bzr: WARNING: bzrlib version doesn't match the bzr program.\n"
             "This may indicate an installation problem.\n"
             "bzrlib from %s is version %r\n"

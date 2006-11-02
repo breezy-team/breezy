@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,8 +23,11 @@ import stat
 import sys
 
 import bzrlib
+from bzrlib import (
+    errors,
+    osutils,
+    )
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
-import bzrlib.osutils as osutils
 from bzrlib.tests import (
         StringIOWrapper,
         TestCase, 
@@ -78,6 +81,14 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual(type(result), str)
         self.assertContainsRe(result, r'^[a-z0-9]{100}$')
 
+    def test_is_inside(self):
+        is_inside = osutils.is_inside
+        self.assertTrue(is_inside('src', 'src/foo.c'))
+        self.assertFalse(is_inside('src', 'srccontrol'))
+        self.assertTrue(is_inside('src', 'src/a/a/a/foo.c'))
+        self.assertTrue(is_inside('foo.c', 'foo.c'))
+        self.assertFalse(is_inside('foo.c', ''))
+        self.assertTrue(is_inside('', 'foo.c'))
 
     def test_rmtree(self):
         # Check to remove tree with read-only files/dirs
@@ -185,6 +196,34 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertFormatedDelta('84 hours, 10 minutes in the future', -303002)
         self.assertFormatedDelta('1 second in the future', -1)
         self.assertFormatedDelta('2 seconds in the future', -2)
+
+    def test_dereference_path(self):
+        if not osutils.has_symlinks():
+            raise TestSkipped('Symlinks are not supported on this platform')
+        cwd = osutils.realpath('.')
+        os.mkdir('bar')
+        bar_path = osutils.pathjoin(cwd, 'bar')
+        # Using './' to avoid bug #1213894 (first path component not
+        # dereferenced) in Python 2.4.1 and earlier
+        self.assertEqual(bar_path, osutils.realpath('./bar'))
+        os.symlink('bar', 'foo')
+        self.assertEqual(bar_path, osutils.realpath('./foo'))
+        
+        # Does not dereference terminal symlinks
+        foo_path = osutils.pathjoin(cwd, 'foo')
+        self.assertEqual(foo_path, osutils.dereference_path('./foo'))
+
+        # Dereferences parent symlinks
+        os.mkdir('bar/baz')
+        baz_path = osutils.pathjoin(bar_path, 'baz')
+        self.assertEqual(baz_path, osutils.dereference_path('./foo/baz'))
+
+        # Dereferences parent symlinks that are the first path element
+        self.assertEqual(baz_path, osutils.dereference_path('foo/baz'))
+
+        # Dereferences parent symlinks in absolute paths
+        foo_baz_path = osutils.pathjoin(foo_path, 'baz')
+        self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
 
 
 class TestSafeUnicode(TestCase):
@@ -311,6 +350,18 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         except (IOError, OSError), e:
             self.assertEqual(errno.ENOENT, e.errno)
 
+    def test_splitpath(self):
+        def check(expected, path):
+            self.assertEqual(expected, osutils.splitpath(path))
+
+        check(['a'], 'a')
+        check(['a', 'b'], 'a/b')
+        check(['a', 'b'], 'a/./b')
+        check(['a', '.b'], 'a/.b')
+        check(['a', '.b'], 'a\\.b')
+
+        self.assertRaises(errors.BzrError, osutils.splitpath, 'a/../b')
+
 
 class TestMacFuncsDirs(TestCaseInTempDir):
     """Test mac special functions that require directories."""
@@ -335,6 +386,7 @@ class TestMacFuncsDirs(TestCaseInTempDir):
 
         os.chdir(u'Ba\u030agfors')
         self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
+
 
 class TestSplitLines(TestCase):
 
@@ -480,14 +532,14 @@ class TestCopyTree(TestCaseInTempDir):
     def test_copy_basic_tree(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         osutils.copy_tree('source', 'target')
-        self.assertEqual(['a', 'b'], os.listdir('target'))
+        self.assertEqual(['a', 'b'], sorted(os.listdir('target')))
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_target_exists(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c',
                          'target/'])
         osutils.copy_tree('source', 'target')
-        self.assertEqual(['a', 'b'], os.listdir('target'))
+        self.assertEqual(['a', 'b'], sorted(os.listdir('target')))
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
