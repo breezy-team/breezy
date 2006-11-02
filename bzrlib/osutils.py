@@ -332,10 +332,10 @@ if sys.platform == 'win32':
         """Error handler for shutil.rmtree function [for win32]
         Helps to remove files and dirs marked as read-only.
         """
-        type_, value = excinfo[:2]
+        exception = excinfo[1]
         if function in (os.remove, os.rmdir) \
-            and type_ == OSError \
-            and value.errno == errno.EACCES:
+            and isinstance(exception, OSError) \
+            and exception.errno == errno.EACCES:
             make_writable(path)
             function(path)
         else:
