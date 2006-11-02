@@ -196,8 +196,7 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def _shortened_test_description(self, test):
         what = test.id()
-        if what.startswith('bzrlib.tests.'):
-            what = what[13:]
+        what = re.sub(r'^bzrlib\.(tests|benchmark)\.', '', what)
         return what
 
     def startTest(self, test):
