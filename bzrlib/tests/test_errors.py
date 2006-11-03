@@ -91,7 +91,7 @@ class TestErrors(TestCaseWithTransport):
     def test_bzrnewerror_is_deprecated(self):
         class DeprecatedError(errors.BzrNewError):
             pass
-        self.callDeprecated(['BzrNewError was deprecated in bzr 0.12; '
+        self.callDeprecated(['BzrNewError was deprecated in bzr 0.13; '
              'please convert DeprecatedError to use BzrError instead'],
             DeprecatedError)
 
