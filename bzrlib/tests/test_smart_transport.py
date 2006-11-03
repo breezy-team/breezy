@@ -41,6 +41,7 @@ from bzrlib.transport.http import (
         SmartClientHTTPMediumRequest,
         SmartRequestHandler,
         )
+from bzrlib.transport.smart import medium
 
 
 class StringIOSSHVendor(object):
@@ -85,8 +86,8 @@ class SmartClientMediumTests(tests.TestCase):
         sock.bind(('127.0.0.1', 0))
         sock.listen(1)
         port = sock.getsockname()[1]
-        medium = smart.SmartTCPClientMedium('127.0.0.1', port)
-        return sock, medium
+        client_medium = medium.SmartTCPClientMedium('127.0.0.1', port)
+        return sock, client_medium
 
     def receive_bytes_on_server(self, sock, bytes):
         """Accept a connection on sock and read 3 bytes.
@@ -108,24 +109,24 @@ class SmartClientMediumTests(tests.TestCase):
         # this just ensures that the constructor stays parameter-free which
         # is important for reuse : some subclasses will dynamically connect,
         # others are always on, etc.
-        medium = smart.SmartClientStreamMedium()
+        client_medium = medium.SmartClientStreamMedium()
 
     def test_construct_smart_client_medium(self):
         # the base client medium takes no parameters
-        medium = smart.SmartClientMedium()
+        client_medium = medium.SmartClientMedium()
     
     def test_construct_smart_simple_pipes_client_medium(self):
         # the SimplePipes client medium takes two pipes:
         # readable pipe, writeable pipe.
         # Constructing one should just save these and do nothing.
         # We test this by passing in None.
-        medium = smart.SmartSimplePipesClientMedium(None, None)
+        client_medium = medium.SmartSimplePipesClientMedium(None, None)
         
     def test_simple_pipes_client_request_type(self):
         # SimplePipesClient should use SmartClientStreamMediumRequest's.
-        medium = smart.SmartSimplePipesClientMedium(None, None)
-        request = medium.get_request()
-        self.assertIsInstance(request, smart.SmartClientStreamMediumRequest)
+        client_medium = medium.SmartSimplePipesClientMedium(None, None)
+        request = client_medium.get_request()
+        self.assertIsInstance(request, medium.SmartClientStreamMediumRequest)
 
     def test_simple_pipes_client_get_concurrent_requests(self):
         # the simple_pipes client does not support pipelined requests:
@@ -135,30 +136,30 @@ class SmartClientMediumTests(tests.TestCase):
         # classes - as the sibling classes share this logic, they do not have
         # explicit tests for this.
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(None, output)
-        request = medium.get_request()
+        client_medium = medium.SmartSimplePipesClientMedium(None, output)
+        request = client_medium.get_request()
         request.finished_writing()
         request.finished_reading()
-        request2 = medium.get_request()
+        request2 = client_medium.get_request()
         request2.finished_writing()
         request2.finished_reading()
 
     def test_simple_pipes_client__accept_bytes_writes_to_writable(self):
         # accept_bytes writes to the writeable pipe.
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(None, output)
-        medium._accept_bytes('abc')
+        client_medium = medium.SmartSimplePipesClientMedium(None, output)
+        client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
     
     def test_simple_pipes_client_disconnect_does_nothing(self):
         # calling disconnect does nothing.
         input = StringIO()
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(input, output)
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
         # send some bytes to ensure disconnecting after activity still does not
         # close.
-        medium._accept_bytes('abc')
-        medium.disconnect()
+        client_medium._accept_bytes('abc')
+        client_medium.disconnect()
         self.assertFalse(input.closed)
         self.assertFalse(output.closed)
 
@@ -167,10 +168,10 @@ class SmartClientMediumTests(tests.TestCase):
         # accept_bytes writes to.
         input = StringIO()
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(input, output)
-        medium._accept_bytes('abc')
-        medium.disconnect()
-        medium._accept_bytes('abc')
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        client_medium._accept_bytes('abc')
+        client_medium.disconnect()
+        client_medium._accept_bytes('abc')
         self.assertFalse(input.closed)
         self.assertFalse(output.closed)
         self.assertEqual('abcabc', output.getvalue())
@@ -178,17 +179,17 @@ class SmartClientMediumTests(tests.TestCase):
     def test_simple_pipes_client_ignores_disconnect_when_not_connected(self):
         # Doing a disconnect on a new (and thus unconnected) SimplePipes medium
         # does nothing.
-        medium = smart.SmartSimplePipesClientMedium(None, None)
-        medium.disconnect()
+        client_medium = medium.SmartSimplePipesClientMedium(None, None)
+        client_medium.disconnect()
 
     def test_simple_pipes_client_can_always_read(self):
         # SmartSimplePipesClientMedium is never disconnected, so read_bytes
         # always tries to read from the underlying pipe.
         input = StringIO('abcdef')
-        medium = smart.SmartSimplePipesClientMedium(input, None)
-        self.assertEqual('abc', medium.read_bytes(3))
-        medium.disconnect()
-        self.assertEqual('def', medium.read_bytes(3))
+        client_medium = medium.SmartSimplePipesClientMedium(input, None)
+        self.assertEqual('abc', client_medium.read_bytes(3))
+        client_medium.disconnect()
+        self.assertEqual('def', client_medium.read_bytes(3))
         
     def test_simple_pipes_client_supports__flush(self):
         # invoking _flush on a SimplePipesClient should flush the output 
@@ -200,12 +201,12 @@ class SmartClientMediumTests(tests.TestCase):
         flush_calls = []
         def logging_flush(): flush_calls.append('flush')
         output.flush = logging_flush
-        medium = smart.SmartSimplePipesClientMedium(input, output)
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
         # this call is here to ensure we only flush once, not on every
         # _accept_bytes call.
-        medium._accept_bytes('abc')
-        medium._flush()
-        medium.disconnect()
+        client_medium._accept_bytes('abc')
+        client_medium._flush()
+        client_medium.disconnect()
         self.assertEqual(['flush'], flush_calls)
 
     def test_construct_smart_ssh_client_medium(self):
@@ -219,7 +220,7 @@ class SmartClientMediumTests(tests.TestCase):
         unopened_port = sock.getsockname()[1]
         # having vendor be invalid means that if it tries to connect via the
         # vendor it will blow up.
-        medium = smart.SmartSSHClientMedium('127.0.0.1', unopened_port,
+        client_medium = medium.SmartSSHClientMedium('127.0.0.1', unopened_port,
             username=None, password=None, vendor="not a vendor")
         sock.close()
 
@@ -228,9 +229,9 @@ class SmartClientMediumTests(tests.TestCase):
         # it bytes.
         output = StringIO()
         vendor = StringIOSSHVendor(StringIO(), output)
-        medium = smart.SmartSSHClientMedium('a hostname', 'a port', 'a username',
-            'a password', vendor)
-        medium._accept_bytes('abc')
+        client_medium = medium.SmartSSHClientMedium(
+            'a hostname', 'a port', 'a username', 'a password', vendor)
+        client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
         self.assertEqual([('connect_ssh', 'a username', 'a password',
             'a hostname', 'a port',
@@ -247,9 +248,9 @@ class SmartClientMediumTests(tests.TestCase):
             osutils.set_or_unset_env('BZR_REMOTE_PATH', orig_bzr_remote_path)
         self.addCleanup(cleanup_environ)
         os.environ['BZR_REMOTE_PATH'] = 'fugly'
-        medium = smart.SmartSSHClientMedium('a hostname', 'a port', 'a username',
+        client_medium = medium.SmartSSHClientMedium('a hostname', 'a port', 'a username',
             'a password', vendor)
-        medium._accept_bytes('abc')
+        client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
         self.assertEqual([('connect_ssh', 'a username', 'a password',
             'a hostname', 'a port',
@@ -262,9 +263,9 @@ class SmartClientMediumTests(tests.TestCase):
         input = StringIO()
         output = StringIO()
         vendor = StringIOSSHVendor(input, output)
-        medium = smart.SmartSSHClientMedium('a hostname', vendor=vendor)
-        medium._accept_bytes('abc')
-        medium.disconnect()
+        client_medium = medium.SmartSSHClientMedium('a hostname', vendor=vendor)
+        client_medium._accept_bytes('abc')
+        client_medium.disconnect()
         self.assertTrue(input.closed)
         self.assertTrue(output.closed)
         self.assertEqual([
@@ -282,17 +283,17 @@ class SmartClientMediumTests(tests.TestCase):
         input = StringIO()
         output = StringIO()
         vendor = StringIOSSHVendor(input, output)
-        medium = smart.SmartSSHClientMedium('a hostname', vendor=vendor)
-        medium._accept_bytes('abc')
-        medium.disconnect()
+        client_medium = medium.SmartSSHClientMedium('a hostname', vendor=vendor)
+        client_medium._accept_bytes('abc')
+        client_medium.disconnect()
         # the disconnect has closed output, so we need a new output for the
         # new connection to write to.
         input2 = StringIO()
         output2 = StringIO()
         vendor.read_from = input2
         vendor.write_to = output2
-        medium._accept_bytes('abc')
-        medium.disconnect()
+        client_medium._accept_bytes('abc')
+        client_medium.disconnect()
         self.assertTrue(input.closed)
         self.assertTrue(output.closed)
         self.assertTrue(input2.closed)
@@ -310,15 +311,15 @@ class SmartClientMediumTests(tests.TestCase):
     def test_ssh_client_ignores_disconnect_when_not_connected(self):
         # Doing a disconnect on a new (and thus unconnected) SSH medium
         # does not fail.  It's ok to disconnect an unconnected medium.
-        medium = smart.SmartSSHClientMedium(None)
-        medium.disconnect()
+        client_medium = medium.SmartSSHClientMedium(None)
+        client_medium.disconnect()
 
     def test_ssh_client_raises_on_read_when_not_connected(self):
         # Doing a read on a new (and thus unconnected) SSH medium raises
         # MediumNotConnected.
-        medium = smart.SmartSSHClientMedium(None)
-        self.assertRaises(errors.MediumNotConnected, medium.read_bytes, 0)
-        self.assertRaises(errors.MediumNotConnected, medium.read_bytes, 1)
+        client_medium = medium.SmartSSHClientMedium(None)
+        self.assertRaises(errors.MediumNotConnected, client_medium.read_bytes, 0)
+        self.assertRaises(errors.MediumNotConnected, client_medium.read_bytes, 1)
 
     def test_ssh_client_supports__flush(self):
         # invoking _flush on a SSHClientMedium should flush the output 
@@ -331,12 +332,12 @@ class SmartClientMediumTests(tests.TestCase):
         def logging_flush(): flush_calls.append('flush')
         output.flush = logging_flush
         vendor = StringIOSSHVendor(input, output)
-        medium = smart.SmartSSHClientMedium('a hostname', vendor=vendor)
+        client_medium = medium.SmartSSHClientMedium('a hostname', vendor=vendor)
         # this call is here to ensure we only flush once, not on every
         # _accept_bytes call.
-        medium._accept_bytes('abc')
-        medium._flush()
-        medium.disconnect()
+        client_medium._accept_bytes('abc')
+        client_medium._flush()
+        client_medium.disconnect()
         self.assertEqual(['flush'], flush_calls)
         
     def test_construct_smart_tcp_client_medium(self):
@@ -345,7 +346,7 @@ class SmartClientMediumTests(tests.TestCase):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('127.0.0.1', 0))
         unopened_port = sock.getsockname()[1]
-        medium = smart.SmartTCPClientMedium('127.0.0.1', unopened_port)
+        client_medium = medium.SmartTCPClientMedium('127.0.0.1', unopened_port)
         sock.close()
 
     def test_tcp_client_connects_on_first_use(self):
@@ -378,15 +379,15 @@ class SmartClientMediumTests(tests.TestCase):
     def test_tcp_client_ignores_disconnect_when_not_connected(self):
         # Doing a disconnect on a new (and thus unconnected) TCP medium
         # does not fail.  It's ok to disconnect an unconnected medium.
-        medium = smart.SmartTCPClientMedium(None, None)
-        medium.disconnect()
+        client_medium = medium.SmartTCPClientMedium(None, None)
+        client_medium.disconnect()
 
     def test_tcp_client_raises_on_read_when_not_connected(self):
         # Doing a read on a new (and thus unconnected) TCP medium raises
         # MediumNotConnected.
-        medium = smart.SmartTCPClientMedium(None, None)
-        self.assertRaises(errors.MediumNotConnected, medium.read_bytes, 0)
-        self.assertRaises(errors.MediumNotConnected, medium.read_bytes, 1)
+        client_medium = medium.SmartTCPClientMedium(None, None)
+        self.assertRaises(errors.MediumNotConnected, client_medium.read_bytes, 0)
+        self.assertRaises(errors.MediumNotConnected, client_medium.read_bytes, 1)
 
     def test_tcp_client_supports__flush(self):
         # invoking _flush on a TCPClientMedium should do something useful.
@@ -421,8 +422,8 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         # WritingCompleted to prevent bad assumptions on stream environments
         # breaking the needs of message-based environments.
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(None, output)
-        request = smart.SmartClientStreamMediumRequest(medium)
+        client_medium = medium.SmartSimplePipesClientMedium(None, output)
+        request = medium.SmartClientStreamMediumRequest(client_medium)
         request.finished_writing()
         self.assertRaises(errors.WritingCompleted, request.accept_bytes, None)
 
@@ -432,8 +433,8 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         # and checking that the pipes get the data.
         input = StringIO()
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(input, output)
-        request = smart.SmartClientStreamMediumRequest(medium)
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = medium.SmartClientStreamMediumRequest(client_medium)
         request.accept_bytes('123')
         request.finished_writing()
         request.finished_reading()
@@ -444,34 +445,34 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         # constructing a SmartClientStreamMediumRequest on a StreamMedium sets
         # the current request to the new SmartClientStreamMediumRequest
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(None, output)
-        request = smart.SmartClientStreamMediumRequest(medium)
-        self.assertIs(medium._current_request, request)
+        client_medium = medium.SmartSimplePipesClientMedium(None, output)
+        request = medium.SmartClientStreamMediumRequest(client_medium)
+        self.assertIs(client_medium._current_request, request)
 
     def test_construct_while_another_request_active_throws(self):
         # constructing a SmartClientStreamMediumRequest on a StreamMedium with
         # a non-None _current_request raises TooManyConcurrentRequests.
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(None, output)
-        medium._current_request = "a"
+        client_medium = medium.SmartSimplePipesClientMedium(None, output)
+        client_medium._current_request = "a"
         self.assertRaises(errors.TooManyConcurrentRequests,
-            smart.SmartClientStreamMediumRequest, medium)
+            medium.SmartClientStreamMediumRequest, client_medium)
 
     def test_finished_read_clears_current_request(self):
         # calling finished_reading clears the current request from the requests
         # medium
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(None, output)
-        request = smart.SmartClientStreamMediumRequest(medium)
+        client_medium = medium.SmartSimplePipesClientMedium(None, output)
+        request = medium.SmartClientStreamMediumRequest(client_medium)
         request.finished_writing()
         request.finished_reading()
-        self.assertEqual(None, medium._current_request)
+        self.assertEqual(None, client_medium._current_request)
 
     def test_finished_read_before_finished_write_errors(self):
         # calling finished_reading before calling finished_writing triggers a
         # WritingNotComplete error.
-        medium = smart.SmartSimplePipesClientMedium(None, None)
-        request = smart.SmartClientStreamMediumRequest(medium)
+        client_medium = medium.SmartSimplePipesClientMedium(None, None)
+        request = medium.SmartClientStreamMediumRequest(client_medium)
         self.assertRaises(errors.WritingNotComplete, request.finished_reading)
         
     def test_read_bytes(self):
@@ -483,8 +484,8 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         # smoke tests.
         input = StringIO('321')
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(input, output)
-        request = smart.SmartClientStreamMediumRequest(medium)
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = medium.SmartClientStreamMediumRequest(client_medium)
         request.finished_writing()
         self.assertEqual('321', request.read_bytes(3))
         request.finished_reading()
@@ -496,8 +497,8 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         # WritingNotComplete error because the Smart protocol is designed to be
         # compatible with strict message based protocols like HTTP where the
         # request cannot be submitted until the writing has completed.
-        medium = smart.SmartSimplePipesClientMedium(None, None)
-        request = smart.SmartClientStreamMediumRequest(medium)
+        client_medium = medium.SmartSimplePipesClientMedium(None, None)
+        request = medium.SmartClientStreamMediumRequest(client_medium)
         self.assertRaises(errors.WritingNotComplete, request.read_bytes, None)
 
     def test_read_bytes_after_finished_reading_errors(self):
@@ -505,8 +506,8 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         # ReadingCompleted to prevent bad assumptions on stream environments
         # breaking the needs of message-based environments.
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(None, output)
-        request = smart.SmartClientStreamMediumRequest(medium)
+        client_medium = medium.SmartSimplePipesClientMedium(None, output)
+        request = medium.SmartClientStreamMediumRequest(client_medium)
         request.finished_writing()
         request.finished_reading()
         self.assertRaises(errors.ReadingCompleted, request.read_bytes, None)
@@ -532,8 +533,8 @@ class RemoteTransportTests(tests.TestCaseWithTransport):
     def test_get_medium_from_transport(self):
         """Remote transport has a medium always, which it can return."""
         t = self.get_transport()
-        medium = t.get_smart_medium()
-        self.assertIsInstance(medium, smart.SmartClientMedium)
+        client_medium = t.get_smart_medium()
+        self.assertIsInstance(client_medium, medium.SmartClientMedium)
 
 
 class ErrorRaisingProtocol(object):
@@ -588,7 +589,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         to_server = StringIO('hello\n')
         from_server = StringIO()
         transport = local.LocalTransport(urlutils.local_path_to_url('/'))
-        server = smart.SmartServerPipeStreamMedium(
+        server = medium.SmartServerPipeStreamMedium(
             to_server, from_server, transport)
         protocol = smart.SmartServerRequestProtocolOne(transport,
                 from_server.write)
@@ -601,7 +602,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         transport.put_bytes('testfile', 'contents\nof\nfile\n')
         to_server = StringIO('get\001./testfile\n')
         from_server = StringIO()
-        server = smart.SmartServerPipeStreamMedium(
+        server = medium.SmartServerPipeStreamMedium(
             to_server, from_server, transport)
         protocol = smart.SmartServerRequestProtocolOne(transport,
                 from_server.write)
@@ -619,7 +620,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         transport.put_bytes(utf8_filename, 'contents\nof\nfile\n')
         to_server = StringIO('get\001' + utf8_filename + '\n')
         from_server = StringIO()
-        server = smart.SmartServerPipeStreamMedium(
+        server = medium.SmartServerPipeStreamMedium(
             to_server, from_server, transport)
         protocol = smart.SmartServerRequestProtocolOne(transport,
                 from_server.write)
@@ -634,7 +635,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
         sample_request_bytes = 'command\n9\nbulk datadone\n'
         to_server = StringIO(sample_request_bytes)
         from_server = StringIO()
-        server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
+        server = medium.SmartServerPipeStreamMedium(
+            to_server, from_server, None)
         sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         server._serve_one_request(sample_protocol)
         self.assertEqual('', from_server.getvalue())
@@ -644,7 +646,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def test_socket_stream_with_bulk_data(self):
         sample_request_bytes = 'command\n9\nbulk datadone\n'
         server_sock, client_sock = self.portable_socket_pair()
-        server = smart.SmartServerSocketStreamMedium(
+        server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         sample_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         client_sock.sendall(sample_request_bytes)
@@ -657,14 +659,14 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def test_pipe_like_stream_shutdown_detection(self):
         to_server = StringIO('')
         from_server = StringIO()
-        server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
+        server = medium.SmartServerPipeStreamMedium(to_server, from_server, None)
         server._serve_one_request(SampleRequest('x'))
         self.assertTrue(server.finished)
         
     def test_socket_stream_shutdown_detection(self):
         server_sock, client_sock = self.portable_socket_pair()
         client_sock.close()
-        server = smart.SmartServerSocketStreamMedium(
+        server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         server._serve_one_request(SampleRequest('x'))
         self.assertTrue(server.finished)
@@ -676,7 +678,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
         sample_request_bytes = 'command\n'
         to_server = StringIO(sample_request_bytes * 2)
         from_server = StringIO()
-        server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
+        server = medium.SmartServerPipeStreamMedium(
+            to_server, from_server, None)
         first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         server._serve_one_request(first_protocol)
         self.assertEqual(0, first_protocol.next_read_size())
@@ -696,7 +699,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # been received seperately.
         sample_request_bytes = 'command\n'
         server_sock, client_sock = self.portable_socket_pair()
-        server = smart.SmartServerSocketStreamMedium(
+        server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         first_protocol = SampleRequest(expected_bytes=sample_request_bytes)
         # Put two whole requests on the wire.
@@ -723,7 +726,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
         def close():
             self.closed = True
         from_server.close = close
-        server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
+        server = medium.SmartServerPipeStreamMedium(
+            to_server, from_server, None)
         fake_protocol = ErrorRaisingProtocol(Exception('boom'))
         server._serve_one_request(fake_protocol)
         self.assertEqual('', from_server.getvalue())
@@ -735,7 +739,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # not discard the contents.
         from StringIO import StringIO
         server_sock, client_sock = self.portable_socket_pair()
-        server = smart.SmartServerSocketStreamMedium(
+        server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         fake_protocol = ErrorRaisingProtocol(Exception('boom'))
         server._serve_one_request(fake_protocol)
@@ -749,7 +753,8 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # not discard the contents.
         to_server = StringIO('')
         from_server = StringIO()
-        server = smart.SmartServerPipeStreamMedium(to_server, from_server, None)
+        server = medium.SmartServerPipeStreamMedium(
+            to_server, from_server, None)
         fake_protocol = ErrorRaisingProtocol(KeyboardInterrupt('boom'))
         self.assertRaises(
             KeyboardInterrupt, server._serve_one_request, fake_protocol)
@@ -757,7 +762,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def test_socket_stream_keyboard_interrupt_handling(self):
         server_sock, client_sock = self.portable_socket_pair()
-        server = smart.SmartServerSocketStreamMedium(
+        server = medium.SmartServerSocketStreamMedium(
             server_sock, None)
         fake_protocol = ErrorRaisingProtocol(KeyboardInterrupt('boom'))
         self.assertRaises(
@@ -1004,8 +1009,9 @@ class TestSmartTransport(tests.TestCase):
         # We want to be able to pass a client as a parameter to SmartTransport.
         input = StringIO("ok\n3\nbardone\n")
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(input, output)
-        transport = smart.SmartTransport('bzr://localhost/', medium=medium)
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        transport = smart.SmartTransport(
+            'bzr://localhost/', medium=client_medium)
 
         # We want to make sure the client is used when the first remote
         # method is called.  No data should have been sent, or read.
@@ -1023,17 +1029,18 @@ class TestSmartTransport(tests.TestCase):
 
     def test__translate_error_readonly(self):
         """Sending a ReadOnlyError to _translate_error raises TransportNotPossible."""
-        medium = smart.SmartClientMedium()
-        transport = smart.SmartTransport('bzr://localhost/', medium=medium)
+        client_medium = medium.SmartClientMedium()
+        transport = smart.SmartTransport(
+            'bzr://localhost/', medium=client_medium)
         self.assertRaises(errors.TransportNotPossible,
             transport._translate_error, ("ReadOnlyError", ))
 
 
-class InstrumentedServerProtocol(smart.SmartServerStreamMedium):
+class InstrumentedServerProtocol(medium.SmartServerStreamMedium):
     """A smart server which is backed by memory and saves its write requests."""
 
     def __init__(self, write_output_list):
-        smart.SmartServerStreamMedium.__init__(self, memory.MemoryTransport())
+        medium.SmartServerStreamMedium.__init__(self, memory.MemoryTransport())
         self._write_output_list = write_output_list
 
 
@@ -1055,7 +1062,7 @@ class TestSmartProtocol(tests.TestCase):
         self.server_to_client = []
         self.to_server = StringIO()
         self.to_client = StringIO()
-        self.client_medium = smart.SmartSimplePipesClientMedium(self.to_client,
+        self.client_medium = medium.SmartSimplePipesClientMedium(self.to_client,
             self.to_server)
         self.client_protocol = smart.SmartClientRequestProtocolOne(
             self.client_medium)
@@ -1108,8 +1115,8 @@ class TestSmartProtocol(tests.TestCase):
     def test_construct_version_one_client_protocol(self):
         # we can construct a client protocol from a client medium request
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(None, output)
-        request = medium.get_request()
+        client_medium = medium.SmartSimplePipesClientMedium(None, output)
+        request = client_medium.get_request()
         client_protocol = smart.SmartClientRequestProtocolOne(request)
 
     def test_server_offset_serialisation(self):
@@ -1208,8 +1215,9 @@ class TestSmartProtocol(tests.TestCase):
         # the error if the response is a non-understood version.
         input = StringIO('ok\x011\n')
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(input, output)
-        protocol = smart.SmartClientRequestProtocolOne(medium.get_request())
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        protocol = smart.SmartClientRequestProtocolOne(request)
         self.assertEqual(1, protocol.query_version())
 
     def assertServerToClientEncoding(self, expected_bytes, expected_tuple,
@@ -1228,8 +1236,9 @@ class TestSmartProtocol(tests.TestCase):
         # check the decoding of the client protocol from expected_bytes:
         input = StringIO(expected_bytes)
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(input, output)
-        protocol = smart.SmartClientRequestProtocolOne(medium.get_request())
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        protocol = smart.SmartClientRequestProtocolOne(request)
         protocol.call('foo')
         self.assertEqual(expected_tuple, protocol.read_response_tuple())
 
@@ -1251,8 +1260,9 @@ class TestSmartProtocol(tests.TestCase):
         expected_bytes = "foo\n7\nabcdefgdone\n"
         input = StringIO("\n")
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(input, output)
-        protocol = smart.SmartClientRequestProtocolOne(medium.get_request())
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        protocol = smart.SmartClientRequestProtocolOne(request)
         protocol.call_with_body_bytes(('foo', ), "abcdefg")
         self.assertEqual(expected_bytes, output.getvalue())
 
@@ -1262,8 +1272,9 @@ class TestSmartProtocol(tests.TestCase):
         expected_bytes = "foo\n7\n1,2\n5,6done\n"
         input = StringIO("\n")
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(input, output)
-        protocol = smart.SmartClientRequestProtocolOne(medium.get_request())
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        protocol = smart.SmartClientRequestProtocolOne(request)
         protocol.call_with_body_readv_array(('foo', ), [(1,2),(5,6)])
         self.assertEqual(expected_bytes, output.getvalue())
 
@@ -1274,8 +1285,9 @@ class TestSmartProtocol(tests.TestCase):
         server_bytes = "ok\n7\n1234567done\n"
         input = StringIO(server_bytes)
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(input, output)
-        protocol = smart.SmartClientRequestProtocolOne(medium.get_request())
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        protocol = smart.SmartClientRequestProtocolOne(request)
         protocol.call('foo')
         protocol.read_response_tuple(True)
         self.assertEqual(expected_bytes, protocol.read_body_bytes())
@@ -1290,8 +1302,9 @@ class TestSmartProtocol(tests.TestCase):
         server_bytes = "ok\n7\n1234567done\n"
         input = StringIO(server_bytes)
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(input, output)
-        protocol = smart.SmartClientRequestProtocolOne(medium.get_request())
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        protocol = smart.SmartClientRequestProtocolOne(request)
         protocol.call('foo')
         protocol.read_response_tuple(True)
         self.assertEqual(expected_bytes[0:2], protocol.read_body_bytes(2))
@@ -1306,8 +1319,9 @@ class TestSmartProtocol(tests.TestCase):
         server_bytes = "ok\n7\n1234567done\n"
         input = StringIO(server_bytes)
         output = StringIO()
-        medium = smart.SmartSimplePipesClientMedium(input, output)
-        protocol = smart.SmartClientRequestProtocolOne(medium.get_request())
+        client_medium = medium.SmartSimplePipesClientMedium(input, output)
+        request = client_medium.get_request()
+        protocol = smart.SmartClientRequestProtocolOne(request)
         protocol.call('foo')
         protocol.read_response_tuple(True)
         protocol.cancel_read_body()

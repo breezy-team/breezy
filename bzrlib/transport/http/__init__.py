@@ -42,12 +42,13 @@ from bzrlib.trace import mutter
 from bzrlib.transport import (
     get_transport,
     register_transport,
-    Server,
     smart,
+    Server,
     Transport,
     )
 from bzrlib.transport.http.response import (HttpMultipartRangeResponse,
                                             HttpRangeResponse)
+from bzrlib.transport.smart import medium
 from bzrlib.ui import ui_factory
 
 
@@ -125,7 +126,7 @@ def _extract_headers(header_text, url):
     return m
 
 
-class HttpTransportBase(Transport, smart.SmartClientMedium):
+class HttpTransportBase(Transport, medium.SmartClientMedium):
     """Base class for http implementations.
 
     Does URL parsing, etc, but not any network IO.
@@ -432,11 +433,11 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         return body_filelike
 
 
-class SmartClientHTTPMediumRequest(smart.SmartClientMediumRequest):
+class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     """A SmartClientMediumRequest that works with an HTTP medium."""
 
-    def __init__(self, medium):
-        smart.SmartClientMediumRequest.__init__(self, medium)
+    def __init__(self, client_medium):
+        medium.SmartClientMediumRequest.__init__(self, client_medium)
         self._buffer = ''
 
     def _accept_bytes(self, bytes):
