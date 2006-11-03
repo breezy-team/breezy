@@ -9,11 +9,20 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * New -D option given before the command line turns on debugging output
+      for particular areas.  -Derror shows tracebacks on all errors.
+      (Martin Pool)
+
     * Clean up ``bzr selftest --benchmark bundle`` to correct an import,
       and remove benchmarks that take longer than 10min to run.
       (John Arbash Meinel)
   
   BUG FIXES:
+
+    * _KnitIndex.add_versions() dictionary compresses revision ids as they
+      are added. This fixes bug where fetching remote revisions records
+      them as full references rather than integers. (John Arbash Meinel,
+      #64789)
 
     * ``bzr ignore`` strips trailing slashes in patterns.
       Also ``bzr ignore`` rejects absolute paths. (Kent Gibson, #4559)

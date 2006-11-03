@@ -44,7 +44,7 @@ zero_nine = "%s was deprecated in version 0.9."
 zero_ten = "%s was deprecated in version 0.10."
 zero_eleven = "%s was deprecated in version 0.11."
 zero_twelve = "%s was deprecated in version 0.12."
-zero_thirteen = "%s was deprecated in version 0.12."
+zero_thirteen = "%s was deprecated in version 0.13."
 
 
 def set_warning_method(method):

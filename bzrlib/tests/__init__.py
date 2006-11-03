@@ -43,12 +43,18 @@ import unittest
 import time
 
 
-from bzrlib import memorytree
+from bzrlib import (
+    bzrdir,
+    debug,
+    errors,
+    memorytree,
+    osutils,
+    progress,
+    urlutils,
+    )
 import bzrlib.branch
-import bzrlib.bzrdir as bzrdir
 import bzrlib.commands
 import bzrlib.bundle.serializer
-import bzrlib.errors as errors
 import bzrlib.export
 import bzrlib.inventory
 import bzrlib.iterablefile
@@ -61,9 +67,7 @@ except ImportError:
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.osutils
-import bzrlib.osutils as osutils
 import bzrlib.plugin
-import bzrlib.progress as progress
 from bzrlib.revision import common_ancestor
 import bzrlib.store
 from bzrlib import symbol_versioning
@@ -80,7 +84,6 @@ from bzrlib.tests.TestUtil import (
                           TestLoader,
                           )
 from bzrlib.tests.treeshape import build_tree_contents
-import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
 default_transport = LocalURLServer
@@ -900,9 +903,14 @@ class TestCase(unittest.TestCase):
             os.chdir(working_dir)
 
         try:
-            result = self.apply_redirected(stdin, stdout, stderr,
-                                           bzrlib.commands.run_bzr_catch_errors,
-                                           argv)
+            saved_debug_flags = frozenset(debug.debug_flags)
+            debug.debug_flags.clear()
+            try:
+                result = self.apply_redirected(stdin, stdout, stderr,
+                                               bzrlib.commands.run_bzr_catch_errors,
+                                               argv)
+            finally:
+                debug.debug_flags.update(saved_debug_flags)
         finally:
             logger.removeHandler(handler)
             bzrlib.ui.ui_factory = old_ui_factory
