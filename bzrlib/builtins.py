@@ -946,7 +946,7 @@ class cmd_file_id(Command):
         tree, relpath = WorkingTree.open_containing(filename)
         i = tree.inventory.path2id(relpath)
         if i is None:
-            raise errors.BzrError("%r is not a versioned file" % filename)
+            raise errors.NotVersionedError(filename)
         else:
             self.outf.write(i + '\n')
 
@@ -967,7 +967,7 @@ class cmd_file_path(Command):
         inv = tree.inventory
         fid = inv.path2id(relpath)
         if fid is None:
-            raise errors.BzrError("%r is not a versioned file" % filename)
+            raise errors.NotVersionedError(filename)
         for fip in inv.get_idpath(fid):
             self.outf.write(fip + '\n')
 
@@ -1198,8 +1198,8 @@ class cmd_diff(Command):
             new_label = 'new/'
         else:
             if not ':' in prefix:
-                 raise errors.BzrError("--diff-prefix expects two values"
-                                       " separated by a colon")
+                 raise BzrCommandError(
+                     "--diff-prefix expects two values separated by a colon")
             old_label, new_label = prefix.split(":")
         
         try:
@@ -1689,8 +1689,7 @@ class cmd_export(Command):
             rev_id = b.last_revision()
         else:
             if len(revision) != 1:
-                raise errors.BzrError('bzr export --revision takes exactly'
-                                      ' 1 argument')
+                raise errors.BzrCommandError('bzr export --revision takes exactly 1 argument')
             rev_id = revision[0].in_history(b).rev_id
         t = b.repository.revision_tree(rev_id)
         try:

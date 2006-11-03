@@ -669,7 +669,7 @@ class TestCase(unittest.TestCase):
             a_callable(*args, **kwargs).
         """
         local_warnings = []
-        def capture_warnings(msg, cls, stacklevel=None):
+        def capture_warnings(msg, cls=None, stacklevel=None):
             # we've hooked into a deprecation specific callpath,
             # only deprecations should getting sent via it.
             self.assertEqual(cls, DeprecationWarning)

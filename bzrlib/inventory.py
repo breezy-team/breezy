@@ -1036,10 +1036,8 @@ class Inventory(object):
         try:
             return self._byid[file_id]
         except KeyError:
-            if file_id is None:
-                raise BzrError("can't look up file_id None")
-            else:
-                raise BzrError("file_id {%s} not in inventory" % file_id)
+            # really we're passing an inventory, not a tree...
+            raise errors.NoSuchId(self, file_id)
 
     def get_file_kind(self, file_id):
         return self._byid[file_id].kind

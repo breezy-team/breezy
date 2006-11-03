@@ -272,7 +272,7 @@ def report_exception(exc_info, err_file):
         print >>err_file, "bzr: broken pipe"
     elif isinstance(exc_object, KeyboardInterrupt):
         print >>err_file, "bzr: interrupted"
-    elif getattr(exc_object, 'is_user_error', False):
+    elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
     elif isinstance(exc_object, (OSError, IOError)):
         # Might be nice to catch all of these and show them as something more

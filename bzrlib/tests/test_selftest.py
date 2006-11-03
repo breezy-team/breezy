@@ -846,7 +846,7 @@ class TestTestCase(TestCase):
         sample_test.run(result)
         self.assertContainsRe(
             output_stream.getvalue(),
-            "[1-9][0-9]ms/   [1-9][0-9]ms\n$")
+            r"\d+ms/ +\d+ms\n$")
         
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
