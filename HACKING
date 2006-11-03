@@ -439,17 +439,12 @@ Errors and exceptions
 
 Errors are handled through Python exceptions.
 
-We broadly classify errors as either being either the user's fault or our
-fault.  If we think it's our fault, we show a backtrace, an invitation to
-report the bug, and possibly other details.  This is the default for
-errors that aren't specifically recognized as being caused by a user
-error.
-
-User errors are things such as referring to a file or location that
-doesn't exist.  The user could potentially fix them themselves, so they
-get a short but helpful message.  User errors either have the
-``is_user_error`` property set, or are of particular classes such as
-KeyboardInterrupt.
+We broadly classify errors as either being either internal or not,
+depending on whether ``user_error`` is set or not.  If we think it's our
+fault, we show a backtrace, an invitation to report the bug, and possibly
+other details.  This is the default for errors that aren't specifically
+recognized as being caused by a user error.  Otherwise we show a briefer
+message, unless -Derror was given.
 
 Many errors originate as "environmental errors" which are raised by Python
 or builtin libraries -- for example IOError.  These are treated as being
@@ -473,7 +468,7 @@ that exception specifically, or when it needs a substantially different
 format string.
 
 Exception strings should start with a capital letter and should not have a
-final fullstop.
+final fullstop.  If long, they may contain newlines to break the text.
 
 
 
