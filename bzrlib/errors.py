@@ -74,11 +74,8 @@ class BzrError(StandardError):
         """
         StandardError.__init__(self)
         if msg is not None:
-            ## symbol_versioning.warn(
-            ##         'constructing a BzrError from a string was deprecated '
-            ##         'in bzr 0.12; please raise a specific subclass instead',
-            ##         DeprecationWarning,
-            ##         stacklevel=2)
+            # I was going to deprecate this, but it actually turns out to be
+            # quite handy - mbp 20061103.
             self._preformatted_string = msg
         else:
             self._preformatted_string = None
@@ -116,8 +113,6 @@ class BzrError(StandardError):
             symbol_versioning.warn("%s uses its docstring as a format, "
                     "it should use _fmt instead" % self.__class__.__name__,
                     DeprecationWarning)
-            # TODO: This should be deprecated when all exceptions have
-            # been changed not to rely on this.
             return fmt
         return 'Unprintable exception %s: dict=%r, fmt=%r' \
             % (self.__class__.__name__,
@@ -135,7 +130,7 @@ class BzrNewError(BzrError):
         # XXX: Use the underlying BzrError to always generate the args attribute
         # if it doesn't exist.  We can't use super here, because exceptions are
         # old-style classes in python2.4 (but new in 2.5).  --bmc, 20060426
-        symbol_versioning.warn('BzrNewError was deprecated in bzr 0.12; '
+        symbol_versioning.warn('BzrNewError was deprecated in bzr 0.13; '
              'please convert %s to use BzrError instead' 
              % self.__class__.__name__,
              DeprecationWarning,
