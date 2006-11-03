@@ -1,0 +1,16 @@
+doc_dir := doc 
+txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir)))
+htm_files := $(patsubst %.txt, %.htm, $(txt_files)) doc/bzr_man.htm
+docs: $(htm_files)
+%.htm: %.txt
+	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid $*.txt $*.htm
+
+doc/bzr_man.txt: bzrlib/builtins.py \
+		 bzrlib/bundle/commands.py \
+		 bzrlib/conflicts.py \
+		 bzrlib/sign_my_commits.py \
+		 generate_docs.py \
+		 tools/doc_generate/__init__.py \
+		 tools/doc_generate/autodoc_rstx.py
+	python2.4 generate_docs.py -o doc/bzr_man.txt rstx
+
