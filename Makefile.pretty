@@ -2,7 +2,7 @@ doc_dir := doc
 txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir)))
 htm_files := $(patsubst %.txt, %.htm, $(txt_files)) doc/bzr_man.htm
 docs: $(htm_files)
-%.htm: %.txt
+%.htm: %.txt doc/bazaar-vcs.org.kid
 	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid $*.txt $*.htm
 
 doc/bzr_man.txt: bzrlib/builtins.py \
