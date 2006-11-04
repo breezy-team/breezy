@@ -172,50 +172,11 @@ id="search_q" value="" onfocus="searchFocus(this)" onblur=
 </div>
 <div id="searchform"></div>
 <div id="username" class="vnav">
-<h4 py:replace="''">Website Links</h4>
-<ul py:replace="''">
-<li><a href="http://bazaar-vcs.org/AaronBentley">AaronBentley</a></li>
-<li><a href="http://bazaar-vcs.org/UserPreferences">User Preferences</a></li>
-<li><a href="http://bazaar-vcs.org/FindPage">FindPage</a></li>
-<li><a href="http://bazaar-vcs.org/RecentChanges">RecentChanges</a></li>
-<li><a name="editlink" href=
-"http://bazaar-vcs.org/Welcome?action=edit&amp;editor=textonly" id="editlink">Edit
-Page</a></li>
-<li><a href="http://bazaar-vcs.org/Welcome?action=info">Page History</a></li>
-<li><a href="http://bazaar-vcs.org/Welcome?action=subscribe">Subscribe</a></li>
-<li>
-<form class="actionsmenu" method="get" action="">
-<div><label>More Actions:</label> <select name="action" onchange=
-"if ((this.selectedIndex != 0) &amp;&amp; (this.options[this.selectedIndex].disabled == false)) { this.form.submit(); } this.selectedIndex = 0;">
-<option value="raw">Raw Text</option>
-<option value="print">Print View</option>
-<option value="refresh">Delete Cache</option>
-<option value="show" disabled="disabled" class="disabled">
-------------</option>
-<option value="SpellCheck">Check Spelling</option>
-<option value="LikePages">Like Pages</option>
-<option value="LocalSiteMap">Local Site Map</option>
-<option value="show" disabled="disabled" class="disabled">
-------------</option>
-<option value="RenamePage">Rename Page</option>
-<option value="DeletePage">Delete Page</option>
-<option value="show" disabled="disabled" class="disabled">
-------------</option>
-<option value="AttachFile">Attach File</option>
-<option value="Despam">Despam</option>
-<option value="MyPages">My Pages</option>
-<option value="PackagePages">Package Pages</option>
-<option value="RenderAsDocbook">Render As Docbook</option>
-<option value="SubscribeUser">Subscribe User</option>
-</select> <input type="submit" value="Do" /></div>
-<script type="text/javascript">
-//<![CDATA[
-<!--// Init menu
-actionsMenuInit('More Actions:');
-//-->
-//]]>
-</script></form>
-</li>
+<h4>Website Links</h4>
+<ul>
+<li><a href="index.htm">Documentation index</a></li>
+<li><a href="http://doc.bazaar-vcs.org">Other versions</a></li>
+<li><a href="http://bazaar-vcs.org">Wiki</a></li>
 </ul>
 </div>
 </div>
