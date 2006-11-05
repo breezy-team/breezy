@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -78,7 +78,7 @@ class TestTrace(TestCase):
     def test_format_exception(self):
         """Short formatting of bzr exceptions"""
         try:
-            raise errors.NotBranchError, 'wibble'
+            raise errors.NotBranchError('wibble')
         except errors.NotBranchError:
             pass
         msg = _format_exception()

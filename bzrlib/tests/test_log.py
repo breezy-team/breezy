@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 # -*- coding: utf-8 -*-
 # vim: encoding=utf-8
 #
@@ -126,7 +126,7 @@ class SimpleLogTest(TestCaseWithTransport):
         lf = LogCatcher()
         show_log(b, lf, verbose=True)
         eq(len(lf.logs), 1)
-        eq(lf.logs[0].revno, 1)
+        eq(lf.logs[0].revno, '1')
         eq(lf.logs[0].rev.message, 'empty commit')
         d = lf.logs[0].delta
         self.log('log delta: %r' % d)
@@ -149,11 +149,11 @@ class SimpleLogTest(TestCaseWithTransport):
         eq(len(lf.logs), 2)
         self.log('log entries:')
         for logentry in lf.logs:
-            self.log('%4d %s' % (logentry.revno, logentry.rev.message))
+            self.log('%4s %s' % (logentry.revno, logentry.rev.message))
         
         # first one is most recent
         logentry = lf.logs[0]
-        eq(logentry.revno, 2)
+        eq(logentry.revno, '2')
         eq(logentry.rev.message, 'add one file')
         d = logentry.delta
         self.log('log 2 delta: %r' % d)
@@ -325,6 +325,7 @@ added:
         wt.commit('four-b', rev_id='4b')
         mainline_revs.append('4b')
         rev_nos['4b'] = 4
+        # 4a: 3.1.1
         return mainline_revs, rev_nos, wt
 
     def make_tree_with_many_merges(self):
@@ -332,9 +333,9 @@ added:
         wt = self.make_branch_and_tree('tree1')
         wt.commit('commit one', rev_id='1')
         wt.commit('commit two', rev_id='2')
-        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
         tree3 = wt.bzrdir.sprout('tree3').open_workingtree()
         tree3.commit('commit three a', rev_id='3a')
+        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
         tree2.merge_from_branch(tree3.branch)
         tree2.commit('commit three b', rev_id='3b')
         wt.merge_from_branch(tree2.branch)
@@ -343,7 +344,16 @@ added:
         wt.merge_from_branch(tree2.branch)
         wt.commit('four-b', rev_id='4b')
         mainline_revs = [None, '1', '2', '3c', '4b']
-        rev_nos = {'1': 1, '2': 2, '3c': 3, '4b': 4}
+        rev_nos = {'1':1, '2':2, '3c': 3, '4b':4}
+        full_rev_nos_for_reference = {
+            '1': '1',
+            '2': '2',
+            '3a': '2.2.1', #first commit tree 3
+            '3b': '2.1.1', # first commit tree 2
+            '3c': '3', #merges 3b to main
+            '4a': '2.1.2', # second commit tree 2
+            '4b': '4', # merges 4a to main
+            }
         return mainline_revs, rev_nos, wt
 
     def test_get_view_revisions_forward(self):
@@ -351,7 +361,8 @@ added:
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
-        self.assertEqual(revisions, [('1', 1, 0), ('2', 2, 0), ('3', 3, 0)])
+        self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0)],
+            revisions)
         revisions2 = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                              'forward', include_merges=False))
         self.assertEqual(revisions, revisions2)
@@ -361,7 +372,8 @@ added:
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'reverse'))
-        self.assertEqual(revisions, [('3', 3, 0), ('2', 2, 0), ('1', 1, 0), ])
+        self.assertEqual([('3', '3', 0), ('2', '2', 0), ('1', '1', 0), ],
+            revisions)
         revisions2 = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                              'reverse', include_merges=False))
         self.assertEqual(revisions, revisions2)
@@ -371,34 +383,40 @@ added:
         mainline_revs, rev_nos, wt = self.make_tree_with_merges()
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
-        self.assertEqual(revisions, [('1', 1, 0), ('2', 2, 0), ('3', 3, 0),
-                                     ('4b', 4, 0), ('4a', None, 1)])
+        self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0),
+            ('4b', '4', 0), ('4a', '3.1.1', 1)],
+            revisions)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                              'forward', include_merges=False))
-        self.assertEqual(revisions, [('1', 1, 0), ('2', 2, 0), ('3', 3, 0),
-                                     ('4b', 4, 0)])
+        self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0),
+            ('4b', '4', 0)],
+            revisions)
 
     def test_get_view_revisions_merge_reverse(self):
         """Test get_view_revisions in reverse when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_merges()
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'reverse'))
-        self.assertEqual(revisions, [('4b', 4, 0), ('4a', None, 1), 
-                                     ('3', 3, 0), ('2', 2, 0), ('1', 1, 0)])
+        self.assertEqual([('4b', '4', 0), ('4a', '3.1.1', 1),
+            ('3', '3', 0), ('2', '2', 0), ('1', '1', 0)],
+            revisions)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                              'reverse', include_merges=False))
-        self.assertEqual(revisions, [('4b', 4, 0), ('3', 3, 0), ('2', 2, 0),
-                                     ('1', 1, 0)])
+        self.assertEqual([('4b', '4', 0), ('3', '3', 0), ('2', '2', 0),
+            ('1', '1', 0)],
+            revisions)
 
     def test_get_view_revisions_merge2(self):
         """Test get_view_revisions when there are merges"""
         mainline_revs, rev_nos, wt = self.make_tree_with_many_merges()
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
-        expected = [('1', 1, 0), ('2', 2, 0), ('3c', 3, 0), ('3a', None, 1),
-                    ('3b', None, 1), ('4b', 4, 0), ('4a', None, 1)]
-        self.assertEqual(revisions, expected)
+        expected = [('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
+            ('3a', '2.2.1', 1), ('3b', '2.1.1', 1), ('4b', '4', 0),
+            ('4a', '2.1.2', 1)]
+        self.assertEqual(expected, revisions)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                              'forward', include_merges=False))
-        self.assertEqual(revisions, [('1', 1, 0), ('2', 2, 0), ('3c', 3, 0),
-                                     ('4b', 4, 0)])
+        self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
+            ('4b', '4', 0)],
+            revisions)

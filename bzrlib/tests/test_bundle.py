@@ -1,4 +1,4 @@
-# Copyright (C) 2004-2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,13 +20,13 @@ import sys
 import tempfile
 
 from bzrlib import (
-    bzrdir, 
-    errors, 
-    inventory, 
-    repository, 
+    bzrdir,
+    errors,
+    inventory,
+    repository,
     treebuilder,
     )
-from bzrlib.builtins import merge
+from bzrlib.builtins import _merge_helper
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
@@ -316,11 +316,11 @@ class BundleTester1(TestCaseWithTransport):
         format.repository_format = repository.RepositoryFormatKnit2()
         serializer = BundleSerializerV08('0.8')
         b = self.make_branch('.', format=format)
-        self.assertRaises(errors.IncompatibleFormat, serializer.write, 
+        self.assertRaises(errors.IncompatibleBundleFormat, serializer.write, 
                           b.repository, [], {}, StringIO())
 
     def test_matched_bundle(self):
-        """Don't raise IncompatibleFormat for knit2 and bundle0.9"""
+        """Don't raise IncompatibleBundleFormat for knit2 and bundle0.9"""
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = repository.RepositoryFormatKnit2()
         serializer = BundleSerializerV09('0.9')
@@ -640,7 +640,8 @@ class V08BundleTester(TestCaseWithTransport):
         self.assertEqualDiff(tree1_inv, tree2_inv)
         other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
         other.commit('rename file', rev_id='a@cset-0-6b')
-        merge([other.basedir, -1], [None, None], this_dir=self.tree1.basedir)
+        _merge_helper([other.basedir, -1], [None, None],
+                      this_dir=self.tree1.basedir)
         self.tree1.commit(u'Merge', rev_id='a@cset-0-7',
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-6', 'a@cset-0-7')
@@ -741,7 +742,8 @@ class V08BundleTester(TestCaseWithTransport):
         tt.create_file('file2', trans_id)
         tt.apply()
         other.commit('modify text in another tree', rev_id='a@lmod-0-2b')
-        merge([other.basedir, -1], [None, None], this_dir=self.tree1.basedir)
+        _merge_helper([other.basedir, -1], [None, None],
+                      this_dir=self.tree1.basedir)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-3',
                           verbose=False)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-4')

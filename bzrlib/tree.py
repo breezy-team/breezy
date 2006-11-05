@@ -19,10 +19,12 @@
 
 import os
 from cStringIO import StringIO
-from warnings import warn
 
 import bzrlib
-from bzrlib import delta
+from bzrlib import (
+    delta,
+    symbol_versioning,
+    )
 from bzrlib.decorators import needs_read_lock
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib import errors
@@ -211,17 +213,13 @@ class Tree(object):
         return set((p for p in paths if not pred(p)))
 
 
-# for compatibility
-from bzrlib.revisiontree import RevisionTree
- 
-
 class EmptyTree(Tree):
 
     def __init__(self):
-        self._inventory = Inventory()
-        warn('EmptyTree is deprecated as of bzr 0.9 please use '
-            'repository.revision_tree instead.',
-            DeprecationWarning, stacklevel=2)
+        self._inventory = Inventory(root_id=None)
+        symbol_versioning.warn('EmptyTree is deprecated as of bzr 0.9 please'
+                               ' use repository.revision_tree instead.',
+                               DeprecationWarning, stacklevel=2)
 
     def get_parent_ids(self):
         return []
@@ -236,7 +234,7 @@ class EmptyTree(Tree):
         assert self._inventory[file_id].kind == "directory"
         return "directory"
 
-    def list_files(self):
+    def list_files(self, include_root=False):
         return iter([])
     
     def __contains__(self, file_id):
@@ -428,3 +426,17 @@ class InterTree(InterObject):
             return delta.TreeDelta()
         return delta._compare_trees(self.source, self.target, want_unchanged,
             specific_file_ids, include_root)
+
+
+# This was deprecated before 0.12, but did not have an official warning
+@symbol_versioning.deprecated_function(symbol_versioning.zero_twelve)
+def RevisionTree(*args, **kwargs):
+    """RevisionTree has moved to bzrlib.revisiontree.RevisionTree()
+
+    Accessing it as bzrlib.tree.RevisionTree has been deprecated as of
+    bzr 0.12.
+    """
+    from bzrlib.revisiontree import RevisionTree as _RevisionTree
+    return _RevisionTree(*args, **kwargs)
+ 
+
