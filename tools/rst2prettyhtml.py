@@ -7,16 +7,21 @@ import sys
 from docutils.core import publish_file
 from docutils.parsers import rst
 from elementtree.ElementTree import XML
+from elementtree import HTMLTreeBuilder
 import kid
 
 def kidified_rest(rest_file, template_name):
-    xhtml = publish_file(rest_file, writer_name='html', destination=StringIO(),
+    xhtml_file = StringIO()
+    # prevent docutils from autoclosing the StringIO
+    xhtml_file.close = lambda: None
+    xhtml = publish_file(rest_file, writer_name='html', destination=xhtml_file,
                          settings_overrides={"doctitle_xform": 0} 
     
     )
-    xml = XML(xhtml)
-    head = xml.find('{http://www.w3.org/1999/xhtml}head')
-    body = xml.find('{http://www.w3.org/1999/xhtml}body')
+    xhtml_file.seek(0)
+    xml = HTMLTreeBuilder.parse(xhtml_file)
+    head = xml.find('head')
+    body = xml.find('body')
     assert head is not None
     assert body is not None
     template=kid.Template(file=template_name, 

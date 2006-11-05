@@ -187,7 +187,7 @@ id="search_q" value="" onfocus="searchFocus(this)" onblur=
 <a name="skipToContent" id="skipToContent"></a>
 <div class="inside" >
 <!--<img id="navProtection" width="1" height="1" border="0" src="/htdocs/bazaarNew/css/spacer.gif" alt="" style="height: 1px"/>-->
-<a py:match="item.tag == '{http://www.w3.org/1999/xhtml}a' and 'href' not in item.attrib" py:content="item.text" py:attrs="update_attrib(item.attrib, style='color: black')"/>
+<a py:match="item.tag == 'a' and 'href' not in item.attrib" py:content="item.text" py:attrs="update_attrib(item.attrib, style='color: black')"/>
 <div dir="ltr" id="content" lang="en" xml:lang="en" py:content="body[:]"><span
 class="anchor" id="top"></span> <span class="anchor" id="line-8"></span>
 <h1 id="head-31592baed255c2a5cdfdaafb9521b837ea61021f">Performance
