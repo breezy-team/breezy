@@ -44,7 +44,7 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
-from bzrlib.conflicts import ConflictList
+from bzrlib.conflicts import ConflictList, auto_resolve
 from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.workingtree import WorkingTree
@@ -1809,6 +1809,7 @@ class cmd_commit(Command):
         # TODO: do more checks that the commit will succeed before 
         # spending the user's valuable time typing a commit message.
         tree, selected_list = tree_files(selected_list)
+        auto_resolve(tree)
         if selected_list == ['']:
             # workaround - commit of root of tree should be exactly the same
             # as just default commit in that tree, and succeed even though

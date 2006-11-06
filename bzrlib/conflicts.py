@@ -20,6 +20,7 @@
 # point down
 
 import os
+import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -139,6 +140,42 @@ def restore(filename):
             raise
     if not conflicted:
         raise errors.NotConflicted(filename)
+
+
+def auto_resolve(tree):
+    """Automatically resolve text conflicts according to contents.
+
+    Only text conflicts are auto_resolvable. Files with no conflict markers are
+    considered 'resolved', because bzr always puts conflict markers into files
+    that have text conflicts.  The corresponding .THIS .BASE and .OTHER files
+    are deleted, as per 'resolve'.
+    :param tree: The tree to 
+    :return: a tuple of ConflictLists: (un_resolved, resolved).
+    """
+    un_resolved = ConflictList()
+    resolved = ConflictList()
+    conflict_re = re.compile('(<{7}|={7}|>{7})')
+    try:
+        tree.lock_tree_write()
+        for conflict in tree.conflicts():
+            if conflict.typestring != 'text conflict':
+                un_resolved.append(conflict)
+                continue
+            my_file = open(tree.id2abspath(conflict.file_id), 'rb')
+            try:
+                for line in my_file:
+                    if conflict_re.match(line):
+                        un_resolved.append(conflict)
+                        break
+                else:
+                    resolved.append(conflict)
+            finally:
+                my_file.close()
+        resolved.remove_files(tree)
+        tree.set_conflicts(un_resolved)
+    finally:
+        tree.unlock()
+    return un_resolved, resolved
 
 
 class ConflictList(object):

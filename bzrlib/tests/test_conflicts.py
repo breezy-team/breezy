@@ -17,7 +17,10 @@
 
 import os
 
-from bzrlib import bzrdir
+from bzrlib import (
+    bzrdir,
+    conflicts,
+    )
 from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.branch import Branch
 from bzrlib.conflicts import (MissingParent, ContentsConflict, TextConflict,
@@ -81,6 +84,44 @@ class TestConflicts(TestCaseWithTransport):
         os.mkdir('hello.OTHER')
         l = ConflictList([TextConflict('hello')])
         l.remove_files(tree)
+
+    def test_auto_resolve(self):
+        base = self.make_branch_and_tree('base')
+        self.build_tree_contents([('base/hello', 'Hello')])
+        base.add('hello', 'hello_id')
+        base.commit('Hello')
+        other = base.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/hello', 'hELLO')])
+        other.commit('Case switch')
+        this = base.bzrdir.sprout('this').open_workingtree()
+        self.failUnlessExists('this/hello')
+        self.build_tree_contents([('this/hello', 'Hello World')])
+        this.commit('Add World')
+        this.merge_from_branch(other.branch)
+        self.assertEqual([TextConflict('hello', None, 'hello_id')], 
+                         this.conflicts())
+        conflicts.auto_resolve(this)
+        self.assertEqual([TextConflict('hello', None, 'hello_id')], 
+                         this.conflicts())
+        self.build_tree_contents([('this/hello', '<<<<<<<')])
+        conflicts.auto_resolve(this)
+        self.assertEqual([TextConflict('hello', None, 'hello_id')], 
+                         this.conflicts())
+        self.build_tree_contents([('this/hello', '=======')])
+        conflicts.auto_resolve(this)
+        self.assertEqual([TextConflict('hello', None, 'hello_id')], 
+                         this.conflicts())
+        self.build_tree_contents([('this/hello', '\n>>>>>>>')])
+        remaining, resolved = conflicts.auto_resolve(this)
+        self.assertEqual([TextConflict('hello', None, 'hello_id')], 
+                         this.conflicts())
+        self.assertEqual([], resolved)
+        self.build_tree_contents([('this/hello', 'hELLO wORLD')])
+        remaining, resolved = conflicts.auto_resolve(this)
+        self.assertEqual([], this.conflicts())
+        self.assertEqual([TextConflict('hello', None, 'hello_id')], 
+                         resolved)
+        self.failIfExists('this/hello.BASE')
 
 
 class TestConflictStanzas(TestCase):

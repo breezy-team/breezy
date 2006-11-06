@@ -322,3 +322,20 @@ class TestCommit(ExternalBase):
         self.assertNotContainsRe(result, 'file-a')
         result = self.run_bzr('status')[0]
         self.assertContainsRe(result, 'removed:\n  file-a')
+
+    def test_commit_auto_resolve(self):
+        base = self.make_branch_and_tree('base')
+        self.build_tree_contents([('base/hello', 'Hello')])
+        base.add('hello', 'hello_id')
+        base.commit('Hello')
+        other = base.bzrdir.sprout('other').open_workingtree()
+        self.build_tree_contents([('other/hello', 'hELLO')])
+        other.commit('Case switch')
+        this = base.bzrdir.sprout('this').open_workingtree()
+        self.build_tree_contents([('this/hello', 'Hello World')])
+        this.commit('Add World')
+        this.merge_from_branch(other.branch)
+        self.run_bzr_error(('Conflicts detected in working tree.',), 
+                           'commit', '-m', 'test', 'this')
+        self.build_tree_contents([('this/hello', 'hELLO wORLD')])
+        self.run_bzr('commit', '-m', 'test', 'this')
