@@ -78,7 +78,7 @@ class TestTrace(TestCase):
     def test_format_exception(self):
         """Short formatting of bzr exceptions"""
         try:
-            raise errors.NotBranchError, 'wibble'
+            raise errors.NotBranchError('wibble')
         except errors.NotBranchError:
             pass
         msg = _format_exception()

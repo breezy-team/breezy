@@ -191,6 +191,22 @@ class BranchStatus(TestCaseWithTransport):
         out, err = self.run_bzr('status', 'does-not-exist', retcode=3)
         self.assertContainsRe(err, r'do not exist.*does-not-exist')
 
+    def test_status_out_of_date(self):
+        """Simulate status of out-of-date tree after remote push"""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'foo\n')])
+        tree.lock_write()
+        try:
+            tree.add(['a'])
+            tree.commit('add test file')
+            # simulate what happens after a remote push
+            tree.set_last_revision("0")
+            out, err = self.run_bzr('status')
+            self.assertEqual("working tree is out of date, run 'bzr update'\n",
+                             err)
+        finally:
+            tree.unlock()
+
 
 class CheckoutStatus(BranchStatus):
 

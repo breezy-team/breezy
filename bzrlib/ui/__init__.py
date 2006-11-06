@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -71,7 +71,7 @@ class UIFactory(object):
     def nested_progress_bar(self):
         """Return a nested progress bar.
 
-        When the bar has been finished with, it should be released bu calling
+        When the bar has been finished with, it should be released by calling
         bar.finished().
         """
         raise NotImplementedError(self.nested_progress_bar)

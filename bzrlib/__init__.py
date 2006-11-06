@@ -26,7 +26,7 @@ IGNORE_FILENAME = ".bzrignore"
 user_encoding = get_user_encoding()
 
 
-__copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
+__copyright__ = "Copyright 2005, 2006 Canonical Ltd."
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
@@ -35,7 +35,7 @@ __copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (0, 12, 0, 'dev', 0)
+version_info = (0, 13, 0, 'dev', 0)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
