@@ -16,6 +16,11 @@ IN DEVELOPMENT
     * Clean up ``bzr selftest --benchmark bundle`` to correct an import,
       and remove benchmarks that take longer than 10min to run.
       (John Arbash Meinel)
+
+    * Use ``time.time()`` instead of ``time.clock()`` to decide on
+      progress throttling. Because ``time.clock()`` is actually CPU time,
+      so over a high-latency connection, too many updates get throttled.
+      (John Arbash Meinel)
   
   BUG FIXES:
 
