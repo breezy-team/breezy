@@ -93,6 +93,18 @@ SIGN_ALWAYS=1
 SIGN_NEVER=2
 
 
+STORE_LOCATION = 0
+STORE_LOCATION_NORECURSE = 1
+STORE_LOCATION_APPENDPATH = 2
+STORE_BRANCH = 3
+STORE_GLOBAL = 4
+
+
+POLICY_NONE = 0
+POLICY_NORECURSE = 1
+POLICY_APPENDPATH = 2
+
+
 class ConfigObj(configobj.ConfigObj):
 
     def get_bool(self, section, key):
@@ -278,6 +290,10 @@ class IniBasedConfig(Config):
         """Override this to define the section used by the config."""
         return "DEFAULT"
 
+    def _get_option_policy(self, section, option_name):
+        """Return the policy for the given (section, option_name) pair."""
+        return POLICY_NONE
+
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
         policy = self._get_user_option('check_signatures')
@@ -298,9 +314,20 @@ class IniBasedConfig(Config):
         """See Config._get_user_option."""
         for (section, extra_path) in self._get_matching_sections():
             try:
-                return self._get_parser().get_value(section, option_name)
+                value = self._get_parser().get_value(section, option_name)
             except KeyError:
-                pass
+                continue
+            policy = self._get_option_policy(section, option_name)
+            if policy == POLICY_NONE:
+                return value
+            elif policy == POLICY_NORECURSE:
+                # norecurse items only apply to the exact path
+                if extra_path:
+                    continue
+                else:
+                    return value
+            elif policy == POLICY_APPENDPATH:
+                return urlutils.join(value, extra_path)
         else:
             return None
 
@@ -431,13 +458,13 @@ class LocationConfig(IniBasedConfig):
             # if section is longer, no match.
             if len(section_names) > len(location_names):
                 continue
-            # if path is longer, and recurse is not true, no match
-            if len(section_names) < len(location_names):
-                try:
-                    if not self._get_parser()[section].as_bool('recurse'):
-                        continue
-                except KeyError:
-                    pass
+##             # if path is longer, and recurse is not true, no match
+##             if len(section_names) < len(location_names):
+##                 try:
+##                     if not self._get_parser()[section].as_bool('recurse'):
+##                         continue
+##                 except KeyError:
+##                     pass
             matches.append((len(section_names), section,
                             '/'.join(location_names[len(section_names):])))
         matches.sort(reverse=True)
@@ -451,6 +478,29 @@ class LocationConfig(IniBasedConfig):
             except KeyError:
                 pass
         return sections
+
+    def _get_option_policy(self, section, option_name):
+        """Return the policy for the given (section, option_name) pair."""
+        # check for the old 'recurse=False' flag
+        try:
+            recurse = self._get_parser()[section].as_bool('recurse')
+        except KeyError:
+            recurse = True
+        if not recurse:
+            return POLICY_NORECURSE
+
+        for (name, policy) in [('norecurse', POLICY_NORECURSE),
+                               ('appendpath', POLICY_APPENDPATH)]:
+            try:
+                value = self._get_parser().get_value(section,
+                                                     'policy_%s' % name)
+                if option_name in value:
+                    return policy
+            except KeyError:
+                pass
+
+        # fall back to no special policy
+        return POLICY_NONE
 
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
