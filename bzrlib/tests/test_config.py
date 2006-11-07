@@ -35,56 +35,61 @@ from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 
 
 sample_long_alias="log -r-15..-1 --line"
-sample_config_text = ("[DEFAULT]\n"
-                      u"email=Erik B\u00e5gfors <erik@bagfors.nu>\n"
-                      "editor=vim\n"
-                      "gpg_signing_command=gnome-gpg\n"
-                      "log_format=short\n"
-                      "user_global_option=something\n"
-                      "[ALIASES]\n"
-                      "h=help\n"
-                      "ll=" + sample_long_alias + "\n")
+sample_config_text = u"""
+[DEFAULT]
+email=Erik B\u00e5gfors <erik@bagfors.nu>
+editor=vim
+gpg_signing_command=gnome-gpg
+log_format=short
+user_global_option=something
+[ALIASES]
+h=help
+ll=""" + sample_long_alias + "\n"
 
 
-sample_always_signatures = ("[DEFAULT]\n"
-                            "check_signatures=ignore\n"
-                            "create_signatures=always")
+sample_always_signatures = """
+[DEFAULT]
+check_signatures=ignore
+create_signatures=always
+"""
 
+sample_ignore_signatures = """
+[DEFAULT]
+check_signatures=require
+create_signatures=never
+"""
 
-sample_ignore_signatures = ("[DEFAULT]\n"
-                            "check_signatures=require\n"
-                            "create_signatures=never")
+sample_maybe_signatures = """
+[DEFAULT]
+check_signatures=ignore
+create_signatures=when-required
+"""
 
-
-sample_maybe_signatures = ("[DEFAULT]\n"
-                            "check_signatures=ignore\n"
-                            "create_signatures=when-required")
-
-
-sample_branches_text = ("[http://www.example.com]\n"
-                        "# Top level policy\n"
-                        "email=Robert Collins <robertc@example.org>\n"
-                        "[http://www.example.com/ignoreparent]\n"
-                        "# different project: ignore parent dir config\n"
-                        "ignore_parents=true\n"
-                        "[http://www.example.com/norecurse]\n"
-                        "# configuration items that only apply to this dir\n"
-                        "recurse=false\n"
-                        "[/b/]\n"
-                        "check_signatures=require\n"
-                        "# test trailing / matching with no children\n"
-                        "[/a/]\n"
-                        "check_signatures=check-available\n"
-                        "gpg_signing_command=false\n"
-                        "user_local_option=local\n"
-                        "# test trailing / matching\n"
-                        "[/a/*]\n"
-                        "#subdirs will match but not the parent\n"
-                        "[/a/c]\n"
-                        "check_signatures=ignore\n"
-                        "post_commit=bzrlib.tests.test_config.post_commit\n"
-                        "#testing explicit beats globs\n")
-
+sample_branches_text = """
+[http://www.example.com]
+# Top level policy
+email=Robert Collins <robertc@example.org>
+[http://www.example.com/ignoreparent]
+# different project: ignore parent dir config
+ignore_parents=true
+[http://www.example.com/norecurse]
+# configuration items that only apply to this dir
+recurse=false
+[/b/]
+check_signatures=require
+# test trailing / matching with no children
+[/a/]
+check_signatures=check-available
+gpg_signing_command=false
+user_local_option=local
+# test trailing / matching
+[/a/*]
+#subdirs will match but not the parent
+[/a/c]
+check_signatures=ignore
+post_commit=bzrlib.tests.test_config.post_commit
+#testing explicit beats globs
+"""
 
 
 class InstrumentedConfigObj(object):
@@ -564,18 +569,6 @@ class TestLocationConfig(TestCaseInTempDir):
         self.get_branch_config(
             'http://www.example.com/ignoreparent/childbranch')
         self.assertEqual([('http://www.example.com/ignoreparent', 'childbranch')],
-                         self.my_location_config._get_matching_sections())
-
-    def test__get_matching_sections_norecurse(self):
-        self.get_branch_config('http://www.example.com/norecurse')
-        self.assertEqual([('http://www.example.com/norecurse', ''),
-                          ('http://www.example.com', 'norecurse')],
-                         self.my_location_config._get_matching_sections())
-
-    def test__get_matching_sections_norecurse_subdir(self):
-        self.get_branch_config(
-            'http://www.example.com/norecurse/childbranch')
-        self.assertEqual([('http://www.example.com', 'norecurse/childbranch')],
                          self.my_location_config._get_matching_sections())
 
     def test__get_matching_sections_subdir_trailing_slash(self):
