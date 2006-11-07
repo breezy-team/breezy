@@ -464,13 +464,6 @@ class LocationConfig(IniBasedConfig):
             # if section is longer, no match.
             if len(section_names) > len(location_names):
                 continue
-##             # if path is longer, and recurse is not true, no match
-##             if len(section_names) < len(location_names):
-##                 try:
-##                     if not self._get_parser()[section].as_bool('recurse'):
-##                         continue
-##                 except KeyError:
-##                     pass
             matches.append((len(section_names), section,
                             '/'.join(location_names[len(section_names):])))
         matches.sort(reverse=True)
