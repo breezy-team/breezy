@@ -643,7 +643,7 @@ class BranchConfig(Config):
         if store == STORE_BRANCH:
             self._get_branch_data_config().set_option(value, name)
         elif store == STORE_GLOBAL:
-            self._get_global_config().set_option(name, value)
+            self._get_global_config().set_user_option(name, value)
         else:
             self._get_location_config().set_user_option(name, value, store)
 
