@@ -63,7 +63,7 @@ class TestMove(TestCaseWithTransport):
 
     def test_mv_nonexisting(self):
         self.run_bzr_error(
-            ["^bzr: ERROR: can't rename: old working file .* does not exist$"],
+            ["^bzr: ERROR: can't rename: old name .* is not versioned$"],
             'mv', 'doesnotexist', 'somewhereelse')
 
     def test_mv_unqualified(self):
@@ -144,3 +144,96 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr('mv', 'c/b', 'b')
         tree = workingtree.WorkingTree.open('.')
         self.assertEqual('b-id', tree.path2id('b'))
+
+    def test_mv_inv_simple(self):
+        self.build_tree(['a', 'b', 'c', 'd', 'e', 'sub1/', 'sub2/'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a', 'c', 'd', 'e', 'sub1'])
+        tree.commit('initial commit')
+
+        os.rename('a', 'b')
+        self.run_bzr('mv', 'a', 'b')
+        self.failIfExists('a')
+        self.failUnlessExists('b')
+
+        os.remove('c')
+        self.run_bzr_error(
+            ["^bzr: ERROR: can't rename: new name .* is already versioned$"],
+            'mv', 'c', 'd')
+        self.failIfExists('c')
+        self.failUnlessExists('d')
+
+        os.rename('d', 'sub1/d')
+        self.run_bzr('mv', 'd', 'sub1/d')
+        self.failIfExists('d')
+        self.failUnlessExists('sub1/d')
+
+        os.rename('e', 'sub2/e')
+        self.run_bzr_error(
+            ["^bzr: ERROR: can't determine destination directory id for .*$"],
+            'mv', 'e', 'sub2/e')
+        self.failIfExists('e')
+        self.failUnlessExists('sub2/e')
+
+
+    def test_mv_inv_dir(self):
+        self.build_tree(['a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'd1', 'd2', 
+                         'e1', 'e2', 'sub1/', 'sub2/'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a1', 'a2', 'b1', 'b2', 'sub1'])
+        tree.commit('initial commit')
+        
+        os.rename('a1', 'sub1/a1')
+        self.run_bzr('mv', 'a1', 'a2', 'sub1')
+        self.failIfExists('a1')
+        self.failIfExists('a2')
+        self.failUnlessExists('sub1/a1')
+        self.failUnlessExists('sub1/a2')
+        
+        os.rename('b1', 'sub2/b1')
+        self.run_bzr_error(
+            ["^bzr: ERROR: destination .* is not a versioned directory$"],
+            'mv', 'b1', 'b2', 'sub2')
+        self.failIfExists('b1')
+        self.failUnlessExists('b2')
+        self.failUnlessExists('sub2/b1')
+        self.failIfExists('sub2/b2')
+
+    def test_mv_inv_simple_touched(self):
+        self.build_tree(['a', 'b'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a'])
+        tree.commit('initial commit')
+
+        self.run_bzr_error(
+            ["^bzr: ERROR: can't rename: both, old name .* and new name .*"
+             " exist. Use option '--after' to force rename."],
+            'mv', 'a', 'b')
+        self.failUnlessExists('a')
+        self.failUnlessExists('b')
+
+        self.run_bzr('mv', 'a', 'b', '--after')
+        self.failUnlessExists('a')
+        self.failUnlessExists('b')
+
+    def test_mv_inv_dir_touched(self):
+        self.build_tree(['a1', 'a2', 'sub1/', 'sub1/a1', 'sub1/a2'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a1', 'a2', 'sub1'])
+        tree.commit('initial commit')
+
+        self.run_bzr_error(
+            ["^bzr: ERROR: can't rename: both, old name .* and new name .*"
+             " exist. Use option '--after' to force rename."],
+            'mv', 'a1', 'a2', 'sub1')
+        self.failUnlessExists('a1')
+        self.failUnlessExists('a2')
+        self.failUnlessExists('sub1/a1')
+        self.failUnlessExists('sub1/a2')
+        
+        self.run_bzr('mv', 'a1', 'a2', 'sub1', '--after')
+        self.failUnlessExists('a1')
+        self.failUnlessExists('a2')
+        self.failUnlessExists('sub1/a1')
+        self.failUnlessExists('sub1/a2')
+        
