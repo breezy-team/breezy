@@ -1131,7 +1131,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                    " name %r exist" % (from_rel, to_rel))
                 else:
                     raise BzrError("can't rename: both, old name %r and new"
-                                   "name %r exist. Use option '--after' to"
+                                   " name %r exist. Use option '--after' to"
                                    " force rename." % (from_rel, to_rel))
             rename_entry.set_only_change_inv(only_change_inv)                       
         return rename_entries
