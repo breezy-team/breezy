@@ -117,8 +117,23 @@ class InstrumentedConfigObj(object):
     def __setitem__(self, key, value):
         self._calls.append(('__setitem__', key, value))
 
+    def __delitem__(self, key):
+        self._calls.append(('__delitem__', key))
+
+    def keys(self):
+        self._calls.append(('keys',))
+        return []
+
     def write(self, arg):
         self._calls.append(('write',))
+
+    def as_bool(self, value):
+        self._calls.append(('as_bool', value))
+        return False
+
+    def get_value(self, section, name):
+        self._calls.append(('get_value', section, name))
+        return None
 
 
 class FakeBranch(object):
@@ -404,7 +419,7 @@ class TestBranchConfig(TestCaseWithTransport):
         local_path = osutils.getcwd().encode('utf8')
         # Surprisingly ConfigObj doesn't create a trailing newline
         self.check_file_contents(locations,
-            '[%s/branch]\npush_location = http://foobar' % (local_path,))
+            '[%s/branch]\npush_location = http://foobar\npolicy_norecurse = push_location,' % (local_path,))
 
 
 class TestGlobalConfigItems(TestCase):
@@ -723,6 +738,49 @@ class TestLocationConfig(TestCaseInTempDir):
         self.assertEqual('normal',
                          self.my_config.get_user_option('normal_option'))
 
+    def test_set_user_option_norecurse(self):
+        self.get_branch_config('http://www.example.com')
+        self.my_config.set_user_option('foo', 'bar',
+                                       store=config.STORE_LOCATION_NORECURSE)
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com', 'foo'),
+            config.POLICY_NORECURSE)
+
+    def test_set_user_option_appendpath(self):
+        self.get_branch_config('http://www.example.com')
+        self.my_config.set_user_option('foo', 'bar',
+                                       store=config.STORE_LOCATION_APPENDPATH)
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com', 'foo'),
+            config.POLICY_APPENDPATH)
+
+    def test_set_user_option_change_policy(self):
+        self.get_branch_config('http://www.example.com')
+        self.my_config.set_user_option('norecurse_option', 'normal',
+                                       store=config.STORE_LOCATION)
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com', 'norecurse_option'),
+            config.POLICY_NONE)
+
+    def test_set_user_option_recurse_false_section(self):
+        # The following section has recurse=False set
+        self.get_branch_config('http://www.example.com/norecurse')
+        self.my_config.set_user_option('foo', 'bar',
+                                       store=config.STORE_LOCATION)
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com/norecurse', 'foo'),
+            config.POLICY_NONE)
+        # The previously existing option is still norecurse:
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com/norecurse', 'normal_option'),
+            config.POLICY_NORECURSE)
+        
+
     def test_post_commit_default(self):
         self.get_branch_config('/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
@@ -755,7 +813,8 @@ class TestLocationConfig(TestCaseInTempDir):
 
         os.mkdir = checked_mkdir
         try:
-            self.my_config.set_user_option('foo', 'bar', local=True)
+            self.my_config.set_user_option('foo', 'bar',
+                                           store=config.STORE_LOCATION)
         finally:
             os.mkdir = real_mkdir
 
@@ -765,6 +824,14 @@ class TestLocationConfig(TestCaseInTempDir):
                           ('__setitem__', '/a/c', {}),
                           ('__getitem__', '/a/c'),
                           ('__setitem__', 'foo', 'bar'),
+                          ('__getitem__', '/a/c'),
+                          ('as_bool', 'recurse'),
+                          ('__getitem__', '/a/c'),
+                          ('__delitem__', 'recurse'),
+                          ('__getitem__', '/a/c'),
+                          ('keys',),
+                          ('get_value', '/a/c', 'policy_norecurse'),
+                          ('get_value', '/a/c', 'policy_appendpath'),
                           ('write',)],
                          record._calls[1:])
 
@@ -776,7 +843,8 @@ class TestLocationConfig(TestCaseInTempDir):
             self.my_config.branch.control_files.files['branch.conf'], 
             'foo = bar')
         self.assertEqual(self.my_config.get_user_option('foo'), 'bar')
-        self.my_config.set_user_option('foo', 'baz', local=True)
+        self.my_config.set_user_option('foo', 'baz',
+                                       store=config.STORE_LOCATION)
         self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
         self.my_config.set_user_option('foo', 'qux')
         self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
@@ -880,7 +948,8 @@ class TestBranchConfigItems(TestCaseInTempDir):
         # post-commit is ignored when bresent in branch data
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          my_config.post_commit())
-        my_config.set_user_option('post_commit', 'rmtree_root', local=True)
+        my_config.set_user_option('post_commit', 'rmtree_root',
+                                  store=config.STORE_LOCATION)
         self.assertEqual('rmtree_root', my_config.post_commit())
 
     def test_config_precedence(self):

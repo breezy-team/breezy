@@ -93,16 +93,20 @@ SIGN_ALWAYS=1
 SIGN_NEVER=2
 
 
-STORE_LOCATION = 0
-STORE_LOCATION_NORECURSE = 1
-STORE_LOCATION_APPENDPATH = 2
-STORE_BRANCH = 3
-STORE_GLOBAL = 4
-
-
 POLICY_NONE = 0
 POLICY_NORECURSE = 1
 POLICY_APPENDPATH = 2
+
+_policy_key_names = [
+    ('policy_norecurse', POLICY_NORECURSE),
+    ('policy_appendpath', POLICY_APPENDPATH)]
+
+
+STORE_LOCATION = POLICY_NONE
+STORE_LOCATION_NORECURSE = POLICY_NORECURSE
+STORE_LOCATION_APPENDPATH = POLICY_APPENDPATH
+STORE_BRANCH = 3
+STORE_GLOBAL = 4
 
 
 class ConfigObj(configobj.ConfigObj):
@@ -491,11 +495,11 @@ class LocationConfig(IniBasedConfig):
         if not recurse:
             return POLICY_NORECURSE
 
-        for (name, policy) in [('norecurse', POLICY_NORECURSE),
-                               ('appendpath', POLICY_APPENDPATH)]:
+        for (name, policy) in _policy_key_names:
             try:
-                value = self._get_parser().get_value(section,
-                                                     'policy_%s' % name)
+                value = self._get_parser().get_value(section, name)
+                if not isinstance(value, list):
+                    value = [value]
                 if option_name in value:
                     return policy
             except KeyError:
@@ -504,8 +508,47 @@ class LocationConfig(IniBasedConfig):
         # fall back to no special policy
         return POLICY_NONE
 
-    def set_user_option(self, option, value):
+    def _set_option_policy(self, section, option_name, option_policy):
+        """Set the policy for the given option name in the given section."""
+        # The old recurse=False option affects all options in the
+        # section.  To handle multiple policies in the section, we
+        # need to convert it to a policy_norecurse key.
+        try:
+            recurse = self._get_parser()[section].as_bool('recurse')
+        except KeyError:
+            pass
+        else:
+            warning('The recurse option in section %s of %s '
+                    'has been converted to a policy_norecurse option'
+                    % (section, self._get_filename()))
+            del self._get_parser()[section]['recurse']
+            all_keys = sorted(
+                key for key in self._get_parser()[section].keys()
+                if not key.startswith('policy_'))
+            if all_keys:
+                self._get_parser()[section]['policy_norecurse'] = all_keys
+
+        for (name, policy) in _policy_key_names:
+            try:
+                value = self._get_parser().get_value(section, name)
+                if not isinstance(value, list):
+                    value = [value]
+            except KeyError:
+                value = []
+            if policy == option_policy:
+                if option_name not in value:
+                    value = sorted(value + [option_name])
+                    self._get_parser()[section][name] = value
+            else:
+                if option_name in value:
+                    value.remove(option_name)
+                    self._get_parser()[section][name] = value
+
+    def set_user_option(self, option, value, store=STORE_LOCATION):
         """Save option and its value in the configuration."""
+        assert store in [STORE_LOCATION,
+                         STORE_LOCATION_NORECURSE,
+                         STORE_LOCATION_APPENDPATH], 'bad storage policy'
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on locations.conf.
         conf_dir = os.path.dirname(self._get_filename())
@@ -519,6 +562,8 @@ class LocationConfig(IniBasedConfig):
         elif location + '/' in self._get_parser():
             location = location + '/'
         self._get_parser()[location][option]=value
+        # the allowed values of store match the config policies
+        self._set_option_policy(location, option, store)
         self._get_parser().write(file(self._get_filename(), 'wb'))
 
 
@@ -599,12 +644,13 @@ class BranchConfig(Config):
                 return value
         return None
 
-    def set_user_option(self, name, value, local=False):
-        if local is True:
-            self._get_location_config().set_user_option(name, value)
-        else:
+    def set_user_option(self, name, value, store=STORE_BRANCH):
+        if store == STORE_BRANCH:
             self._get_branch_data_config().set_option(value, name)
-
+        elif store == STORE_GLOBAL:
+            self._get_global_config().set_option(name, value)
+        else:
+            self._get_location_config().set_user_option(name, value, store)
 
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
