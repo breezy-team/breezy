@@ -252,3 +252,17 @@ class TestSource(TestSourceHelper):
                 help_text.append((' '*4) + fname)
 
             self.fail('\n'.join(help_text))
+
+    def test_no_tabs(self):
+        """bzrlib source files should not contain any tab characters."""
+        incorrect = []
+
+        for fname, text in self.get_source_file_contents():
+            if '\t' in text:
+                incorrect.append(fname)
+
+        if incorrect:
+            self.fail('Tab characters were found in the following source files.'
+              '\nThey should either be replaced by "\\t" or by spaces:'
+              '\n\n    %s'
+              % ('\n    '.join(incorrect)))
