@@ -1063,11 +1063,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             from_entry = inv[from_id]
             from_parent_id = from_entry.parent_id
             to_rel = pathjoin(to_dir, from_tail)
-            rename_entry = _RenameEntry(from_rel=from_rel, from_id=from_id,
-                                        from_tail=from_tail,
-                                        from_parent_id=from_parent_id,
-                                        to_rel=to_rel, to_tail=to_tail,
-                                        to_parent_id=to_parent_id)
+            rename_entry = WorkingTree._RenameEntry(from_rel=from_rel, 
+                                         from_id=from_id,
+                                         from_tail=from_tail,
+                                         from_parent_id=from_parent_id,
+                                         to_rel=to_rel, to_tail=from_tail,
+                                         to_parent_id=to_dir_id)
             rename_entries.append(rename_entry)
             rename_tuples.append((from_rel, to_rel))
 
@@ -1225,11 +1226,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         from_parent_id = from_entry.parent_id
         to_dir, to_tail = os.path.split(to_rel)
         to_dir_id = inv.path2id(to_dir)
-        rename_entry = _RenameEntry(from_rel=from_rel, from_id=from_id,
-                                    from_tail=from_tail,
-                                    from_parent_id=from_parent_id,
-                                    to_rel=to_rel, to_tail=to_tail,
-                                    to_parent_id=to_parent_id)
+        rename_entry = WorkingTree._RenameEntry(from_rel=from_rel, 
+                                     from_id=from_id,
+                                     from_tail=from_tail,
+                                     from_parent_id=from_parent_id,
+                                     to_rel=to_rel, to_tail=to_tail,
+                                     to_parent_id=to_dir_id)
         rename_entries.append(rename_entry)
 
         # determine which move mode to use. checks also for movability
@@ -1254,8 +1256,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._write_inventory(inv)
 
     class _RenameEntry(object):
-        def _init_(self, from_rel, from_id, from_tail, from_parent_id,
-                   to_rel, to_tail, to_parent_id):
+        def __init__(self, from_rel, from_id, from_tail, from_parent_id,
+                     to_rel, to_tail, to_parent_id):
             self.from_rel = from_rel
             self.from_id = from_id
             self.from_tail = from_tail
