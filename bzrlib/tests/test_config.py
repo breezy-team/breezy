@@ -69,12 +69,20 @@ sample_branches_text = """
 [http://www.example.com]
 # Top level policy
 email=Robert Collins <robertc@example.org>
+normal_option = normal
+appendpath_option = append
+norecurse_option = norecurse
+policy_appendpath = appendpath_option
+policy_norecurse = norecurse_option
 [http://www.example.com/ignoreparent]
 # different project: ignore parent dir config
 ignore_parents=true
 [http://www.example.com/norecurse]
 # configuration items that only apply to this dir
 recurse=false
+normal_option = norecurse
+[http://www.example.com/dir]
+appendpath_option = normal
 [/b/]
 check_signatures=require
 # test trailing / matching with no children
@@ -600,6 +608,32 @@ class TestLocationConfig(TestCaseInTempDir):
         self.assertEqual([('/a/c', ''), ('/a/*', ''), ('/a/', 'c')],
                          self.my_location_config._get_matching_sections())
 
+    def test__get_option_policy_normal(self):
+        self.get_branch_config('http://www.example.com')
+        self.assertEqual(
+            self.my_location_config._get_config_policy(
+            'http://www.example.com', 'normal_option'),
+            config.POLICY_NONE)
+
+    def test__get_option_policy_norecurse(self):
+        self.get_branch_config('http://www.example.com')
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com', 'norecurse_option'),
+            config.POLICY_NORECURSE)
+        # Test old recurse=False setting:
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com/norecurse', 'normal_option'),
+            config.POLICY_NORECURSE)
+
+    def test__get_option_policy_normal(self):
+        self.get_branch_config('http://www.example.com')
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com', 'appendpath_option'),
+            config.POLICY_APPENDPATH)
+
     def test_location_without_username(self):
         self.get_branch_config('http://www.example.com/ignoreparent')
         self.assertEqual(u'Erik B\u00e5gfors <erik@bagfors.nu>',
@@ -656,6 +690,38 @@ class TestLocationConfig(TestCaseInTempDir):
         self.get_branch_config('/a')
         self.assertEqual('local',
                          self.my_config.get_user_option('user_local_option'))
+
+    def test_get_user_option_appendpath(self):
+        # returned as is for the base path:
+        self.get_branch_config('http://www.example.com')
+        self.assertEqual('append',
+                         self.my_config.get_user_option('appendpath_option'))
+        # Extra path components get appended:
+        self.get_branch_config('http://www.example.com/a/b/c')
+        self.assertEqual('append/a/b/c',
+                         self.my_config.get_user_option('appendpath_option'))
+        # Overriden for http://www.example.com/dir, where it is a
+        # normal option:
+        self.get_branch_config('http://www.example.com/dir/a/b/c')
+        self.assertEqual('normal',
+                         self.my_config.get_user_option('appendpath_option'))
+
+    def test_get_user_option_norecurse(self):
+        self.get_branch_config('http://www.example.com')
+        self.assertEqual('norecurse',
+                         self.my_config.get_user_option('norecurse_option'))
+        self.get_branch_config('http://www.example.com/dir')
+        self.assertEqual(None,
+                         self.my_config.get_user_option('norecurse_option'))
+        # http://www.example.com/norecurse is a recurse=False section
+        # that redefines normal_option.  Subdirectories do not pick up
+        # this redefinition.
+        self.get_branch_config('http://www.example.com/norecurse')
+        self.assertEqual('norecurse',
+                         self.my_config.get_user_option('normal_option'))
+        self.get_branch_config('http://www.example.com/norecurse/subdir')
+        self.assertEqual('normal',
+                         self.my_config.get_user_option('normal_option'))
 
     def test_post_commit_default(self):
         self.get_branch_config('/a/c')

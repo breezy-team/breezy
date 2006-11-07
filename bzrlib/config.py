@@ -327,7 +327,9 @@ class IniBasedConfig(Config):
                 else:
                     return value
             elif policy == POLICY_APPENDPATH:
-                return urlutils.join(value, extra_path)
+                if extra_path:
+                    value = urlutils.join(value, extra_path)
+                return value
         else:
             return None
 
