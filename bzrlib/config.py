@@ -334,6 +334,8 @@ class IniBasedConfig(Config):
                 if extra_path:
                     value = urlutils.join(value, extra_path)
                 return value
+            else:
+                raise AssertionError('Unexpected config policy %r' % policy)
         else:
             return None
 
