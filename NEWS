@@ -7,6 +7,11 @@ IN DEVELOPMENT
       ``bzr export bzr.tar.gz http://bazaar-vcs.org/bzr/bzr.dev``
       (Daniel Silverstone)
 
+    * Added ``bzr help topics`` to the bzr help system. This gives a
+      location for general information, outside of a specific command.
+      This includes updates for ``bzr help revisionspec`` the first topic
+      included. (Goffredo Baroncelli, John Arbash Meinel, #42714)
+      
   INTERNALS:
 
     * New -D option given before the command line turns on debugging output
@@ -90,11 +95,6 @@ bzr 0.12rc1  2006-10-23
       do certain tasks (e.g. log formatters). Also provides lazy registration
       to allow modules to be loaded on request. (John Arbash Meinel, Adeodato
       Simó)
-
-    * Added ``bzr help topics`` to the bzr help system. This gives a
-      location for general information, outside of a specific command.
-      This includes updates for ``bzr help revisionspec`` the first topic
-      included. (Goffredo Baroncelli, John Arbash Meinel, #42714)
 
   API INCOMPATABILITY:
   
