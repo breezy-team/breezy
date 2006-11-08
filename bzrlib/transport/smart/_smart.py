@@ -197,21 +197,17 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 from cStringIO import StringIO
 import os
 import socket
-import tempfile
 import threading
 import urllib
 import urlparse
 
 from bzrlib import (
-    bzrdir,
     errors,
-    revision,
     transport,
     trace,
     urlutils,
     )
-from bzrlib.bundle.serializer import write_bundle
-from bzrlib.transport.smart import medium, protocol, vfs
+from bzrlib.transport.smart import medium, protocol, request
 
 # must do this otherwise urllib can't parse the urls properly :(
 for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
@@ -270,8 +266,7 @@ class SmartServerRequestHandler(object):
 
     def dispatch_command(self, cmd, args):
         """Deprecated compatibility method.""" # XXX XXX
-        from bzrlib.transport.smart.vfs import vfs_commands
-        command = vfs_commands.get(cmd)
+        command = request.version_one_commands.get(cmd)
         if command is not None:
             command = command(self._backing_transport)
             func = command.do
@@ -334,21 +329,6 @@ class SmartServerRequestHandler(object):
                 return protocol.SmartServerResponse(('ReadOnlyError', ))
             else:
                 raise
-
-    def do_hello(self):
-        """Answer a version request with my version."""
-        return protocol.SmartServerResponse(('ok', '1'))
-
-    def do_get_bundle(self, path, revision_id):
-        # open transport relative to our base
-        t = self._backing_transport.clone(path)
-        control, extra_path = bzrdir.BzrDir.open_containing_from_transport(t)
-        repo = control.open_repository()
-        tmpf = tempfile.TemporaryFile()
-        base_revision = revision.NULL_REVISION
-        write_bundle(repo, revision_id, base_revision, tmpf)
-        tmpf.seek(0)
-        return protocol.SmartServerResponse((), tmpf.read())
 
 
 class SmartTCPServer(object):

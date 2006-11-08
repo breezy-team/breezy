@@ -215,3 +215,4 @@ class StatCommand(request.SmartServerRequest):
             ('stat', str(stat.st_size), oct(stat.st_mode)))
 register_command(StatCommand)
 
+request.version_one_commands.update(vfs_commands)
