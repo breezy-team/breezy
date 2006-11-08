@@ -154,6 +154,8 @@ class TestHttpUrls(TestCase):
         self.assertRaises(ValueError,
             t.abspath,
             '.bzr/')
+        t = HttpTransport_urllib('http://http://bazaar-vcs.org/bzr/bzr.dev/')
+        self.assertRaises(errors.InvalidURL, t.has, 'foo/bar')
 
     def test_http_root_urls(self):
         """Construction of URLs from server root"""

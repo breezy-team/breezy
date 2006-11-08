@@ -218,7 +218,12 @@ class ConnectionHandler(urllib2.BaseHandler):
             raise errors.InvalidURL(request.get_full_url(), 'no host given.')
 
         # We create a connection (but it will not connect yet)
-        connection = http_connection_class(host)
+        try:
+            connection = http_connection_class(host)
+        except httplib.InvalidURL, exception:
+            # There is only one occurrence of InvalidURL in httplib
+            raise errors.InvalidURL(request.get_full_url(),
+                                    extra='nonnumeric port')
 
         return connection
 

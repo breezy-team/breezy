@@ -30,6 +30,8 @@ IN DEVELOPMENT
   
   BUG FIXES:
 
+    * Suppress the traceback on invalid URLs (Vincent Ladeuil, #70803).
+
     * Give nicer error message when an http server returns a 403
       error code. (Vincent Ladeuil, #57644).
 
