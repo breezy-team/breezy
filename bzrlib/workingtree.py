@@ -1046,7 +1046,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if not self.has_filename(to_dir):
             raise BzrError("destination %r not in working directory" % to_abs)
         to_dir_id = inv.path2id(to_dir)
-        if to_dir_id is None and to_dir != '':
+        if to_dir_id is None:
             raise BzrError("destination %r is not a versioned"
                            " directory" % to_dir)
         to_dir_ie = inv[to_dir_id]
@@ -1239,9 +1239,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         # check if the target changed directory and if the target directory is
         # versioned
-        if to_dir_id is None and to_dir != '':
-            raise BzrError("can't determine destination directory id for"
-                           " %r" % to_dir)
+        if to_dir_id is None:
+            raise BzrError("destination %r is not a versioned"
+                           " directory" % to_dir)
         
         # all checks done. now we can continue with our actual work
         mutter('rename_one:\n'
