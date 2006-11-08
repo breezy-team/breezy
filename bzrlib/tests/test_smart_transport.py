@@ -41,7 +41,7 @@ from bzrlib.transport.http import (
         SmartClientHTTPMediumRequest,
         SmartRequestHandler,
         )
-from bzrlib.transport.smart import medium, protocol
+from bzrlib.transport.smart import medium, protocol, vfs
 
 
 class StringIOSSHVendor(object):
@@ -1070,7 +1070,7 @@ class TestSmartProtocol(tests.TestCase):
         self.smart_server_request = smart.SmartServerRequestHandler(None)
 
     def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
-        client, smart_server_request):
+        client):
         """Check that smart (de)serialises offsets as expected.
         
         We check both serialisation and deserialisation at the same time
@@ -1079,11 +1079,11 @@ class TestSmartProtocol(tests.TestCase):
         
         :param expected_offsets: a readv offset list.
         :param expected_seralised: an expected serial form of the offsets.
-        :param smart_server_request: a SmartServerRequestHandler instance.
         """
-        # XXX: 'smart_server_request' should be a SmartServerRequestProtocol in
-        # future.
-        offsets = smart_server_request._deserialise_offsets(expected_serialised)
+        # XXX: '_deserialise_offsets' should be a method of the
+        # SmartServerRequestProtocol in future.
+        readv_cmd = vfs.ReadvCommand(None)
+        offsets = readv_cmd._deserialise_offsets(expected_serialised)
         self.assertEqual(expected_offsets, offsets)
         serialised = client._serialise_offsets(offsets)
         self.assertEqual(expected_serialised, serialised)
@@ -1128,14 +1128,12 @@ class TestSmartProtocol(tests.TestCase):
         one with the order of reads not increasing (an out of order read), and
         one that should coalesce.
         """
-        self.assertOffsetSerialisation([], '',
-            self.client_protocol, self.smart_server_request)
-        self.assertOffsetSerialisation([(1,2)], '1,2',
-            self.client_protocol, self.smart_server_request)
+        self.assertOffsetSerialisation([], '', self.client_protocol)
+        self.assertOffsetSerialisation([(1,2)], '1,2', self.client_protocol)
         self.assertOffsetSerialisation([(10,40), (0,5)], '10,40\n0,5',
-            self.client_protocol, self.smart_server_request)
+            self.client_protocol)
         self.assertOffsetSerialisation([(1,2), (3,4), (100, 200)],
-            '1,2\n3,4\n100,200', self.client_protocol, self.smart_server_request)
+            '1,2\n3,4\n100,200', self.client_protocol)
 
     def test_accept_bytes_of_bad_request_to_protocol(self):
         out_stream = StringIO()

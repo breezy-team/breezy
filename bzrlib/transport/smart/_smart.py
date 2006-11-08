@@ -211,18 +211,14 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.bundle.serializer import write_bundle
-from bzrlib.transport.smart import medium
-from bzrlib.transport.smart import protocol
-try:
-    from bzrlib.transport import ssh
-except errors.ParamikoNotPresent:
-    # no paramiko.  SmartSSHClientMedium will break.
-    pass
+from bzrlib.transport.smart import medium, protocol, vfs
 
 # must do this otherwise urllib can't parse the urls properly :(
 for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
+
+
 
 
 
@@ -242,162 +238,52 @@ class SmartServerRequestHandler(object):
 
     # TODO: Better way of representing the body for commands that take it,
     # and allow it to be streamed into the server.
+
+    # TODO: Use composition, rather than inheritance, for VFS request handling.
     
     def __init__(self, backing_transport):
         self._backing_transport = backing_transport
-        self._converted_command = False
+        self._body_bytes = ''  # common
+        self.response = None  # common
         self.finished_reading = False
-        self._body_bytes = ''
-        self.response = None
 
-    def accept_body(self, bytes):
-        """Accept body data.
-
-        This should be overriden for each command that desired body data to
-        handle the right format of that data. I.e. plain bytes, a bundle etc.
-
-        The deserialisation into that format should be done in the Protocol
-        object. Set self.desired_body_format to the format your method will
-        handle.
-        """
-        # default fallback is to accumulate bytes.
-        self._body_bytes += bytes
-        
-    def _end_of_body_handler(self):
+    def _end_of_body_handler(self):  # common
         """An unimplemented end of body handler."""
         raise NotImplementedError(self._end_of_body_handler)
         
-    def do_hello(self):
-        """Answer a version request with my version."""
-        return protocol.SmartServerResponse(('ok', '1'))
+    def accept_body(self, bytes):
+        """Accept body data."""
 
-    def do_has(self, relpath):
-        r = self._backing_transport.has(relpath) and 'yes' or 'no'
-        return protocol.SmartServerResponse((r,))
+        # TODO: This should be overriden for each command that desired body data
+        # to handle the right format of that data, i.e. plain bytes, a bundle,
+        # etc.  The deserialisation into that format should be done in the
+        # Protocol object.
 
-    def do_get(self, relpath):
-        backing_bytes = self._backing_transport.get_bytes(relpath)
-        return protocol.SmartServerResponse(('ok',), backing_bytes)
-
-    def _deserialise_optional_mode(self, mode):
-        # XXX: FIXME this should be on the protocol object.
-        if mode == '':
-            return None
-        else:
-            return int(mode)
-
-    def do_append(self, relpath, mode):
-        self._converted_command = True
-        self._relpath = relpath
-        self._mode = self._deserialise_optional_mode(mode)
-        self._end_of_body_handler = self._handle_do_append_end
-    
-    def _handle_do_append_end(self):
-        old_length = self._backing_transport.append_bytes(
-            self._relpath, self._body_bytes, self._mode)
-        self.response = protocol.SmartServerResponse(('appended', '%d' % old_length))
-
-    def do_delete(self, relpath):
-        self._backing_transport.delete(relpath)
-
-    def do_iter_files_recursive(self, relpath):
-        transport = self._backing_transport.clone(relpath)
-        filenames = transport.iter_files_recursive()
-        return protocol.SmartServerResponse(('names',) + tuple(filenames))
-
-    def do_list_dir(self, relpath):
-        filenames = self._backing_transport.list_dir(relpath)
-        return protocol.SmartServerResponse(('names',) + tuple(filenames))
-
-    def do_mkdir(self, relpath, mode):
-        self._backing_transport.mkdir(relpath,
-                                      self._deserialise_optional_mode(mode))
-
-    def do_move(self, rel_from, rel_to):
-        self._backing_transport.move(rel_from, rel_to)
-
-    def do_put(self, relpath, mode):
-        self._converted_command = True
-        self._relpath = relpath
-        self._mode = self._deserialise_optional_mode(mode)
-        self._end_of_body_handler = self._handle_do_put
-
-    def _handle_do_put(self):
-        self._backing_transport.put_bytes(self._relpath,
-                self._body_bytes, self._mode)
-        self.response = protocol.SmartServerResponse(('ok',))
-
-    def _deserialise_offsets(self, text):
-        # XXX: FIXME this should be on the protocol object.
-        offsets = []
-        for line in text.split('\n'):
-            if not line:
-                continue
-            start, length = line.split(',')
-            offsets.append((int(start), int(length)))
-        return offsets
-
-    def do_put_non_atomic(self, relpath, mode, create_parent, dir_mode):
-        self._converted_command = True
-        self._end_of_body_handler = self._handle_put_non_atomic
-        self._relpath = relpath
-        self._dir_mode = self._deserialise_optional_mode(dir_mode)
-        self._mode = self._deserialise_optional_mode(mode)
-        # a boolean would be nicer XXX
-        self._create_parent = (create_parent == 'T')
-
-    def _handle_put_non_atomic(self):
-        self._backing_transport.put_bytes_non_atomic(self._relpath,
-                self._body_bytes,
-                mode=self._mode,
-                create_parent_dir=self._create_parent,
-                dir_mode=self._dir_mode)
-        self.response = protocol.SmartServerResponse(('ok',))
-
-    def do_readv(self, relpath):
-        self._converted_command = True
-        self._end_of_body_handler = self._handle_readv_offsets
-        self._relpath = relpath
-
+        # default fallback is to accumulate bytes.
+        self._body_bytes += bytes
+        
     def end_of_body(self):
         """No more body data will be received."""
         self._run_handler_code(self._end_of_body_handler, (), {})
         # cannot read after this.
         self.finished_reading = True
 
-    def _handle_readv_offsets(self):
-        """accept offsets for a readv request."""
-        offsets = self._deserialise_offsets(self._body_bytes)
-        backing_bytes = ''.join(bytes for offset, bytes in
-            self._backing_transport.readv(self._relpath, offsets))
-        self.response = protocol.SmartServerResponse(('readv',), backing_bytes)
-        
-    def do_rename(self, rel_from, rel_to):
-        self._backing_transport.rename(rel_from, rel_to)
-
-    def do_rmdir(self, relpath):
-        self._backing_transport.rmdir(relpath)
-
-    def do_stat(self, relpath):
-        stat = self._backing_transport.stat(relpath)
-        return protocol.SmartServerResponse(('stat', str(stat.st_size), oct(stat.st_mode)))
-        
-    def do_get_bundle(self, path, revision_id):
-        # open transport relative to our base
-        t = self._backing_transport.clone(path)
-        control, extra_path = bzrdir.BzrDir.open_containing_from_transport(t)
-        repo = control.open_repository()
-        tmpf = tempfile.TemporaryFile()
-        base_revision = revision.NULL_REVISION
-        write_bundle(repo, revision_id, base_revision, tmpf)
-        tmpf.seek(0)
-        return protocol.SmartServerResponse((), tmpf.read())
-
     def dispatch_command(self, cmd, args):
         """Deprecated compatibility method.""" # XXX XXX
-        func = getattr(self, 'do_' + cmd, None)
-        if func is None:
-            raise errors.SmartProtocolError("bad request %r" % (cmd,))
+        from bzrlib.transport.smart.vfs import vfs_commands
+        command = vfs_commands.get(cmd)
+        if command is not None:
+            command = command(self._backing_transport)
+            func = command.do
+            def end():
+                command._body_bytes = self._body_bytes
+                command.do_body()
+                self.response = command.response
+            self._end_of_body_handler = end
+        else:
+            func = getattr(self, 'do_' + cmd, None)
+            if func is None:
+                raise errors.SmartProtocolError("bad request %r" % (cmd,))
         self._run_handler_code(func, args, {})
 
     def _run_handler_code(self, callable, args, kwargs):
@@ -413,14 +299,13 @@ class SmartServerRequestHandler(object):
         if result is not None:
             self.response = result
             self.finished_reading = True
-        # handle unconverted commands
-        if not self._converted_command:
-            self.finished_reading = True
-            if result is None:
-                self.response = protocol.SmartServerResponse(('ok',))
+        #if result is None:
+        #    self.response = protocol.SmartServerResponse(('ok',))
 
     def _call_converting_errors(self, callable, args, kwargs):
         """Call callable converting errors to Response objects."""
+        # XXX: most of this error conversion is VFS-related, and thus ought to
+        # be in SmartServerVFSRequestHandler somewhere.
         try:
             return callable(*args, **kwargs)
         except errors.NoSuchFile, e:
@@ -450,6 +335,21 @@ class SmartServerRequestHandler(object):
                 return protocol.SmartServerResponse(('ReadOnlyError', ))
             else:
                 raise
+
+    def do_hello(self):
+        """Answer a version request with my version."""
+        return protocol.SmartServerResponse(('ok', '1'))
+
+    def do_get_bundle(self, path, revision_id):
+        # open transport relative to our base
+        t = self._backing_transport.clone(path)
+        control, extra_path = bzrdir.BzrDir.open_containing_from_transport(t)
+        repo = control.open_repository()
+        tmpf = tempfile.TemporaryFile()
+        base_revision = revision.NULL_REVISION
+        write_bundle(repo, revision_id, base_revision, tmpf)
+        tmpf.seek(0)
+        return protocol.SmartServerResponse((), tmpf.read())
 
 
 class SmartTCPServer(object):
@@ -561,8 +461,8 @@ class SmartStat(object):
 class SmartTransport(transport.Transport):
     """Connection to a smart server.
 
-    The connection holds references to pipes that can be used to send requests
-    to the server.
+    The connection holds references to the medium that can be used to send
+    requests to the server.
 
     The connection has a notion of the current directory to which it's
     connected; this is incorporated in filenames passed to the server.
@@ -570,9 +470,9 @@ class SmartTransport(transport.Transport):
     This supports some higher-level RPC operations and can also be treated 
     like a Transport to do file-like operations.
 
-    The connection can be made over a tcp socket, or (in future) an ssh pipe
-    or a series of http requests.  There are concrete subclasses for each
-    type: SmartTCPTransport, etc.
+    The connection can be made over a tcp socket, an ssh pipe or a series of
+    http requests.  There are concrete subclasses for each type:
+    SmartTCPTransport, etc.
     """
 
     # IMPORTANT FOR IMPLEMENTORS: SmartTransport MUST NOT be given encoding
