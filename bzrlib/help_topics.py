@@ -20,70 +20,73 @@ Help topics are meant to be help for items that aren't commands, but will
 help bzr become fully learnable without referring to a tutorial.
 """
 
-import sys
+from bzrlib import registry
 
 
-_HELP_TOPICS={}
+class HelpTopicRegistry(registry.Registry):
+    """A Regsitry customized for handling help topics."""
+
+    def register(self, topic, detail, summary):
+        """Register a new help topic.
+
+        :param topic: Name of documentation entry
+        :param detail: Function or string object providing detailed
+            documentation for topic.  Function interface is detail(topic).
+            This should return a text string of the detailed information.
+        :param summary: String providing single-line documentation for topic.
+        """
+        # The detail is stored as the 'object' and the 
+        super(HelpTopicRegistry, self).register(topic, detail, info=summary)
+
+    def register_lazy(self, topic, module_name, member_name, summary):
+        """Register a new help topic, and import the details on demand.
+
+        :param topic: Name of documentation entry
+        :param module_name: The module to find the detailed help.
+        :param member_name: The member of the module to use for detailed help.
+        :param summary: String providing single-line documentation for topic.
+        """
+        super(HelpTopicRegistry, self).register(topic, module_name,
+                                                member_name, info=summary)
+
+    def get_detail(self, topic):
+        """Get the detailed help on a given topic."""
+        obj = self.get(topic)
+        if callable(obj):
+            return obj(topic)
+        else:
+            return obj
+
+    def get_summary(self, topic):
+        """Get the single line summary for the topic."""
+        return self.get_info(topic)
 
 
-def add_topic(topic, detail, summary):
-    """Add documentation for a new topic.
-
-    :param topic:  Name of documentation entry.
-    :param detail:  Function or string object providing detailed
-    documentation for topic.  Function interface is detail(topic, outfile).
-    :param summary:  String providing single-line documentation for topic.
-
-    """
-    _HELP_TOPICS[topic]=(detail, summary)
-
-def write_topic(topic, outfile=sys.stdout):
-    """write to outfile the topic named "name"""
-    obj, comment = _HELP_TOPICS[topic]
-    if callable(obj):
-        obj(topic, outfile)
-    else:
-        outfile.write(obj)
-
-
-def is_topic(name):
-    """is "name" a topic ?"""
-    return name in _HELP_TOPICS.keys( )
-
-
-def get_topics_list( ):
-    """return a dict like {topic_name:topi_comment}"""
-    return _HELP_TOPICS.keys( )
-
-def get_topic_summary(topic):
-    """return the topic summary"""
-    obj, summary = _HELP_TOPICS[topic]
-    return summary
-    
-
-
+topic_registry = HelpTopicRegistry()
 
 
 #----------------------------------------------------
 
-def _help_on_topics(dummy, outfile):
+def _help_on_topics(dummy):
     """Write out the help for topics to outfile"""
 
-    topics = get_topics_list()
+    topics = topic_registry.keys()
     lmax = max(len(topic) for topic in topics)
         
+    out = []
     for topic in topics:
-        summary = get_topic_summary(topic)
-        spaces = " " * (lmax-len(topic))
-        outfile.write("%s%s %s\n" % (topic, spaces, summary))
+        summary = topic_registry.get_summary(topic)
+        out.append("%-*s %s\n" % (lmax, topic, summary))
+    return ''.join(out)
 
 
-def _help_on_revisionspec(name, outfile):
+def _help_on_revisionspec(name):
     """"Write the summary help for all documented topics to outfile."""
     import bzrlib.revisionspec
 
-    outfile.write("\nRevision prefix specifier:"
-                  "\n--------------------------\n")
+    out = []
+    out.append("\nRevision prefix specifier:"
+               "\n--------------------------\n")
 
     for i in bzrlib.revisionspec.SPEC_TYPES:
         doc = i.__doc__
@@ -92,7 +95,9 @@ def _help_on_revisionspec(name, outfile):
         while (doc[-2:] == '\n\n' or doc[-1:] == ' '):
             doc = doc[:-1]
 
-        outfile.write("  %s %s\n\n" % (i.prefix, doc))
+        out.append("  %s %s\n\n" % (i.prefix, doc))
+
+    return ''.join(out)
 
 
 _basic_help= \
@@ -123,6 +128,7 @@ Basic commands:
 """
 
 
-add_topic("revisionspec", _help_on_revisionspec, "Revisions specifier")
-add_topic("basic", _basic_help, "Basic commands")
-add_topic("topics", _help_on_topics, "Topics list")
+topic_registry.register("revisionspec", _help_on_revisionspec,
+                        "Explain how to use --revision")
+topic_registry.register('basic', _basic_help, "Basic commands")
+topic_registry.register('topics', _help_on_topics, "Topics list")
