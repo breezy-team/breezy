@@ -20,7 +20,7 @@ import os
 import sys
 
 from bzrlib import bzrdir, repository, trace
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 from bzrlib.errors import NotBranchError
 
 

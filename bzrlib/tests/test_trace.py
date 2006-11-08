@@ -28,7 +28,7 @@ from bzrlib import (
     plugin,
     trace,
     )
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 from bzrlib.trace import mutter, report_exception
 
 
