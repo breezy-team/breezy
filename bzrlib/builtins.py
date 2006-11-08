@@ -454,14 +454,14 @@ class cmd_mv(Command):
         
         if os.path.isdir(names_list[-1]):
             # move into existing directory
-            for pair in tree.move(rel_names[:-1], rel_names[-1], after):
+            for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 self.outf.write("%s => %s\n" % pair)
         else:
             if len(names_list) != 2:
                 raise errors.BzrCommandError('to mv multiple files the'
                                              ' destination must be a versioned'
                                              ' directory')
-            tree.rename_one(rel_names[0], rel_names[1], after)
+            tree.rename_one(rel_names[0], rel_names[1], after=after)
             self.outf.write("%s => %s\n" % (rel_names[0], rel_names[1]))
             
     
