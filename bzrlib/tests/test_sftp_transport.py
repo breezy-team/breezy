@@ -381,7 +381,8 @@ class SSHVendorBadConnection(TestCaseWithTransport):
             # paramiko, but we know about it, so we don't have to
             # fail the test
             raise TestSkipped('Known NameError bug with paramiko-1.6.1')
-        self.assertContainsRe(err, 'Connection error')
+        self.assertContainsRe(err, r'bzr: ERROR: Unable to connect to SSH host'
+                                   r' 127\.0\.0\.1:\d+; ')
 
 
 class SFTPLatencyKnob(TestCaseWithSFTPServer):

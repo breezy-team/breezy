@@ -5,8 +5,29 @@ IN DEVELOPMENT
     * urllib implements keep-alive connections and share them
       (Vincent Ladeuil, #53654)
 
+    * ``bzr export`` allows an optional branch parameter, to export a bzr
+      tree from some other url. For example:
+      ``bzr export bzr.tar.gz http://bazaar-vcs.org/bzr/bzr.dev``
+      (Daniel Silverstone)
+
   INTERNALS:
 
+    * New -D option given before the command line turns on debugging output
+      for particular areas.  -Derror shows tracebacks on all errors.
+      (Martin Pool)
+
+    * Clean up ``bzr selftest --benchmark bundle`` to correct an import,
+      and remove benchmarks that take longer than 10min to run.
+      (John Arbash Meinel)
+
+    * Use ``time.time()`` instead of ``time.clock()`` to decide on
+      progress throttling. Because ``time.clock()`` is actually CPU time,
+      so over a high-latency connection, too many updates get throttled.
+      (John Arbash Meinel)
+
+    * ``MemoryTransport.list_dir()`` would strip the first character for
+      files or directories in root directory. (John Arbash Meinel)
+  
   BUG FIXES:
 
     * Give nicer error message when an http server returns a 403
@@ -21,12 +42,54 @@ IN DEVELOPMENT
       line (for the urllib implementation). Don't request already
       known passwords (Vincent Ladeuil, #42383, #44647, #48527)
 
+    * _KnitIndex.add_versions() dictionary compresses revision ids as they
+      are added. This fixes bug where fetching remote revisions records
+      them as full references rather than integers. (John Arbash Meinel,
+      #64789)
+
+    * ``bzr ignore`` strips trailing slashes in patterns.
+      Also ``bzr ignore`` rejects absolute paths. (Kent Gibson, #4559)
+
+    * ``bzr ignore`` takes multiple arguments. (Cheuksan Edward Wang, #29488)
+
+    * mv correctly handles paths that traverse symlinks. 
+      (Aaron Bentley, #66964)
+
+    * Give nicer looking error messages when failing to connect over ssh.
+      (John Arbash Meinel, #49172)
+
+    * Pushing to a remote branch does not currently update the remote working
+      tree. After a remote push, ``bzr status`` and ``bzr diff`` on the remote
+      machine now show that the working tree is out of date.
+      (Cheuksan Edward Wang #48136)
+
+    * Use patiencediff instead of difflib for determining deltas to insert
+      into knits. This avoids the O(N^3) behavior of difflib. Patience
+      diff should be O(N^2). (Cheuksan Edward Wang, #65714)
+
+    * Running ``bzr log`` on nonexistent file gives an error instead of the
+      entire log history. (Cheuksan Edward Wang #50793)
+
+    * ``bzr cat`` can look up contents of removed or renamed files. If the
+      pathname is ambiguous, i.e. the files in the old and new trees have
+      different id's, the default is the file in the new tree. The user can
+      use "--name-from-revision" to select the file in the old tree.
+      (Cheuksan Edward Wang, #30190)
+
   TESTING:
 
     * TestingHTTPRequestHandler really handles the Range header
       (previously it was ignoring it and returning the whole file,).
 
 
+bzr 0.12  2006-10-30
+
+  INTERNALS:
+
+    * Clean up ``bzr selftest --benchmark bundle`` to correct an import,
+      and remove benchmarks that take longer than 10min to run.
+      (John Arbash Meinel)
+  
 bzr 0.12rc1  2006-10-23
 
   IMPROVEMENTS:
@@ -131,7 +194,11 @@ bzr 0.12rc1  2006-10-23
     * Leave HttpTransportBase daughter classes decides how they
       implement cloning. (Vincent Ladeuil, #61606)
 
-   * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
+    * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
+
+    * If a commit fails, the commit message is stored in a file at the root of
+      the tree for later commit. (Cheuksan Edward Wang, Stefan Metzmacher,
+      #32054)
 
   TESTING:
 

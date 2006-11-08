@@ -235,6 +235,16 @@ class TestMemoryTransport(TestCase):
         transport.append_bytes('foo', 'content')
         self.assertEquals(True, transport.has('foo'))
 
+    def test_list_dir(self):
+        transport = MemoryTransport()
+        transport.put_bytes('foo', 'content')
+        transport.mkdir('dir')
+        transport.put_bytes('dir/subfoo', 'content')
+        transport.put_bytes('dirlike', 'content')
+
+        self.assertEquals(['dir', 'dirlike', 'foo'], sorted(transport.list_dir('.')))
+        self.assertEquals(['subfoo'], sorted(transport.list_dir('dir')))
+
     def test_mkdir(self):
         transport = MemoryTransport()
         transport.mkdir('dir')

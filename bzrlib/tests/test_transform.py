@@ -19,6 +19,7 @@ import stat
 import sys
 
 from bzrlib import (
+    errors,
     tests,
     urlutils,
     )
@@ -910,8 +911,8 @@ class TestBuildTree(tests.TestCaseWithTransport):
         target = self.make_branch_and_tree('target')
         self.build_tree(['target/name'])
         target.add('name')
-        self.assertRaises(AssertionError, build_tree, source.basis_tree(),
-                          target)
+        self.assertRaises(errors.WorkingTreeAlreadyPopulated, 
+            build_tree, source.basis_tree(), target)
 
 
 class MockTransform(object):
