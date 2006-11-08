@@ -67,9 +67,9 @@ class AppendRequest(request.SmartServerRequest):
         self._relpath = relpath
         self._mode = _deserialise_optional_mode(mode)
     
-    def do_body(self):
+    def do_body(self, body_bytes):
         old_length = self._backing_transport.append_bytes(
-            self._relpath, self._body_bytes, self._mode)
+            self._relpath, body_bytes, self._mode)
         self.response = protocol.SmartServerResponse(('appended', '%d' % old_length))
 
 register_command(AppendRequest)
@@ -134,9 +134,8 @@ class PutCommand(request.SmartServerRequest):
         self._relpath = relpath
         self._mode = _deserialise_optional_mode(mode)
 
-    def do_body(self):
-        self._backing_transport.put_bytes(self._relpath,
-                self._body_bytes, self._mode)
+    def do_body(self, body_bytes):
+        self._backing_transport.put_bytes(self._relpath, body_bytes, self._mode)
         self.response = protocol.SmartServerResponse(('ok',))
 register_command(PutCommand)
 
@@ -152,9 +151,9 @@ class PutNonAtomicCommand(request.SmartServerRequest):
         # a boolean would be nicer XXX
         self._create_parent = (create_parent == 'T')
 
-    def do_body(self):
+    def do_body(self, body_bytes):
         self._backing_transport.put_bytes_non_atomic(self._relpath,
-                self._body_bytes,
+                body_bytes,
                 mode=self._mode,
                 create_parent_dir=self._create_parent,
                 dir_mode=self._dir_mode)
@@ -169,9 +168,9 @@ class ReadvCommand(request.SmartServerRequest):
     def do(self, relpath):
         self._relpath = relpath
 
-    def do_body(self):
+    def do_body(self, body_bytes):
         """accept offsets for a readv request."""
-        offsets = self._deserialise_offsets(self._body_bytes)
+        offsets = self._deserialise_offsets(body_bytes)
         backing_bytes = ''.join(bytes for offset, bytes in
             self._backing_transport.readv(self._relpath, offsets))
         self.response = protocol.SmartServerResponse(('readv',), backing_bytes)

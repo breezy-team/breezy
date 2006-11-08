@@ -23,8 +23,10 @@ class SmartServerRequest(object):
 
     def __init__(self, backing_transport):
         self._backing_transport = backing_transport
-        self._body_bytes = ''  # common
 
-    def do_body(self):
+    def do(self):
+        raise NotImplementedError(self.do)
+
+    def do_body(self, body_bytes):
         raise NotImplementedError(self.do_body)
 

@@ -276,8 +276,7 @@ class SmartServerRequestHandler(object):
             command = command(self._backing_transport)
             func = command.do
             def end():
-                command._body_bytes = self._body_bytes
-                command.do_body()
+                command.do_body(self._body_bytes)
                 self.response = command.response
             self._end_of_body_handler = end
         else:
