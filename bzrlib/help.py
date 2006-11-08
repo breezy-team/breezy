@@ -163,5 +163,3 @@ def _help_commands_to_text(topic):
 help_topics.topic_registry.register("commands",
                                     _help_commands_to_text,
                                     "Basic help for all commands")
-
-

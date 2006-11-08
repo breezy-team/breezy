@@ -89,8 +89,8 @@ def _help_on_revisionspec(name):
                "\n--------------------------\n")
 
     for i in bzrlib.revisionspec.SPEC_TYPES:
-        doc = i.__doc__
-        if doc == bzrlib.revisionspec.RevisionSpec.__doc__:
+        doc = i.help_txt
+        if doc == bzrlib.revisionspec.RevisionSpec.help_txt:
             doc = "N/A\n"
         while (doc[-2:] == '\n\n' or doc[-1:] == ' '):
             doc = doc[:-1]

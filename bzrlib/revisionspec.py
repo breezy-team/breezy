@@ -32,7 +32,9 @@ _marker = []
 
 
 class RevisionInfo(object):
-    """The results of applying a revision specification to a branch.
+    """The results of applying a revision specification to a branch."""
+
+    help_txt = """The results of applying a revision specification to a branch.
 
     An instance has two useful attributes: revno, and rev_id.
 
@@ -99,7 +101,9 @@ _revno_regex = None
 
 
 class RevisionSpec(object):
-    """A parsed revision specification.
+    """A parsed revision specification."""
+
+    help_txt = """A parsed revision specification.
 
     A revision specification can be an integer, in which case it is
     assumed to be a revno (though this will translate negative values
@@ -240,7 +244,9 @@ class RevisionSpec(object):
 # private API
 
 class RevisionSpec_revno(RevisionSpec):
-    """Selects a revision using a number.
+    """Selects a revision using a number."""
+
+    help_txt = """Selects a revision using a number.
 
     Use an integer to specify a revision in the history of the branch.
     Optionally a branch can be specified. The 'revno:' prefix is optional.
@@ -346,7 +352,9 @@ SPEC_TYPES.append(RevisionSpec_revno)
 
 
 class RevisionSpec_revid(RevisionSpec):
-    """Selects a revision using the revision id.
+    """Selects a revision using the revision id."""
+
+    help_txt = """Selects a revision using the revision id.
 
     Supply a specific revision id, that can be used to specify any
     revision id in the ancestry of the branch. 
@@ -367,7 +375,9 @@ SPEC_TYPES.append(RevisionSpec_revid)
 
 
 class RevisionSpec_last(RevisionSpec):
-    """Selects the nth revision from the end.
+    """Selects the nth revision from the end."""
+
+    help_txt = """Selects the nth revision from the end.
 
     Supply a positive number to get the nth revision from the end.
     This is the same as supplying negative numbers to the 'revno:' spec.
@@ -403,7 +413,9 @@ SPEC_TYPES.append(RevisionSpec_last)
 
 
 class RevisionSpec_before(RevisionSpec):
-    """Selects the parent of the revision specified.
+    """Selects the parent of the revision specified."""
+
+    help_txt = """Selects the parent of the revision specified.
 
     Supply any revision spec to return the parent of that revision.
     It is an error to request the parent of the null revision (before:0).
@@ -452,6 +464,9 @@ SPEC_TYPES.append(RevisionSpec_before)
 
 class RevisionSpec_tag(RevisionSpec):
     """To be implemented."""
+
+    help_txt = """To be implemented."""
+
     prefix = 'tag:'
 
     def _match_on(self, branch, revs):
@@ -482,7 +497,9 @@ class _RevListToTimestamps(object):
 
 
 class RevisionSpec_date(RevisionSpec):
-    """Selects a revision on the basis of a datestamp.
+    """Selects a revision on the basis of a datestamp."""
+
+    help_txt = """Selects a revision on the basis of a datestamp.
 
     Supply a datestamp to select the first revision that matches the date.
     Date can be 'yesterday', 'today', 'tomorrow' or a YYYY-MM-DD string.
@@ -566,7 +583,9 @@ SPEC_TYPES.append(RevisionSpec_date)
 
 
 class RevisionSpec_ancestor(RevisionSpec):
-    """Selects a common ancestor with a second branch.
+    """Selects a common ancestor with a second branch."""
+
+    help_txt = """Selects a common ancestor with a second branch.
 
     Supply the path to a branch to select the common ancestor.
 
@@ -608,7 +627,9 @@ SPEC_TYPES.append(RevisionSpec_ancestor)
 
 
 class RevisionSpec_branch(RevisionSpec):
-    """Selects the last revision of a specified branch.
+    """Selects the last revision of a specified branch."""
+
+    help_txt = """Selects the last revision of a specified branch.
 
     Supply the path to a branch to select its last revision.
 
