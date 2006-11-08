@@ -212,6 +212,7 @@ from bzrlib import (
     )
 from bzrlib.bundle.serializer import write_bundle
 from bzrlib.transport.smart import medium
+from bzrlib.transport.smart import protocol
 try:
     from bzrlib.transport import ssh
 except errors.ParamikoNotPresent:
@@ -223,234 +224,6 @@ for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
 
-
-def _recv_tuple(from_file):
-    req_line = from_file.readline()
-    return _decode_tuple(req_line)
-
-
-def _decode_tuple(req_line):
-    if req_line == None or req_line == '':
-        return None
-    if req_line[-1] != '\n':
-        raise errors.SmartProtocolError("request %r not terminated" % req_line)
-    return tuple(req_line[:-1].split('\x01'))
-
-
-def _encode_tuple(args):
-    """Encode the tuple args to a bytestream."""
-    return '\x01'.join(args) + '\n'
-
-
-class SmartProtocolBase(object):
-    """Methods common to client and server"""
-
-    # TODO: this only actually accomodates a single block; possibly should
-    # support multiple chunks?
-    def _encode_bulk_data(self, body):
-        """Encode body as a bulk data chunk."""
-        return ''.join(('%d\n' % len(body), body, 'done\n'))
-
-    def _serialise_offsets(self, offsets):
-        """Serialise a readv offset list."""
-        txt = []
-        for start, length in offsets:
-            txt.append('%d,%d' % (start, length))
-        return '\n'.join(txt)
-        
-
-class SmartServerRequestProtocolOne(SmartProtocolBase):
-    """Server-side encoding and decoding logic for smart version 1."""
-    
-    def __init__(self, backing_transport, write_func):
-        self._backing_transport = backing_transport
-        self.excess_buffer = ''
-        self._finished = False
-        self.in_buffer = ''
-        self.has_dispatched = False
-        self.request = None
-        self._body_decoder = None
-        self._write_func = write_func
-
-    def accept_bytes(self, bytes):
-        """Take bytes, and advance the internal state machine appropriately.
-        
-        :param bytes: must be a byte string
-        """
-        assert isinstance(bytes, str)
-        self.in_buffer += bytes
-        if not self.has_dispatched:
-            if '\n' not in self.in_buffer:
-                # no command line yet
-                return
-            self.has_dispatched = True
-            try:
-                first_line, self.in_buffer = self.in_buffer.split('\n', 1)
-                first_line += '\n'
-                req_args = _decode_tuple(first_line)
-                self.request = SmartServerRequestHandler(
-                    self._backing_transport)
-                self.request.dispatch_command(req_args[0], req_args[1:])
-                if self.request.finished_reading:
-                    # trivial request
-                    self.excess_buffer = self.in_buffer
-                    self.in_buffer = ''
-                    self._send_response(self.request.response.args,
-                        self.request.response.body)
-            except KeyboardInterrupt:
-                raise
-            except Exception, exception:
-                # everything else: pass to client, flush, and quit
-                self._send_response(('error', str(exception)))
-                return
-
-        if self.has_dispatched:
-            if self._finished:
-                # nothing to do.XXX: this routine should be a single state 
-                # machine too.
-                self.excess_buffer += self.in_buffer
-                self.in_buffer = ''
-                return
-            if self._body_decoder is None:
-                self._body_decoder = LengthPrefixedBodyDecoder()
-            self._body_decoder.accept_bytes(self.in_buffer)
-            self.in_buffer = self._body_decoder.unused_data
-            body_data = self._body_decoder.read_pending_data()
-            self.request.accept_body(body_data)
-            if self._body_decoder.finished_reading:
-                self.request.end_of_body()
-                assert self.request.finished_reading, \
-                    "no more body, request not finished"
-            if self.request.response is not None:
-                self._send_response(self.request.response.args,
-                    self.request.response.body)
-                self.excess_buffer = self.in_buffer
-                self.in_buffer = ''
-            else:
-                assert not self.request.finished_reading, \
-                    "no response and we have finished reading."
-
-    def _send_response(self, args, body=None):
-        """Send a smart server response down the output stream."""
-        assert not self._finished, 'response already sent'
-        self._finished = True
-        self._write_func(_encode_tuple(args))
-        if body is not None:
-            assert isinstance(body, str), 'body must be a str'
-            bytes = self._encode_bulk_data(body)
-            self._write_func(bytes)
-
-    def next_read_size(self):
-        if self._finished:
-            return 0
-        if self._body_decoder is None:
-            return 1
-        else:
-            return self._body_decoder.next_read_size()
-
-
-class LengthPrefixedBodyDecoder(object):
-    """Decodes the length-prefixed bulk data."""
-    
-    def __init__(self):
-        self.bytes_left = None
-        self.finished_reading = False
-        self.unused_data = ''
-        self.state_accept = self._state_accept_expecting_length
-        self.state_read = self._state_read_no_data
-        self._in_buffer = ''
-        self._trailer_buffer = ''
-    
-    def accept_bytes(self, bytes):
-        """Decode as much of bytes as possible.
-
-        If 'bytes' contains too much data it will be appended to
-        self.unused_data.
-
-        finished_reading will be set when no more data is required.  Further
-        data will be appended to self.unused_data.
-        """
-        # accept_bytes is allowed to change the state
-        current_state = self.state_accept
-        self.state_accept(bytes)
-        while current_state != self.state_accept:
-            current_state = self.state_accept
-            self.state_accept('')
-
-    def next_read_size(self):
-        if self.bytes_left is not None:
-            # Ideally we want to read all the remainder of the body and the
-            # trailer in one go.
-            return self.bytes_left + 5
-        elif self.state_accept == self._state_accept_reading_trailer:
-            # Just the trailer left
-            return 5 - len(self._trailer_buffer)
-        elif self.state_accept == self._state_accept_expecting_length:
-            # There's still at least 6 bytes left ('\n' to end the length, plus
-            # 'done\n').
-            return 6
-        else:
-            # Reading excess data.  Either way, 1 byte at a time is fine.
-            return 1
-        
-    def read_pending_data(self):
-        """Return any pending data that has been decoded."""
-        return self.state_read()
-
-    def _state_accept_expecting_length(self, bytes):
-        self._in_buffer += bytes
-        pos = self._in_buffer.find('\n')
-        if pos == -1:
-            return
-        self.bytes_left = int(self._in_buffer[:pos])
-        self._in_buffer = self._in_buffer[pos+1:]
-        self.bytes_left -= len(self._in_buffer)
-        self.state_accept = self._state_accept_reading_body
-        self.state_read = self._state_read_in_buffer
-
-    def _state_accept_reading_body(self, bytes):
-        self._in_buffer += bytes
-        self.bytes_left -= len(bytes)
-        if self.bytes_left <= 0:
-            # Finished with body
-            if self.bytes_left != 0:
-                self._trailer_buffer = self._in_buffer[self.bytes_left:]
-                self._in_buffer = self._in_buffer[:self.bytes_left]
-            self.bytes_left = None
-            self.state_accept = self._state_accept_reading_trailer
-        
-    def _state_accept_reading_trailer(self, bytes):
-        self._trailer_buffer += bytes
-        # TODO: what if the trailer does not match "done\n"?  Should this raise
-        # a ProtocolViolation exception?
-        if self._trailer_buffer.startswith('done\n'):
-            self.unused_data = self._trailer_buffer[len('done\n'):]
-            self.state_accept = self._state_accept_reading_unused
-            self.finished_reading = True
-    
-    def _state_accept_reading_unused(self, bytes):
-        self.unused_data += bytes
-
-    def _state_read_no_data(self):
-        return ''
-
-    def _state_read_in_buffer(self):
-        result = self._in_buffer
-        self._in_buffer = ''
-        return result
-
-
-class SmartServerResponse(object):
-    """Response generated by SmartServerRequestHandler."""
-
-    def __init__(self, args, body=None):
-        self.args = args
-        self.body = body
-
-# XXX: TODO: Create a SmartServerRequestHandler which will take the responsibility
-# for delivering the data for a request. This could be done with as the
-# StreamServer, though that would create conflation between request and response
-# which may be undesirable.
 
 
 class SmartServerRequestHandler(object):
@@ -496,15 +269,15 @@ class SmartServerRequestHandler(object):
         
     def do_hello(self):
         """Answer a version request with my version."""
-        return SmartServerResponse(('ok', '1'))
+        return protocol.SmartServerResponse(('ok', '1'))
 
     def do_has(self, relpath):
         r = self._backing_transport.has(relpath) and 'yes' or 'no'
-        return SmartServerResponse((r,))
+        return protocol.SmartServerResponse((r,))
 
     def do_get(self, relpath):
         backing_bytes = self._backing_transport.get_bytes(relpath)
-        return SmartServerResponse(('ok',), backing_bytes)
+        return protocol.SmartServerResponse(('ok',), backing_bytes)
 
     def _deserialise_optional_mode(self, mode):
         # XXX: FIXME this should be on the protocol object.
@@ -522,7 +295,7 @@ class SmartServerRequestHandler(object):
     def _handle_do_append_end(self):
         old_length = self._backing_transport.append_bytes(
             self._relpath, self._body_bytes, self._mode)
-        self.response = SmartServerResponse(('appended', '%d' % old_length))
+        self.response = protocol.SmartServerResponse(('appended', '%d' % old_length))
 
     def do_delete(self, relpath):
         self._backing_transport.delete(relpath)
@@ -530,11 +303,11 @@ class SmartServerRequestHandler(object):
     def do_iter_files_recursive(self, relpath):
         transport = self._backing_transport.clone(relpath)
         filenames = transport.iter_files_recursive()
-        return SmartServerResponse(('names',) + tuple(filenames))
+        return protocol.SmartServerResponse(('names',) + tuple(filenames))
 
     def do_list_dir(self, relpath):
         filenames = self._backing_transport.list_dir(relpath)
-        return SmartServerResponse(('names',) + tuple(filenames))
+        return protocol.SmartServerResponse(('names',) + tuple(filenames))
 
     def do_mkdir(self, relpath, mode):
         self._backing_transport.mkdir(relpath,
@@ -552,7 +325,7 @@ class SmartServerRequestHandler(object):
     def _handle_do_put(self):
         self._backing_transport.put_bytes(self._relpath,
                 self._body_bytes, self._mode)
-        self.response = SmartServerResponse(('ok',))
+        self.response = protocol.SmartServerResponse(('ok',))
 
     def _deserialise_offsets(self, text):
         # XXX: FIXME this should be on the protocol object.
@@ -579,7 +352,7 @@ class SmartServerRequestHandler(object):
                 mode=self._mode,
                 create_parent_dir=self._create_parent,
                 dir_mode=self._dir_mode)
-        self.response = SmartServerResponse(('ok',))
+        self.response = protocol.SmartServerResponse(('ok',))
 
     def do_readv(self, relpath):
         self._converted_command = True
@@ -597,7 +370,7 @@ class SmartServerRequestHandler(object):
         offsets = self._deserialise_offsets(self._body_bytes)
         backing_bytes = ''.join(bytes for offset, bytes in
             self._backing_transport.readv(self._relpath, offsets))
-        self.response = SmartServerResponse(('readv',), backing_bytes)
+        self.response = protocol.SmartServerResponse(('readv',), backing_bytes)
         
     def do_rename(self, rel_from, rel_to):
         self._backing_transport.rename(rel_from, rel_to)
@@ -607,7 +380,7 @@ class SmartServerRequestHandler(object):
 
     def do_stat(self, relpath):
         stat = self._backing_transport.stat(relpath)
-        return SmartServerResponse(('stat', str(stat.st_size), oct(stat.st_mode)))
+        return protocol.SmartServerResponse(('stat', str(stat.st_size), oct(stat.st_mode)))
         
     def do_get_bundle(self, path, revision_id):
         # open transport relative to our base
@@ -618,7 +391,7 @@ class SmartServerRequestHandler(object):
         base_revision = revision.NULL_REVISION
         write_bundle(repo, revision_id, base_revision, tmpf)
         tmpf.seek(0)
-        return SmartServerResponse((), tmpf.read())
+        return protocol.SmartServerResponse((), tmpf.read())
 
     def dispatch_command(self, cmd, args):
         """Deprecated compatibility method.""" # XXX XXX
@@ -644,20 +417,20 @@ class SmartServerRequestHandler(object):
         if not self._converted_command:
             self.finished_reading = True
             if result is None:
-                self.response = SmartServerResponse(('ok',))
+                self.response = protocol.SmartServerResponse(('ok',))
 
     def _call_converting_errors(self, callable, args, kwargs):
         """Call callable converting errors to Response objects."""
         try:
             return callable(*args, **kwargs)
         except errors.NoSuchFile, e:
-            return SmartServerResponse(('NoSuchFile', e.path))
+            return protocol.SmartServerResponse(('NoSuchFile', e.path))
         except errors.FileExists, e:
-            return SmartServerResponse(('FileExists', e.path))
+            return protocol.SmartServerResponse(('FileExists', e.path))
         except errors.DirectoryNotEmpty, e:
-            return SmartServerResponse(('DirectoryNotEmpty', e.path))
+            return protocol.SmartServerResponse(('DirectoryNotEmpty', e.path))
         except errors.ShortReadvError, e:
-            return SmartServerResponse(('ShortReadvError',
+            return protocol.SmartServerResponse(('ShortReadvError',
                 e.path, str(e.offset), str(e.length), str(e.actual)))
         except UnicodeError, e:
             # If it is a DecodeError, than most likely we are starting
@@ -670,11 +443,11 @@ class SmartServerRequestHandler(object):
             else:
                 val = 's:' + str_or_unicode.encode('base64')
             # This handles UnicodeEncodeError or UnicodeDecodeError
-            return SmartServerResponse((e.__class__.__name__,
+            return protocol.SmartServerResponse((e.__class__.__name__,
                     e.encoding, val, str(e.start), str(e.end), e.reason))
         except errors.TransportNotPossible, e:
             if e.msg == "readonly transport":
-                return SmartServerResponse(('ReadOnlyError', ))
+                return protocol.SmartServerResponse(('ReadOnlyError', ))
             else:
                 raise
 
@@ -887,15 +660,17 @@ class SmartTransport(transport.Transport):
 
     def _call2(self, method, *args):
         """Call a method on the remote server."""
-        protocol = SmartClientRequestProtocolOne(self._medium.get_request())
-        protocol.call(method, *args)
-        return protocol.read_response_tuple()
+        request = self._medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        smart_protocol.call(method, *args)
+        return smart_protocol.read_response_tuple()
 
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        protocol = SmartClientRequestProtocolOne(self._medium.get_request())
-        protocol.call_with_body_bytes((method, ) + args, body)
-        return protocol.read_response_tuple()
+        request = self._medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        smart_protocol.call_with_body_bytes((method, ) + args, body)
+        return smart_protocol.read_response_tuple()
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.
@@ -919,13 +694,14 @@ class SmartTransport(transport.Transport):
 
     def get_bytes(self, relpath):
         remote = self._remote_path(relpath)
-        protocol = SmartClientRequestProtocolOne(self._medium.get_request())
-        protocol.call('get', remote)
-        resp = protocol.read_response_tuple(True)
+        request = self._medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        smart_protocol.call('get', remote)
+        resp = smart_protocol.read_response_tuple(True)
         if resp != ('ok', ):
-            protocol.cancel_read_body()
+            smart_protocol.cancel_read_body()
             self._translate_error(resp, relpath)
-        return protocol.read_body_bytes()
+        return smart_protocol.read_body_bytes()
 
     def _serialise_optional_mode(self, mode):
         if mode is None:
@@ -1011,20 +787,21 @@ class SmartTransport(transport.Transport):
                                limit=self._max_readv_combine,
                                fudge_factor=self._bytes_to_read_before_seek))
 
-        protocol = SmartClientRequestProtocolOne(self._medium.get_request())
-        protocol.call_with_body_readv_array(
+        request = self._medium.get_request()
+        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
+        smart_protocol.call_with_body_readv_array(
             ('readv', self._remote_path(relpath)),
             [(c.start, c.length) for c in coalesced])
-        resp = protocol.read_response_tuple(True)
+        resp = smart_protocol.read_response_tuple(True)
 
         if resp[0] != 'readv':
             # This should raise an exception
-            protocol.cancel_read_body()
+            smart_protocol.cancel_read_body()
             self._translate_error(resp)
             return
 
         # FIXME: this should know how many bytes are needed, for clarity.
-        data = protocol.read_body_bytes()
+        data = smart_protocol.read_body_bytes()
         # Cache the results, but only until they have been fulfilled
         data_map = {}
         for c_offset in coalesced:
@@ -1139,105 +916,6 @@ class SmartTransport(transport.Transport):
             return resp[1:]
         else:
             self._translate_error(resp)
-
-
-class SmartClientRequestProtocolOne(SmartProtocolBase):
-    """The client-side protocol for smart version 1."""
-
-    def __init__(self, request):
-        """Construct a SmartClientRequestProtocolOne.
-
-        :param request: A SmartClientMediumRequest to serialise onto and
-            deserialise from.
-        """
-        self._request = request
-        self._body_buffer = None
-
-    def call(self, *args):
-        bytes = _encode_tuple(args)
-        self._request.accept_bytes(bytes)
-        self._request.finished_writing()
-
-    def call_with_body_bytes(self, args, body):
-        """Make a remote call of args with body bytes 'body'.
-
-        After calling this, call read_response_tuple to find the result out.
-        """
-        bytes = _encode_tuple(args)
-        self._request.accept_bytes(bytes)
-        bytes = self._encode_bulk_data(body)
-        self._request.accept_bytes(bytes)
-        self._request.finished_writing()
-
-    def call_with_body_readv_array(self, args, body):
-        """Make a remote call with a readv array.
-
-        The body is encoded with one line per readv offset pair. The numbers in
-        each pair are separated by a comma, and no trailing \n is emitted.
-        """
-        bytes = _encode_tuple(args)
-        self._request.accept_bytes(bytes)
-        readv_bytes = self._serialise_offsets(body)
-        bytes = self._encode_bulk_data(readv_bytes)
-        self._request.accept_bytes(bytes)
-        self._request.finished_writing()
-
-    def cancel_read_body(self):
-        """After expecting a body, a response code may indicate one otherwise.
-
-        This method lets the domain client inform the protocol that no body
-        will be transmitted. This is a terminal method: after calling it the
-        protocol is not able to be used further.
-        """
-        self._request.finished_reading()
-
-    def read_response_tuple(self, expect_body=False):
-        """Read a response tuple from the wire.
-
-        This should only be called once.
-        """
-        result = self._recv_tuple()
-        if not expect_body:
-            self._request.finished_reading()
-        return result
-
-    def read_body_bytes(self, count=-1):
-        """Read bytes from the body, decoding into a byte stream.
-        
-        We read all bytes at once to ensure we've checked the trailer for 
-        errors, and then feed the buffer back as read_body_bytes is called.
-        """
-        if self._body_buffer is not None:
-            return self._body_buffer.read(count)
-        _body_decoder = LengthPrefixedBodyDecoder()
-
-        while not _body_decoder.finished_reading:
-            bytes_wanted = _body_decoder.next_read_size()
-            bytes = self._request.read_bytes(bytes_wanted)
-            _body_decoder.accept_bytes(bytes)
-        self._request.finished_reading()
-        self._body_buffer = StringIO(_body_decoder.read_pending_data())
-        # XXX: TODO check the trailer result.
-        return self._body_buffer.read(count)
-
-    def _recv_tuple(self):
-        """Receive a tuple from the medium request."""
-        line = ''
-        while not line or line[-1] != '\n':
-            # TODO: this is inefficient - but tuples are short.
-            new_char = self._request.read_bytes(1)
-            line += new_char
-            assert new_char != '', "end of file reading from server."
-        return _decode_tuple(line)
-
-    def query_version(self):
-        """Return protocol version number of the server."""
-        self.call('hello')
-        resp = self.read_response_tuple()
-        if resp == ('ok', '1'):
-            return 1
-        else:
-            raise errors.SmartProtocolError("bad response %r" % (resp,))
 
 
 class SmartTCPTransport(SmartTransport):
