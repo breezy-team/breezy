@@ -75,11 +75,11 @@ class TestMove(TestCaseWithTransport):
         tree.add(['test.txt'])
 
         self.run_bzr_error(
-            ["^bzr: ERROR: destination u'sub1' is not a versioned directory$"],
+            ["^bzr: ERROR: destination .* is not a versioned directory$"],
             'mv', 'test.txt', 'sub1')
         
         self.run_bzr_error(
-            ["^bzr: ERROR: can't determine destination directory id for u'sub1'$"],
+            ["^bzr: ERROR: destination .* is not a versioned directory$"],
             'mv', 'test.txt', 'sub1/hello.txt')
         
     def test_mv_dirs(self):
@@ -145,10 +145,12 @@ class TestMove(TestCaseWithTransport):
         tree = workingtree.WorkingTree.open('.')
         self.assertEqual('b-id', tree.path2id('b'))
 
-    def test_mv_inv_simple(self):
-        self.build_tree(['a', 'b', 'c', 'd', 'e', 'sub1/', 'sub2/'])
+    def test_mv_already_moved_file(self):
+        """a is in repository, b does not exist. User does
+        mv a b; bzr mv a b"""
+        self.build_tree(['a', 'b'])
         tree = self.make_branch_and_tree('.')
-        tree.add(['a', 'c', 'd', 'e', 'sub1'])
+        tree.add(['a'])
         tree.commit('initial commit')
 
         os.rename('a', 'b')
@@ -156,33 +158,57 @@ class TestMove(TestCaseWithTransport):
         self.failIfExists('a')
         self.failUnlessExists('b')
 
-        os.remove('c')
+    def test_mv_already_moved_file_to_versioned_target(self):
+        """a and b are in the repository. User does
+        rm b; mv a b; bzr mv a b"""
+        self.build_tree(['a', 'b'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a', 'b'])
+        tree.commit('initial commit')
+    
+        os.remove('a')
         self.run_bzr_error(
             ["^bzr: ERROR: can't rename: new name .* is already versioned$"],
-            'mv', 'c', 'd')
-        self.failIfExists('c')
-        self.failUnlessExists('d')
+            'mv', 'a', 'b')
+        self.failIfExists('a')
+        self.failUnlessExists('b')
 
-        os.rename('d', 'sub1/d')
-        self.run_bzr('mv', 'd', 'sub1/d')
-        self.failIfExists('d')
-        self.failUnlessExists('sub1/d')
-
-        os.rename('e', 'sub2/e')
-        self.run_bzr_error(
-            ["^bzr: ERROR: can't determine destination directory id for .*$"],
-            'mv', 'e', 'sub2/e')
-        self.failIfExists('e')
-        self.failUnlessExists('sub2/e')
-
-
-    def test_mv_inv_dir(self):
-        self.build_tree(['a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'd1', 'd2', 
-                         'e1', 'e2', 'sub1/', 'sub2/'])
+    def test_mv_already_moved_file_into_subdir(self):
+        """a and sub1/ are in the repository. User does
+        mv a sub1/a; bzr mv a sub1/a"""
+        self.build_tree(['a', 'sub1/'])
         tree = self.make_branch_and_tree('.')
-        tree.add(['a1', 'a2', 'b1', 'b2', 'sub1'])
+        tree.add(['a', 'sub1'])
         tree.commit('initial commit')
         
+        os.rename('a', 'sub1/a')
+        self.run_bzr('mv', 'a', 'sub1/a')
+        self.failIfExists('a')
+        self.failUnlessExists('sub1/a')
+
+    def test_mv_already_moved_file_into_unversioned_subdir(self):
+        """a is in the repository, sub1/ is not. User does
+        mv a sub1/a; bzr mv a sub1/a"""
+        self.build_tree(['a', 'sub1/'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a'])
+        tree.commit('initial commit')
+
+        os.rename('a', 'sub1/a')
+        self.run_bzr_error(
+            ["^bzr: ERROR: destination .* is not a versioned directory$"],
+            'mv', 'a', 'sub1/a')
+        self.failIfExists('a')
+        self.failUnlessExists('sub1/a')
+
+    def test_mv_already_moved_files_into_subdir(self):
+        """a1, a2, sub1 are in the repository. User does
+        mv a1 sub1/.; bzr mv a1 a2 sub1"""
+        self.build_tree(['a1', 'a2', 'sub1/'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a1', 'a2', 'sub1'])
+        tree.commit('initial commit')
+
         os.rename('a1', 'sub1/a1')
         self.run_bzr('mv', 'a1', 'a2', 'sub1')
         self.failIfExists('a1')
@@ -190,16 +216,26 @@ class TestMove(TestCaseWithTransport):
         self.failUnlessExists('sub1/a1')
         self.failUnlessExists('sub1/a2')
         
-        os.rename('b1', 'sub2/b1')
+    def test_mv_already_moved_files_into_unversioned_subdir(self):
+        """a1, a2 are in the repository, sub1 is not. User does
+        mv a1 sub1/.; bzr mv a1 a2 sub1"""
+        self.build_tree(['a1', 'a2', 'sub1/'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a1', 'a2'])
+        tree.commit('initial commit')
+
+        os.rename('a1', 'sub1/a1')
         self.run_bzr_error(
             ["^bzr: ERROR: destination .* is not a versioned directory$"],
-            'mv', 'b1', 'b2', 'sub2')
-        self.failIfExists('b1')
-        self.failUnlessExists('b2')
-        self.failUnlessExists('sub2/b1')
-        self.failIfExists('sub2/b2')
+            'mv', 'a1', 'a2', 'sub1')
+        self.failIfExists('a1')
+        self.failUnlessExists('a2')
+        self.failUnlessExists('sub1/a1')
+        self.failIfExists('sub1/a2')
 
-    def test_mv_inv_simple_touched(self):
+    def test_mv_already_moved_file_forcing_after(self):
+        """a is in the repository, b does not exist. User does
+        mv a b; touch a; bzr mv a b"""
         self.build_tree(['a', 'b'])
         tree = self.make_branch_and_tree('.')
         tree.add(['a'])
@@ -212,11 +248,22 @@ class TestMove(TestCaseWithTransport):
         self.failUnlessExists('a')
         self.failUnlessExists('b')
 
+    def test_mv_already_moved_file_using_after(self):
+        """a is in the repository, b does not exist. User does
+        mv a b; touch a; bzr mv a b --after"""
+        self.build_tree(['a', 'b'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a'])
+        tree.commit('initial commit')
+
         self.run_bzr('mv', 'a', 'b', '--after')
         self.failUnlessExists('a')
         self.failUnlessExists('b')
 
-    def test_mv_inv_dir_touched(self):
+    def test_mv_already_moved_files_forcing_after(self):
+        """a1, a2, sub1 are in the repository, sub1/a1, sub1/a2
+        do not exist. User does
+        mv a* sub1; touch a1; touch a2; bzr mv a1 a2 sub1"""
         self.build_tree(['a1', 'a2', 'sub1/', 'sub1/a1', 'sub1/a2'])
         tree = self.make_branch_and_tree('.')
         tree.add(['a1', 'a2', 'sub1'])
@@ -231,9 +278,18 @@ class TestMove(TestCaseWithTransport):
         self.failUnlessExists('sub1/a1')
         self.failUnlessExists('sub1/a2')
         
+    def test_mv_already_moved_files_using_after(self):
+        """a1, a2, sub1 are in the repository, sub1/a1, sub1/a2
+        do not exist. User does
+        mv a* sub1; touch a1; touch a2; bzr mv a1 a2 sub1 --after"""
+        self.build_tree(['a1', 'a2', 'sub1/', 'sub1/a1', 'sub1/a2'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a1', 'a2', 'sub1'])
+        tree.commit('initial commit')
+
         self.run_bzr('mv', 'a1', 'a2', 'sub1', '--after')
         self.failUnlessExists('a1')
         self.failUnlessExists('a2')
         self.failUnlessExists('sub1/a1')
         self.failUnlessExists('sub1/a2')
-        
+
