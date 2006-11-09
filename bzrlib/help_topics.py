@@ -24,7 +24,7 @@ from bzrlib import registry
 
 
 class HelpTopicRegistry(registry.Registry):
-    """A Regsitry customized for handling help topics."""
+    """A Registry customized for handling help topics."""
 
     def register(self, topic, detail, summary):
         """Register a new help topic.
@@ -46,8 +46,8 @@ class HelpTopicRegistry(registry.Registry):
         :param member_name: The member of the module to use for detailed help.
         :param summary: String providing single-line documentation for topic.
         """
-        super(HelpTopicRegistry, self).register(topic, module_name,
-                                                member_name, info=summary)
+        super(HelpTopicRegistry, self).register_lazy(topic, module_name,
+                                                     member_name, info=summary)
 
     def get_detail(self, topic):
         """Get the detailed help on a given topic."""
