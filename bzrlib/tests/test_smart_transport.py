@@ -1094,12 +1094,12 @@ class TestSmartProtocol(tests.TestCase):
                 out_stream.write)
         smart_protocol.has_dispatched = True
         smart_protocol.request = smart.SmartServerRequestHandler(None)
-        def handle_end_of_bytes():
-            self.end_received = True
-            self.assertEqual('abcdefg', smart_protocol.request._body_bytes)
-            response = protocol.SmartServerResponse(('ok', ))
-            smart_protocol.request.response = response
-        smart_protocol.request._end_of_body_handler = handle_end_of_bytes
+        class FakeCommand(object):
+            def do_body(cmd, body_bytes):
+                self.end_received = True
+                self.assertEqual('abcdefg', body_bytes)
+                cmd.response = protocol.SmartServerResponse(('ok', ))
+        smart_protocol.request.command = FakeCommand()
         # Call accept_bytes to make sure that internal state like _body_decoder
         # is initialised.  This test should probably be given a clearer
         # interface to work with that will not cause this inconsistency.

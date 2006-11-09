@@ -242,6 +242,7 @@ class SmartServerRequestHandler(object):
         self._body_bytes = ''  # common
         self.response = None  # common
         self.finished_reading = False
+        self.command = None
 
     def _end_of_body_handler(self):  # common
         """An unimplemented end of body handler."""
@@ -260,25 +261,19 @@ class SmartServerRequestHandler(object):
         
     def end_of_body(self):
         """No more body data will be received."""
-        self._run_handler_code(self._end_of_body_handler, (), {})
+        self._run_handler_code(self.command.do_body, (self._body_bytes,), {})
+        if hasattr(self.command, 'response'):
+            self.response = self.command.response
         # cannot read after this.
         self.finished_reading = True
 
     def dispatch_command(self, cmd, args):
         """Deprecated compatibility method.""" # XXX XXX
         command = request.version_one_commands.get(cmd)
-        if command is not None:
-            command = command(self._backing_transport)
-            func = command.do
-            def end():
-                command.do_body(self._body_bytes)
-                self.response = command.response
-            self._end_of_body_handler = end
-        else:
-            func = getattr(self, 'do_' + cmd, None)
-            if func is None:
-                raise errors.SmartProtocolError("bad request %r" % (cmd,))
-        self._run_handler_code(func, args, {})
+        if command is None:
+            raise errors.SmartProtocolError("bad request %r" % (cmd,))
+        self.command = command(self._backing_transport)
+        self._run_handler_code(self.command.do, args, {})
 
     def _run_handler_code(self, callable, args, kwargs):
         """Run some handler specific code 'callable'.
