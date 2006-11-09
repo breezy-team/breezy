@@ -239,8 +239,8 @@ class SmartServerRequestHandler(object):
     
     def __init__(self, backing_transport):
         self._backing_transport = backing_transport
-        self._body_bytes = ''  # common
-        self.response = None  # common
+        self._body_bytes = ''
+        self.response = None
         self.finished_reading = False
         self.command = None
 
