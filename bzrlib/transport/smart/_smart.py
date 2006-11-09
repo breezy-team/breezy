@@ -235,8 +235,6 @@ class SmartServerRequestHandler(object):
     # TODO: Better way of representing the body for commands that take it,
     # and allow it to be streamed into the server.
 
-    # TODO: Use composition, rather than inheritance, for VFS request handling.
-    
     def __init__(self, backing_transport):
         self._backing_transport = backing_transport
         self._body_bytes = ''
