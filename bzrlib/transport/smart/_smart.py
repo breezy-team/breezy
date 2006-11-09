@@ -215,9 +215,6 @@ for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
 del scheme
 
 
-
-
-
 class SmartServerRequestHandler(object):
     """Protocol logic for smart server.
     
