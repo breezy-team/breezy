@@ -240,7 +240,7 @@ class SmartServerRequestHandler(object):
         self._body_bytes = ''
         self.response = None
         self.finished_reading = False
-        self.command = None
+        self._command = None
 
     def accept_body(self, bytes):
         """Accept body data."""
@@ -255,7 +255,7 @@ class SmartServerRequestHandler(object):
         
     def end_of_body(self):
         """No more body data will be received."""
-        self._run_handler_code(self.command.do_body, (self._body_bytes,), {})
+        self._run_handler_code(self._command.do_body, (self._body_bytes,), {})
         # cannot read after this.
         self.finished_reading = True
 
@@ -264,8 +264,8 @@ class SmartServerRequestHandler(object):
         command = request.version_one_commands.get(cmd)
         if command is None:
             raise errors.SmartProtocolError("bad request %r" % (cmd,))
-        self.command = command(self._backing_transport)
-        self._run_handler_code(self.command.do, args, {})
+        self._command = command(self._backing_transport)
+        self._run_handler_code(self._command.do, args, {})
 
     def _run_handler_code(self, callable, args, kwargs):
         """Run some handler specific code 'callable'.

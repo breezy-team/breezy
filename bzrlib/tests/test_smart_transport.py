@@ -1099,7 +1099,7 @@ class TestSmartProtocol(tests.TestCase):
                 self.end_received = True
                 self.assertEqual('abcdefg', body_bytes)
                 return protocol.SmartServerResponse(('ok', ))
-        smart_protocol.request.command = FakeCommand()
+        smart_protocol.request._command = FakeCommand()
         # Call accept_bytes to make sure that internal state like _body_decoder
         # is initialised.  This test should probably be given a clearer
         # interface to work with that will not cause this inconsistency.
