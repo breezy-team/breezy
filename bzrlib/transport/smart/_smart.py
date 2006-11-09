@@ -262,8 +262,6 @@ class SmartServerRequestHandler(object):
     def end_of_body(self):
         """No more body data will be received."""
         self._run_handler_code(self.command.do_body, (self._body_bytes,), {})
-        if hasattr(self.command, 'response'):
-            self.response = self.command.response
         # cannot read after this.
         self.finished_reading = True
 
@@ -288,8 +286,6 @@ class SmartServerRequestHandler(object):
         if result is not None:
             self.response = result
             self.finished_reading = True
-        #if result is None:
-        #    self.response = protocol.SmartServerResponse(('ok',))
 
     def _call_converting_errors(self, callable, args, kwargs):
         """Call callable converting errors to Response objects."""

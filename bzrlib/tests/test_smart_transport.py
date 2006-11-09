@@ -1098,7 +1098,7 @@ class TestSmartProtocol(tests.TestCase):
             def do_body(cmd, body_bytes):
                 self.end_received = True
                 self.assertEqual('abcdefg', body_bytes)
-                cmd.response = protocol.SmartServerResponse(('ok', ))
+                return protocol.SmartServerResponse(('ok', ))
         smart_protocol.request.command = FakeCommand()
         # Call accept_bytes to make sure that internal state like _body_decoder
         # is initialised.  This test should probably be given a clearer

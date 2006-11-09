@@ -70,7 +70,7 @@ class AppendRequest(request.SmartServerRequest):
     def do_body(self, body_bytes):
         old_length = self._backing_transport.append_bytes(
             self._relpath, body_bytes, self._mode)
-        self.response = protocol.SmartServerResponse(('appended', '%d' % old_length))
+        return protocol.SmartServerResponse(('appended', '%d' % old_length))
 
 register_command(AppendRequest)
 
@@ -136,7 +136,7 @@ class PutCommand(request.SmartServerRequest):
 
     def do_body(self, body_bytes):
         self._backing_transport.put_bytes(self._relpath, body_bytes, self._mode)
-        self.response = protocol.SmartServerResponse(('ok',))
+        return protocol.SmartServerResponse(('ok',))
 register_command(PutCommand)
 
 
@@ -157,7 +157,7 @@ class PutNonAtomicCommand(request.SmartServerRequest):
                 mode=self._mode,
                 create_parent_dir=self._create_parent,
                 dir_mode=self._dir_mode)
-        self.response = protocol.SmartServerResponse(('ok',))
+        return protocol.SmartServerResponse(('ok',))
 register_command(PutNonAtomicCommand)
 
 
@@ -173,7 +173,7 @@ class ReadvCommand(request.SmartServerRequest):
         offsets = self._deserialise_offsets(body_bytes)
         backing_bytes = ''.join(bytes for offset, bytes in
             self._backing_transport.readv(self._relpath, offsets))
-        self.response = protocol.SmartServerResponse(('readv',), backing_bytes)
+        return protocol.SmartServerResponse(('readv',), backing_bytes)
 
     def _deserialise_offsets(self, text):
         # XXX: FIXME this should be on the protocol object.
