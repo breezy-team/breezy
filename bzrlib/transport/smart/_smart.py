@@ -244,10 +244,6 @@ class SmartServerRequestHandler(object):
         self.finished_reading = False
         self.command = None
 
-    def _end_of_body_handler(self):  # common
-        """An unimplemented end of body handler."""
-        raise NotImplementedError(self._end_of_body_handler)
-        
     def accept_body(self, bytes):
         """Accept body data."""
 
