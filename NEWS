@@ -2,6 +2,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * New command ``bzr remove-tree`` allows the removal of the working
+      tree from a branch.
+      (Daniel Silverstone)
+
     * ``bzr export`` allows an optional branch parameter, to export a bzr
       tree from some other url. For example:
       ``bzr export bzr.tar.gz http://bazaar-vcs.org/bzr/bzr.dev``
