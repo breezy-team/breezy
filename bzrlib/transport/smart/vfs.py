@@ -81,6 +81,7 @@ class DeleteRequest(request.SmartServerRequest):
 
     def do(self, relpath):
         self._backing_transport.delete(relpath)
+        return protocol.SmartServerResponse(('ok', ))
 register_command(DeleteRequest)
 
 
@@ -112,7 +113,7 @@ class MkdirCommand(request.SmartServerRequest):
     def do(self, relpath, mode):
         self._backing_transport.mkdir(relpath,
                                       _deserialise_optional_mode(mode))
-        # XXX: shouldn't this return something?
+        return protocol.SmartServerResponse(('ok',))
 register_command(MkdirCommand)
 
 
@@ -122,7 +123,7 @@ class MoveCommand(request.SmartServerRequest):
 
     def do(self, rel_from, rel_to):
         self._backing_transport.move(rel_from, rel_to)
-        # XXX: shouldn't this return something?
+        return protocol.SmartServerResponse(('ok',))
 register_command(MoveCommand)
 
 
@@ -193,6 +194,7 @@ class RenameCommand(request.SmartServerRequest):
 
     def do(self, rel_from, rel_to):
         self._backing_transport.rename(rel_from, rel_to)
+        return protocol.SmartServerResponse(('ok', ))
 register_command(RenameCommand)
 
 
@@ -202,6 +204,7 @@ class RmdirCommand(request.SmartServerRequest):
 
     def do(self, relpath):
         self._backing_transport.rmdir(relpath)
+        return protocol.SmartServerResponse(('ok', ))
 register_command(RmdirCommand)
 
 

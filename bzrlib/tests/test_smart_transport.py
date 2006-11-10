@@ -41,7 +41,12 @@ from bzrlib.transport.http import (
         SmartClientHTTPMediumRequest,
         SmartRequestHandler,
         )
-from bzrlib.transport.smart import medium, protocol, vfs
+from bzrlib.transport.smart import (
+        medium,
+        protocol,
+        server,
+        vfs,
+)
 
 
 class StringIOSSHVendor(object):
@@ -521,7 +526,7 @@ class RemoteTransportTests(tests.TestCaseWithTransport):
         # the default or a parameterized class, but rather use the
         # TestCaseWithTransport infrastructure to set up a smart server and
         # transport.
-        self.transport_server = smart.SmartTCPServer_for_testing
+        self.transport_server = server.SmartTCPServer_for_testing
 
     def test_plausible_url(self):
         self.assert_(self.get_url().startswith('bzr://'))
@@ -778,10 +783,10 @@ class TestSmartTCPServer(tests.TestCase):
         class FlakyTransport(object):
             def get_bytes(self, path):
                 raise Exception("some random exception from inside server")
-        server = smart.SmartTCPServer(backing_transport=FlakyTransport())
-        server.start_background_thread()
+        smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
+        smart_server.start_background_thread()
         try:
-            transport = smart.SmartTCPTransport(server.get_url())
+            transport = smart.SmartTCPTransport(smart_server.get_url())
             try:
                 transport.get('something')
             except errors.TransportError, e:
@@ -789,7 +794,7 @@ class TestSmartTCPServer(tests.TestCase):
             else:
                 self.fail("get did not raise expected error")
         finally:
-            server.stop_background_thread()
+            smart_server.stop_background_thread()
 
 
 class SmartTCPTests(tests.TestCase):
@@ -810,7 +815,7 @@ class SmartTCPTests(tests.TestCase):
         if readonly:
             self.real_backing_transport = self.backing_transport
             self.backing_transport = get_transport("readonly+" + self.backing_transport.abspath('.'))
-        self.server = smart.SmartTCPServer(self.backing_transport)
+        self.server = server.SmartTCPServer(self.backing_transport)
         self.server.start_background_thread()
         self.transport = smart.SmartTCPTransport(self.server.get_url())
 

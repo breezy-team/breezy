@@ -72,7 +72,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         
         :param bytes: must be a byte string
         """
-        from bzrlib.transport.smart import _smart
+        from bzrlib.transport.smart import request
         assert isinstance(bytes, str)
         self.in_buffer += bytes
         if not self.has_dispatched:
@@ -84,7 +84,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 first_line, self.in_buffer = self.in_buffer.split('\n', 1)
                 first_line += '\n'
                 req_args = _decode_tuple(first_line)
-                self.request = _smart.SmartServerRequestHandler(
+                self.request = request.SmartServerRequestHandler(
                     self._backing_transport)
                 self.request.dispatch_command(req_args[0], req_args[1:])
                 if self.request.finished_reading:

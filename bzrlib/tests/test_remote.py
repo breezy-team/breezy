@@ -23,6 +23,7 @@ the object given a transport that supports smartserver rpc operations.
 
 from bzrlib import bzrdir, remote, tests
 from bzrlib.transport import smart
+from bzrlib.transport.smart import server
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.remote import RemoteBzrDir, RemoteBzrDirFormat
 from bzrlib.branch import Branch
@@ -31,7 +32,7 @@ class BasicRemoteObjectTests(tests.TestCaseInTempDir):
 
     def setUp(self):
         tests.TestCaseInTempDir.setUp(self)
-        self.server = smart.SmartTCPServer_for_testing()
+        self.server = server.SmartTCPServer_for_testing()
         self.server.setUp()
         self.addCleanup(self.server.tearDown)
         self.transport = smart.SmartTCPTransport(self.server.get_url())

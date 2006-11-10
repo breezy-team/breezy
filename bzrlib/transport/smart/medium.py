@@ -18,6 +18,7 @@ import os
 import socket
 
 from bzrlib import errors
+from bzrlib.transport.smart import protocol
 try:
     from bzrlib.transport import ssh
 except errors.ParamikoNotPresent:
@@ -51,12 +52,11 @@ class SmartServerStreamMedium(object):
         # Keep a reference to stderr because the sys module's globals get set to
         # None during interpreter shutdown.
         from sys import stderr
-        from bzrlib.transport import _smart
         try:
             while not self.finished:
-                protocol = _smart.SmartServerRequestProtocolOne(
+                server_protocol = protocol.SmartServerRequestProtocolOne(
                     self.backing_transport, self._write_out)
-                self._serve_one_request(protocol)
+                self._serve_one_request(server_protocol)
         except Exception, e:
             stderr.write("%s terminating on exception %s\n" % (self, e))
             raise

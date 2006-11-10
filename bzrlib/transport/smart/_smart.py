@@ -196,8 +196,6 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 
 from cStringIO import StringIO
 import os
-import socket
-import threading
 import urllib
 import urlparse
 
@@ -205,7 +203,6 @@ from bzrlib import (
     errors,
     transport,
     trace,
-    urlutils,
     )
 from bzrlib.transport.smart import medium, protocol, request
 
@@ -213,203 +210,6 @@ from bzrlib.transport.smart import medium, protocol, request
 for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
-
-
-class SmartServerRequestHandler(object):
-    """Protocol logic for smart server.
-    
-    This doesn't handle serialization at all, it just processes requests and
-    creates responses.
-    """
-
-    # IMPORTANT FOR IMPLEMENTORS: It is important that SmartServerRequestHandler
-    # not contain encoding or decoding logic to allow the wire protocol to vary
-    # from the object protocol: we will want to tweak the wire protocol separate
-    # from the object model, and ideally we will be able to do that without
-    # having a SmartServerRequestHandler subclass for each wire protocol, rather
-    # just a Protocol subclass.
-
-    # TODO: Better way of representing the body for commands that take it,
-    # and allow it to be streamed into the server.
-
-    def __init__(self, backing_transport):
-        self._backing_transport = backing_transport
-        self._body_bytes = ''
-        self.response = None
-        self.finished_reading = False
-        self._command = None
-
-    def accept_body(self, bytes):
-        """Accept body data."""
-
-        # TODO: This should be overriden for each command that desired body data
-        # to handle the right format of that data, i.e. plain bytes, a bundle,
-        # etc.  The deserialisation into that format should be done in the
-        # Protocol object.
-
-        # default fallback is to accumulate bytes.
-        self._body_bytes += bytes
-        
-    def end_of_body(self):
-        """No more body data will be received."""
-        self._run_handler_code(self._command.do_body, (self._body_bytes,), {})
-        # cannot read after this.
-        self.finished_reading = True
-
-    def dispatch_command(self, cmd, args):
-        """Deprecated compatibility method.""" # XXX XXX
-        command = request.version_one_commands.get(cmd)
-        if command is None:
-            raise errors.SmartProtocolError("bad request %r" % (cmd,))
-        self._command = command(self._backing_transport)
-        self._run_handler_code(self._command.do, args, {})
-
-    def _run_handler_code(self, callable, args, kwargs):
-        """Run some handler specific code 'callable'.
-
-        If a result is returned, it is considered to be the commands response,
-        and finished_reading is set true, and its assigned to self.response.
-
-        Any exceptions caught are translated and a response object created
-        from them.
-        """
-        result = self._call_converting_errors(callable, args, kwargs)
-        if result is not None:
-            self.response = result
-            self.finished_reading = True
-
-    def _call_converting_errors(self, callable, args, kwargs):
-        """Call callable converting errors to Response objects."""
-        # XXX: most of this error conversion is VFS-related, and thus ought to
-        # be in SmartServerVFSRequestHandler somewhere.
-        try:
-            return callable(*args, **kwargs)
-        except errors.NoSuchFile, e:
-            return protocol.SmartServerResponse(('NoSuchFile', e.path))
-        except errors.FileExists, e:
-            return protocol.SmartServerResponse(('FileExists', e.path))
-        except errors.DirectoryNotEmpty, e:
-            return protocol.SmartServerResponse(('DirectoryNotEmpty', e.path))
-        except errors.ShortReadvError, e:
-            return protocol.SmartServerResponse(('ShortReadvError',
-                e.path, str(e.offset), str(e.length), str(e.actual)))
-        except UnicodeError, e:
-            # If it is a DecodeError, than most likely we are starting
-            # with a plain string
-            str_or_unicode = e.object
-            if isinstance(str_or_unicode, unicode):
-                # XXX: UTF-8 might have \x01 (our seperator byte) in it.  We
-                # should escape it somehow.
-                val = 'u:' + str_or_unicode.encode('utf-8')
-            else:
-                val = 's:' + str_or_unicode.encode('base64')
-            # This handles UnicodeEncodeError or UnicodeDecodeError
-            return protocol.SmartServerResponse((e.__class__.__name__,
-                    e.encoding, val, str(e.start), str(e.end), e.reason))
-        except errors.TransportNotPossible, e:
-            if e.msg == "readonly transport":
-                return protocol.SmartServerResponse(('ReadOnlyError', ))
-            else:
-                raise
-
-
-class SmartTCPServer(object):
-    """Listens on a TCP socket and accepts connections from smart clients"""
-
-    def __init__(self, backing_transport, host='127.0.0.1', port=0):
-        """Construct a new server.
-
-        To actually start it running, call either start_background_thread or
-        serve.
-
-        :param host: Name of the interface to listen on.
-        :param port: TCP port to listen on, or 0 to allocate a transient port.
-        """
-        self._server_socket = socket.socket()
-        self._server_socket.bind((host, port))
-        self.port = self._server_socket.getsockname()[1]
-        self._server_socket.listen(1)
-        self._server_socket.settimeout(1)
-        self.backing_transport = backing_transport
-
-    def serve(self):
-        # let connections timeout so that we get a chance to terminate
-        # Keep a reference to the exceptions we want to catch because the socket
-        # module's globals get set to None during interpreter shutdown.
-        from socket import timeout as socket_timeout
-        from socket import error as socket_error
-        self._should_terminate = False
-        while not self._should_terminate:
-            try:
-                self.accept_and_serve()
-            except socket_timeout:
-                # just check if we're asked to stop
-                pass
-            except socket_error, e:
-                trace.warning("client disconnected: %s", e)
-                pass
-
-    def get_url(self):
-        """Return the url of the server"""
-        return "bzr://%s:%d/" % self._server_socket.getsockname()
-
-    def accept_and_serve(self):
-        conn, client_addr = self._server_socket.accept()
-        # For WIN32, where the timeout value from the listening socket
-        # propogates to the newly accepted socket.
-        conn.setblocking(True)
-        conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        handler = medium.SmartServerSocketStreamMedium(conn, self.backing_transport)
-        connection_thread = threading.Thread(None, handler.serve, name='smart-server-child')
-        connection_thread.setDaemon(True)
-        connection_thread.start()
-
-    def start_background_thread(self):
-        self._server_thread = threading.Thread(None,
-                self.serve,
-                name='server-' + self.get_url())
-        self._server_thread.setDaemon(True)
-        self._server_thread.start()
-
-    def stop_background_thread(self):
-        self._should_terminate = True
-        # self._server_socket.close()
-        # we used to join the thread, but it's not really necessary; it will
-        # terminate in time
-        ## self._server_thread.join()
-
-
-class SmartTCPServer_for_testing(SmartTCPServer):
-    """Server suitable for use by transport tests.
-    
-    This server is backed by the process's cwd.
-    """
-
-    def __init__(self):
-        self._homedir = urlutils.local_path_to_url(os.getcwd())[7:]
-        # The server is set up by default like for ssh access: the client
-        # passes filesystem-absolute paths; therefore the server must look
-        # them up relative to the root directory.  it might be better to act
-        # a public server and have the server rewrite paths into the test
-        # directory.
-        SmartTCPServer.__init__(self,
-            transport.get_transport(urlutils.local_path_to_url('/')))
-        
-    def setUp(self):
-        """Set up server for testing"""
-        self.start_background_thread()
-
-    def tearDown(self):
-        self.stop_background_thread()
-
-    def get_url(self):
-        """Return the url of the server"""
-        host, port = self._server_socket.getsockname()
-        return "bzr://%s:%d%s" % (host, port, urlutils.escape(self._homedir))
-
-    def get_bogus_url(self):
-        """Return a URL which will fail to connect"""
-        return 'bzr://127.0.0.1:1/'
 
 
 class SmartStat(object):
@@ -818,8 +618,3 @@ class SmartSSHTransport(SmartTransport):
         super(SmartSSHTransport, self).__init__(url, medium=client_medium)
 
 
-def get_test_permutations():
-    """Return (transport, server) permutations for testing."""
-    ### We may need a little more test framework support to construct an
-    ### appropriate RemoteTransport in the future.
-    return [(SmartTCPTransport, SmartTCPServer_for_testing)]

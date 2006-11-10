@@ -2894,7 +2894,7 @@ class cmd_serve(Command):
         ]
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False):
-        from bzrlib.transport import smart
+        from bzrlib.transport.smart import medium, server
         from bzrlib.transport import get_transport
         if directory is None:
             directory = os.getcwd()
@@ -2903,18 +2903,20 @@ class cmd_serve(Command):
             url = 'readonly+' + url
         t = get_transport(url)
         if inet:
-            server = smart.SmartServerPipeStreamMedium(sys.stdin, sys.stdout, t)
+            smart_server = medium.SmartServerPipeStreamMedium(
+                sys.stdin, sys.stdout, t)
         elif port is not None:
             if ':' in port:
                 host, port = port.split(':')
             else:
                 host = '127.0.0.1'
-            server = smart.SmartTCPServer(t, host=host, port=int(port))
+            smart_server = server.SmartTCPServer(t, host=host, port=int(port))
             print 'listening on port: ', server.port
             sys.stdout.flush()
         else:
-            raise errors.BzrCommandError("bzr serve requires one of --inet or --port")
-        server.serve()
+            raise errors.BzrCommandError(
+                "bzr serve requires one of --inet or --port")
+        smart_server.serve()
 
 
 # command-line interpretation helper for merge-related commands
