@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -99,13 +99,26 @@ class TestUserIgnores(TestCaseInTempDir):
         self.assertEqual(patterns, added)
         self.assertEqual(set(patterns), ignores.get_user_ignores())
 
+    def test_add_directory(self):
+        """Test that adding a directory will strip any trailing slash"""
+        # Create an empty file
+        ignores._set_user_ignores([])
+
+        in_patterns = ['foo/', 'bar/']
+        added = ignores.add_unique_user_ignores(in_patterns)
+        out_patterns = [ x.rstrip('/') for x in in_patterns ]
+        self.assertEqual(out_patterns, added)
+        self.assertEqual(set(out_patterns), ignores.get_user_ignores())
+
     def test_add_unique(self):
         """Test that adding will not duplicate ignores"""
-        ignores._set_user_ignores(['foo', './bar', u'b\xe5z'])
+        ignores._set_user_ignores(['foo', './bar', u'b\xe5z', 'dir1/'])
 
-        added = ignores.add_unique_user_ignores(['xxx', './bar', 'xxx'])
-        self.assertEqual(['xxx'], added)
-        self.assertEqual(set(['foo', './bar', u'b\xe5z', 'xxx']),
+        added = ignores.add_unique_user_ignores(
+            ['xxx', './bar', 'xxx', 'dir1/', 'dir2/'])
+        self.assertEqual(['xxx', 'dir2'], added)
+        self.assertEqual(set(['foo', './bar', u'b\xe5z', 
+                              'xxx', 'dir1', 'dir2']),
                          ignores.get_user_ignores())
 
 

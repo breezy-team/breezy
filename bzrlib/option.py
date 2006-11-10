@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -86,6 +86,7 @@ def _parse_revision_str(revstr):
     """
     # TODO: Maybe move this into revisionspec.py
     revs = []
+    # split on the first .. that is not followed by a / ?
     sep = re.compile("\\.\\.(?!/)")
     for x in sep.split(revstr):
         revs.append(revisionspec.RevisionSpec.from_string(x or None))
@@ -263,6 +264,7 @@ _global_option('reprocess', help='Reprocess to reduce spurious conflicts')
 _global_option('kind', type=str)
 _global_option('dry-run',
                help="show what would be done, but don't actually do anything")
+_global_option('name-from-revision', help='The path name in the old tree.')
 
 
 def _global_short(short_name, long_name):

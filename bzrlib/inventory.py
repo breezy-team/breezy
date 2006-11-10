@@ -855,6 +855,9 @@ class Inventory(object):
     ['', u'hello.c']
     >>> inv = Inventory('TREE_ROOT-12345678-12345678')
     >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
+    Traceback (most recent call last):
+    BzrError: parent_id {TREE_ROOT} not in inventory
+    >>> inv.add(InventoryFile('123-123', 'hello.c', 'TREE_ROOT-12345678-12345678'))
     InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678', sha1=None, len=None)
     """
     def __init__(self, root_id=ROOT_ID, revision_id=None):
@@ -867,17 +870,11 @@ class Inventory(object):
         The inventory is created with a default root directory, with
         an id of None.
         """
-        # We are letting Branch.create() create a unique inventory
-        # root id. Rather than generating a random one here.
-        #if root_id is None:
-        #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
         if root_id is not None:
             self._set_root(InventoryDirectory(root_id, '', None))
         else:
             self.root = None
             self._byid = {}
-        # FIXME: this isn't ever used, changing it to self.revision may break
-        # things. TODO make everything use self.revision_id
         self.revision_id = revision_id
 
     def _set_root(self, ie):
@@ -904,7 +901,8 @@ class Inventory(object):
     def iter_entries(self, from_dir=None):
         """Return (path, entry) pairs, in order by name."""
         if from_dir is None:
-            assert self.root
+            if self.root is None:
+                return
             from_dir = self.root
             yield '', self.root
         elif isinstance(from_dir, basestring):
@@ -957,7 +955,8 @@ class Inventory(object):
         # TODO? Perhaps this should return the from_dir so that the root is
         # yielded? or maybe an option?
         if from_dir is None:
-            assert self.root
+            if self.root is None:
+                return
             from_dir = self.root
             yield '', self.root
         elif isinstance(from_dir, basestring):
@@ -1037,10 +1036,8 @@ class Inventory(object):
         try:
             return self._byid[file_id]
         except KeyError:
-            if file_id is None:
-                raise BzrError("can't look up file_id None")
-            else:
-                raise BzrError("file_id {%s} not in inventory" % file_id)
+            # really we're passing an inventory, not a tree...
+            raise errors.NoSuchId(self, file_id)
 
     def get_file_kind(self, file_id):
         return self._byid[file_id].kind
@@ -1063,10 +1060,6 @@ class Inventory(object):
             assert self.root is None and len(self._byid) == 0
             self._set_root(entry)
             return entry
-        if entry.parent_id == ROOT_ID:
-            assert self.root is not None, self
-            entry.parent_id = self.root.file_id
-
         try:
             parent = self._byid[entry.parent_id]
         except KeyError:
@@ -1205,9 +1198,14 @@ class Inventory(object):
         # mutter("lookup path %r" % name)
 
         parent = self.root
+        if parent is None:
+            return None
         for f in name:
             try:
-                cie = parent.children[f]
+                children = getattr(parent, 'children', None)
+                if children is None:
+                    return None
+                cie = children[f]
                 assert cie.name == f
                 assert cie.parent_id == parent.file_id
                 parent = cie
@@ -1269,6 +1267,9 @@ class Inventory(object):
         
         file_ie.name = new_name
         file_ie.parent_id = new_parent_id
+
+    def is_root(self, file_id):
+        return self.root is not None and file_id == self.root.file_id
 
 
 def make_entry(kind, name, parent_id, file_id=None):

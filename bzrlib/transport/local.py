@@ -474,24 +474,12 @@ class LocalTransport(Transport):
             return True
 
 
-class LocalRelpathServer(Server):
-    """A pretend server for local transports, using relpaths."""
-
-    def get_url(self):
-        """See Transport.Server.get_url."""
-        return "."
-
-
-class LocalAbspathServer(Server):
-    """A pretend server for local transports, using absolute paths."""
-
-    def get_url(self):
-        """See Transport.Server.get_url."""
-        return os.path.abspath("")
-
-
 class LocalURLServer(Server):
-    """A pretend server for local transports, using file:// urls."""
+    """A pretend server for local transports, using file:// urls.
+    
+    Of course no actual server is required to access the local filesystem, so
+    this just exists to tell the test code how to get to it.
+    """
 
     def get_url(self):
         """See Transport.Server.get_url."""
@@ -500,7 +488,6 @@ class LocalURLServer(Server):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(LocalTransport, LocalRelpathServer),
-            (LocalTransport, LocalAbspathServer),
+    return [
             (LocalTransport, LocalURLServer),
             ]

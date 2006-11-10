@@ -685,7 +685,12 @@ class BzrDir(object):
         # TODO: jam 20060426 we probably need a test in here in the
         #       case that the newly sprouted branch is a remote one
         if result_repo is None or result_repo.make_working_trees():
-            result.create_workingtree()
+            wt = result.create_workingtree()
+            if wt.inventory.root is None:
+                try:
+                    wt.set_root_id(self.open_workingtree.get_root_id())
+                except errors.NoWorkingTree:
+                    pass
         return result
 
 
@@ -1169,8 +1174,11 @@ class BzrDirFormat(object):
         _found is a private parameter, do not use it.
         """
         if not _found:
-            assert isinstance(BzrDirFormat.find_format(transport),
-                              self.__class__)
+            found_format = BzrDirFormat.find_format(transport)
+            if not isinstance(found_format, self.__class__):
+                raise AssertionError("%s was asked to open %s, but it seems to need "
+                        "format %s" 
+                        % (self, transport, found_format))
         return self._open(transport)
 
     def _open(self, transport):
@@ -1701,7 +1709,8 @@ class ConvertBzrDir4To5(Converter):
                                                   entry_vf=w)
         for old_revision in previous_entries:
                 # if this fails, its a ghost ?
-                assert old_revision in self.converted_revs 
+                assert old_revision in self.converted_revs, \
+                    "Revision {%s} not in converted_revs" % old_revision
         self.snapshot_ie(previous_entries, ie, w, rev_id)
         del ie.text_id
         assert getattr(ie, 'revision', None) is not None
