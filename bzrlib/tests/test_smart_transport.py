@@ -44,6 +44,7 @@ from bzrlib.transport.http import (
 from bzrlib.transport.smart import (
         medium,
         protocol,
+        request,
         server,
         vfs,
 )
@@ -1103,7 +1104,7 @@ class TestSmartProtocol(tests.TestCase):
             def do_body(cmd, body_bytes):
                 self.end_received = True
                 self.assertEqual('abcdefg', body_bytes)
-                return protocol.SmartServerResponse(('ok', ))
+                return request.SmartServerResponse(('ok', ))
         smart_protocol.request._command = FakeCommand()
         # Call accept_bytes to make sure that internal state like _body_decoder
         # is initialised.  This test should probably be given a clearer
