@@ -14,6 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Basic server-side logic for dealing with requests."""
+
+
 import tempfile
 
 from bzrlib import bzrdir, errors, revision
@@ -22,17 +25,28 @@ from bzrlib.bundle.serializer import write_bundle
 
 class SmartServerRequest(object):
     """Base class for request handlers.
-
-    (Command pattern.)
     """
 
     def __init__(self, backing_transport):
         self._backing_transport = backing_transport
 
-    def do(self):
+    def do(self, *args):
+        """Called with the arguments of the request.
+        
+        This should return a SmartServerResponse if this command expects to
+        receive no body.
+        """
         raise NotImplementedError(self.do)
 
     def do_body(self, body_bytes):
+        """Called if the client sends a body with the request.
+        
+        Must return a SmartServerResponse.
+        """
+        # TODO: if a client erroneously sends a request that shouldn't have a
+        # body, what to do?  Probably SmartServerRequestHandler should catch
+        # this NotImplementedError and translate it into a 'bad request' error
+        # to send to the client.
         raise NotImplementedError(self.do_body)
 
 
@@ -110,6 +124,7 @@ class SmartServerRequestHandler(object):
         from them.
         """
         result = self._call_converting_errors(callable, args, kwargs)
+
         if result is not None:
             self.response = result
             self.finished_reading = True

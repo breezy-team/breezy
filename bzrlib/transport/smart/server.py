@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Server for smart-server protocol."""
+
 import socket
 import os
 import threading
@@ -77,7 +79,8 @@ class SmartTCPServer(object):
         conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         handler = medium.SmartServerSocketStreamMedium(conn, self.backing_transport)
-        connection_thread = threading.Thread(None, handler.serve, name='smart-server-child')
+        connection_thread = threading.Thread(
+            None, handler.serve, name='smart-server-child')
         connection_thread.setDaemon(True)
         connection_thread.start()
 

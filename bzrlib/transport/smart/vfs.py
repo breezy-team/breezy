@@ -19,6 +19,9 @@
 This module defines the smart server methods that are low-level file operations
 -- i.e. methods that operate directly on files and directories, rather than
 higher-level concepts like branches and revisions.
+
+These methods, plus 'hello' and 'get_bundle', are version 1 of the smart server
+protocol, as implemented in bzr 0.11 and later.
 """
 
 from bzrlib.transport.smart import request

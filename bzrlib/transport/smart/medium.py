@@ -14,6 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""The 'medium' layer for the smart servers and clients.
+
+"Medium" here is the noun meaning "a means of transmission", not the adjective
+for "the quality between big and small."
+
+Media carry the bytes of the requests somehow (e.g. via TCP, wrapped in HTTP, or
+over SSH), and pass them to and from the protocol logic.  See the overview in
+bzrlib/transport/smart/__init__.py.
+"""
+
 import os
 import socket
 

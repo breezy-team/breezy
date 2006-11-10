@@ -14,13 +14,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Wire-level encoding and decoding of requests and responses for the smart
+client and server.
+"""
+
+
 from cStringIO import StringIO
 
 from bzrlib import errors
 from bzrlib.transport.smart import (
     request,
     vfs,
-)
+    )
 
 
 def _recv_tuple(from_file):
