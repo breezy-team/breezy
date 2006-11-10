@@ -34,7 +34,7 @@ from warnings import warn
 import BaseHTTPServer, SimpleHTTPServer, socket, time
 import threading
 
-from bzrlib import errors
+from bzrlib import errors, ui
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError, InvalidURL)
 from bzrlib.branch import Branch
@@ -48,7 +48,6 @@ from bzrlib.transport import (
     )
 from bzrlib.transport.http.response import (HttpMultipartRangeResponse,
                                             HttpRangeResponse)
-from bzrlib.ui import ui_factory
 
 
 def extract_auth(url, password_manager):
@@ -74,7 +73,7 @@ def extract_auth(url, password_manager):
         if password is not None:
             password = urllib.unquote(password)
         else:
-            password = ui_factory.get_password(prompt='HTTP %(user)@%(host) password',
+            password = ui.ui_factory.get_password(prompt='HTTP %(user)@%(host) password',
                                                user=username, host=host)
         password_manager.add_password(None, host, username, password)
     url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))

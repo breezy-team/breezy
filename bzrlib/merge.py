@@ -38,7 +38,6 @@ from bzrlib.errors import (BzrCommandError,
                            BinaryFile,
                            )
 from bzrlib.merge3 import Merge3
-import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
 from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
@@ -224,7 +223,7 @@ class Merger(object):
         mutter("doing merge() with no base_revision specified")
         if base_revision == [None, None]:
             try:
-                pb = bzrlib.ui.ui_factory.nested_progress_bar()
+                pb = ui.ui_factory.nested_progress_bar()
                 try:
                     this_repo = self.this_branch.repository
                     self.base_rev_id = common_ancestor(self.this_basis, 
@@ -327,7 +326,7 @@ class Merger(object):
             else:
                 parent = by_path[os.path.dirname(path)]
             abspath = pathjoin(self.this_tree.basedir, path)
-            kind = bzrlib.osutils.file_kind(abspath)
+            kind = osutils.file_kind(abspath)
             if file_id in self.base_tree.inventory:
                 executable = getattr(self.base_tree.inventory[file_id], 'executable', False)
             else:
