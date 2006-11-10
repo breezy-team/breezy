@@ -97,9 +97,17 @@ POLICY_NONE = 0
 POLICY_NORECURSE = 1
 POLICY_APPENDPATH = 2
 
-_policy_key_names = [
-    ('policy_norecurse', POLICY_NORECURSE),
-    ('policy_appendpath', POLICY_APPENDPATH)]
+_policy_name = {
+    POLICY_NONE: None,
+    POLICY_NORECURSE: 'norecurse',
+    POLICY_APPENDPATH: 'appendpath',
+    }
+_policy_value = {
+    None: POLICY_NONE,
+    'none': POLICY_NONE,
+    'norecurse': POLICY_NORECURSE,
+    'appendpath': POLICY_APPENDPATH,
+    }
 
 
 STORE_LOCATION = POLICY_NONE
@@ -490,18 +498,13 @@ class LocationConfig(IniBasedConfig):
         if not recurse:
             return POLICY_NORECURSE
 
-        for (name, policy) in _policy_key_names:
-            try:
-                value = self._get_parser().get_value(section, name)
-                if not isinstance(value, list):
-                    value = [value]
-                if option_name in value:
-                    return policy
-            except KeyError:
-                pass
+        policy_key = '%s:policy' % option_name
+        try:
+            policy_name = self._get_parser()[section][policy_key]
+        except KeyError:
+            policy_name = None
 
-        # fall back to no special policy
-        return POLICY_NONE
+        return _policy_value[policy_name]
 
     def _set_option_policy(self, section, option_name, option_policy):
         """Set the policy for the given option name in the given section."""
@@ -517,27 +520,17 @@ class LocationConfig(IniBasedConfig):
                     'has been converted to a policy_norecurse option'
                     % (section, self._get_filename()))
             del self._get_parser()[section]['recurse']
-            all_keys = sorted(
-                key for key in self._get_parser()[section].keys()
-                if not key.startswith('policy_'))
-            if all_keys:
-                self._get_parser()[section]['policy_norecurse'] = all_keys
+            for key in self._get_parser()[section].keys():
+                if not key.endswith(':policy'):
+                    self._get_parser()[section]['%s:policy'%key] = 'norecurse'
 
-        for (name, policy) in _policy_key_names:
-            try:
-                value = self._get_parser().get_value(section, name)
-                if not isinstance(value, list):
-                    value = [value]
-            except KeyError:
-                value = []
-            if policy == option_policy:
-                if option_name not in value:
-                    value = sorted(value + [option_name])
-                    self._get_parser()[section][name] = value
-            else:
-                if option_name in value:
-                    value.remove(option_name)
-                    self._get_parser()[section][name] = value
+        policy_key = '%s:policy'%option_name
+        policy_name = _policy_name[option_policy]
+        if policy_name is not None:
+            self._get_parser()[section][policy_key] = policy_name
+        else:
+            if policy_key in self._get_parser()[section]:
+                del self._get_parser()[section][policy_key]
 
     def set_user_option(self, option, value, store=STORE_LOCATION):
         """Save option and its value in the configuration."""

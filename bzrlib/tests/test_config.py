@@ -71,9 +71,9 @@ sample_branches_text = """
 email=Robert Collins <robertc@example.org>
 normal_option = normal
 appendpath_option = append
+appendpath_option:policy = appendpath
 norecurse_option = norecurse
-policy_appendpath = appendpath_option
-policy_norecurse = norecurse_option
+norecurse_option:policy = norecurse
 [http://www.example.com/ignoreparent]
 # different project: ignore parent dir config
 ignore_parents=true
@@ -419,7 +419,7 @@ class TestBranchConfig(TestCaseWithTransport):
         local_path = osutils.getcwd().encode('utf8')
         # Surprisingly ConfigObj doesn't create a trailing newline
         self.check_file_contents(locations,
-            '[%s/branch]\npush_location = http://foobar\npolicy_norecurse = push_location,' % (local_path,))
+            '[%s/branch]\npush_location = http://foobar\npush_location:policy = norecurse' % (local_path,))
 
 
 class TestGlobalConfigItems(TestCase):
@@ -830,8 +830,8 @@ class TestLocationConfig(TestCaseInTempDir):
                           ('__delitem__', 'recurse'),
                           ('__getitem__', '/a/c'),
                           ('keys',),
-                          ('get_value', '/a/c', 'policy_norecurse'),
-                          ('get_value', '/a/c', 'policy_appendpath'),
+                          ('__getitem__', '/a/c'),
+                          ('__contains__', 'foo:policy'),
                           ('write',)],
                          record._calls[1:])
 
