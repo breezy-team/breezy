@@ -17,7 +17,10 @@
 from cStringIO import StringIO
 
 from bzrlib import errors
-from bzrlib.transport.smart import vfs
+from bzrlib.transport.smart import (
+    request,
+    vfs,
+)
 
 
 def _recv_tuple(from_file):
@@ -73,7 +76,6 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
         
         :param bytes: must be a byte string
         """
-        from bzrlib.transport.smart import request
         assert isinstance(bytes, str)
         self.in_buffer += bytes
         if not self.has_dispatched:
