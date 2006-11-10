@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,15 +21,14 @@ import stat
 from cStringIO import StringIO
 
 import bzrlib
-from bzrlib.errors import (
-    ConnectionError,
-    DependencyNotPresent,
-    FileExists,
-    NoSuchFile,
-    PathNotChild,
-    TransportNotPossible,
-    UnsupportedProtocol,
-    )
+from bzrlib import urlutils
+from bzrlib.errors import (NoSuchFile, FileExists,
+                           TransportNotPossible,
+                           ConnectionError,
+                           DependencyNotPresent,
+                           UnsupportedProtocol,
+                           PathNotChild,
+                           )
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import (_CoalescedOffset,
                               _get_protocol_handlers,
@@ -41,6 +40,9 @@ from bzrlib.transport import (_CoalescedOffset,
                               )
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.local import LocalTransport
+
+
+# TODO: Should possibly split transport-specific tests into their own files.
 
 
 class TestTransport(TestCase):
@@ -234,6 +236,16 @@ class TestMemoryTransport(TestCase):
         transport.append_bytes('foo', 'content')
         self.assertEquals(True, transport.has('foo'))
 
+    def test_list_dir(self):
+        transport = MemoryTransport()
+        transport.put_bytes('foo', 'content')
+        transport.mkdir('dir')
+        transport.put_bytes('dir/subfoo', 'content')
+        transport.put_bytes('dirlike', 'content')
+
+        self.assertEquals(['dir', 'dirlike', 'foo'], sorted(transport.list_dir('.')))
+        self.assertEquals(['subfoo'], sorted(transport.list_dir('dir')))
+
     def test_mkdir(self):
         transport = MemoryTransport()
         transport.mkdir('dir')
@@ -422,8 +434,8 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
         server = fakenfs.FakeNFSServer()
         server.setUp()
         try:
-            # the server should be a relpath localhost server
-            self.assertEqual(server.get_url(), 'fakenfs+.')
+            # the url should be decorated appropriately
+            self.assertStartsWith(server.get_url(), 'fakenfs+')
             # and we should be able to get a transport for it
             transport = get_transport(server.get_url())
             # which must be a FakeNFSTransportDecorator instance.
@@ -517,3 +529,25 @@ class TestTransportImplementation(TestCaseInTempDir):
             # regular connection behaviour by direct construction.
             t = self.transport_class(base_url)
         return t
+
+
+class TestLocalTransports(TestCase):
+
+    def test_get_transport_from_abspath(self):
+        here = os.path.abspath('.')
+        t = get_transport(here)
+        self.assertIsInstance(t, LocalTransport)
+        self.assertEquals(t.base, urlutils.local_path_to_url(here) + '/')
+
+    def test_get_transport_from_relpath(self):
+        here = os.path.abspath('.')
+        t = get_transport('.')
+        self.assertIsInstance(t, LocalTransport)
+        self.assertEquals(t.base, urlutils.local_path_to_url('.') + '/')
+
+    def test_get_transport_from_local_url(self):
+        here = os.path.abspath('.')
+        here_url = urlutils.local_path_to_url(here) + '/'
+        t = get_transport(here_url)
+        self.assertIsInstance(t, LocalTransport)
+        self.assertEquals(t.base, here_url)

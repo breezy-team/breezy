@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,8 +20,8 @@ from bzrlib import (
     errors,
     urlutils,
     )
-from bzrlib.bundle.serializer import read_bundle
-from bzrlib.transport import get_transport
+from bzrlib.bundle import serializer as _serializer
+from bzrlib.transport import get_transport as _get_transport
 """)
 
 
@@ -41,9 +41,9 @@ def read_bundle_from_url(url):
     # Some transports cannot detect that we are trying to read a
     # directory until we actually issue read() on the handle.
     try:
-        t = get_transport(url)
+        t = _get_transport(url)
         f = t.get(filename)
-        return read_bundle(f)
+        return _serializer.read_bundle(f)
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
     except (IOError,), e:

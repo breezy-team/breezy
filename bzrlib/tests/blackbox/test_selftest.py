@@ -1,8 +1,9 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -173,7 +174,7 @@ class TestBenchmarkTests(TestCaseWithTransport):
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
         self.assertEqual(
-            'running tests...\ntests passed\n',
+            'tests passed\n',
             err)
         benchfile = open(".perf_history", "rt")
         try:
@@ -448,5 +449,5 @@ class TestRunBzrError(ExternalBase):
         out, err = self.run_bzr_error(['^$'], 'rocks', retcode=0)
         self.assertEqual(out, 'it sure does!\n')
 
-        out, err = self.run_bzr_error(["'foobarbaz' is not a versioned file"],
+        out, err = self.run_bzr_error(["bzr: ERROR: foobarbaz is not versioned"],
                                       'file-id', 'foobarbaz')

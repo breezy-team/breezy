@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -630,3 +630,67 @@ class TestKnitCaching(KnitTests):
         text = k.get_text('text-1')
         self.assertEqual(TEXT_1, text)
         self.assertEqual({}, k._data._cache)
+
+
+class TestKnitIndex(KnitTests):
+
+    def test_add_versions_dictionary_compresses(self):
+        """Adding versions to the index should update the lookup dict"""
+        knit = self.make_test_knit()
+        idx = knit._index
+        idx.add_version('a-1', ['fulltext'], 0, 0, [])
+        self.check_file_contents('test.kndx',
+            '# bzr knit index 8\n'
+            '\n'
+            'a-1 fulltext 0 0  :'
+            )
+        idx.add_versions([('a-2', ['fulltext'], 0, 0, ['a-1']),
+                          ('a-3', ['fulltext'], 0, 0, ['a-2']),
+                         ])
+        self.check_file_contents('test.kndx',
+            '# bzr knit index 8\n'
+            '\n'
+            'a-1 fulltext 0 0  :\n'
+            'a-2 fulltext 0 0 0 :\n'
+            'a-3 fulltext 0 0 1 :'
+            )
+        self.assertEqual(['a-1', 'a-2', 'a-3'], idx._history)
+        self.assertEqual({'a-1':('a-1', ['fulltext'], 0, 0, [], 0),
+                          'a-2':('a-2', ['fulltext'], 0, 0, ['a-1'], 1),
+                          'a-3':('a-3', ['fulltext'], 0, 0, ['a-2'], 2),
+                         }, idx._cache)
+
+    def test_add_versions_fails_clean(self):
+        """If add_versions fails in the middle, it restores a pristine state.
+
+        Any modifications that are made to the index are reset if all versions
+        cannot be added.
+        """
+        # This cheats a little bit by passing in a generator which will
+        # raise an exception before the processing finishes
+        # Other possibilities would be to have an version with the wrong number
+        # of entries, or to make the backing transport unable to write any
+        # files.
+
+        knit = self.make_test_knit()
+        idx = knit._index
+        idx.add_version('a-1', ['fulltext'], 0, 0, [])
+
+        class StopEarly(Exception):
+            pass
+
+        def generate_failure():
+            """Add some entries and then raise an exception"""
+            yield ('a-2', ['fulltext'], 0, 0, ['a-1'])
+            yield ('a-3', ['fulltext'], 0, 0, ['a-2'])
+            raise StopEarly()
+
+        # Assert the pre-condition
+        self.assertEqual(['a-1'], idx._history)
+        self.assertEqual({'a-1':('a-1', ['fulltext'], 0, 0, [], 0)}, idx._cache)
+
+        self.assertRaises(StopEarly, idx.add_versions, generate_failure())
+
+        # And it shouldn't be modified
+        self.assertEqual(['a-1'], idx._history)
+        self.assertEqual({'a-1':('a-1', ['fulltext'], 0, 0, [], 0)}, idx._cache)

@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,48 +20,29 @@
 # executable files with reasonable names.
 
 # TODO: `help commands --all` should show hidden commands
-import textwrap
-from bzrlib import osutils 
-
-global_help = \
-"""Bazaar -- a free distributed version-control tool
-http://bazaar-vcs.org/
-
-Basic commands:
-
-  bzr init           makes this directory a versioned branch
-  bzr branch         make a copy of another branch
-
-  bzr add            make files or directories versioned
-  bzr ignore         ignore a file or pattern
-  bzr mv             move or rename a versioned file
-
-  bzr status         summarize changes in working copy
-  bzr diff           show detailed diffs
-
-  bzr merge          pull in changes from another branch
-  bzr commit         save some or all changes
-
-  bzr log            show history of changes
-  bzr check          validate storage
-
-  bzr help init      more help on e.g. init command
-  bzr help commands  list all commands
-"""
-
 
 import sys
+import textwrap
+
+from bzrlib import (
+    help_topics,
+    osutils,
+    )
 
 
-def help(topic=None, outfile = None):
+def help(topic=None, outfile=None):
+    """Write the help for the specific topic to outfile"""
     if outfile is None:
         outfile = sys.stdout
+
     if topic is None:
-        outfile.write(global_help)
-    elif topic == 'commands':
-        help_commands(outfile = outfile)
+        topic = 'basic'
+
+    if topic in help_topics.topic_registry:
+        txt = help_topics.topic_registry.get_detail(topic)
+        outfile.write(txt)
     else:
-        help_on_command(topic, outfile = outfile)
+        help_on_command(topic, outfile=outfile)
 
 
 def command_usage(cmd_object):
@@ -112,7 +93,7 @@ def help_on_command(cmdname, outfile=None):
     if doc is None:
         raise NotImplementedError("sorry, no detailed help yet for %r" % cmdname)
 
-    print >>outfile, 'usage:', command_usage(cmd_object) 
+    print >>outfile, 'usage:', command_usage(cmd_object)
 
     if cmd_object.aliases:
         print >>outfile, 'aliases:',
@@ -139,11 +120,18 @@ def help_on_command_options(cmd, outfile=None):
 
 def help_commands(outfile=None):
     """List all commands"""
+    if outfile is None:
+        outfile = sys.stdout
+    outfile.write(_help_commands_to_text('commands'))
+
+
+def _help_commands_to_text(topic):
+    """Generate the help text for the list of commands"""
     from bzrlib.commands import (builtin_command_names,
                                  plugin_command_names,
                                  get_cmd_object)
-    if outfile is None:
-        outfile = sys.stdout
+    out = []
+
     names = set(builtin_command_names()) # to eliminate duplicates
     names.update(plugin_command_names())
     commands = ((n, get_cmd_object(n)) for n in names)
@@ -151,6 +139,7 @@ def help_commands(outfile=None):
     max_name = max(len(n) for n, o in shown_commands)
     indent = ' ' * (max_name + 1)
     width = osutils.terminal_width() - 1
+
     for cmd_name, cmd_object in sorted(shown_commands):
         plugin_name = cmd_object.plugin_name()
         if plugin_name is None:
@@ -167,4 +156,10 @@ def help_commands(outfile=None):
         lines = textwrap.wrap(helpstring, subsequent_indent=indent,
                               width=width)
         for line in lines:
-            outfile.write(line + '\n')
+            out.append(line + '\n')
+    return ''.join(out)
+
+
+help_topics.topic_registry.register("commands",
+                                    _help_commands_to_text,
+                                    "Basic help for all commands")

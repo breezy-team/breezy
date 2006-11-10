@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -272,6 +272,7 @@ class TestExternalDiff(TestDiff):
             os.environ['BZR_PROGRESS_BAR'] = 'none'
             out, err = self.run_bzr_subprocess('diff', '-r', '1',
                                                '--diff-options', '-ub',
+                                               universal_newlines=True,
                                                retcode=None)
         finally:
             if orig_progress is None:
