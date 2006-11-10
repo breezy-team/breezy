@@ -61,8 +61,15 @@ class SmartServerRequestHandler(object):
     # TODO: Better way of representing the body for commands that take it,
     # and allow it to be streamed into the server.
 
-    def __init__(self, backing_transport):
+    def __init__(self, backing_transport, commands):
+        """Constructor.
+
+        :param backing_transport: a Transport to handle requests for.
+        :param commands: a dict mapping command names to SmartServerRequest
+            subclasses. e.g. bzrlib.transport.smart.vfs.vfs_commands.
+        """
         self._backing_transport = backing_transport
+        self._commands = commands
         self._body_bytes = ''
         self.response = None
         self.finished_reading = False
@@ -87,7 +94,7 @@ class SmartServerRequestHandler(object):
 
     def dispatch_command(self, cmd, args):
         """Deprecated compatibility method.""" # XXX XXX
-        command = version_one_commands.get(cmd)
+        command = self._commands.get(cmd)
         if command is None:
             raise errors.SmartProtocolError("bad request %r" % (cmd,))
         self._command = command(self._backing_transport)

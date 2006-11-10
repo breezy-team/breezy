@@ -25,6 +25,7 @@ except errors.ParamikoNotPresent:
     # no paramiko.  SmartSSHClientMedium will break.
     pass
 
+
 class SmartServerStreamMedium(object):
     """Handles smart commands coming over a stream.
 

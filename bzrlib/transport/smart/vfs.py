@@ -24,7 +24,8 @@ higher-level concepts like branches and revisions.
 from bzrlib.transport.smart import request
 
 
-vfs_commands = {}
+# vfs_commands is the set of commands handlers for the version 1 protocol.
+vfs_commands = request.version_one_commands.copy()
 
 def register_command(command):
     vfs_commands[command.method] = command
@@ -218,4 +219,3 @@ class StatCommand(request.SmartServerRequest):
             ('stat', str(stat.st_size), oct(stat.st_mode)))
 register_command(StatCommand)
 
-request.version_one_commands.update(vfs_commands)

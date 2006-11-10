@@ -914,19 +914,16 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
             'foo')
         
 
-class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
-    """Test that call directly into the handler logic, bypassing the network."""
-
-    def test_construct_request_handler(self):
-        """Constructing a request handler should be easy and set defaults."""
-        handler = smart.SmartServerRequestHandler(None)
-        self.assertFalse(handler.finished_reading)
-
+class SmartServerCommandTests(tests.TestCaseWithTransport):
+    """Tests that call directly into the command objects, bypassing the network
+    and the request dispatching.
+    """
+        
     def test_hello(self):
-        handler = smart.SmartServerRequestHandler(None)
-        handler.dispatch_command('hello', ())
-        self.assertEqual(('ok', '1'), handler.response.args)
-        self.assertEqual(None, handler.response.body)
+        cmd = request.HelloRequest(None)
+        response = cmd.do()
+        self.assertEqual(('ok', '1'), response.args)
+        self.assertEqual(None, response.body)
         
     def test_get_bundle(self):
         from bzrlib.bundle import serializer
@@ -935,14 +932,33 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         wt.add('hello')
         rev_id = wt.commit('add hello')
         
-        handler = smart.SmartServerRequestHandler(self.get_transport())
-        handler.dispatch_command('get_bundle', ('.', rev_id))
-        bundle = serializer.read_bundle(StringIO(handler.response.body))
-        self.assertEqual((), handler.response.args)
+        cmd = request.GetBundleRequest(self.get_transport())
+        response = cmd.do('.', rev_id)
+        bundle = serializer.read_bundle(StringIO(response.body))
+        self.assertEqual((), response.args)
 
+
+class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
+    """Test that call directly into the handler logic, bypassing the network."""
+
+    def build_handler(self, transport):
+        """Returns a handler for the commands in protocol version one."""
+        return smart.SmartServerRequestHandler(transport, vfs.vfs_commands)
+
+    def test_construct_request_handler(self):
+        """Constructing a request handler should be easy and set defaults."""
+        handler = smart.SmartServerRequestHandler(None, None)
+        self.assertFalse(handler.finished_reading)
+
+    def test_hello(self):
+        handler = self.build_handler(None)
+        handler.dispatch_command('hello', ())
+        self.assertEqual(('ok', '1'), handler.response.args)
+        self.assertEqual(None, handler.response.body)
+        
     def test_readonly_exception_becomes_transport_not_possible(self):
         """The response for a read-only error is ('ReadOnlyError')."""
-        handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
+        handler = self.build_handler(self.get_readonly_transport())
         # send a mkdir for foo, with no explicit mode - should fail.
         handler.dispatch_command('mkdir', ('foo', ''))
         # and the failure should be an explicit ReadOnlyError
@@ -954,14 +970,14 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 
     def test_hello_has_finished_body_on_dispatch(self):
         """The 'hello' command should set finished_reading."""
-        handler = smart.SmartServerRequestHandler(None)
+        handler = self.build_handler(None)
         handler.dispatch_command('hello', ())
         self.assertTrue(handler.finished_reading)
         self.assertNotEqual(None, handler.response)
 
     def test_put_bytes_non_atomic(self):
         """'put_...' should set finished_reading after reading the bytes."""
-        handler = smart.SmartServerRequestHandler(self.get_transport())
+        handler = self.build_handler(self.get_transport())
         handler.dispatch_command('put_non_atomic', ('a-file', '', 'F', ''))
         self.assertFalse(handler.finished_reading)
         handler.accept_body('1234')
@@ -975,7 +991,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
     def test_readv_accept_body(self):
         """'readv' should set finished_reading after reading offsets."""
         self.build_tree(['a-file'])
-        handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
+        handler = self.build_handler(self.get_readonly_transport())
         handler.dispatch_command('readv', ('a-file', ))
         self.assertFalse(handler.finished_reading)
         handler.accept_body('2,')
@@ -990,7 +1006,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
     def test_readv_short_read_response_contents(self):
         """'readv' when a short read occurs sets the response appropriately."""
         self.build_tree(['a-file'])
-        handler = smart.SmartServerRequestHandler(self.get_readonly_transport())
+        handler = self.build_handler(self.get_readonly_transport())
         handler.dispatch_command('readv', ('a-file', ))
         # read beyond the end of the file.
         handler.accept_body('100,1')
@@ -1073,7 +1089,8 @@ class TestSmartProtocol(tests.TestCase):
         self.client_protocol = protocol.SmartClientRequestProtocolOne(
             self.client_medium)
         self.smart_server = InstrumentedServerProtocol(self.server_to_client)
-        self.smart_server_request = smart.SmartServerRequestHandler(None)
+        self.smart_server_request = smart.SmartServerRequestHandler(
+            None, vfs.vfs_commands)
 
     def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
         client):
@@ -1099,7 +1116,7 @@ class TestSmartProtocol(tests.TestCase):
         smart_protocol = protocol.SmartServerRequestProtocolOne(None,
                 out_stream.write)
         smart_protocol.has_dispatched = True
-        smart_protocol.request = smart.SmartServerRequestHandler(None)
+        smart_protocol.request = self.smart_server_request
         class FakeCommand(object):
             def do_body(cmd, body_bytes):
                 self.end_received = True

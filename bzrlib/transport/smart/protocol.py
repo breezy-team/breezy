@@ -17,6 +17,7 @@
 from cStringIO import StringIO
 
 from bzrlib import errors
+from bzrlib.transport.smart import vfs
 
 
 def _recv_tuple(from_file):
@@ -85,7 +86,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 first_line += '\n'
                 req_args = _decode_tuple(first_line)
                 self.request = request.SmartServerRequestHandler(
-                    self._backing_transport)
+                    self._backing_transport, commands=vfs.vfs_commands)
                 self.request.dispatch_command(req_args[0], req_args[1:])
                 if self.request.finished_reading:
                     # trivial request
