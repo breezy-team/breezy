@@ -2356,11 +2356,6 @@ class CommitBuilder(object):
             self.parents
             )
 
-    @staticmethod
-    def _sanitize_for_revision_id(text):
-        """This just removes whitespace, etc to make friendlier ids.
-        """
-
     def _gen_revision_id(self):
         """Return new revision-id."""
         return generate_ids.gen_revision_id(self._config.username(),
