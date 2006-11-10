@@ -34,6 +34,7 @@ TAGS: $(tag_files)
 
 # Produce HTML docs to upload on Canonical server
 HTMLDIR := html_docs
+PRETTYDIR := pretty_docs
 
 html-docs: docs
 	python tools/win32/ostools.py copytodir $(htm_files) doc/default.css $(HTMLDIR)
@@ -41,11 +42,22 @@ html-docs: docs
 
 # translate txt docs to html
 doc_dir := doc 
-txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir)))
-htm_files := $(patsubst %.txt, %.htm, $(txt_files)) doc/bzr_man.htm
+txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) doc/bzr_man.txt
+htm_files := $(patsubst %.txt, %.htm, $(txt_files)) 
 
-%.htm: %.txt
-	python tools/rst2html.py --link-stylesheet --stylesheet=default.css $*.txt $*.htm
+pretty-docs: pretty_files
+
+pretty_docs:
+	python -c "import os; os.mkdir('$(PRETTYDIR)')"
+
+pretty_files: $(patsubst doc/%.txt, $(PRETTYDIR)/%.htm, $(txt_files))
+
+doc/%.htm: doc/%.txt
+	python tools/rst2html.py --link-stylesheet --stylesheet=default.css doc/$*.txt doc/$*.htm
+
+$(PRETTYDIR)/%.htm: pretty_docs doc/%.txt
+	python tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid doc/$*.txt \
+	$(PRETTYDIR)/$*.htm
 
 doc/bzr_man.txt: bzrlib/builtins.py \
 		 bzrlib/bundle/commands.py \
@@ -63,7 +75,8 @@ copy-docs: docs
 
 # clean produced docs
 clean-docs:
-	python tools/win32/ostools.py remove doc/bzr_man.txt $(htm_files) $(HTMLDIR)
+	python tools/win32/ostools.py remove doc/bzr_man.txt $(htm_files) \
+	$(HTMLDIR) $(PRETTYDIR)
 
 
 # make bzr.exe for win32 with py2exe
