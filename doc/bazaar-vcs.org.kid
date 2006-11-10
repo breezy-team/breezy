@@ -104,6 +104,13 @@ href="http://bazaar-vcs.org/htdocs/bazaarNew/css/common.css" />
 "screen" href="http://bazaar-vcs.org/htdocs/bazaarNew/css/screen2.css" />
 <link rel="stylesheet" type="text/css" charset="utf-8" media=
 "screen" href="http://bazaar-vcs.org/htdocs/bazaarNew/css/twoColumnsRight.css" />
+<style type="text/css">
+a.toc-backref
+{
+    color: black;
+    text-decoration: none;
+}
+</style>
 <link rel="alternate" title="Bazaar Version Control Recent Changes"
 href="http://bazaar-vcs.org/RecentChanges?action=rss_rc&amp;ddiffs=1&amp;unique=1" type=
 "application/rss+xml" />

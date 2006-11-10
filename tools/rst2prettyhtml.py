@@ -1,14 +1,28 @@
 #!/usr/bin/env python2.4
+
 import errno
 import os
 from StringIO import StringIO
 import sys
 
-from docutils.core import publish_file
-from docutils.parsers import rst
-from elementtree.ElementTree import XML
-from elementtree import HTMLTreeBuilder
-import kid
+try:
+    from docutils.core import publish_file
+    from docutils.parsers import rst
+except ImportError:
+    print "Missing dependency.  Please install docutils."
+    sys.exit(1)
+try:
+    from elementtree.ElementTree import XML
+    from elementtree import HTMLTreeBuilder
+except ImportError:
+    print "Missing dependency.  Please install ElementTree."
+    sys.exit(1)
+try:
+    import kid
+except ImportError:
+    print "Missing dependency.  Please install Kid."
+    sys.exit(1)
+
 
 def kidified_rest(rest_file, template_name):
     xhtml_file = StringIO()
@@ -28,6 +42,7 @@ def kidified_rest(rest_file, template_name):
                           head=head, body=body)
     return (template.serialize(output="html"))
 
+
 def safe_open(filename, mode):
     try:
         return open(filename, mode + 'b')
@@ -36,18 +51,20 @@ def safe_open(filename, mode):
             raise
         sys.stderr.write('file not found: %s\n' % sys.argv[2])
         sys.exit(3)
-args = sys.argv[1:]
 
-assert len(args) > 0
 
-if len(args) > 1:
-    rest_file = safe_open(args[1], 'r')
-else:
-    rest_file = sys.stdin
+def main(template, source=None, target=None):
+    if source is not None:
+        rest_file = safe_open(source, 'r')
+    else:
+        rest_file = sys.stdin
+    if target is not None:
+        out_file = safe_open(target, 'w')
+    else:
+        out_file = sys.stdout
+    out_file.write(kidified_rest(rest_file, template))
 
-if len(args) > 2:
-    out_file = safe_open(args[2], 'w')
-else:
-    out_file = sys.stdout
+assert len(sys.argv) > 1
 
-out_file.write(kidified_rest(rest_file, args[0]))
+main(*sys.argv[1:])
+

@@ -45,7 +45,7 @@ doc_dir := doc
 txt_files := $(wildcard $(addsuffix /*.txt, $(doc_dir))) doc/bzr_man.txt
 htm_files := $(patsubst %.txt, %.htm, $(txt_files)) 
 
-pretty-docs: pretty_files
+pretty-html-docs: pretty_files
 
 pretty_docs:
 	python -c "import os; os.mkdir('$(PRETTYDIR)')"
