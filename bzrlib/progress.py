@@ -1,19 +1,19 @@
 # Copyright (C) 2005 Aaron Bentley <aaron.bentley@utoronto.ca>
-# Copyright (C) 2005, 2006 Canonical <canonical.com>
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
-#    This program is free software; you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation; either version 2 of the License, or
-#    (at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 #
-#    You should have received a copy of the GNU General Public License
-#    along with this program; if not, write to the Free Software
-#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
 """Simple text-mode progress indicator.
@@ -179,7 +179,7 @@ class _BaseProgressBar(object):
         self._stack = _stack
         # seed throttler
         self.MIN_PAUSE = 0.1 # seconds
-        now = time.clock()
+        now = time.time()
         # starting now
         self.start_time = now
         # next update should not throttle
@@ -297,11 +297,8 @@ class TTYProgressBar(_BaseProgressBar):
     def throttle(self, old_msg):
         """Return True if the bar was updated too recently"""
         # time.time consistently takes 40/4000 ms = 0.01 ms.
-        # but every single update to the pb invokes it.
-        # so we use time.clock which takes 20/4000 ms = 0.005ms
-        # on the downside, time.clock() appears to have approximately
-        # 10ms granularity, so we treat a zero-time change as 'throttled.'
-        now = time.clock()
+        # time.clock() is faster, but gives us CPU time, not wall-clock time
+        now = time.time()
         if self.start_time is not None and (now - self.start_time) < 1:
             return True
         if old_msg != self.last_msg:
@@ -432,9 +429,7 @@ class TTYProgressBar(_BaseProgressBar):
             bar_str = ''
 
         m = spin_str + bar_str + self.last_msg + count_str + pct_str + eta_str
-
-        assert len(m) < self.width
-        self.to_file.write('\r' + m.ljust(self.width - 1))
+        self.to_file.write('\r%-*.*s' % (self.width - 1, self.width - 1, m))
         self._have_output = True
         #self.to_file.flush()
             
@@ -513,7 +508,7 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_r
     if current > total:
         return None                     # wtf?
 
-    elapsed = time.clock() - start_time
+    elapsed = time.time() - start_time
 
     if elapsed < 2.0:                   # not enough time to estimate
         return None

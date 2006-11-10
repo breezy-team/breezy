@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,8 +22,8 @@ from bzrlib import (
     errors,
     )
 from bzrlib.builtins import merge
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.revisionspec import RevisionSpec
+from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revno
 
 
 def spec_in_history(spec, branch):
@@ -36,6 +36,10 @@ class TestRevisionSpec(TestCaseWithTransport):
 
     def setUp(self):
         super(TestRevisionSpec, self).setUp()
+        # this sets up a revision graph:
+        # r1: []             1
+        # alt_r2: [r1]       1.1.1
+        # r2: [r1, alt_r2]   2
 
         self.tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
@@ -90,14 +94,29 @@ class TestOddRevisionSpec(TestRevisionSpec):
                           RevisionSpec.from_string, '123a')
 
 
+
+class TestRevnoFromString(TestCase):
+
+    def test_from_string_dotted_decimal(self):
+        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '-1.1')
+        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '.1')
+        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '1..1')
+        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '1.2..1')
+        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '1.')
+        self.assertIsInstance(RevisionSpec.from_string('1.1'), RevisionSpec_revno)
+        self.assertIsInstance(RevisionSpec.from_string('1.1.3'), RevisionSpec_revno)
+
+
 class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_positive_int(self):
         self.assertInHistoryIs(0, None, '0')
         self.assertInHistoryIs(1, 'r1', '1')
         self.assertInHistoryIs(2, 'r2', '2')
-
         self.assertInvalid('3')
+
+    def test_dotted_decimal(self):
+        self.assertInHistoryIs(None, 'alt_r2', '1.1.1')
 
     def test_negative_int(self):
         self.assertInHistoryIs(2, 'r2', '-1')

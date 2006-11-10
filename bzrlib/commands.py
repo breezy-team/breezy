@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@ from warnings import warn
 
 import bzrlib
 from bzrlib import (
+    debug,
     errors,
     option,
     osutils,
@@ -533,6 +534,8 @@ def run_bzr(argv):
             opt_builtin = True
         elif a in ('--quiet', '-q'):
             trace.be_quiet()
+        elif a.startswith('-D'):
+            debug.debug_flags.add(a[2:])
         else:
             argv_copy.append(a)
         i += 1

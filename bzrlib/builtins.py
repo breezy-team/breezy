@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ lazy_import(globals(), """
 import codecs
 import errno
 import sys
+import tempfile
 
 import bzrlib
 from bzrlib import (
@@ -75,17 +76,18 @@ def internal_tree_files(file_list, default_branch=u'.'):
 
     :param file_list: Filenames to convert.  
 
-    :param default_branch: Fallback tree path to use if file_list is empty or None.
+    :param default_branch: Fallback tree path to use if file_list is empty or
+        None.
 
     :return: workingtree, [relative_paths]
     """
     if file_list is None or len(file_list) == 0:
         return WorkingTree.open_containing(default_branch)[0], file_list
-    tree = WorkingTree.open_containing(file_list[0])[0]
+    tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
     new_list = []
     for filename in file_list:
         try:
-            new_list.append(tree.relpath(filename))
+            new_list.append(tree.relpath(osutils.dereference_path(filename)))
         except errors.PathNotChild:
             raise errors.FileInWrongBranch(tree.branch, filename)
     return tree, new_list
@@ -849,7 +851,11 @@ class cmd_update(Command):
 
     def run(self, dir='.'):
         tree = WorkingTree.open_containing(dir)[0]
-        tree.lock_write()
+        master = tree.branch.get_master_branch()
+        if master is not None:
+            tree.lock_write()
+        else:
+            tree.lock_tree_write()
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
             last_rev = tree.last_revision()
@@ -940,7 +946,7 @@ class cmd_file_id(Command):
         tree, relpath = WorkingTree.open_containing(filename)
         i = tree.inventory.path2id(relpath)
         if i is None:
-            raise errors.BzrError("%r is not a versioned file" % filename)
+            raise errors.NotVersionedError(filename)
         else:
             self.outf.write(i + '\n')
 
@@ -961,7 +967,7 @@ class cmd_file_path(Command):
         inv = tree.inventory
         fid = inv.path2id(relpath)
         if fid is None:
-            raise errors.BzrError("%r is not a versioned file" % filename)
+            raise errors.NotVersionedError(filename)
         for fip in inv.get_idpath(fid):
             self.outf.write(fip + '\n')
 
@@ -1192,8 +1198,8 @@ class cmd_diff(Command):
             new_label = 'new/'
         else:
             if not ':' in prefix:
-                 raise errors.BzrError("--diff-prefix expects two values"
-                                       " separated by a colon")
+                 raise BzrCommandError(
+                     "--diff-prefix expects two values separated by a colon")
             old_label, new_label = prefix.split(":")
         
         try:
@@ -1291,6 +1297,8 @@ class cmd_added(Command):
         for file_id in inv:
             if file_id in basis_inv:
                 continue
+            if inv.is_root(file_id) and len(basis_inv) == 0:
+                continue
             path = inv.id2path(file_id)
             if not os.access(osutils.abspath(path), os.F_OK):
                 continue
@@ -1374,6 +1382,10 @@ class cmd_log(Command):
                     # either no tree, or is remote.
                     inv = b.basis_tree().inventory
                 file_id = inv.path2id(fp)
+                if file_id is None:
+                    raise errors.BzrCommandError(
+                        "Path does not have any revision history: %s" %
+                        location)
         else:
             # local dir only
             # FIXME ? log the current subdir only RBC 20060203 
@@ -1503,7 +1515,7 @@ class cmd_ls(Command):
             tree = tree.branch.repository.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
 
-        for fp, fc, kind, fid, entry in tree.list_files():
+        for fp, fc, kind, fid, entry in tree.list_files(include_root=False):
             if fp.startswith(relpath):
                 fp = fp[len(relpath):]
                 if non_recursive and '/' in fp:
@@ -1529,14 +1541,17 @@ class cmd_unknowns(Command):
 
 
 class cmd_ignore(Command):
-    """Ignore a command or pattern.
+    """Ignore specified files or patterns.
 
     To remove patterns from the ignore list, edit the .bzrignore file.
 
+    Trailing slashes on patterns are ignored. 
     If the pattern contains a slash, it is compared to the whole path
     from the branch root.  Otherwise, it is compared to only the last
     component of the path.  To match a file only in the root directory,
     prepend './'.
+
+    Ignore patterns specifying absolute paths are not allowed.
 
     Ignore patterns are case-insensitive on case-insensitive systems.
 
@@ -1546,22 +1561,26 @@ class cmd_ignore(Command):
         bzr ignore ./Makefile
         bzr ignore '*.class'
     """
-    # TODO: Complain if the filename is absolute
-    takes_args = ['name_pattern?']
+    takes_args = ['name_pattern*']
     takes_options = [
                      Option('old-default-rules',
                             help='Out the ignore rules bzr < 0.9 always used.')
                      ]
     
-    def run(self, name_pattern=None, old_default_rules=None):
+    def run(self, name_pattern_list=None, old_default_rules=None):
         from bzrlib.atomicfile import AtomicFile
         if old_default_rules is not None:
             # dump the rules and exit
             for pattern in ignores.OLD_DEFAULTS:
                 print pattern
             return
-        if name_pattern is None:
-            raise errors.BzrCommandError("ignore requires a NAME_PATTERN")
+        if not name_pattern_list:
+            raise errors.BzrCommandError("ignore requires at least one "
+                                  "NAME_PATTERN or --old-default-rules")
+        for name_pattern in name_pattern_list:
+            if name_pattern[0] == '/':
+                raise errors.BzrCommandError(
+                    "NAME_PATTERN should not be an absolute path")
         tree, relpath = WorkingTree.open_containing(u'.')
         ifn = tree.abspath('.bzrignore')
         if os.path.exists(ifn):
@@ -1578,9 +1597,10 @@ class cmd_ignore(Command):
 
         if igns and igns[-1] != '\n':
             igns += '\n'
-        igns += name_pattern + '\n'
+        for name_pattern in name_pattern_list:
+            igns += name_pattern.rstrip('/') + '\n'
 
-        f = AtomicFile(ifn, 'wt')
+        f = AtomicFile(ifn, 'wb')
         try:
             f.write(igns.encode('utf-8'))
             f.commit()
@@ -1641,6 +1661,8 @@ class cmd_export(Command):
     Root may be the top directory for tar, tgz and tbz2 formats. If none
     is given, the top directory will be the root name of the file.
 
+    If branch is omitted then the branch containing the CWD will be used.
+
     Note: export of tree with non-ascii filenames to zip is not supported.
 
      Supported formats       Autodetected by extension
@@ -1651,19 +1673,23 @@ class cmd_export(Command):
          tgz                      .tar.gz, .tgz
          zip                          .zip
     """
-    takes_args = ['dest']
+    takes_args = ['dest', 'branch?']
     takes_options = ['revision', 'format', 'root']
-    def run(self, dest, revision=None, format=None, root=None):
+    def run(self, dest, branch=None, revision=None, format=None, root=None):
         from bzrlib.export import export
-        tree = WorkingTree.open_containing(u'.')[0]
-        b = tree.branch
+
+        if branch is None:
+            tree = WorkingTree.open_containing(u'.')[0]
+            b = tree.branch
+        else:
+            b = Branch.open(branch)
+            
         if revision is None:
             # should be tree.last_revision  FIXME
             rev_id = b.last_revision()
         else:
             if len(revision) != 1:
-                raise errors.BzrError('bzr export --revision takes exactly'
-                                      ' 1 argument')
+                raise errors.BzrCommandError('bzr export --revision takes exactly 1 argument')
             rev_id = revision[0].in_history(b).rev_id
         t = b.repository.revision_tree(rev_id)
         try:
@@ -1675,13 +1701,15 @@ class cmd_export(Command):
 class cmd_cat(Command):
     """Write a file's text from a previous revision."""
 
-    takes_options = ['revision']
+    takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
 
     @display_command
-    def run(self, filename, revision=None):
+    def run(self, filename, revision=None, name_from_revision=False):
         if revision is not None and len(revision) != 1:
-            raise errors.BzrCommandError("bzr cat --revision takes exactly one number")
+            raise errors.BzrCommandError("bzr cat --revision takes exactly"
+                                        " one number")
+
         tree = None
         try:
             tree, relpath = WorkingTree.open_containing(filename)
@@ -1697,7 +1725,24 @@ class cmd_cat(Command):
             revision_id = b.last_revision()
         else:
             revision_id = revision[0].in_history(b).rev_id
-        b.print_file(relpath, revision_id)
+
+        cur_file_id = tree.path2id(relpath)
+        rev_tree = b.repository.revision_tree(revision_id)
+        old_file_id = rev_tree.path2id(relpath)
+        
+        if name_from_revision:
+            if old_file_id is None:
+                raise errors.BzrCommandError("%r is not present in revision %s"
+                                                % (filename, revision_id))
+            else:
+                rev_tree.print_file(old_file_id)
+        elif cur_file_id is not None:
+            rev_tree.print_file(cur_file_id)
+        elif old_file_id is not None:
+            rev_tree.print_file(old_file_id)
+        else:
+            raise errors.BzrCommandError("%r is not present in revision %s" %
+                                         (filename, revision_id))
 
 
 class cmd_local_time_offset(Command):
@@ -1757,16 +1802,12 @@ class cmd_commit(Command):
                 StrictCommitFailed)
         from bzrlib.msgeditor import edit_commit_message, \
                 make_commit_message_template
-        from tempfile import TemporaryFile
 
         # TODO: Need a blackbox test for invoking the external editor; may be
         # slightly problematic to run this cross-platform.
 
         # TODO: do more checks that the commit will succeed before 
         # spending the user's valuable time typing a commit message.
-        #
-        # TODO: if the commit *does* happen to fail, then save the commit 
-        # message to a temporary file where it can be recovered
         tree, selected_list = tree_files(selected_list)
         if selected_list == ['']:
             # workaround - commit of root of tree should be exactly the same
@@ -1795,27 +1836,82 @@ class cmd_commit(Command):
             reporter = ReportCommitToLog()
         else:
             reporter = NullCommitReporter()
-        
+
+        msgfilename = self._save_commit_message(message, tree.basedir)
         try:
             tree.commit(message, specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
                         reporter=reporter)
+            if msgfilename is not None:
+                try:
+                    os.unlink(msgfilename)
+                except IOError, e:
+                    warning("failed to unlink %s: %s; ignored", msgfilename, e)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
-            raise errors.BzrCommandError("no changes to commit."
-                                         " use --unchanged to commit anyhow")
+            if msgfilename is not None:
+                raise errors.BzrCommandError("no changes to commit."
+                                  " use --unchanged to commit anyhow\n"
+                                  "Commit message saved. To reuse the message,"
+                                  " do\nbzr commit --file " + msgfilename)
+            else:
+                raise errors.BzrCommandError("no changes to commit."
+                                  " use --unchanged to commit anyhow")
         except ConflictsInTree:
-            raise errors.BzrCommandError("Conflicts detected in working tree.  "
-                'Use "bzr conflicts" to list, "bzr resolve FILE" to resolve.')
+            if msgfilename is not None:
+                raise errors.BzrCommandError('Conflicts detected in working '
+                    'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'
+                    ' resolve.\n'
+                    'Commit message saved. To reuse the message,'
+                    ' do\nbzr commit --file ' + msgfilename)
+            else:
+                raise errors.BzrCommandError('Conflicts detected in working '
+                    'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'
+                    ' resolve.')
         except StrictCommitFailed:
-            raise errors.BzrCommandError("Commit refused because there are unknown "
-                                         "files in the working tree.")
+            if msgfilename is not None:
+                raise errors.BzrCommandError("Commit refused because there are"
+                                  " unknown files in the working tree.\n"
+                                  "Commit message saved. To reuse the message,"
+                                  " do\nbzr commit --file " + msgfilename)
+            else:
+                raise errors.BzrCommandError("Commit refused because there are"
+                                  " unknown files in the working tree.")
         except errors.BoundBranchOutOfDate, e:
-            raise errors.BzrCommandError(str(e) + "\n"
+            if msgfilename is not None:
+                raise errors.BzrCommandError(str(e) + "\n"
+                'To commit to master branch, run update and then commit.\n'
+                'You can also pass --local to commit to continue working '
+                'disconnected.\n'
+                'Commit message saved. To reuse the message,'
+                ' do\nbzr commit --file ' + msgfilename)
+            else:
+                raise errors.BzrCommandError(str(e) + "\n"
                 'To commit to master branch, run update and then commit.\n'
                 'You can also pass --local to commit to continue working '
                 'disconnected.')
+
+    def _save_commit_message(self, message, basedir):
+        # save the commit message and only unlink it if the commit was
+        # successful
+        msgfilename = None
+        try:
+            tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr-commit-',
+                                                       dir=basedir)
+        except OSError:
+            try:
+                # No access to working dir, try $TMP
+                tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr-commit-')
+            except OSError:
+                # We can't create a temp file, try to work without it
+                return None
+        try:
+            os.write(tmp_fileno, message.encode(bzrlib.user_encoding, 'replace'))
+        finally:
+            os.close(tmp_fileno)
+        return msgfilename
+
 
 class cmd_check(Command):
     """Validate consistency of branch history.
@@ -1834,25 +1930,6 @@ class cmd_check(Command):
         else:
             branch = Branch.open(branch)
         check(branch, verbose)
-
-
-class cmd_scan_cache(Command):
-    hidden = True
-    def run(self):
-        from bzrlib.hashcache import HashCache
-
-        c = HashCache(u'.')
-        c.read()
-        c.scan()
-            
-        print '%6d stats' % c.stat_count
-        print '%6d in hashcache' % len(c._cache)
-        print '%6d files removed from cache' % c.removed_count
-        print '%6d hashes updated' % c.update_count
-        print '%6d files changed too recently to cache' % c.danger_count
-
-        if c.needs_write:
-            c.write()
 
 
 class cmd_upgrade(Command):
@@ -2012,50 +2089,41 @@ class cmd_selftest(Command):
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
-        # we don't want progress meters from the tests to go to the
-        # real output; and we don't want log messages cluttering up
-        # the real logs.
-        save_ui = ui.ui_factory
         print '%10s: %s' % ('bzr', osutils.realpath(sys.argv[0]))
         print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
         print
-        info('running tests...')
+        if testspecs_list is not None:
+            pattern = '|'.join(testspecs_list)
+        else:
+            pattern = ".*"
+        if benchmark:
+            test_suite_factory = benchmarks.test_suite
+            if verbose is None:
+                verbose = True
+            # TODO: should possibly lock the history file...
+            benchfile = open(".perf_history", "at")
+        else:
+            test_suite_factory = None
+            if verbose is None:
+                verbose = False
+            benchfile = None
         try:
-            ui.ui_factory = ui.SilentUIFactory()
-            if testspecs_list is not None:
-                pattern = '|'.join(testspecs_list)
-            else:
-                pattern = ".*"
-            if benchmark:
-                test_suite_factory = benchmarks.test_suite
-                if verbose is None:
-                    verbose = True
-                # TODO: should possibly lock the history file...
-                benchfile = open(".perf_history", "at")
-            else:
-                test_suite_factory = None
-                if verbose is None:
-                    verbose = False
-                benchfile = None
-            try:
-                result = selftest(verbose=verbose, 
-                                  pattern=pattern,
-                                  stop_on_failure=one, 
-                                  keep_output=keep_output,
-                                  transport=transport,
-                                  test_suite_factory=test_suite_factory,
-                                  lsprof_timed=lsprof_timed,
-                                  bench_history=benchfile)
-            finally:
-                if benchfile is not None:
-                    benchfile.close()
-            if result:
-                info('tests passed')
-            else:
-                info('tests failed')
-            return int(not result)
+            result = selftest(verbose=verbose, 
+                              pattern=pattern,
+                              stop_on_failure=one, 
+                              keep_output=keep_output,
+                              transport=transport,
+                              test_suite_factory=test_suite_factory,
+                              lsprof_timed=lsprof_timed,
+                              bench_history=benchfile)
         finally:
-            ui.ui_factory = save_ui
+            if benchfile is not None:
+                benchfile.close()
+        if result:
+            info('tests passed')
+        else:
+            info('tests failed')
+        return int(not result)
 
 
 class cmd_version(Command):
@@ -2326,11 +2394,14 @@ class cmd_remerge(Command):
                     for name, ie in tree.inventory.iter_entries(file_id):
                         interesting_ids.add(ie.file_id)
                 new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
+            else:
+                # Remerge only supports resolving contents conflicts
+                allowed_conflicts = ('text conflict', 'contents conflict')
+                restore_files = [c.path for c in conflicts
+                                 if c.typestring in allowed_conflicts]
             _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_ids)
             tree.set_conflicts(ConflictList(new_conflicts))
-            if file_list is None:
-                restore_files = list(tree.iter_conflicts())
-            else:
+            if file_list is not None:
                 restore_files = file_list
             for filename in restore_files:
                 try:
@@ -2351,6 +2422,7 @@ class cmd_remerge(Command):
             return 1
         else:
             return 0
+
 
 class cmd_revert(Command):
     """Revert files to a previous revision.
@@ -2403,31 +2475,36 @@ class cmd_revert(Command):
 
 class cmd_assert_fail(Command):
     """Test reporting of assertion failures"""
+    # intended just for use in testing
+
     hidden = True
+
     def run(self):
-        assert False, "always fails"
+        raise AssertionError("always fails")
 
 
 class cmd_help(Command):
     """Show help on a command or other topic.
 
-    For a list of all available commands, say 'bzr help commands'."""
+    For a list of all available commands, say 'bzr help commands'.
+    """
     takes_options = [Option('long', 'show help on all commands')]
     takes_args = ['topic?']
     aliases = ['?', '--help', '-?', '-h']
     
     @display_command
     def run(self, topic=None, long=False):
-        import help
+        import bzrlib.help
         if topic is None and long:
             topic = "commands"
-        help.help(topic)
+        bzrlib.help.help(topic)
 
 
 class cmd_shell_complete(Command):
     """Show appropriate completions for context.
 
-    For a list of all available commands, say 'bzr shell-complete'."""
+    For a list of all available commands, say 'bzr shell-complete'.
+    """
     takes_args = ['context?']
     aliases = ['s-c']
     hidden = True
@@ -2441,7 +2518,8 @@ class cmd_shell_complete(Command):
 class cmd_fetch(Command):
     """Copy in history from another branch but don't merge it.
 
-    This is an internal method used for pull and merge."""
+    This is an internal method used for pull and merge.
+    """
     hidden = True
     takes_args = ['from_branch', 'to_branch']
     def run(self, from_branch, to_branch):
@@ -2454,7 +2532,8 @@ class cmd_fetch(Command):
 class cmd_missing(Command):
     """Show unmerged/unpulled revisions between two branches.
 
-    OTHER_BRANCH may be local or remote."""
+    OTHER_BRANCH may be local or remote.
+    """
     takes_args = ['other_branch?']
     takes_options = [Option('reverse', 'Reverse the order of revisions'),
                      Option('mine-only', 

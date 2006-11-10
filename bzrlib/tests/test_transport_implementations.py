@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -962,23 +962,16 @@ class TransportTests(TestTransportImplementation):
             l.sort()
             return l
 
-        # SftpServer creates control files in the working directory
-        # so lets move down a directory to avoid those.
-        if not t.is_readonly():
-            t.mkdir('wd')
-        else:
-            os.mkdir('wd')
-        t = t.clone('wd')
-
         self.assertEqual([], sorted_list('.'))
         # c2 is precisely one letter longer than c here to test that
         # suffixing is not confused.
         # a%25b checks that quoting is done consistently across transports
         tree_names = ['a', 'a%25b', 'b', 'c/', 'c/d', 'c/e', 'c2/']
+
         if not t.is_readonly():
             self.build_tree(tree_names, transport=t)
         else:
-            self.build_tree(['wd/' + name for name in tree_names])
+            self.build_tree(tree_names)
 
         self.assertEqual(
             ['a', 'a%2525b', 'b', 'c', 'c2'], sorted_list('.'))
@@ -988,8 +981,8 @@ class TransportTests(TestTransportImplementation):
             t.delete('c/d')
             t.delete('b')
         else:
-            os.unlink('wd/c/d')
-            os.unlink('wd/b')
+            os.unlink('c/d')
+            os.unlink('b')
             
         self.assertEqual(['a', 'a%2525b', 'c', 'c2'], sorted_list('.'))
         self.assertEqual(['e'], sorted_list('c'))

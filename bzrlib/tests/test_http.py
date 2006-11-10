@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ import threading
 
 import bzrlib
 from bzrlib.errors import DependencyNotPresent, UnsupportedProtocol
+from bzrlib import osutils
 from bzrlib.tests import TestCase, TestSkipped
 from bzrlib.transport import get_transport, Transport
 from bzrlib.transport.http import extract_auth, HttpTransportBase
@@ -340,5 +341,5 @@ class TestRecordingServer(TestCase):
         sock.connect((server.host, server.port))
         sock.sendall('abc')
         self.assertEqual('HTTP/1.1 200 OK\r\n',
-                         sock.recv(4096, socket.MSG_WAITALL))
+                         osutils.recv_all(sock, 4096))
         self.assertEqual('abc', server.received_bytes)

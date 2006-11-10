@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ class TestamentSetup(TestCaseWithTransport):
     def setUp(self):
         super(TestamentSetup, self).setUp()
         self.wt = self.make_branch_and_tree('.')
+        self.wt.set_root_id('TREE_ROT')
         b = self.b = self.wt.branch
         b.nick = "test branch"
         self.wt.commit(message='initial null commit',
@@ -201,7 +202,7 @@ parents:
 message:
   initial null commit
 inventory:
-  directory . TREE_ROOT test@user-1 no
+  directory . TREE_ROT test@user-1 no
 properties:
   branch-nick:
     test branch
@@ -280,7 +281,7 @@ parents:
 message:
   add files and directories
 inventory:
-  directory . TREE_ROOT test@user-2 no
+  directory . TREE_ROT test@user-2 no
   file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
   directory src src-id test@user-2 no
   file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24 test@user-2 no
@@ -374,7 +375,7 @@ parents:
 message:
   revision with properties
 inventory:
-  directory . TREE_ROOT test@user-3 no
+  directory . TREE_ROT test@user-3 no
   file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
   directory src src-id test@user-2 no
   file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24 test@user-2 no
@@ -443,7 +444,7 @@ parents:
 message:
   add symlink
 inventory:
-  directory . TREE_ROOT test@user-3 no
+  directory . TREE_ROT test@user-3 no
   file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
   symlink link link-id wibble/linktarget test@user-3 no
   directory src src-id test@user-2 no
@@ -509,7 +510,7 @@ parents:
 message:
   non-ascii commit \N{COPYRIGHT SIGN} me
 inventory:
-  directory . TREE_ROOT test@user-3 no
+  directory . TREE_ROT test@user-3 no
   file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
   directory src src-id test@user-2 no
   file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24 test@user-2 no
