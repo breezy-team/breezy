@@ -195,16 +195,14 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 #
 
 from cStringIO import StringIO
-import os
 import urllib
 import urlparse
 
 from bzrlib import (
     errors,
     transport,
-    trace,
     )
-from bzrlib.transport.smart import medium, protocol, request
+from bzrlib.transport.smart import medium, protocol
 
 # must do this otherwise urllib can't parse the urls properly :(
 for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:

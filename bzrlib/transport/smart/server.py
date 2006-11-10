@@ -20,6 +20,7 @@ import threading
 
 from bzrlib.transport.smart import medium
 from bzrlib import (
+    trace,
     transport,
     urlutils,
 )

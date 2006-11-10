@@ -2911,7 +2911,7 @@ class cmd_serve(Command):
             else:
                 host = '127.0.0.1'
             smart_server = server.SmartTCPServer(t, host=host, port=int(port))
-            print 'listening on port: ', server.port
+            print 'listening on port: ', smart_server.port
             sys.stdout.flush()
         else:
             raise errors.BzrCommandError(
