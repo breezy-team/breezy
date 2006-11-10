@@ -750,7 +750,8 @@ class NotAncestor(BzrError):
 class InstallFailed(BzrError):
 
     def __init__(self, revisions):
-        msg = "Could not install revisions:\n%s" % " ,".join(revisions)
+        revision_str = ", ".join(str(r) for r in revisions)
+        msg = "Could not install revisions:\n%s" % revision_str
         BzrError.__init__(self, msg)
         self.revisions = revisions
 
