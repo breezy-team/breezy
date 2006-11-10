@@ -2535,5 +2535,5 @@ def _unescape_xml(data):
     """Unescape predefined XML entities in a string of data."""
     global _unescape_re
     if _unescape_re is None:
-	_unescape_re = re.compile('\&([^;]*);')
+        _unescape_re = re.compile('\&([^;]*);')
     return _unescape_re.sub(_unescaper, data)
