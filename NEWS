@@ -1,3 +1,11 @@
+bzr 0.12.1 (In progress)
+
+  BUG FIXES:
+    * ``bzrlib/bzrdir.py`` was directly referencing ``bzrlib.workingtree``,
+      without importing it. This prevented ``bzr upgrade`` from working
+      unless a plugin already imported ``bzrlib.workingtree``
+      (John Arbash Meinel, #70716)
+
 bzr 0.12  2006-10-30
 
   INTERNALS:
