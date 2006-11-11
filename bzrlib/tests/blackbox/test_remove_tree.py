@@ -1,5 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,66 +15,97 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Black-box tests for bzr remove-tree.
-"""
+"""Black-box tests for bzr remove-tree."""
 
 import os
 
 from bzrlib.tests.blackbox import ExternalBase
 
+
 class TestRemoveTree(ExternalBase):
 
-    def _present(self, f):
-        self.assertEquals(os.path.exists(f), True)
+    def setUp(self):
+        super(TestRemoveTree, self).setUp()
+        self.tree = self.make_branch_and_tree('branch1')
+        self.build_tree(['branch1/foo'])
+        self.tree.add('foo')
+        self.tree.commit('1')
+        self.failUnlessExists('branch1/foo')
 
-    def _absent(self, f):
-        self.assertEquals(os.path.exists(f), False)
+    # Success modes
 
-
-    def test_remove_tree(self):
-
-        def bzr(*args, **kwargs):
-            return self.run_bzr(*args, **kwargs)[0]
-
-        os.mkdir('branch1')
+    def test_remove_tree_original_branch(self):
         os.chdir('branch1')
-        bzr('init')
-        f=open('foo','wb')
-        f.write("foo\n")
-        f.close()
-        bzr('add', 'foo')
+        self.run_bzr('remove-tree')
+        self.failIfExists('foo')
+    
+    def test_remove_tree_original_branch_explicit(self):
+        self.run_bzr('remove-tree', 'branch1')
+        self.failIfExists('branch1/foo')
 
-        bzr('commit', '-m', '1')
+    def test_remove_tree_sprouted_branch(self):
+        self.tree.bzrdir.sprout('branch2')
+        self.failUnlessExists('branch2/foo')
+        os.chdir('branch2')
+        self.run_bzr('remove-tree')
+        self.failIfExists('foo')
+    
+    def test_remove_tree_sprouted_branch_explicit(self):
+        self.tree.bzrdir.sprout('branch2')
+        self.failUnlessExists('branch2/foo')
+        self.run_bzr('remove-tree', 'branch2')
+        self.failIfExists('branch2/foo')
 
-        os.chdir("..")
+    def test_remove_tree_checkout(self):
+        self.tree.branch.create_checkout('branch2', lightweight=False)
+        self.failUnlessExists('branch2/foo')
+        os.chdir('branch2')
+        self.run_bzr('remove-tree')
+        self.failIfExists('foo')
+        os.chdir('..')
+        self.failUnlessExists('branch1/foo')
+    
+    def test_remove_tree_checkout_explicit(self):
+        self.tree.branch.create_checkout('branch2', lightweight=False)
+        self.failUnlessExists('branch2/foo')
+        self.run_bzr('remove-tree', 'branch2')
+        self.failIfExists('branch2/foo')
+        self.failUnlessExists('branch1/foo')
 
-        self._present("branch1/foo")
-        bzr('branch', 'branch1', 'branch2')
-        self._present("branch2/foo")
-        bzr('checkout', 'branch1', 'branch3')
-        self._present("branch3/foo")
-        bzr('checkout', '--lightweight', 'branch1', 'branch4')
-        self._present("branch4/foo")
+    # Failure modes
 
-        # branch1 == branch
-        # branch2 == branch of branch1
-        # branch3 == checkout of branch1
-        # branch4 == lightweight checkout of branch1
+    def test_remove_tree_lightweight_checkout(self):
+        self.tree.branch.create_checkout('branch2', lightweight=True)
+        self.failUnlessExists('branch2/foo')
+        os.chdir('branch2')
+        output = self.run_bzr_error(
+            ["Cannot remove working tree from lightweight checkout"],
+            'remove-tree', retcode=3)
+        self.failUnlessExists('foo')
+        os.chdir('..')
+        self.failUnlessExists('branch1/foo')
+    
+    def test_remove_tree_lightweight_checkout_explicit(self):
+        self.tree.branch.create_checkout('branch2', lightweight=True)
+        self.failUnlessExists('branch2/foo')
+        output = self.run_bzr(
+            ["Cannot remove working tree from lightweight checkout"],
+            'remove-tree', 'branch2', retcode=3)
+        self.failUnlessExists('branch2/foo')
+        self.failUnlessExists('branch1/foo')
 
-        # bzr remove-tree (CWD)
-        os.chdir("branch1")
-        bzr('remove-tree')
-        os.chdir("..")
-        self._absent("branch1/foo")
+    def test_remove_tree_empty_dir(self):
+        os.mkdir('branch2')
+        os.chdir('branch2')
+        output = self.run_bzr(["Not a branch"],
+                              'remove-tree', retcode=3)
 
-        # bzr remove-tree (path)
-        bzr('remove-tree', 'branch2')
-        self._absent("branch2/foo")
+    def test_remove_tree_repeatedly(self):
+        self.run_bzr('remove-tree', 'branch1')
+        self.failIfExists('branch1/foo')
+        output = self.run_bzr_error(["No working tree to remove"],
+                                    'remove-tree', 'branch1', retcode=3)
 
-        # bzr remove-tree (checkout)
-        bzr('remove-tree', 'branch3')
-        self._absent("branch3/foo")
-
-        # bzr remove-tree (lightweight checkout, refuse)
-        bzr('remove-tree', 'branch4', retcode=3)
-        self._present("branch4/foo")
+    def test_remove_tree_remote_path(self):
+        # TODO: I can't think of a way to implement this...
+        pass
