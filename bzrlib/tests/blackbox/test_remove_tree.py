@@ -79,7 +79,7 @@ class TestRemoveTree(ExternalBase):
         self.failUnlessExists('branch2/foo')
         os.chdir('branch2')
         output = self.run_bzr_error(
-            ["Cannot remove working tree from lightweight checkout"],
+            ["You cannot remove the working tree from a lightweight checkout"],
             'remove-tree', retcode=3)
         self.failUnlessExists('foo')
         os.chdir('..')
