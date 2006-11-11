@@ -213,6 +213,37 @@ class cmd_cat_revision(Command):
                 self.outf.write(b.repository.get_revision_xml(rev_id).decode('utf-8'))
     
 
+class cmd_remove_tree(Command):
+    """Remove the working tree from a given branch/checkout.
+
+    Since a lightweight checkout is little more than a working tree
+    this will refuse to run against one.
+    """
+
+    hidden = True
+
+    takes_args = ['location?']
+
+    def run(self, location='.'):
+        d = bzrdir.BzrDir.open(location)
+        
+        try:
+            working = d.open_workingtree()
+        except errors.NoWorkingTree:
+            raise errors.BzrCommandError("No working tree to remove")
+        except errors.NotLocalUrl:
+            raise errors.BzrCommandError("You cannot remove the working tree of a "
+                                         "remote path")
+        
+        working_path = working.bzrdir.root_transport.base
+        branch_path = working.branch.bzrdir.root_transport.base
+        if working_path != branch_path:
+            raise errors.BzrCommandError("You cannot remove the working tree from "
+                                         "a lightweight checkout")
+        
+        d.destroy_workingtree()
+        
+
 class cmd_revno(Command):
     """Show current revision number.
 
