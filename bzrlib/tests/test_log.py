@@ -91,26 +91,6 @@ class SimpleLogTest(TestCaseWithTransport):
         self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
                           start_revision=1, end_revision=-1) 
 
-    def test_cur_revno(self):
-        wt = self.make_branch_and_tree('.')
-        b = wt.branch
-
-        lf = LogCatcher()
-        wt.commit('empty commit')
-        show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
-        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
-                          start_revision=2, end_revision=1) 
-        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
-                          start_revision=1, end_revision=2) 
-        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
-                          start_revision=0, end_revision=2) 
-        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
-                          start_revision=1, end_revision=0) 
-        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
-                          start_revision=-1, end_revision=1) 
-        self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
-                          start_revision=1, end_revision=-1) 
-
     def test_simple_log(self):
         eq = self.assertEquals
         
