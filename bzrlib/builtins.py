@@ -1586,7 +1586,9 @@ class cmd_ignore(Command):
 
     Ignore patterns are case-insensitive on case-insensitive systems.
 
-    Note: wildcards must be quoted from the shell on Unix.
+    Ignore patterns may include shell-style globbing wildcards such as
+    '*' and '?', and character grouping such as [a-z].
+    Note: shell globs must be quoted from the shell on Unix.
 
     examples:
         bzr ignore ./Makefile

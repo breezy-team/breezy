@@ -1690,6 +1690,7 @@ def test_suite():
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_ftp_transport',
+                   'bzrlib.tests.test_glob',
                    'bzrlib.tests.test_generate_ids',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
