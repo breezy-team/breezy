@@ -1870,11 +1870,12 @@ class ConvertBzrDir6ToMeta(Converter):
                 if name in bzrcontents:
                     self.bzrdir.transport.delete(name)
         else:
+            from bzrlib.workingtree import WorkingTreeFormat3
             self.step('Upgrading working tree')
             self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
             self.put_format(
-                'checkout', bzrlib.workingtree.WorkingTreeFormat3())
+                'checkout', WorkingTreeFormat3())
             self.bzrdir.transport.delete_multi(
                 self.garbage_inventories, self.pb)
             for entry in checkout_files:

@@ -76,6 +76,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_remerge',
                      'bzrlib.tests.blackbox.test_remove',
                      'bzrlib.tests.blackbox.test_re_sign',
+                     'bzrlib.tests.blackbox.test_remove_tree',
                      'bzrlib.tests.blackbox.test_revert',
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_history',

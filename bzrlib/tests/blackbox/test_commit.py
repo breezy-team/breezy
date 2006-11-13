@@ -322,3 +322,47 @@ class TestCommit(ExternalBase):
         self.assertNotContainsRe(result, 'file-a')
         result = self.run_bzr('status')[0]
         self.assertContainsRe(result, 'removed:\n  file-a')
+
+    def test_strict_commit(self):
+        """Commit with --strict works if everything is known"""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        tree.add('a')
+        # A simple change should just work
+        self.run_bzr('commit', '--strict', '-m', 'adding a',
+                     working_dir='tree')
+
+    def test_strict_commit_no_changes(self):
+        """commit --strict gives "no changes" if there is nothing to commit"""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        tree.add('a')
+        tree.commit('adding a')
+
+        # With no changes, it should just be 'no changes'
+        # Make sure that commit is failing because there is nothing to do
+        self.run_bzr_error(['no changes to commit'],
+                           'commit', '--strict', '-m', 'no changes',
+                           working_dir='tree')
+
+        # But --strict doesn't care if you supply --unchanged
+        self.run_bzr('commit', '--strict', '--unchanged', '-m', 'no changes',
+                     working_dir='tree')
+
+    def test_strict_commit_unknown(self):
+        """commit --strict fails if a file is unknown"""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        tree.add('a')
+        tree.commit('adding a')
+
+        # Add one file so there is a change, but forget the other
+        self.build_tree(['tree/b', 'tree/c'])
+        tree.add('b')
+        self.run_bzr_error(['Commit refused because there are unknown files'],
+                           'commit', '--strict', '-m', 'add b',
+                           working_dir='tree')
+
+        # --no-strict overrides --strict
+        self.run_bzr('commit', '--strict', '-m', 'add b', '--no-strict',
+                     working_dir='tree')

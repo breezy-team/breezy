@@ -2,11 +2,20 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * New command ``bzr remove-tree`` allows the removal of the working
+      tree from a branch.
+      (Daniel Silverstone)
+
     * ``bzr export`` allows an optional branch parameter, to export a bzr
       tree from some other url. For example:
       ``bzr export bzr.tar.gz http://bazaar-vcs.org/bzr/bzr.dev``
       (Daniel Silverstone)
 
+    * Added ``bzr help topics`` to the bzr help system. This gives a
+      location for general information, outside of a specific command.
+      This includes updates for ``bzr help revisionspec`` the first topic
+      included. (Goffredo Baroncelli, John Arbash Meinel, #42714)
+      
   INTERNALS:
 
     * New -D option given before the command line turns on debugging output
@@ -26,6 +35,11 @@ IN DEVELOPMENT
       files or directories in root directory. (John Arbash Meinel)
   
   BUG FIXES:
+
+    * ``bzrlib/bzrdir.py`` was directly referencing ``bzrlib.workingtree``,
+      without importing it. This prevented ``bzr upgrade`` from working
+      unless a plugin already imported ``bzrlib.workingtree``
+      (John Arbash Meinel, #70716)
 
     * _KnitIndex.add_versions() dictionary compresses revision ids as they
       are added. This fixes bug where fetching remote revisions records

@@ -25,38 +25,93 @@ import sys
 
 from bzrlib import (
     errors,
+    plugin,
+    trace,
     )
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 from bzrlib.trace import mutter, report_exception
 
 
 def _format_exception():
     """Format an exception as it would normally be displayed to the user"""
     buf = StringIO()
-    report_exception(sys.exc_info(), buf)
-    return buf.getvalue()
+    report = report_exception(sys.exc_info(), buf)
+    return buf.getvalue(), report
 
 
 class TestTrace(TestCase):
 
-    def test_format_sys_exception(self):
+    def test_format_sys_exception_no_apport(self):
         try:
             raise NotImplementedError, "time travel"
         except NotImplementedError:
             pass
-        err = _format_exception()
+        old_use_apport = trace._use_apport
+        trace._use_apport = False
+        try:
+            err, report = _format_exception()
+        finally:
+            trace._use_apport = old_use_apport
+        self.assertEqual(None, report)
         self.assertEqualDiff(err.splitlines()[0],
                 'bzr: ERROR: exceptions.NotImplementedError: time travel')
         self.assertContainsRe(err,
                 r'File.*test_trace.py')
+
+    def test_format_sys_exception_apport(self):
+        try:
+            import problem_report
+        except ImportError:
+            raise TestSkipped('Apport not installed')
+        try:
+            raise NotImplementedError, "time travel"
+        except NotImplementedError:
+            pass
+        old_argv = sys.argv
+        sys.argv = ['foo', 'bar', 'quux']
+        try:
+            err, (report, report_filename) = _format_exception()
+        finally:
+            sys.argv = old_argv
+        self.assertIsInstance(report, problem_report.ProblemReport)
+        # the error formatting is checked by the blackbox ui command.
+        # here we need to check that the file on disk - the problem report
+        # will contain the right information.
+        # the report needs:
+        #  - the command line.
+        #  - package data
+        #  - plugins list
+        #  - backtrace.
+        # check the report logical data.
+        self.assertEqual('foo bar quux', report['CommandLine'])
+        known_plugins = ' '.join(plugin.all_plugins())
+        self.assertEqual(known_plugins, report['BzrPlugins'])
+        self.assertContainsRe(report['Traceback'], r'Traceback')
+        # Stock apport facilities we just invoke, no need to test their
+        # content
+        self.assertNotEqual(None, report['Package'])
+        self.assertNotEqual(None, report['Uname'])
+        # check the file 'looks' like a good file, because we dont
+        # want apport changes to break the user interface.
+        report_file = file(report_filename, 'r')
+        try:
+            report_text = report_file.read()
+        finally:
+            report_file.close()
+        # so we check this by looking across two fields and they should
+        # be just \n separated.
+        self.assertTrue('ProblemType: Crash\n'
+            'BzrPlugins: ' in report_text)
 
     def test_format_interrupt_exception(self):
         try:
             raise KeyboardInterrupt()
         except KeyboardInterrupt:
             # XXX: Some risk that a *real* keyboard interrupt won't be seen
+            # We can probably detect that by checking for the specific line
+            # that we raise from in the test being in the backtrace.
             pass
-        msg = _format_exception()
+        msg, report = _format_exception()
         self.assertTrue(len(msg) > 0)
         self.assertEqualDiff(msg, 'bzr: interrupted\n')
 
@@ -65,7 +120,7 @@ class TestTrace(TestCase):
             file('nosuchfile22222')
         except (OSError, IOError):
             pass
-        msg = _format_exception()
+        msg, report = _format_exception()
         self.assertContainsRe(msg, r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
 
     def test_format_unicode_error(self):
@@ -73,7 +128,7 @@ class TestTrace(TestCase):
             raise errors.BzrCommandError(u'argument foo\xb5 does not exist')
         except errors.BzrCommandError:
             pass
-        msg = _format_exception()
+        msg, report = _format_exception()
 
     def test_format_exception(self):
         """Short formatting of bzr exceptions"""
@@ -81,7 +136,7 @@ class TestTrace(TestCase):
             raise errors.NotBranchError('wibble')
         except errors.NotBranchError:
             pass
-        msg = _format_exception()
+        msg, report = _format_exception()
         self.assertTrue(len(msg) > 0)
         self.assertEqualDiff(msg, 'bzr: ERROR: Not a branch: wibble\n')
 
@@ -108,7 +163,7 @@ class TestTrace(TestCase):
         try:
             raise IOError(errno.EPIPE, 'broken pipe foofofo')
         except IOError, e:
-            msg = _format_exception()
+            msg, report = _format_exception()
             self.assertEquals(msg, "bzr: broken pipe\n")
         else:
             self.fail("expected error not raised")
