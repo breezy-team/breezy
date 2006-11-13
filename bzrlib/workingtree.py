@@ -989,7 +989,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 stack.pop()
 
     @needs_tree_write_lock
-    def move(self, from_paths, to_dir, after=False, **kwargs):
+    def move(self, from_paths, to_dir=None, after=False, **kwargs):
         """Rename files.
 
         to_dir must exist in the inventory.
