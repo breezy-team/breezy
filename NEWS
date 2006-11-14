@@ -7,6 +7,10 @@ IN DEVELOPMENT
     * Clean up ``bzr selftest --benchmark bundle`` to correct an import,
       and remove benchmarks that take longer than 10min to run.
       (John Arbash Meinel)
+
+    * Change Revision serialization to only write out millisecond
+      resolution. Rather than expecting floating point serialization to
+      preserve more resolution than we need. (Henri Weichers, Martin Pool)
   
   BUG FIXES:
 
