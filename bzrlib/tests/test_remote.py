@@ -22,6 +22,7 @@ the object given a transport that supports smartserver rpc operations.
 """
 
 from bzrlib import bzrdir, remote, tests
+from bzrlib.transport import remote as remote_transport
 from bzrlib.transport import smart
 from bzrlib.transport.smart import server
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
@@ -35,7 +36,7 @@ class BasicRemoteObjectTests(tests.TestCaseInTempDir):
         self.server = server.SmartTCPServer_for_testing()
         self.server.setUp()
         self.addCleanup(self.server.tearDown)
-        self.transport = smart.SmartTCPTransport(self.server.get_url())
+        self.transport = remote_transport.SmartTCPTransport(self.server.get_url())
         self.client = self.transport.get_smart_client()
         # make a branch that can be opened over the smart transport
         self.local_wt = BzrDir.create_standalone_workingtree('.')
@@ -64,7 +65,7 @@ class BasicRemoteObjectTests(tests.TestCaseInTempDir):
         self.assertEqual(len(rh), 0)
 
     def test_find_correct_format(self):
-        """Should open a RemoteBzrDir over a SmartTransport"""
+        """Should open a RemoteBzrDir over a RemoteTransport"""
         fmt = BzrDirFormat.find_format(self.transport)
         ## self.assert_(RemoteBzrDirFormat in BzrDirFormat._control_formats)
         self.assertIsInstance(fmt, remote.RemoteBzrDirFormat)

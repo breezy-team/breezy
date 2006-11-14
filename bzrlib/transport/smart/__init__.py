@@ -202,17 +202,6 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 
 
 # Promote some attributes from submodules into this namespace
-from bzrlib.transport.smart._smart import (
-    SmartSSHTransport,
-    SmartTCPTransport,
-    SmartTransport,
-    )
 from bzrlib.transport.smart.request import SmartServerRequestHandler
 
 
-def get_test_permutations():
-    """Return (transport, server) permutations for testing."""
-    ### We may need a little more test framework support to construct an
-    ### appropriate RemoteTransport in the future.
-    from bzrlib.transport.smart import server
-    return [(SmartTCPTransport, server.SmartTCPServer_for_testing)]

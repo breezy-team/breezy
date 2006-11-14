@@ -22,7 +22,6 @@ from bzrlib import bzrdir, branch, errors, repository
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.branch import Branch, BranchFormat
 from bzrlib.trace import mutter
-from bzrlib.transport.smart import SmartTransport
 
 
 class RemoteBzrDirFormat(bzrdir.BzrDirMetaFormat1):

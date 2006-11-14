@@ -67,7 +67,7 @@ class TestBzrServe(TestCaseWithTransport):
         # server instance, the transport needs a URL.
         client_medium = medium.SmartSimplePipesClientMedium(
             process.stdout, process.stdin)
-        transport = smart.SmartTransport(
+        transport = smart.RemoteTransport(
             'bzr://localhost/', medium=client_medium)
         return process, transport
 

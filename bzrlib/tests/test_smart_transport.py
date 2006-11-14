@@ -34,6 +34,7 @@ from bzrlib.transport import (
         get_transport,
         local,
         memory,
+        remote,
         smart,
         )
 from bzrlib.transport.http import (
@@ -534,7 +535,7 @@ class RemoteTransportTests(tests.TestCaseWithTransport):
 
     def test_probe_transport(self):
         t = self.get_transport()
-        self.assertIsInstance(t, smart.SmartTransport)
+        self.assertIsInstance(t, remote.RemoteTransport)
 
     def test_get_medium_from_transport(self):
         """Remote transport has a medium always, which it can return."""
@@ -787,7 +788,7 @@ class TestSmartTCPServer(tests.TestCase):
         smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
         smart_server.start_background_thread()
         try:
-            transport = smart.SmartTCPTransport(smart_server.get_url())
+            transport = remote.SmartTCPTransport(smart_server.get_url())
             try:
                 transport.get('something')
             except errors.TransportError, e:
@@ -818,7 +819,7 @@ class SmartTCPTests(tests.TestCase):
             self.backing_transport = get_transport("readonly+" + self.backing_transport.abspath('.'))
         self.server = server.SmartTCPServer(self.backing_transport)
         self.server.start_background_thread()
-        self.transport = smart.SmartTCPTransport(self.server.get_url())
+        self.transport = remote.SmartTCPTransport(self.server.get_url())
 
     def tearDown(self):
         if getattr(self, 'transport', None):
@@ -1017,22 +1018,22 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         self.assertEqual(None, handler.response.body)
 
 
-class SmartTransportRegistration(tests.TestCase):
+class RemoteTransportRegistration(tests.TestCase):
 
     def test_registration(self):
         t = get_transport('bzr+ssh://example.com/path')
-        self.assertIsInstance(t, smart.SmartSSHTransport)
+        self.assertIsInstance(t, remote.SmartSSHTransport)
         self.assertEqual('example.com', t._host)
 
 
-class TestSmartTransport(tests.TestCase):
+class TestRemoteTransport(tests.TestCase):
         
     def test_use_connection_factory(self):
-        # We want to be able to pass a client as a parameter to SmartTransport.
+        # We want to be able to pass a client as a parameter to RemoteTransport.
         input = StringIO("ok\n3\nbardone\n")
         output = StringIO()
         client_medium = medium.SmartSimplePipesClientMedium(input, output)
-        transport = smart.SmartTransport(
+        transport = remote.RemoteTransport(
             'bzr://localhost/', medium=client_medium)
 
         # We want to make sure the client is used when the first remote
@@ -1052,7 +1053,7 @@ class TestSmartTransport(tests.TestCase):
     def test__translate_error_readonly(self):
         """Sending a ReadOnlyError to _translate_error raises TransportNotPossible."""
         client_medium = medium.SmartClientMedium()
-        transport = smart.SmartTransport(
+        transport = remote.RemoteTransport(
             'bzr://localhost/', medium=client_medium)
         self.assertRaises(errors.TransportNotPossible,
             transport._translate_error, ("ReadOnlyError", ))
@@ -1450,7 +1451,7 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
 
         medium = http_transport.get_smart_medium()
         #remote_transport = RemoteTransport('fake_url', medium)
-        remote_transport = smart.SmartTransport('/', medium=medium)
+        remote_transport = remote.RemoteTransport('/', medium=medium)
         self.assertEqual(
             [(0, "c")], list(remote_transport.readv("data-file", [(0,1)])))
 

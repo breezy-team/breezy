@@ -14,13 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""SmartTransport client for the smart-server.
+"""RemoteTransport client for the smart-server.
 
 This module shouldn't be accessed directly.  The classes defined here should be
 imported from bzrlib.transport.smart.
 """
 
-__all__ = ['SmartTransport', 'SmartTCPTransport', 'SmartSSHTransport']
+__all__ = ['RemoteTransport', 'SmartTCPTransport', 'SmartSSHTransport']
 
 from cStringIO import StringIO
 import urllib
@@ -45,7 +45,7 @@ class _SmartStat(object):
         self.st_mode = mode
 
 
-class SmartTransport(transport.Transport):
+class RemoteTransport(transport.Transport):
     """Connection to a smart server.
 
     The connection holds references to the medium that can be used to send
@@ -62,10 +62,10 @@ class SmartTransport(transport.Transport):
     SmartTCPTransport, etc.
     """
 
-    # IMPORTANT FOR IMPLEMENTORS: SmartTransport MUST NOT be given encoding
+    # IMPORTANT FOR IMPLEMENTORS: RemoteTransport MUST NOT be given encoding
     # responsibilities: Put those on SmartClient or similar. This is vital for
     # the ability to support multiple versions of the smart protocol over time:
-    # SmartTransport is an adapter from the Transport object model to the 
+    # RemoteTransport is an adapter from the Transport object model to the 
     # SmartClient model, not an encoder.
 
     def __init__(self, url, clone_from=None, medium=None):
@@ -79,7 +79,7 @@ class SmartTransport(transport.Transport):
         ### initialisation order things would blow up. 
         if not url.endswith('/'):
             url += '/'
-        super(SmartTransport, self).__init__(url)
+        super(RemoteTransport, self).__init__(url)
         self._scheme, self._username, self._password, self._host, self._port, self._path = \
                 transport.split_url(url)
         if clone_from is None:
@@ -101,14 +101,14 @@ class SmartTransport(transport.Transport):
         return self._unparse_url(self._remote_path(relpath))
     
     def clone(self, relative_url):
-        """Make a new SmartTransport related to me, sharing the same connection.
+        """Make a new RemoteTransport related to me, sharing the same connection.
 
         This essentially opens a handle on a different remote directory.
         """
         if relative_url is None:
-            return SmartTransport(self.base, self)
+            return RemoteTransport(self.base, self)
         else:
-            return SmartTransport(self.abspath(relative_url), self)
+            return RemoteTransport(self.abspath(relative_url), self)
 
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
@@ -405,7 +405,7 @@ class SmartTransport(transport.Transport):
             self._translate_error(resp)
 
 
-class SmartTCPTransport(SmartTransport):
+class SmartTCPTransport(RemoteTransport):
     """Connection to smart server over plain tcp.
     
     This is essentially just a factory to get 'RemoteTransport(url,
@@ -423,7 +423,7 @@ class SmartTCPTransport(SmartTransport):
         super(SmartTCPTransport, self).__init__(url, medium=client_medium)
 
 
-class SmartSSHTransport(SmartTransport):
+class SmartSSHTransport(RemoteTransport):
     """Connection to smart server over SSH.
 
     This is essentially just a factory to get 'RemoteTransport(url,
@@ -444,3 +444,9 @@ class SmartSSHTransport(SmartTransport):
         super(SmartSSHTransport, self).__init__(url, medium=client_medium)
 
 
+def get_test_permutations():
+    """Return (transport, server) permutations for testing."""
+    ### We may need a little more test framework support to construct an
+    ### appropriate RemoteTransport in the future.
+    from bzrlib.transport.smart import server
+    return [(SmartTCPTransport, server.SmartTCPServer_for_testing)]
