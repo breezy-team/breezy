@@ -2894,7 +2894,7 @@ class cmd_serve(Command):
         ]
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False):
-        from bzrlib.transport.smart import medium, server
+        from bzrlib.smart import medium, server
         from bzrlib.transport import get_transport
         if directory is None:
             directory = os.getcwd()
