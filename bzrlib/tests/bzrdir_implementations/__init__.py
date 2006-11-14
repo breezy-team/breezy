@@ -52,7 +52,7 @@ def test_suite():
     # XXX:
     # This will always add the tests for smart server transport, regardless of
     # the --transport option the user specified to 'bzr selftest'.
-    from bzrlib.transport.smart.server import SmartTCPServer_for_testing
+    from bzrlib.smart.server import SmartTCPServer_for_testing
     from bzrlib.remote import RemoteBzrDirFormat
 
     transport_server = SmartTCPServer_for_testing

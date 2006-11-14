@@ -22,7 +22,8 @@ For more information about WSGI, see PEP 333:
 
 from cStringIO import StringIO
 
-from bzrlib.transport import chroot, get_transport, smart
+from bzrlib import smart
+from bzrlib.transport import chroot, get_transport
 from bzrlib.urlutils import local_path_to_url
     
 

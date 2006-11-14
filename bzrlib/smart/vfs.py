@@ -24,7 +24,7 @@ These methods, plus 'hello' and 'get_bundle', are version 1 of the smart server
 protocol, as implemented in bzr 0.11 and later.
 """
 
-from bzrlib.transport.smart import request
+from bzrlib.smart import request
 
 
 # vfs_commands is the set of commands handlers for the version 1 protocol.

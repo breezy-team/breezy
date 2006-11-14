@@ -22,7 +22,7 @@ client and server.
 from cStringIO import StringIO
 
 from bzrlib import errors
-from bzrlib.transport.smart import (
+from bzrlib.smart import (
     request,
     vfs,
     )

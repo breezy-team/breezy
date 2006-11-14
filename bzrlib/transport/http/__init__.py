@@ -38,17 +38,17 @@ from bzrlib import errors
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError, InvalidURL)
 from bzrlib.branch import Branch
+from bzrlib import smart
 from bzrlib.trace import mutter
 from bzrlib.transport import (
     get_transport,
     register_transport,
-    smart,
     Server,
     Transport,
     )
 from bzrlib.transport.http.response import (HttpMultipartRangeResponse,
                                             HttpRangeResponse)
-from bzrlib.transport.smart import medium, protocol
+from bzrlib.smart import medium, protocol
 from bzrlib.ui import ui_factory
 
 

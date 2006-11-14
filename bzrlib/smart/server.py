@@ -20,7 +20,7 @@ import socket
 import os
 import threading
 
-from bzrlib.transport.smart import medium
+from bzrlib.smart import medium
 from bzrlib import (
     trace,
     transport,

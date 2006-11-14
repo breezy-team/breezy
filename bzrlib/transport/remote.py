@@ -17,7 +17,7 @@
 """RemoteTransport client for the smart-server.
 
 This module shouldn't be accessed directly.  The classes defined here should be
-imported from bzrlib.transport.smart.
+imported from bzrlib.smart.
 """
 
 __all__ = ['RemoteTransport', 'SmartTCPTransport', 'SmartSSHTransport']
@@ -30,7 +30,7 @@ from bzrlib import (
     errors,
     transport,
     )
-from bzrlib.transport.smart import medium, protocol
+from bzrlib.smart import medium, protocol
 
 # must do this otherwise urllib can't parse the urls properly :(
 for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
@@ -448,5 +448,5 @@ def get_test_permutations():
     """Return (transport, server) permutations for testing."""
     ### We may need a little more test framework support to construct an
     ### appropriate RemoteTransport in the future.
-    from bzrlib.transport.smart import server
+    from bzrlib.smart import server
     return [(SmartTCPTransport, server.SmartTCPServer_for_testing)]

@@ -202,6 +202,6 @@ PROTOCOL  (serialization, deserialization)  accepts structured data for one
 
 
 # Promote some attributes from submodules into this namespace
-from bzrlib.transport.smart.request import SmartServerRequestHandler
+from bzrlib.smart.request import SmartServerRequestHandler
 
 

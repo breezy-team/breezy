@@ -27,8 +27,8 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
-from bzrlib.transport import get_transport, smart
-from bzrlib.transport.smart import medium
+from bzrlib.transport import get_transport, remote
+from bzrlib.smart import medium
 
 
 class TestBzrServe(TestCaseWithTransport):
@@ -67,7 +67,7 @@ class TestBzrServe(TestCaseWithTransport):
         # server instance, the transport needs a URL.
         client_medium = medium.SmartSimplePipesClientMedium(
             process.stdout, process.stdin)
-        transport = smart.RemoteTransport(
+        transport = remote.RemoteTransport(
             'bzr://localhost/', medium=client_medium)
         return process, transport
 

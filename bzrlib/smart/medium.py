@@ -28,7 +28,7 @@ import os
 import socket
 
 from bzrlib import errors
-from bzrlib.transport.smart import protocol
+from bzrlib.smart import protocol
 try:
     from bzrlib.transport import ssh
 except errors.ParamikoNotPresent:

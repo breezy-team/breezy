@@ -48,7 +48,7 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_revision',
         ]
 
-    from bzrlib.transport.smart.server import SmartTCPServer_for_testing
+    from bzrlib.smart.server import SmartTCPServer_for_testing
     from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
     from bzrlib.repository import RepositoryFormatKnit1
 

@@ -30,19 +30,19 @@ from bzrlib import (
         tests,
         urlutils,
         )
+from bzrlib import smart
 from bzrlib.transport import (
         get_transport,
         local,
         memory,
         remote,
-        smart,
         )
 from bzrlib.transport.http import (
         HTTPServerWithSmarts,
         SmartClientHTTPMediumRequest,
         SmartRequestHandler,
         )
-from bzrlib.transport.smart import (
+from bzrlib.smart import (
         medium,
         protocol,
         request,

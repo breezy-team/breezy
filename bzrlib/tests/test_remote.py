@@ -23,8 +23,8 @@ the object given a transport that supports smartserver rpc operations.
 
 from bzrlib import bzrdir, remote, tests
 from bzrlib.transport import remote as remote_transport
-from bzrlib.transport import smart
-from bzrlib.transport.smart import server
+from bzrlib import smart
+from bzrlib.smart import server
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.remote import RemoteBzrDir, RemoteBzrDirFormat
 from bzrlib.branch import Branch
