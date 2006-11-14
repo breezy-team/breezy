@@ -944,7 +944,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 
     def build_handler(self, transport):
         """Returns a handler for the commands in protocol version one."""
-        return smart.SmartServerRequestHandler(transport, vfs.vfs_commands)
+        return smart.SmartServerRequestHandler(transport, request.request_handlers)
 
     def test_construct_request_handler(self):
         """Constructing a request handler should be easy and set defaults."""
@@ -1091,7 +1091,7 @@ class TestSmartProtocol(tests.TestCase):
             self.client_medium)
         self.smart_server = InstrumentedServerProtocol(self.server_to_client)
         self.smart_server_request = smart.SmartServerRequestHandler(
-            None, vfs.vfs_commands)
+            None, request.request_handlers)
 
     def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
         client):

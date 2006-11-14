@@ -27,13 +27,6 @@ protocol, as implemented in bzr 0.11 and later.
 from bzrlib.smart import request
 
 
-# vfs_commands is the set of commands handlers for the version 1 protocol.
-vfs_commands = request.version_one_commands.copy()
-
-def register_command(command):
-    vfs_commands[command.method] = command
-
-
 def _deserialise_optional_mode(mode):
     # XXX: FIXME this should be on the protocol object.  Later protocol versions
     # might serialise modes differently.
@@ -45,27 +38,19 @@ def _deserialise_optional_mode(mode):
 
 class HasRequest(request.SmartServerRequest):
 
-    method = 'has'
-
     def do(self, relpath):
         r = self._backing_transport.has(relpath) and 'yes' or 'no'
         return request.SmartServerResponse((r,))
-register_command(HasRequest)
 
 
 class GetRequest(request.SmartServerRequest):
 
-    method = 'get'
-
     def do(self, relpath):
         backing_bytes = self._backing_transport.get_bytes(relpath)
         return request.SmartServerResponse(('ok',), backing_bytes)
-register_command(GetRequest)
 
 
 class AppendRequest(request.SmartServerRequest):
-
-    method = 'append'
 
     def do(self, relpath, mode):
         self._relpath = relpath
@@ -76,64 +61,45 @@ class AppendRequest(request.SmartServerRequest):
             self._relpath, body_bytes, self._mode)
         return request.SmartServerResponse(('appended', '%d' % old_length))
 
-register_command(AppendRequest)
-
 
 class DeleteRequest(request.SmartServerRequest):
-
-    method = 'delete'
 
     def do(self, relpath):
         self._backing_transport.delete(relpath)
         return request.SmartServerResponse(('ok', ))
-register_command(DeleteRequest)
 
 
 class IterFilesRecursive(request.SmartServerRequest):
-
-    method = 'iter_files_recursive'
 
     def do(self, relpath):
         transport = self._backing_transport.clone(relpath)
         filenames = transport.iter_files_recursive()
         return request.SmartServerResponse(('names',) + tuple(filenames))
-register_command(IterFilesRecursive)
 
 
 class ListDirRequest(request.SmartServerRequest):
 
-    method = 'list_dir'
-
     def do(self, relpath):
         filenames = self._backing_transport.list_dir(relpath)
         return request.SmartServerResponse(('names',) + tuple(filenames))
-register_command(ListDirRequest)
 
 
 class MkdirCommand(request.SmartServerRequest):
-
-    method = 'mkdir'
 
     def do(self, relpath, mode):
         self._backing_transport.mkdir(relpath,
                                       _deserialise_optional_mode(mode))
         return request.SmartServerResponse(('ok',))
-register_command(MkdirCommand)
 
 
 class MoveCommand(request.SmartServerRequest):
 
-    method = 'move'
-
     def do(self, rel_from, rel_to):
         self._backing_transport.move(rel_from, rel_to)
         return request.SmartServerResponse(('ok',))
-register_command(MoveCommand)
 
 
 class PutCommand(request.SmartServerRequest):
-
-    method = 'put'
 
     def do(self, relpath, mode):
         self._relpath = relpath
@@ -142,12 +108,9 @@ class PutCommand(request.SmartServerRequest):
     def do_body(self, body_bytes):
         self._backing_transport.put_bytes(self._relpath, body_bytes, self._mode)
         return request.SmartServerResponse(('ok',))
-register_command(PutCommand)
 
 
 class PutNonAtomicCommand(request.SmartServerRequest):
-
-    method = 'put_non_atomic'
 
     def do(self, relpath, mode, create_parent, dir_mode):
         self._relpath = relpath
@@ -163,12 +126,9 @@ class PutNonAtomicCommand(request.SmartServerRequest):
                 create_parent_dir=self._create_parent,
                 dir_mode=self._dir_mode)
         return request.SmartServerResponse(('ok',))
-register_command(PutNonAtomicCommand)
 
 
 class ReadvCommand(request.SmartServerRequest):
-
-    method = 'readv'
 
     def do(self, relpath):
         self._relpath = relpath
@@ -189,36 +149,26 @@ class ReadvCommand(request.SmartServerRequest):
             start, length = line.split(',')
             offsets.append((int(start), int(length)))
         return offsets
-register_command(ReadvCommand)
 
 
 class RenameCommand(request.SmartServerRequest):
 
-    method = 'rename'
-
     def do(self, rel_from, rel_to):
         self._backing_transport.rename(rel_from, rel_to)
         return request.SmartServerResponse(('ok', ))
-register_command(RenameCommand)
 
 
 class RmdirCommand(request.SmartServerRequest):
 
-    method = 'rmdir'
-
     def do(self, relpath):
         self._backing_transport.rmdir(relpath)
         return request.SmartServerResponse(('ok', ))
-register_command(RmdirCommand)
 
 
 class StatCommand(request.SmartServerRequest):
-
-    method = 'stat'
 
     def do(self, relpath):
         stat = self._backing_transport.stat(relpath)
         return request.SmartServerResponse(
             ('stat', str(stat.st_size), oct(stat.st_mode)))
-register_command(StatCommand)
 

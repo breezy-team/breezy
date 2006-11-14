@@ -19,7 +19,7 @@
 
 import tempfile
 
-from bzrlib import bzrdir, errors, revision
+from bzrlib import bzrdir, errors, registry, revision
 from bzrlib.bundle.serializer import write_bundle
 
 
@@ -79,7 +79,7 @@ class SmartServerRequestHandler(object):
         """Constructor.
 
         :param backing_transport: a Transport to handle requests for.
-        :param commands: a dict mapping command names to SmartServerRequest
+        :param commands: a registry mapping command names to SmartServerRequest
             subclasses. e.g. bzrlib.transport.smart.vfs.vfs_commands.
         """
         self._backing_transport = backing_transport
@@ -108,8 +108,9 @@ class SmartServerRequestHandler(object):
 
     def dispatch_command(self, cmd, args):
         """Deprecated compatibility method.""" # XXX XXX
-        command = self._commands.get(cmd)
-        if command is None:
+        try:
+            command = self._commands.get(cmd)
+        except LookupError:
             raise errors.SmartProtocolError("bad request %r" % (cmd,))
         self._command = command(self._backing_transport)
         self._run_handler_code(self._command.do, args, {})
@@ -167,15 +168,11 @@ class SmartServerRequestHandler(object):
 class HelloRequest(SmartServerRequest):
     """Answer a version request with my version."""
 
-    method = 'hello'
-
     def do(self):
         return SmartServerResponse(('ok', '1'))
 
 
 class GetBundleRequest(SmartServerRequest):
-
-    method = 'get_bundle'
 
     def do(self, path, revision_id):
         # open transport relative to our base
@@ -189,10 +186,37 @@ class GetBundleRequest(SmartServerRequest):
         return SmartServerResponse((), tmpf.read())
 
 
-# This is extended by bzrlib/transport/smart/vfs.py
-version_one_commands = {
-    HelloRequest.method: HelloRequest,
-    GetBundleRequest.method: GetBundleRequest,
-}
-
+request_handlers = registry.Registry()
+request_handlers.register_lazy(
+    'append', 'bzrlib.smart.vfs', 'AppendRequest')
+request_handlers.register_lazy(
+    'delete', 'bzrlib.smart.vfs', 'DeleteRequest')
+request_handlers.register_lazy(
+    'get', 'bzrlib.smart.vfs', 'GetRequest')
+request_handlers.register_lazy(
+    'get_bundle', 'bzrlib.smart.request', 'GetBundleRequest')
+request_handlers.register_lazy(
+    'has', 'bzrlib.smart.vfs', 'HasRequest')
+request_handlers.register_lazy(
+    'hello', 'bzrlib.smart.request', 'HelloRequest')
+request_handlers.register_lazy(
+    'iter_files_recursive', 'bzrlib.smart.vfs', 'IterFilesRecursive')
+request_handlers.register_lazy(
+    'list_dir', 'bzrlib.smart.vfs', 'ListDirRequest')
+request_handlers.register_lazy(
+    'mkdir', 'bzrlib.smart.vfs', 'MkdirCommand')
+request_handlers.register_lazy(
+    'move', 'bzrlib.smart.vfs', 'MoveCommand')
+request_handlers.register_lazy(
+    'put', 'bzrlib.smart.vfs', 'PutCommand')
+request_handlers.register_lazy(
+    'put_non_atomic', 'bzrlib.smart.vfs', 'PutNonAtomicCommand')
+request_handlers.register_lazy(
+    'readv', 'bzrlib.smart.vfs', 'ReadvCommand')
+request_handlers.register_lazy(
+    'rename', 'bzrlib.smart.vfs', 'RenameCommand')
+request_handlers.register_lazy(
+    'rmdir', 'bzrlib.smart.vfs', 'RmdirCommand')
+request_handlers.register_lazy(
+    'stat', 'bzrlib.smart.vfs', 'StatCommand')
 
