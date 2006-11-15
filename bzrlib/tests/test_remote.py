@@ -55,7 +55,7 @@ class BasicRemoteObjectTests(tests.TestCaseInTempDir):
         b = BzrDir.open_from_transport(self.transport)
         repo = b.open_repository()
         self.assertFalse(repo.has_revision('23123123'))
-        self.local_wt.commit(message='test commit', 
+        self.local_wt.commit(message='test commit',
                              rev_id='rev-1',
                              allow_pointless=True)
         self.assertTrue(repo.has_revision('rev-1'))
@@ -68,7 +68,7 @@ class BasicRemoteObjectTests(tests.TestCaseInTempDir):
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
         fmt = BzrDirFormat.find_format(self.transport)
-        ## self.assert_(RemoteBzrDirFormat in BzrDirFormat._control_formats)
+        self.assertTrue(RemoteBzrDirFormat in BzrDirFormat._control_formats)
         self.assertIsInstance(fmt, remote.RemoteBzrDirFormat)
 
     def test_open_detected_smart_format(self):

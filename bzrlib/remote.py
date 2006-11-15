@@ -18,36 +18,12 @@
 # across to run on the server.
 
 
-from bzrlib import bzrdir, branch, errors, repository
-from bzrlib.bzrdir import BzrDir, BzrDirFormat
+from bzrlib import branch, errors, repository
+from bzrlib.bzrdir import BzrDir, BzrDirFormat, RemoteBzrDirFormat
 from bzrlib.branch import Branch, BranchFormat
 from bzrlib.trace import mutter
 
-
-class RemoteBzrDirFormat(bzrdir.BzrDirMetaFormat1):
-    """Format representing bzrdirs accessed via a smart server"""
-
-    def get_format_description(self):
-        return 'bzr remote bzrdir'
-    
-    def probe_transport(self, transport):
-        ## mutter("%r probe for bzrdir in %r" % (self, transport))
-        try:
-            transport.get_smart_client()
-        except (NotImplementedError, AttributeError,
-                errors.TransportNotPossible):
-            raise errors.NoSmartServer(transport.base)
-        else:
-            return self
-
-    def _open(self, transport):
-        return RemoteBzrDir(transport)
-
-    def __eq__(self, other):
-        if not isinstance(other, RemoteBzrDirFormat):
-            return False
-        return self.get_format_description() == other.get_format_description()
-
+# Note: RemoteBzrDirFormat is in bzrdir.py
 
 class RemoteBzrDir(BzrDir):
     """Control directory on a remote server, accessed by HPSS."""
@@ -220,11 +196,3 @@ class RemoteWorkingTree(object):
         return getattr(self.real_workingtree, name)
 
 
-# when first loaded, register this format.
-#
-# TODO: Actually this needs to be done earlier; we can hold off on loading
-# this code until it's needed though.
-
-# We can't use register_control_format because it adds it at a lower priority
-# than the existing branches, whereas this should take priority.
-BzrDirFormat._control_formats.insert(0, RemoteBzrDirFormat())
