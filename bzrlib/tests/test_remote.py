@@ -29,6 +29,7 @@ from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.remote import RemoteBzrDir, RemoteBzrDirFormat
 from bzrlib.branch import Branch
 
+
 class BasicRemoteObjectTests(tests.TestCaseInTempDir):
 
     def setUp(self):

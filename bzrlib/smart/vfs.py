@@ -24,6 +24,9 @@ These methods, plus 'hello' and 'get_bundle', are version 1 of the smart server
 protocol, as implemented in bzr 0.11 and later.
 """
 
+import os
+
+from bzrlib import errors
 from bzrlib.smart import request
 
 
@@ -36,21 +39,32 @@ def _deserialise_optional_mode(mode):
         return int(mode)
 
 
-class HasRequest(request.SmartServerRequest):
+class VfsRequest(request.SmartServerRequest):
+    """Base class for VFS requests.
+    
+    VFS requests are disabled if the NO_SMART_VFS environment variable is set.
+    """
+
+    def _check_enabled(self):
+        if 'NO_SMART_VFS' in os.environ:
+            raise errors.DisabledMethod(self.__class__.__name__)
+
+
+class HasRequest(VfsRequest):
 
     def do(self, relpath):
         r = self._backing_transport.has(relpath) and 'yes' or 'no'
         return request.SmartServerResponse((r,))
 
 
-class GetRequest(request.SmartServerRequest):
+class GetRequest(VfsRequest):
 
     def do(self, relpath):
         backing_bytes = self._backing_transport.get_bytes(relpath)
         return request.SmartServerResponse(('ok',), backing_bytes)
 
 
-class AppendRequest(request.SmartServerRequest):
+class AppendRequest(VfsRequest):
 
     def do(self, relpath, mode):
         self._relpath = relpath
@@ -62,14 +76,14 @@ class AppendRequest(request.SmartServerRequest):
         return request.SmartServerResponse(('appended', '%d' % old_length))
 
 
-class DeleteRequest(request.SmartServerRequest):
+class DeleteRequest(VfsRequest):
 
     def do(self, relpath):
         self._backing_transport.delete(relpath)
         return request.SmartServerResponse(('ok', ))
 
 
-class IterFilesRecursive(request.SmartServerRequest):
+class IterFilesRecursive(VfsRequest):
 
     def do(self, relpath):
         transport = self._backing_transport.clone(relpath)
@@ -77,14 +91,14 @@ class IterFilesRecursive(request.SmartServerRequest):
         return request.SmartServerResponse(('names',) + tuple(filenames))
 
 
-class ListDirRequest(request.SmartServerRequest):
+class ListDirRequest(VfsRequest):
 
     def do(self, relpath):
         filenames = self._backing_transport.list_dir(relpath)
         return request.SmartServerResponse(('names',) + tuple(filenames))
 
 
-class MkdirCommand(request.SmartServerRequest):
+class MkdirCommand(VfsRequest):
 
     def do(self, relpath, mode):
         self._backing_transport.mkdir(relpath,
@@ -92,14 +106,14 @@ class MkdirCommand(request.SmartServerRequest):
         return request.SmartServerResponse(('ok',))
 
 
-class MoveCommand(request.SmartServerRequest):
+class MoveCommand(VfsRequest):
 
     def do(self, rel_from, rel_to):
         self._backing_transport.move(rel_from, rel_to)
         return request.SmartServerResponse(('ok',))
 
 
-class PutCommand(request.SmartServerRequest):
+class PutCommand(VfsRequest):
 
     def do(self, relpath, mode):
         self._relpath = relpath
@@ -110,7 +124,7 @@ class PutCommand(request.SmartServerRequest):
         return request.SmartServerResponse(('ok',))
 
 
-class PutNonAtomicCommand(request.SmartServerRequest):
+class PutNonAtomicCommand(VfsRequest):
 
     def do(self, relpath, mode, create_parent, dir_mode):
         self._relpath = relpath
@@ -128,7 +142,7 @@ class PutNonAtomicCommand(request.SmartServerRequest):
         return request.SmartServerResponse(('ok',))
 
 
-class ReadvCommand(request.SmartServerRequest):
+class ReadvCommand(VfsRequest):
 
     def do(self, relpath):
         self._relpath = relpath
@@ -151,21 +165,21 @@ class ReadvCommand(request.SmartServerRequest):
         return offsets
 
 
-class RenameCommand(request.SmartServerRequest):
+class RenameCommand(VfsRequest):
 
     def do(self, rel_from, rel_to):
         self._backing_transport.rename(rel_from, rel_to)
         return request.SmartServerResponse(('ok', ))
 
 
-class RmdirCommand(request.SmartServerRequest):
+class RmdirCommand(VfsRequest):
 
     def do(self, relpath):
         self._backing_transport.rmdir(relpath)
         return request.SmartServerResponse(('ok', ))
 
 
-class StatCommand(request.SmartServerRequest):
+class StatCommand(VfsRequest):
 
     def do(self, relpath):
         stat = self._backing_transport.stat(relpath)

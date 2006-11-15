@@ -63,6 +63,7 @@ class TestReadBundleFromURL(TestTransportImplementation):
         return wt
 
     def test_read_bundle_from_url(self):
+        self._captureVar('NO_SMART_VFS', None)
         wt = self.create_test_bundle()
         if wt is None:
             return
@@ -74,6 +75,7 @@ class TestReadBundleFromURL(TestTransportImplementation):
     def test_read_fail(self):
         # Trying to read from a directory, or non-bundle file
         # should fail with NotABundle
+        self._captureVar('NO_SMART_VFS', None)
         wt = self.create_test_bundle()
         if wt is None:
             return

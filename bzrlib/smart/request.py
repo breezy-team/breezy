@@ -30,13 +30,30 @@ class SmartServerRequest(object):
     def __init__(self, backing_transport):
         self._backing_transport = backing_transport
 
+    def _check_enabled(self):
+        """Raises DisabledMethod if this method is disabled."""
+        pass
+
     def do(self, *args):
-        """Called with the arguments of the request.
+        """Mandatory extension point for SmartServerRequest subclasses.
+        
+        Subclasses must implement this.
         
         This should return a SmartServerResponse if this command expects to
         receive no body.
         """
         raise NotImplementedError(self.do)
+
+    def execute(self, *args):
+        """Public entry point to execute this request.
+
+        It will return a SmartServerResponse if the command does not expect a
+        body.
+
+        :param *args: the arguments of the request.
+        """
+        self._check_enabled()
+        return self.do(*args)
 
     def do_body(self, body_bytes):
         """Called if the client sends a body with the request.
@@ -113,7 +130,7 @@ class SmartServerRequestHandler(object):
         except LookupError:
             raise errors.SmartProtocolError("bad request %r" % (cmd,))
         self._command = command(self._backing_transport)
-        self._run_handler_code(self._command.do, args, {})
+        self._run_handler_code(self._command.execute, args, {})
 
     def _run_handler_code(self, callable, args, kwargs):
         """Run some handler specific code 'callable'.

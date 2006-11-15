@@ -26,6 +26,11 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 class TestErrors(TestCaseWithTransport):
 
+    def test_disabled_method(self):
+        error = errors.DisabledMethod("class name")
+        self.assertEqualDiff(
+            "The smart server method 'class name' is disabled.", str(error))
+
     def test_inventory_modified(self):
         error = errors.InventoryModified("a tree to be repred")
         self.assertEqualDiff("The current inventory for the tree 'a tree to "
