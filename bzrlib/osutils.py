@@ -1,6 +1,4 @@
-# Bazaar -- distributed version control
-#
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -334,10 +332,10 @@ if sys.platform == 'win32':
         """Error handler for shutil.rmtree function [for win32]
         Helps to remove files and dirs marked as read-only.
         """
-        type_, value = excinfo[:2]
+        exception = excinfo[1]
         if function in (os.remove, os.rmdir) \
-            and type_ == OSError \
-            and value.errno == errno.EACCES:
+            and isinstance(exception, OSError) \
+            and exception.errno == errno.EACCES:
             make_writable(path)
             function(path)
         else:

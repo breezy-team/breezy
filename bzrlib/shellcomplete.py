@@ -55,8 +55,8 @@ def shellcomplete_on_option(options, outfile=None):
             if longname == on:
                 l = '"(--' + on + ' -' + shortname + ')"{--' + on + ',-' + shortname + '}'
                 break
-	    else:
-		l = '--' + on
+            else:
+                l = '--' + on
         outfile.write(l + '\n')
 
 
@@ -72,16 +72,16 @@ def shellcomplete_commands(outfile = None):
     cmds = []
     for cmdname, cmdclass in commands.get_all_cmds():
         cmds.append((cmdname, cmdclass))
-	for alias in cmdclass.aliases:
-	    cmds.append((alias, cmdclass))
+        for alias in cmdclass.aliases:
+            cmds.append((alias, cmdclass))
     cmds.sort()
     for cmdname, cmdclass in cmds:
         if cmdclass.hidden:
             continue
         doc = getdoc(cmdclass)
         if doc is None:
-	    outfile.write(cmdname + '\n')
+            outfile.write(cmdname + '\n')
         else:
-	    doclines = doc.splitlines()
-	    firstline = doclines[0].lower()
-	    outfile.write(cmdname + ':' + firstline[0:-1] + '\n')
+            doclines = doc.splitlines()
+            firstline = doclines[0].lower()
+            outfile.write(cmdname + ':' + firstline[0:-1] + '\n')

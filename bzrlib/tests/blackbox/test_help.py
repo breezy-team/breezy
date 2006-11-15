@@ -32,6 +32,25 @@ class TestHelp(ExternalBase):
                 self.fail("bad output from bzr %s:\n%r" % (cmd, output))
         # see https://launchpad.net/products/bzr/+bug/35940, -h doesn't work
 
+    def test_help_topics(self):
+        """Smoketest for 'bzr help topics'"""
+        out, err = self.run_bzr('help', 'topics')
+        self.assertContainsRe(out, 'basic')
+        self.assertContainsRe(out, 'topics')
+        self.assertContainsRe(out, 'commands')
+        self.assertContainsRe(out, 'revisionspec')
+
+    def test_help_revisionspec(self):
+        """Smoke test for 'bzr help revisionspec'"""
+        out, err = self.run_bzr('help', 'revisionspec')
+        self.assertContainsRe(out, 'revno:')
+        self.assertContainsRe(out, 'date:')
+        self.assertContainsRe(out, 'revid:')
+        self.assertContainsRe(out, 'last:')
+        self.assertContainsRe(out, 'before:')
+        self.assertContainsRe(out, 'ancestor:')
+        self.assertContainsRe(out, 'branch:')
+
     def test_help_commands(self):
         dash_help  = self.runbzr('--help commands')[0]
         commands   = self.runbzr('help commands')[0]
