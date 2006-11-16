@@ -593,7 +593,7 @@ class cmd_push(Command):
 
         old_rh = []
         try:
-            dir_to = bzrdir.BzrDir.open(location_url)
+            dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
             br_to = dir_to.open_branch()
         except errors.NotBranchError:
             # create a branch.

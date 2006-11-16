@@ -17,11 +17,13 @@
 # TODO: At some point, handle upgrades by just passing the whole request
 # across to run on the server.
 
+from urlparse import urlparse
 
 from bzrlib import branch, errors, repository
 from bzrlib.bzrdir import BzrDir, BzrDirFormat, RemoteBzrDirFormat
 from bzrlib.branch import Branch, BranchFormat
 from bzrlib.trace import mutter
+from bzrlib.smart import client
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
@@ -38,7 +40,11 @@ class RemoteBzrDir(BzrDir):
         
         default_format = BzrDirFormat.get_default_format()
         self._real_bzrdir = default_format.open(transport, _found=True)
-        self._real_bzrdir._format.probe_transport(transport)
+        path = urlparse(transport.base)[2]
+        #self._real_bzrdir._format.probe_transport(transport)
+        response = client.SmartClient(self.client).call('probe_dont_use', path)
+        if response == ('no',):
+            raise errors.NotBranchError(path=transport.base)
         self._branch = None
 
     def create_repository(self, shared=False):

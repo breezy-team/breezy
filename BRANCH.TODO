@@ -11,3 +11,10 @@ like.
 
 We should test that we upgrade branches and repositories through the smart
 server.
+
+The Remote*Format and RemoteBzrDir/Repository/Branch need to stop deriving from
+classes which implement any of their methods using VFS facilities.  This
+probably means rearranging the class heirarchy to introduce new base classes
+with no functionality implemented by VFS.
+
+

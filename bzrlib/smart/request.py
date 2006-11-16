@@ -203,6 +203,25 @@ class GetBundleRequest(SmartServerRequest):
         return SmartServerResponse((), tmpf.read())
 
 
+# This exists solely to help RemoteObjectHacking.  It should be removed
+# eventually.  It should not be considered part of the real smart server
+# protocol!
+class ProbeDontUseRequest(SmartServerRequest):
+
+    def do(self, path):
+        from bzrlib.bzrdir import BzrDirFormat
+        t = self._backing_transport.clone(path)
+        default_format = BzrDirFormat.get_default_format()
+        real_bzrdir = default_format.open(t, _found=True)
+        try:
+            real_bzrdir._format.probe_transport(t)
+        except (errors.NotBranchError, errors.UnknownFormatError):
+            answer = 'no'
+        else:
+            answer = 'yes'
+        return SmartServerResponse((answer,))
+
+
 request_handlers = registry.Registry()
 request_handlers.register_lazy(
     'append', 'bzrlib.smart.vfs', 'AppendRequest')
@@ -236,4 +255,5 @@ request_handlers.register_lazy(
     'rmdir', 'bzrlib.smart.vfs', 'RmdirCommand')
 request_handlers.register_lazy(
     'stat', 'bzrlib.smart.vfs', 'StatCommand')
-
+request_handlers.register_lazy(
+    'probe_dont_use', 'bzrlib.smart.request', 'ProbeDontUseRequest')

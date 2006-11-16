@@ -30,7 +30,7 @@ from bzrlib import (
     errors,
     transport,
     )
-from bzrlib.smart import medium, protocol
+from bzrlib.smart import client, medium, protocol
 
 # must do this otherwise urllib can't parse the urls properly :(
 for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
@@ -147,17 +147,12 @@ class RemoteTransport(transport.Transport):
 
     def _call2(self, method, *args):
         """Call a method on the remote server."""
-        request = self._medium.get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        smart_protocol.call(method, *args)
-        return smart_protocol.read_response_tuple()
+        return client.SmartClient(self._medium).call(method, *args)
 
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
-        request = self._medium.get_request()
-        smart_protocol = protocol.SmartClientRequestProtocolOne(request)
-        smart_protocol.call_with_body_bytes((method, ) + args, body)
-        return smart_protocol.read_response_tuple()
+        smart_client = client.SmartClient(self._medium)
+        return smart_client.call_with_body_bytes((method, ) + args, body)
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.

@@ -43,6 +43,7 @@ from bzrlib.transport.http import (
         SmartRequestHandler,
         )
 from bzrlib.smart import (
+        client,
         medium,
         protocol,
         request,
@@ -1108,6 +1109,8 @@ class TestSmartProtocol(tests.TestCase):
 
     def setUp(self):
         super(TestSmartProtocol, self).setUp()
+        # XXX: self.server_to_client doesn't seem to be used.  If so,
+        # InstrumentedServerProtocol is redundant too.
         self.server_to_client = []
         self.to_server = StringIO()
         self.to_client = StringIO()
@@ -1584,7 +1587,7 @@ class SampleSocket(object):
         else:
             return self.writefile
 
-        
+
 # TODO: Client feature that does get_bundle and then installs that into a
 # branch; this can be used in place of the regular pull/fetch operation when
 # coming from a smart server.
