@@ -225,9 +225,11 @@ class ParamikoVendor(SSHVendor):
             our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
         else:
             warning('Adding %s host key for %s: %s' % (keytype, host, server_key_hex))
-            if host not in BZR_HOSTKEYS:
-                BZR_HOSTKEYS[host] = {}
-            BZR_HOSTKEYS[host][keytype] = server_key
+            add = getattr(BZR_HOSTKEYS, 'add', None)
+            if add is not None: # paramiko >= 1.X.X
+                BZR_HOSTKEYS.add(host, keytype, server_key)
+            else:
+                BZR_HOSTKEYS.set_default(host, {})[keytype] = server_key
             our_server_key = server_key
             our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
             save_host_keys()
