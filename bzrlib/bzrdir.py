@@ -22,9 +22,6 @@ directories.
 
 # TODO: remove unittest dependency; put that stuff inside the test suite
 
-# TODO: The Format probe_transport seems a bit redundant with just trying to
-# open the bzrdir. -- mbp
-#
 # TODO: Can we move specific formats into separate modules to make this file
 # smaller?
 
@@ -1942,21 +1939,25 @@ class ConvertMetaToMeta(Converter):
 
 # This is not in remote.py because it's small, and needs to be registered.
 # Putting it in remote.py creates a circular import problem.
+# we can make it a lazy object if the control formats is turned into something
+# like a registry.
 class RemoteBzrDirFormat(BzrDirMetaFormat1):
     """Format representing bzrdirs accessed via a smart server"""
 
     def get_format_description(self):
         return 'bzr remote bzrdir'
     
-    def probe_transport(self, transport):
-        ## mutter("%r probe for bzrdir in %r" % (self, transport))
+    @classmethod
+    def probe_transport(klass, transport):
+        """Return a RemoteBzrDirFormat object if it looks possible."""
         try:
             transport.get_smart_client()
         except (NotImplementedError, AttributeError,
                 errors.TransportNotPossible):
-            raise errors.NoSmartServer(transport.base)
+            # no smart server, so not a branch for this format type.
+            raise errors.NotBranchError(path=transport.base)
         else:
-            return self
+            return klass()
 
     def _open(self, transport):
         return remote.RemoteBzrDir(transport)
@@ -1969,4 +1970,4 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
 
 # We can't use register_control_format because it adds it at a lower priority
 # than the existing branches, whereas this should take priority.
-BzrDirFormat._control_formats.insert(0, RemoteBzrDirFormat())
+BzrDirFormat._control_formats.insert(0, RemoteBzrDirFormat)
