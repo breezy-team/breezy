@@ -152,7 +152,7 @@ class RemoteTransport(transport.Transport):
     def _call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
         smart_client = client.SmartClient(self._medium)
-        return smart_client.call_with_body_bytes((method, ) + args, body)
+        return smart_client.call_with_body_bytes(method, args, body)
 
     def has(self, relpath):
         """Indicate whether a remote file of the given name exists or not.
