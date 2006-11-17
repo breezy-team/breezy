@@ -229,7 +229,7 @@ class ParamikoVendor(SSHVendor):
             if add is not None: # paramiko >= 1.X.X
                 BZR_HOSTKEYS.add(host, keytype, server_key)
             else:
-                BZR_HOSTKEYS.set_default(host, {})[keytype] = server_key
+                BZR_HOSTKEYS.setdefault(host, {})[keytype] = server_key
             our_server_key = server_key
             our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
             save_host_keys()
