@@ -22,8 +22,9 @@ from urlparse import urlparse
 from bzrlib import branch, errors, repository
 from bzrlib.bzrdir import BzrDir, BzrDirFormat, RemoteBzrDirFormat
 from bzrlib.branch import Branch, BranchFormat
-from bzrlib.trace import mutter
 from bzrlib.smart import client
+from bzrlib.trace import mutter
+from bzrlib.urlutils import unescape
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
 
@@ -40,7 +41,7 @@ class RemoteBzrDir(BzrDir):
         
         default_format = BzrDirFormat.get_default_format()
         self._real_bzrdir = default_format.open(transport, _found=True)
-        path = urlparse(transport.base)[2]
+        path = unescape(urlparse(transport.base)[2])
         #self._real_bzrdir._format.probe_transport(transport)
         response = client.SmartClient(self.client).call('probe_dont_use', path)
         if response == ('no',):
