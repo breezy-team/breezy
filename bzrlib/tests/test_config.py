@@ -818,8 +818,11 @@ class TestLocationConfig(TestCaseInTempDir):
 
         os.mkdir = checked_mkdir
         try:
-            self.my_config.set_user_option('foo', 'bar',
-                                           store=config.STORE_LOCATION)
+            self.callDeprecated(['The recurse option is deprecated as of '
+                                 '0.13.  The section "/a/c" has been '
+                                 'converted to use policies.'],
+                                self.my_config.set_user_option,
+                                'foo', 'bar', store=config.STORE_LOCATION)
         finally:
             os.mkdir = real_mkdir
 

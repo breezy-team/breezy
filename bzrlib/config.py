@@ -499,7 +499,7 @@ class LocationConfig(IniBasedConfig):
         if not recurse:
             return POLICY_NORECURSE
 
-        policy_key = '%s:policy' % option_name
+        policy_key = option_name + ':policy'
         try:
             policy_name = self._get_parser()[section][policy_key]
         except KeyError:
