@@ -99,21 +99,33 @@ class SmartTCPServer(object):
         ## self._server_thread.join()
 
 
-class SmartTCPServer_for_testing(SmartTCPServer):
+
+def SmartTCPServer_for_testing():
+    """Get a readwrite server for testing."""
+    return ReadWriteLocalSmartTCPServer(
+        transport.get_transport(urlutils.local_path_to_url('/')))
+
+
+def ReadonlySmartTCPServer_for_testing():
+    """Get a readonly server for testing."""
+    return ReadWriteLocalSmartTCPServer(
+        transport.get_transport('readonly+' + urlutils.local_path_to_url('/')))
+
+
+class ReadWriteLocalSmartTCPServer(SmartTCPServer):
     """Server suitable for use by transport tests.
     
-    This server is backed by the process's cwd.
+    This server has a _homedir of the current cwd.
     """
 
-    def __init__(self):
+    def __init__(self, transport):
         self._homedir = urlutils.local_path_to_url(os.getcwd())[7:]
         # The server is set up by default like for ssh access: the client
         # passes filesystem-absolute paths; therefore the server must look
         # them up relative to the root directory.  it might be better to act
         # a public server and have the server rewrite paths into the test
         # directory.
-        SmartTCPServer.__init__(self,
-            transport.get_transport(urlutils.local_path_to_url('/')))
+        SmartTCPServer.__init__(self, transport)
         
     def setUp(self):
         """Set up server for testing"""
