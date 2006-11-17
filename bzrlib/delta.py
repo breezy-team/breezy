@@ -163,8 +163,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,
     # mutter('start compare_trees')
 
     for (file_id, path, content_change, versioned, parent_id, name, kind,
-         executable) in new_tree.iter_changes(old_tree, want_unchanged, 
-                                              specific_file_ids):
+         executable) in new_tree._iter_changes(old_tree, want_unchanged, 
+                                               specific_file_ids):
         if not include_root and (None, None) == parent_id:
             continue
         assert kind[0] == kind[1] or None in kind

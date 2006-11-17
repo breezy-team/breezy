@@ -87,11 +87,11 @@ class Tree(object):
             include_root=include_root
             )
 
-    def iter_changes(self, from_tree, include_unchanged=False, 
+    def _iter_changes(self, from_tree, include_unchanged=False, 
                      specific_file_ids=None):
         intertree = InterTree.get(from_tree, self)
-        return intertree.iter_changes(from_tree, self, include_unchanged, 
-                                      specific_file_ids)
+        return intertree._iter_changes(from_tree, self, include_unchanged, 
+                                       specific_file_ids)
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -440,8 +440,8 @@ class InterTree(InterObject):
         return delta._compare_trees(self.source, self.target, want_unchanged,
             specific_file_ids, include_root)
 
-    def iter_changes(self, from_tree, to_tree, include_unchanged, 
-                     specific_file_ids):
+    def _iter_changes(self, from_tree, to_tree, include_unchanged, 
+                      specific_file_ids):
         """Generate an iterator of changes between trees.
 
         A tuple is returned:

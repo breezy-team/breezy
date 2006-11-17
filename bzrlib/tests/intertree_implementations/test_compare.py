@@ -248,7 +248,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_to_tree_no_parents_no_content(tree2)
-        self.assertEqual([], list(tree2.iter_changes(tree1)))
+        self.assertEqual([], list(tree2._iter_changes(tree1)))
 
     def added(self, tree, file_id):
         entry = tree.inventory[file_id]
@@ -275,7 +275,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
                           self.added(tree2, 'b-id'), 
                           self.added(tree2, 'c-id'),
                           self.deleted(tree1, 'empty-root-id')],
-                         list(tree2.iter_changes(tree1)))
+                         list(tree2._iter_changes(tree1)))
 
     def test_empty_to_abc_content_a_only(self):
         tree1 = self.make_branch_and_tree('1')
@@ -283,10 +283,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_to_tree_no_parents_abc_content(tree2)
         self.assertEqual([self.added(tree2, 'a-id')],
-                         list(tree2.iter_changes(tree1, 
+                         list(tree2._iter_changes(tree1, 
                                                  specific_file_ids=['a-id'])))
         self.assertEqual([self.deleted(tree2, 'a-id')],
-                         list(tree1.iter_changes(tree2, 
+                         list(tree1._iter_changes(tree2, 
                                                  specific_file_ids=['a-id'])))
 
     def test_empty_to_abc_content_a_and_c_only(self):
@@ -296,7 +296,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.get_to_tree_no_parents_abc_content(tree2)
         self.assertEqual([self.added(tree2, 'a-id'),
                           self.added(tree2, 'c-id')],
-                         list(tree2.iter_changes(tree1, 
+                         list(tree2._iter_changes(tree1, 
                                                  specific_file_ids=['a-id', 
                                                                     'c-id'])))
         d = self.intertree_class(tree1, tree2).compare(
@@ -317,7 +317,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual([self.added(tree1, 'empty-root-id'), 
                           deleted('root-id'), deleted('a-id'), 
                           deleted('b-id'), deleted('c-id')],
-                          list(tree1.iter_changes(tree2)))
+                          list(tree1._iter_changes(tree2)))
 
     def test_content_modification(self):
         tree1 = self.make_branch_and_tree('1')
@@ -328,7 +328,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual([('a-id', 'a', True, (True, True), 
                           (root_id, root_id), ('a', 'a'), 
                           ('file', 'file'), (False, False))], 
-                         list(tree2.iter_changes(tree1)))
+                         list(tree2._iter_changes(tree1)))
 
     def test_meta_modification(self):
         tree1 = self.make_branch_and_tree('1')
@@ -337,7 +337,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.get_to_tree_no_parents_abc_content_3(tree2)
         self.assertEqual([('c-id', 'b/c', False, (True, True), 
                           ('b-id', 'b-id'), ('c', 'c'), ('file', 'file'), 
-                          (False, True))], list(tree2.iter_changes(tree1)))
+                          (False, True))], list(tree2._iter_changes(tree1)))
 
     def test_file_rename(self):
         tree1 = self.make_branch_and_tree('1')
@@ -347,7 +347,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         root_id = tree1.inventory.root.file_id
         self.assertEqual([('a-id', 'd', False, (True, True), 
                           (root_id, root_id), ('a', 'd'), ('file', 'file'),
-                          (False, False))], list(tree2.iter_changes(tree1)))
+                          (False, False))], list(tree2._iter_changes(tree1)))
 
     def test_file_rename_and_modification(self):
         tree1 = self.make_branch_and_tree('1')
@@ -357,7 +357,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         root_id = tree1.inventory.root.file_id
         self.assertEqual([('a-id', 'd', True, (True, True), 
                           (root_id, root_id), ('a', 'd'), ('file', 'file'),
-                           (False, False))], list(tree2.iter_changes(tree1)))
+                           (False, False))], list(tree2._iter_changes(tree1)))
 
     def test_file_rename_and_meta_modification(self):
         tree1 = self.make_branch_and_tree('1')
@@ -367,7 +367,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         root_id = tree1.inventory.root.file_id
         self.assertEqual([('c-id', 'e', False, (True, True), 
                           ('b-id', root_id), ('c', 'e'), ('file', 'file'), 
-                          (False, True))], list(tree2.iter_changes(tree1)))
+                          (False, True))], list(tree2._iter_changes(tree1)))
 
     def test_unchanged_with_renames_and_modifications(self):
         """want_unchanged should generate a list of unchanged entries."""
@@ -389,5 +389,5 @@ class TestIterChanges(TestCaseWithTwoTrees):
                           ('a-id', 'd', True, (True, True), 
                           (root_id, root_id), ('a', 'd'), ('file', 'file'),
                           (False, False)), unchanged('c-id')],
-                         list(tree2.iter_changes(tree1, 
+                         list(tree2._iter_changes(tree1, 
                                                  include_unchanged=True)))
