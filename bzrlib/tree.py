@@ -457,12 +457,6 @@ class InterTree(InterObject):
 
         Iteration is done in parent-to-child order, relative to the to_tree.
         """
-        def get_versioned_kind(tree, file_id):
-            try:
-                return tree.kind(file_id)
-            except errors.NoSuchFile:
-                return None
-
         to_paths = {}
         if specific_file_ids is not None:
             specific_file_ids = set(specific_file_ids)
