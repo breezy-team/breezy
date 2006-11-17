@@ -75,6 +75,7 @@ import bzrlib
 from bzrlib import (
     errors,
     osutils,
+    symbol_versioning,
     urlutils,
     )
 import bzrlib.util.configobj.configobj as configobj
@@ -516,15 +517,19 @@ class LocationConfig(IniBasedConfig):
         except KeyError:
             pass
         else:
-            warning('The recurse option in section %s of %s '
-                    'has been converted to a policy_norecurse option'
-                    % (section, self._get_filename()))
+            symbol_versioning.warn(
+                'The recurse option is deprecated as of 0.13.  '
+                'The section "%s" has been converted to use policies.'
+                % section,
+                DeprecationWarning)
             del self._get_parser()[section]['recurse']
-            for key in self._get_parser()[section].keys():
-                if not key.endswith(':policy'):
-                    self._get_parser()[section]['%s:policy'%key] = 'norecurse'
+            if not recurse:
+                for key in self._get_parser()[section].keys():
+                    if not key.endswith(':policy'):
+                        self._get_parser()[section][key +
+                                                    ':policy'] = 'norecurse'
 
-        policy_key = '%s:policy'%option_name
+        policy_key = option_name + ':policy'
         policy_name = _policy_name[option_policy]
         if policy_name is not None:
             self._get_parser()[section][policy_key] = policy_name

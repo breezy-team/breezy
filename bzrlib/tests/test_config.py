@@ -766,10 +766,15 @@ class TestLocationConfig(TestCaseInTempDir):
             config.POLICY_NONE)
 
     def test_set_user_option_recurse_false_section(self):
-        # The following section has recurse=False set
+        # The following section has recurse=False set.  The test is to
+        # make sure that a normal option can be added to the section,
+        # converting recurse=False to the norecurse policy.
         self.get_branch_config('http://www.example.com/norecurse')
-        self.my_config.set_user_option('foo', 'bar',
-                                       store=config.STORE_LOCATION)
+        self.callDeprecated(['The recurse option is deprecated as of 0.13.  '
+                             'The section "http://www.example.com/norecurse" '
+                             'has been converted to use policies.'],
+                            self.my_config.set_user_option,
+                            'foo', 'bar', store=config.STORE_LOCATION)
         self.assertEqual(
             self.my_location_config._get_option_policy(
             'http://www.example.com/norecurse', 'foo'),
