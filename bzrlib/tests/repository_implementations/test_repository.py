@@ -589,6 +589,8 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         repo.get_revision_reconcile('ghost')
 
 
+# FIXME: document why this is a TestCaseWithTransport rather than a
+#        TestCaseWithRepository
 class TestEscaping(TestCaseWithTransport):
     """Test that repositories can be stored correctly on VFAT transports.
     
@@ -601,8 +603,16 @@ class TestEscaping(TestCaseWithTransport):
     """
 
     def test_on_vfat(self):
+        # dont bother with remote repository testing, because this test is
+        # about local disk layout/support.
+        from bzrlib.remote import RemoteRepositoryFormat
+        if isinstance(self.repository_format, RemoteRepositoryFormat):
+            return
         FOO_ID = 'foo<:>ID'
-        REV_ID = 'revid-1'
+        REV_ID = 'revid-1' 
+        # this makes a default format repository always, which is wrong: 
+        # it should be a TestCaseWithRepository in order to get the 
+        # default format.
         wt = self.make_branch_and_tree('repo')
         self.build_tree(["repo/foo"], line_endings='binary')
         # add file with id containing wierd characters
