@@ -40,7 +40,6 @@ class RevisionTree(Tree):
         self._repository = branch
         self._weave_store = branch.weave_store
         self._inventory = inv
-        assert inv.root is not None
         self._revision_id = revision_id
 
     def get_parent_ids(self):
@@ -97,11 +96,13 @@ class RevisionTree(Tree):
     def has_filename(self, filename):
         return bool(self.inventory.path2id(filename))
 
-    def list_files(self):
+    def list_files(self, include_root=False):
         # The only files returned by this are those from the version
         entries = self.inventory.iter_entries()
         # skip the root for compatability with the current apis.
-        entries.next()
+        if self.inventory.root is not None and not include_root:
+            # skip the root for compatability with the current apis.
+            entries.next()
         for path, entry in entries:
             yield path, 'V', entry.kind, entry.file_id, entry
 

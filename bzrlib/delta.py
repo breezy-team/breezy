@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -153,19 +153,19 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
         want_unchanged=want_unchanged,
         specific_files=specific_files,
         extra_trees=extra_trees,
-        require_versioned=require_versioned)
+        require_versioned=require_versioned,
+        include_root=False)
 
 
-def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
-
+def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,
+                   include_root):
     delta = TreeDelta()
     # mutter('start compare_trees')
 
-    root_id = new_tree.inventory.root.file_id
     for (file_id, path, content_change, versioned, parent_id, name, kind,
          executable) in new_tree.iter_changes(old_tree, want_unchanged, 
                                               specific_file_ids):
-        if file_id == root_id:
+        if not include_root and (None, None) == parent_id:
             continue
         assert kind[0] == kind[1] or None in kind
         # the only 'kind change' permitted is creation/deletion

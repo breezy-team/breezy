@@ -27,6 +27,7 @@ from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
+from bzrlib.symbol_versioning import zero_thirteen
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
@@ -173,9 +174,16 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         t = control.get_workingtree_transport(None)
         self.assertEqualDiff('Bazaar-NG Working Tree format 3',
                              t.get('format').read())
-        self.assertEqualDiff('<inventory format="5">\n'
-                             '</inventory>\n',
-                             t.get('inventory').read())
+        # self.assertContainsRe(t.get('inventory').read(), 
+        #                       '<inventory file_id="[^"]*" format="5">\n'
+        #                       '</inventory>\n',
+        #                      )
+        # WorkingTreeFormat3 doesn't default to creating a unique root id,
+        # because it is incompatible with older bzr versions
+        self.assertContainsRe(t.get('inventory').read(),
+                              '<inventory format="5">\n'
+                              '</inventory>\n',
+                             )
         self.assertEqualDiff('### bzr hashcache v5\n',
                              t.get('stat-cache').read())
         self.assertFalse(t.has('inventory.basis'))
@@ -251,56 +259,15 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
 class TestNonFormatSpecificCode(TestCaseWithTransport):
     """This class contains tests of workingtree that are not format specific."""
 
-    
     def test_gen_file_id(self):
-        gen_file_id = bzrlib.workingtree.gen_file_id
+        file_id = self.applyDeprecated(zero_thirteen, workingtree.gen_file_id,
+                                      'filename')
+        self.assertStartsWith(file_id, 'filename-')
 
-        # We try to use the filename if possible
-        self.assertStartsWith(gen_file_id('bar'), 'bar-')
-
-        # but we squash capitalization, and remove non word characters
-        self.assertStartsWith(gen_file_id('Mwoo oof\t m'), 'mwoooofm-')
-
-        # We also remove leading '.' characters to prevent hidden file-ids
-        self.assertStartsWith(gen_file_id('..gam.py'), 'gam.py-')
-        self.assertStartsWith(gen_file_id('..Mwoo oof\t m'), 'mwoooofm-')
-
-        # we remove unicode characters, and still don't end up with a 
-        # hidden file id
-        self.assertStartsWith(gen_file_id(u'\xe5\xb5.txt'), 'txt-')
+    def test_gen_root_id(self):
+        file_id = self.applyDeprecated(zero_thirteen, workingtree.gen_root_id)
+        self.assertStartsWith(file_id, 'tree_root-')
         
-        # Our current method of generating unique ids adds 33 characters
-        # plus an serial number (log10(N) characters)
-        # to the end of the filename. We now restrict the filename portion to
-        # be <= 20 characters, so the maximum length should now be approx < 60
-
-        # Test both case squashing and length restriction
-        fid = gen_file_id('A'*50 + '.txt')
-        self.assertStartsWith(fid, 'a'*20 + '-')
-        self.failUnless(len(fid) < 60)
-
-        # restricting length happens after the other actions, so
-        # we preserve as much as possible
-        fid = gen_file_id('\xe5\xb5..aBcd\tefGhijKLMnop\tqrstuvwxyz')
-        self.assertStartsWith(fid, 'abcdefghijklmnopqrst-')
-        self.failUnless(len(fid) < 60)
-
-    def test_next_id_suffix(self):
-        bzrlib.workingtree._gen_id_suffix = None
-        bzrlib.workingtree._next_id_suffix()
-        self.assertNotEqual(None, bzrlib.workingtree._gen_id_suffix)
-        bzrlib.workingtree._gen_id_suffix = "foo-"
-        bzrlib.workingtree._gen_id_serial = 1
-        self.assertEqual("foo-2", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-3", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-4", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-5", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-6", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-7", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-8", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-9", bzrlib.workingtree._next_id_suffix())
-        self.assertEqual("foo-10", bzrlib.workingtree._next_id_suffix())
-
     def test__translate_ignore_rule(self):
         tree = self.make_branch_and_tree('.')
         # translation should return the regex, the number of groups in it,

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # Written by Martin Pool.
 # Modified by Johan Rydberg <jrydberg@gnu.org>
 # Modified by Robert Collins <robert.collins@canonical.com>
@@ -77,6 +77,8 @@ import bzrlib
 from bzrlib import (
     cache_utf8,
     errors,
+    patiencediff,
+    progress,
     )
 from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
         InvalidRevisionId, KnitCorrupt, KnitHeaderError, \
@@ -521,7 +523,8 @@ class KnitVersionedFile(VersionedFile):
             delta_seq = None
             for parent_id in parents:
                 merge_content = self._get_content(parent_id, parent_texts)
-                seq = KnitSequenceMatcher(None, merge_content.text(), content.text())
+                seq = patiencediff.PatienceSequenceMatcher(
+                                   None, merge_content.text(), content.text())
                 if delta_seq is None:
                     # setup a delta seq to reuse.
                     delta_seq = seq
@@ -538,7 +541,8 @@ class KnitVersionedFile(VersionedFile):
                 reference_content = self._get_content(parents[0], parent_texts)
                 new_texts = content.text()
                 old_texts = reference_content.text()
-                delta_seq = KnitSequenceMatcher(None, old_texts, new_texts)
+                delta_seq = patiencediff.PatienceSequenceMatcher(
+                                                 None, old_texts, new_texts)
             return self._make_line_delta(delta_seq, content)
 
     def _make_line_delta(self, delta_seq, new_content):
@@ -798,10 +802,13 @@ class KnitVersionedFile(VersionedFile):
             text_map[version_id] = text 
         return text_map, final_content 
 
-    def iter_lines_added_or_present_in_versions(self, version_ids=None):
+    def iter_lines_added_or_present_in_versions(self, version_ids=None, 
+                                                pb=None):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         if version_ids is None:
             version_ids = self.versions()
+        if pb is None:
+            pb = progress.DummyProgress()
         # we don't care about inclusions, the caller cares.
         # but we need to setup a list of records to visit.
         # we need version_id, position, length
@@ -819,33 +826,26 @@ class KnitVersionedFile(VersionedFile):
                 data_pos, length = self._index.get_position(version_id)
                 version_id_records.append((version_id, data_pos, length))
 
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
         count = 0
         total = len(version_id_records)
-        try:
+        pb.update('Walking content.', count, total)
+        for version_id, data, sha_value in \
+            self._data.read_records_iter(version_id_records):
             pb.update('Walking content.', count, total)
-            for version_id, data, sha_value in \
-                self._data.read_records_iter(version_id_records):
-                pb.update('Walking content.', count, total)
-                method = self._index.get_method(version_id)
-                version_idx = self._index.lookup(version_id)
-                assert method in ('fulltext', 'line-delta')
-                if method == 'fulltext':
-                    content = self.factory.parse_fulltext(data, version_idx)
-                    for line in content.text():
+            method = self._index.get_method(version_id)
+            version_idx = self._index.lookup(version_id)
+            assert method in ('fulltext', 'line-delta')
+            if method == 'fulltext':
+                content = self.factory.parse_fulltext(data, version_idx)
+                for line in content.text():
+                    yield line
+            else:
+                delta = self.factory.parse_line_delta(data, version_idx)
+                for start, end, count, lines in delta:
+                    for origin, line in lines:
                         yield line
-                else:
-                    delta = self.factory.parse_line_delta(data, version_idx)
-                    for start, end, count, lines in delta:
-                        for origin, line in lines:
-                            yield line
-                count +=1
-            pb.update('Walking content.', total, total)
-            pb.finished()
-        except:
-            pb.update('Walking content.', total, total)
-            pb.finished()
-            raise
+            count +=1
+        pb.update('Walking content.', total, total)
         
     def num_versions(self):
         """See VersionedFile.num_versions()."""
@@ -1256,35 +1256,38 @@ class _KnitIndex(_KnitComponentFile):
         """
         lines = []
         encode_utf8 = cache_utf8.encode
-        for version_id, options, pos, size, parents in versions:
-            line = "\n%s %s %s %s %s :" % (encode_utf8(version_id),
-                                           ','.join(options),
-                                           pos,
-                                           size,
-                                           self._version_list_to_index(parents))
-            assert isinstance(line, str), \
-                'content must be utf-8 encoded: %r' % (line,)
-            lines.append(line)
-        if not self._need_to_create:
-            self._transport.append_bytes(self._filename, ''.join(lines))
-        else:
-            sio = StringIO()
-            sio.write(self.HEADER)
-            sio.writelines(lines)
-            sio.seek(0)
-            self._transport.put_file_non_atomic(self._filename, sio,
-                                create_parent_dir=self._create_parent_dir,
-                                mode=self._file_mode,
-                                dir_mode=self._dir_mode)
-            self._need_to_create = False
+        orig_history = self._history[:]
+        orig_cache = self._cache.copy()
 
-        # cache after writing, so that a failed write leads to missing cache
-        # entries not extra ones. XXX TODO: RBC 20060502 in the event of a 
-        # failure, reload the index or flush it or some such, to prevent
-        # writing records that did complete twice.
-        for version_id, options, pos, size, parents in versions:
-            self._cache_version(version_id, options, pos, size, parents)
-        
+        try:
+            for version_id, options, pos, size, parents in versions:
+                line = "\n%s %s %s %s %s :" % (encode_utf8(version_id),
+                                               ','.join(options),
+                                               pos,
+                                               size,
+                                               self._version_list_to_index(parents))
+                assert isinstance(line, str), \
+                    'content must be utf-8 encoded: %r' % (line,)
+                lines.append(line)
+                self._cache_version(version_id, options, pos, size, parents)
+            if not self._need_to_create:
+                self._transport.append_bytes(self._filename, ''.join(lines))
+            else:
+                sio = StringIO()
+                sio.write(self.HEADER)
+                sio.writelines(lines)
+                sio.seek(0)
+                self._transport.put_file_non_atomic(self._filename, sio,
+                                    create_parent_dir=self._create_parent_dir,
+                                    mode=self._file_mode,
+                                    dir_mode=self._dir_mode)
+                self._need_to_create = False
+        except:
+            # If any problems happen, restore the original values and re-raise
+            self._history = orig_history
+            self._cache = orig_cache
+            raise
+
     def has_version(self, version_id):
         """True if the version is in the index."""
         return (version_id in self._cache)

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_command_encoding',
                      'bzrlib.tests.blackbox.test_commit',
                      'bzrlib.tests.blackbox.test_conflicts',
+                     'bzrlib.tests.blackbox.test_debug',
                      'bzrlib.tests.blackbox.test_diff',
                      'bzrlib.tests.blackbox.test_exceptions',
                      'bzrlib.tests.blackbox.test_export',
@@ -60,6 +61,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_ignored',
                      'bzrlib.tests.blackbox.test_info',
                      'bzrlib.tests.blackbox.test_init',
+                     'bzrlib.tests.blackbox.test_inventory',
                      'bzrlib.tests.blackbox.test_locale',
                      'bzrlib.tests.blackbox.test_log',
                      'bzrlib.tests.blackbox.test_logformats',
@@ -74,6 +76,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_remerge',
                      'bzrlib.tests.blackbox.test_remove',
                      'bzrlib.tests.blackbox.test_re_sign',
+                     'bzrlib.tests.blackbox.test_remove_tree',
                      'bzrlib.tests.blackbox.test_revert',
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_history',
@@ -88,6 +91,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_uncommit',
                      'bzrlib.tests.blackbox.test_update',
                      'bzrlib.tests.blackbox.test_upgrade',
+                     'bzrlib.tests.blackbox.test_version_info',
                      'bzrlib.tests.blackbox.test_versioning',
                      'bzrlib.tests.blackbox.test_whoami',
                      ]

@@ -1,6 +1,6 @@
 # Bazaar -- distributed version control
 #
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,13 +19,19 @@
 """A collection of function for handling URL operations."""
 
 import os
-from posixpath import split as _posix_split, normpath as _posix_normpath
 import re
 import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from posixpath import split as _posix_split, normpath as _posix_normpath
 import urllib
 
-import bzrlib.errors as errors
-import bzrlib.osutils
+from bzrlib import (
+    errors,
+    osutils,
+    )
+""")
 
 
 def basename(url, exclude_trailing_slash=True):
@@ -75,7 +81,7 @@ def file_relpath(base, path):
 
     base = local_path_from_url(base)
     path = local_path_from_url(path)
-    return escape(bzrlib.osutils.relpath(base, path))
+    return escape(osutils.relpath(base, path))
 
 
 def _find_scheme_and_separator(url):
@@ -168,7 +174,7 @@ def _posix_local_path_to_url(path):
     # importing directly from posixpath allows us to test this 
     # on non-posix platforms
     return 'file://' + escape(_posix_normpath(
-        bzrlib.osutils._posix_abspath(path)))
+        osutils._posix_abspath(path)))
 
 
 def _win32_local_path_from_url(url):
@@ -197,8 +203,8 @@ def _win32_local_path_to_url(path):
     #       which actually strips trailing space characters.
     #       The worst part is that under linux ntpath.abspath has different
     #       semantics, since 'nt' is not an available module.
-    win32_path = bzrlib.osutils._nt_normpath(
-        bzrlib.osutils._win32_abspath(path)).replace('\\', '/')
+    win32_path = osutils._nt_normpath(
+        osutils._win32_abspath(path)).replace('\\', '/')
     return 'file:///' + win32_path[0].upper() + ':' + escape(win32_path[2:])
 
 

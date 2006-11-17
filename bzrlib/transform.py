@@ -21,7 +21,7 @@ from stat import S_ISREG
 from bzrlib import bzrdir, errors
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
-                           ExistingLimbo, ImmortalLimbo)
+                           ExistingLimbo, ImmortalLimbo, NoFinalPath)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
                             delete_any)
@@ -292,7 +292,7 @@ class TreeTransform(object):
         except KeyError:
             return
         try:
-            mode = os.stat(old_path).st_mode
+            mode = os.stat(self._tree.abspath(old_path)).st_mode
         except OSError, e:
             if e.errno == errno.ENOENT:
                 return
@@ -457,7 +457,10 @@ class TreeTransform(object):
         try:
             return self._new_name[trans_id]
         except KeyError:
-            return os.path.basename(self._tree_id_paths[trans_id])
+            try:
+                return os.path.basename(self._tree_id_paths[trans_id])
+            except KeyError:
+                raise NoFinalPath(trans_id, self)
 
     def by_parent(self):
         """Return a map of parent: children for known parents.
@@ -570,7 +573,10 @@ class TreeTransform(object):
             parent_id = trans_id
             while parent_id is not ROOT_PARENT:
                 seen.add(parent_id)
-                parent_id = self.final_parent(parent_id)
+                try:
+                    parent_id = self.final_parent(parent_id)
+                except KeyError:
+                    break
                 if parent_id == trans_id:
                     conflicts.append(('parent loop', trans_id))
                 if parent_id in seen:
@@ -954,10 +960,13 @@ def build_tree(tree, wt):
       it is silently replaced.
     - Otherwise, conflict resolution will move the old file to 'oldname.moved'.
     """
-    assert 2 > len(wt.inventory)
+    if len(wt.inventory) > 1:  # more than just a root
+        raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
+    if tree.inventory.root is not None:
+        wt.set_root_id(tree.inventory.root.file_id)
     tt = TreeTransform(wt)
     divert = set()
     try:
@@ -1229,8 +1238,12 @@ def revert(working_tree, target_tree, filenames, backups=False,
         pp.next_phase()
         wt_interesting = [i for i in working_tree.inventory if interesting(i)]
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        basis_tree = None
         try:
             for id_num, file_id in enumerate(wt_interesting):
+                if (working_tree.inventory.is_root(file_id) and 
+                    len(target_tree.inventory) == 0):
+                    continue
                 child_pb.update("New file check", id_num+1, 
                                 len(sorted_interesting))
                 if file_id not in target_tree:
@@ -1240,18 +1253,21 @@ def revert(working_tree, target_tree, filenames, backups=False,
                         file_kind = working_tree.kind(file_id)
                     except NoSuchFile:
                         file_kind = None
+                    delete_merge_modified = (file_id in merge_modified)
                     if file_kind != 'file' and file_kind is not None:
                         keep_contents = False
-                        delete_merge_modified = False
                     else:
+                        if basis_tree is None:
+                            basis_tree = working_tree.basis_tree()
+                        wt_sha1 = working_tree.get_file_sha1(file_id)
                         if (file_id in merge_modified and 
-                            merge_modified[file_id] == 
-                            working_tree.get_file_sha1(file_id)):
+                            merge_modified[file_id] == wt_sha1):
                             keep_contents = False
-                            delete_merge_modified = True
+                        elif (file_id in basis_tree and 
+                            basis_tree.get_file_sha1(file_id) == wt_sha1):
+                            keep_contents = False
                         else:
                             keep_contents = True
-                            delete_merge_modified = False
                     if not keep_contents:
                         tt.delete_contents(trans_id)
                     if delete_merge_modified:

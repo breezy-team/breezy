@@ -1,6 +1,4 @@
-# Bazaar -- distributed version control
-#
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +15,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from cStringIO import StringIO
+import os
+import re
+import stat
+from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
+                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
+import sys
+import time
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 import errno
 from ntpath import (abspath as _nt_abspath,
                     join as _nt_join,
@@ -24,32 +32,29 @@ from ntpath import (abspath as _nt_abspath,
                     realpath as _nt_realpath,
                     splitdrive as _nt_splitdrive,
                     )
-import os
-from os import listdir
 import posixpath
-import re
 import sha
 import shutil
-from shutil import copyfile
-import stat
-from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
-                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
+from shutil import (
+    rmtree,
+    )
 import string
-import sys
-import time
-import types
 import tempfile
+from tempfile import (
+    mkdtemp,
+    )
 import unicodedata
 
+from bzrlib import (
+    errors,
+    )
+""")
+
 import bzrlib
-from bzrlib.errors import (BzrError,
-                           BzrBadParameterNotUnicode,
-                           NoSuchFile,
-                           PathNotChild,
-                           IllegalPath,
-                           )
-from bzrlib.symbol_versioning import (deprecated_function, 
-        zero_nine)
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    zero_nine,
+    )
 from bzrlib.trace import mutter
 
 
@@ -122,7 +127,7 @@ def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
         return _mapper(_lstat(f).st_mode)
     except OSError, e:
         if getattr(e, 'errno', None) == errno.ENOENT:
-            raise bzrlib.errors.NoSuchFile(f)
+            raise errors.NoSuchFile(f)
         raise
 
 
@@ -144,7 +149,7 @@ def kind_marker(kind):
     elif kind == 'symlink':
         return '@'
     else:
-        raise BzrError('invalid file kind %r' % kind)
+        raise errors.BzrError('invalid file kind %r' % kind)
 
 lexists = getattr(os.path, 'lexists', None)
 if lexists is None:
@@ -159,7 +164,7 @@ if lexists is None:
             if e.errno == errno.ENOENT:
                 return False;
             else:
-                raise BzrError("lstat/stat of (%r): %r" % (f, e))
+                raise errors.BzrError("lstat/stat of (%r): %r" % (f, e))
 
 
 def fancy_rename(old, new, rename_func, unlink_func):
@@ -186,7 +191,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     file_existed = False
     try:
         rename_func(new, tmp_name)
-    except (NoSuchFile,), e:
+    except (errors.NoSuchFile,), e:
         pass
     except IOError, e:
         # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
@@ -221,7 +226,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
 # choke on a Unicode string containing a relative path if
 # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
 # string.
-_fs_enc = sys.getfilesystemencoding()
+_fs_enc = sys.getfilesystemencoding() or 'utf-8'
 def _posix_abspath(path):
     # jam 20060426 rather than encoding to fsencoding
     # copy posixpath.abspath, but use os.getcwdu instead
@@ -302,11 +307,12 @@ realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = os.path.normpath
 getcwd = os.getcwdu
-mkdtemp = tempfile.mkdtemp
 rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
-rmtree = shutil.rmtree
+# These were already imported into local scope
+# mkdtemp = tempfile.mkdtemp
+# rmtree = shutil.rmtree
 
 MIN_ABS_PATHLENGTH = 1
 
@@ -326,11 +332,11 @@ if sys.platform == 'win32':
         """Error handler for shutil.rmtree function [for win32]
         Helps to remove files and dirs marked as read-only.
         """
-        type_, value = excinfo[:2]
+        exception = excinfo[1]
         if function in (os.remove, os.rmdir) \
-            and type_ == OSError \
-            and value.errno == errno.EACCES:
-            bzrlib.osutils.make_writable(path)
+            and isinstance(exception, OSError) \
+            and exception.errno == errno.EACCES:
+            make_writable(path)
             function(path)
         else:
             raise
@@ -366,6 +372,11 @@ def get_terminal_encoding():
             mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
     else:
         mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+    if output_encoding == 'cp0':
+        # invalid encoding (cp0 means 'no codepage' on Windows)
+        output_encoding = bzrlib.user_encoding
+        mutter('cp0 is invalid encoding.'
+               ' encoding stdout as bzrlib.user_encoding %r', output_encoding)
     return output_encoding
 
 
@@ -440,19 +451,6 @@ def is_inside(dir, fname):
     
     The empty string as a dir name is taken as top-of-tree and matches 
     everything.
-    
-    >>> is_inside('src', pathjoin('src', 'foo.c'))
-    True
-    >>> is_inside('src', 'srccontrol')
-    False
-    >>> is_inside('src', pathjoin('src', 'a', 'a', 'a', 'foo.c'))
-    True
-    >>> is_inside('foo.c', 'foo.c')
-    True
-    >>> is_inside('foo.c', '')
-    False
-    >>> is_inside('', 'foo.c')
-    True
     """
     # XXX: Most callers of this can actually do something smarter by 
     # looking at the inventory
@@ -581,8 +579,8 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         tt = time.localtime(t)
         offset = local_time_offset(t)
     else:
-        raise BzrError("unsupported timezone format %r" % timezone,
-                       ['options are "utc", "original", "local"'])
+        raise errors.BzrError("unsupported timezone format %r" % timezone,
+                              ['options are "utc", "original", "local"'])
     if date_fmt is None:
         date_fmt = "%a %Y-%m-%d %H:%M:%S"
     if show_offset:
@@ -596,6 +594,54 @@ def compact_date(when):
     return time.strftime('%Y%m%d%H%M%S', time.gmtime(when))
     
 
+def format_delta(delta):
+    """Get a nice looking string for a time delta.
+
+    :param delta: The time difference in seconds, can be positive or negative.
+        positive indicates time in the past, negative indicates time in the
+        future. (usually time.time() - stored_time)
+    :return: String formatted to show approximate resolution
+    """
+    delta = int(delta)
+    if delta >= 0:
+        direction = 'ago'
+    else:
+        direction = 'in the future'
+        delta = -delta
+
+    seconds = delta
+    if seconds < 90: # print seconds up to 90 seconds
+        if seconds == 1:
+            return '%d second %s' % (seconds, direction,)
+        else:
+            return '%d seconds %s' % (seconds, direction)
+
+    minutes = int(seconds / 60)
+    seconds -= 60 * minutes
+    if seconds == 1:
+        plural_seconds = ''
+    else:
+        plural_seconds = 's'
+    if minutes < 90: # print minutes, seconds up to 90 minutes
+        if minutes == 1:
+            return '%d minute, %d second%s %s' % (
+                    minutes, seconds, plural_seconds, direction)
+        else:
+            return '%d minutes, %d second%s %s' % (
+                    minutes, seconds, plural_seconds, direction)
+
+    hours = int(minutes / 60)
+    minutes -= 60 * hours
+    if minutes == 1:
+        plural_minutes = ''
+    else:
+        plural_minutes = 's'
+
+    if hours == 1:
+        return '%d hour, %d minute%s %s' % (hours, minutes,
+                                            plural_minutes, direction)
+    return '%d hours, %d minute%s %s' % (hours, minutes,
+                                         plural_minutes, direction)
 
 def filesize(f):
     """Return size of given open file."""
@@ -611,10 +657,10 @@ try:
 except (NotImplementedError, AttributeError):
     # If python doesn't have os.urandom, or it doesn't work,
     # then try to first pull random data from /dev/urandom
-    if os.path.exists("/dev/urandom"):
+    try:
         rand_bytes = file('/dev/urandom', 'rb').read
     # Otherwise, use this hack as a last resort
-    else:
+    except (IOError, OSError):
         # not well seeded, but better than nothing
         def rand_bytes(n):
             import random
@@ -642,22 +688,8 @@ def rand_chars(num):
 ## decomposition (might be too tricksy though.)
 
 def splitpath(p):
-    """Turn string into list of parts.
-
-    >>> splitpath('a')
-    ['a']
-    >>> splitpath('a/b')
-    ['a', 'b']
-    >>> splitpath('a/./b')
-    ['a', 'b']
-    >>> splitpath('a/.b')
-    ['a', '.b']
-    >>> splitpath('a/../b')
-    Traceback (most recent call last):
-    ...
-    BzrError: sorry, '..' not allowed in path
-    """
-    assert isinstance(p, types.StringTypes)
+    """Turn string into list of parts."""
+    assert isinstance(p, basestring)
 
     # split on either delimiter because people might use either on
     # Windows
@@ -666,7 +698,7 @@ def splitpath(p):
     rps = []
     for f in ps:
         if f == '..':
-            raise BzrError("sorry, %r not allowed in path" % f)
+            raise errors.BzrError("sorry, %r not allowed in path" % f)
         elif (f == '.') or (f == ''):
             pass
         else:
@@ -677,7 +709,7 @@ def joinpath(p):
     assert isinstance(p, list)
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
-            raise BzrError("sorry, %r not allowed in path" % f)
+            raise errors.BzrError("sorry, %r not allowed in path" % f)
     return pathjoin(*p)
 
 
@@ -705,14 +737,14 @@ def hardlinks_good():
 def link_or_copy(src, dest):
     """Hardlink a file, or copy it if it can't be hardlinked."""
     if not hardlinks_good():
-        copyfile(src, dest)
+        shutil.copyfile(src, dest)
         return
     try:
         os.link(src, dest)
     except (OSError, IOError), e:
         if e.errno != errno.EXDEV:
             raise
-        copyfile(src, dest)
+        shutil.copyfile(src, dest)
 
 def delete_any(full_path):
     """Delete a file or directory."""
@@ -776,7 +808,7 @@ def relpath(base, path):
         if tail:
             s.insert(0, tail)
     else:
-        raise PathNotChild(rp, base)
+        raise errors.PathNotChild(rp, base)
 
     if s:
         return pathjoin(*s)
@@ -797,7 +829,7 @@ def safe_unicode(unicode_or_utf8_string):
     try:
         return unicode_or_utf8_string.decode('utf8')
     except UnicodeDecodeError:
-        raise BzrBadParameterNotUnicode(unicode_or_utf8_string)
+        raise errors.BzrBadParameterNotUnicode(unicode_or_utf8_string)
 
 
 _platform_normalizes_filenames = False
@@ -902,7 +934,7 @@ def check_legal_path(path):
     if sys.platform != "win32":
         return
     if _validWin32PathRE.match(path) is None:
-        raise IllegalPath(path)
+        raise errors.IllegalPath(path)
 
 
 def walkdirs(top, prefix=""):
@@ -941,7 +973,7 @@ def walkdirs(top, prefix=""):
     lstat = os.lstat
     pending = []
     _directory = _directory_kind
-    _listdir = listdir
+    _listdir = os.listdir
     pending = [(prefix, "", _directory, None, top)]
     while pending:
         dirblock = []
@@ -1058,6 +1090,41 @@ def get_user_encoding():
                          "  Continuing with ascii encoding.\n"
                          % (e, os.environ.get('LANG')))
 
-    if _cached_user_encoding is None:
+    # Windows returns 'cp0' to indicate there is no code page. So we'll just
+    # treat that as ASCII, and not support printing unicode characters to the
+    # console.
+    if _cached_user_encoding in (None, 'cp0'):
         _cached_user_encoding = 'ascii'
     return _cached_user_encoding
+
+
+def recv_all(socket, bytes):
+    """Receive an exact number of bytes.
+
+    Regular Socket.recv() may return less than the requested number of bytes,
+    dependning on what's in the OS buffer.  MSG_WAITALL is not available
+    on all platforms, but this should work everywhere.  This will return
+    less than the requested amount if the remote end closes.
+
+    This isn't optimized and is intended mostly for use in testing.
+    """
+    b = ''
+    while len(b) < bytes:
+        new = socket.recv(bytes - len(b))
+        if new == '':
+            break # eof
+        b += new
+    return b
+
+def dereference_path(path):
+    """Determine the real path to a file.
+
+    All parent elements are dereferenced.  But the file itself is not
+    dereferenced.
+    :param path: The original path.  May be absolute or relative.
+    :return: the real path *to* the file
+    """
+    parent, base = os.path.split(path)
+    # The pathjoin for '.' is a workaround for Python bug #1213894.
+    # (initial path components aren't dereferenced)
+    return pathjoin(realpath(pathjoin('.', parent)), base)

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -270,9 +270,11 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_to_tree_no_parents_abc_content(tree2)
             
-        self.assertEqual([self.added(tree2, 'a-id'), 
+        self.assertEqual([self.added(tree2, 'root-id'),
+                          self.added(tree2, 'a-id'), 
                           self.added(tree2, 'b-id'), 
-                          self.added(tree2, 'c-id')],
+                          self.added(tree2, 'c-id'),
+                          self.deleted(tree1, 'empty-root-id')],
                          list(tree2.iter_changes(tree1)))
 
     def test_empty_to_abc_content_a_only(self):
@@ -312,9 +314,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
                     (entry.parent_id, None),
                     (entry.name, None), (entry.kind, None), 
                     (entry.executable, None))
-            
-        self.assertEqual([deleted('a-id'), deleted('b-id'), deleted('c-id')],
-                         list(tree1.iter_changes(tree2)))
+        self.assertEqual([self.added(tree1, 'empty-root-id'), 
+                          deleted('root-id'), deleted('a-id'), 
+                          deleted('b-id'), deleted('c-id')],
+                          list(tree1.iter_changes(tree2)))
 
     def test_content_modification(self):
         tree1 = self.make_branch_and_tree('1')

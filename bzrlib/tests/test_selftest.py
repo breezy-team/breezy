@@ -1,8 +1,9 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,6 +16,7 @@
 
 """Tests for the test framework."""
 
+import cStringIO
 import os
 from StringIO import StringIO
 import sys
@@ -22,13 +24,19 @@ import time
 import unittest
 import warnings
 
-from bzrlib import osutils
 import bzrlib
+from bzrlib import (
+    bzrdir,
+    memorytree,
+    osutils,
+    repository,
+    )
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
                           ChrootedTestCase,
                           TestCase,
                           TestCaseInTempDir,
+                          TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
                           TestSkipped,
                           TestSuite,
@@ -55,14 +63,14 @@ class SelftestTests(TestCase):
                           _load_module_by_name,
                           'bzrlib.no-name-yet')
 
-
 class MetaTestLog(TestCase):
 
     def test_logging(self):
         """Test logs are captured when a test fails."""
         self.log('a test message')
         self._log_file.flush()
-        self.assertContainsRe(self._get_log(), 'a test message\n')
+        self.assertContainsRe(self._get_log(keep_log_file=True),
+                              'a test message\n')
 
 
 class TestTreeShape(TestCaseInTempDir):
@@ -432,6 +440,47 @@ class TestTestCaseInTempDir(TestCaseInTempDir):
         self.assertEqual(self.test_home_dir, os.environ['HOME'])
 
 
+class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
+
+    def test_home_is_non_existant_dir_under_root(self):
+        """The test_home_dir for TestCaseWithMemoryTransport is missing.
+
+        This is because TestCaseWithMemoryTransport is for tests that do not
+        need any disk resources: they should be hooked into bzrlib in such a 
+        way that no global settings are being changed by the test (only a 
+        few tests should need to do that), and having a missing dir as home is
+        an effective way to ensure that this is the case.
+        """
+        self.assertEqual(self.TEST_ROOT + "/MemoryTransportMissingHomeDir",
+            self.test_home_dir)
+        self.assertEqual(self.test_home_dir, os.environ['HOME'])
+        
+    def test_cwd_is_TEST_ROOT(self):
+        self.assertEqual(self.test_dir, self.TEST_ROOT)
+        cwd = osutils.getcwd()
+        self.assertEqual(self.test_dir, cwd)
+
+    def test_make_branch_and_memory_tree(self):
+        """In TestCaseWithMemoryTransport we should not make the branch on disk.
+
+        This is hard to comprehensively robustly test, so we settle for making
+        a branch and checking no directory was created at its relpath.
+        """
+        tree = self.make_branch_and_memory_tree('dir')
+        self.failIfExists('dir')
+        self.assertIsInstance(tree, memorytree.MemoryTree)
+
+    def test_make_branch_and_memory_tree_with_format(self):
+        """make_branch_and_memory_tree should accept a format option."""
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = repository.RepositoryFormat7()
+        tree = self.make_branch_and_memory_tree('dir', format=format)
+        self.failIfExists('dir')
+        self.assertIsInstance(tree, memorytree.MemoryTree)
+        self.assertEqual(format.repository_format.__class__,
+            tree.branch.repository._format.__class__)
+
+
 class TestTestCaseWithTransport(TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
@@ -453,9 +502,9 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
 
     def test_get_readonly_url_http(self):
         from bzrlib.transport import get_transport
-        from bzrlib.transport.local import LocalRelpathServer
+        from bzrlib.transport.local import LocalURLServer
         from bzrlib.transport.http import HttpServer, HttpTransportBase
-        self.transport_server = LocalRelpathServer
+        self.transport_server = LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
         url = self.get_readonly_url()
@@ -525,64 +574,8 @@ class MockProgress(_BaseProgressBar):
 
 class TestTestResult(TestCase):
 
-    def test_progress_bar_style_quiet(self):
-        # test using a progress bar.
-        dummy_test = TestTestResult('test_progress_bar_style_quiet')
-        dummy_error = (Exception, None, [])
-        mypb = MockProgress()
-        mypb.update('Running tests', 0, 4)
-        last_calls = mypb.calls[:]
-
-        result = bzrlib.tests._MyResult(self._log_file,
-                                        descriptions=0,
-                                        verbosity=1,
-                                        pb=mypb)
-        self.assertEqual(last_calls, mypb.calls)
-
-        def shorten(s):
-            """Shorten a string based on the terminal width"""
-            return result._ellipsise_unimportant_words(s,
-                                 osutils.terminal_width())
-
-        # an error 
-        result.startTest(dummy_test)
-        # starting a test prints the test name
-        last_calls += [('update', '...tyle_quiet', 0, None)]
-        self.assertEqual(last_calls, mypb.calls)
-        result.addError(dummy_test, dummy_error)
-        last_calls += [('update', 'ERROR        ', 1, None),
-                       ('note', shorten(dummy_test.id() + ': ERROR'), ())
-                      ]
-        self.assertEqual(last_calls, mypb.calls)
-
-        # a failure
-        result.startTest(dummy_test)
-        last_calls += [('update', '...tyle_quiet', 1, None)]
-        self.assertEqual(last_calls, mypb.calls)
-        last_calls += [('update', 'FAIL         ', 2, None),
-                       ('note', shorten(dummy_test.id() + ': FAIL'), ())
-                      ]
-        result.addFailure(dummy_test, dummy_error)
-        self.assertEqual(last_calls, mypb.calls)
-
-        # a success
-        result.startTest(dummy_test)
-        last_calls += [('update', '...tyle_quiet', 2, None)]
-        self.assertEqual(last_calls, mypb.calls)
-        result.addSuccess(dummy_test)
-        last_calls += [('update', 'OK           ', 3, None)]
-        self.assertEqual(last_calls, mypb.calls)
-
-        # a skip
-        result.startTest(dummy_test)
-        last_calls += [('update', '...tyle_quiet', 3, None)]
-        self.assertEqual(last_calls, mypb.calls)
-        result.addSkipped(dummy_test, dummy_error)
-        last_calls += [('update', 'SKIP         ', 4, None)]
-        self.assertEqual(last_calls, mypb.calls)
-
     def test_elapsed_time_with_benchmarking(self):
-        result = bzrlib.tests._MyResult(self._log_file,
+        result = bzrlib.tests.TextTestResult(self._log_file,
                                         descriptions=0,
                                         verbosity=1,
                                         )
@@ -608,12 +601,13 @@ class TestTestResult(TestCase):
 
     def test_assigned_benchmark_file_stores_date(self):
         output = StringIO()
-        result = bzrlib.tests._MyResult(self._log_file,
+        result = bzrlib.tests.TextTestResult(self._log_file,
                                         descriptions=0,
                                         verbosity=1,
                                         bench_history=output
                                         )
         output_string = output.getvalue()
+        
         # if you are wondering about the regexp please read the comment in
         # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
         # XXX: what comment?  -- Andrew Bennetts
@@ -621,7 +615,7 @@ class TestTestResult(TestCase):
 
     def test_benchhistory_records_test_times(self):
         result_stream = StringIO()
-        result = bzrlib.tests._MyResult(
+        result = bzrlib.tests.TextTestResult(
             self._log_file,
             descriptions=0,
             verbosity=1,
@@ -654,7 +648,7 @@ class TestTestResult(TestCase):
         except ImportError:
             raise TestSkipped("lsprof not installed.")
         result_stream = StringIO()
-        result = bzrlib.tests._MyResult(
+        result = bzrlib.tests.VerboseTestResult(
             unittest._WritelnDecorator(result_stream),
             descriptions=0,
             verbosity=2,
@@ -709,20 +703,6 @@ class TestRunner(TestCase):
         finally:
             TestCaseInTempDir.TEST_ROOT = old_root
 
-    def test_accepts_and_uses_pb_parameter(self):
-        test = TestRunner('dummy_test')
-        mypb = MockProgress()
-        self.assertEqual([], mypb.calls)
-        runner = TextTestRunner(stream=self._log_file, pb=mypb)
-        result = self.run_test_runner(runner, test)
-        self.assertEqual(1, result.testsRun)
-        self.assertEqual(('update', 'Running tests', 0, 1), mypb.calls[0])
-        self.assertEqual(('update', '...dummy_test', 0, None), mypb.calls[1])
-        self.assertEqual(('update', 'OK           ', 1, None), mypb.calls[2])
-        self.assertEqual(('update', 'Cleaning up', 0, 1), mypb.calls[3])
-        self.assertEqual(('clear',), mypb.calls[4])
-        self.assertEqual(5, len(mypb.calls))
-
     def test_skipped_test(self):
         # run a test that is skipped, and check the suite as a whole still
         # succeeds.
@@ -749,6 +729,68 @@ class TestRunner(TestCase):
             revision_id = workingtree.get_parent_ids()[0]
             self.assertEndsWith(output_string.rstrip(), revision_id)
 
+    def test_success_log_deleted(self):
+        """Successful tests have their log deleted"""
+
+        class LogTester(TestCase):
+
+            def test_success(self):
+                self.log('this will be removed\n')
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_success')
+        result = self.run_test_runner(runner, test)
+
+        log = test._get_log()
+        self.assertEqual("DELETED log file to reduce memory footprint", log)
+        self.assertEqual('', test._log_contents)
+        self.assertIs(None, test._log_file_name)
+
+    def test_fail_log_kept(self):
+        """Failed tests have their log kept"""
+
+        class LogTester(TestCase):
+
+            def test_fail(self):
+                self.log('this will be kept\n')
+                self.fail('this test fails')
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_fail')
+        result = self.run_test_runner(runner, test)
+
+        text = sio.getvalue()
+        self.assertContainsRe(text, 'this will be kept')
+        self.assertContainsRe(text, 'this test fails')
+
+        log = test._get_log()
+        self.assertContainsRe(log, 'this will be kept')
+        self.assertEqual(log, test._log_contents)
+
+    def test_error_log_kept(self):
+        """Tests with errors have their log kept"""
+
+        class LogTester(TestCase):
+
+            def test_error(self):
+                self.log('this will be kept\n')
+                raise ValueError('random exception raised')
+
+        sio = cStringIO.StringIO()
+        runner = TextTestRunner(stream=sio)
+        test = LogTester('test_error')
+        result = self.run_test_runner(runner, test)
+
+        text = sio.getvalue()
+        self.assertContainsRe(text, 'this will be kept')
+        self.assertContainsRe(text, 'random exception raised')
+
+        log = test._get_log()
+        self.assertContainsRe(log, 'this will be kept')
+        self.assertEqual(log, test._log_contents)
+
 
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
@@ -761,7 +803,7 @@ class TestTestCase(TestCase):
         # the outer child test
         note("outer_start")
         self.inner_test = TestTestCase("inner_child")
-        result = bzrlib.tests._MyResult(self._log_file,
+        result = bzrlib.tests.TextTestResult(self._log_file,
                                         descriptions=0,
                                         verbosity=1)
         self.inner_test.run(result)
@@ -781,7 +823,7 @@ class TestTestCase(TestCase):
         # the outer child test
         original_trace = bzrlib.trace._trace_file
         outer_test = TestTestCase("outer_child")
-        result = bzrlib.tests._MyResult(self._log_file,
+        result = bzrlib.tests.TextTestResult(self._log_file,
                                         descriptions=0,
                                         verbosity=1)
         outer_test.run(result)
@@ -796,14 +838,15 @@ class TestTestCase(TestCase):
         """Test that the TestCase.time() method accumulates a benchmark time."""
         sample_test = TestTestCase("method_that_times_a_bit_twice")
         output_stream = StringIO()
-        result = bzrlib.tests._MyResult(
+        result = bzrlib.tests.VerboseTestResult(
             unittest._WritelnDecorator(output_stream),
             descriptions=0,
-            verbosity=2)
+            verbosity=2,
+            num_tests=sample_test.countTestCases())
         sample_test.run(result)
         self.assertContainsRe(
             output_stream.getvalue(),
-            "[1-9][0-9]ms/   [1-9][0-9]ms\n$")
+            r"\d+ms/ +\d+ms\n$")
         
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
@@ -920,7 +963,7 @@ class TestConvenienceMakers(TestCaseWithTransport):
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
                               bzrlib.bzrdir.BzrDirFormat6)
 
-    def test_make_branch_and_mutable_tree(self):
+    def test_make_branch_and_memory_tree(self):
         # we should be able to get a new branch and a mutable tree from
         # TestCaseWithTransport
         tree = self.make_branch_and_memory_tree('a')

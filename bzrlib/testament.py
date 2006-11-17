@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -131,9 +131,7 @@ class Testament(object):
         for l in self.message.splitlines():
             a('  %s\n' % l)
         a('inventory:\n')
-        entries = self.inventory.iter_entries()
-        entries.next()
-        for path, ie in entries:
+        for path, ie in self._get_entries():
             a(self._entry_to_line(path, ie))
         r.extend(self._revprops_to_lines())
         if __debug__:
@@ -141,6 +139,11 @@ class Testament(object):
                 assert isinstance(l, basestring), \
                     '%r of type %s is not a plain string' % (l, type(l))
         return [line.encode('utf-8') for line in r]
+
+    def _get_entries(self):
+        entries = self.inventory.iter_entries()
+        entries.next()
+        return entries
 
     def _escape_path(self, path):
         assert not contains_linebreaks(path)
@@ -197,7 +200,7 @@ class Testament(object):
 
 
 class StrictTestament(Testament):
-    """This testament format is for use as a checksum in changesets"""
+    """This testament format is for use as a checksum in bundle format 0.8"""
 
     long_header = 'bazaar-ng testament version 2.1\n'
     short_header = 'bazaar-ng testament short form 2.1\n'
@@ -206,3 +209,21 @@ class StrictTestament(Testament):
         l += ' ' + ie.revision
         l += {True: ' yes\n', False: ' no\n'}[ie.executable]
         return l
+
+
+class StrictTestament3(StrictTestament):
+    """This testament format is for use as a checksum in bundle format 0.9+
+    
+    It differs from StrictTestament by including data about the tree root.
+    """
+
+    long_header = 'bazaar testament version 3 strict\n'
+    short_header = 'bazaar testament short form 3 strict\n'
+    def _get_entries(self):
+        return self.inventory.iter_entries()
+
+    def _escape_path(self, path):
+        assert not contains_linebreaks(path)
+        if path == '':
+            path = '.'
+        return unicode(path.replace('\\', '/').replace(' ', '\ '))
