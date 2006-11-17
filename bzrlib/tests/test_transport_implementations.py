@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -897,6 +897,8 @@ class TransportTests(TestTransportImplementation):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
+        # This should be:  but SSH still connects on construction. No COOKIE!
+        # self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
         try:
             t = bzrlib.transport.get_transport(url)
             t.get('.bzr/branch')
@@ -959,23 +961,16 @@ class TransportTests(TestTransportImplementation):
             l.sort()
             return l
 
-        # SftpServer creates control files in the working directory
-        # so lets move down a directory to avoid those.
-        if not t.is_readonly():
-            t.mkdir('wd')
-        else:
-            os.mkdir('wd')
-        t = t.clone('wd')
-
         self.assertEqual([], sorted_list('.'))
         # c2 is precisely one letter longer than c here to test that
         # suffixing is not confused.
         # a%25b checks that quoting is done consistently across transports
         tree_names = ['a', 'a%25b', 'b', 'c/', 'c/d', 'c/e', 'c2/']
+
         if not t.is_readonly():
             self.build_tree(tree_names, transport=t)
         else:
-            self.build_tree(['wd/' + name for name in tree_names])
+            self.build_tree(tree_names)
 
         self.assertEqual(
             ['a', 'a%2525b', 'b', 'c', 'c2'], sorted_list('.'))
@@ -985,8 +980,8 @@ class TransportTests(TestTransportImplementation):
             t.delete('c/d')
             t.delete('b')
         else:
-            os.unlink('wd/c/d')
-            os.unlink('wd/b')
+            os.unlink('c/d')
+            os.unlink('b')
             
         self.assertEqual(['a', 'a%2525b', 'c', 'c2'], sorted_list('.'))
         self.assertEqual(['e'], sorted_list('c'))
@@ -1116,6 +1111,9 @@ class TransportTests(TestTransportImplementation):
 
         # the abspath of "/" and "/foo/.." should result in the same location
         self.assertEqual(transport.abspath("/"), transport.abspath("/foo/.."))
+
+        self.assertEqual(transport.clone("/").abspath('foo'),
+                         transport.abspath("/foo"))
 
     def test_local_abspath(self):
         transport = self.get_transport()
@@ -1309,19 +1307,14 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(d[2], (0, '0'))
         self.assertEqual(d[3], (3, '34'))
 
-    def test_get_smart_client(self):
-        """All transports must either give a smart client, or know they can't.
-
-        For some transports such as http this might depend on probing to see 
-        what's actually present on the other end.  (But we can adjust for that 
-        in the future.)
+    def test_get_smart_medium(self):
+        """All transports must either give a smart medium, or know they can't.
         """
         transport = self.get_transport()
         try:
-            client = transport.get_smart_client()
-            # XXX: should be a more general class
-            self.assertIsInstance(client, smart.SmartStreamClient)
-        except NoSmartServer:
+            medium = transport.get_smart_medium()
+            self.assertIsInstance(medium, smart.SmartClientMedium)
+        except errors.NoSmartMedium:
             # as long as we got it we're fine
             pass
 

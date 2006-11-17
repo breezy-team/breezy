@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,13 +51,14 @@ form.
 # We should perhaps change back to just simply doing it here.
 
 import os
-import sys
 import re
+import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 import logging
+from cStringIO import StringIO
 """)
 
 import bzrlib
@@ -65,12 +66,17 @@ from bzrlib.symbol_versioning import (deprecated_function,
         zero_nine,
         )
 
+lazy_import(globals(), """
+from bzrlib import debug
+""")
+
 _file_handler = None
 _stderr_handler = None
 _stderr_quiet = False
 _trace_file = None
 _trace_depth = 0
 _bzr_log_file = None
+_use_apport = True
 
 
 # configure convenient aliases for output routines
@@ -118,7 +124,6 @@ def mutter(fmt, *args):
     _trace_file.write(out)
     # TODO: jam 20051227 Consider flushing the trace file to help debugging
     #_trace_file.flush()
-debug = mutter
 
 
 def _rollover_trace_maybe(trace_fname):
@@ -182,7 +187,7 @@ def log_exception_quietly():
     errors loading plugins.
     """
     import traceback
-    debug(traceback.format_exc())
+    mutter(traceback.format_exc())
 
 
 def enable_default_logging():
@@ -269,23 +274,93 @@ def report_exception(exc_info, err_file):
         print >>err_file, "bzr: broken pipe"
     elif isinstance(exc_object, KeyboardInterrupt):
         print >>err_file, "bzr: interrupted"
-    elif getattr(exc_object, 'is_user_error', False):
+    elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
     elif isinstance(exc_object, (OSError, IOError)):
         # Might be nice to catch all of these and show them as something more
         # specific, but there are too many cases at the moment.
         report_user_error(exc_info, err_file)
     else:
-        report_bug(exc_info, err_file)
+        return report_bug(exc_info, err_file)
 
 
 # TODO: Should these be specially encoding the output?
 def report_user_error(exc_info, err_file):
+    """Report to err_file an error that's not an internal error.
+
+    These don't get a traceback unless -Derror was given.
+    """
+    if 'error' in debug.debug_flags:
+        report_bug(exc_info, err_file)
+        return
     print >>err_file, "bzr: ERROR:", str(exc_info[1])
 
 
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
+    # local import because its only needed here, and this is not a loop.
+    import tempfile
+    # local import because the other functions do it too.
+    import traceback
+    # local import due to circular dependency
+    import bzrlib.plugin
+    global _use_apport
+    try:
+        # detect apport presence.
+        import apport_utils
+        import problem_report
+    except ImportError:
+        # not present, dont use it.
+        _use_apport = False
+    if not _use_apport:
+        # policy disabled, or not present, use the old ui.
+        return _old_report_bug(exc_info, err_file)
+
+    exc_type, exc_object, exc_tb = exc_info
+    err_file.write(
+        "bzr: ERROR: %s.%s: %s\n" % (
+        exc_type.__module__, exc_type.__name__, exc_object)
+        )
+    report = problem_report.ProblemReport()
+    report_file, report_filename = tempfile.mkstemp(
+        suffix='.txt', prefix='bzr-crash-', dir='/tmp')
+    python_report_file = os.fdopen(report_file, 'w')
+    try:
+        report['CommandLine'] = ' '.join(sys.argv)
+        # assume we are packaged as bzr.
+        apport_utils.report_add_package_info(report, 'bzr')
+        report['BzrPlugins'] = ' '.join(bzrlib.plugin.all_plugins())
+        tb_file = StringIO()
+        traceback.print_exception(exc_type, exc_object, exc_tb, file=tb_file)
+        report['Traceback'] = tb_file.getvalue()
+        apport_utils.report_add_os_info(report)
+        report.write(python_report_file)
+        # give the user a pretty output.
+
+        err_file.write(
+            'This is an unexpected error within bzr and we would appreciate a bug report.\n'
+            '\n'
+            'bzr has written a crash report file that will assist our debugging of this\n'
+            'in the file %s\n'
+            '\n'
+            'This is a plain text file, whose contents you can check if you have privacy\n'
+            'concerns. We gather the package data about bzr, your command line, plugins\n'
+            'And the backtrace from within bzr. If you had a password in the URL you\n'
+            'provided to bzr, you should edit that file to remove the password.\n'
+            '\n'
+            '** To file a bug for this please visit our bugtracker at the URL \n'
+            '"https://launchpad.net/products/bzr/+filebug" and report a bug describing\n'
+            'what you were attempting and attach the bzr-crash file mentioned above.\n'
+            'Alternatively you can email bazaar-ng@lists.canonical.com with the same\n'
+            'description and attach the bzr-crash file to the email.\n' %
+                report_filename
+            )
+    finally:
+        python_report_file.close()
+    return report, report_filename
+
+def _old_report_bug(exc_info, err_file):
+    """Write a synopsis of an exception that is probably a bug to err_file."""
     import traceback
     exc_type, exc_object, exc_tb = exc_info
     print >>err_file, "bzr: ERROR: %s.%s: %s" % (

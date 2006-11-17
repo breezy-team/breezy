@@ -1,4 +1,4 @@
-# Copyright (C) 2004-2006 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -316,11 +316,11 @@ class BundleTester1(TestCaseWithTransport):
         format.repository_format = repository.RepositoryFormatKnit2()
         serializer = BundleSerializerV08('0.8')
         b = self.make_branch('.', format=format)
-        self.assertRaises(errors.IncompatibleFormat, serializer.write, 
+        self.assertRaises(errors.IncompatibleBundleFormat, serializer.write, 
                           b.repository, [], {}, StringIO())
 
     def test_matched_bundle(self):
-        """Don't raise IncompatibleFormat for knit2 and bundle0.9"""
+        """Don't raise IncompatibleBundleFormat for knit2 and bundle0.9"""
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = repository.RepositoryFormatKnit2()
         serializer = BundleSerializerV09('0.9')

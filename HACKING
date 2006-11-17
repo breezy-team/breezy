@@ -78,10 +78,57 @@ Standard parameter types
 There are some common requirements in the library: some parameters need to be
 unicode safe, some need byte strings, and so on. At the moment we have
 only codified one specific pattern: Parameters that need to be unicode
-should be checked via 'bzrlib.osutils.safe_unicode'. This will coerce the
+should be checked via ``bzrlib.osutils.safe_unicode``. This will coerce the
 input into unicode in a consistent fashion, allowing trivial strings to be
 used for programmer convenience, but not performing unpredictably in the
 presence of different locales.
+
+
+Copyright
+---------
+
+The copyright policy for bzr was recently made clear in this email (edited
+for grammatical correctness)::
+
+    The attached patch cleans up the copyright and license statements in
+    the bzr source. It also adds tests to help us remember to add them
+    with the correct text.
+
+    We had the problem that lots of our files were "Copyright Canonical
+    Development Ltd" which is not a real company, and some other variations
+    on this theme. Also, some files were missing the GPL statements.
+    
+    I want to be clear about the intent of this patch, since copyright can
+    be a little controversial.
+    
+    1) The big motivation for this is not to shut out the community, but
+    just to clean up all of the invalid copyright statements.
+    
+    2) It has been the general policy for bzr that we want a single
+    copyright holder for all of the core code. This is following the model
+    set by the FSF, which makes it easier to update the code to a new
+    license in case problems are encountered. (For example, if we want to
+    upgrade the project universally to GPL v3 it is much simpler if there is
+    a single copyright holder). It also makes it clearer if copyright is
+    ever debated, there is a single holder, which makes it easier to defend
+    in court, etc. (I think the FSF position is that if you assign them
+    copyright, they can defend it in court rather than you needing to, and
+    I'm sure Canonical would do the same).
+    As such, Canonical has requested copyright assignments from all of the
+    major contributers.
+    
+    3) If someone wants to add code and not attribute it to Canonical, there
+    is a specific list of files that are excluded from this check. And the
+    test failure indicates where that is, and how to update it.
+    
+    4) If anyone feels that I changed a copyright statement incorrectly, just
+    let me know, and I'll be happy to correct it. Whenever you have large
+    mechanical changes like this, it is possible to make some mistakes.
+    
+    Just to reiterate, this is a community project, and it is meant to stay
+    that way. Core bzr code is copyright Canonical for legal reasons, and
+    the tests are just there to help us maintain that.
+
 
 Documentation
 =============
@@ -209,6 +256,15 @@ but they shouldn't be *named* like classes:
 > factory, then yes, foo_factory is what I would use.
 
 
+Registries
+----------
+
+Several places in Bazaar use (or will use) a registry, which is a 
+mapping from names to objects or classes.  The registry allows for 
+loading in registered code only when it's needed, and keeping
+associated information such as a help string or description.
+
+
 Lazy Imports
 ------------
 
@@ -311,6 +367,7 @@ should be only in the command-line tool.
 
 Writing tests
 =============
+
 In general tests should be placed in a file named test_FOO.py where 
 FOO is the logical thing under test. That file should be placed in the
 tests subdirectory under the package being tested.
@@ -345,6 +402,11 @@ When writing blackbox tests please honour the following conventions:
     command changes its name or signature. Ideally only the tests for a
     given command are affected when a given command is changed.
 
+ 4. If you have a test which does actually require running bzr in a
+    subprocess you can use ``run_bzr_subprocess``. By default the spawned
+    process will not load plugins unless ``--allow-plugins`` is supplied.
+
+
 Doctests
 --------
 
@@ -375,10 +437,39 @@ match, like so::
 Errors and exceptions
 =====================
 
-Errors are handled through Python exceptions.  They can represent user
-errors, environmental errors or program bugs.  Sometimes we can't be sure
-at the time it's raised which case applies.  See bzrlib/errors.py for 
-details on the error-handling practices.
+Errors are handled through Python exceptions.
+
+We broadly classify errors as either being either internal or not,
+depending on whether ``user_error`` is set or not.  If we think it's our
+fault, we show a backtrace, an invitation to report the bug, and possibly
+other details.  This is the default for errors that aren't specifically
+recognized as being caused by a user error.  Otherwise we show a briefer
+message, unless -Derror was given.
+
+Many errors originate as "environmental errors" which are raised by Python
+or builtin libraries -- for example IOError.  These are treated as being
+our fault, unless they're caught in a particular tight scope where we know
+that they indicate a user errors.  For example if the repository format
+is not found, the user probably gave the wrong path or URL.  But if one of
+the files inside the repository is not found, then it's our fault --
+either there's a bug in bzr, or something complicated has gone wrong in
+the environment that means one internal file was deleted.
+
+Many errors are defined in ``bzrlib/errors.py`` but it's OK for new errors
+to be added near the place where they are used.
+
+Exceptions are formatted for the user by conversion to a string
+(eventually calling their ``__str__`` method.)  As a convenience the
+``._fmt`` member can be used as a template which will be mapped to the
+error's instance dict.
+
+New exception classes should be defined when callers might want to catch
+that exception specifically, or when it needs a substantially different
+format string.
+
+Exception strings should start with a capital letter and should not have a
+final fullstop.  If long, they may contain newlines to break the text.
+
 
 
 Jargon

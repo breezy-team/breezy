@@ -330,6 +330,8 @@ class Transport(object):
                 => '/home/sarah/project/foo'
             t._combine_paths('/home/sarah', '../../etc')
                 => '/etc'
+            t._combine_paths('/home/sarah', '/etc')
+                => '/etc'
 
         :param base_path: urlencoded path for the transport root; typically a 
              URL but need not contain scheme/host/etc.
@@ -361,6 +363,8 @@ class Transport(object):
             elif p != '':
                 base_parts.append(p)
         path = '/'.join(base_parts)
+        if not path.startswith('/'):
+            path = '/' + path
         return path
 
     def relpath(self, abspath):
@@ -446,9 +450,22 @@ class Transport(object):
     def get_smart_client(self):
         """Return a smart client for this transport if possible.
 
+        A smart client doesn't imply the presence of a smart server: it implies
+        that the smart protocol can be tunnelled via this transport.
+
         :raises NoSmartServer: if no smart server client is available.
         """
         raise errors.NoSmartServer(self.base)
+
+    def get_smart_medium(self):
+        """Return a smart client medium for this transport if possible.
+
+        A smart medium doesn't imply the presence of a smart server: it implies
+        that the smart protocol can be tunnelled via this transport.
+
+        :raises NoSmartMedium: if no smart server medium is available.
+        """
+        raise errors.NoSmartMedium(self)
 
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.

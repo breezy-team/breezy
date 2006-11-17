@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -64,8 +64,11 @@ sample_maybe_signatures = ("[DEFAULT]\n"
 sample_branches_text = ("[http://www.example.com]\n"
                         "# Top level policy\n"
                         "email=Robert Collins <robertc@example.org>\n"
-                        "[http://www.example.com/useglobal]\n"
-                        "# different project, forces global lookup\n"
+                        "[http://www.example.com/ignoreparent]\n"
+                        "# different project: ignore parent dir config\n"
+                        "ignore_parents=true\n"
+                        "[http://www.example.com/norecurse]\n"
+                        "# configuration items that only apply to this dir\n"
                         "recurse=false\n"
                         "[/b/]\n"
                         "check_signatures=require\n"
@@ -77,7 +80,6 @@ sample_branches_text = ("[http://www.example.com]\n"
                         "# test trailing / matching\n"
                         "[/a/*]\n"
                         "#subdirs will match but not the parent\n"
-                        "recurse=False\n"
                         "[/a/c]\n"
                         "check_signatures=ignore\n"
                         "post_commit=bzrlib.tests.test_config.post_commit\n"
@@ -535,58 +537,78 @@ class TestLocationConfig(TestCaseInTempDir):
         self.failUnless(isinstance(global_config, config.GlobalConfig))
         self.failUnless(global_config is my_config._get_global_config())
 
-    def test__get_section_no_match(self):
+    def test__get_matching_sections_no_match(self):
         self.get_branch_config('/')
-        self.assertEqual(None, self.my_location_config._get_section())
+        self.assertEqual([], self.my_location_config._get_matching_sections())
         
-    def test__get_section_exact(self):
+    def test__get_matching_sections_exact(self):
         self.get_branch_config('http://www.example.com')
-        self.assertEqual('http://www.example.com',
-                         self.my_location_config._get_section())
+        self.assertEqual([('http://www.example.com', '')],
+                         self.my_location_config._get_matching_sections())
    
-    def test__get_section_suffix_does_not(self):
+    def test__get_matching_sections_suffix_does_not(self):
         self.get_branch_config('http://www.example.com-com')
-        self.assertEqual(None, self.my_location_config._get_section())
+        self.assertEqual([], self.my_location_config._get_matching_sections())
 
-    def test__get_section_subdir_recursive(self):
+    def test__get_matching_sections_subdir_recursive(self):
         self.get_branch_config('http://www.example.com/com')
-        self.assertEqual('http://www.example.com',
-                         self.my_location_config._get_section())
+        self.assertEqual([('http://www.example.com', 'com')],
+                         self.my_location_config._get_matching_sections())
 
-    def test__get_section_subdir_matches(self):
-        self.get_branch_config('http://www.example.com/useglobal')
-        self.assertEqual('http://www.example.com/useglobal',
-                         self.my_location_config._get_section())
+    def test__get_matching_sections_ignoreparent(self):
+        self.get_branch_config('http://www.example.com/ignoreparent')
+        self.assertEqual([('http://www.example.com/ignoreparent', '')],
+                         self.my_location_config._get_matching_sections())
 
-    def test__get_section_subdir_nonrecursive(self):
+    def test__get_matching_sections_ignoreparent_subdir(self):
         self.get_branch_config(
-            'http://www.example.com/useglobal/childbranch')
-        self.assertEqual('http://www.example.com',
-                         self.my_location_config._get_section())
+            'http://www.example.com/ignoreparent/childbranch')
+        self.assertEqual([('http://www.example.com/ignoreparent', 'childbranch')],
+                         self.my_location_config._get_matching_sections())
 
-    def test__get_section_subdir_trailing_slash(self):
+    def test__get_matching_sections_norecurse(self):
+        self.get_branch_config('http://www.example.com/norecurse')
+        self.assertEqual([('http://www.example.com/norecurse', ''),
+                          ('http://www.example.com', 'norecurse')],
+                         self.my_location_config._get_matching_sections())
+
+    def test__get_matching_sections_norecurse_subdir(self):
+        self.get_branch_config(
+            'http://www.example.com/norecurse/childbranch')
+        self.assertEqual([('http://www.example.com', 'norecurse/childbranch')],
+                         self.my_location_config._get_matching_sections())
+
+    def test__get_matching_sections_subdir_trailing_slash(self):
         self.get_branch_config('/b')
-        self.assertEqual('/b/', self.my_location_config._get_section())
+        self.assertEqual([('/b/', '')],
+                         self.my_location_config._get_matching_sections())
 
-    def test__get_section_subdir_child(self):
+    def test__get_matching_sections_subdir_child(self):
         self.get_branch_config('/a/foo')
-        self.assertEqual('/a/*', self.my_location_config._get_section())
+        self.assertEqual([('/a/*', ''), ('/a/', 'foo')],
+                         self.my_location_config._get_matching_sections())
 
-    def test__get_section_subdir_child_child(self):
+    def test__get_matching_sections_subdir_child_child(self):
         self.get_branch_config('/a/foo/bar')
-        self.assertEqual('/a/', self.my_location_config._get_section())
+        self.assertEqual([('/a/*', 'bar'), ('/a/', 'foo/bar')],
+                         self.my_location_config._get_matching_sections())
 
-    def test__get_section_trailing_slash_with_children(self):
+    def test__get_matching_sections_trailing_slash_with_children(self):
         self.get_branch_config('/a/')
-        self.assertEqual('/a/', self.my_location_config._get_section())
+        self.assertEqual([('/a/', '')],
+                         self.my_location_config._get_matching_sections())
 
-    def test__get_section_explicit_over_glob(self):
+    def test__get_matching_sections_explicit_over_glob(self):
+        # XXX: 2006-09-08 jamesh
+        # This test only passes because ord('c') > ord('*').  If there
+        # was a config section for '/a/?', it would get precedence
+        # over '/a/c'.
         self.get_branch_config('/a/c')
-        self.assertEqual('/a/c', self.my_location_config._get_section())
-
+        self.assertEqual([('/a/c', ''), ('/a/*', ''), ('/a/', 'c')],
+                         self.my_location_config._get_matching_sections())
 
     def test_location_without_username(self):
-        self.get_branch_config('http://www.example.com/useglobal')
+        self.get_branch_config('http://www.example.com/ignoreparent')
         self.assertEqual(u'Erik B\u00e5gfors <erik@bagfors.nu>',
                          self.my_config.username())
 
@@ -641,7 +663,7 @@ class TestLocationConfig(TestCaseInTempDir):
         self.get_branch_config('/a')
         self.assertEqual('local',
                          self.my_config.get_user_option('user_local_option'))
-        
+
     def test_post_commit_default(self):
         self.get_branch_config('/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',

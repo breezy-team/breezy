@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 # -*- coding: utf-8 -*-
 #
@@ -69,7 +69,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         (out, err) = self.run_bzr_captured(
             ['upgrade', self.get_readonly_url('format_5_branch')], 3)
         self.assertEqual(out, "")
-        self.assertEqual(err, "bzr: ERROR: Upgrade URL cannot work with readonly URL's.\n")
+        self.assertEqual(err, "bzr: ERROR: Upgrade URL cannot work with readonly URLs.\n")
 
     def test_upgrade_up_to_date(self):
         # when up to date we should get a message to that effect

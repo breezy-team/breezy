@@ -1,8 +1,9 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -173,7 +174,7 @@ class TestBenchmarkTests(TestCaseWithTransport):
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
         self.assertEqual(
-            'running tests...\ntests passed\n',
+            'tests passed\n',
             err)
         benchfile = open(".perf_history", "rt")
         try:
@@ -359,6 +360,32 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         self.assertEqual(cwd, osutils.getcwd())
 
 
+class _DontSpawnProcess(Exception):
+    """A simple exception which just allows us to skip unnecessary steps"""
+
+
+class TestRunBzrSubprocessCommands(TestCaseWithTransport):
+
+    def _popen(self, *args, **kwargs):
+        """Record the command that is run, so that we can ensure it is correct"""
+        self._popen_args = args
+        self._popen_kwargs = kwargs
+        raise _DontSpawnProcess()
+
+    def test_run_bzr_subprocess_no_plugins(self):
+        self.assertRaises(_DontSpawnProcess, self.run_bzr_subprocess)
+        command = self._popen_args[0]
+        self.assertEqual(sys.executable, command[0])
+        self.assertEqual(self.get_bzr_path(), command[1])
+        self.assertEqual(['--no-plugins'], command[2:])
+
+    def test_allow_plugins(self):
+        self.assertRaises(_DontSpawnProcess,
+                          self.run_bzr_subprocess, allow_plugins=True)
+        command = self._popen_args[0]
+        self.assertEqual([], command[2:])
+
+
 class TestBzrSubprocess(TestCaseWithTransport):
 
     def test_start_and_stop_bzr_subprocess(self):
@@ -422,5 +449,5 @@ class TestRunBzrError(ExternalBase):
         out, err = self.run_bzr_error(['^$'], 'rocks', retcode=0)
         self.assertEqual(out, 'it sure does!\n')
 
-        out, err = self.run_bzr_error(["'foobarbaz' is not a versioned file"],
+        out, err = self.run_bzr_error(["bzr: ERROR: foobarbaz is not versioned"],
                                       'file-id', 'foobarbaz')

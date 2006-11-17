@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -116,31 +116,40 @@ class TestFetch(TestCaseWithTransport):
         self.assertEqual(wt.branch.fetch(wt.branch), (0, []))
 
     def test_fetch_root_knit(self):
-        """Ensure that knit2 updates the root knit
+        """Ensure that knit2.fetch() updates the root knit
         
-        This tests the case where the root has been changed
+        This tests the case where the root has a new revision, but there are no
+        corresponding filename, parent, contents or other changes.
         """
-        knit1 = bzrdir.BzrDirMetaFormat1()
-        knit1.repository_format = repository.RepositoryFormatKnit1()
-        knit2 = bzrdir.BzrDirMetaFormat1()
-        knit2.repository_format = repository.RepositoryFormatKnit2()
-        tree = self.make_branch_and_tree('tree', knit1)
+        knit1_format = bzrdir.BzrDirMetaFormat1()
+        knit1_format.repository_format = repository.RepositoryFormatKnit1()
+        knit2_format = bzrdir.BzrDirMetaFormat1()
+        knit2_format.repository_format = repository.RepositoryFormatKnit2()
+        # we start with a knit1 repository because that causes the
+        # root revision to change for each commit, even though the content,
+        # parent, name, and other attributes are unchanged.
+        tree = self.make_branch_and_tree('tree', knit1_format)
         tree.set_root_id('tree-root')
         tree.commit('rev1', rev_id='rev1')
         tree.commit('rev2', rev_id='rev2')
-        Convert(tree.basedir, knit2)
+
+        # Now we convert it to a knit2 repository so that it has a root knit
+        Convert(tree.basedir, knit2_format)
         tree = WorkingTree.open(tree.basedir)
-        branch = self.make_branch('branch', format=knit2)
+        branch = self.make_branch('branch', format=knit2_format)
         branch.pull(tree.branch, stop_revision='rev1')
         repo = branch.repository
-        root_weave = repo.weave_store.get_weave('tree-root',
+        root_knit = repo.weave_store.get_weave('tree-root',
                                                 repo.get_transaction())
-        self.assertTrue('rev1' in root_weave)
-        self.assertTrue('rev2' not in root_weave)
+        # Make sure fetch retrieved only what we requested
+        self.assertTrue('rev1' in root_knit)
+        self.assertTrue('rev2' not in root_knit)
         branch.pull(tree.branch)
-        root_weave = repo.weave_store.get_weave('tree-root',
+        root_knit = repo.weave_store.get_weave('tree-root',
                                                 repo.get_transaction())
-        self.assertTrue('rev2' in root_weave)
+        # Make sure that the next revision in the root knit was retrieved,
+        # even though the text, name, parent_id, etc., were unchanged.
+        self.assertTrue('rev2' in root_knit)
 
 
 class TestMergeFetch(TestCaseWithTransport):
