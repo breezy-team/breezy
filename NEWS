@@ -34,6 +34,10 @@ IN DEVELOPMENT
     * ``MemoryTransport.list_dir()`` would strip the first character for
       files or directories in root directory. (John Arbash Meinel)
   
+    * New ``ChrootTransportDecorator``, accessible via the ``chroot+`` url
+      prefix.  It disallows any access to locations above a set URL.  (Andrew
+      Bennetts)
+
   BUG FIXES:
 
     * ``bzrlib/bzrdir.py`` was directly referencing ``bzrlib.workingtree``,
