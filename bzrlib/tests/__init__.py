@@ -323,17 +323,17 @@ class TextTestResult(ExtendedTestResult):
 
     def report_error(self, test, err):
         self.error_count += 1
-        self.pb.note('ERROR: %s\n    %s\n' % (
+        self.pb.note('ERROR: %s\n    %s\n', 
             self._shortened_test_description(test),
             err[1],
-            ))
+            )
 
     def report_failure(self, test, err):
         self.failure_count += 1
-        self.pb.note('FAIL: %s\n    %s\n' % (
+        self.pb.note('FAIL: %s\n    %s\n', 
             self._shortened_test_description(test),
             err[1],
-            ))
+            )
 
     def report_skip(self, test, skip_excinfo):
         self.skip_count += 1
@@ -343,13 +343,13 @@ class TextTestResult(ExtendedTestResult):
             # to see them.
             if False:
                 # show test and reason for skip
-                self.pb.note('SKIP: %s\n    %s\n' % (
+                self.pb.note('SKIP: %s\n    %s\n', 
                     self._shortened_test_description(test),
-                    skip_excinfo[1]))
+                    skip_excinfo[1])
             else:
                 # since the class name was left behind in the still-visible
                 # progress bar...
-                self.pb.note('SKIP: %s' % (skip_excinfo[1]))
+                self.pb.note('SKIP: %s', skip_excinfo[1])
 
     def report_cleaning_up(self):
         self.pb.update('cleaning up...')
