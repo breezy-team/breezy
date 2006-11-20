@@ -1757,6 +1757,7 @@ def test_suite():
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',
+                   'bzrlib.tests.test_wsgi',
                    'bzrlib.tests.test_xml',
                    ]
     test_transport_implementations = [
