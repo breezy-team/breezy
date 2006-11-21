@@ -99,8 +99,8 @@ of::
 editor
 ------
 The path of the editor that you wish to use if *bzr commit* is run without
-a commit log message. This setting is trumped by the environment variables
-$BZR_EDITOR or $EDITOR.
+a commit log message. This setting is trumped by the environment variable
+$BZR_EDITOR, and overrides $VISUAL and $EDITOR.
 
 check_signatures
 ----------------
