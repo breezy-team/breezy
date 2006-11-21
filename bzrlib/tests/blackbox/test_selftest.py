@@ -174,7 +174,7 @@ class TestBenchmarkTests(TestCaseWithTransport):
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
         self.assertEqual(
-            'running tests...\ntests passed\n',
+            'tests passed\n',
             err)
         benchfile = open(".perf_history", "rt")
         try:
@@ -449,5 +449,5 @@ class TestRunBzrError(ExternalBase):
         out, err = self.run_bzr_error(['^$'], 'rocks', retcode=0)
         self.assertEqual(out, 'it sure does!\n')
 
-        out, err = self.run_bzr_error(["'foobarbaz' is not a versioned file"],
+        out, err = self.run_bzr_error(["bzr: ERROR: foobarbaz is not versioned"],
                                       'file-id', 'foobarbaz')

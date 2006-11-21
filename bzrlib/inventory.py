@@ -39,6 +39,7 @@ import tarfile
 import bzrlib
 from bzrlib import (
     errors,
+    generate_ids,
     osutils,
     symbol_versioning,
     )
@@ -1036,10 +1037,8 @@ class Inventory(object):
         try:
             return self._byid[file_id]
         except KeyError:
-            if file_id is None:
-                raise BzrError("can't look up file_id None")
-            else:
-                raise BzrError("file_id {%s} not in inventory" % file_id)
+            # really we're passing an inventory, not a tree...
+            raise errors.NoSuchId(self, file_id)
 
     def get_file_kind(self, file_id):
         return self._byid[file_id].kind
@@ -1086,7 +1085,7 @@ class Inventory(object):
 
         if len(parts) == 0:
             if file_id is None:
-                file_id = bzrlib.workingtree.gen_root_id()
+                file_id = generate_ids.gen_root_id()
             self.root = InventoryDirectory(file_id, '', None)
             self._byid = {self.root.file_id: self.root}
             return
@@ -1283,7 +1282,7 @@ def make_entry(kind, name, parent_id, file_id=None):
     :param file_id: the file_id to use. if None, one will be created.
     """
     if file_id is None:
-        file_id = bzrlib.workingtree.gen_file_id(name)
+        file_id = generate_ids.gen_file_id(name)
 
     norm_name, can_access = osutils.normalized_filename(name)
     if norm_name != name:

@@ -92,6 +92,7 @@ USER_DEFAULTS = [
     '*~',
     '.#*',
     '[#]*#',
+    './bzr-commit-*',
 ]
 
 

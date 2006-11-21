@@ -78,7 +78,7 @@ class TestRemerge(ExternalBase):
         self.failIfExists('question.OTHER')
 
         file_id = self.run_bzr('file-id', 'hello')[0]
-        self.run_bzr_error(['\'hello.THIS\' is not a versioned file'],
+        self.run_bzr_error(['hello.THIS is not versioned'],
                            'file-id', 'hello.THIS')
 
         self.run_bzr_error(['conflicts encountered'],
