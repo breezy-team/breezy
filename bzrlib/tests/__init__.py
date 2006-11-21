@@ -79,6 +79,7 @@ from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter, note
 from bzrlib.tests import TestUtil
+from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
@@ -636,6 +637,24 @@ class TestCase(unittest.TestCase):
         if len(missing) > 0:
             raise AssertionError("value(s) %r not present in container %r" % 
                                  (missing, superlist))
+
+    def assertListRaises(self, excClass, func, *args, **kwargs):
+        """Fail unless excClass is raised when the iterator from func is used.
+        
+        Many functions can return generators this makes sure
+        to wrap them in a list() call to make sure the whole generator
+        is run, and that the proper exception is raised.
+        """
+        try:
+            list(func(*args, **kwargs))
+        except excClass:
+            return
+        else:
+            if getattr(excClass,'__name__', None) is not None:
+                excName = excClass.__name__
+            else:
+                excName = str(excClass)
+            raise self.failureException, "%s not raised" % excName
 
     def assertIs(self, left, right):
         if not (left is right):
@@ -1248,6 +1267,13 @@ class TestCaseWithMemoryTransport(TestCase):
         self.assertTrue(t.is_readonly())
         return t
 
+    def create_transport_readonly_server(self):
+        """Create a transport server from class defined at init.
+
+        This is mostly a hook for daughter classes.
+        """
+        return self.transport_readonly_server()
+
     def get_readonly_server(self):
         """Get the server instance for the readonly transport
 
@@ -1261,7 +1287,7 @@ class TestCaseWithMemoryTransport(TestCase):
                 self.__readonly_server = ReadonlyServer()
                 self.__readonly_server.setUp(self.__server)
             else:
-                self.__readonly_server = self.transport_readonly_server()
+                self.__readonly_server = self.create_transport_readonly_server()
                 self.__readonly_server.setUp()
             self.addCleanup(self.__readonly_server.tearDown)
         return self.__readonly_server
@@ -1520,6 +1546,13 @@ class TestCaseWithTransport(TestCaseInTempDir):
     readwrite one must both define get_url() as resolving to os.getcwd().
     """
 
+    def create_transport_server(self):
+        """Create a transport server from class defined at init.
+
+        This is mostly a hook for daughter classes.
+        """
+        return self.transport_server()
+
     def get_server(self):
         """See TestCaseWithMemoryTransport.
 
@@ -1527,7 +1560,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         diagnostics.
         """
         if self.__server is None:
-            self.__server = self.transport_server()
+            self.__server = self.create_transport_server()
             self.__server.setUp()
             self.addCleanup(self.__server.tearDown)
         return self.__server
@@ -1598,8 +1631,8 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        if not self.transport_server == bzrlib.transport.memory.MemoryServer:
-            self.transport_readonly_server = bzrlib.transport.http.HttpServer
+        if not self.transport_server == MemoryServer:
+            self.transport_readonly_server = HttpServer
 
 
 def filter_suite_by_re(suite, pattern):

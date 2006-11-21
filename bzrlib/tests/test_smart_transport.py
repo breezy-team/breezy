@@ -30,17 +30,17 @@ from bzrlib import (
         tests,
         urlutils,
         )
+from bzrlib.tests.HTTPTestUtil import (
+        HTTPServerWithSmarts,
+        SmartRequestHandler,
+        )
 from bzrlib.transport import (
         get_transport,
         local,
         memory,
         smart,
         )
-from bzrlib.transport.http import (
-        HTTPServerWithSmarts,
-        SmartClientHTTPMediumRequest,
-        SmartRequestHandler,
-        )
+from bzrlib.transport.http import SmartClientHTTPMediumRequest
 
 
 class StringIOSSHVendor(object):

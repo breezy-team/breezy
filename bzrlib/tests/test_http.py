@@ -19,26 +19,48 @@
 
 # TODO: Should be renamed to bzrlib.transport.http.tests?
 
-import errno
 import select
 import socket
 import threading
 
 import bzrlib
-from bzrlib.errors import DependencyNotPresent, UnsupportedProtocol
+from bzrlib import errors
 from bzrlib import osutils
-from bzrlib.tests import TestCase, TestSkipped
-from bzrlib.transport import get_transport, Transport
-from bzrlib.transport.http import extract_auth, HttpTransportBase
+from bzrlib.tests import (
+    TestCase,
+    TestSkipped,
+    )
+from bzrlib.tests.HttpServer import (
+    HttpServer,
+    HttpServer_PyCurl,
+    HttpServer_urllib,
+    )
+from bzrlib.tests.HTTPTestUtil import (
+    BadProtocolRequestHandler,
+    BadStatusRequestHandler,
+    ForbiddenRequestHandler,
+    InvalidStatusRequestHandler,
+    NoRangeRequestHandler,
+    SingleRangeRequestHandler,
+    TestCaseWithWebserver,
+    WallRequestHandler,
+    )
+from bzrlib.transport import (
+    get_transport,
+    Transport,
+    )
+from bzrlib.transport.http import (
+    extract_auth,
+    HttpTransportBase,
+    )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
-from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 
 
 class FakeManager(object):
 
     def __init__(self):
         self.credentials = []
-        
+
     def add_password(self, realm, host, username, password):
         self.credentials.append([realm, host, username, password])
 
@@ -99,6 +121,9 @@ class RecordingServer(object):
 
 class TestHttpUrls(TestCase):
 
+    # FIXME: Some of these tests should be done for both
+    # implementations
+
     def test_url_parsing(self):
         f = FakeManager()
         url = extract_auth('http://example.com', f)
@@ -107,15 +132,16 @@ class TestHttpUrls(TestCase):
         url = extract_auth('http://user:pass@www.bazaar-vcs.org/bzr/bzr.dev', f)
         self.assertEquals('http://www.bazaar-vcs.org/bzr/bzr.dev', url)
         self.assertEquals(1, len(f.credentials))
-        self.assertEquals([None, 'www.bazaar-vcs.org', 'user', 'pass'], f.credentials[0])
-        
+        self.assertEquals([None, 'www.bazaar-vcs.org', 'user', 'pass'],
+                          f.credentials[0])
+
     def test_abs_url(self):
         """Construction of absolute http URLs"""
         t = HttpTransport_urllib('http://bazaar-vcs.org/bzr/bzr.dev/')
         eq = self.assertEqualDiff
         eq(t.abspath('.'),
            'http://bazaar-vcs.org/bzr/bzr.dev')
-        eq(t.abspath('foo/bar'), 
+        eq(t.abspath('foo/bar'),
            'http://bazaar-vcs.org/bzr/bzr.dev/foo/bar')
         eq(t.abspath('.bzr'),
            'http://bazaar-vcs.org/bzr/bzr.dev/.bzr')
@@ -128,6 +154,8 @@ class TestHttpUrls(TestCase):
         self.assertRaises(ValueError,
             t.abspath,
             '.bzr/')
+        t = HttpTransport_urllib('http://http://bazaar-vcs.org/bzr/bzr.dev/')
+        self.assertRaises(errors.InvalidURL, t.has, 'foo/bar')
 
     def test_http_root_urls(self):
         """Construction of URLs from server root"""
@@ -138,22 +166,28 @@ class TestHttpUrls(TestCase):
 
     def test_http_impl_urls(self):
         """There are servers which ask for particular clients to connect"""
+        server = HttpServer_PyCurl()
         try:
-            from bzrlib.transport.http._pycurl import HttpServer_PyCurl
-            server = HttpServer_PyCurl()
-            try:
-                server.setUp()
-                url = server.get_url()
-                self.assertTrue(url.startswith('http+pycurl://'))
-            finally:
-                server.tearDown()
-        except DependencyNotPresent:
-            raise TestSkipped('pycurl not present')
+            server.setUp()
+            url = server.get_url()
+            self.assertTrue(url.startswith('http+pycurl://'))
+        finally:
+            server.tearDown()
 
 
-class TestHttpMixins(object):
+class TestHttpConnections(object):
+    """Test the http connections.
 
-    def _prep_tree(self):
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithWebserver.
+
+    We can't inherit directly from TestCaseWithWebserver or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete.
+    """
+
+    def setUp(self):
+        TestCaseWithWebserver.setUp(self)
         self.build_tree(['xxx', 'foo/', 'foo/bar'], line_endings='binary',
                         transport=self.get_transport())
 
@@ -162,14 +196,14 @@ class TestHttpMixins(object):
         t = self._transport(server.get_url())
         self.assertEqual(t.has('foo/bar'), True)
         self.assertEqual(len(server.logs), 1)
-        self.assertContainsRe(server.logs[0], 
+        self.assertContainsRe(server.logs[0],
             r'"HEAD /foo/bar HTTP/1.." (200|302) - "-" "bzr/')
 
     def test_http_has_not_found(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
         self.assertEqual(t.has('not-found'), False)
-        self.assertContainsRe(server.logs[1], 
+        self.assertContainsRe(server.logs[1],
             r'"HEAD /not-found HTTP/1.." 404 - "-" "bzr/')
 
     def test_http_get(self):
@@ -181,7 +215,8 @@ class TestHttpMixins(object):
             'contents of foo/bar\n')
         self.assertEqual(len(server.logs), 1)
         self.assertTrue(server.logs[0].find(
-            '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s' % bzrlib.__version__) > -1)
+            '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s'
+            % bzrlib.__version__) > -1)
 
     def test_get_smart_medium(self):
         # For HTTP, get_smart_medium should return the transport object.
@@ -189,52 +224,56 @@ class TestHttpMixins(object):
         http_transport = self._transport(server.get_url())
         medium = http_transport.get_smart_medium()
         self.assertIs(medium, http_transport)
-        
-
-class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
-
-    _transport = HttpTransport_urllib
-
-    def setUp(self):
-        TestCaseWithWebserver.setUp(self)
-        self._prep_tree()
 
     def test_has_on_bogus_host(self):
-        import urllib2
-        # Get a random address, so that we can be sure there is no
-        # http handler there.
-        s = socket.socket()
-        s.bind(('localhost', 0))
-        t = self._transport('http://%s:%s/' % s.getsockname())
-        self.assertRaises(urllib2.URLError, t.has, 'foo/bar')
+        # Get a free address and don't 'accept' on it, so that we
+        # can be sure there is no http handler there, but set a
+        # reasonable timeout to not slow down tests too much.
+        default_timeout = socket.getdefaulttimeout()
+        try:
+            socket.setdefaulttimeout(2)
+            s = socket.socket()
+            s.bind(('localhost', 0))
+            t = self._transport('http://%s:%s/' % s.getsockname())
+            self.assertRaises(errors.ConnectionError, t.has, 'foo/bar')
+        finally:
+            socket.setdefaulttimeout(default_timeout)
 
 
-class TestHttpConnections_pycurl(TestCaseWithWebserver, TestHttpMixins):
+class TestWithTransport_pycurl(object):
+    """Test case to inherit from if pycurl is present"""
 
     def _get_pycurl_maybe(self):
         try:
             from bzrlib.transport.http._pycurl import PyCurlTransport
             return PyCurlTransport
-        except DependencyNotPresent:
+        except errors.DependencyNotPresent:
             raise TestSkipped('pycurl not present')
 
     _transport = property(_get_pycurl_maybe)
 
-    def setUp(self):
-        TestCaseWithWebserver.setUp(self)
-        self._prep_tree()
+
+class TestHttpConnections_urllib(TestHttpConnections, TestCaseWithWebserver):
+    """Test http connections with urllib"""
+
+    _transport = HttpTransport_urllib
+
+
+
+class TestHttpConnections_pycurl(TestWithTransport_pycurl,
+                                 TestHttpConnections,
+                                 TestCaseWithWebserver):
+    """Test http connections with pycurl"""
 
 
 class TestHttpTransportRegistration(TestCase):
     """Test registrations of various http implementations"""
 
     def test_http_registered(self):
-        import bzrlib.transport.http._urllib
-        from bzrlib.transport import get_transport
         # urlllib should always be present
         t = get_transport('http+urllib://bzr.google.com/')
         self.assertIsInstance(t, Transport)
-        self.assertIsInstance(t, bzrlib.transport.http._urllib.HttpTransport_urllib)
+        self.assertIsInstance(t, HttpTransport_urllib)
 
 
 class TestOffsets(TestCase):
@@ -270,7 +309,7 @@ class TestPost(TestCase):
         url = '%s://%s:%s/' % (scheme, server.host, server.port)
         try:
             http_transport = get_transport(url)
-        except UnsupportedProtocol:
+        except errors.UnsupportedProtocol:
             raise TestSkipped('%s not available' % scheme)
         code, response = http_transport._post('abc def end-of-body')
         self.assertTrue(
@@ -313,7 +352,154 @@ class TestRangeHeader(TestCase):
                           ranges=[(0,9), (300,5000)],
                           tail=50)
 
-        
+
+class TestWallServer(object):
+    """Tests exceptions during the connection phase"""
+
+    def create_transport_readonly_server(self):
+        return HttpServer(WallRequestHandler)
+
+    def test_http_has(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        # Unfortunately httplib (see HTTPResponse._read_status
+        # for details) make no distinction between a closed
+        # socket and badly formatted status line, so we can't
+        # just test for ConnectionError, we have to test
+        # InvalidHttpResponse too.
+        self.assertRaises((errors.ConnectionError, errors.InvalidHttpResponse),
+                          t.has, 'foo/bar')
+
+    def test_http_get(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertRaises((errors.ConnectionError, errors.InvalidHttpResponse),
+                          t.get, 'foo/bar')
+
+
+class TestWallServer_urllib(TestWallServer, TestCaseWithWebserver):
+    """Tests "wall" server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestWallServer_pycurl(TestWithTransport_pycurl,
+                            TestWallServer,
+                            TestCaseWithWebserver):
+    """Tests "wall" server for pycurl implementation"""
+
+
+class TestBadStatusServer(object):
+    """Tests bad status from server."""
+
+    def create_transport_readonly_server(self):
+        return HttpServer(BadStatusRequestHandler)
+
+    def test_http_has(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(errors.InvalidHttpResponse, t.has, 'foo/bar')
+
+    def test_http_get(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(errors.InvalidHttpResponse, t.get, 'foo/bar')
+
+
+class TestBadStatusServer_urllib(TestBadStatusServer, TestCaseWithWebserver):
+    """Tests bad status server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestBadStatusServer_pycurl(TestWithTransport_pycurl,
+                                 TestBadStatusServer,
+                                 TestCaseWithWebserver):
+    """Tests bad status server for pycurl implementation"""
+
+
+class TestInvalidStatusServer(TestBadStatusServer):
+    """Tests invalid status from server.
+
+    Both implementations raises the same error as for a bad status.
+    """
+
+    def create_transport_readonly_server(self):
+        return HttpServer(InvalidStatusRequestHandler)
+
+
+class TestInvalidStatusServer_urllib(TestInvalidStatusServer,
+                                     TestCaseWithWebserver):
+    """Tests invalid status server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestInvalidStatusServer_pycurl(TestWithTransport_pycurl,
+                                     TestInvalidStatusServer,
+                                     TestCaseWithWebserver):
+    """Tests invalid status server for pycurl implementation"""
+
+
+class TestBadProtocolServer(object):
+    """Tests bad protocol from server."""
+
+    def create_transport_readonly_server(self):
+        return HttpServer(BadProtocolRequestHandler)
+
+    def test_http_has(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(errors.InvalidHttpResponse, t.has, 'foo/bar')
+
+    def test_http_get(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(errors.InvalidHttpResponse, t.get, 'foo/bar')
+
+
+class TestBadProtocolServer_urllib(TestBadProtocolServer,
+                                   TestCaseWithWebserver):
+    """Tests bad protocol server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+# curl don't check the protocol version
+#class TestBadProtocolServer_pycurl(TestWithTransport_pycurl,
+#                                   TestBadProtocolServer,
+#                                   TestCaseWithWebserver):
+#    """Tests bad protocol server for pycurl implementation"""
+
+
+class TestForbiddenServer(object):
+    """Tests forbidden server"""
+
+    def create_transport_readonly_server(self):
+        return HttpServer(ForbiddenRequestHandler)
+
+    def test_http_has(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(errors.TransportError, t.has, 'foo/bar')
+
+    def test_http_get(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertRaises(errors.TransportError, t.get, 'foo/bar')
+
+
+class TestForbiddenServer_urllib(TestForbiddenServer, TestCaseWithWebserver):
+    """Tests forbidden server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestForbiddenServer_pycurl(TestWithTransport_pycurl,
+                                 TestForbiddenServer,
+                                 TestCaseWithWebserver):
+    """Tests forbidden server for pycurl implementation"""
+
+
 class TestRecordingServer(TestCase):
 
     def test_create(self):
@@ -343,3 +529,95 @@ class TestRecordingServer(TestCase):
         self.assertEqual('HTTP/1.1 200 OK\r\n',
                          osutils.recv_all(sock, 4096))
         self.assertEqual('abc', server.received_bytes)
+
+
+class TestRangeRequestServer(object):
+    """Test the http connections.
+
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithWebserver.
+
+    We can't inherit directly from TestCaseWithWebserver or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete.
+    """
+
+    def setUp(self):
+        TestCaseWithWebserver.setUp(self)
+        self.build_tree_contents([('a', '0123456789')],)
+
+    """Tests readv requests against server"""
+
+    def test_readv(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        l = list(t.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
+        self.assertEqual(l[0], (0, '0'))
+        self.assertEqual(l[1], (1, '1'))
+        self.assertEqual(l[2], (3, '34'))
+        self.assertEqual(l[3], (9, '9'))
+
+    def test_readv_out_of_order(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        l = list(t.readv('a', ((1, 1), (9, 1), (0, 1), (3, 2))))
+        self.assertEqual(l[0], (1, '1'))
+        self.assertEqual(l[1], (9, '9'))
+        self.assertEqual(l[2], (0, '0'))
+        self.assertEqual(l[3], (3, '34'))
+
+    def test_readv_short_read(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+
+        # This is intentionally reading off the end of the file
+        # since we are sure that it cannot get there
+        self.assertListRaises((errors.ShortReadvError, AssertionError),
+                              t.readv, 'a', [(1,1), (8,10)])
+
+        # This is trying to seek past the end of the file, it should
+        # also raise a special error
+        self.assertListRaises(errors.ShortReadvError,
+                              t.readv, 'a', [(12,2)])
+
+
+class TestSingleRangeRequestServer(TestRangeRequestServer):
+    """Test readv against a server which accept only single range requests"""
+
+    def create_transport_readonly_server(self):
+        return HttpServer(SingleRangeRequestHandler)
+
+
+class TestSingleRangeRequestServer_urllib(TestSingleRangeRequestServer,
+                                          TestCaseWithWebserver):
+    """Tests single range requests accepting server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestSingleRangeRequestServer_pycurl(TestWithTransport_pycurl,
+                                          TestSingleRangeRequestServer,
+                                          TestCaseWithWebserver):
+    """Tests single range requests accepting server for pycurl implementation"""
+
+
+class TestNoRangeRequestServer(TestRangeRequestServer):
+    """Test readv against a server which do not accept range requests"""
+
+    def create_transport_readonly_server(self):
+        return HttpServer(NoRangeRequestHandler)
+
+
+class TestNoRangeRequestServer_urllib(TestNoRangeRequestServer,
+                                      TestCaseWithWebserver):
+    """Tests range requests refusing server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
+                               TestNoRangeRequestServer,
+                               TestCaseWithWebserver):
+    """Tests range requests refusing server for pycurl implementation"""
+
+
