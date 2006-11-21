@@ -153,17 +153,16 @@ class MemoryTransport(Transport):
         if _abspath != '/' and _abspath not in self._dirs:
             raise NoSuchFile(relpath)
         result = []
-        for path in self._files:
-            if (path.startswith(_abspath) and 
-                path[len(_abspath) + 1:].find('/') == -1 and
-                len(path) > len(_abspath)):
-                result.append(path[len(_abspath) + 1:])
-        for path in self._dirs:
-            if (path.startswith(_abspath) and 
-                path[len(_abspath) + 1:].find('/') == -1 and
-                len(path) > len(_abspath) and
-                path[len(_abspath)] == '/'):
-                result.append(path[len(_abspath) + 1:])
+
+        if not _abspath.endswith('/'):
+            _abspath += '/'
+
+        for path_group in self._files, self._dirs:
+            for path in path_group:
+                if path.startswith(_abspath):
+                    trailing = path[len(_abspath):]
+                    if trailing and '/' not in trailing:
+                        result.append(trailing)
         return map(urlutils.escape, result)
 
     def rename(self, rel_from, rel_to):
