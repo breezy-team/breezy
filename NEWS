@@ -6,6 +6,10 @@ IN DEVELOPMENT
       tree from a branch.
       (Daniel Silverstone)
 
+    * urllib uses shared keep-alive connections, so http 
+      operations are substantially faster.
+      (Vincent Ladeuil, #53654)
+
     * ``bzr export`` allows an optional branch parameter, to export a bzr
       tree from some other url. For example:
       ``bzr export bzr.tar.gz http://bazaar-vcs.org/bzr/bzr.dev``
@@ -48,6 +52,20 @@ IN DEVELOPMENT
       unless a plugin already imported ``bzrlib.workingtree``
       (John Arbash Meinel, #70716)
 
+    * Suppress the traceback on invalid URLs (Vincent Ladeuil, #70803).
+
+    * Give nicer error message when an http server returns a 403
+      error code. (Vincent Ladeuil, #57644).
+
+    * When a multi-range http GET request fails, try a single
+      range one. If it fails too, forget about ranges. Remember that until 
+      the death of the transport and propagates that to the clones.
+      (Vincent Ladeuil, #62276, #62029).
+
+    * Handles user/passwords supplied in url from command
+      line (for the urllib implementation). Don't request already
+      known passwords (Vincent Ladeuil, #42383, #44647, #48527)
+
     * _KnitIndex.add_versions() dictionary compresses revision ids as they
       are added. This fixes bug where fetching remote revisions records
       them as full references rather than integers. (John Arbash Meinel,
@@ -81,6 +99,12 @@ IN DEVELOPMENT
       different id's, the default is the file in the new tree. The user can
       use "--name-from-revision" to select the file in the old tree.
       (Cheuksan Edward Wang, #30190)
+
+  TESTING:
+
+    * TestingHTTPRequestHandler really handles the Range header
+      (previously it was ignoring it and returning the whole file,).
+
 
 bzr 0.12  2006-10-30
 

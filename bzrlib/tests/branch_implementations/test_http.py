@@ -20,7 +20,7 @@ import os
 
 from bzrlib import branch, errors
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
-from bzrlib.transport.http import HttpServer
+from bzrlib.tests.HttpServer import HttpServer
 
 
 class HTTPBranchTests(TestCaseWithBranch):
