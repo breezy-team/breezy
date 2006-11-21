@@ -157,7 +157,7 @@ class BzrCheckError(BzrNewError):
 
 
 class DisabledMethod(BzrNewError):
-    """The smart server method %(class_name)s is disabled."""
+    """The smart server method '%(class_name)s' is disabled."""
 
     is_user_error = False
 

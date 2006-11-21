@@ -22,7 +22,7 @@ For more information about WSGI, see PEP 333:
 
 from cStringIO import StringIO
 
-from bzrlib import smart
+from bzrlib.smart import protocol
 from bzrlib.transport import chroot, get_transport
 from bzrlib.urlutils import local_path_to_url
     
@@ -121,4 +121,4 @@ class SmartWSGIApp(object):
         return [response_data]
 
     def make_request(self, transport, write_func):
-        return smart.SmartServerRequestProtocolOne(transport, write_func)
+        return protocol.SmartServerRequestProtocolOne(transport, write_func)
