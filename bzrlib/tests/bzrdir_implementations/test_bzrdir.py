@@ -497,6 +497,32 @@ class TestBzrDir(TestCaseWithBzrDir):
             self.assertRaises(errors.NotLocalUrl, target.create_workingtree)
         self.assertTrue(target.open_branch().repository.has_revision('2'))
 
+    def test_get_branch_reference_on_reference(self):
+        """get_branch_reference should return the right url."""
+        referenced_branch = self.make_branch('referenced')
+        dir = self.make_bzrdir('source')
+        try:
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
+                referenced_branch)
+        except errors.IncompatibleFormat:
+            # this is ok too, not all formats have to support references.
+            return
+        self.assertEqual(referenced_branch.bzrdir.root_transport.abspath('') + '/',
+            dir.get_branch_reference())
+
+    def test_get_branch_reference_on_non_reference(self):
+        """get_branch_reference should return None for non-reference branches."""
+        branch = self.make_branch('referenced')
+        self.assertEqual(None, branch.bzrdir.get_branch_reference())
+
+    def test_get_branch_reference_no_branch(self):
+        """get_branch_reference should not mask NotBranchErrors."""
+        dir = self.make_bzrdir('source')
+        if dir.has_branch():
+            # this format does not support branchless bzrdirs.
+            return
+        self.assertRaises(errors.NotBranchError, dir.get_branch_reference)
+
     def test_sprout_bzrdir_empty(self):
         dir = self.make_bzrdir('source')
         target = self.sproutOrSkip(dir, self.get_url('target'))

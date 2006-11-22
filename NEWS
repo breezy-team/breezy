@@ -15,6 +15,9 @@ IN DEVELOPMENT
     * Clean up ``bzr selftest --benchmark bundle`` to correct an import,
       and remove benchmarks that take longer than 10min to run.
       (John Arbash Meinel)
+
+    * New method 'get_branch_reference' on 'BzrDir' allows the detection of 
+      branch references - which the smart server component needs.
   
   BUG FIXES:
 

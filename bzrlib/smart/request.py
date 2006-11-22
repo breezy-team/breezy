@@ -74,6 +74,12 @@ class SmartServerResponse(object):
         self.args = args
         self.body = body
 
+    def __eq__(self, other):
+        return other.args == self.args and other.body == self.body
+
+    def __repr__(self):
+        return "<SmartServerResponse args=%r body=%r>" % (self.args, self.body)
+
 
 class SmartServerRequestHandler(object):
     """Protocol logic for smart server.
@@ -225,6 +231,8 @@ class ProbeDontUseRequest(SmartServerRequest):
 request_handlers = registry.Registry()
 request_handlers.register_lazy(
     'append', 'bzrlib.smart.vfs', 'AppendRequest')
+request_handlers.register_lazy(
+    'BzrDir.open_branch', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBranch')
 request_handlers.register_lazy(
     'delete', 'bzrlib.smart.vfs', 'DeleteRequest')
 request_handlers.register_lazy(

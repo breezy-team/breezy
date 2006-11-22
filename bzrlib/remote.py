@@ -21,8 +21,8 @@ from urlparse import urlparse
 
 from bzrlib import branch, errors, repository
 from bzrlib.bzrdir import BzrDir, BzrDirFormat, RemoteBzrDirFormat
-from bzrlib.branch import Branch, BranchFormat
-from bzrlib.smart import client
+from bzrlib.branch import Branch, BranchFormat, BranchReferenceFormat
+from bzrlib.smart import client, vfs
 from bzrlib.trace import mutter
 from bzrlib.urlutils import unescape
 
@@ -39,9 +39,12 @@ class RemoteBzrDir(BzrDir):
         # XXX: We should go into find_format, but not allow it to find
         # RemoteBzrDirFormat and make sure it finds the real underlying format.
         
+        # THIS IS A COMPLETE AND UTTER LIE.
+        # XXX: XXX: XXX: must be removed before merging to mainline
+        # SMART_SERVER_MERGE_BLOCKER
         default_format = BzrDirFormat.get_default_format()
         self._real_bzrdir = default_format.open(transport, _found=True)
-        path = unescape(urlparse(transport.base)[2])
+        path = self._path_for_remote_call()
         #self._real_bzrdir._format.probe_transport(transport)
         response = client.SmartClient(self.client).call('probe_dont_use', path)
         if response == ('no',):
@@ -62,23 +65,41 @@ class RemoteBzrDir(BzrDir):
         real_workingtree = self._real_bzrdir.create_workingtree(revision_id=revision_id)
         return RemoteWorkingTree(self, real_workingtree)
 
+    def open_branch(self, _unsupported=False):
+        assert _unsupported == False, 'unsupported flag support not implemented yet.'
+        path = self._path_for_remote_call()
+        response = client.SmartClient(self.client).call('BzrDir.open_branch', path)
+        assert response[0] == 'ok', 'unexpected response code %s' % response[0]
+        if response[0] != 'ok':
+            # this should probably be a regular translate no ?
+            raise errors.NotBranchError(path=self.root_transport.base)
+        if response[1] == '':
+            # branch at this location.
+            if vfs.vfs_enabled():
+                # if the VFS is enabled, create a local object using the VFS.
+                real_branch = self._real_bzrdir.open_branch(unsupported=_unsupported)
+                # This branch accessed through the smart server, so wrap the
+                # file-level objects.
+                real_repository = real_branch.repository
+                remote_repository = RemoteRepository(self, real_repository)
+                return RemoteBranch(self, remote_repository, real_branch)
+            else:
+                # otherwise just create a proxy for the branch.
+                return RemoteBranch(self, self.find_repository())
+        else:
+            # a branch reference, use the existing BranchReference logic.
+            format = BranchReferenceFormat()
+            return format.open(self, _found=True, location=response[1])
+
     def open_repository(self):
         return RemoteRepository(self, self._real_bzrdir.open_repository())
 
-    def open_branch(self, _unsupported=False):
-        real_branch = self._real_bzrdir.open_branch(unsupported=_unsupported)
-        if real_branch.bzrdir is self._real_bzrdir:
-            # This branch accessed through the smart server, so wrap the
-            # file-level objects.
-            real_repository = real_branch.repository
-            remote_repository = RemoteRepository(self, real_repository)
-            return RemoteBranch(self, remote_repository, real_branch)
-        else:
-            # We were redirected to somewhere else, so don't wrap.
-            return real_branch
-
     def open_workingtree(self):
         return RemoteWorkingTree(self, self._real_bzrdir.open_workingtree())
+
+    def _path_for_remote_call(self):
+        """Return the path to be used for this bzrdir in a remote call."""
+        return unescape(urlparse(self.root_transport.base)[2])
 
     def get_branch_transport(self, branch_format):
         return self._real_bzrdir.get_branch_transport(branch_format)

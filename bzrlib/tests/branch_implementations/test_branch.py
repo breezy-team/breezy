@@ -334,7 +334,7 @@ class TestBranch(TestCaseWithBranch):
         branch.nick = "My happy branch"
         wt.commit('My commit respect da nick.')
         committed = branch.repository.get_revision(branch.last_revision())
-        self.assertEqual(committed.properties["branch-nick"], 
+        self.assertEqual(committed.properties["branch-nick"],
                          "My happy branch")
 
     def test_create_open_branch_uses_repository(self):
@@ -604,6 +604,17 @@ class TestBranchPushLocations(TestCaseWithBranch):
 
 class TestFormat(TestCaseWithBranch):
     """Tests for the format itself."""
+
+    def test_get_reference(self):
+        """get_reference on all regular branches should return None."""
+        if not self.branch_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        made_branch = self.make_branch('.')
+        self.assertEqual(None,
+            made_branch._format.get_reference(made_branch.bzrdir))
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
