@@ -233,17 +233,12 @@ def _decode_tuple(req_line):
         return None
     if req_line[-1] != '\n':
         raise errors.SmartProtocolError("request %r not terminated" % req_line)
-    try:
-        return tuple((a.decode('utf-8') for a in req_line[:-1].split('\x01')))
-    except UnicodeDecodeError:
-        raise errors.SmartProtocolError(
-            "one or more arguments of request %r are not valid UTF-8"
-            % req_line)
+    return tuple(req_line[:-1].split('\x01'))
 
 
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
-    return '\x01'.join((a.encode('utf-8') for a in args)) + '\n'
+    return '\x01'.join(args) + '\n'
 
 
 class SmartProtocolBase(object):
@@ -269,7 +264,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
     def __init__(self, backing_transport, write_func):
         self._backing_transport = backing_transport
         self.excess_buffer = ''
-        self._finished_reading = False
+        self._finished = False
         self.in_buffer = ''
         self.has_dispatched = False
         self.request = None
@@ -301,16 +296,15 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                     self.in_buffer = ''
                     self._send_response(self.request.response.args,
                         self.request.response.body)
-                self.sync_with_request(self.request)
             except KeyboardInterrupt:
                 raise
             except Exception, exception:
                 # everything else: pass to client, flush, and quit
                 self._send_response(('error', str(exception)))
-                return None
+                return
 
         if self.has_dispatched:
-            if self._finished_reading:
+            if self._finished:
                 # nothing to do.XXX: this routine should be a single state 
                 # machine too.
                 self.excess_buffer += self.in_buffer
@@ -326,7 +320,6 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 self.request.end_of_body()
                 assert self.request.finished_reading, \
                     "no more body, request not finished"
-            self.sync_with_request(self.request)
             if self.request.response is not None:
                 self._send_response(self.request.response.args,
                     self.request.response.body)
@@ -338,17 +331,16 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
 
     def _send_response(self, args, body=None):
         """Send a smart server response down the output stream."""
+        assert not self._finished, 'response already sent'
+        self._finished = True
         self._write_func(_encode_tuple(args))
         if body is not None:
             assert isinstance(body, str), 'body must be a str'
             bytes = self._encode_bulk_data(body)
             self._write_func(bytes)
 
-    def sync_with_request(self, request):
-        self._finished_reading = request.finished_reading
-        
     def next_read_size(self):
-        if self._finished_reading:
+        if self._finished:
             return 0
         if self._body_decoder is None:
             return 1
@@ -663,10 +655,8 @@ class SmartServerRequestHandler(object):
     def do_delete(self, relpath):
         self._backing_transport.delete(relpath)
 
-    def do_iter_files_recursive(self, abspath):
-        # XXX: the path handling needs some thought.
-        #relpath = self._backing_transport.relpath(abspath)
-        transport = self._backing_transport.clone(abspath)
+    def do_iter_files_recursive(self, relpath):
+        transport = self._backing_transport.clone(relpath)
         filenames = transport.iter_files_recursive()
         return SmartServerResponse(('names',) + tuple(filenames))
 
@@ -802,9 +792,11 @@ class SmartServerRequestHandler(object):
             # with a plain string
             str_or_unicode = e.object
             if isinstance(str_or_unicode, unicode):
-                val = u'u:' + str_or_unicode
+                # XXX: UTF-8 might have \x01 (our seperator byte) in it.  We
+                # should escape it somehow.
+                val = 'u:' + str_or_unicode.encode('utf-8')
             else:
-                val = u's:' + str_or_unicode.encode('base64')
+                val = 's:' + str_or_unicode.encode('base64')
             # This handles UnicodeEncodeError or UnicodeDecodeError
             return SmartServerResponse((e.__class__.__name__,
                     e.encoding, val, str(e.start), str(e.end), e.reason))
@@ -1221,7 +1213,7 @@ class SmartTransport(transport.Transport):
             end = int(resp[4])
             reason = str(resp[5]) # reason must always be a string
             if val.startswith('u:'):
-                val = val[2:]
+                val = val[2:].decode('utf-8')
             elif val.startswith('s:'):
                 val = val[2:].decode('base64')
             if what == 'UnicodeDecodeError':
