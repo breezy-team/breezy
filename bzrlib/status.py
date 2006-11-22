@@ -76,7 +76,8 @@ def show_tree_status(wt, show_unchanged=None,
                      show_ids=False,
                      to_file=None,
                      show_pending=True,
-                     revision=None):
+                     revision=None,
+                     short=False):
     """Display summary of changes.
 
     By default this compares the working tree to a previous revision. 
@@ -101,6 +102,7 @@ def show_tree_status(wt, show_unchanged=None,
         If not None it must be a RevisionSpec list.
         If one revision show compared it with working tree.
         If two revisions show status between first and second.
+    :param short: If True, gives short SVN-style status lines
     """
     if show_unchanged is not None:
         warn("show_status_trees with show_unchanged has been deprecated "
@@ -137,16 +139,23 @@ def show_tree_status(wt, show_unchanged=None,
                               specific_files=specific_files)
         delta.show(to_file,
                    show_ids=show_ids,
-                   show_unchanged=show_unchanged)
-
-        list_paths('unknown', new.unknowns(), specific_files, to_file)
+                   show_unchanged=show_unchanged,
+                   short_status=short)
+        short_status_letter = '?'
+        if not short:
+            short_status_letter = ''
+        list_paths('unknown', new.unknowns(), specific_files, to_file,
+                   short_status_letter)
         conflict_title = False
         # show the new conflicts only for now. XXX: get them from the delta.
         for conflict in new.conflicts():
-            if conflict_title is False:
+            if not short and conflict_title is False:
                 print >> to_file, "conflicts:"
                 conflict_title = True
-            print >> to_file, "  %s" % conflict
+            if not short:
+                print >> to_file, "  %s" % conflict
+            else:
+                print >> to_file, "C  %s" % conflict
         if new_is_working_tree and show_pending:
             show_pending_merges(new, to_file)
     finally:
@@ -192,12 +201,12 @@ def show_pending_merges(new, to_file):
         except errors.NoSuchRevision:
             print >> to_file, ' ', merge
         
-def list_paths(header, paths, specific_files, to_file):
+def list_paths(header, paths, specific_files, to_file, short_status_letter=''):
     done_header = False
     for path in paths:
         if specific_files and not is_inside_any(specific_files, path):
             continue
-        if not done_header:
+        if not short_status_letter and not done_header:
             print >>to_file, '%s:' % header
             done_header = True
-        print >>to_file, ' ', path
+        print >>to_file, '%s %s' % (short_status_letter, path)
