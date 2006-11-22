@@ -391,12 +391,21 @@ class BzrDir(object):
                     break
                 else:
                     continue
-            if ((found_bzrdir.root_transport.base == 
+            if ((found_bzrdir.root_transport.base ==
                  self.root_transport.base) or repository.is_shared()):
                 return repository
             else:
                 raise errors.NoRepositoryPresent(self)
         raise errors.NoRepositoryPresent(self)
+
+    def get_branch_reference(self):
+        """Return the referenced URL for the branch in this bzrdir.
+
+        :raises NotBranchError: If there is no Branch.
+        :return: The URL the branch in this bzrdir references if it is a
+            reference branch, or None for regular branches.
+        """
+        return None
 
     def get_branch_transport(self, branch_format):
         """Get the transport for use by branch format in this BzrDir.
@@ -929,6 +938,12 @@ class BzrDirMeta1(BzrDir):
         temp_control = lockable_files.LockableFiles(self.transport, '',
                                      lockable_files.TransportLock)
         return temp_control._dir_mode
+
+    def get_branch_reference(self):
+        """See BzrDir.get_branch_reference()."""
+        from bzrlib.branch import BranchFormat
+        format = BranchFormat.find_format(self)
+        return format.get_reference(self)
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""

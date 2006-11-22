@@ -17,4 +17,4 @@ classes which implement any of their methods using VFS facilities.  This
 probably means rearranging the class heirarchy to introduce new base classes
 with no functionality implemented by VFS.
 
-
+Implement RemoteBzrDir.find_repository directly for performance.

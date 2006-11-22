@@ -677,6 +677,18 @@ class BranchFormat(object):
         """Return the short format description for this format."""
         raise NotImplementedError(self.get_format_string)
 
+    def get_reference(self, a_bzrdir):
+        """Get the target reference of the branch in a_bzrdir.
+
+        format probing must have been completed before calling
+        this method - it is assumed that the format of the branch
+        in a_bzrdir is correct.
+
+        :param a_bzrdir: The bzrdir to get the branch data from.
+        :return: None if the branch is not a reference branch.
+        """
+        return None
+
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
         raise NotImplementedError(self.initialize)
@@ -854,6 +866,11 @@ class BranchReferenceFormat(BranchFormat):
         """See BranchFormat.get_format_description()."""
         return "Checkout reference format 1"
         
+    def get_reference(self, a_bzrdir):
+        """See BranchFormat.get_reference()."""
+        transport = a_bzrdir.get_branch_transport(None)
+        return transport.get('location').read()
+
     def initialize(self, a_bzrdir, target_branch=None):
         """Create a branch of this format in a_bzrdir."""
         if target_branch is None:
@@ -881,7 +898,7 @@ class BranchReferenceFormat(BranchFormat):
             # emit some sort of warning/error to the caller ?!
         return clone
 
-    def open(self, a_bzrdir, _found=False):
+    def open(self, a_bzrdir, _found=False, location=None):
         """Return the branch that the branch reference in a_bzrdir points at.
 
         _found is a private parameter, do not use it. It is used to indicate
@@ -890,8 +907,9 @@ class BranchReferenceFormat(BranchFormat):
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
-        transport = a_bzrdir.get_branch_transport(None)
-        real_bzrdir = bzrdir.BzrDir.open(transport.get('location').read())
+        if location is None:
+            location = self.get_reference(a_bzrdir)
+        real_bzrdir = bzrdir.BzrDir.open(location)
         result = real_bzrdir.open_branch()
         # this changes the behaviour of result.clone to create a new reference
         # rather than a copy of the content of the branch.

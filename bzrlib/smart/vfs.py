@@ -39,14 +39,24 @@ def _deserialise_optional_mode(mode):
         return int(mode)
 
 
+def vfs_enabled():
+    """Is the VFS enabled ?
+
+    the VFS is disabled when the NO_SMART_VFS environment variable is set.
+
+    :return: True if it is enabled.
+    """
+    return not 'NO_SMART_VFS' in os.environ
+
+
 class VfsRequest(request.SmartServerRequest):
     """Base class for VFS requests.
     
-    VFS requests are disabled if the NO_SMART_VFS environment variable is set.
+    VFS requests are disabled if vfs_enabled() returns False.
     """
 
     def _check_enabled(self):
-        if 'NO_SMART_VFS' in os.environ:
+        if not vfs_enabled():
             raise errors.DisabledMethod(self.__class__.__name__)
 
 

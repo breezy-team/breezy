@@ -47,7 +47,7 @@ class BasicRemoteObjectTests(tests.TestCaseInTempDir):
         self.assertIsInstance(b, BzrDir)
 
     def test_open_remote_branch(self):
-        # create a standalone branch in the working directory
+        # open a standalone branch in the working directory
         b = remote.RemoteBzrDir(self.transport)
         branch = b.open_branch()
 
