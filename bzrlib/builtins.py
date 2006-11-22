@@ -1868,80 +1868,27 @@ class cmd_commit(Command):
         else:
             reporter = NullCommitReporter()
 
-        msgfilename = self._save_commit_message(message, tree.basedir)
         try:
             tree.commit(message, specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
                         reporter=reporter)
-            if msgfilename is not None:
-                try:
-                    os.unlink(msgfilename)
-                except IOError, e:
-                    warning("failed to unlink %s: %s; ignored", msgfilename, e)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
-            if msgfilename is not None:
-                raise errors.BzrCommandError("no changes to commit."
-                                  " use --unchanged to commit anyhow\n"
-                                  "Commit message saved. To reuse the message,"
-                                  " do\nbzr commit --file " + msgfilename)
-            else:
-                raise errors.BzrCommandError("no changes to commit."
-                                  " use --unchanged to commit anyhow")
+            raise errors.BzrCommandError("no changes to commit."
+                              " use --unchanged to commit anyhow")
         except ConflictsInTree:
-            if msgfilename is not None:
-                raise errors.BzrCommandError('Conflicts detected in working '
-                    'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'
-                    ' resolve.\n'
-                    'Commit message saved. To reuse the message,'
-                    ' do\nbzr commit --file ' + msgfilename)
-            else:
-                raise errors.BzrCommandError('Conflicts detected in working '
-                    'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'
-                    ' resolve.')
+            raise errors.BzrCommandError('Conflicts detected in working '
+                'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'
+                ' resolve.')
         except StrictCommitFailed:
-            if msgfilename is not None:
-                raise errors.BzrCommandError("Commit refused because there are"
-                                  " unknown files in the working tree.\n"
-                                  "Commit message saved. To reuse the message,"
-                                  " do\nbzr commit --file " + msgfilename)
-            else:
-                raise errors.BzrCommandError("Commit refused because there are"
-                                  " unknown files in the working tree.")
+            raise errors.BzrCommandError("Commit refused because there are"
+                              " unknown files in the working tree.")
         except errors.BoundBranchOutOfDate, e:
-            if msgfilename is not None:
-                raise errors.BzrCommandError(str(e) + "\n"
-                'To commit to master branch, run update and then commit.\n'
-                'You can also pass --local to commit to continue working '
-                'disconnected.\n'
-                'Commit message saved. To reuse the message,'
-                ' do\nbzr commit --file ' + msgfilename)
-            else:
-                raise errors.BzrCommandError(str(e) + "\n"
-                'To commit to master branch, run update and then commit.\n'
-                'You can also pass --local to commit to continue working '
-                'disconnected.')
-
-    def _save_commit_message(self, message, basedir):
-        # save the commit message and only unlink it if the commit was
-        # successful
-        msgfilename = None
-        try:
-            tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr-commit-',
-                                                       dir=basedir)
-        except OSError:
-            try:
-                # No access to working dir, try $TMP
-                tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr-commit-')
-            except OSError:
-                # We can't create a temp file, try to work without it
-                return None
-        try:
-            os.write(tmp_fileno, message.encode(bzrlib.user_encoding, 'replace'))
-        finally:
-            os.close(tmp_fileno)
-        return msgfilename
+            raise errors.BzrCommandError(str(e) + "\n"
+            'To commit to master branch, run update and then commit.\n'
+            'You can also pass --local to commit to continue working '
+            'disconnected.')
 
 
 class cmd_check(Command):
