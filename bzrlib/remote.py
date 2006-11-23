@@ -21,9 +21,8 @@ from urlparse import urlparse
 
 from bzrlib import branch, errors, repository
 from bzrlib.bzrdir import BzrDir, BzrDirFormat, RemoteBzrDirFormat
-from bzrlib.branch import Branch, BranchFormat, BranchReferenceFormat
+from bzrlib.branch import BranchReferenceFormat
 from bzrlib.smart import client, vfs
-from bzrlib.trace import mutter
 from bzrlib.urlutils import unescape
 
 # Note: RemoteBzrDirFormat is in bzrdir.py
@@ -170,7 +169,7 @@ class RemoteRepository(object):
             via the VFS.
         """
         if real_repository:
-            self._real_repository = _real_repository
+            self._real_repository = real_repository
         self.bzrdir = remote_bzrdir
         self._format = RemoteRepositoryFormat()
 
