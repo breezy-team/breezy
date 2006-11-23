@@ -2,24 +2,59 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * New command ``bzr remove-tree`` allows the removal of the working
+      tree from a branch.
+      (Daniel Silverstone)
+
     * ``bzr export`` allows an optional branch parameter, to export a bzr
       tree from some other url. For example:
       ``bzr export bzr.tar.gz http://bazaar-vcs.org/bzr/bzr.dev``
       (Daniel Silverstone)
 
+    * Added ``bzr help topics`` to the bzr help system. This gives a
+      location for general information, outside of a specific command.
+      This includes updates for ``bzr help revisionspec`` the first topic
+      included. (Goffredo Baroncelli, John Arbash Meinel, #42714)
+      
     * WSGI-compatible HTTP smart server.  See ``doc/http_smart_server.txt``.
       (Andrew Bennetts)
 
   INTERNALS:
 
+    * New -D option given before the command line turns on debugging output
+      for particular areas.  -Derror shows tracebacks on all errors.
+      (Martin Pool)
+
     * Clean up ``bzr selftest --benchmark bundle`` to correct an import,
       and remove benchmarks that take longer than 10min to run.
       (John Arbash Meinel)
 
+    * Use ``time.time()`` instead of ``time.clock()`` to decide on
+      progress throttling. Because ``time.clock()`` is actually CPU time,
+      so over a high-latency connection, too many updates get throttled.
+      (John Arbash Meinel)
+
+    * ``MemoryTransport.list_dir()`` would strip the first character for
+      files or directories in root directory. (John Arbash Meinel)
+
     * New method 'get_branch_reference' on 'BzrDir' allows the detection of 
       branch references - which the smart server component needs.
   
+    * New ``ChrootTransportDecorator``, accessible via the ``chroot+`` url
+      prefix.  It disallows any access to locations above a set URL.  (Andrew
+      Bennetts)
+
   BUG FIXES:
+
+    * ``bzrlib/bzrdir.py`` was directly referencing ``bzrlib.workingtree``,
+      without importing it. This prevented ``bzr upgrade`` from working
+      unless a plugin already imported ``bzrlib.workingtree``
+      (John Arbash Meinel, #70716)
+
+    * _KnitIndex.add_versions() dictionary compresses revision ids as they
+      are added. This fixes bug where fetching remote revisions records
+      them as full references rather than integers. (John Arbash Meinel,
+      #64789)
 
     * ``bzr ignore`` strips trailing slashes in patterns.
       Also ``bzr ignore`` rejects absolute paths. (Kent Gibson, #4559)
@@ -107,12 +142,6 @@ bzr 0.12rc1  2006-10-23
       ``--no-plugins`` parameter to ensure test reproducability, and avoid
       problems with system-wide installed plugins. (John Arbash Meinel)
 
-<<<<<<< TREE
-    * New ``ChrootTransportDecorator``, accessible via the ``chroot+`` url
-      prefix.  It disallows any access to locations above a set URL.  (Andrew
-      Bennetts)
-
-=======
     * Unique tree root ids are now supported. Newly created trees still
       use the common root id for compatibility with bzr versions before 0.12.
       (Aaron Bentley)
@@ -136,7 +165,6 @@ bzr 0.12rc1  2006-10-23
     * ``LogFormatter.show_merge`` is deprecated in favour of
       ``LogFormatter.show_merge_revno``. (Robert Collins)
 
->>>>>>> MERGE-SOURCE
   BUG FIXES:
 
     * Avoid circular imports by creating a deprecated function for
@@ -170,6 +198,10 @@ bzr 0.12rc1  2006-10-23
       implement cloning. (Vincent Ladeuil, #61606)
 
     * diff3 does not indicate conflicts on clean merge. (Aaron Bentley)
+
+    * If a commit fails, the commit message is stored in a file at the root of
+      the tree for later commit. (Cheuksan Edward Wang, Stefan Metzmacher,
+      #32054)
 
   TESTING:
 

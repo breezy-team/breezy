@@ -1189,8 +1189,11 @@ class BzrDirFormat(object):
         _found is a private parameter, do not use it.
         """
         if not _found:
-            assert isinstance(BzrDirFormat.find_format(transport),
-                              self.__class__)
+            found_format = BzrDirFormat.find_format(transport)
+            if not isinstance(found_format, self.__class__):
+                raise AssertionError("%s was asked to open %s, but it seems to need "
+                        "format %s" 
+                        % (self, transport, found_format))
         return self._open(transport)
 
     def _open(self, transport):
@@ -1882,11 +1885,12 @@ class ConvertBzrDir6ToMeta(Converter):
                 if name in bzrcontents:
                     self.bzrdir.transport.delete(name)
         else:
+            from bzrlib.workingtree import WorkingTreeFormat3
             self.step('Upgrading working tree')
             self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
             self.put_format(
-                'checkout', bzrlib.workingtree.WorkingTreeFormat3())
+                'checkout', WorkingTreeFormat3())
             self.bzrdir.transport.delete_multi(
                 self.garbage_inventories, self.pb)
             for entry in checkout_files:

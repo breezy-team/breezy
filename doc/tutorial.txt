@@ -107,8 +107,9 @@ Introducing yourself to Bazaar
 ==============================
 
 Bazaar installs a single new command, **bzr**.  Everything else is a
-subcommand of this.  You can get some help with `bzr help`.  There will be
-more in the future.
+subcommand of this.  You can get some help with ``bzr help``. Some arguments 
+are grouped in topics: ``bzr help topics`` to see which topics are available.
+There will be more in the future.
 
 One function of a version control system is to keep track of who changed
 what.  In a decentralized system, that requires an identifier for each
@@ -298,10 +299,10 @@ Message from an editor
 
 If you use neither the `-m` nor the `-F` option then bzr will open an
 editor for you to enter a message.  The editor to run is controlled by
-your `$EDITOR` environment variable or 
-add `editor` to ~/.bazaar/bazaar.conf; `$BZR_EDITOR` will override
-the above mentioned editor options.  If you quit the editor without
-making any changes, the commit will be cancelled.
+your `$VISUAL` or `$EDITOR` environment variable, which can be overridden
+by the `editor` setting in to ~/.bazaar/bazaar.conf; `$BZR_EDITOR` will
+override either of the above mentioned editor options.  If you quit the
+editor without making any changes, the commit will be cancelled.
 
 Selective commit
 ----------------
