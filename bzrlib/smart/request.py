@@ -246,24 +246,24 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'hello', 'bzrlib.smart.request', 'HelloRequest')
 request_handlers.register_lazy(
-    'iter_files_recursive', 'bzrlib.smart.vfs', 'IterFilesRecursive')
+    'iter_files_recursive', 'bzrlib.smart.vfs', 'IterFilesRecursiveRequest')
 request_handlers.register_lazy(
     'list_dir', 'bzrlib.smart.vfs', 'ListDirRequest')
 request_handlers.register_lazy(
-    'mkdir', 'bzrlib.smart.vfs', 'MkdirCommand')
+    'mkdir', 'bzrlib.smart.vfs', 'MkdirRequest')
 request_handlers.register_lazy(
-    'move', 'bzrlib.smart.vfs', 'MoveCommand')
+    'move', 'bzrlib.smart.vfs', 'MoveRequest')
 request_handlers.register_lazy(
-    'put', 'bzrlib.smart.vfs', 'PutCommand')
+    'put', 'bzrlib.smart.vfs', 'PutRequest')
 request_handlers.register_lazy(
-    'put_non_atomic', 'bzrlib.smart.vfs', 'PutNonAtomicCommand')
+    'put_non_atomic', 'bzrlib.smart.vfs', 'PutNonAtomicRequest')
 request_handlers.register_lazy(
-    'readv', 'bzrlib.smart.vfs', 'ReadvCommand')
+    'readv', 'bzrlib.smart.vfs', 'ReadvRequest')
 request_handlers.register_lazy(
-    'rename', 'bzrlib.smart.vfs', 'RenameCommand')
+    'rename', 'bzrlib.smart.vfs', 'RenameRequest')
 request_handlers.register_lazy(
-    'rmdir', 'bzrlib.smart.vfs', 'RmdirCommand')
+    'rmdir', 'bzrlib.smart.vfs', 'RmdirRequest')
 request_handlers.register_lazy(
-    'stat', 'bzrlib.smart.vfs', 'StatCommand')
+    'stat', 'bzrlib.smart.vfs', 'StatRequest')
 request_handlers.register_lazy(
     'probe_dont_use', 'bzrlib.smart.request', 'ProbeDontUseRequest')

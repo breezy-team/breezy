@@ -1135,7 +1135,7 @@ class TestSmartProtocol(tests.TestCase):
         """
         # XXX: '_deserialise_offsets' should be a method of the
         # SmartServerRequestProtocol in future.
-        readv_cmd = vfs.ReadvCommand(None)
+        readv_cmd = vfs.ReadvRequest(None)
         offsets = readv_cmd._deserialise_offsets(expected_serialised)
         self.assertEqual(expected_offsets, offsets)
         serialised = client._serialise_offsets(offsets)
