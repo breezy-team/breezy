@@ -18,12 +18,6 @@
 # XXX: Can we do any better about making interrupted commits change
 # nothing?  
 
-# TODO: Separate 'prepare' phase where we find a list of potentially
-# committed files.  We then can then pause the commit to prompt for a
-# commit message, knowing the summary will be the same as what's
-# actually used for the commit.  (But perhaps simpler to simply get
-# the tree status, then use that for a selective commit?)
-
 # The newly committed revision is going to have a shape corresponding
 # to that of the working inventory.  Files that are not in the
 # working tree and that were in the predecessor are reported as
@@ -58,8 +52,6 @@
 # TODO: Do checks that the tree can be committed *before* running the 
 # editor; this should include checks for a pointless commit and for 
 # unknown or missing files.
-
-# TODO: If commit fails, leave the message in a file somewhere.
 
 # TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
 # the rest of the code; add a deprecation of the old name.
@@ -171,7 +163,7 @@ class Commit(object):
             self.config = None
         
     def commit(self,
-               branch=DEPRECATED_PARAMETER, message=None,
+               branch=DEPRECATED_PARAMETER, message=DEPRECATED_PARAMETER,
                timestamp=None,
                timezone=None,
                committer=None,
@@ -184,13 +176,14 @@ class Commit(object):
                working_tree=None,
                local=False,
                reporter=None,
-               config=None):
+               config=None,
+               message_callback=None):
         """Commit working copy as a new revision.
 
         branch -- the deprecated branch to commit to. New callers should pass in 
                   working_tree instead
 
-        message -- the commit message, a mandatory parameter
+        message -- the commit message (it or message_callback is required)
 
         timestamp -- if not None, seconds-since-epoch for a
              postdated/predated commit.
@@ -225,8 +218,15 @@ class Commit(object):
         else:
             self.work_tree = working_tree
             self.branch = self.work_tree.branch
-        if message is None:
-            raise BzrError("The message keyword parameter is required for commit().")
+        if message_callback is None:
+            if deprecated_passed(message) and message is not None:
+                symbol_versioning.warn("Commit.commit (message): The message"
+                " parameter is deprecated as of bzr 0.14. Please use "
+                "message_callback instead.", DeprecationWarning, stacklevel=2)
+                message_callback = lambda: message
+            else:
+                raise BzrError("The message_callback keyword parameter is "
+                               "required for commit().")
 
         self.bound_branch = None
         self.local = local
@@ -272,12 +272,6 @@ class Commit(object):
                    
             if self.config is None:
                 self.config = self.branch.get_config()
-      
-            if isinstance(message, str):
-                message = message.decode(bzrlib.user_encoding)
-            assert isinstance(message, unicode), type(message)
-            self.message = message
-            self._escape_commit_message()
 
             self.work_inv = self.work_tree.inventory
             self.basis_tree = self.work_tree.basis_tree()
@@ -317,6 +311,13 @@ class Commit(object):
             # that commit will succeed.
             self.builder.finish_inventory()
             self._emit_progress_update()
+            message = message_callback()
+            if isinstance(message, str):
+                message = message.decode(bzrlib.user_encoding)
+            assert isinstance(message, unicode), type(message)
+            self.message = message
+            self._escape_commit_message()
+
             self.rev_id = self.builder.commit(self.message)
             self._emit_progress_update()
             # revision data is in the local branch now.
