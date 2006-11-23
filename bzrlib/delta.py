@@ -105,9 +105,9 @@ class TreeDelta(object):
                     path += '*'
 
                 if show_ids:
-                    print >>to_file, '  %-30s %s' % (path, fid)
+                    print >>to_file, '%s  %-30s %s' % (short_status_letter, path, fid)
                 else:
-                    print >>to_file, '%s %s' % (short_status_letter, path)
+                    print >>to_file, '%s  %s' % (short_status_letter, path)
             
         if self.removed:
             if not short_status:

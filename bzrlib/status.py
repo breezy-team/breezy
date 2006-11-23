@@ -157,11 +157,11 @@ def show_tree_status(wt, show_unchanged=None,
             else:
                 print >> to_file, "C  %s" % conflict
         if new_is_working_tree and show_pending:
-            show_pending_merges(new, to_file)
+            show_pending_merges(new, to_file, short)
     finally:
         wt.unlock()
 
-def show_pending_merges(new, to_file):
+def show_pending_merges(new, to_file, short=False):
     """Write out a display of pending merges in a working tree."""
     parents = new.get_parent_ids()
     if len(parents) < 2:
@@ -169,7 +169,8 @@ def show_pending_merges(new, to_file):
     pending = parents[1:]
     branch = new.branch
     last_revision = parents[0]
-    print >>to_file, 'pending merges:'
+    if not short:
+        print >>to_file, 'pending merges:'
     if last_revision is not None:
         try:
             ignore = set(branch.repository.get_ancestry(last_revision))
@@ -187,7 +188,10 @@ def show_pending_merges(new, to_file):
             from bzrlib.osutils import terminal_width
             width = terminal_width()
             m_revision = branch.repository.get_revision(merge)
-            print >> to_file, ' ', line_log(m_revision, width - 3)
+            if short:
+                print >> to_file, 'P ', line_log(m_revision, width - 3)
+            else:
+                print >> to_file, ' ', line_log(m_revision, width - 3)
             inner_merges = branch.repository.get_ancestry(merge)
             assert inner_merges[0] is None
             inner_merges.pop(0)
@@ -196,10 +200,16 @@ def show_pending_merges(new, to_file):
                 if mmerge in ignore:
                     continue
                 mm_revision = branch.repository.get_revision(mmerge)
-                print >> to_file, '   ', line_log(mm_revision, width - 5)
+                if short:
+                    print >> to_file, 'P. ', line_log(mm_revision, width - 5)
+                else:
+                    print >> to_file, '  ', line_log(mm_revision, width - 5)
                 ignore.add(mmerge)
         except errors.NoSuchRevision:
-            print >> to_file, ' ', merge
+            if short:
+                print >> to_file, 'P ', merge
+            else:
+                print >> to_file, ' ', merge
         
 def list_paths(header, paths, specific_files, to_file, short_status_letter=''):
     done_header = False
@@ -209,4 +219,4 @@ def list_paths(header, paths, specific_files, to_file, short_status_letter=''):
         if not short_status_letter and not done_header:
             print >>to_file, '%s:' % header
             done_header = True
-        print >>to_file, '%s %s' % (short_status_letter, path)
+        print >>to_file, '%s  %s' % (short_status_letter, path)

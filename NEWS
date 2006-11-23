@@ -19,10 +19,18 @@ IN DEVELOPMENT
       location for general information, outside of a specific command.
       This includes updates for ``bzr help revisionspec`` the first topic
       included. (Goffredo Baroncelli, John Arbash Meinel, #42714)
-      
+
     * WSGI-compatible HTTP smart server.  See ``doc/http_smart_server.txt``.
       (Andrew Bennetts)
 
+    * Added ``bzr status --short`` to make status report svn style flags
+      for each file; for example 
+       $ bzr status --short
+       A foo
+       A bar
+       D baz
+       ? wooley
+      
   INTERNALS:
 
     * New -D option given before the command line turns on debugging output
