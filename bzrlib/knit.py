@@ -840,12 +840,10 @@ class KnitVersionedFile(VersionedFile):
                 data_pos, length = self._index.get_position(version_id)
                 version_id_records.append((version_id, data_pos, length))
 
-        count = 0
         total = len(version_id_records)
-        pb.update('Walking content.', count, total)
-        for version_id, data, sha_value in \
-            self._data.read_records_iter(version_id_records):
-            pb.update('Walking content.', count, total)
+        for version_idx, (version_id, data, sha_value) in \
+            enumerate(self._data.read_records_iter(version_id_records)):
+            pb.update('Walking content.', version_idx, total)
             method = self._index.get_method(version_id)
             version_idx = self._index.lookup(version_id)
             assert method in ('fulltext', 'line-delta')
@@ -858,7 +856,6 @@ class KnitVersionedFile(VersionedFile):
                 for start, end, count, lines in delta:
                     for origin, line in lines:
                         yield line
-            count +=1
         pb.update('Walking content.', total, total)
         
     def num_versions(self):
