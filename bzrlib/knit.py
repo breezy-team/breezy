@@ -334,11 +334,10 @@ class KnitVersionedFile(VersionedFile):
         Return True if we should create a new delta, False if we should use a
         full text.
         """
-        count = 0
         delta_size = 0
         fulltext_size = None
         delta_parents = first_parents
-        while count < self._max_delta_chain:
+        for count in xrange(self._max_delta_chain):
             parent = delta_parents[0]
             method = self._index.get_method(parent)
             pos, size = self._index.get_position(parent)
@@ -347,11 +346,11 @@ class KnitVersionedFile(VersionedFile):
                 break
             delta_size += size
             delta_parents = self._index.get_parents(parent)
-            count = count + 1
-
-        if method == 'line-delta' or fulltext_size < delta_size:
+        else:
+            # We couldn't find a fulltext, so we must create a new one
             return False
-        return True
+
+        return fulltext_size > delta_size
 
     def _add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
         """See VersionedFile._add_delta()."""
