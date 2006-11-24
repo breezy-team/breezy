@@ -198,6 +198,7 @@ class RemoteBranch(branch.Branch):
             format, usually accessing the data via the VFS.
         """
         self.bzrdir = remote_bzrdir
+        self._client = client.SmartClient(self.bzrdir.client)
         self.repository = remote_repository
         if real_branch is not None:
             self._real_branch = real_branch
@@ -216,7 +217,17 @@ class RemoteBranch(branch.Branch):
         return self._real_branch.break_lock()
 
     def revision_history(self):
-        return self._real_branch.revision_history()
+        """See Branch.revision_history()."""
+        # XXX: TODO: this does not cache the revision history for the duration
+        # of a lock, which is a bug - see the code for regular branches
+        # for details.
+        path = self.bzrdir._path_for_remote_call()
+        response = self._client.call2('Branch.revision_history', path)
+        assert response[0][0] == 'ok', 'unexpected response code %s' % response[0]
+        result = response[1].read_body_bytes().decode('utf8').split('\x00')
+        if result == ['']:
+            return []
+        return result
 
     def set_revision_history(self, rev_history):
         return self._real_branch.set_revision_history(rev_history)

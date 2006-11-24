@@ -16,9 +16,10 @@
 
 """Tests for the smart wire/domain protococl."""
 
-from bzrlib import smart, tests
+from bzrlib import errors, smart, tests
 from bzrlib.smart.request import SmartServerResponse
 import bzrlib.smart.bzrdir
+import bzrlib.smart.branch
 
 
 class TestSmartServerResponse(tests.TestCase):
@@ -103,11 +104,57 @@ class TestSmartServerRequestOpenBranch(tests.TestCaseWithTransport):
         self.assertEqual(SmartServerResponse(('ok', reference_url)),
             request.execute(backing.local_abspath('reference')))
 
+
+class TestSmartServerRequestRevisionHistory(tests.TestCaseWithTransport):
+
+    def test_no_branch(self):
+        """When there is a bzrdir and no branch, NotBranchError is raised."""
+        backing = self.get_transport()
+        request = smart.branch.SmartServerRequestRevisionHistory(backing)
+        self.make_bzrdir('.')
+        self.assertRaises(errors.NotBranchError,
+            request.execute, backing.local_abspath(''))
+
+    def test_empty(self):
+        """For an empty branch, the body is empty."""
+        backing = self.get_transport()
+        request = smart.branch.SmartServerRequestRevisionHistory(backing)
+        self.make_branch('.')
+        self.assertEqual(SmartServerResponse(('ok', ), ''),
+            request.execute(backing.local_abspath('')))
+
+    def test_not_empty(self):
+        """For a non-empty branch, the body is empty."""
+        backing = self.get_transport()
+        request = smart.branch.SmartServerRequestRevisionHistory(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('1st commit')
+        r2 = tree.commit('2nd commit', rev_id=u'\xc8')
+        tree.unlock()
+        self.assertEqual(SmartServerResponse(('ok', ),
+            ('\x00'.join([r1, r2])).encode('utf8')),
+            request.execute(backing.local_abspath('')))
+
+    def test_branch_reference(self):
+        """When there is a branch reference, NotBranchError is raised."""
+        backing = self.get_transport()
+        request = smart.branch.SmartServerRequestRevisionHistory(backing)
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('reference',lightweight=True)
+        self.assertRaises(errors.NotBranchError,
+            request.execute, backing.local_abspath('checkout'))
+
+
 class TestHandlers(tests.TestCase):
     """Tests for the request.request_handlers object."""
 
     def test_registered_methods(self):
         """Test that known methods are registered to the correct object."""
+        self.assertEqual(
+            smart.request.request_handlers.get('Branch.revision_history'),
+            smart.branch.SmartServerRequestRevisionHistory)
         self.assertEqual(
             smart.request.request_handlers.get('BzrDir.find_repository'),
             smart.bzrdir.SmartServerRequestFindRepository)

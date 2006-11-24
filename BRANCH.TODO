@@ -18,3 +18,5 @@ probably means rearranging the class heirarchy to introduce new base classes
 with no functionality implemented by VFS.
 
 Implement RemoteBzrDir.find_repository directly for performance.
+
+decide what to do when operating on a branch on a server that is bound to another.

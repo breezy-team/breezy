@@ -62,8 +62,10 @@ class BasicRemoteObjectTests(tests.TestCaseInTempDir):
 
     def test_remote_branch_revision_history(self):
         b = BzrDir.open_from_transport(self.transport).open_branch()
-        rh = b.revision_history()
-        self.assertEqual(len(rh), 0)
+        self.assertEqual([], b.revision_history())
+        r1 = self.local_wt.commit('1st commit')
+        r2 = self.local_wt.commit('1st commit', rev_id=u'\xc8')
+        self.assertEqual([r1, r2], b.revision_history())
 
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""

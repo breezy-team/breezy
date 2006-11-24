@@ -24,10 +24,16 @@ class SmartClient(object):
 
     def call(self, method, *args):
         """Call a method on the remote server."""
+        result, protocol = self.call2(method, *args)
+        protocol.cancel_read_body()
+        return result
+
+    def call2(self, method, *args):
+        """Call a method and return the result and the protocol object."""
         request = self._medium.get_request()
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call(method, *args)
-        return smart_protocol.read_response_tuple()
+        return smart_protocol.read_response_tuple(expect_body=True), smart_protocol
 
     def call_with_body_bytes(self, method, args, body):
         """Call a method on the remote server with body bytes."""
@@ -35,4 +41,3 @@ class SmartClient(object):
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call_with_body_bytes((method, ) + args, body)
         return smart_protocol.read_response_tuple()
-
