@@ -2197,7 +2197,10 @@ class cmd_merge(Command):
                      Option('show-base', help="Show base revision text in "
                             "conflicts"), 
                      Option('uncommitted', help='Apply uncommitted changes'
-                            ' from a working copy, instead of branch changes')]
+                            ' from a working copy, instead of branch changes'),
+                     Option('pull', help='If the branches are not diverged,'
+                            ' chage to remote revision as via pull command'),
+                     ]
 
     def help(self):
         from inspect import getdoc
@@ -2205,7 +2208,7 @@ class cmd_merge(Command):
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False, 
-            uncommitted=False):
+            uncommitted=False, pull=False):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2276,6 +2279,7 @@ class cmd_merge(Command):
                     merge_type=merge_type,
                     reprocess=reprocess,
                     show_base=show_base,
+                    pull=pull,
                     pb=pb, file_list=interesting_files)
             finally:
                 pb.finished()
@@ -2932,6 +2936,7 @@ def _merge_helper(other_revision, base_revision,
                   this_dir=None, backup_files=False,
                   merge_type=None,
                   file_list=None, show_base=False, reprocess=False,
+                  pull=False,
                   pb=DummyProgress()):
     """Merge changes into a tree.
 
@@ -2986,6 +2991,12 @@ def _merge_helper(other_revision, base_revision,
         if merger.base_rev_id == merger.other_rev_id:
             note('Nothing to do.')
             return 0
+        if file_list is None:
+            if pull and merger.base_rev_id == merger.this_rev_id:
+                count = merger.this_tree.pull(merger.this_branch,
+                        False, merger.other_rev_id)
+                note('%d revision(s) pulled.' % (count,))
+                return 0
         merger.backup_files = backup_files
         merger.merge_type = merge_type 
         merger.set_interesting_files(file_list)

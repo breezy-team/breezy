@@ -23,6 +23,9 @@ IN DEVELOPMENT
     * WSGI-compatible HTTP smart server.  See ``doc/http_smart_server.txt``.
       (Andrew Bennetts)
 
+    * ``bzr merge`` now has an option ``--pull`` to fall back to pull if
+      local is fully merged into remote.
+
   INTERNALS:
 
     * New -D option given before the command line turns on debugging output
