@@ -23,6 +23,13 @@ IN DEVELOPMENT
     * WSGI-compatible HTTP smart server.  See ``doc/http_smart_server.txt``.
       (Andrew Bennetts)
 
+    * Knit files will now cache full texts only when the size of the
+      deltas is as large as the size of the fulltext. (Or after 200
+      deltas, whichever comes first). This has the most benefit on large
+      files with small changes, such as the inventory for a large project.
+      (eg For a project with 2500 files, and 7500 revisions, it changes
+      the size of inventory.knit from 11MB to 5.4MB) (John Arbash Meinel)
+
   INTERNALS:
 
     * New -D option given before the command line turns on debugging output
