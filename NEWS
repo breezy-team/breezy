@@ -2,6 +2,14 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+  INTERNALS:
+
+  BUG FIXES:
+
+bzr 0.13rc1  2006-11-27
+
+  IMPROVEMENTS:
+
     * New command ``bzr remove-tree`` allows the removal of the working
       tree from a branch.
       (Daniel Silverstone)
@@ -111,7 +119,6 @@ IN DEVELOPMENT
 
     * TestingHTTPRequestHandler really handles the Range header
       (previously it was ignoring it and returning the whole file,).
-
 
 bzr 0.12  2006-10-30
 
