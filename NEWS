@@ -1,4 +1,4 @@
-IN DEVELOPMENT
+bzr 0.13rc1  2006-11-27
 
   IMPROVEMENTS:
 
@@ -111,7 +111,6 @@ IN DEVELOPMENT
 
     * TestingHTTPRequestHandler really handles the Range header
       (previously it was ignoring it and returning the whole file,).
-
 
 bzr 0.12  2006-10-30
 
