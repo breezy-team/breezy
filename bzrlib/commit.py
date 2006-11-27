@@ -15,9 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-# XXX: Can we do any better about making interrupted commits change
-# nothing?  
-
 # The newly committed revision is going to have a shape corresponding
 # to that of the working inventory.  Files that are not in the
 # working tree and that were in the predecessor are reported as
@@ -48,10 +45,6 @@
 # TODO: If the file is newly merged but unchanged from the version it
 # merges from, then it should still be reported as newly added
 # relative to the basis revision.
-
-# TODO: Do checks that the tree can be committed *before* running the 
-# editor; this should include checks for a pointless commit and for 
-# unknown or missing files.
 
 # TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
 # the rest of the code; add a deprecation of the old name.
@@ -163,7 +156,7 @@ class Commit(object):
             self.config = None
         
     def commit(self,
-               branch=DEPRECATED_PARAMETER, message=DEPRECATED_PARAMETER,
+               branch=DEPRECATED_PARAMETER, message=None,
                timestamp=None,
                timezone=None,
                committer=None,
@@ -219,14 +212,13 @@ class Commit(object):
             self.work_tree = working_tree
             self.branch = self.work_tree.branch
         if message_callback is None:
-            if deprecated_passed(message) and message is not None:
-                symbol_versioning.warn("Commit.commit (message): The message"
-                " parameter is deprecated as of bzr 0.14. Please use "
-                "message_callback instead.", DeprecationWarning, stacklevel=2)
-                message_callback = lambda: message
+            if message is not None:
+                if isinstance(message, str):
+                    message = message.decode(bzrlib.user_encoding)
+                message_callback = lambda x: message
             else:
-                raise BzrError("The message_callback keyword parameter is "
-                               "required for commit().")
+                raise BzrError("The message or message_callback keyword"
+                               " parameter is required for commit().")
 
         self.bound_branch = None
         self.local = local
@@ -311,9 +303,7 @@ class Commit(object):
             # that commit will succeed.
             self.builder.finish_inventory()
             self._emit_progress_update()
-            message = message_callback()
-            if isinstance(message, str):
-                message = message.decode(bzrlib.user_encoding)
+            message = message_callback(self)
             assert isinstance(message, unicode), type(message)
             self.message = message
             self._escape_commit_message()

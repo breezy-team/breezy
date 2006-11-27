@@ -118,12 +118,10 @@ class MutableTree(tree.Tree):
             revprops = {}
         if not 'branch-nick' in revprops:
             revprops['branch-nick'] = self.branch.nick
-        if message is not None:
-            kwargs['message_callback'] = lambda: message
         # args for wt.commit start at message from the Commit.commit method,
         # but with branch a kwarg now, passing in args as is results in the
         #message being used for the branch
-        args = (DEPRECATED_PARAMETER, DEPRECATED_PARAMETER, ) + args
+        args = (DEPRECATED_PARAMETER, message, ) + args
         committed_id = commit.Commit().commit(working_tree=self,
             revprops=revprops, *args, **kwargs)
         return committed_id

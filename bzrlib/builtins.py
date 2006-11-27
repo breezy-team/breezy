@@ -1849,7 +1849,7 @@ class cmd_commit(Command):
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
 
-        def get_message():
+        def get_message(commit_builder):
             """Callback to get commit message"""
             my_message = message
             if my_message is None and not file:

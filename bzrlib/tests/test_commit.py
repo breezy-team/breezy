@@ -339,9 +339,10 @@ class TestCommit(TestCaseWithTransport):
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            commit.Commit(config=MustSignConfig(branch)).commit(
-                message_callback=lambda: "base", allow_pointless=True,
-                rev_id='B', working_tree=wt)
+            commit.Commit(config=MustSignConfig(branch)).commit(message="base",
+                                                      allow_pointless=True,
+                                                      rev_id='B',
+                                                      working_tree=wt)
             self.assertEqual(Testament.from_revision(branch.repository,
                              'B').as_short_text(),
                              branch.repository.get_signature_text('B'))
@@ -384,7 +385,7 @@ class TestCommit(TestCaseWithTransport):
         try:
             config = BranchWithHooks(branch)
             commit.Commit(config=config).commit(
-                            message_callback=lambda: "base",
+                            message = "base",
                             allow_pointless=True,
                             rev_id='A', working_tree = wt)
             self.assertEqual(['called', 'called'], calls)
@@ -395,8 +396,7 @@ class TestCommit(TestCaseWithTransport):
         # using the Commit object directly does not set the branch nick.
         wt = self.make_branch_and_tree('.')
         c = Commit()
-        c.commit(working_tree=wt, message_callback=lambda:'empty tree', 
-                 allow_pointless=True)
+        c.commit(working_tree=wt, message='empty tree', allow_pointless=True)
         self.assertEquals(wt.branch.revno(), 1)
         self.assertEqual({},
                          wt.branch.repository.get_revision(
@@ -564,7 +564,7 @@ class TestCommit(TestCaseWithTransport):
             self.called = False
             self.message = message
 
-        def __call__(self):
+        def __call__(self, commit_builder):
             self.called = True
             return self.message
 
@@ -576,11 +576,11 @@ class TestCommit(TestCaseWithTransport):
             tree.commit()
         except Exception, e:
             self.assertTrue(isinstance(e, BzrError))
-            self.assertEqual('The message_callback keyword parameter is'
-                             ' required for commit().', str(e))
+            self.assertEqual('The message or message_callback keyword'
+                             ' parameter is required for commit().', str(e))
         else:
             self.fail('exception not raised')
-        cb = self.Callback('commit 1')
+        cb = self.Callback(u'commit 1')
         tree.commit(message_callback=cb)
         self.assertTrue(cb.called)
         repository = tree.branch.repository
@@ -590,19 +590,19 @@ class TestCommit(TestCaseWithTransport):
     def test_no_callback_pointless(self):
         """Callback should not be invoked for pointless commit"""
         tree = self.make_branch_and_tree('.')
-        cb = self.Callback('commit 2')
+        cb = self.Callback(u'commit 2')
         self.assertRaises(PointlessCommit, tree.commit, message_callback=cb, 
                           allow_pointless=False)
         self.assertFalse(cb.called)
 
     def test_no_callback_netfailure(self):
         """Callback should not be invoked if connectivity fails"""
-        # simulate network failure
         tree = self.make_branch_and_tree('.')
+        cb = self.Callback(u'commit 2')
+        repository = tree.branch.repository
+        # simulate network failure
         def raise_(self, arg, arg2):
             raise errors.NoSuchFile('foo')
-        cb = self.Callback('commit 2')
-        repository = tree.branch.repository
         repository.add_inventory = raise_
         self.assertRaises(errors.NoSuchFile, tree.commit, message_callback=cb)
         self.assertFalse(cb.called)
