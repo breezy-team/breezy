@@ -21,6 +21,7 @@ expressions.
 """
 
 import re
+import os.path
 
 from bzrlib.trace import (
     mutter, 
@@ -95,22 +96,11 @@ _sub_named.add(ur'\[:blank:\]', ur' \t')
 _sub_named.add(ur'\[:cntrl:\]', ur'\0-\x1f\x7f-\x9f')
 
 
-_sub_leading_named = Replacer()
-_sub_leading_named.add(ur'\[:ascii:\]', ur'\0-\x2d\x2f-\x7f')
-_sub_leading_named.add_replacer(_sub_named)
-
-
 def _sub_group(m):
     if m[1] in (u'!', u'^'):
         return u'[^' + _sub_named(m[2:-1]) + u']'
     return u'[' + _sub_named(m[1:-1]) + u']'
 
-
-def _sub_leading_group(m):
-    if m[1] in (u'!', u'^'):
-        return u'[^.' + _sub_named(m[2:-1]) + u']'
-    return u'[' + _sub_leading_named(m[1:-1]) + u']'
-        
 
 def _invalid_regex(repl):
     def _(m):
@@ -127,37 +117,27 @@ _sub_re.add(u'\(\?P<.*>', _invalid_regex(u'(?:'))
 _sub_re.add(u'\(\?P=[^)]*\)', _invalid_regex(u''))
 
 
-_sub_shell = Replacer()
-_sub_shell.add(ur'^RE:.*', _sub_re) # RE:<anything> is a regex
-_sub_shell.add(ur'(?:(?<=/)|^)\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]', 
-    _sub_leading_group) # char group
-_sub_shell.add(ur'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]', _sub_group) # char group
-_sub_shell.add(ur'(?:(?<=/)|^)(?:\.?/)+', u'') # canonicalize path
-_sub_shell.add(ur'\\.', ur'\&') # keep anything backslashed
-_sub_shell.add(ur'[(){}|^$+.]', ur'\\&') # escape specials
-_sub_shell.add(ur'(?:(?<=/)|^)\*\.', ur'[^./][^/]*\.') # *. after /|^
-_sub_shell.add(ur'(?:(?<=/)|^)\*', ur'(?:[^./][^/]*)?') # * after /|^
-_sub_shell.add(ur'\*', ur'[^/]*') # * elsewhere
-_sub_shell.add(ur'(?:(?<=/)|^)\?', ur'[^./]') # ? after /|^
-_sub_shell.add(ur'\?', ur'[^/]') # ? elsewhere
+_sub_fullpath = Replacer()
+_sub_fullpath.add(ur'^RE:.*', _sub_re) # RE:<anything> is a regex
+_sub_fullpath.add(ur'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]', _sub_group) # char group
+_sub_fullpath.add(ur'(?:(?<=/)|^)(?:\.?/)+', u'') # canonicalize path
+_sub_fullpath.add(ur'\\.', ur'\&') # keep anything backslashed
+_sub_fullpath.add(ur'[(){}|^$+.]', ur'\\&') # escape specials
+_sub_fullpath.add(ur'(?:(?<=/)|^)\*\*+/', ur'(?:.*/)?') # **/ after ^ or /
+_sub_fullpath.add(ur'\*+', ur'[^/]*') # * elsewhere
+_sub_fullpath.add(ur'\?', ur'[^/]') # ? everywhere
 
 
-_sub_shell_basename = Replacer()
-_sub_shell_basename.add(ur'^\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]',
-    _sub_leading_group) # char group
-_sub_shell_basename.add(ur'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]',
-    _sub_group) # char group
-_sub_shell_basename.add(ur'\\.', ur'\&') # keep anything backslashed
-_sub_shell_basename.add(ur'[(){}|^$+.]', ur'\\&') # escape specials
-_sub_shell_basename.add(ur'^\*\.', ur'[^.].*\.') # *. after ^
-_sub_shell_basename.add(ur'^\*', ur'(?:[^.].*)?') # * after ^
-_sub_shell_basename.add(ur'\*', ur'.*') # * elsewhere
-_sub_shell_basename.add(ur'^\?', ur'[^.]') # ? after ^
-_sub_shell_basename.add(ur'\?', ur'.') # ? elsewhere
+_sub_basename = Replacer()
+_sub_basename.add(ur'\[\^?\]?(?:[^][]|\[:[^]]+:\])+\]', _sub_group) # char group
+_sub_basename.add(ur'\\.', ur'\&') # keep anything backslashed
+_sub_basename.add(ur'[(){}|^$+.]', ur'\\&') # escape specials
+_sub_basename.add(ur'\*+', ur'.*') # * everywhere
+_sub_basename.add(ur'\?', ur'.') # ? everywhere
 
 
-def _sub_shell_extension(pattern):
-    return _sub_shell_basename(pattern[2:])
+def _sub_extension(pattern):
+    return _sub_basename(pattern[2:])
 
 
 class Globster(object):
@@ -178,7 +158,7 @@ class Globster(object):
     (those that match against a file extension), basename patterns
     (those that match against the basename of the filename),
     and fullpath patterns (those that match against the full path).
-    The regexs used for extensions and basenames are relatively simpler 
+    The translations used for extensions and basenames are relatively simpler 
     and therefore faster to perform than the fullpath patterns.
 
     Also, the extension patterns are more likely to find a match and 
@@ -186,6 +166,9 @@ class Globster(object):
     patterns.
     """
     def __init__(self, patterns):
+        self._flags = re.UNICODE
+        if os.path.normcase('Ab') != 'Ab':
+            self._flags |= re.IGNORECASE
         self._regex_patterns = []
         path_patterns = []
         base_patterns = []
@@ -197,17 +180,17 @@ class Globster(object):
                 ext_patterns.append(pat)
             else:
                 base_patterns.append(pat)
-        self._add_patterns(ext_patterns,_sub_shell_extension,
-            prefix=r'(?:.*/)?(?!.*/)(?:[^.].*\.)')
-        self._add_patterns(base_patterns,_sub_shell_basename, 
+        self._add_patterns(ext_patterns,_sub_extension,
+            prefix=r'(?:.*/)?(?!.*/)(?:.*\.)')
+        self._add_patterns(base_patterns,_sub_basename, 
             prefix=r'(?:.*/)?(?!.*/)')
-        self._add_patterns(path_patterns,_sub_shell) 
+        self._add_patterns(path_patterns,_sub_fullpath) 
 
     def _add_patterns(self, patterns, translator, prefix=''):
         while patterns:
             grouped_rules = ['(%s)' % translator(pat) for pat in patterns[:99]]
             joined_rule = '%s(?:%s)$' % (prefix, '|'.join(grouped_rules))
-            self._regex_patterns.append((re.compile(joined_rule, re.UNICODE), 
+            self._regex_patterns.append((re.compile(joined_rule, self._flags), 
                 patterns[:99]))
             patterns = patterns[99:]
 

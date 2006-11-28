@@ -75,6 +75,10 @@ IN DEVELOPMENT
       use "--name-from-revision" to select the file in the old tree.
       (Cheuksan Edward Wang, #30190)
 
+    * Replace broken fnmatch based ignore pattern matching with custom pattern
+      matcher.
+      (Kent Gibson, Jan Hudec #57637)
+
 bzr 0.12  2006-10-30
 
   INTERNALS:

@@ -50,17 +50,17 @@ class TestGlobster(TestCase):
              [u' ', u'\t', u'\n', u'\xa0', u'\u2000', u'\u2002'],
              [u'a', u'-', u'\u8336', u'.']),
             (u'[^[:space:]]',
-             [u'a', u'-', u'\u8336'],
-             [u' ', u'\t', u'\n', u'\xa0', u'\u2000', u'\u2002', u'.']),
+             [u'a', u'-', u'\u8336', u'.'],
+             [u' ', u'\t', u'\n', u'\xa0', u'\u2000', u'\u2002']),
             (u'[[:alnum:]]',
              [u'a', u'Z', u'\u017e', u'\u8336'],
              [u':', u'-', u'\u25cf', u'.']),
             (u'[^[:alnum:]]',
-             [u':', u'-', u'\u25cf'],
-             [u'a', u'.']),
+             [u':', u'-', u'\u25cf', u'.'],
+             [u'a']),
             (u'[[:ascii:]]',
-             [u'a', u'Q', u'^'],
-             [u'\xcc', u'\u8336', u'.']),
+             [u'a', u'Q', u'^', u'.'],
+             [u'\xcc', u'\u8336']),
             (u'[^[:ascii:]]',
              [u'\xcc', u'\u8336'],
              [u'a', u'Q', u'^', u'.']),
@@ -68,8 +68,8 @@ class TestGlobster(TestCase):
              [u'\t'],
              [u'x', u'y', u'z', u'.']),
             (u'[^[:blank:]]',
-             [u'x', u'y', u'z'],
-             [u'\t', u'.']),
+             [u'x', u'y', u'z', u'.'],
+             [u'\t']),
             (u'[[:cntrl:]]',
              [u'\b', u'\t', '\x7f'],
              [u'a', u'Q', u'\u8336', u'.']),
@@ -80,8 +80,8 @@ class TestGlobster(TestCase):
              [u'A', u'Q', u'F'],
              [u'a', u'q', u'f']),
             (u'[!a-z]foo',
-             [u'Afoo'],
-             [u'.foo']),
+             [u'Afoo', u'.foo'],
+             [u'afoo', u'ABfoo']),
             (ur'foo[!a-z]bar',
              [u'fooAbar', u'foo.bar'],
              [u'foojbar']),
@@ -111,14 +111,14 @@ class TestGlobster(TestCase):
     def test_question_mark(self):
         self.assertMatch([
             (u'?foo',
-             [u'xfoo', u'bar/xfoo', u'bar/\u8336foo'],
-             [u'.foo', u'bar/.foo', u'bar/foo', u'foo']),
+             [u'xfoo', u'bar/xfoo', u'bar/\u8336foo', u'.foo', u'bar/.foo'],
+             [u'bar/foo', u'foo']),
             (u'foo?bar',
              [u'fooxbar', u'foo.bar', u'foo\u8336bar', u'qyzzy/foo.bar'],
              [u'foo/bar']),
             (u'foo/?bar',
-             [u'foo/xbar', u'foo/\u8336bar'],
-             [u'foo/.bar', u'foo/bar', u'bar/foo/xbar']),
+             [u'foo/xbar', u'foo/\u8336bar', u'foo/.bar'],
+             [u'foo/bar', u'bar/foo/xbar']),
             ])
 
     def test_asterisk(self):
@@ -127,21 +127,60 @@ class TestGlobster(TestCase):
              [u'xx', u'x.x', u'x\u8336..x', u'\u8336/x.x', u'x.y.x'],
              [u'x/x', u'bar/x/bar/x', u'bax/abaxab']),
             (u'foo/*x',
-             [u'foo/x', u'foo/bax', u'foo/a.x'],
-             [u'foo/.x', u'foo/.q.x', u'foo/bar/bax']),
+             [u'foo/x', u'foo/bax', u'foo/a.x', u'foo/.x', u'foo/.q.x'],
+             [u'foo/bar/bax']),
             (u'*/*x',
-             [u'\u8336/x', u'foo/x', u'foo/bax', u'x/a.x'],
-             [u'.foo/x', u'\u8336/.x', u'foo/.q.x', u'foo/bar/bax']),
+             [u'\u8336/x', u'foo/x', u'foo/bax', u'x/a.x', u'.foo/x', 
+              u'\u8336/.x', u'foo/.q.x'],
+             [u'foo/bar/bax']),
             (u'f*',
              [u'foo', u'foo.bar'],
              [u'.foo', u'foo/bar', u'foo/.bar']),
             (u'*bar',
              [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar', 
-              u'foo/foobar', u'foo/f.bar'],
-             [u'.bar', u'foo/.bar']),
+              u'foo/foobar', u'foo/f.bar', u'.bar', u'foo/.bar'],
+             []),
             ])
 
-    def test_leading_dotslash(self):
+    def test_double_asterisk(self):
+        self.assertMatch([
+            # expected uses of double asterisk
+            (u'foo/**/x',
+             [u'foo/x', u'foo/bar/x'],
+             [u'foox', u'foo/bax', u'foo/.x', u'foo/bar/bax']),
+            (u'**/bar',
+             [u'bar', u'foo/bar'],
+             [u'foobar', u'foo.bar', u'foo/foobar', u'foo/f.bar', 
+              u'.bar', u'foo/.bar']),
+            # check that we ignore extra *s, so *** is treated like ** not *.
+            (u'foo/***/x',
+             [u'foo/x', u'foo/bar/x'],
+             [u'foox', u'foo/bax', u'foo/.x', u'foo/bar/bax']),
+            (u'***/bar',
+             [u'bar', u'foo/bar'],
+             [u'foobar', u'foo.bar', u'foo/foobar', u'foo/f.bar', 
+              u'.bar', u'foo/.bar']),
+            # the remaining tests check that ** is interpreted as *
+            # unless it is a whole path component
+            (u'x**/x',
+             [u'x\u8336/x', u'x/x'],
+             [u'xx', u'x.x', u'bar/x/bar/x', u'x.y.x', u'x/y/x']),
+            (u'x**x',
+             [u'xx', u'x.x', u'x\u8336..x', u'foo/x.x', u'x.y.x'],
+             [u'bar/x/bar/x', u'xfoo/bar/x', u'x/x', u'bax/abaxab']),
+            (u'foo/**x',
+             [u'foo/x', u'foo/bax', u'foo/a.x', u'foo/.x', u'foo/.q.x'],
+             [u'foo/bar/bax']),
+            (u'f**',
+             [u'foo', u'foo.bar'],
+             [u'.foo', u'foo/bar', u'foo/.bar']),
+            (u'**bar',
+             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar', 
+              u'foo/foobar', u'foo/f.bar', u'.bar', u'foo/.bar'],
+             []),
+            ])
+
+    def test_leading_dot_slash(self):
         self.assertMatch([
             (u'./foo',
              [u'foo'],
@@ -151,17 +190,18 @@ class TestGlobster(TestCase):
              [u'foo/bar', u'foo/.bar', u'x/foo/y']),
             ])
 
-    def test_leading_stardot(self):
+    def test_leading_asterisk_dot(self):
         self.assertMatch([
             (u'*.x',
-             [u'foo/bar/baz.x', u'\u8336/Q.x', u'foo.y.x'],
-             [ u'.foo.x', u'bar/.foo.x', u'.x']),
+             [u'foo/bar/baz.x', u'\u8336/Q.x', u'foo.y.x', u'.foo.x', 
+              u'bar/.foo.x', u'.x',],
+             [u'foo.x.y']),
             (u'foo/*.bar',
-             [u'foo/b.bar', u'foo/a.b.bar'],
-             [u'foo/.bar', u'foo/bar']),
+             [u'foo/b.bar', u'foo/a.b.bar', u'foo/.bar'],
+             [u'foo/bar']),
             (u'*.~*',
-             [u'foo.py.~1~'],
-             [u'.foo.py.~1~']),
+             [u'foo.py.~1~', u'.foo.py.~1~'],
+             []),
             ])
 
     def test_end_anchor(self):

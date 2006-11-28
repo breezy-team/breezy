@@ -71,19 +71,19 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual('*bar', tree.is_ignored('foobar'))
         self.assertEqual('*bar', tree.is_ignored(r'foo\nbar'))
         self.assertEqual('*bar', tree.is_ignored('bar'))
-        self.assertEqual(None, tree.is_ignored('.bar'))
+        self.assertEqual('*bar', tree.is_ignored('.bar'))
 
         self.assertEqual('?foo', tree.is_ignored('afoo'))
-        self.assertEqual(None, tree.is_ignored('.foo'))
+        self.assertEqual('?foo', tree.is_ignored('.foo'))
 
         self.assertEqual('*.~*', tree.is_ignored('blah.py.~1~'))
 
         self.assertEqual('dir1/*f1', tree.is_ignored('dir1/foof1'))
         self.assertEqual('dir1/*f1', tree.is_ignored('dir1/f1'))
-        self.assertEqual(None, tree.is_ignored('dir1/.f1'))
+        self.assertEqual('dir1/*f1', tree.is_ignored('dir1/.f1'))
 
         self.assertEqual('dir1/?f2', tree.is_ignored('dir1/ff2'))
-        self.assertEqual(None, tree.is_ignored('dir1/.f2'))
+        self.assertEqual('dir1/?f2', tree.is_ignored('dir1/.f2'))
 
         # Blank lines and comments should be ignored
         self.assertEqual(None, tree.is_ignored(''))

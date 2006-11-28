@@ -63,6 +63,13 @@ class WorkingTreeBenchmark(Benchmark):
         self.time(t.is_ignored,'bar')
         ignores._runtime_ignores = set()
 
+    def test_is_ignored_50_patterns(self):
+        t = self.make_branch_and_tree('.')
+        ignores.add_runtime_ignores([u'*.%i' % i for i in range(1, 49)])
+        ignores.add_runtime_ignores(['./foo', 'foo/bar'])
+        self.time(t.is_ignored,'bar')
+        ignores._runtime_ignores = set()
+
     def test_is_ignored_100_patterns(self):
         t = self.make_branch_and_tree('.')
         ignores.add_runtime_ignores([u'*.%i' % i for i in range(1, 99)])
