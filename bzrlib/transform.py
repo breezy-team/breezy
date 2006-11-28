@@ -1244,7 +1244,6 @@ def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups):
         if skip_root and file_id[0] is not None and parent[0] is None:
             continue
         trans_id = tt.trans_id_file_id(file_id)
-        by_parent = tt.by_parent()
         if changed_content:
             keep_content = False
             if kind[0] == 'file' and (backups or kind[1] is None):
@@ -1262,6 +1261,7 @@ def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups):
                     tt.delete_contents(trans_id)
                 elif kind[1] is not None:
                     parent_trans_id = tt.trans_id_file_id(parent[0])
+                    by_parent = tt.by_parent()
                     backup_name = _get_backup_name(name[0], by_parent,
                                                    parent_trans_id, tt)
                     tt.adjust_path(backup_name, parent_trans_id, trans_id)
@@ -1276,7 +1276,7 @@ def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups):
                 tt.create_symlink(target_tree.get_symlink_target(file_id),
                                   trans_id)
             elif kind[1] == 'file':
-                tt.create_file(target_tree.get_file(file_id).readlines(),
+                tt.create_file(target_tree.get_file_lines(file_id),
                                trans_id)
             else:
                 assert kind[1] is None
