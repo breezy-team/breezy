@@ -2,6 +2,14 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+  INTERNALS:
+
+  BUG FIXES:
+
+bzr 0.13rc1  2006-11-27
+
+  IMPROVEMENTS:
+
     * New command ``bzr remove-tree`` allows the removal of the working
       tree from a branch.
       (Daniel Silverstone)
@@ -22,6 +30,13 @@ IN DEVELOPMENT
       
     * WSGI-compatible HTTP smart server.  See ``doc/http_smart_server.txt``.
       (Andrew Bennetts)
+
+    * Knit files will now cache full texts only when the size of the
+      deltas is as large as the size of the fulltext. (Or after 200
+      deltas, whichever comes first). This has the most benefit on large
+      files with small changes, such as the inventory for a large project.
+      (eg For a project with 2500 files, and 7500 revisions, it changes
+      the size of inventory.knit from 11MB to 5.4MB) (John Arbash Meinel)
 
   INTERNALS:
 
@@ -104,7 +119,6 @@ IN DEVELOPMENT
 
     * TestingHTTPRequestHandler really handles the Range header
       (previously it was ignoring it and returning the whole file,).
-
 
 bzr 0.12  2006-10-30
 
