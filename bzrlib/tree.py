@@ -466,9 +466,9 @@ class InterTree(InterObject):
         Iteration is done in parent-to-child order, relative to the to_tree.
         """
         to_paths = {}
-        from_entries_by_dir = list(from_tree.iter_entries_by_dir())
+        from_entries_by_dir = list(from_tree.inventory.iter_entries_by_dir())
         from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
-        to_entries_by_dir = list(to_tree.iter_entries_by_dir())
+        to_entries_by_dir = list(to_tree.inventory.iter_entries_by_dir())
         if specific_file_ids is not None:
             specific_file_ids = set(specific_file_ids)
             num_entries = len(specific_file_ids)
