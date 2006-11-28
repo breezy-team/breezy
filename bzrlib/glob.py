@@ -166,9 +166,6 @@ class Globster(object):
     patterns.
     """
     def __init__(self, patterns):
-        self._flags = re.UNICODE
-        if os.path.normcase('Ab') != 'Ab':
-            self._flags |= re.IGNORECASE
         self._regex_patterns = []
         path_patterns = []
         base_patterns = []
@@ -190,7 +187,7 @@ class Globster(object):
         while patterns:
             grouped_rules = ['(%s)' % translator(pat) for pat in patterns[:99]]
             joined_rule = '%s(?:%s)$' % (prefix, '|'.join(grouped_rules))
-            self._regex_patterns.append((re.compile(joined_rule, self._flags), 
+            self._regex_patterns.append((re.compile(joined_rule, re.UNICODE), 
                 patterns[:99]))
             patterns = patterns[99:]
 
