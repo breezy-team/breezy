@@ -21,7 +21,6 @@ expressions.
 """
 
 import re
-import os.path
 
 from bzrlib.trace import (
     mutter, 
