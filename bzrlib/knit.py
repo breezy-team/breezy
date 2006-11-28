@@ -1063,7 +1063,7 @@ class _KnitIndex(_KnitComponentFile):
             self._history.append(version_id)
         else:
             index = self._cache[version_id][5]
-        self._cache[version_id] = (version_id, 
+        self._cache[version_id] = (version_id,
                                    options,
                                    pos,
                                    size,
@@ -1082,6 +1082,7 @@ class _KnitIndex(_KnitComponentFile):
         # so - wc -l of a knit index is != the number of unique names
         # in the knit.
         self._history = []
+        decode_utf8 = cache_utf8.decode
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             count = 0
@@ -1115,7 +1116,7 @@ class _KnitIndex(_KnitComponentFile):
                         for value in rec[4:-1]:
                             if '.' == value[0]:
                                 # uncompressed reference
-                                parents.append(value[1:])
+                                parents.append(decode_utf8(value[1:]))
                             else:
                                 # this is 15/4000ms faster than isinstance,
                                 # (in lsprof)
@@ -1124,7 +1125,7 @@ class _KnitIndex(_KnitComponentFile):
                                 assert value.__class__ is str
                                 parents.append(self._history[int(value)])
                         # end self._parse_parents
-                        # self._cache_version(rec[0], 
+                        # self._cache_version(decode_utf8(rec[0]),
                         #                     rec[1].split(','),
                         #                     int(rec[2]),
                         #                     int(rec[3]),
@@ -1132,7 +1133,7 @@ class _KnitIndex(_KnitComponentFile):
                         # --- self._cache_version
                         # only want the _history index to reference the 1st 
                         # index entry for version_id
-                        version_id = rec[0]
+                        version_id = decode_utf8(rec[0])
                         if version_id not in self._cache:
                             index = len(self._history)
                             self._history.append(version_id)
@@ -1174,7 +1175,7 @@ class _KnitIndex(_KnitComponentFile):
         for value in compressed_parents:
             if value[-1] == '.':
                 # uncompressed reference
-                result.append(value[1:])
+                result.append(cache_utf8.decode_utf8(value[1:]))
             else:
                 # this is 15/4000ms faster than isinstance,
                 # this function is called thousands of times a 
