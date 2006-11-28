@@ -2,6 +2,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr commit`` does not prompt for a message until it is very likely to
+      succeed.  (Aaron Bentley)
+
   INTERNALS:
 
   BUG FIXES:
