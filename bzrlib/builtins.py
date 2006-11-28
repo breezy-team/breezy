@@ -1584,8 +1584,6 @@ class cmd_ignore(Command):
 
     Ignore patterns specifying absolute paths are not allowed.
 
-    Ignore patterns are case-insensitive on case-insensitive systems.
-
     Ignore patterns may include globbing wildcards such as:
       ? - Matches any single character except '/'
       * - Matches 0 or more characters except '/'
