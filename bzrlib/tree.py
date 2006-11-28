@@ -155,6 +155,14 @@ class Tree(object):
         raise NotImplementedError("subclasses must implement kind")
 
     def _comparison_data(self, entry, path):
+        """Return a tuple of kind, executable, stat_value for a file.
+
+        entry may be None if there is no inventory entry for the file, but
+        path must always be supplied.
+
+        kind is None if there is no file present (even if an inventory id is
+        present).  executable is False for non-file entries.
+        """
         raise NotImplementedError(self._comparison_data)
 
     def _file_size(entry, stat_value):
@@ -452,8 +460,8 @@ class InterTree(InterObject):
         content has changed.  This includes changes to its kind, and to
         a symlink's target.
 
-        versioned, parent, name, kind, executable are tuples of (from, to) if
-        changed.  If a file is missing in a tree, its kind is None.
+        versioned, parent, name, kind, executable are tuples of (from, to).
+        If a file is missing in a tree, its kind is None.
 
         Iteration is done in parent-to-child order, relative to the to_tree.
         """

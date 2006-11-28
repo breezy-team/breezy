@@ -1244,6 +1244,7 @@ def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups):
         if skip_root and file_id[0] is not None and parent[0] is None:
             continue
         trans_id = tt.trans_id_file_id(file_id)
+        mode_id = None
         if changed_content:
             keep_content = False
             if kind[0] == 'file' and (backups or kind[1] is None):
@@ -1269,6 +1270,7 @@ def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups):
                     if versioned == (True, True):
                         tt.unversion_file(trans_id)
                         tt.version_file(file_id, new_trans_id)
+                    mode_id = trans_id
                     trans_id = new_trans_id
             if kind[1] == 'directory':
                 tt.create_directory(trans_id)
@@ -1278,14 +1280,14 @@ def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups):
             elif kind[1] == 'file':
                 tt.create_file(target_tree.get_file_lines(file_id),
                                trans_id)
+                if executable[0] != executable[1]:
+                    tt.set_executability(executable[1], trans_id)
             else:
                 assert kind[1] is None
         if versioned == (False, True):
             tt.version_file(file_id, trans_id)
         if versioned == (True, False):
             tt.unversion_file(trans_id)
-        if executable[0] != executable[1] and executable[1] is not None:
-            tt.set_executability(executable[1], trans_id)
         if (name[1] is not None and 
             (name[0] != name[1] or parent[0] != parent[1])):
             tt.adjust_path(name[1], tt.trans_id_file_id(parent[1]), trans_id)

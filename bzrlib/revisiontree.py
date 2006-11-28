@@ -115,7 +115,7 @@ class RevisionTree(Tree):
 
     def _comparison_data(self, entry, path):
         if entry is None:
-            return None, False
+            return None, False, None
         return entry.kind, entry.executable, None
 
     def _file_size(self, entry, stat_value):
