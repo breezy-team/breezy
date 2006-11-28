@@ -34,6 +34,8 @@ class TestSmartServerResponse(tests.TestCase):
             SmartServerResponse(('notok', )))
         self.assertNotEqual(SmartServerResponse(('ok', ), 'body'),
             SmartServerResponse(('ok', )))
+        self.assertNotEqual(None,
+            SmartServerResponse(('ok', )))
 
 
 class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):

@@ -75,6 +75,8 @@ class SmartServerResponse(object):
         self.body = body
 
     def __eq__(self, other):
+        if other is None:
+            return False
         return other.args == self.args and other.body == self.body
 
     def __repr__(self):
