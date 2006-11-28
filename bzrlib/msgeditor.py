@@ -71,7 +71,8 @@ def _run_editor(filename):
         else:
             break
     raise BzrError("Could not start any editor.\nPlease specify one with:\n"
-                   " - $BZR_EDITOR\n - editor=/some/path in %s\n - $EDITOR" % \
+                   " - $BZR_EDITOR\n - editor=/some/path in %s\n"
+                   " - $VISUAL\n - $EDITOR" % \
                     config.config_filename())
 
 

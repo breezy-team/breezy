@@ -47,6 +47,10 @@ and what is documented on the wiki.
   
     How to run a server to allow remote access to Bazaar branches.
 
+* `Running a Bazaar HTTP server <http_smart_server.htm>`_
+
+    How to run a smart HTTP server to allow remote access to Bazaar branches.
+
 This document automatically created based on output of **bzr help**:
 
 * `Man page (help for bzr commands) <bzr_man.htm>`_

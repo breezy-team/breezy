@@ -2,8 +2,11 @@
 Centralized Workflow
 ====================
 
-I- Overview
-===========
+.. sectnum::
+
+
+Overview
+========
 
 This document describes a possible workflow for using Bazaar_. That of
 using Bazaar_, the distributed version control system, in a centralized
@@ -22,16 +25,18 @@ on several different machines.
 
 .. _Bazaar: http://bazaar-vcs.org
 
+.. contents::
 
-II- Initial Setup
-=================
+
+Initial Setup
+=============
 
 These are some reasonably simple steps to setup Bazaar_ so that it works
 well for you.
 
 
-1- Setting User Email
----------------------
+Setting User Email
+------------------
 
 Your user identity is stored with each commit. While this doesn't have to
 be accurate or unique, it will be used in log messages and
@@ -42,8 +47,8 @@ annotations, so it is better to have something real.
    % bzr whoami "John Doe <jdoe@organization.com>"
 
 
-2- Setting up a local Repository
---------------------------------
+Setting up a local Repository
+-----------------------------
 
 Bazaar_ branches generally copy the history information around with them,
 which is part of how you can work in a fully decentralized manner. As an
@@ -62,7 +67,7 @@ storage.
   % bzr init-repo --trees ~
 
 
-3- Setting up a remote Repository
+Setting up a remote Repository
 ---------------------------------
 
 Many times you want a location where data is stored separately from where
@@ -85,8 +90,8 @@ You can think of this step as similar to setting up a new cvsroot, or
 subversion repository.
 
 
-III- Versioning an existing project
-===================================
+Versioning an existing project
+==============================
 
 Now that we have a repository, let's create a versioned project. Most of
 the time, you will already have some code that you are working with,
@@ -103,8 +108,8 @@ document. See `Tracking Upstream`_ for some possibilities (section
    project. Right now TrackingUpstream is the best we have, though.
 
 
-1- Developer 1: Creating the first revision
--------------------------------------------
+Developer 1: Creating the first revision
+----------------------------------------
 
 So first, we want to create a branch in our remote Repository, where we
 will want to host the project.  Let's assume we have a project named
@@ -148,12 +153,12 @@ commits you make in ``~/work/sigil/dev/`` will automatically be saved both local
 and on ``centralhost``.
 
 
-2- Developer N: Getting a working copy of the project
------------------------------------------------------
+Developer N: Getting a working copy of the project
+--------------------------------------------------
 
 Since the first developer did all of the work of creating the project,
 all other developers would just checkout that branch. **They should
-still follow** `1- Setting User Email`_ and `2- Setting up a local Repository`_.
+still follow** `Setting User Email`_ and `Setting up a local Repository`_.
 
 To get a copy of the current development tree::
 
@@ -169,8 +174,8 @@ tree with the remote changes. This may require resolving conflicts, if the
 same files have been modified.
 
 
-IV- Developing on separate branches
-===================================
+Developing on separate branches
+===============================
 
 So far everyone is working and committing their changes into the same
 branch. This means that everyone needs to update fairly regularly and
@@ -187,8 +192,8 @@ what has already been merged, and can even apply changes to files that
 have been renamed.
 
 
-1- Creating and working on a new branch
----------------------------------------
+Creating and working on a new branch
+------------------------------------
 
 We want to keep our changes available for other people, even if they
 aren't quite complete yet. So we will create a new public branch on
@@ -226,8 +231,8 @@ like they would have collaborated on the ``dev`` branch. [#cbranch]_
 .. _bzrtools: https://launchpad.net/products/bzrtools
 
 
-2- Merging changes back
------------------------
+Merging changes back
+--------------------
 
 When it is decided that some of the changes in ``doodle-fixes`` are ready
 to be merged into the main branch, simply do::
@@ -257,8 +262,8 @@ original source lines (``--show-base``).
    you resolve the problems.
 
 
-V- Recommended Branching
-------------------------
+Recommended Branching
+---------------------
 
 One very common way to handle all of these branches is to give each
 developer their own branch, and their own place to work in the central
@@ -278,8 +283,8 @@ easily create a new feature branch for themselves with just[#cbranch]_::
   % bzr checkout sftp://centralhost/srv/bzr/sigil/user-a/feature myfeature
 
 
-VI- Glossary
-============
+Glossary
+========
 
 Shared Repository
 -----------------
