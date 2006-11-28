@@ -26,16 +26,22 @@
 import os
 from cStringIO import StringIO
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    __version__ as bzrlib_version,
+    )
 import bzrlib
-from bzrlib.errors import (TransportNotPossible, NoSuchFile,
-                           TransportError, ConnectionError,
+from bzrlib.errors import (NoSuchFile,
+                           ConnectionError,
                            DependencyNotPresent)
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
-from bzrlib.transport.http import (HttpTransportBase, HttpServer,
-                                   _extract_headers,
-                                   response, _pycurl_errors)
+from bzrlib.transport.http import (
+    _extract_headers,
+    HttpTransportBase,
+    _pycurl_errors,
+    response,
+    )
 
 try:
     import pycurl
@@ -67,9 +73,8 @@ class PyCurlTransport(HttpTransportBase):
 
     PyCurl is a Python binding to the C "curl" multiprotocol client.
 
-    This transport can be significantly faster than the builtin Python client. 
-    Advantages include: DNS caching, connection keepalive, and ability to 
-    set headers to allow caching.
+    This transport can be significantly faster than the builtin
+    Python client.  Advantages include: DNS caching.
     """
 
     def __init__(self, base, from_transport=None):
@@ -99,6 +104,11 @@ class PyCurlTransport(HttpTransportBase):
         # don't want the body - ie just do a HEAD request
         # This means "NO BODY" not 'nobody'
         curl.setopt(pycurl.NOBODY, 1)
+        # In some erroneous cases, pycurl will emit text on
+        # stdout if we don't catch it (see InvalidStatus tests
+        # for one such occurrence).
+        blackhole = StringIO()
+        curl.setopt(pycurl.WRITEFUNCTION, blackhole.write)
         self._curl_perform(curl)
         code = curl.getinfo(pycurl.HTTP_CODE)
         if code == 404: # not found
@@ -107,14 +117,14 @@ class PyCurlTransport(HttpTransportBase):
             return True
         else:
             self._raise_curl_http_error(curl)
-        
+
     def _get(self, relpath, ranges, tail_amount=0):
         # This just switches based on the type of request
         if ranges is not None or tail_amount not in (0, None):
             return self._get_ranged(relpath, ranges, tail_amount=tail_amount)
         else:
             return self._get_full(relpath)
-    
+
     def _setup_get_request(self, curl, relpath):
         # Make sure we do a GET request. versions > 7.14.1 also set the
         # NO BODY flag, but we'll do it ourselves in case it is an older
@@ -156,7 +166,8 @@ class PyCurlTransport(HttpTransportBase):
         if code == 404:
             raise NoSuchFile(abspath)
         if code != 200:
-            self._raise_curl_http_error(curl, 'expected 200 or 404 for full response.')
+            self._raise_curl_http_error(
+                curl, 'expected 200 or 404 for full response.')
 
         return code, data
 
@@ -173,7 +184,12 @@ class PyCurlTransport(HttpTransportBase):
         curl = self._range_curl
         abspath, data, header = self._setup_get_request(curl, relpath)
 
-        curl.setopt(pycurl.RANGE, self.range_header(ranges, tail_amount))
+        range_header = self.attempted_range_header(ranges, tail_amount)
+        if range_header is None:
+            # Forget ranges, the server can't handle them
+            return self._get_full(relpath)
+
+        curl.setopt(pycurl.RANGE, range_header)
         self._curl_perform(curl)
         data.seek(0)
 
@@ -202,12 +218,18 @@ class PyCurlTransport(HttpTransportBase):
     def _raise_curl_http_error(self, curl, info=None):
         code = curl.getinfo(pycurl.HTTP_CODE)
         url = curl.getinfo(pycurl.EFFECTIVE_URL)
-        if info is None:
-            msg = ''
+        # Some error codes can be handled the same way for all
+        # requests
+        if code == 403:
+            raise errors.TransportError(
+                'Server refuses to fullfil the request for: %s' % url)
         else:
-            msg = ': ' + info
-        raise errors.InvalidHttpResponse(url, 'Unable to handle http code %d%s'
-                                              % (code,msg))
+            if info is None:
+                msg = ''
+            else:
+                msg = ': ' + info
+            raise errors.InvalidHttpResponse(
+                url, 'Unable to handle http code %d%s' % (code,msg))
 
     def _set_curl_options(self, curl):
         """Set options for all requests"""
@@ -232,12 +254,12 @@ class PyCurlTransport(HttpTransportBase):
         try:
             curl.perform()
         except pycurl.error, e:
-            # XXX: There seem to be no symbolic constants for these values.
             url = curl.getinfo(pycurl.EFFECTIVE_URL)
             mutter('got pycurl error: %s, %s, %s, url: %s ',
                     e[0], _pycurl_errors.errorcode[e[0]], e, url)
             if e[0] in (_pycurl_errors.CURLE_COULDNT_RESOLVE_HOST,
                         _pycurl_errors.CURLE_COULDNT_CONNECT,
+                        _pycurl_errors.CURLE_GOT_NOTHING,
                         _pycurl_errors.CURLE_COULDNT_RESOLVE_PROXY):
                 raise ConnectionError('curl connection error (%s)\non %s'
                               % (e[1], url))
@@ -246,18 +268,8 @@ class PyCurlTransport(HttpTransportBase):
             raise
 
 
-class HttpServer_PyCurl(HttpServer):
-    """Subclass of HttpServer that gives http+pycurl urls.
-
-    This is for use in testing: connections to this server will always go
-    through pycurl where possible.
-    """
-
-    # urls returned by this server should require the pycurl client impl
-    _url_protocol = 'http+pycurl'
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
+    from bzrlib.tests.HttpServer import HttpServer_PyCurl
     return [(PyCurlTransport, HttpServer_PyCurl),
             ]

@@ -308,6 +308,8 @@ class KnitVersionedFile(VersionedFile):
         self.writable = (access_mode == 'w')
         self.delta = delta
 
+        self._max_delta_chain = 200
+
         self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
             access_mode, create=create, file_mode=file_mode,
             create_parent_dir=create_parent_dir, delay_create=delay_create,
@@ -321,6 +323,35 @@ class KnitVersionedFile(VersionedFile):
         return '%s(%s)' % (self.__class__.__name__, 
                            self.transport.abspath(self.filename))
     
+    def _check_should_delta(self, first_parents):
+        """Iterate back through the parent listing, looking for a fulltext.
+
+        This is used when we want to decide whether to add a delta or a new
+        fulltext. It searches for _max_delta_chain parents. When it finds a
+        fulltext parent, it sees if the total size of the deltas leading up to
+        it is large enough to indicate that we want a new full text anyway.
+
+        Return True if we should create a new delta, False if we should use a
+        full text.
+        """
+        delta_size = 0
+        fulltext_size = None
+        delta_parents = first_parents
+        for count in xrange(self._max_delta_chain):
+            parent = delta_parents[0]
+            method = self._index.get_method(parent)
+            pos, size = self._index.get_position(parent)
+            if method == 'fulltext':
+                fulltext_size = size
+                break
+            delta_size += size
+            delta_parents = self._index.get_parents(parent)
+        else:
+            # We couldn't find a fulltext, so we must create a new one
+            return False
+
+        return fulltext_size > delta_size
+
     def _add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
         """See VersionedFile._add_delta()."""
         self._check_add(version_id, []) # should we check the lines ?
@@ -358,18 +389,11 @@ class KnitVersionedFile(VersionedFile):
             # To speed the extract of texts the delta chain is limited
             # to a fixed number of deltas.  This should minimize both
             # I/O and the time spend applying deltas.
-            count = 0
-            delta_parents = [delta_parent]
-            while count < 25:
-                parent = delta_parents[0]
-                method = self._index.get_method(parent)
-                if method == 'fulltext':
-                    break
-                delta_parents = self._index.get_parents(parent)
-                count = count + 1
-            if method == 'line-delta':
-                # did not find a fulltext in the delta limit.
-                # just do a normal insertion.
+            # The window was changed to a maximum of 200 deltas, but also added
+            # was a check that the total compressed size of the deltas is
+            # smaller than the compressed size of the fulltext.
+            if not self._check_should_delta([delta_parent]):
+                # We don't want a delta here, just do a normal insertion.
                 return super(KnitVersionedFile, self)._add_delta(version_id,
                                                                  parents,
                                                                  delta_parent,
@@ -669,17 +693,7 @@ class KnitVersionedFile(VersionedFile):
             # To speed the extract of texts the delta chain is limited
             # to a fixed number of deltas.  This should minimize both
             # I/O and the time spend applying deltas.
-            count = 0
-            delta_parents = present_parents
-            while count < 25:
-                parent = delta_parents[0]
-                method = self._index.get_method(parent)
-                if method == 'fulltext':
-                    break
-                delta_parents = self._index.get_parents(parent)
-                count = count + 1
-            if method == 'line-delta':
-                delta = False
+            delta = self._check_should_delta(present_parents)
 
         lines = self.factory.make(lines, version_id)
         if delta or (self.factory.annotated and len(present_parents) > 0):
@@ -826,12 +840,10 @@ class KnitVersionedFile(VersionedFile):
                 data_pos, length = self._index.get_position(version_id)
                 version_id_records.append((version_id, data_pos, length))
 
-        count = 0
         total = len(version_id_records)
-        pb.update('Walking content.', count, total)
-        for version_id, data, sha_value in \
-            self._data.read_records_iter(version_id_records):
-            pb.update('Walking content.', count, total)
+        for version_idx, (version_id, data, sha_value) in \
+            enumerate(self._data.read_records_iter(version_id_records)):
+            pb.update('Walking content.', version_idx, total)
             method = self._index.get_method(version_id)
             version_idx = self._index.lookup(version_id)
             assert method in ('fulltext', 'line-delta')
@@ -844,7 +856,6 @@ class KnitVersionedFile(VersionedFile):
                 for start, end, count, lines in delta:
                     for origin, line in lines:
                         yield line
-            count +=1
         pb.update('Walking content.', total, total)
         
     def num_versions(self):
@@ -1052,7 +1063,7 @@ class _KnitIndex(_KnitComponentFile):
             self._history.append(version_id)
         else:
             index = self._cache[version_id][5]
-        self._cache[version_id] = (version_id, 
+        self._cache[version_id] = (version_id,
                                    options,
                                    pos,
                                    size,
@@ -1071,6 +1082,7 @@ class _KnitIndex(_KnitComponentFile):
         # so - wc -l of a knit index is != the number of unique names
         # in the knit.
         self._history = []
+        decode_utf8 = cache_utf8.decode
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             count = 0
@@ -1104,7 +1116,7 @@ class _KnitIndex(_KnitComponentFile):
                         for value in rec[4:-1]:
                             if '.' == value[0]:
                                 # uncompressed reference
-                                parents.append(value[1:])
+                                parents.append(decode_utf8(value[1:]))
                             else:
                                 # this is 15/4000ms faster than isinstance,
                                 # (in lsprof)
@@ -1113,7 +1125,7 @@ class _KnitIndex(_KnitComponentFile):
                                 assert value.__class__ is str
                                 parents.append(self._history[int(value)])
                         # end self._parse_parents
-                        # self._cache_version(rec[0], 
+                        # self._cache_version(decode_utf8(rec[0]),
                         #                     rec[1].split(','),
                         #                     int(rec[2]),
                         #                     int(rec[3]),
@@ -1121,7 +1133,7 @@ class _KnitIndex(_KnitComponentFile):
                         # --- self._cache_version
                         # only want the _history index to reference the 1st 
                         # index entry for version_id
-                        version_id = rec[0]
+                        version_id = decode_utf8(rec[0])
                         if version_id not in self._cache:
                             index = len(self._history)
                             self._history.append(version_id)
@@ -1163,7 +1175,7 @@ class _KnitIndex(_KnitComponentFile):
         for value in compressed_parents:
             if value[-1] == '.':
                 # uncompressed reference
-                result.append(value[1:])
+                result.append(cache_utf8.decode_utf8(value[1:]))
             else:
                 # this is 15/4000ms faster than isinstance,
                 # this function is called thousands of times a 

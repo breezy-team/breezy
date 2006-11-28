@@ -27,20 +27,9 @@ from bzrlib import (
         bzrdir,
         errors,
         osutils,
+        smart,
         tests,
         urlutils,
-        )
-from bzrlib import smart
-from bzrlib.transport import (
-        get_transport,
-        local,
-        memory,
-        remote,
-        )
-from bzrlib.transport.http import (
-        HTTPServerWithSmarts,
-        SmartClientHTTPMediumRequest,
-        SmartRequestHandler,
         )
 from bzrlib.smart import (
         client,
@@ -50,6 +39,17 @@ from bzrlib.smart import (
         server,
         vfs,
 )
+from bzrlib.tests.HTTPTestUtil import (
+        HTTPServerWithSmarts,
+        SmartRequestHandler,
+        )
+from bzrlib.transport import (
+        get_transport,
+        local,
+        memory,
+        remote,
+        )
+from bzrlib.transport.http import SmartClientHTTPMediumRequest
 
 
 class StringIOSSHVendor(object):

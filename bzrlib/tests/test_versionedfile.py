@@ -586,10 +586,9 @@ class VersionedFileTestMixIn(object):
             if []!= progress.updates: 
                 self.assertEqual(expected, progress.updates)
             return lines
-        lines = iter_with_versions(['child', 'otherchild'], 
-                                   [('Walking content.', 0, 2), 
-                                    ('Walking content.', 0, 2), 
-                                    ('Walking content.', 3, 2), 
+        lines = iter_with_versions(['child', 'otherchild'],
+                                   [('Walking content.', 0, 2),
+                                    ('Walking content.', 1, 2),
                                     ('Walking content.', 2, 2)])
         # we must see child and otherchild
         self.assertTrue(lines['child\n'] > 0)
@@ -597,12 +596,11 @@ class VersionedFileTestMixIn(object):
         # we dont care if we got more than that.
         
         # test all lines
-        lines = iter_with_versions(None, [('Walking content.', 0, 5), 
-                                          ('Walking content.', 0, 5), 
-                                          ('Walking content.', 1, 5), 
-                                          ('Walking content.', 2, 5), 
-                                          ('Walking content.', 2, 5), 
-                                          ('Walking content.', 3, 5), 
+        lines = iter_with_versions(None, [('Walking content.', 0, 5),
+                                          ('Walking content.', 1, 5),
+                                          ('Walking content.', 2, 5),
+                                          ('Walking content.', 3, 5),
+                                          ('Walking content.', 4, 5),
                                           ('Walking content.', 5, 5)])
         # all lines must be seen at least once
         self.assertTrue(lines['base\n'] > 0)
@@ -664,6 +662,7 @@ class VersionedFileTestMixIn(object):
             self.assertRaises(NotImplementedError, vf.get_parents_with_ghosts, 'foo')
             self.assertRaises(NotImplementedError, vf.get_graph_with_ghosts)
             return
+        vf = self.reopen_file()
         # test key graph related apis: getncestry, _graph, get_parents
         # has_version
         # - these are ghost unaware and must not be reflect ghosts

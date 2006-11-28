@@ -381,8 +381,8 @@ class ReadonlyDecoratorTransportTest(TestCase):
         self.assertEqual(True, transport.is_readonly())
 
     def test_http_parameters(self):
+        from bzrlib.tests.HttpServer import HttpServer
         import bzrlib.transport.readonly as readonly
-        from bzrlib.transport.http import HttpServer
         # connect to . via http which is not listable
         server = HttpServer()
         server.setUp()
@@ -416,7 +416,7 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
     def test_http_parameters(self):
         # the listable, should_cache and is_readonly parameters
         # are not changed by the fakenfs decorator
-        from bzrlib.transport.http import HttpServer
+        from bzrlib.tests.HttpServer import HttpServer
         # connect to . via http which is not listable
         server = HttpServer()
         server.setUp()
