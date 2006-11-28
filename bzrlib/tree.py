@@ -88,10 +88,10 @@ class Tree(object):
             )
 
     def _iter_changes(self, from_tree, include_unchanged=False, 
-                     specific_file_ids=None):
+                     specific_file_ids=None, pb=None):
         intertree = InterTree.get(from_tree, self)
         return intertree._iter_changes(from_tree, self, include_unchanged, 
-                                       specific_file_ids)
+                                       specific_file_ids, pb)
     
     def conflicts(self):
         """Get a list of the conflicts in the tree.
@@ -449,7 +449,7 @@ class InterTree(InterObject):
             specific_file_ids, include_root)
 
     def _iter_changes(self, from_tree, to_tree, include_unchanged, 
-                      specific_file_ids):
+                      specific_file_ids, pb):
         """Generate an iterator of changes between trees.
 
         A tuple is returned:
@@ -466,16 +466,22 @@ class InterTree(InterObject):
         Iteration is done in parent-to-child order, relative to the to_tree.
         """
         to_paths = {}
-        if specific_file_ids is not None:
-            specific_file_ids = set(specific_file_ids)
         from_entries_by_dir = list(from_tree.iter_entries_by_dir())
         from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
-        for to_path, to_entry in to_tree.iter_entries_by_dir():
+        to_entries_by_dir = list(to_tree.iter_entries_by_dir())
+        if specific_file_ids is not None:
+            specific_file_ids = set(specific_file_ids)
+            num_entries = len(specific_file_ids)
+        else:
+            num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
+        entry_count = 0
+        for to_path, to_entry in to_entries_by_dir:
             file_id = to_entry.file_id
             to_paths[file_id] = to_path
             if (specific_file_ids is not None and 
                 file_id not in specific_file_ids):
                 continue
+            entry_count += 1
             changed_content = False
             from_path, from_entry = from_data.get(file_id, (None, None))
             from_versioned = (from_entry is not None)
@@ -485,6 +491,8 @@ class InterTree(InterObject):
                 from_parent = from_entry.parent_id
                 from_kind, from_executable, from_stat = \
                     from_tree._comparison_data(from_entry, from_path)
+                if specific_file_ids is None:
+                    entry_count += 1
             else:
                 from_versioned = False
                 from_kind = None
@@ -512,6 +520,8 @@ class InterTree(InterObject):
             parent = (from_parent, to_entry.parent_id)
             name = (from_name, to_entry.name)
             executable = (from_executable, to_executable)
+            if pb is not None:
+                pb.update('comparing files', entry_count, num_entries)
             if (changed_content is not False or versioned[0] != versioned[1] 
                 or parent[0] != parent[1] or name[0] != name[1] or 
                 executable[0] != executable[1] or include_unchanged):
@@ -531,6 +541,9 @@ class InterTree(InterObject):
             if (specific_file_ids is not None and 
                 file_id not in specific_file_ids):
                 continue
+            entry_count += 1
+            if pb is not None:
+                pb.update('comparing files', entry_count, num_entries)
             versioned = (True, False)
             parent = (from_entry.parent_id, None)
             name = (from_entry.name, None)

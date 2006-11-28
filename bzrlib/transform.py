@@ -1233,7 +1233,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
 def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups):
     merge_modified = working_tree.merge_modified()
     iterator = target_tree._iter_changes(working_tree, 
-                                         specific_file_ids=interesting_ids)
+                                         specific_file_ids=interesting_ids,
+                                         pb=pb)
     if target_tree.inventory.root is None:
         skip_root = True
     else:
