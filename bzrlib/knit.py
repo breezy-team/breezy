@@ -118,8 +118,7 @@ class KnitContent(object):
 
     def annotate_iter(self):
         """Yield tuples of (origin, text) for each content line."""
-        for origin, text in self._lines:
-            yield origin, text
+        return iter(self._lines)
 
     def annotate(self):
         """Return a list of (origin, text) tuples."""
@@ -127,14 +126,14 @@ class KnitContent(object):
 
     def line_delta_iter(self, new_lines):
         """Generate line-based delta from this content to new_lines."""
-        new_texts = [text for origin, text in new_lines._lines]
-        old_texts = [text for origin, text in self._lines]
+        new_texts = new_lines.text()
+        old_texts = self.text()
         s = KnitSequenceMatcher(None, old_texts, new_texts)
-        for op in s.get_opcodes():
-            if op[0] == 'equal':
+        for tag, i1, i2, j1, j2 in s.get_opcodes():
+            if tag == 'equal':
                 continue
-            #     ofrom   oto   length        data
-            yield (op[1], op[2], op[4]-op[3], new_lines._lines[op[3]:op[4]])
+            # ofrom, oto, length, data
+            yield i1, i2, j2 - j1, new_lines._lines[j1:j2]
 
     def line_delta(self, new_lines):
         return list(self.line_delta_iter(new_lines))
