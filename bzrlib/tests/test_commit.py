@@ -560,12 +560,14 @@ class TestCommit(TestCaseWithTransport):
 
     class Callback(object):
         
-        def __init__(self, message):
+        def __init__(self, message, testcase):
             self.called = False
             self.message = message
+            self.testcase = testcase
 
-        def __call__(self, commit_builder):
+        def __call__(self, commit_obj):
             self.called = True
+            self.testcase.assertTrue(isinstance(commit_obj, Commit))
             return self.message
 
     def test_commit_callback(self):
@@ -580,7 +582,7 @@ class TestCommit(TestCaseWithTransport):
                              ' parameter is required for commit().', str(e))
         else:
             self.fail('exception not raised')
-        cb = self.Callback(u'commit 1')
+        cb = self.Callback(u'commit 1', self)
         tree.commit(message_callback=cb)
         self.assertTrue(cb.called)
         repository = tree.branch.repository
@@ -590,7 +592,7 @@ class TestCommit(TestCaseWithTransport):
     def test_no_callback_pointless(self):
         """Callback should not be invoked for pointless commit"""
         tree = self.make_branch_and_tree('.')
-        cb = self.Callback(u'commit 2')
+        cb = self.Callback(u'commit 2', self)
         self.assertRaises(PointlessCommit, tree.commit, message_callback=cb, 
                           allow_pointless=False)
         self.assertFalse(cb.called)
@@ -598,7 +600,7 @@ class TestCommit(TestCaseWithTransport):
     def test_no_callback_netfailure(self):
         """Callback should not be invoked if connectivity fails"""
         tree = self.make_branch_and_tree('.')
-        cb = self.Callback(u'commit 2')
+        cb = self.Callback(u'commit 2', self)
         repository = tree.branch.repository
         # simulate network failure
         def raise_(self, arg, arg2):
