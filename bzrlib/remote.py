@@ -171,7 +171,15 @@ class RemoteRepository(object):
         if real_repository:
             self._real_repository = real_repository
         self.bzrdir = remote_bzrdir
+        self._client = client.SmartClient(self.bzrdir.client)
         self._format = RemoteRepositoryFormat()
+
+    def has_revision(self, revision_id):
+        """See Repository.has_revision()."""
+        path = self.bzrdir._path_for_remote_call().encode('utf8')
+        response = self._client.call('Repository.has_revision', path, revision_id.encode('utf8'))
+        assert response[0] in ('ok', 'no'), 'unexpected response code %s' % response[0]
+        return response[0] == 'ok'
 
 
 class RemoteBranchFormat(branch.BranchFormat):

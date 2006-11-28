@@ -54,11 +54,10 @@ class BasicRemoteObjectTests(tests.TestCaseInTempDir):
     def test_remote_repository(self):
         b = BzrDir.open_from_transport(self.transport)
         repo = b.open_repository()
-        self.assertFalse(repo.has_revision('23123123'))
-        self.local_wt.commit(message='test commit',
-                             rev_id='rev-1',
-                             allow_pointless=True)
-        self.assertTrue(repo.has_revision('rev-1'))
+        revid = u'\xc823123123'
+        self.assertFalse(repo.has_revision(revid))
+        self.local_wt.commit(message='test commit', rev_id=revid)
+        self.assertTrue(repo.has_revision(revid))
 
     def test_remote_branch_revision_history(self):
         b = BzrDir.open_from_transport(self.transport).open_branch()

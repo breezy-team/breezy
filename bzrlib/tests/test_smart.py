@@ -20,6 +20,7 @@ from bzrlib import errors, smart, tests
 from bzrlib.smart.request import SmartServerResponse
 import bzrlib.smart.bzrdir
 import bzrlib.smart.branch
+import bzrlib.smart.repository
 
 
 class TestSmartServerResponse(tests.TestCase):
@@ -71,6 +72,42 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithTransport):
         self.make_bzrdir('subdir/deeper')
         self.assertEqual(SmartServerResponse(('ok', '../..')),
             request.execute(backing.local_abspath('subdir/deeper')))
+
+
+class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
+
+    def test_no_repository(self):
+        """NoRepositoryPresent is raised when there is no repository."""
+        # we test this using a shared repository above the named path,
+        # thus checking the right search logic is used.
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRequestHasRevision(backing)
+        self.make_repository('.', shared=True)
+        self.make_bzrdir('subdir')
+        self.assertRaises(errors.NoRepositoryPresent,
+            request.execute, backing.local_abspath('subdir'), 'revid')
+
+    def test_missing_revision(self):
+        """For a missing revision, ('no', ) is returned."""
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRequestHasRevision(backing)
+        self.make_repository('.')
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute(backing.local_abspath(''), 'revid'))
+
+    def test_present_revision(self):
+        """For a present revision, ('ok', ) is returned."""
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRequestHasRevision(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('a commit', rev_id=u'\xc8abc')
+        tree.unlock()
+        self.assertTrue(tree.branch.repository.has_revision(u'\xc8abc'))
+        self.assertEqual(SmartServerResponse(('ok', )),
+            request.execute(backing.local_abspath(''),
+                u'\xc8abc'.encode('utf8')))
 
 
 class TestSmartServerRequestOpenBranch(tests.TestCaseWithTransport):
@@ -161,3 +198,6 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('BzrDir.open_branch'),
             smart.bzrdir.SmartServerRequestOpenBranch)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.has_revision'),
+            smart.repository.SmartServerRequestHasRevision)
