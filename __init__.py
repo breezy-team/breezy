@@ -24,6 +24,7 @@ from StringIO import StringIO
 import stgit
 import stgit.git as git
 
+from bzrlib import urlutils
 from bzrlib.decorators import *
 import bzrlib.branch
 import bzrlib.bzrdir
@@ -103,6 +104,10 @@ class GitDir(bzrlib.bzrdir.BzrDir):
     def open_repository(self, shared=False):
         """'open' a repository for this dir."""
         return GitRepository(self._gitrepo, self, self._lockfiles)
+
+    def open_workingtree(self):
+        loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
+        raise errors.NoWorkingTree(loc)
 
 
 class GitBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
