@@ -165,6 +165,8 @@ class GitBranch(bzrlib.branch.Branch):
         self.control_files = lockfiles
         self.repository = GitRepository(gitdir, lockfiles)
         self.base = gitdir.root_transport.base
+        if '.git' not in gitdir.root_transport.list_dir('.'):
+            raise errors.NotBranchError(self.base)
 
     def lock_write(self):
         self.control_files.lock_write()
