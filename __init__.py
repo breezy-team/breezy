@@ -19,6 +19,8 @@
 """A GIT branch and repository format implementation for bzr."""
 
 
+from StringIO import StringIO
+
 import stgit
 import stgit.git as git
 
@@ -28,6 +30,16 @@ import bzrlib.bzrdir
 import bzrlib.errors as errors
 import bzrlib.repository
 from bzrlib.revision import Revision
+
+
+class GitTransport(object):
+
+    def __init__(self):
+        self.base = object()
+
+    def get(self, relpath):
+        assert relpath == 'branch.conf'
+        return StringIO()
 
 
 def gitrevid_from_bzr(revision_id):
@@ -59,6 +71,7 @@ class GitLockableFiles(bzrlib.lockable_files.LockableFiles):
         self._transaction = None
         self._lock_mode = None
         self._lock_count = 0
+        self._transport = GitTransport() 
 
 
 class GitDir(bzrlib.bzrdir.BzrDir):
@@ -153,6 +166,15 @@ class GitBranch(bzrlib.branch.Branch):
     def last_revision(self):
         # perhaps should escape this ?
         return bzrrevid_from_git(git.get_head())
+
+    def revision_history(self):
+        history = [self.last_revision()]
+        while True:
+            revision = self.repository.get_revision(history[-1])
+            if len(revision.parent_ids) == 0:
+                break
+            history.append(revision.parent_ids[0])
+        return list(reversed(history))
 
     def lock_read(self):
         self.control_files.lock_read()
