@@ -210,9 +210,12 @@ class GitRepository(bzrlib.repository.Repository):
     def __init__(self, gitdir, lockfiles):
         self.bzrdir = gitdir
         self.control_files = lockfiles
+        gitdirectory = urlutils.local_path_from_url(gitdir.transport.base)
+        self.git = GitModel(gitdirectory)
 
     def get_revision(self, revision_id):
-        raw = stgit.git._output_lines('git-rev-list --header --max-count=1 %s' % gitrevid_from_bzr(revision_id))
+        raw = self.git.rev_list([gitrevid_from_bzr(revision_id)], max_count=1,
+                                header=True)
         # first field is the rev itself.
         # then its 'field value'
         # until the EOF??
@@ -245,3 +248,25 @@ class GitRepository(bzrlib.repository.Repository):
         result.timestamp = float(timestamp)
         result.committer = committer 
         return result
+
+class GitModel(object):
+    """API that follows GIT model closely"""
+
+    def __init__(self, git_dir):
+        self.git_dir = git_dir
+
+    def git_command(self, command, args):
+        args = ' '.join(args)
+        return 'git --git-dir=%s %s %s' % (self.git_dir, command, args) 
+
+    def git_lines(self, command, args):
+        return stgit.git._output_lines(self.git_command(command, args))
+
+    def rev_list(self, heads, max_count=None, header=False):
+        args = []
+        if max_count is not None:
+            args.append('--max-count=%d' % max_count)
+        if header is not False:
+            args.append('--header')
+        args.extend(heads)
+        return self.git_lines('rev-list', args)
