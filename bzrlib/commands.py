@@ -106,12 +106,12 @@ def _builtin_commands():
             real_name = _unsquish_command_name(name)
             r[real_name] = builtins[name]
     return r
-            
+
 
 def builtin_command_names():
     """Return list of builtin command names."""
     return _builtin_commands().keys()
-    
+
 
 def plugin_command_names():
     return plugin_cmds.keys()
@@ -124,7 +124,7 @@ def _get_cmd_dict(plugins_override=True):
         d.update(plugin_cmds)
     return d
 
-    
+
 def get_all_cmds(plugins_override=True):
     """Return canonical name and class for all registered commands."""
     for k, v in _get_cmd_dict(plugins_override=plugins_override).iteritems():
@@ -221,7 +221,7 @@ class Command(object):
     encoding_type = 'strict'
 
     hidden = False
-    
+
     def __init__(self):
         """Construct an instance of this command."""
         if self.__doc__ == Command.__doc__:
@@ -262,7 +262,7 @@ class Command(object):
     @deprecated_method(zero_eight)
     def run_argv(self, argv):
         """Parse command line and run.
-        
+
         See run_argv_aliases for the 0.8 and beyond api.
         """
         return self.run_argv_aliases(argv)
@@ -270,7 +270,7 @@ class Command(object):
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
         if argv is None:
-            warn("Passing None for [] is deprecated from bzrlib 0.10", 
+            warn("Passing None for [] is deprecated from bzrlib 0.10",
                  DeprecationWarning, stacklevel=2)
             argv = []
         args, opts = parse_args(self, argv, alias_argv)
@@ -290,7 +290,7 @@ class Command(object):
         self._setup_outf()
 
         return self.run(**all_cmd_args)
-    
+
     def run(self):
         """Actually run the command.
 
@@ -301,7 +301,7 @@ class Command(object):
         shell error code if not.  It's OK for this method to allow
         an exception to raise up.
         """
-        raise NotImplementedError('no implementation of command %r' 
+        raise NotImplementedError('no implementation of command %r'
                                   % self.name())
 
     def help(self):
@@ -362,7 +362,7 @@ def parse_spec(spec):
 
 def parse_args(command, argv, alias_argv=None):
     """Parse command line.
-    
+
     Arguments and options are parsed at this level before being passed
     down to specific command handlers.  This routine knows, from a
     lookup table, something about the available options, what optargs
@@ -376,7 +376,7 @@ def parse_args(command, argv, alias_argv=None):
         args = argv
 
     options, args = parser.parse_args(args)
-    opts = dict([(k, v) for k, v in options.__dict__.iteritems() if 
+    opts = dict([(k, v) for k, v in options.__dict__.iteritems() if
                  v is not option.OptionParser.DEFAULT_VALUE])
     return args, opts
 
@@ -417,7 +417,7 @@ def _match_argform(cmd, takes_args, args):
                                % (cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
-            
+
     if args:
         raise errors.BzrCommandError("extra argument to command %s: %s"
                                      % (cmd, args[0]))
@@ -463,12 +463,23 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     return ret
 
 
-def get_alias(cmd):
-    """Return an expanded alias, or None if no alias exists"""
-    import bzrlib.config
-    alias = bzrlib.config.GlobalConfig().get_alias(cmd)
+def get_alias(cmd, config=None):
+    """Return an expanded alias, or None if no alias exists.
+
+    cmd
+        Command to be checked for an alias.
+    config
+        Used to specify an alternative config to use,
+        which is especially usefull for testing.
+        If it is unspecified, the global config will be used.
+    """
+    if config is None:
+        import bzrlib.config
+        config = bzrlib.config.GlobalConfig()
+    alias = config.get_alias(cmd)
     if (alias):
-        return alias.split(' ')
+        import shlex
+        return [a.decode('utf-8') for a in shlex.split(alias.encode('utf-8'))]
     return None
 
 
@@ -476,13 +487,13 @@ def run_bzr(argv):
     """Execute a command.
 
     This is similar to main(), but without all the trappings for
-    logging and error handling.  
-    
+    logging and error handling.
+
     argv
        The command-line arguments, without the program name from argv[0]
        These should already be decoded. All library/test code calling
        run_bzr should be passing valid strings (don't need decoding).
-    
+
     Returns a command status or raises an exception.
 
     Special master options: these must come before the command because
@@ -550,7 +561,7 @@ def run_bzr(argv):
         from bzrlib.version import show_version
         show_version()
         return 0
-        
+
     if not opt_no_plugins:
         from bzrlib.plugin import load_plugins
         load_plugins()
