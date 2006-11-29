@@ -24,7 +24,7 @@ from StringIO import StringIO
 import stgit
 import stgit.git as git
 
-from bzrlib import config, urlutils
+from bzrlib import config, graph, urlutils
 from bzrlib.decorators import *
 import bzrlib.branch
 import bzrlib.bzrdir
@@ -172,16 +172,20 @@ class GitBranch(bzrlib.branch.Branch):
     @needs_read_lock
     def last_revision(self):
         # perhaps should escape this ?
-        return bzrrevid_from_git(git.get_head())
+        return bzrrevid_from_git(self.repository.git.get_head())
 
     @needs_read_lock
     def revision_history(self):
-        history = [self.last_revision()]
-        while True:
-            revision = self.repository.get_revision(history[-1])
-            if len(revision.parent_ids) == 0:
-                break
-            history.append(revision.parent_ids[0])
+        node = self.last_revision()
+        graph = self.repository.get_revision_graph_with_ghosts([node])
+        ancestors = graph.get_ancestors()
+        history = []
+        while node is not None:
+            history.append(node)
+            if len(ancestors[node]) > 0:
+                node = ancestors[node][0]
+            else:
+                node = None
         return list(reversed(history))
 
     def get_config(self):
@@ -212,10 +216,28 @@ class GitRepository(bzrlib.repository.Repository):
         self.control_files = lockfiles
         gitdirectory = urlutils.local_path_from_url(gitdir.transport.base)
         self.git = GitModel(gitdirectory)
+        self._revision_cache = {}
+
+    def _ancestor_revisions(self, revision_ids):
+        git_revisions = [gitrevid_from_bzr(r) for r in revision_ids]
+        for lines in self.git.ancestor_lines(git_revisions):
+            yield self.parse_rev(lines)
+
+    def get_revision_graph_with_ghosts(self, revision_ids=None):
+        result = graph.Graph()
+        for revision in self._ancestor_revisions(revision_ids):
+            result.add_node(revision.revision_id, revision.parent_ids)
+            self._revision_cache[revision.revision_id] = revision
+        return result
 
     def get_revision(self, revision_id):
+        if revision_id in self._revision_cache:
+            return self._revision_cache[revision_id]
         raw = self.git.rev_list([gitrevid_from_bzr(revision_id)], max_count=1,
                                 header=True)
+        return self.parse_rev(raw)
+
+    def parse_rev(self, raw):
         # first field is the rev itself.
         # then its 'field value'
         # until the EOF??
@@ -223,6 +245,7 @@ class GitRepository(bzrlib.repository.Repository):
         log = []
         in_log = False
         committer = None
+        revision_id = bzrrevid_from_git(raw[0][:-1])
         for field in raw[1:]:
             #if field.startswith('author '):
             #    committer = field[7:]
@@ -235,7 +258,7 @@ class GitRepository(bzrlib.repository.Repository):
                 timestamp = commit_fields[-2]
                 timezone = commit_fields[-1]
             elif in_log:
-                log.append(field)
+                log.append(field[4:])
             elif field == '\n':
                 in_log = True
 
@@ -262,6 +285,9 @@ class GitModel(object):
     def git_lines(self, command, args):
         return stgit.git._output_lines(self.git_command(command, args))
 
+    def git_line(self, command, args):
+        return stgit.git._output_one_line(self.git_command(command, args))
+
     def rev_list(self, heads, max_count=None, header=False):
         args = []
         if max_count is not None:
@@ -270,3 +296,20 @@ class GitModel(object):
             args.append('--header')
         args.extend(heads)
         return self.git_lines('rev-list', args)
+
+    def rev_parse(self, git_id):
+        args = ['--verify', git_id]
+        return self.git_line('rev-parse', args)
+
+    def get_head(self):
+        return self.rev_parse('HEAD')
+
+    def ancestor_lines(self, revisions):
+        revision_lines = []
+        for line in self.rev_list(revisions, header=True):
+            if line.startswith('\x00'):
+                yield revision_lines
+                revision_lines = [line[1:]]
+            else:
+                revision_lines.append(line)
+        assert revision_lines == ['']
