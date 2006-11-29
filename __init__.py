@@ -24,7 +24,7 @@ from StringIO import StringIO
 import stgit
 import stgit.git as git
 
-from bzrlib import urlutils
+from bzrlib import config, urlutils
 from bzrlib.decorators import *
 import bzrlib.branch
 import bzrlib.bzrdir
@@ -33,14 +33,17 @@ import bzrlib.repository
 from bzrlib.revision import Revision
 
 
-class GitTransport(object):
+class GitBranchConfig(config.BranchConfig):
+    """BranchConfig that uses locations.conf in place of branch.conf""" 
 
-    def __init__(self):
-        self.base = object()
+    def __init__(self, branch):
+        config.BranchConfig.__init__(self, branch)
+        # do not provide a BranchDataConfig
+        self.option_sources = self.option_sources[0], self.option_sources[2]
 
-    def get(self, relpath):
-        assert relpath == 'branch.conf'
-        return StringIO()
+    def set_user_option(self, name, value, local=False):
+        """Force local to True"""
+        config.BranchConfig.set_user_option(self, name, value, local=True)
 
 
 def gitrevid_from_bzr(revision_id):
@@ -72,7 +75,6 @@ class GitLockableFiles(bzrlib.lockable_files.LockableFiles):
         self._transaction = None
         self._lock_mode = None
         self._lock_count = 0
-        self._transport = GitTransport() 
 
 
 class GitDir(bzrlib.bzrdir.BzrDir):
@@ -172,6 +174,7 @@ class GitBranch(bzrlib.branch.Branch):
         # perhaps should escape this ?
         return bzrrevid_from_git(git.get_head())
 
+    @needs_read_lock
     def revision_history(self):
         history = [self.last_revision()]
         while True:
@@ -181,11 +184,24 @@ class GitBranch(bzrlib.branch.Branch):
             history.append(revision.parent_ids[0])
         return list(reversed(history))
 
+    def get_config(self):
+        return GitBranchConfig(self)
+
     def lock_read(self):
         self.control_files.lock_read()
 
     def unlock(self):
         self.control_files.unlock()
+
+    def get_push_location(self):
+        """See Branch.get_push_location."""
+        push_loc = self.get_config().get_user_option('push_location')
+        return push_loc
+
+    def set_push_location(self, location):
+        """See Branch.set_push_location."""
+        self.get_config().set_user_option('push_location', location, 
+                                          local=True)
 
 
 class GitRepository(bzrlib.repository.Repository):
