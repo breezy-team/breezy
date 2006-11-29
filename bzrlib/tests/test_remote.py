@@ -30,14 +30,12 @@ from bzrlib.remote import RemoteBzrDir, RemoteBzrDirFormat
 from bzrlib.branch import Branch
 
 
-class BasicRemoteObjectTests(tests.TestCaseInTempDir):
+class BasicRemoteObjectTests(tests.TestCaseWithTransport):
 
     def setUp(self):
-        tests.TestCaseInTempDir.setUp(self)
-        self.server = server.SmartTCPServer_for_testing()
-        self.server.setUp()
-        self.addCleanup(self.server.tearDown)
-        self.transport = remote_transport.SmartTCPTransport(self.server.get_url())
+        super(BasicRemoteObjectTests, self).setUp()
+        self.transport_server = server.SmartTCPServer_for_testing
+        self.transport = self.get_transport()
         self.client = self.transport.get_smart_client()
         # make a branch that can be opened over the smart transport
         self.local_wt = BzrDir.create_standalone_workingtree('.')

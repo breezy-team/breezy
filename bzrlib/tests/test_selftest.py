@@ -187,17 +187,21 @@ class TestBzrDirProviderAdapter(TestCase):
         from bzrlib.bzrdir import BzrDirTestProviderAdapter
         input_test = TestBzrDirProviderAdapter(
             "test_adapted_tests")
+        vfs_factory = "v"
         server1 = "a"
         server2 = "b"
         formats = ["c", "d"]
-        adapter = BzrDirTestProviderAdapter(server1, server2, formats)
+        adapter = BzrDirTestProviderAdapter(vfs_factory,
+            server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
         self.assertEqual(2, len(tests))
         self.assertEqual(tests[0].bzrdir_format, formats[0])
+        self.assertEqual(tests[0].vfs_transport_factory, vfs_factory)
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
         self.assertEqual(tests[1].bzrdir_format, formats[1])
+        self.assertEqual(tests[1].vfs_transport_factory, vfs_factory)
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
@@ -488,7 +492,7 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         from bzrlib.transport import get_transport
         from bzrlib.transport.memory import MemoryServer
         from bzrlib.transport.readonly import ReadonlyTransportDecorator
-        self.transport_server = MemoryServer
+        self.vfs_transport_factory = MemoryServer
         self.transport_readonly_server = None
         # calling get_readonly_transport() constructs a decorator on the url
         # for the server
@@ -530,7 +534,7 @@ class TestTestCaseTransports(TestCaseWithTransport):
 
     def setUp(self):
         super(TestTestCaseTransports, self).setUp()
-        self.transport_server = MemoryServer
+        self.vfs_transport_factory = MemoryServer
 
     def test_make_bzrdir_preserves_transport(self):
         t = self.get_transport()

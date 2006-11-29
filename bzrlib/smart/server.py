@@ -100,35 +100,24 @@ class SmartTCPServer(object):
 
 
 
-def SmartTCPServer_for_testing():
-    """Get a readwrite server for testing."""
-    return ReadWriteLocalSmartTCPServer(
-        transport.get_transport(urlutils.local_path_to_url('/')))
-
-
-def ReadonlySmartTCPServer_for_testing():
-    """Get a readonly server for testing."""
-    return ReadWriteLocalSmartTCPServer(
-        transport.get_transport('readonly+' + urlutils.local_path_to_url('/')))
-
-
-class ReadWriteLocalSmartTCPServer(SmartTCPServer):
+class SmartTCPServer_for_testing(SmartTCPServer):
     """Server suitable for use by transport tests.
     
     This server has a _homedir of the current cwd.
     """
 
-    def __init__(self, transport):
-        self._homedir = urlutils.local_path_to_url(os.getcwd())[7:]
-        # The server is set up by default like for ssh access: the client
-        # passes filesystem-absolute paths; therefore the server must look
-        # them up relative to the root directory.  it might be better to act
-        # a public server and have the server rewrite paths into the test
-        # directory.
-        SmartTCPServer.__init__(self, transport)
-        
-    def setUp(self):
+    def __init__(self):
+        # The server is set up by default like for inetd access: the backing
+        # transport is connected to a local path that is not '/'.
+        SmartTCPServer.__init__(self, None)
+
+    def get_backing_transport(self, backing_transport_server):
+        """Get a backing transport from a server we are decorating."""
+        return transport.get_transport('chroot+' + backing_transport_server.get_url())
+
+    def setUp(self, backing_transport_server):
         """Set up server for testing"""
+        self.backing_transport = self.get_backing_transport(backing_transport_server)
         self.start_background_thread()
 
     def tearDown(self):
@@ -137,10 +126,17 @@ class ReadWriteLocalSmartTCPServer(SmartTCPServer):
     def get_url(self):
         """Return the url of the server"""
         host, port = self._server_socket.getsockname()
-        return "bzr://%s:%d%s" % (host, port, urlutils.escape(self._homedir))
+        return "bzr://%s:%d/" % (host, port)
 
     def get_bogus_url(self):
         """Return a URL which will fail to connect"""
         return 'bzr://127.0.0.1:1/'
 
 
+class ReadonlySmartTCPServer_for_testing(SmartTCPServer_for_testing):
+    """Get a readonly server for testing."""
+
+    def get_backing_transport(self, backing_transport_server):
+        """Get a backing transport from a server we are decorating."""
+        url = 'chroot+readonly+' + backing_transport_server.get_url()
+        return transport.get_transport(url)

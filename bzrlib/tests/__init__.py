@@ -1240,7 +1240,8 @@ class TestCaseWithMemoryTransport(TestCase):
         # execution. Variables that the parameteriser sets need to be 
         # ones that are not set by setUp, or setUp will trash them.
         super(TestCaseWithMemoryTransport, self).__init__(methodName)
-        self.transport_server = default_transport
+        self.vfs_transport_factory = default_transport
+        self.transport_server = None
         self.transport_readonly_server = None
 
     def failUnlessExists(self, path):
@@ -1284,10 +1285,10 @@ class TestCaseWithMemoryTransport(TestCase):
                 # readonly decorator requested
                 # bring up the server
                 self.__readonly_server = ReadonlyServer()
-                self.__readonly_server.setUp(self.get_server())
+                self.__readonly_server.setUp(self.get_vfs_only_server())
             else:
                 self.__readonly_server = self.create_transport_readonly_server()
-                self.__readonly_server.setUp()
+                self.__readonly_server.setUp(self.get_vfs_only_server())
             self.addCleanup(self.__readonly_server.tearDown)
         return self.__readonly_server
 
@@ -1306,8 +1307,8 @@ class TestCaseWithMemoryTransport(TestCase):
             base = base + relpath
         return base
 
-    def get_server(self):
-        """Get the read/write server instance.
+    def get_vfs_only_server(self):
+        """Get thae vfs only read/write server instance.
 
         This is useful for some tests with specific servers that need
         diagnostics.
@@ -1315,13 +1316,32 @@ class TestCaseWithMemoryTransport(TestCase):
         For TestCaseWithMemoryTransport this is always a MemoryServer, and there
         is no means to override it.
         """
+        if self.__vfs_server is None:
+            self.__vfs_server = MemoryServer()
+            self.__vfs_server.setUp()
+            self.addCleanup(self.__vfs_server.tearDown)
+        return self.__vfs_server
+
+    def get_server(self):
+        """Get the read/write server instance.
+
+        This is useful for some tests with specific servers that need
+        diagnostics.
+
+        This is built from the self.transport_server factory. If that is None,
+        then the self.get_vfs_server is returned.
+        """
         if self.__server is None:
-            self.__server = MemoryServer()
-            self.__server.setUp()
+            if self.transport_server is None:
+                return self.get_vfs_only_server()
+            else:
+                # bring up a decorated means of access to the vfs only server.
+                self.__server = self.transport_server()
+                self.__server.setUp(self.get_vfs_only_server())
             self.addCleanup(self.__server.tearDown)
         return self.__server
 
-    def get_url(self, relpath=None):
+    def _adjust_url(self, base, relpath):
         """Get a URL (or maybe a path) for the readwrite transport.
 
         This will either be backed by '.' or to an equivalent non-file based
@@ -1329,7 +1349,6 @@ class TestCaseWithMemoryTransport(TestCase):
         relpath provides for clients to get a path relative to the base url.
         These should only be downwards relative, not upwards.
         """
-        base = self.get_server().get_url()
         if relpath is not None and relpath != '.':
             if not base.endswith('/'):
                 base = base + '/'
@@ -1342,6 +1361,27 @@ class TestCaseWithMemoryTransport(TestCase):
             else:
                 base += urlutils.escape(relpath)
         return base
+
+    def get_url(self, relpath=None):
+        """Get a URL (or maybe a path) for the readwrite transport.
+
+        This will either be backed by '.' or to an equivalent non-file based
+        facility.
+        relpath provides for clients to get a path relative to the base url.
+        These should only be downwards relative, not upwards.
+        """
+        base = self.get_server().get_url()
+        return self._adjust_url(base, relpath)
+
+    def get_vfs_only_url(self, relpath=None):
+        """Get a URL (or maybe a path for the plain old vfs transport.
+
+        This will never be a smart protocol.
+        :param relpath: provides for clients to get a path relative to the base
+            url.  These should only be downwards relative, not upwards.
+        """
+        base = self.get_vfs_only_server().get_url()
+        return self._adjust_url(base, relpath)
 
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is not None:
@@ -1545,24 +1585,17 @@ class TestCaseWithTransport(TestCaseInTempDir):
     readwrite one must both define get_url() as resolving to os.getcwd().
     """
 
-    def create_transport_server(self):
-        """Create a transport server from class defined at init.
-
-        This is mostly a hook for daughter classes.
-        """
-        return self.transport_server()
-
-    def get_server(self):
+    def get_vfs_only_server(self):
         """See TestCaseWithMemoryTransport.
 
         This is useful for some tests with specific servers that need
         diagnostics.
         """
-        if self.__server is None:
-            self.__server = self.create_transport_server()
-            self.__server.setUp()
-            self.addCleanup(self.__server.tearDown)
-        return self.__server
+        if self.__vfs_server is None:
+            self.__vfs_server = self.vfs_transport_factory()
+            self.__vfs_server.setUp()
+            self.addCleanup(self.__vfs_server.tearDown)
+        return self.__vfs_server
 
     def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
@@ -1613,7 +1646,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
 
     def setUp(self):
         super(TestCaseWithTransport, self).setUp()
-        self.__server = None
+        self.__vfs_server = None
 
 
 class ChrootedTestCase(TestCaseWithTransport):
@@ -1630,7 +1663,9 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        if not self.transport_server == MemoryServer:
+        # NB: one HttpServer is taught to decorate properly,
+        # this hack can be removed.
+        if not self.vfs_transport_factory == MemoryServer:
             self.transport_readonly_server = HttpServer
 
 

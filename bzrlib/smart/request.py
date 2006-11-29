@@ -238,6 +238,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'BzrDir.find_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepository')
 request_handlers.register_lazy(
+    'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir', 'SmartServerRequestInitializeBzrDir')
+request_handlers.register_lazy(
     'BzrDir.open_branch', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBranch')
 request_handlers.register_lazy(
     'delete', 'bzrlib.smart.vfs', 'DeleteRequest')

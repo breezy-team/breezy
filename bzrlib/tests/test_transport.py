@@ -294,10 +294,14 @@ class ChrootDecoratorTransportTest(TestCase):
         from bzrlib.transport import chroot
         transport = chroot.ChrootTransportDecorator('chroot+memory:///pathA/')
         self.assertEqual('memory:///pathA/', transport.chroot_url)
-
+        self.assertEqual('/', transport.chroot_relative)
+        transport = chroot.ChrootTransportDecorator('chroot+memory:///pathA')
+        self.assertEqual('memory:///pathA/', transport.chroot_url)
+        self.assertEqual('/', transport.chroot_relative)
         transport = chroot.ChrootTransportDecorator(
             'chroot+memory:///path/B', chroot='memory:///path/')
         self.assertEqual('memory:///path/', transport.chroot_url)
+        self.assertEqual('/B/', transport.chroot_relative)
 
     def test_append_file(self):
         transport = get_transport('chroot+file:///foo/bar')
@@ -309,7 +313,21 @@ class ChrootDecoratorTransportTest(TestCase):
 
     def test_clone(self):
         transport = get_transport('chroot+file:///foo/bar')
-        self.assertRaises(PathNotChild, transport.clone, '/foo')
+        # relpath from root and root path are the same
+        relpath_cloned = transport.clone('foo')
+        abspath_cloned = transport.clone('/foo')
+        self.assertEqual(relpath_cloned.base, abspath_cloned.base)
+        self.assertEqual(relpath_cloned.chroot_url, abspath_cloned.chroot_url)
+        self.assertEqual(relpath_cloned.chroot_relative,
+            abspath_cloned.chroot_relative)
+        transport = transport.clone('subdir')
+        # clone preserves chroot_url and adjusts chroot_relative
+        self.assertEqual('file:///foo/bar/', transport.chroot_url)
+        self.assertEqual('/subdir/', transport.chroot_relative)
+        transport = transport.clone('/otherdir')
+        # clone preserves chroot_url and adjusts chroot_relative
+        self.assertEqual('file:///foo/bar/', transport.chroot_url)
+        self.assertEqual('/otherdir/', transport.chroot_relative)
 
     def test_delete(self):
         transport = get_transport('chroot+file:///foo/bar')

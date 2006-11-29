@@ -1477,13 +1477,9 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
         # The 'readv' command in the smart protocol both sends and receives bulk
         # data, so we use that.
         self.build_tree(['data-file'])
-        http_server = HTTPServerWithSmarts()
-        http_server._url_protocol = url_protocol
-        http_server.setUp()
-        self.addCleanup(http_server.tearDown)
+        self.transport_readonly_server = HTTPServerWithSmarts
 
-        http_transport = get_transport(http_server.get_url())
-
+        http_transport = self.get_readonly_transport()
         medium = http_transport.get_smart_medium()
         #remote_transport = RemoteTransport('fake_url', medium)
         remote_transport = remote.RemoteTransport('/', medium=medium)
@@ -1511,7 +1507,7 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
     def _test_http_send_smart_request(self, url_protocol):
         http_server = HTTPServerWithSmarts()
         http_server._url_protocol = url_protocol
-        http_server.setUp()
+        http_server.setUp(self.get_vfs_only_server())
         self.addCleanup(http_server.tearDown)
 
         post_body = 'hello\n'
@@ -1533,23 +1529,19 @@ class HTTPTunnellingSmokeTest(tests.TestCaseWithTransport):
         self._test_http_send_smart_request('http+urllib')
 
     def test_http_server_with_smarts(self):
-        http_server = HTTPServerWithSmarts()
-        http_server.setUp()
-        self.addCleanup(http_server.tearDown)
+        self.transport_readonly_server = HTTPServerWithSmarts
 
         post_body = 'hello\n'
         expected_reply_body = 'ok\x011\n'
 
-        smart_server_url = http_server.get_url() + '.bzr/smart'
+        smart_server_url = self.get_readonly_url('.bzr/smart')
         reply = urllib2.urlopen(smart_server_url, post_body).read()
 
         self.assertEqual(expected_reply_body, reply)
 
     def test_smart_http_server_post_request_handler(self):
-        http_server = HTTPServerWithSmarts()
-        http_server.setUp()
-        self.addCleanup(http_server.tearDown)
-        httpd = http_server._get_httpd()
+        self.transport_readonly_server = HTTPServerWithSmarts
+        httpd = self.get_readonly_server()._get_httpd()
 
         socket = SampleSocket(
             'POST /.bzr/smart HTTP/1.0\r\n'

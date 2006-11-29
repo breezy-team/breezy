@@ -277,8 +277,13 @@ class HttpServer(Server):
         """Capture Server log output."""
         self.logs.append(format % args)
 
-    def setUp(self):
-        """See bzrlib.transport.Server.setUp."""
+    def setUp(self, decorated_transport):
+        """See bzrlib.transport.Server.setUp.
+        
+        :param decorated_transport: The transport that requests over this
+            protocol should be forwarded to. Note that this is currently not
+            supported for HTTP - it is ignored.
+        """
         self._home_dir = os.getcwdu()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self._http_starting = threading.Lock()

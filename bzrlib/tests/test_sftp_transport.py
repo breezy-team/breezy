@@ -42,9 +42,9 @@ def set_test_transport_to_sftp(testcase):
     if getattr(testcase, '_get_remote_is_absolute', None) is None:
         testcase._get_remote_is_absolute = True
     if testcase._get_remote_is_absolute:
-        testcase.transport_server = SFTPAbsoluteServer
+        testcase.vfs_transport_factory = SFTPAbsoluteServer
     else:
-        testcase.transport_server = SFTPHomeDirServer
+        testcase.vfs_transport_factory = SFTPHomeDirServer
     testcase.transport_readonly_server = HttpServer
 
 
@@ -293,7 +293,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
             server._vendor = self._test_vendor
             return server
         self._test_vendor = 'loopback'
-        self.transport_server = create_server
+        self.vfs_transport_server = create_server
         f = open('a_file', 'wb')
         try:
             f.write('foobar\n')

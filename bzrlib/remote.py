@@ -43,9 +43,10 @@ class RemoteBzrDir(BzrDir):
         # SMART_SERVER_MERGE_BLOCKER
         default_format = BzrDirFormat.get_default_format()
         self._real_bzrdir = default_format.open(transport, _found=True)
-        path = self._path_for_remote_call()
+        smartclient = client.SmartClient(self.client)
+        path = self._path_for_remote_call(smartclient)
         #self._real_bzrdir._format.probe_transport(transport)
-        response = client.SmartClient(self.client).call('probe_dont_use', path)
+        response = smartclient.call('probe_dont_use', path)
         if response == ('no',):
             raise errors.NotBranchError(path=transport.base)
         self._branch = None
@@ -66,8 +67,9 @@ class RemoteBzrDir(BzrDir):
 
     def open_branch(self, _unsupported=False):
         assert _unsupported == False, 'unsupported flag support not implemented yet.'
-        path = self._path_for_remote_call()
-        response = client.SmartClient(self.client).call('BzrDir.open_branch', path)
+        smartclient = client.SmartClient(self.client)
+        path = self._path_for_remote_call(smartclient)
+        response = smartclient.call('BzrDir.open_branch', path)
         assert response[0] == 'ok', 'unexpected response code %s' % response[0]
         if response[0] != 'ok':
             # this should probably be a regular translate no ?
@@ -91,9 +93,13 @@ class RemoteBzrDir(BzrDir):
             return format.open(self, _found=True, location=response[1])
 
     def open_repository(self):
-        path = self._path_for_remote_call()
-        response = client.SmartClient(self.client).call('BzrDir.find_repository', path)
-        assert response[0] == 'ok', 'unexpected response code %s' % response[0]
+        smartclient = client.SmartClient(self.client)
+        path = self._path_for_remote_call(smartclient)
+        response = smartclient.call('BzrDir.find_repository', path)
+        assert response[0] in ('ok', 'norepository'), \
+            'unexpected response code %s' % response[0]
+        if response[0] == 'norepository':
+            raise errors.NoRepositoryPresent(self)
         if response[1] == '':
             if vfs.vfs_enabled():
                 return RemoteRepository(self, self._real_bzrdir.open_repository())
@@ -105,9 +111,9 @@ class RemoteBzrDir(BzrDir):
     def open_workingtree(self):
         return RemoteWorkingTree(self, self._real_bzrdir.open_workingtree())
 
-    def _path_for_remote_call(self):
+    def _path_for_remote_call(self, client):
         """Return the path to be used for this bzrdir in a remote call."""
-        return unescape(urlparse(self.root_transport.base)[2])
+        return client.remote_path_from_transport(self.root_transport)
 
     def get_branch_transport(self, branch_format):
         return self._real_bzrdir.get_branch_transport(branch_format)
@@ -176,7 +182,7 @@ class RemoteRepository(object):
 
     def has_revision(self, revision_id):
         """See Repository.has_revision()."""
-        path = self.bzrdir._path_for_remote_call().encode('utf8')
+        path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Repository.has_revision', path, revision_id.encode('utf8'))
         assert response[0] in ('ok', 'no'), 'unexpected response code %s' % response[0]
         return response[0] == 'ok'
@@ -229,7 +235,7 @@ class RemoteBranch(branch.Branch):
         # XXX: TODO: this does not cache the revision history for the duration
         # of a lock, which is a bug - see the code for regular branches
         # for details.
-        path = self.bzrdir._path_for_remote_call()
+        path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call2('Branch.revision_history', path)
         assert response[0][0] == 'ok', 'unexpected response code %s' % response[0]
         result = response[1].read_body_bytes().decode('utf8').split('\x00')

@@ -18,7 +18,7 @@
 
 
 from bzrlib import errors
-from bzrlib.bzrdir import BzrDir
+from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
 
 
@@ -47,6 +47,19 @@ class SmartServerRequestFindRepository(SmartServerRequest):
             return SmartServerResponse(('ok', '/'.join(segments)))
         except errors.NoRepositoryPresent:
             return SmartServerResponse(('norepository', ))
+
+
+class SmartServerRequestInitializeBzrDir(SmartServerRequest):
+
+    def do(self, path):
+        """Initialize a bzrdir at path.
+
+        The default format of the server is used.
+        :return: SmartServerResponse(('ok', ))
+        """
+        target_transport = self._backing_transport.clone(path)
+        BzrDirFormat.get_default_format().initialize_on_transport(target_transport)
+        return SmartServerResponse(('ok', ))
 
 
 class SmartServerRequestOpenBranch(SmartServerRequest):

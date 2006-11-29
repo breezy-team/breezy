@@ -444,7 +444,7 @@ class ChrootedTests(TestCaseWithBranch):
 
     def setUp(self):
         super(ChrootedTests, self).setUp()
-        if not self.transport_server == MemoryServer:
+        if not self.vfs_transport_factory == MemoryServer:
             self.transport_readonly_server = HttpServer
 
     def test_open_containing(self):

@@ -31,6 +31,7 @@ from bzrlib.tests import (
                           TestLoader,
                           TestSuite,
                           )
+from bzrlib.transport.memory import MemoryServer
 
 
 def test_suite():
@@ -41,6 +42,7 @@ def test_suite():
     formats = BzrDirFormat.known_formats()
     adapter = BzrDirTestProviderAdapter(
         default_transport,
+        None,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
@@ -55,12 +57,13 @@ def test_suite():
     from bzrlib.smart.server import SmartTCPServer_for_testing, ReadonlySmartTCPServer_for_testing
     from bzrlib.remote import RemoteBzrDirFormat
 
-    transport_server = SmartTCPServer_for_testing
+    # test the remote server behaviour using a MemoryTransport
     smart_server_suite = TestSuite()
     adapt_to_smart_server = BzrDirTestProviderAdapter(
-            transport_server,
-            ReadonlySmartTCPServer_for_testing,
-            [(RemoteBzrDirFormat())])
+        MemoryServer,
+        SmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing,
+        [(RemoteBzrDirFormat())])
     adapt_modules(test_bzrdir_implementations,
                   adapt_to_smart_server,
                   TestLoader(),

@@ -16,7 +16,7 @@
 
 """Tests for the smart wire/domain protococl."""
 
-from bzrlib import errors, smart, tests
+from bzrlib import bzrdir, errors, smart, tests
 from bzrlib.smart.request import SmartServerResponse
 import bzrlib.smart.bzrdir
 import bzrlib.smart.branch
@@ -112,6 +112,37 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
                 u'\xc8abc'.encode('utf8')))
 
 
+class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithTransport):
+
+    def test_empty_dir(self):
+        """Initializing an empty dir should succeed and do it."""
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestInitializeBzrDir(backing)
+        self.assertEqual(SmartServerResponse(('ok', )),
+            request.execute(backing.local_abspath('.')))
+        made_dir = bzrdir.BzrDir.open_from_transport(backing)
+        # no branch, tree or repository is expected with the current 
+        # default formart.
+        self.assertRaises(errors.NoWorkingTree, made_dir.open_workingtree)
+        self.assertRaises(errors.NotBranchError, made_dir.open_branch)
+        self.assertRaises(errors.NoRepositoryPresent, made_dir.open_repository)
+
+    def test_missing_dir(self):
+        """Initializing a missing directory should fail like the bzrdir api."""
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestInitializeBzrDir(backing)
+        self.assertRaises(errors.NoSuchFile,
+            request.execute, backing.local_abspath('subdir'))
+
+    def test_initialized_dir(self):
+        """Initializing an extant bzrdir should fail like the bzrdir api."""
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestInitializeBzrDir(backing)
+        self.make_bzrdir('subdir')
+        self.assertRaises(errors.FileExists,
+            request.execute, backing.local_abspath('subdir'))
+
+
 class TestSmartServerRequestOpenBranch(tests.TestCaseWithTransport):
 
     def test_no_branch(self):
@@ -197,6 +228,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('BzrDir.find_repository'),
             smart.bzrdir.SmartServerRequestFindRepository)
+        self.assertEqual(
+            smart.request.request_handlers.get('BzrDirFormat.initialize'),
+            smart.bzrdir.SmartServerRequestInitializeBzrDir)
         self.assertEqual(
             smart.request.request_handlers.get('BzrDir.open_branch'),
             smart.bzrdir.SmartServerRequestOpenBranch)

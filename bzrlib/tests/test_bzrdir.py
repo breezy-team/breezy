@@ -266,7 +266,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
 
     def test_create_branch_convenience_root(self):
         """Creating a branch at the root of a fs should work."""
-        self.transport_server = MemoryServer
+        self.vfs_transport_factory = MemoryServer
         # outside a repo the default convenience output is a repo+branch_tree
         old_format = bzrdir.BzrDirFormat.get_default_format()
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
@@ -365,7 +365,7 @@ class ChrootedTests(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTests, self).setUp()
-        if not self.transport_server == MemoryServer:
+        if not self.vfs_transport_factory == MemoryServer:
             self.transport_readonly_server = HttpServer
 
     def test_open_containing(self):
@@ -581,7 +581,7 @@ class NonLocalTests(TestCaseWithTransport):
 
     def setUp(self):
         super(NonLocalTests, self).setUp()
-        self.transport_server = MemoryServer
+        self.vfs_transport_factory = MemoryServer
     
     def test_create_branch_convenience(self):
         # outside a repo the default convenience output is a repo+branch_tree

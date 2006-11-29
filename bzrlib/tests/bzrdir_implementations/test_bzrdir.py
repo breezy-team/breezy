@@ -1452,9 +1452,11 @@ class ChrootedBzrDirTests(ChrootedTestCase):
             # they may not be initializable.
             return
         # supported formats must be able to init and open
-        url = self.get_url('subdir')
-        get_transport(self.get_url()).mkdir('subdir')
-        made_control = self.bzrdir_format.initialize(url)
+        # - do the vfs initialisation over the basic vfs transport
+        # XXX: TODO this should become a 'bzrdirlocation' api call.
+        url = self.get_vfs_only_url('subdir')
+        get_transport(self.get_vfs_only_url()).mkdir('subdir')
+        made_control = self.bzrdir_format.initialize(self.get_url('subdir'))
         try:
             repo = made_control.open_repository()
             # if there is a repository, then the format cannot ever hit this 
@@ -1462,7 +1464,7 @@ class ChrootedBzrDirTests(ChrootedTestCase):
             return
         except errors.NoRepositoryPresent:
             pass
-        opened_control = bzrdir.BzrDir.open(self.get_readonly_url('subdir'))
+        made_control = bzrdir.BzrDir.open(self.get_readonly_url('subdir'))
         self.assertRaises(errors.NoRepositoryPresent,
-                          opened_control.find_repository)
+                          made_control.find_repository)
 

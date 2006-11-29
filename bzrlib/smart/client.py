@@ -14,7 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from urlparse import urlparse
+
 from bzrlib.smart import protocol
+from bzrlib.urlutils import unescape
 
 
 class SmartClient(object):
@@ -41,3 +44,7 @@ class SmartClient(object):
         smart_protocol = protocol.SmartClientRequestProtocolOne(request)
         smart_protocol.call_with_body_bytes((method, ) + args, body)
         return smart_protocol.read_response_tuple()
+
+    def remote_path_from_transport(self, transport):
+        """Convert transport into a path suitable for using in a request."""
+        return unescape(urlparse(transport.base)[2]).encode('utf8')

@@ -50,6 +50,7 @@ from bzrlib.osutils import (
     sha_strings,
     sha_string,
     )
+from bzrlib.smart.client import SmartClient
 from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
@@ -1476,7 +1477,14 @@ class BzrDirTestProviderAdapter(object):
     easy to identify.
     """
 
-    def __init__(self, transport_server, transport_readonly_server, formats):
+    def __init__(self, vfs_factory, transport_server, transport_readonly_server,
+        formats):
+        """Create an object to adapt tests.
+
+        :param vfs_server: A factory to create a Transport Server which has
+            all the VFS methods working, and is writable.
+        """
+        self._vfs_factory = vfs_factory
         self._transport_server = transport_server
         self._transport_readonly_server = transport_readonly_server
         self._formats = formats
@@ -1485,6 +1493,7 @@ class BzrDirTestProviderAdapter(object):
         result = unittest.TestSuite()
         for format in self._formats:
             new_test = deepcopy(test)
+            new_test.vfs_transport_factory = self._vfs_factory
             new_test.transport_server = self._transport_server
             new_test.transport_readonly_server = self._transport_readonly_server
             new_test.bzrdir_format = format
@@ -1977,6 +1986,15 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             raise errors.NotBranchError(path=transport.base)
         else:
             return klass()
+
+    def initialize_on_transport(self, transport):
+        # hand off the request to the smart server
+        medium = transport.get_smart_medium()
+        client = SmartClient(medium)
+        path = client.remote_path_from_transport(transport)
+        response = SmartClient(medium).call('BzrDirFormat.initialize', path)
+        assert response[0] in ('ok', ), 'unexpected response code %s' % response[0]
+        return remote.RemoteBzrDir(transport)
 
     def _open(self, transport):
         return remote.RemoteBzrDir(transport)
