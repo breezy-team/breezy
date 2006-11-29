@@ -226,6 +226,9 @@ class GitRepository(bzrlib.repository.Repository):
             yield self.parse_rev(lines)
 
     def get_revision_graph_with_ghosts(self, revision_ids=None):
+        return self.get_revision_graph(revision_ids)
+
+    def get_revision_graph(self, revision_ids=None):
         result = graph.Graph()
         for revision in self._ancestor_revisions(revision_ids):
             result.add_node(revision.revision_id, revision.parent_ids)
@@ -238,6 +241,9 @@ class GitRepository(bzrlib.repository.Repository):
         raw = self.git.rev_list([gitrevid_from_bzr(revision_id)], max_count=1,
                                 header=True)
         return self.parse_rev(raw)
+
+    def get_revisions(self, revisions):
+        return [self.get_revision(r) for r in revisions]
 
     def parse_rev(self, raw):
         # first field is the rev itself.
