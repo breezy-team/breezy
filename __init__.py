@@ -131,6 +131,8 @@ class GitBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
         if url.startswith('file://'):
             url = url[len('file://'):]
         url = url.encode('utf8')
+        if not transport.has('.git'):
+            raise errors.NotBranchError(path=transport.base)
         lockfiles = GitLockableFiles(GitLock())
         return GitDir(transport, lockfiles, self)
 
