@@ -1,6 +1,4 @@
-# Bazaar -- distributed version control
-#
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -228,7 +226,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
 # choke on a Unicode string containing a relative path if
 # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
 # string.
-_fs_enc = sys.getfilesystemencoding()
+_fs_enc = sys.getfilesystemencoding() or 'utf-8'
 def _posix_abspath(path):
     # jam 20060426 rather than encoding to fsencoding
     # copy posixpath.abspath, but use os.getcwdu instead
@@ -334,10 +332,10 @@ if sys.platform == 'win32':
         """Error handler for shutil.rmtree function [for win32]
         Helps to remove files and dirs marked as read-only.
         """
-        type_, value = excinfo[:2]
+        exception = excinfo[1]
         if function in (os.remove, os.rmdir) \
-            and type_ == OSError \
-            and value.errno == errno.EACCES:
+            and isinstance(exception, OSError) \
+            and exception.errno == errno.EACCES:
             make_writable(path)
             function(path)
         else:
@@ -374,6 +372,11 @@ def get_terminal_encoding():
             mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
     else:
         mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+    if output_encoding == 'cp0':
+        # invalid encoding (cp0 means 'no codepage' on Windows)
+        output_encoding = bzrlib.user_encoding
+        mutter('cp0 is invalid encoding.'
+               ' encoding stdout as bzrlib.user_encoding %r', output_encoding)
     return output_encoding
 
 
@@ -1087,6 +1090,41 @@ def get_user_encoding():
                          "  Continuing with ascii encoding.\n"
                          % (e, os.environ.get('LANG')))
 
-    if _cached_user_encoding is None:
+    # Windows returns 'cp0' to indicate there is no code page. So we'll just
+    # treat that as ASCII, and not support printing unicode characters to the
+    # console.
+    if _cached_user_encoding in (None, 'cp0'):
         _cached_user_encoding = 'ascii'
     return _cached_user_encoding
+
+
+def recv_all(socket, bytes):
+    """Receive an exact number of bytes.
+
+    Regular Socket.recv() may return less than the requested number of bytes,
+    dependning on what's in the OS buffer.  MSG_WAITALL is not available
+    on all platforms, but this should work everywhere.  This will return
+    less than the requested amount if the remote end closes.
+
+    This isn't optimized and is intended mostly for use in testing.
+    """
+    b = ''
+    while len(b) < bytes:
+        new = socket.recv(bytes - len(b))
+        if new == '':
+            break # eof
+        b += new
+    return b
+
+def dereference_path(path):
+    """Determine the real path to a file.
+
+    All parent elements are dereferenced.  But the file itself is not
+    dereferenced.
+    :param path: The original path.  May be absolute or relative.
+    :return: the real path *to* the file
+    """
+    parent, base = os.path.split(path)
+    # The pathjoin for '.' is a workaround for Python bug #1213894.
+    # (initial path components aren't dereferenced)
+    return pathjoin(realpath(pathjoin('.', parent)), base)

@@ -27,6 +27,7 @@ from bzrlib.errors import (NoSuchFile, FileExists,
                            ConnectionError,
                            DependencyNotPresent,
                            UnsupportedProtocol,
+                           PathNotChild,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import (_CoalescedOffset,
@@ -235,6 +236,16 @@ class TestMemoryTransport(TestCase):
         transport.append_bytes('foo', 'content')
         self.assertEquals(True, transport.has('foo'))
 
+    def test_list_dir(self):
+        transport = MemoryTransport()
+        transport.put_bytes('foo', 'content')
+        transport.mkdir('dir')
+        transport.put_bytes('dir/subfoo', 'content')
+        transport.put_bytes('dirlike', 'content')
+
+        self.assertEquals(['dir', 'dirlike', 'foo'], sorted(transport.list_dir('.')))
+        self.assertEquals(['subfoo'], sorted(transport.list_dir('dir')))
+
     def test_mkdir(self):
         transport = MemoryTransport()
         transport.mkdir('dir')
@@ -273,6 +284,88 @@ class TestMemoryTransport(TestCase):
         self.assertEqual(7, transport.stat('foo').st_size)
         self.assertEqual(6, transport.stat('bar').st_size)
 
+
+class ChrootDecoratorTransportTest(TestCase):
+    """Chroot decoration specific tests."""
+
+    def test_construct(self):
+        from bzrlib.transport import chroot
+        transport = chroot.ChrootTransportDecorator('chroot+memory:///pathA/')
+        self.assertEqual('memory:///pathA/', transport.chroot_url)
+
+        transport = chroot.ChrootTransportDecorator(
+            'chroot+memory:///path/B', chroot='memory:///path/')
+        self.assertEqual('memory:///path/', transport.chroot_url)
+
+    def test_append_file(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.append_file, '/foo', None)
+
+    def test_append_bytes(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.append_bytes, '/foo', 'bytes')
+
+    def test_clone(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.clone, '/foo')
+
+    def test_delete(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.delete, '/foo')
+
+    def test_delete_tree(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.delete_tree, '/foo')
+
+    def test_get(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.get, '/foo')
+
+    def test_get_bytes(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.get_bytes, '/foo')
+
+    def test_has(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.has, '/foo')
+
+    def test_list_dir(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.list_dir, '/foo')
+
+    def test_lock_read(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.lock_read, '/foo')
+
+    def test_lock_write(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.lock_write, '/foo')
+
+    def test_mkdir(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.mkdir, '/foo')
+
+    def test_put_bytes(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.put_bytes, '/foo', 'bytes')
+
+    def test_put_file(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.put_file, '/foo', None)
+
+    def test_rename(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.rename, '/aaa', 'bbb')
+        self.assertRaises(PathNotChild, transport.rename, 'ccc', '/d')
+
+    def test_rmdir(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.rmdir, '/foo')
+
+    def test_stat(self):
+        transport = get_transport('chroot+file:///foo/bar')
+        self.assertRaises(PathNotChild, transport.stat, '/foo')
+
         
 class ReadonlyDecoratorTransportTest(TestCase):
     """Readonly decoration specific tests."""
@@ -286,8 +379,8 @@ class ReadonlyDecoratorTransportTest(TestCase):
         self.assertEqual(True, transport.is_readonly())
 
     def test_http_parameters(self):
+        from bzrlib.tests.HttpServer import HttpServer
         import bzrlib.transport.readonly as readonly
-        from bzrlib.transport.http import HttpServer
         # connect to . via http which is not listable
         server = HttpServer()
         server.setUp()
@@ -321,7 +414,7 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
     def test_http_parameters(self):
         # the listable, should_cache and is_readonly parameters
         # are not changed by the fakenfs decorator
-        from bzrlib.transport.http import HttpServer
+        from bzrlib.tests.HttpServer import HttpServer
         # connect to . via http which is not listable
         server = HttpServer()
         server.setUp()

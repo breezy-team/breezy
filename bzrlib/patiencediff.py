@@ -43,7 +43,7 @@ def unique_lcs(a, b):
     http://en.wikipedia.org/wiki/Patience_sorting
     """
     # set index[line in a] = position of line in a unless
-    # unless a is a duplicate, in which case it's set to None
+    # a is a duplicate, in which case it's set to None
     index = {}
     for i in xrange(len(a)):
         line = a[i]

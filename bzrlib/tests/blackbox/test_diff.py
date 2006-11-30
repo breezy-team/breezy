@@ -272,6 +272,7 @@ class TestExternalDiff(TestDiff):
             os.environ['BZR_PROGRESS_BAR'] = 'none'
             out, err = self.run_bzr_subprocess('diff', '-r', '1',
                                                '--diff-options', '-ub',
+                                               universal_newlines=True,
                                                retcode=None)
         finally:
             if orig_progress is None:

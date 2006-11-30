@@ -21,10 +21,9 @@
 
 import os
 
-from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests.blackbox import ExternalBase
 
-class TestCat(TestCaseInTempDir):
+class TestCat(ExternalBase):
 
     def test_cat(self):
 
@@ -61,3 +60,39 @@ class TestCat(TestCaseInTempDir):
         bzr('cat', 'a', retcode=3)
         bzr('cat', 'a', '-r', 'revno:1:branch-that-does-not-exist', retcode=3)
         
+    def test_cat_different_id(self):
+        """'cat' works with old and new files"""
+        tree = self.make_branch_and_tree('.')
+        # the files are named after their path in the revision and
+        # current trees later in the test case
+        # a-rev-tree is special because it appears in both the revision
+        # tree and the working tree
+        self.build_tree_contents([('a-rev-tree', 'foo\n'),
+            ('c-rev', 'baz\n'), ('d-rev', 'bar\n')])
+        tree.lock_write()
+        try:
+            tree.add(['a-rev-tree', 'c-rev', 'd-rev'])
+            tree.commit('add test files')
+            tree.remove(['d-rev'])
+            tree.rename_one('a-rev-tree', 'b-tree')
+            tree.rename_one('c-rev', 'a-rev-tree')
+
+            # 'b-tree' is not present in the old tree.
+            self.run_bzr_error([], 'cat', 'b-tree', '--name-from-revision')
+
+            # get to the old file automatically
+            out, err = self.run_bzr('cat', 'd-rev')
+            self.assertEqual('bar\n', out)
+            self.assertEqual('', err)
+
+            out, err = self.run_bzr('cat', 'a-rev-tree',
+                                    '--name-from-revision')
+            self.assertEqual('foo\n', out)
+            self.assertEqual('', err)
+
+            out, err = self.run_bzr('cat', 'a-rev-tree')
+            self.assertEqual('baz\n', out)
+            self.assertEqual('', err)
+        finally:
+            tree.unlock()
+
