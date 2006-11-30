@@ -21,7 +21,7 @@
 import commands
 import os
 
-from debian_bundle import deb822
+import deb822
 
 from bdlogging import debug
 from errors import DebianError
