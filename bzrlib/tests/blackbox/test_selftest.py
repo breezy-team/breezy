@@ -438,10 +438,10 @@ class TestBzrSubprocess(TestCaseWithTransport):
         self.make_branch_and_tree('one')
 
         process = self.start_bzr_subprocess(['root'], working_dir='one')
-        result = self.finish_bzr_subprocess(process)
+        result = self.finish_bzr_subprocess(process, universal_newlines=True)
         self.assertEndsWith(result[0], 'one\n')
         self.assertEqual('', result[1])
-        
+
 
 class TestRunBzrError(ExternalBase):
 
