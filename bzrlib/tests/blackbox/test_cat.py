@@ -21,9 +21,9 @@
 
 import os
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests.blackbox import TestCaseWithTransport
 
-class TestCat(ExternalBase):
+class TestCat(TestCaseWithTransport):
 
     def test_cat(self):
 
@@ -96,3 +96,11 @@ class TestCat(ExternalBase):
         finally:
             tree.unlock()
 
+    def test_remote_cat(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['README', 'See INSTALL'])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+
+        url = self.get_readonly_url() + '/README'
+        self.run_bzr('cat', url)
