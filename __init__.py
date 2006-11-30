@@ -181,8 +181,7 @@ class GitBranch(bzrlib.branch.Branch):
     @needs_read_lock
     def revision_history(self):
         node = self.last_revision()
-        graph = self.repository.get_revision_graph_with_ghosts([node])
-        ancestors = graph.get_ancestors()
+        ancestors = self.repository.get_revision_graph(node)
         history = []
         while node is not None:
             history.append(node)
@@ -227,10 +226,10 @@ class GitRepository(bzrlib.repository.Repository):
         for lines in self.git.ancestor_lines(git_revisions):
             yield self.parse_rev(lines)
 
-    def get_revision_graph_with_ghosts(self, revision_ids=None):
-        return self.get_revision_graph(revision_ids)
+    def get_revision_graph(self, revision_id=None):
+        return self.get_revision_graph_with_ghosts([revision_id]).get_ancestors()
 
-    def get_revision_graph(self, revision_ids=None):
+    def get_revision_graph_with_ghosts(self, revision_ids=None):
         result = graph.Graph()
         for revision in self._ancestor_revisions(revision_ids):
             result.add_node(revision.revision_id, revision.parent_ids)
@@ -289,7 +288,7 @@ class GitModel(object):
         self.git_dir = git_dir
 
     def git_command(self, command, args):
-        args = ' '.join(args)
+        args = ' '.join("'%s'" % arg for arg in args)
         return 'git --git-dir=%s %s %s' % (self.git_dir, command, args) 
 
     def git_lines(self, command, args):
@@ -319,7 +318,7 @@ class GitModel(object):
         for line in self.rev_list(revisions, header=True):
             if line.startswith('\x00'):
                 yield revision_lines
-                revision_lines = [line[1:]]
+                revision_lines = [line[1:].decode('latin-1')]
             else:
-                revision_lines.append(line)
+                revision_lines.append(line.decode('latin-1'))
         assert revision_lines == ['']
