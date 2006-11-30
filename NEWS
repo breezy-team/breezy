@@ -2,6 +2,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * PyCurlTransport now use a single curl object. By specifying explicitly
+      the 'Range' header, we avoid the need to use two different curl objects
+      (and two connections to the same server). (Vincent Ladeuil)
+
     * ``bzr commit`` does not prompt for a message until it is very likely to
       succeed.  (Aaron Bentley)
 

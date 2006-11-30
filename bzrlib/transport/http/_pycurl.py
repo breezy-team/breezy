@@ -80,12 +80,10 @@ class PyCurlTransport(HttpTransportBase):
     def __init__(self, base, from_transport=None):
         super(PyCurlTransport, self).__init__(base)
         if from_transport is not None:
-            self._base_curl = from_transport._base_curl
-            self._range_curl = from_transport._range_curl
+            self._curl = from_transport._curl
         else:
             mutter('using pycurl %s' % pycurl.version)
-            self._base_curl = pycurl.Curl()
-            self._range_curl = pycurl.Curl()
+            self._curl = pycurl.Curl()
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -96,7 +94,7 @@ class PyCurlTransport(HttpTransportBase):
         """See Transport.has()"""
         # We set NO BODY=0 in _get_full, so it should be safe
         # to re-use the non-range curl object
-        curl = self._base_curl
+        curl = self._curl
         abspath = self._real_abspath(relpath)
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
@@ -156,7 +154,7 @@ class PyCurlTransport(HttpTransportBase):
 
     def _get_full(self, relpath):
         """Make a request for the entire file"""
-        curl = self._base_curl
+        curl = self._curl
         abspath, data, header = self._setup_get_request(curl, relpath)
         self._curl_perform(curl)
 
@@ -173,15 +171,7 @@ class PyCurlTransport(HttpTransportBase):
 
     def _get_ranged(self, relpath, ranges, tail_amount):
         """Make a request for just part of the file."""
-        # We would like to re-use the same curl object for 
-        # full requests and partial requests
-        # Documentation says 'Pass in NULL to disable the use of ranges'
-        # None is the closest we have, but at least with pycurl 7.13.1
-        # It raises an 'invalid arguments' response
-        # curl.setopt(pycurl.RANGE, None)
-        # curl.unsetopt(pycurl.RANGE) doesn't support the RANGE parameter
-        # So instead we hack around this by using a separate objects
-        curl = self._range_curl
+        curl = self._curl
         abspath, data, header = self._setup_get_request(curl, relpath)
 
         range_header = self.attempted_range_header(ranges, tail_amount)
@@ -201,7 +191,7 @@ class PyCurlTransport(HttpTransportBase):
 
     def _post(self, body_bytes):
         fake_file = StringIO(body_bytes)
-        curl = self._base_curl
+        curl = self._curl
         # Other places that use _base_curl for GET requests explicitly set
         # HTTPGET, so it should be safe to re-use the same object for both GETs
         # and POSTs.
@@ -209,7 +199,9 @@ class PyCurlTransport(HttpTransportBase):
         curl.setopt(pycurl.POSTFIELDSIZE, len(body_bytes))
         curl.setopt(pycurl.READFUNCTION, fake_file.read)
         abspath, data, header = self._setup_request(curl, '.bzr/smart')
-        self._curl_perform(curl)
+        # We override the Expect: header so that pycurl will send the POST
+        # body immediately.
+        self._curl_perform(curl,['Expect: '])
         data.seek(0)
         code = curl.getinfo(pycurl.HTTP_CODE)
         headers = _extract_headers(header.getvalue(), abspath)
@@ -233,25 +225,23 @@ class PyCurlTransport(HttpTransportBase):
 
     def _set_curl_options(self, curl):
         """Set options for all requests"""
-        # There's no way in http/1.0 to say "must revalidate"; we don't want
-        # to force it to always retrieve.  so just turn off the default Pragma
-        # provided by Curl.
-        # Also, we override the Expect: header so that pycurl will send the POST
-        # body immediately.
-        headers = ['Cache-control: max-age=0',
-                   'Pragma: no-cache',
-                   'Connection: Keep-Alive',
-                   'Expect: ',]
         ## curl.setopt(pycurl.VERBOSE, 1)
         # TODO: maybe include a summary of the pycurl version
         ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__,)
         curl.setopt(pycurl.USERAGENT, ua_str)
-        curl.setopt(pycurl.HTTPHEADER, headers)
         curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
 
-    def _curl_perform(self, curl):
+    def _curl_perform(self, curl, more_headers=[]):
         """Perform curl operation and translate exceptions."""
         try:
+            # There's no way in http/1.0 to say "must
+            # revalidate"; we don't want to force it to always
+            # retrieve.  so just turn off the default Pragma
+            # provided by Curl.
+            headers = ['Cache-control: max-age=0',
+                       'Pragma: no-cache',
+                       'Connection: Keep-Alive']
+            curl.setopt(pycurl.HTTPHEADER, headers + more_headers)
             curl.perform()
         except pycurl.error, e:
             url = curl.getinfo(pycurl.EFFECTIVE_URL)
