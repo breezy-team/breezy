@@ -470,7 +470,7 @@ def get_alias(cmd, config=None):
         Command to be checked for an alias.
     config
         Used to specify an alternative config to use,
-        which is especially usefull for testing.
+        which is especially useful for testing.
         If it is unspecified, the global config will be used.
     """
     if config is None:

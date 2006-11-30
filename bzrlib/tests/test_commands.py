@@ -14,8 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import errno
 from cStringIO import StringIO
+import errno
 
 from bzrlib import (
     commands,
@@ -57,21 +57,23 @@ class TestCommands(TestCase):
         self.assertRaises(errors.BzrCommandError,
                           commands.run_bzr, ['log', u'--option\xb5'])
 
+
 class TestGetAlias(TestCase):
-    def __get_config(self,config_text):
+
+    def _get_config(self, config_text):
         my_config = config.GlobalConfig()
         config_file = StringIO(config_text.encode('utf-8'))
         my_config._parser = my_config._get_parser(file=config_file)
         return my_config
 
     def test_simple(self):
-        my_config = self.__get_config("[ALIASES]\n"
+        my_config = self._get_config("[ALIASES]\n"
             "diff=diff -r -2..-1\n")
         self.assertEqual([u'diff', u'-r', u'-2..-1'],
             commands.get_alias("diff", config=my_config))
 
     def test_single_quotes(self):
-        my_config = self.__get_config("[ALIASES]\n"
+        my_config = self._get_config("[ALIASES]\n"
             "diff=diff -r -2..-1 --diff-options "
             "'--strip-trailing-cr -wp'\n")
         self.assertEqual([u'diff', u'-r', u'-2..-1', u'--diff-options',
@@ -79,7 +81,7 @@ class TestGetAlias(TestCase):
                           commands.get_alias("diff", config=my_config))
 
     def test_double_quotes(self):
-        my_config = self.__get_config("[ALIASES]\n"
+        my_config = self._get_config("[ALIASES]\n"
             "diff=diff -r -2..-1 --diff-options "
             "\"--strip-trailing-cr -wp\"\n")
         self.assertEqual([u'diff', u'-r', u'-2..-1', u'--diff-options',
@@ -87,7 +89,7 @@ class TestGetAlias(TestCase):
                           commands.get_alias("diff", config=my_config))
 
     def test_unicode(self):
-        my_config = self.__get_config("[ALIASES]\n"
+        my_config = self._get_config("[ALIASES]\n"
             u"iam=whoami 'Erik B\u00e5gfors <erik@bagfors.nu>'\n")
         self.assertEqual([u'whoami', u'Erik B\u00e5gfors <erik@bagfors.nu>'],
                           commands.get_alias("iam", config=my_config))
