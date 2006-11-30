@@ -54,10 +54,18 @@ class EmailSender(object):
                  end_revision=rev2,
                  verbose=True
                  )
+
         return outf.getvalue()
 
+    def mailer(self):
+        """What mail program to use."""
+        result = self.config.get_user_option('post_commit_mailer')
+        if result is None:
+            result = "mail"
+        return result
+
     def _command_line(self):
-        return ['mail', '-s', self.subject(), '-a', "From: " + self.from_address(),
+        return [self.mailer(), '-s', self.subject(), '-a', "From: " + self.from_address(),
                 self.to()]
 
     def to(self):
