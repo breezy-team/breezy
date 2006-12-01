@@ -33,7 +33,9 @@ from bzrlib import (
     errors,
     xml5,
     )
+import bzrlib.store
 """)
+
 from bzrlib.trace import mutter
 
 

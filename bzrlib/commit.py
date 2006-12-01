@@ -77,6 +77,7 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
         DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
+import bzrlib.ui
 
 
 class NullCommitReporter(object):

@@ -89,6 +89,7 @@ from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
      sha_strings
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.tsort import topo_sort
+import bzrlib.ui
 import bzrlib.weave
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 
