@@ -66,14 +66,14 @@ class EmailSender(object):
         """
         from bzrlib.diff import show_diff_trees
         # optionally show the diff if its smaller than the post_commit_difflimit option
-        revid1 = self.revision.revision_id
+        revid_new = self.revision.revision_id
         if self.revision.parent_ids:
-            revid2 = self.revision.parent_ids[0]
+            revid_old = self.revision.parent_ids[0]
         else:
-            revid2 = None
-        tree1, tree2 = self.branch.repository.revision_trees((revid1, revid2))
+            revid_old = None
+        tree_new, tree_old = self.branch.repository.revision_trees((revid_new, revid_old))
         diff_content = StringIO()
-        show_diff_trees(tree1, tree2, diff_content)
+        show_diff_trees(tree_old, tree_new, diff_content)
         lines = diff_content.getvalue().split("\n")
         numlines = len(lines)
         difflimit = self.difflimit()
