@@ -13,6 +13,13 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * pycurl and urllib can detect short reads at different places. Update
+      the test suite to test more cases. Also detect http error code 416
+      which was raised for that specific bug. Also enhance the urllib
+      robustness by detecting invalid ranges (and pycurl's one by detecting
+      short reads during the initial GET). (Vincent Ladeuil, #73948)
+
+
 bzr 0.13rc1  2006-11-27
 
   IMPROVEMENTS:
