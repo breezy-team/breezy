@@ -153,9 +153,10 @@ def show_tree_status(wt, show_unchanged=None,
                 print >> to_file, "conflicts:"
                 conflict_title = True
             if not short:
-                print >> to_file, "  %s" % conflict
+                prefix = 'C'
             else:
-                print >> to_file, "C  %s" % conflict
+                prefix = ' '
+            print >> to_file, prefix, " %s" % conflict
         if new_is_working_tree and show_pending:
             show_pending_merges(new, to_file, short)
     finally:
@@ -189,9 +190,10 @@ def show_pending_merges(new, to_file, short=False):
             width = terminal_width()
             m_revision = branch.repository.get_revision(merge)
             if short:
-                print >> to_file, 'P ', line_log(m_revision, width - 3)
-            else:
-                print >> to_file, ' ', line_log(m_revision, width - 3)
+                prefix = 'P'
+            else: 
+                prefix = ' '
+            print >> to_file, prefix, line_log(m_revision, width - 4)
             inner_merges = branch.repository.get_ancestry(merge)
             assert inner_merges[0] is None
             inner_merges.pop(0)
@@ -201,15 +203,17 @@ def show_pending_merges(new, to_file, short=False):
                     continue
                 mm_revision = branch.repository.get_revision(mmerge)
                 if short:
-                    print >> to_file, 'P. ', line_log(mm_revision, width - 5)
+                    prefix = 'P. '
                 else:
-                    print >> to_file, '  ', line_log(mm_revision, width - 5)
+                    prefix = '   '
+                print >> to_file, prefix, line_log(mm_revision, width - 5)
                 ignore.add(mmerge)
         except errors.NoSuchRevision:
             if short:
-                print >> to_file, 'P ', merge
+                prefix = 'P'
             else:
-                print >> to_file, ' ', merge
+                prefix = ' '
+            print >> to_file, prefix, merge
         
 def list_paths(header, paths, specific_files, to_file, short_status_letter=''):
     done_header = False
