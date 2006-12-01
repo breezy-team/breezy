@@ -159,7 +159,7 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
             file = open(path, 'rb')
         except IOError:
             self.send_error(404, "File not found")
-            return None
+            return
 
         file_size = os.fstat(file.fileno())[6]
         tail, ranges = self.parse_ranges(ranges_header_value)
@@ -176,12 +176,13 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
                     ranges_valid = False
                     break
         if not ranges_valid:
-            # RFC2616 14-16 says that invalid Range headers
-            # should be ignored and in that case, the whole file
-            # should be returned as if no Range header was
-            # present
-            file.close() # Will be reopened by the following call
-            return SimpleHTTPRequestHandler.do_GET(self)
+            # RFC2616 14-16 says that invalid Range headers could
+            # be ignored and in that case, the whole file should
+            # be returned as if no Range header was present. Or
+            # that the server should returns a 416 error.
+            file.close()
+            self.send_error(416, "Requested range not satisfiable")
+            return
 
         if len(ranges) == 1:
             (start, end) = ranges[0]
