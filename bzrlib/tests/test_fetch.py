@@ -15,8 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import re
 import sys
 
+from bzrlib import bzrdir, repository
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.builtins import merge
@@ -25,6 +27,7 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
 from bzrlib.trace import mutter
+from bzrlib.upgrade import Convert
 from bzrlib.workingtree import WorkingTree
 
 
@@ -113,6 +116,42 @@ class TestFetch(TestCaseWithTransport):
         wt = self.make_branch_and_tree('br')
         self.assertEqual(wt.branch.fetch(wt.branch), (0, []))
 
+    def test_fetch_root_knit(self):
+        """Ensure that knit2.fetch() updates the root knit
+        
+        This tests the case where the root has a new revision, but there are no
+        corresponding filename, parent, contents or other changes.
+        """
+        knit1_format = bzrdir.BzrDirMetaFormat1()
+        knit1_format.repository_format = repository.RepositoryFormatKnit1()
+        knit2_format = bzrdir.BzrDirMetaFormat1()
+        knit2_format.repository_format = repository.RepositoryFormatKnit2()
+        # we start with a knit1 repository because that causes the
+        # root revision to change for each commit, even though the content,
+        # parent, name, and other attributes are unchanged.
+        tree = self.make_branch_and_tree('tree', knit1_format)
+        tree.set_root_id('tree-root')
+        tree.commit('rev1', rev_id='rev1')
+        tree.commit('rev2', rev_id='rev2')
+
+        # Now we convert it to a knit2 repository so that it has a root knit
+        Convert(tree.basedir, knit2_format)
+        tree = WorkingTree.open(tree.basedir)
+        branch = self.make_branch('branch', format=knit2_format)
+        branch.pull(tree.branch, stop_revision='rev1')
+        repo = branch.repository
+        root_knit = repo.weave_store.get_weave('tree-root',
+                                                repo.get_transaction())
+        # Make sure fetch retrieved only what we requested
+        self.assertTrue('rev1' in root_knit)
+        self.assertTrue('rev2' not in root_knit)
+        branch.pull(tree.branch)
+        root_knit = repo.weave_store.get_weave('tree-root',
+                                                repo.get_transaction())
+        # Make sure that the next revision in the root knit was retrieved,
+        # even though the text, name, parent_id, etc., were unchanged.
+        self.assertTrue('rev2' in root_knit)
+
 
 class TestMergeFetch(TestCaseWithTransport):
 
@@ -198,13 +237,12 @@ class TestHttpFetch(TestCaseWithWebserver):
 
     def _count_log_matches(self, target, logs):
         """Count the number of times the target file pattern was fetched in an http log"""
-        log_pattern = '%s HTTP/1.1" 200 - "-" "bzr/%s' % \
-            (target, bzrlib.__version__)
+        get_succeeds_re = re.compile(
+            '.*"GET .*%s HTTP/1.1" 20[06] - "-" "bzr/%s' %
+            (     target,                    bzrlib.__version__))
         c = 0
         for line in logs:
-            # TODO: perhaps use a regexp instead so we can match more
-            # precisely?
-            if line.find(log_pattern) > -1:
+            if get_succeeds_re.match(line):
                 c += 1
         return c
 
@@ -219,7 +257,6 @@ class TestHttpFetch(TestCaseWithWebserver):
         target = BzrDir.create_branch_and_repo("target/")
         source = Branch.open(self.get_readonly_url("source/"))
         self.assertEqual(target.fetch(source), (2, []))
-        log_pattern = '%%s HTTP/1.1" 200 - "-" "bzr/%s' % bzrlib.__version__
         # this is the path to the literal file. As format changes 
         # occur it needs to be updated. FIXME: ask the store for the
         # path.

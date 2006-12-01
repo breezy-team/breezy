@@ -23,6 +23,7 @@ import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin, lexists, set_or_unset_env
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
+from bzrlib.tests.HttpServer import HttpServer
 import bzrlib.transport
 from bzrlib.transport import get_transport
 import bzrlib.transport.http
@@ -44,7 +45,7 @@ def set_test_transport_to_sftp(testcase):
         testcase.transport_server = SFTPAbsoluteServer
     else:
         testcase.transport_server = SFTPHomeDirServer
-    testcase.transport_readonly_server = bzrlib.transport.http.HttpServer
+    testcase.transport_readonly_server = HttpServer
 
 
 class TestCaseWithSFTPServer(TestCaseWithTransport):
@@ -380,7 +381,8 @@ class SSHVendorBadConnection(TestCaseWithTransport):
             # paramiko, but we know about it, so we don't have to
             # fail the test
             raise TestSkipped('Known NameError bug with paramiko-1.6.1')
-        self.assertContainsRe(err, 'Connection error')
+        self.assertContainsRe(err, r'bzr: ERROR: Unable to connect to SSH host'
+                                   r' 127\.0\.0\.1:\d+; ')
 
 
 class SFTPLatencyKnob(TestCaseWithSFTPServer):

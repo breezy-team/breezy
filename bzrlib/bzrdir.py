@@ -1175,8 +1175,11 @@ class BzrDirFormat(object):
         _found is a private parameter, do not use it.
         """
         if not _found:
-            assert isinstance(BzrDirFormat.find_format(transport),
-                              self.__class__)
+            found_format = BzrDirFormat.find_format(transport)
+            if not isinstance(found_format, self.__class__):
+                raise AssertionError("%s was asked to open %s, but it seems to need "
+                        "format %s" 
+                        % (self, transport, found_format))
         return self._open(transport)
 
     def _open(self, transport):

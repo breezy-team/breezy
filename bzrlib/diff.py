@@ -96,9 +96,9 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 
 
 def _set_lang_C():
-    """Set the env var LANG=C"""
+    """Set the env vars LANG=C and LC_ALL=C."""
     osutils.set_or_unset_env('LANG', 'C')
-    osutils.set_or_unset_env('LC_ALL', None)
+    osutils.set_or_unset_env('LC_ALL', 'C')
     osutils.set_or_unset_env('LC_CTYPE', None)
     osutils.set_or_unset_env('LANGUAGE', None)
 
@@ -107,15 +107,15 @@ def _spawn_external_diff(diffcmd, capture_errors=True):
     """Spawn the externall diff process, and return the child handle.
 
     :param diffcmd: The command list to spawn
-    :param capture_errors: Capture stderr as well as setting LANG=C.
-        This lets us read and understand the output of diff, and respond 
-        to any errors.
+    :param capture_errors: Capture stderr as well as setting LANG=C
+        and LC_ALL=C. This lets us read and understand the output of diff,
+        and respond to any errors.
     :return: A Popen object.
     """
     if capture_errors:
         if sys.platform == 'win32':
             # Win32 doesn't support preexec_fn, but that is
-            # okay, because it doesn't support LANG either.
+            # okay, because it doesn't support LANG and LC_ALL either.
             preexec_fn = None
         else:
             preexec_fn = _set_lang_C
@@ -219,8 +219,8 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             if pipe.returncode != 2:
                 raise errors.BzrError(
                                'external diff failed with exit code 2'
-                               ' when run with LANG=C, but not when run'
-                               ' natively: %r' % (diffcmd,))
+                               ' when run with LANG=C and LC_ALL=C,'
+                               ' but not when run natively: %r' % (diffcmd,))
 
             first_line = lang_c_out.split('\n', 1)[0]
             # Starting with diffutils 2.8.4 the word "binary" was dropped.

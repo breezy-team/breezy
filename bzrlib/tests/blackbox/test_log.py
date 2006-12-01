@@ -108,6 +108,13 @@ class TestLog(ExternalBase):
         self.assertTrue('branch nick: branch2\n' in log)
         self.assertTrue('branch nick: branch1\n' not in log)
         
+    def test_log_nonexistent_file(self):
+        # files that don't exist in either the basis tree or working tree
+        # should give an error
+        wt = self.make_branch_and_tree('.')
+        out, err = self.run_bzr('log', 'does-not-exist', retcode=3)
+        self.assertContainsRe(
+            err, 'Path does not have any revision history: does-not-exist')
 
 class TestLogMerges(ExternalBase):
 
