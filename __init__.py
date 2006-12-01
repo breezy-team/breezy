@@ -70,7 +70,7 @@ class EmailSender(object):
         numlines = len(lines)
         if (numlines <= self.difflimit()):
             outf.write(diff_content.getvalue())
-        else:
+        elif (self.difflimit() != 0):
             outf.write("\nDiff too large for email\n")
 
         return outf.getvalue()
