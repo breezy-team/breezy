@@ -66,7 +66,7 @@ class EmailSender(object):
         tree1, tree2 = self.branch.repository.revision_trees((revid1, revid2))
         diff_content = StringIO()
         show_diff_trees(tree1, tree2, diff_content)
-        lines = diff_content.getvalue().split()
+        lines = diff_content.getvalue().split("\n")
         numlines = len(lines)
         if (numlines <= self.difflimit()):
             outf.write(diff_content.getvalue())
