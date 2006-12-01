@@ -16,3 +16,7 @@ the public HTTP url in the commit message).
 The option 'post_commit_mailer' can be used to override the name of
 the mail program to use. It should behave like /bin/mail, at minimum
 supporting the -s and -a options.
+
+If you set the option 'post_commit_difflimit' then a diff will be
+included in the email if the number of lines is less that the
+specified limit

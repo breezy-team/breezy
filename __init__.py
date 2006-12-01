@@ -33,6 +33,8 @@ class EmailSender(object):
 
     def body(self):
         from bzrlib.log import log_formatter, show_log
+        from bzrlib.diff import show_diff_trees
+        import sys
 
         rev1 = rev2 = self.revno
         if rev1 == 0:
@@ -55,7 +57,30 @@ class EmailSender(object):
                  verbose=True
                  )
 
+        # optionally show the diff if its smaller than the post_commit_difflimit option
+        revid1 = self.revision.revision_id
+        if self.revision.parent_ids:
+            revid2 = self.revision.parent_ids[0]
+        else:
+            revid2 = None
+        tree1, tree2 = self.branch.repository.revision_trees((revid1, revid2))
+        diff_content = StringIO()
+        show_diff_trees(tree1, tree2, diff_content)
+        lines = diff_content.getvalue().split()
+        numlines = len(lines)
+        if (numlines <= self.difflimit()):
+            outf.write(diff_content.getvalue())
+        else:
+            outf.write("\nDiff too large for email\n")
+
         return outf.getvalue()
+
+    def difflimit(self):
+        """maximum number of lines of diff to show."""
+        result = self.config.get_user_option('post_commit_difflimit')
+        if result is None:
+            result = 0
+        return int(result)
 
     def mailer(self):
         """What mail program to use."""
