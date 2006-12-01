@@ -54,11 +54,53 @@ class EmailSender(object):
                  end_revision=rev2,
                  verbose=True
                  )
+
+        if self.difflimit():
+            self.add_diff(outf, self.difflimit())
         return outf.getvalue()
 
+    def add_diff(self, outf, difflimit):
+        """Add the diff from the commit to the output.
+
+        If the diff has more than difflimit lines, it will be skipped.
+        """
+        from bzrlib.diff import show_diff_trees
+        # optionally show the diff if its smaller than the post_commit_difflimit option
+        revid1 = self.revision.revision_id
+        if self.revision.parent_ids:
+            revid2 = self.revision.parent_ids[0]
+        else:
+            revid2 = None
+        tree1, tree2 = self.branch.repository.revision_trees((revid1, revid2))
+        diff_content = StringIO()
+        show_diff_trees(tree1, tree2, diff_content)
+        lines = diff_content.getvalue().split("\n")
+        numlines = len(lines)
+        difflimit = self.difflimit()
+        if difflimit:
+            if numlines <= difflimit:
+                outf.write(diff_content.getvalue())
+            else:
+                outf.write("\nDiff too large for email (%d, the limit is %d).\n"
+                    % (numlines, difflimit))
+
+    def difflimit(self):
+        """maximum number of lines of diff to show."""
+        result = self.config.get_user_option('post_commit_difflimit')
+        if result is None:
+            result = 1000
+        return int(result)
+
+    def mailer(self):
+        """What mail program to use."""
+        result = self.config.get_user_option('post_commit_mailer')
+        if result is None:
+            result = "mail"
+        return result
+
     def _command_line(self):
-        return ['mail', '-s', self.subject(), '-a', "From: " + self.from_address(),
-                self.to()]
+        return [self.mailer(), '-s', self.subject(), '-a',
+                "From: " + self.from_address(), self.to()]
 
     def to(self):
         """What is the address the mail should go to."""

@@ -12,3 +12,12 @@ from from 'post_commit_sender'.
 If 'post_commit_url' is set, it is used instead of the branch URL
 (useful since in most cases, you commit to a private url, and you want
 the public HTTP url in the commit message).
+
+The option 'post_commit_mailer' can be used to override the name of
+the mail program to use. It should behave like /bin/mail, at minimum
+supporting the -s and -a options.
+
+By default, the diff for the commit will be included in the email, if the
+length is less than 1000 lines. This limit can be changed (for instance, to 0
+to disable the feature) by setting the option 'post_commit_difflimit' to the
+number of lines you wish it to be limited to.
