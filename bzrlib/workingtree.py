@@ -555,10 +555,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return os.path.getsize(self.id2abspath(file_id))
 
     @needs_read_lock
-    def get_file_sha1(self, file_id, path=None):
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
         if not path:
             path = self._inventory.id2path(file_id)
-        return self._hashcache.get_sha1(path)
+        return self._hashcache.get_sha1(path, stat_value)
 
     def get_file_mtime(self, file_id, path=None):
         if not path:
@@ -1353,6 +1353,29 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
+
+    def _comparison_data(self, entry, path):
+        abspath = self.abspath(path)
+        try:
+            stat_value = os.lstat(abspath)
+        except OSError, e:
+            if getattr(e, 'errno', None) == errno.ENOENT:
+                stat_value = None
+                kind = None
+                executable = False
+            else:
+                raise
+        else:
+            mode = stat_value.st_mode
+            kind = osutils.file_kind_from_stat_mode(mode)
+            if not supports_executable():
+                executable = entry.executable
+            else:
+                executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+        return kind, executable, stat_value
+
+    def _file_size(self, entry, stat_value):
+        return stat_value.st_size
 
     def last_revision(self):
         """Return the last revision of the branch for this tree.
