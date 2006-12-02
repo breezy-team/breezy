@@ -277,16 +277,17 @@ class HashCache(object):
         """
         return int(time.time()) - 3
            
-    def _fingerprint(self, abspath, fs=None):
-        if fs is None:
+    def _fingerprint(self, abspath, stat_value=None):
+        if stat_value is None:
             try:
-                fs = os.lstat(abspath)
+                stat_value = os.lstat(abspath)
             except OSError:
                 # might be missing, etc
                 return None
-        if stat.S_ISDIR(fs.st_mode):
+        if stat.S_ISDIR(stat_value.st_mode):
             return None
         # we discard any high precision because it's not reliable; perhaps we
         # could do better on some systems?
-        return (fs.st_size, long(fs.st_mtime),
-                long(fs.st_ctime), fs.st_ino, fs.st_dev, fs.st_mode)
+        return (stat_value.st_size, long(stat_value.st_mtime),
+                long(stat_value.st_ctime), stat_value.st_ino, 
+                stat_value.st_dev, stat_value.st_mode)
