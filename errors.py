@@ -18,18 +18,18 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.errors import BzrNewError
+from bzrlib.errors import BzrError
 
 
-class DebianError(BzrNewError):
-  """A Debian packaging error occured: %(message)s"""
+class DebianError(BzrError):
+  _fmt = """A Debian packaging error occured: %(message)s"""
 
   def __init__(self, message):
-    BzrNewError.__init__(self)
+    BzrError.__init__(self)
     self.message = message
 
 class ChangedError(DebianError):
-  """There are modified files in the working tree. Either commit the 
+  _fmt = """There are modified files in the working tree. Either commit the 
   changes, use --working to build the working tree, or --ignore-changes
   to override this and build the branch without the changes in the working 
   tree. Use bzr status to see the changes"""
@@ -38,19 +38,19 @@ class ChangedError(DebianError):
     DebianError.__init__(self, None)
 
 class NoSourceDirError(DebianError):
-  """There is no existing source directory to use. Use --export-only or 
+  _fmt = """There is no existing source directory to use. Use --export-only or 
   --dont-purge to get one that can be used"""
 
   def __init__(self):
     DebianError.__init__(self, None)
 
-class NotInBaseError(BzrNewError):
-  """Must be invoked from the base of a branch."""
+class NotInBaseError(BzrError):
+  _fmt = """Must be invoked from the base of a branch."""
   def __init__(self):
-    BzrNewError.__init__(self)
+    BzrError.__init__(self)
 
 class BuildFailedError(DebianError):
-  """The build failed."""
+  _fmt = """The build failed."""
   def __init__(self):
     DebianError.__init__(self, None)
 
