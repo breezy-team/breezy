@@ -363,7 +363,7 @@ class TestingDAVAppendRequestHandler(TestingDAVRequestHandler):
         self.end_headers()
 
 
-class HttpServer_Dav(HttpServer):
+class DAVServer(HttpServer):
     """Subclass of HttpServer that gives http+webdav urls.
 
     This is for use in testing: connections to this server will always go
@@ -373,12 +373,12 @@ class HttpServer_Dav(HttpServer):
     def __init__(self):
         # We    have   special    requests    to   handle    that
         # HttpServer_PyCurl don't know about
-        super(HttpServer_Dav,self).__init__(TestingDAVRequestHandler)
+        super(DAVServer,self).__init__(TestingDAVRequestHandler)
 
     # urls returned by this server should require the webdav client impl
     _url_protocol = 'http+webdav'
 
-class HttpServer_Dav_append(HttpServer_Dav):
+class DAVServer_append(DAVServer):
     """Subclass of HttpServer that gives http+webdav urls.
 
     This is for use in testing: connections to this server will always go
@@ -391,7 +391,7 @@ class HttpServer_Dav_append(HttpServer_Dav):
     def __init__(self):
         # We    have   special    requests    to   handle    that
         # HttpServer_PyCurl don't know about
-        super(HttpServer_Dav,self).__init__(TestingDAVAppendRequestHandler)
+        super(DAVServer_append,self).__init__(TestingDAVAppendRequestHandler)
 
     # urls returned by this server should require the webdav client impl
     _url_protocol = 'http+webdav'

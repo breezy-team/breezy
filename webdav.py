@@ -587,8 +587,8 @@ class HttpDavTransport(HttpTransport_urllib):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     import test_webdav
-    return [(HttpDavTransport, test_webdav.HttpServer_Dav),
+    return [(HttpDavTransport, test_webdav.DAVServer),
             # Until the Dav transport try to use the APPEND
             # request, there is no need to activate the following
-            # (HttpDavTransport, test_webdav.HttpServer_Dav_append),
+            # (HttpDavTransport, test_webdav.DAVServer_append),
             ]

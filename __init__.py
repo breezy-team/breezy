@@ -24,12 +24,11 @@ handling of WebDAV to allow pushing on an http server.
 import bzrlib
 major, minor, micro, releaselevel = bzrlib.version_info[:4]
 
-if major != 0 or (minor, releaselevel) not in ((11, 'dev'), (12, 'dev')):
-    # Until  the  plugin  is  considered  mature  enough,  better
-    # restrict its use to the developers.
+if major != 0 or minor < 13:
+    # We need bzr 0.13
     from bzrlib import trace
     trace.note('not installing http+webdav:// support'
-               ' (only supported for bzr 0.11,0.12)')
+               ' (only supported for bzr 0.13 and above)')
 else:
     from bzrlib.transport import (
         register_lazy_transport
