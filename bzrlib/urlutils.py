@@ -183,6 +183,14 @@ def _win32_local_path_from_url(url):
         raise errors.InvalidURL(url, 'local urls must start with file:///')
     # We strip off all 3 slashes
     win32_url = url[len('file:///'):]
+    # check for UNC path: //HOST/path
+    if win32_url.startswith('//'):
+        if (win32_url[2] == '/'
+            or win32_url[3] in '|:'):
+            raise errors.InvalidURL(url, 'Win32 UNC path urls'
+                ' have form file://///HOST/path')
+        return unescape(win32_url)
+    # usual local path with drive letter
     if (win32_url[0] not in ('abcdefghijklmnopqrstuvwxyz'
                              'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
         or win32_url[1] not in  '|:'
@@ -205,6 +213,9 @@ def _win32_local_path_to_url(path):
     #       semantics, since 'nt' is not an available module.
     win32_path = osutils._nt_normpath(
         osutils._win32_abspath(path)).replace('\\', '/')
+    # check for UNC path \\HOST\path
+    if win32_path.startswith('//'):
+        return 'file:///' + escape(win32_path)
     return 'file:///' + win32_path[0].upper() + ':' + escape(win32_path[2:])
 
 
