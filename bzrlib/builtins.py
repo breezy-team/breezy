@@ -1848,20 +1848,25 @@ class cmd_commit(Command):
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
-        if message is None and not file:
-            template = make_commit_message_template(tree, selected_list)
-            message = edit_commit_message(template)
-            if message is None:
-                raise errors.BzrCommandError("please specify a commit message"
-                                             " with either --message or --file")
-        elif message and file:
-            raise errors.BzrCommandError("please specify either --message or --file")
-        
-        if file:
-            message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
-        if message == "":
-            raise errors.BzrCommandError("empty commit message specified")
+        def get_message(commit_obj):
+            """Callback to get commit message"""
+            my_message = message
+            if my_message is None and not file:
+                template = make_commit_message_template(tree, selected_list)
+                my_message = edit_commit_message(template)
+                if my_message is None:
+                    raise errors.BzrCommandError("please specify a commit"
+                        " message with either --message or --file")
+            elif my_message and file:
+                raise errors.BzrCommandError(
+                    "please specify either --message or --file")
+            if file:
+                my_message = codecs.open(file, 'rt', 
+                                         bzrlib.user_encoding).read()
+            if my_message == "":
+                raise errors.BzrCommandError("empty commit message specified")
+            return my_message
         
         if verbose:
             reporter = ReportCommitToLog()
@@ -1869,7 +1874,8 @@ class cmd_commit(Command):
             reporter = NullCommitReporter()
 
         try:
-            tree.commit(message, specific_files=selected_list,
+            tree.commit(message_callback=get_message,
+                        specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
                         reporter=reporter)
         except PointlessCommit:

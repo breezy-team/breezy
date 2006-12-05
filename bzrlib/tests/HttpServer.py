@@ -19,11 +19,14 @@ import errno
 import os
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 import socket
+import posixpath
 import random
 import re
 import sys
 import threading
 import time
+import urllib
+import urlparse
 
 from bzrlib.transport import Server
 

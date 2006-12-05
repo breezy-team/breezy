@@ -140,7 +140,7 @@ class FakeHashCache(HashCache):
         abspath = './' + filename
         self._files[abspath] = (file_contents, self._clock)
 
-    def _fingerprint(self, abspath):
+    def _fingerprint(self, abspath, fs=None):
         entry = self._files[abspath]
         return (len(entry[0]),
                 entry[1], entry[1],

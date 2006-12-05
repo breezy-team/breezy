@@ -89,6 +89,7 @@ from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
      sha_strings
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.tsort import topo_sort
+import bzrlib.ui
 import bzrlib.weave
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 
@@ -118,8 +119,7 @@ class KnitContent(object):
 
     def annotate_iter(self):
         """Yield tuples of (origin, text) for each content line."""
-        for origin, text in self._lines:
-            yield origin, text
+        return iter(self._lines)
 
     def annotate(self):
         """Return a list of (origin, text) tuples."""
@@ -127,14 +127,14 @@ class KnitContent(object):
 
     def line_delta_iter(self, new_lines):
         """Generate line-based delta from this content to new_lines."""
-        new_texts = [text for origin, text in new_lines._lines]
-        old_texts = [text for origin, text in self._lines]
+        new_texts = new_lines.text()
+        old_texts = self.text()
         s = KnitSequenceMatcher(None, old_texts, new_texts)
-        for op in s.get_opcodes():
-            if op[0] == 'equal':
+        for tag, i1, i2, j1, j2 in s.get_opcodes():
+            if tag == 'equal':
                 continue
-            #     ofrom   oto   length        data
-            yield (op[1], op[2], op[4]-op[3], new_lines._lines[op[3]:op[4]])
+            # ofrom, oto, length, data
+            yield i1, i2, j2 - j1, new_lines._lines[j1:j2]
 
     def line_delta(self, new_lines):
         return list(self.line_delta_iter(new_lines))
@@ -308,6 +308,8 @@ class KnitVersionedFile(VersionedFile):
         self.writable = (access_mode == 'w')
         self.delta = delta
 
+        self._max_delta_chain = 200
+
         self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
             access_mode, create=create, file_mode=file_mode,
             create_parent_dir=create_parent_dir, delay_create=delay_create,
@@ -321,6 +323,35 @@ class KnitVersionedFile(VersionedFile):
         return '%s(%s)' % (self.__class__.__name__, 
                            self.transport.abspath(self.filename))
     
+    def _check_should_delta(self, first_parents):
+        """Iterate back through the parent listing, looking for a fulltext.
+
+        This is used when we want to decide whether to add a delta or a new
+        fulltext. It searches for _max_delta_chain parents. When it finds a
+        fulltext parent, it sees if the total size of the deltas leading up to
+        it is large enough to indicate that we want a new full text anyway.
+
+        Return True if we should create a new delta, False if we should use a
+        full text.
+        """
+        delta_size = 0
+        fulltext_size = None
+        delta_parents = first_parents
+        for count in xrange(self._max_delta_chain):
+            parent = delta_parents[0]
+            method = self._index.get_method(parent)
+            pos, size = self._index.get_position(parent)
+            if method == 'fulltext':
+                fulltext_size = size
+                break
+            delta_size += size
+            delta_parents = self._index.get_parents(parent)
+        else:
+            # We couldn't find a fulltext, so we must create a new one
+            return False
+
+        return fulltext_size > delta_size
+
     def _add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
         """See VersionedFile._add_delta()."""
         self._check_add(version_id, []) # should we check the lines ?
@@ -358,18 +389,11 @@ class KnitVersionedFile(VersionedFile):
             # To speed the extract of texts the delta chain is limited
             # to a fixed number of deltas.  This should minimize both
             # I/O and the time spend applying deltas.
-            count = 0
-            delta_parents = [delta_parent]
-            while count < 25:
-                parent = delta_parents[0]
-                method = self._index.get_method(parent)
-                if method == 'fulltext':
-                    break
-                delta_parents = self._index.get_parents(parent)
-                count = count + 1
-            if method == 'line-delta':
-                # did not find a fulltext in the delta limit.
-                # just do a normal insertion.
+            # The window was changed to a maximum of 200 deltas, but also added
+            # was a check that the total compressed size of the deltas is
+            # smaller than the compressed size of the fulltext.
+            if not self._check_should_delta([delta_parent]):
+                # We don't want a delta here, just do a normal insertion.
                 return super(KnitVersionedFile, self)._add_delta(version_id,
                                                                  parents,
                                                                  delta_parent,
@@ -669,17 +693,7 @@ class KnitVersionedFile(VersionedFile):
             # To speed the extract of texts the delta chain is limited
             # to a fixed number of deltas.  This should minimize both
             # I/O and the time spend applying deltas.
-            count = 0
-            delta_parents = present_parents
-            while count < 25:
-                parent = delta_parents[0]
-                method = self._index.get_method(parent)
-                if method == 'fulltext':
-                    break
-                delta_parents = self._index.get_parents(parent)
-                count = count + 1
-            if method == 'line-delta':
-                delta = False
+            delta = self._check_should_delta(present_parents)
 
         lines = self.factory.make(lines, version_id)
         if delta or (self.factory.annotated and len(present_parents) > 0):
@@ -826,12 +840,10 @@ class KnitVersionedFile(VersionedFile):
                 data_pos, length = self._index.get_position(version_id)
                 version_id_records.append((version_id, data_pos, length))
 
-        count = 0
         total = len(version_id_records)
-        pb.update('Walking content.', count, total)
-        for version_id, data, sha_value in \
-            self._data.read_records_iter(version_id_records):
-            pb.update('Walking content.', count, total)
+        for version_idx, (version_id, data, sha_value) in \
+            enumerate(self._data.read_records_iter(version_id_records)):
+            pb.update('Walking content.', version_idx, total)
             method = self._index.get_method(version_id)
             version_idx = self._index.lookup(version_id)
             assert method in ('fulltext', 'line-delta')
@@ -844,7 +856,6 @@ class KnitVersionedFile(VersionedFile):
                 for start, end, count, lines in delta:
                     for origin, line in lines:
                         yield line
-            count +=1
         pb.update('Walking content.', total, total)
         
     def num_versions(self):
