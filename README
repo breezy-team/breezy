@@ -16,9 +16,12 @@ provide proper documentation soon.
 Installation
 ------------
 
-This plugin requires `python-debian`_, and a version of bzr greater than 0.9.
+This plugin requires `python-debian`_, `python-deb822`_, and a version of bzr
+greater than 0.9. The two python modules are available in Debian, the former
+in experimental at the moment.
 
-.. _python-debian: http://jameswestby.net/bzr/python-debian/
+.. _python-debian: http://bzr.debian.org/pkg-python-debian/trunk/
+.. _python-deb822: http://free.linux.hp.com/~jswright/deb822/
 
 This plugin can be installed in two ways. As you are probably using a Debian
 system you can probably just use the debian packages. The other way is to 
