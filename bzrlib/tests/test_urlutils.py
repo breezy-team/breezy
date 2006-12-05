@@ -275,6 +275,13 @@ class TestUrlToPath(TestCase):
 
         self.assertEqual('file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
 
+    def test_win32_unc_path_to_url(self):
+        to_url = urlutils._win32_local_path_to_url
+        self.assertEqual('file://///HOST/path',
+            to_url(r'\\HOST\path'))
+        self.assertEqual('file://///HOST/path',
+            to_url('//HOST/path'))
+
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
         self.assertEqual('C:/path/to/foo',
@@ -287,6 +294,14 @@ class TestUrlToPath(TestCase):
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
         # Not a valid _win32 url, no drive letter
         self.assertRaises(InvalidURL, from_url, 'file:///path/to/foo')
+
+    def test_win32_unc_path_from_url(self):
+        from_url = urlutils._win32_local_path_from_url
+        self.assertEqual('//HOST/path', from_url('file://///HOST/path'))
+        # despite IE allows 4, 5 and 6 slashes in URL to another machine
+        # Firefox don't understand this
+        self.assertRaises(InvalidURL, from_url, 'file:////HOST/path')
+        self.assertRaises(InvalidURL, from_url, 'file://////HOST/path')
 
     def test__win32_extract_drive_letter(self):
         extract = urlutils._win32_extract_drive_letter
