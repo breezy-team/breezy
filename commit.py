@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import svn.delta
-import svn.ra
 from svn.core import Pool, SubversionException
 
 from bzrlib.errors import (UnsupportedOperation, BzrError, InvalidRevisionId, 
@@ -293,8 +292,8 @@ class SvnCommitBuilder(CommitBuilder):
             mutter('committed %r, author: %r, date: %r' % (revision, author, date))
 
         mutter('obtaining commit editor')
-        self.editor, editor_baton = svn.ra.get_commit_editor(
-            self.repository.ra, message, done, None, False)
+        self.editor, editor_baton = self.repository.transport.get_commit_editor(
+            message, done, None, False)
 
         if self.branch.last_revision() is None:
             self.base_revnum = 0

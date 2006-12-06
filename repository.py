@@ -161,9 +161,8 @@ class SvnRepository(Repository):
         Repository.__init__(self, 'Subversion Smart Server', bzrdir, 
             control_files, None, None, None)
 
-        self.ra = transport.ra
-
-        self.uuid = svn.ra.get_uuid(self.ra)
+        self.transport = transport
+        self.uuid = transport.get_uuid()
         self.base = transport.base
         self.text_cache = {}
         self.dir_cache = {}
@@ -176,7 +175,7 @@ class SvnRepository(Repository):
         mutter("Connected to repository with UUID %s" % self.uuid)
 
         mutter('svn latest-revnum')
-        self._latest_revnum = svn.ra.get_latest_revnum(self.ra)
+        self._latest_revnum = transport.get_latest_revnum()
 
         self._log = logwalker.LogWalker(self.scheme, 
                                         repos_url=transport.svn_url,
@@ -306,7 +305,7 @@ See http://bazaar-vcs.org/BzrSvn for details.
 
         mutter("svn check_path -r%d %s" % (revnum, path))
         try:
-            kind = svn.ra.check_path(self.ra, path.encode('utf8'), revnum)
+            kind = self.transport.check_path(path.encode('utf8'), revnum)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 return False
@@ -491,8 +490,8 @@ See http://bazaar-vcs.org/BzrSvn for details.
         mutter("svn ls -r %d '%r'" % (revnum, path))
 
         try:
-            (dirents, _, props) = svn.ra.get_dir(
-                self.ra, path.encode('utf8'), 
+            (dirents, _, props) = self.transport.get_dir(
+                path.encode('utf8'), 
                 revnum, self.pool)
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
@@ -515,7 +514,7 @@ See http://bazaar-vcs.org/BzrSvn for details.
 
         stream = StringIO()
         mutter('svn getfile -r %r %s' % (revnum, path))
-        (realrevnum, props) = svn.ra.get_file(self.ra, path.encode('utf8'), 
+        (realrevnum, props) = self.transport.get_file(path.encode('utf8'), 
             revnum, stream, self.pool)
         if not self.text_cache.has_key(path):
             self.text_cache[path] = {}
