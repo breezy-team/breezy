@@ -46,18 +46,26 @@ class cmd_conflicts(commands.Command):
     it will mark a conflict.  A conflict means that you need to fix something,
     before you should commit.
 
-    Use bzr resolve when you have fixed a problem.
+    Conflicts normally are listed as short, human-readable messages.  If --text
+    is supplied, the pathnames of files with text conflicts are listed,
+    instead.  (This is useful for editing all files with text conflicts.)
 
-    (conflicts are determined by the presence of .BASE .TREE, and .OTHER 
-    files.)
+    Use bzr resolve when you have fixed a problem.
 
     See also bzr resolve.
     """
-    def run(self):
+    takes_options = [Option('text', help='list text conflicts by pathname')]
+
+    def run(self, text=False):
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing(u'.')[0]
         for conflict in wt.conflicts():
-            print conflict
+            if text:
+                if conflict.typestring != 'text conflict':
+                    continue
+                self.outf.write(conflict.path + '\n')
+            else:
+                self.outf.write(str(conflict) + '\n')
 
 
 class cmd_resolve(commands.Command):

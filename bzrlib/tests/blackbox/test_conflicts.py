@@ -33,6 +33,7 @@ class TestConflicts(ExternalBase):
         self.runbzr('init')
         file('myfile', 'wb').write('contentsa\n')
         file('my_other_file', 'wb').write('contentsa\n')
+        os.mkdir('mydir')
         self.runbzr('add')
         self.runbzr('commit -m new')
         os.chdir('..')
@@ -40,23 +41,30 @@ class TestConflicts(ExternalBase):
         os.chdir('b')
         file('myfile', 'wb').write('contentsb\n')
         file('my_other_file', 'wb').write('contentsb\n')
+        self.runbzr('mv mydir mydir2')
         self.runbzr('commit -m change')
         os.chdir('../a')
         file('myfile', 'wb').write('contentsa2\n')
         file('my_other_file', 'wb').write('contentsa2\n')
+        self.runbzr('mv mydir mydir3')
         self.runbzr('commit -m change')
         self.runbzr('merge ../b', retcode=1)
 
     def test_conflicts(self):
         conflicts = self.runbzr('conflicts', backtick=True)
-        self.assertEqual(len(conflicts.splitlines()), 2)
+        self.assertEqual(3, len(conflicts.splitlines()))
+
+    def test_conflicts_text(self):
+        conflicts = self.run_bzr('conflicts', '--text')[0].splitlines()
+        self.assertEqual(['my_other_file', 'myfile'], conflicts)
 
     def test_resolve(self):
         self.runbzr('resolve', retcode=3)
         self.runbzr('resolve myfile')
         conflicts = self.runbzr('conflicts', backtick=True)
-        self.assertEqual(len(conflicts.splitlines()), 1)
+        self.assertEqual(2, len(conflicts.splitlines()))
         self.runbzr('resolve my_other_file')
+        self.runbzr('resolve mydir2')
         conflicts = self.runbzr('conflicts', backtick=True)
         self.assertEqual(len(conflicts.splitlines()), 0)
 

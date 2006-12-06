@@ -9,6 +9,9 @@ IN DEVELOPMENT
     * ``bzr commit`` does not prompt for a message until it is very likely to
       succeed.  (Aaron Bentley)
 
+    * ``bzr conflicts`` now takes --text to list pathnames of text conflicts
+    (Aaron Bentley)
+
   INTERNALS:
 
   BUG FIXES:
