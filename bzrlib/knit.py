@@ -827,16 +827,14 @@ class KnitVersionedFile(VersionedFile):
         # but we need to setup a list of records to visit.
         # we need version_id, position, length
         version_id_records = []
-        requested_versions = list(version_ids)
+        requested_versions = set(version_ids)
         # filter for available versions
         for version_id in requested_versions:
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
         # get a in-component-order queue:
-        version_ids = []
         for version_id in self.versions():
             if version_id in requested_versions:
-                version_ids.append(version_id)
                 data_pos, length = self._index.get_position(version_id)
                 version_id_records.append((version_id, data_pos, length))
 
