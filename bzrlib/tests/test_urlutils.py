@@ -282,6 +282,14 @@ class TestUrlToPath(TestCase):
         self.assertEqual('file://///HOST/path',
             to_url('//HOST/path'))
 
+        try:
+            result = to_url(u'//HOST/path/to/r\xe4ksm\xf6rg\xe5s')
+        except UnicodeError:
+            raise TestSkipped("local encoding cannot handle unicode")
+
+        self.assertEqual('file://///HOST/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
+
+
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
         self.assertEqual('C:/path/to/foo',
