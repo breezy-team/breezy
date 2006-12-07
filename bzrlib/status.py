@@ -190,8 +190,8 @@ def show_pending_merges(new, to_file, short=False):
             width = terminal_width()
             m_revision = branch.repository.get_revision(merge)
             if short:
-                prefix = 'P'
-            else: 
+                prefix = 'P '
+            else:
                 prefix = ' '
             print >> to_file, prefix, line_log(m_revision, width - 4)
             inner_merges = branch.repository.get_ancestry(merge)
@@ -210,7 +210,7 @@ def show_pending_merges(new, to_file, short=False):
                 ignore.add(mmerge)
         except errors.NoSuchRevision:
             if short:
-                prefix = 'P'
+                prefix = 'P '
             else:
                 prefix = ' '
             print >> to_file, prefix, merge
