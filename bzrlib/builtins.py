@@ -128,26 +128,29 @@ class cmd_status(Command):
     This reports on versioned and unknown files, reporting them
     grouped by state.  Possible states are:
 
-    added
+    added / A
         Versioned in the working copy but not in the previous revision.
 
-    removed
+    removed / D
         Versioned in the previous revision but removed or deleted
         in the working copy.
 
-    renamed
+    renamed / R
         Path of this file changed from the previous revision;
         the text may also have changed.  This includes files whose
         parent directory was renamed.
 
-    modified
+    modified / M
         Text has changed since the previous revision.
 
-    unknown
+    unknown / ?
         Not versioned and not matching an ignore pattern.
 
     To see ignored files use 'bzr ignored'.  For details in the
     changes to file texts, use 'bzr diff'.
+    
+    --short gives a one character status flag for each item, similar
+    to the SVN's status command.
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
@@ -161,20 +164,21 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['show-ids', 'revision']
+    takes_options = ['show-ids', 'revision', 'short']
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
     
     @display_command
-    def run(self, show_ids=False, file_list=None, revision=None):
+    def run(self, show_ids=False, file_list=None, revision=None, short=False):
         from bzrlib.status import show_tree_status
 
         tree, file_list = tree_files(file_list)
             
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=file_list, revision=revision,
-                         to_file=self.outf)
+                         to_file=self.outf,
+                         short=short)
 
 
 class cmd_cat_revision(Command):
