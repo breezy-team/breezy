@@ -24,6 +24,10 @@ from svn.core import SubversionException
 from transport import SvnRaTransport
 import svn.core
 
+from bsddb import dbshelve as shelve
+
+shelves = {}
+
 class NotSvnBranchPath(BzrError):
     _fmt = """{%(branch_path)s} is not a valid Svn branch path"""
 
@@ -43,7 +47,13 @@ class LogWalker(object):
         self.transport = transport
         self.scheme = scheme
 
-        self.revisions = {}
+        if not cache_dir is None:
+            cache_file = os.path.join(cache_dir, 'log-v2')
+            if not shelves.has_key(cache_file):
+                shelves[cache_file] = shelve.open(cache_file)
+            self.revisions = shelves[cache_file]
+        else:
+            self.revisions = {}
         self.saved_revnum = max(len(self.revisions)-1, 0)
 
         if self.saved_revnum < last_revnum:
