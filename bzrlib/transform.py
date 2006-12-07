@@ -1271,6 +1271,8 @@ def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups):
                     if versioned == (True, True):
                         tt.unversion_file(trans_id)
                         tt.version_file(file_id, new_trans_id)
+                    # New contents should have the same unix perms as old
+                    # contents
                     mode_id = trans_id
                     trans_id = new_trans_id
             if kind[1] == 'directory':
@@ -1280,8 +1282,9 @@ def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups):
                                   trans_id)
             elif kind[1] == 'file':
                 tt.create_file(target_tree.get_file_lines(file_id),
-                               trans_id)
-                if executable[0] != executable[1]:
+                               trans_id, mode_id)
+                # preserve the execute bit when backing up
+                if keep_content and executable[0] == executable[1]:
                     tt.set_executability(executable[1], trans_id)
             else:
                 assert kind[1] is None
@@ -1292,6 +1295,8 @@ def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups):
         if (name[1] is not None and 
             (name[0] != name[1] or parent[0] != parent[1])):
             tt.adjust_path(name[1], tt.trans_id_file_id(parent[1]), trans_id)
+        if executable[0] != executable[1] and kind[1] == "file":
+            tt.set_executability(executable[1], trans_id)
 
 
 def resolve_conflicts(tt, pb=DummyProgress(), pass_func=None):
