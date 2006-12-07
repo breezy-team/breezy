@@ -152,11 +152,11 @@ def show_tree_status(wt, show_unchanged=None,
             if not short and conflict_title is False:
                 print >> to_file, "conflicts:"
                 conflict_title = True
-            if not short:
-                prefix = 'C'
+            if short:
+                prefix = 'C '
             else:
                 prefix = ' '
-            print >> to_file, prefix, " %s" % conflict
+            print >> to_file, "%s %s" % (prefix, conflict)
         if new_is_working_tree and show_pending:
             show_pending_merges(new, to_file, short)
     finally:
