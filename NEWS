@@ -17,6 +17,18 @@ IN DEVELOPMENT
       off of the ``fileids_affected_by_revision_ids`` time, which is 10s
       of the ``bzr branch`` time. (John Arbash Meinel)
 
+    * Policy can be set for each configuration key. This allows keys to be
+      inherited properly across configuration entries. For example, this
+      should enable you to do::
+        
+        [/home/user/project]
+        push_location = sftp://host/srv/project/
+        push_location:policy = appendpath
+
+      And then a branch like ``/home/user/project/mybranch`` should get an
+      automatic push location of ``sftp://host/srv/project/mybranch``.
+      (James Henstridge)
+
   INTERNALS:
 
   BUG FIXES:
