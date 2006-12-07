@@ -518,7 +518,7 @@ class LocationConfig(IniBasedConfig):
             pass
         else:
             symbol_versioning.warn(
-                'The recurse option is deprecated as of 0.13.  '
+                'The recurse option is deprecated as of 0.14.  '
                 'The section "%s" has been converted to use policies.'
                 % section,
                 DeprecationWarning)

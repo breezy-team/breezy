@@ -770,7 +770,7 @@ class TestLocationConfig(TestCaseInTempDir):
         # make sure that a normal option can be added to the section,
         # converting recurse=False to the norecurse policy.
         self.get_branch_config('http://www.example.com/norecurse')
-        self.callDeprecated(['The recurse option is deprecated as of 0.13.  '
+        self.callDeprecated(['The recurse option is deprecated as of 0.14.  '
                              'The section "http://www.example.com/norecurse" '
                              'has been converted to use policies.'],
                             self.my_config.set_user_option,
@@ -819,7 +819,7 @@ class TestLocationConfig(TestCaseInTempDir):
         os.mkdir = checked_mkdir
         try:
             self.callDeprecated(['The recurse option is deprecated as of '
-                                 '0.13.  The section "/a/c" has been '
+                                 '0.14.  The section "/a/c" has been '
                                  'converted to use policies.'],
                                 self.my_config.set_user_option,
                                 'foo', 'bar', store=config.STORE_LOCATION)
