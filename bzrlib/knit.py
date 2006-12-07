@@ -175,8 +175,7 @@ class KnitAnnotateFactory(_KnitFactory):
         return KnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
-        for result_item in self.parse_line_delta[lines]:
-            yield result_item
+        return iter(self.parse_line_delta(lines))
 
     def parse_line_delta(self, lines, version):
         """Convert a line based delta into internal representation.
@@ -240,15 +239,18 @@ class KnitPlainFactory(_KnitFactory):
         return self.make(content, version)
 
     def parse_line_delta_iter(self, lines, version):
-        while lines:
-            header = lines.pop(0)
+        cur = 0
+        num_lines = len(lines)
+        while cur < num_lines:
+            header = lines[cur]
+            cur += 1
             start, end, c = [int(n) for n in header.split(',')]
-            yield start, end, c, zip([version] * c, lines[:c])
-            del lines[:c]
+            yield start, end, c, zip([version] * c, lines[cur:cur+c])
+            cur += c
 
     def parse_line_delta(self, lines, version):
         return list(self.parse_line_delta_iter(lines, version))
-    
+
     def lower_fulltext(self, content):
         return content.text()
 
@@ -794,8 +796,7 @@ class KnitVersionedFile(VersionedFile):
                         assert content is None
                         content = self.factory.parse_fulltext(data, version_idx)
                     elif method == 'line-delta':
-                        delta = self.factory.parse_line_delta(data[:], 
-                                                              version_idx)
+                        delta = self.factory.parse_line_delta(data, version_idx)
                         content = content.copy()
                         content._lines = self._apply_delta(content._lines, 
                                                            delta)
@@ -827,16 +828,14 @@ class KnitVersionedFile(VersionedFile):
         # but we need to setup a list of records to visit.
         # we need version_id, position, length
         version_id_records = []
-        requested_versions = list(version_ids)
+        requested_versions = set(version_ids)
         # filter for available versions
         for version_id in requested_versions:
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
         # get a in-component-order queue:
-        version_ids = []
         for version_id in self.versions():
             if version_id in requested_versions:
-                version_ids.append(version_id)
                 data_pos, length = self._index.get_position(version_id)
                 version_id_records.append((version_id, data_pos, length))
 
