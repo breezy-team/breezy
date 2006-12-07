@@ -19,7 +19,6 @@ from bzrlib.progress import ProgressBar, DummyProgress
 from bzrlib.trace import mutter
 
 import os
-from bsddb import dbshelve as shelve
 
 from svn.core import SubversionException
 from transport import SvnRaTransport
@@ -44,11 +43,7 @@ class LogWalker(object):
         self.transport = transport
         self.scheme = scheme
 
-        # Try to load cache from file
-        if cache_dir is not None:
-            self.revisions = shelve.open(os.path.join(cache_dir, 'log'))
-        else:
-            self.revisions = {}
+        self.revisions = {}
         self.saved_revnum = max(len(self.revisions)-1, 0)
 
         if self.saved_revnum < last_revnum:
