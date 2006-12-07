@@ -179,25 +179,26 @@ def _posix_local_path_to_url(path):
 
 def _win32_local_path_from_url(url):
     """Convert a url like file:///C:/path/to/foo into C:/path/to/foo"""
-    if not url.startswith('file:///'):
-        raise errors.InvalidURL(url, 'local urls must start with file:///')
+    if not url.startswith('file://'):
+        raise errors.InvalidURL(url, 'local urls must start with file:///, '
+                                     'UNC path urls must start with file://')
     # We strip off all 3 slashes
-    win32_url = url[len('file:///'):]
+    win32_url = url[len('file:'):]
     # check for UNC path: //HOST/path
-    if win32_url.startswith('//'):
+    if not win32_url.startswith('///'):
         if (win32_url[2] == '/'
             or win32_url[3] in '|:'):
             raise errors.InvalidURL(url, 'Win32 UNC path urls'
-                ' have form file://///HOST/path')
+                ' have form file://HOST/path')
         return unescape(win32_url)
     # usual local path with drive letter
-    if (win32_url[0] not in ('abcdefghijklmnopqrstuvwxyz'
+    if (win32_url[3] not in ('abcdefghijklmnopqrstuvwxyz'
                              'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-        or win32_url[1] not in  '|:'
-        or win32_url[2] != '/'):
+        or win32_url[4] not in  '|:'
+        or win32_url[5] != '/'):
         raise errors.InvalidURL(url, 'Win32 file urls start with'
                 ' file:///x:/, where x is a valid drive letter')
-    return win32_url[0].upper() + u':' + unescape(win32_url[2:])
+    return win32_url[3].upper() + u':' + unescape(win32_url[5:])
 
 
 def _win32_local_path_to_url(path):
@@ -215,7 +216,7 @@ def _win32_local_path_to_url(path):
         osutils._win32_abspath(path)).replace('\\', '/')
     # check for UNC path \\HOST\path
     if win32_path.startswith('//'):
-        return 'file:///' + escape(win32_path)
+        return 'file:' + escape(win32_path)
     return 'file:///' + win32_path[0].upper() + ':' + escape(win32_path[2:])
 
 
