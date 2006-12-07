@@ -49,7 +49,6 @@ DEBUG = 0
 # actual code more or less do that, tests should be written to
 # ensure that.
 
-import base64
 import httplib
 import socket
 import urllib
@@ -640,9 +639,9 @@ class ProxyHandler(urllib2.ProxyHandler):
             user_pass, host = host.split('@', 1)
             if ':' in user_pass:
                 user, password = user_pass.split(':', 1)
-                user_pass = base64.encodestring(
-                    '%s:%s' % (urllib.unquote(user),
-                               urllib.unquote(password))).strip()
+                user_pass = '%s:%s' % (urllib.unquote(user),
+                               urllib.unquote(password))
+                user_pass.encode('base64').strip()
                 req.add_header('Proxy-authorization', 'Basic ' + user_pass)
         host = urllib.unquote(host)
         request.set_proxy(host, type)
