@@ -146,6 +146,24 @@ def revision_id_to_svk_feature(revid):
     return "%s:/%s:%d" % (uuid, branch, revnum)
 
 
+def create_cache_dir():
+    ensure_config_dir_exists()
+    cache_dir = os.path.join(config_dir(), 'svn-cache')
+
+    if not os.path.exists(cache_dir):
+        os.mkdir(cache_dir)
+
+        open(os.path.join(cache_dir, "README"), 'w').write(
+"""This directory contains information cached by the bzr-svn plugin.
+
+It is used for performance reasons only and can be removed 
+without losing data.
+
+See http://bazaar-vcs.org/BzrSvn for details.
+""")
+    return cache_dir
+
+
 class SvnRepository(Repository):
     """
     Provides a simplified interface to a Subversion repository 
@@ -197,21 +215,7 @@ class SvnRepository(Repository):
                            self.base)
 
     def create_cache_dir(self):
-        ensure_config_dir_exists()
-        cache_dir = os.path.join(config_dir(), 'svn-cache')
-
-        if not os.path.exists(cache_dir):
-            os.mkdir(cache_dir)
-
-            open(os.path.join(cache_dir, "README"), 'w').write(
-    """This directory contains information cached by the bzr-svn plugin.
-
-It is used for performance reasons only and can be removed 
-without losing data.
-
-See http://bazaar-vcs.org/BzrSvn for details.
-""")
-
+        cache_dir = create_cache_dir()
         dir = os.path.join(cache_dir, self.uuid)
         if not os.path.exists(dir):
             os.mkdir(dir)
