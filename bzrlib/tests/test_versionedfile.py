@@ -662,6 +662,7 @@ class VersionedFileTestMixIn(object):
             self.assertRaises(NotImplementedError, vf.get_parents_with_ghosts, 'foo')
             self.assertRaises(NotImplementedError, vf.get_graph_with_ghosts)
             return
+        vf = self.reopen_file()
         # test key graph related apis: getncestry, _graph, get_parents
         # has_version
         # - these are ghost unaware and must not be reflect ghosts
