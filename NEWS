@@ -2,8 +2,6 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
-    * bzr now supports Win32 UNC path (e.g. \\HOST\path)
-
     * PyCurlTransport now use a single curl object. By specifying explicitly
       the 'Range' header, we avoid the need to use two different curl objects
       (and two connections to the same server). (Vincent Ladeuil)
@@ -14,6 +12,10 @@ IN DEVELOPMENT
   INTERNALS:
 
   BUG FIXES:
+
+    * bzr now supports Win32 UNC path (e.g. \\HOST\path). 
+      (Alexander Belchenko, #57869)
+
 
 bzr 0.13  2006-12-05
     
