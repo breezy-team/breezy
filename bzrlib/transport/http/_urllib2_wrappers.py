@@ -49,6 +49,7 @@ DEBUG = 0
 # actual code more or less do that, tests should be written to
 # ensure that.
 
+import base64
 import httplib
 import socket
 import urllib
@@ -608,6 +609,46 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         return response
 
 
+class ProxyHandler(urllib2.ProxyHandler):
+    """Handles proxy setting.
+
+    Copied and modified from urllib2 to be able to modify the
+    request during the request pre-processing instead of
+    modifying it at _open time. As we capture (or create) the
+    connection object during request processing, _open time went
+    too late.
+    """
+
+    # Proxies must be in front
+    handler_order = 100
+
+    def __init__(self, proxies=None):
+        urllib2.ProxyHandler.__init__(self, proxies)
+        for type, proxy in self.proxies.items():
+            print 'Will bind %s_request for %r' % (type, proxy)
+            setattr(self, '%s_request' % type,
+                    lambda request: self.set_request_proxy(request, proxy, type)
+                    )
+            # We don't want urllib2.ProxyHandler coming in our way
+            delattr(self, '%s_open' % type)
+
+    def set_request_proxy(self, request, proxy, type):
+        orig_type = request.get_type()
+        type, r_type = urllib.splittype(proxy)
+        host, XXX = urllib.splithost(r_type)
+        if '@' in host:
+            user_pass, host = host.split('@', 1)
+            if ':' in user_pass:
+                user, password = user_pass.split(':', 1)
+                user_pass = base64.encodestring(
+                    '%s:%s' % (urllib.unquote(user),
+                               urllib.unquote(password))).strip()
+                req.add_header('Proxy-authorization', 'Basic ' + user_pass)
+        host = urllib.unquote(host)
+        request.set_proxy(host, type)
+        return request
+
+
 class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
     """Custom basic authentification handler.
 
@@ -677,7 +718,7 @@ class Opener(object):
         # commented out below
         self._opener = urllib2.build_opener( \
             connection, redirect, error,
-            #urllib2.ProxyHandler,
+            ProxyHandler,
             urllib2.HTTPBasicAuthHandler(self.password_manager),
             #urllib2.HTTPDigestAuthHandler(self.password_manager),
             #urllib2.ProxyBasicAuthHandler,
