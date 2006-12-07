@@ -259,7 +259,7 @@ def normalize_url(url):
         if path[i] not in _url_safe_characters:
             chars = path[i].encode('utf-8')
             path[i] = ''.join(['%%%02X' % ord(c) for c in path[i].encode('utf-8')])
-    return scheme + '://' + ''.join(path)
+    return str(scheme + '://' + ''.join(path))
 
 
 def relative_url(base, other):
@@ -446,11 +446,14 @@ _hex_display_map = dict(([('%02x' % o, chr(o)) for o in range(256)]
 _hex_display_map.update((hex,'%'+hex) for hex in _no_decode_hex)
 
 # These characters should not be escaped
-_url_safe_characters = set('abcdefghijklmnopqrstuvwxyz'
-                        'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                        '0123456789' '_.-/'
-                        ';?:@&=+$,%#')
-
+_url_safe_characters = set(
+   "abcdefghijklmnopqrstuvwxyz" # Lowercase alpha
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZ" # Uppercase alpha
+   "0123456789" # Numbers
+   "_.-!~*'()"  # Unreserved characters
+   "/;?:@&=+$," # Reserved characters
+   "%#"         # Extra reserved characters
+)
 
 def unescape_for_display(url, encoding):
     """Decode what you can for a URL, so that we get a nice looking path.
