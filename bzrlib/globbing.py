@@ -23,7 +23,6 @@ expressions.
 import re
 
 from bzrlib.trace import (
-    mutter, 
     warning
     )
 
@@ -103,8 +102,8 @@ def _sub_group(m):
 
 def _invalid_regex(repl):
     def _(m):
-        warning(u"'%s' not allowed withing regexp. Replacing with '%s'" %
-                (m, repl))
+        warning(u"'%s' not allowed within a regular expression. "
+                "Replacing with '%s'" % (m, repl))
         return repl
     return _
 

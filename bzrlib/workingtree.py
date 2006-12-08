@@ -53,8 +53,8 @@ from bzrlib import (
     bzrdir,
     conflicts as _mod_conflicts,
     errors,
-    glob,
     generate_ids,
+    globbing,
     ignores,
     merge,
     osutils,
@@ -1251,7 +1251,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._ignoreset = ignore_globs
         return ignore_globs
 
-    def flush_ignore_list_cache(self):
+    def _flush_ignore_list_cache(self):
         """Resets the cached ignore list to force a cache rebuild."""
         self._ignoreset = None
         self._ignoreglobster = None
@@ -1266,7 +1266,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         be ignored, otherwise None.  So this can simply be used as a
         boolean if desired."""
         if getattr(self, '_ignoreglobster', None) is None:
-            self._ignoreglobster = glob.Globster(self.get_ignore_list())
+            self._ignoreglobster = globbing.Globster(self.get_ignore_list())
         return self._ignoreglobster.match(filename)
 
     def kind(self, file_id):

@@ -18,9 +18,9 @@
 
 import os
 
+from bzrlib import ignores
 from bzrlib.benchmarks import Benchmark
 from bzrlib.workingtree import WorkingTree
-from bzrlib import ignores
 
 
 class WorkingTreeBenchmark(Benchmark):
