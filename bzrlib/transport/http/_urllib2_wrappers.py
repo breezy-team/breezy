@@ -54,6 +54,7 @@ import socket
 import urllib
 import urllib2
 import urlparse
+import re
 import sys
 
 from bzrlib import __version__ as bzrlib_version
@@ -630,15 +631,13 @@ class ProxyHandler(urllib2.ProxyHandler):
 
     def __init__(self, proxies=None):
         urllib2.ProxyHandler.__init__(self, proxies)
-        # First, let's get rid of urllib2 implmentation
+        # First, let's get rid of urllib2 implementation
         for type, proxy in self.proxies.items():
             if self._debuglevel > 0:
                 print 'Will unbind %s_open for %r' % (type, proxy)
             delattr(self, '%s_open' % type)
 
-        # We are interested only by the http[s] proxies and the
-        # no_proxy one.
-        no_proxy = self.get_proxy('no')
+        # We are interested only by the http[s] proxies
         http_proxy = self.get_proxy('http')
         https_proxy = self.get_proxy('https')
 
@@ -661,13 +660,44 @@ class ProxyHandler(urllib2.ProxyHandler):
         except KeyError:
             return default
 
+    def proxy_bypass(self, host):
+        """Check if host should be proxied or not"""
+        if self._debuglevel > 0:
+            print 'Is [%r] proxied or not' % host
+        no_proxy = self.get_proxy('no')
+        if no_proxy is None:
+            return False
+        hhost, hport = urllib.splitport(host)
+        if self._debuglevel > 0:
+            print 'hhost [%r], hport [%r]' % (hhost, hport)
+        # Does host match any of the domains mentionned in
+        # no_proxy The rules about what is authorized in no_proxy
+        # are fuzzy (too say the least). We try to allows most
+        # commonly seen values.
+        for domain in no_proxy.split(','):
+            dhost, dport = urllib.splitport(domain)
+            if self._debuglevel > 0:
+                print 'dhost [%r], dport [%r]' % (hhost, hport)
+            if hport == dport:
+                # Protect glob chars
+                dhost = dhost.replace(".", r"\.")
+                dhost = dhost.replace("*", r".*")
+                dhost = dhost.replace("?", r".")
+                if re.match(domain, hhost, re.IGNORECASE):
+                    return True
+        # Nevertheless, there are platform specific ways to
+        # ignore proxies...
+        return urllib.proxy_bypass(host)
+
     def set_proxy(self, request, type):
+        if self.proxy_bypass(request.get_host()):
+            return request
+
         proxy = self.get_proxy(type)
         if self._debuglevel > 0:
             print 'set_proxy %s_request for %r' % (type, proxy)
         orig_type = request.get_type()
         type, r_type = urllib.splittype(proxy)
-        # FIXME: We should not set the proxy if the host matches no_proxy
         host, XXX = urllib.splithost(r_type)
         if '@' in host:
             user_pass, host = host.split('@', 1)
