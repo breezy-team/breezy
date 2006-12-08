@@ -40,8 +40,14 @@ class TestGlobster(TestCase):
                     u'name "%s" does match glob "%s" (re=%s)' %
                     (name, glob, globster._regex_patterns[0][0].pattern)))
 
+    def assertMatchBasenameAndFullpath(self, matchset):
+        # test basename matcher
+        self.assertMatch(matchset)
+        # test fullpath matcher
+        self.assertMatch(matchset, glob_prefix='./')
+
     def test_char_group_digit(self):
-        matchset = [
+        self.assertMatchBasenameAndFullpath([
             # The definition of digit this uses includes arabic digits from
             # non-latin scripts (arabic, indic, etc.) and subscript/superscript
             # digits, but neither roman numerals nor vulgar fractions.
@@ -51,84 +57,60 @@ class TestGlobster(TestCase):
             (u'[^[:digit:]]',
              [u'T', u'q', u' ', u'\u8336', u'.'],
              [u'0', u'5', u'\u0663', u'\u06f9', u'\u0f21', u'\xb9']),
-            ]
-        # test basename matcher
-        self.assertMatch(matchset)
-        # test fullpath matcher
-        self.assertMatch(matchset, glob_prefix='./')
+            ])
 
     def test_char_group_space(self):
-        matchset = [
+        self.assertMatchBasenameAndFullpath([
             (u'[[:space:]]',
              [u' ', u'\t', u'\n', u'\xa0', u'\u2000', u'\u2002'],
              [u'a', u'-', u'\u8336', u'.']),
             (u'[^[:space:]]',
              [u'a', u'-', u'\u8336', u'.'],
              [u' ', u'\t', u'\n', u'\xa0', u'\u2000', u'\u2002']),
-            ]
-        # test basename matcher
-        self.assertMatch(matchset)
-        # test fullpath matcher
-        self.assertMatch(matchset, glob_prefix='./')
+            ])
 
     def test_char_group_alnum(self):
-        matchset = [
+        self.assertMatchBasenameAndFullpath([
             (u'[[:alnum:]]',
              [u'a', u'Z', u'\u017e', u'\u8336'],
              [u':', u'-', u'\u25cf', u'.']),
             (u'[^[:alnum:]]',
              [u':', u'-', u'\u25cf', u'.'],
              [u'a']),
-            ]
-        # test basename matcher
-        self.assertMatch(matchset)
-        # test fullpath matcher
-        self.assertMatch(matchset, glob_prefix='./')
+            ])
 
     def test_char_group_ascii(self):
-        matchset = [
+        self.assertMatchBasenameAndFullpath([
             (u'[[:ascii:]]',
              [u'a', u'Q', u'^', u'.'],
              [u'\xcc', u'\u8336']),
             (u'[^[:ascii:]]',
              [u'\xcc', u'\u8336'],
              [u'a', u'Q', u'^', u'.']),
-            ]
-        # test basename matcher
-        self.assertMatch(matchset)
-        # test fullpath matcher
-        self.assertMatch(matchset, glob_prefix='./')
+            ])
 
     def test_char_group_blank(self):
-        matchset = [
+        self.assertMatchBasenameAndFullpath([
             (u'[[:blank:]]',
              [u'\t'],
              [u'x', u'y', u'z', u'.']),
             (u'[^[:blank:]]',
              [u'x', u'y', u'z', u'.'],
              [u'\t']),
-            ]
-        # test basename matcher
-        self.assertMatch(matchset)
-        # test fullpath matcher
-        self.assertMatch(matchset, glob_prefix='./')
+            ])
 
     def test_char_group_cntrl(self):
-        matchset = [
+        self.assertMatchBasenameAndFullpath([
             (u'[[:cntrl:]]',
              [u'\b', u'\t', '\x7f'],
              [u'a', u'Q', u'\u8336', u'.']),
             (u'[^[:cntrl:]]',
              [u'a', u'Q', u'\u8336', u'.'],
              [u'\b', u'\t', '\x7f']),
-            ]
-        # test basename matcher
-        self.assertMatch(matchset)
-        # test fullpath matcher
-        self.assertMatch(matchset, glob_prefix='./')
+            ])
 
-    def test_char_groups(self):
-        matchset = [
+    def test_char_group_range(self):
+        self.assertMatchBasenameAndFullpath([
             (u'[a-z]',
              [u'a', u'q', u'f'],
              [u'A', u'Q', u'F']),
@@ -147,11 +129,7 @@ class TestGlobster(TestCase):
             (ur'[^\x20-\x30\u8336]',
              [u'\x1f'],
              [u'\040', u'\044', u'\u8336']),
-            ]
-        # test basename matcher
-        self.assertMatch(matchset)
-        # test fullpath matcher
-        self.assertMatch(matchset, glob_prefix='./')
+            ])
 
     def test_regex(self):
         self.assertMatch([
