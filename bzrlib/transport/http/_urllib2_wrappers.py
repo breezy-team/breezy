@@ -616,24 +616,58 @@ class ProxyHandler(urllib2.ProxyHandler):
     modifying it at _open time. As we capture (or create) the
     connection object during request processing, _open time went
     too late.
+
+    Note that the proxy handling *may* modify the protocol used,
+    the request may be against an https werver proxied thru an
+    http proxy. So, https_request will be called, but later it's
+    really http_open that will be called. This explain why we
+    don't have to call self.parent.open as the urllib2 did.
     """
 
     # Proxies must be in front
     handler_order = 100
+    _debuglevel = DEBUG
 
     def __init__(self, proxies=None):
         urllib2.ProxyHandler.__init__(self, proxies)
+        # First, let's get rid of urllib2 implmentation
         for type, proxy in self.proxies.items():
-            print 'Will bind %s_request for %r' % (type, proxy)
-            setattr(self, '%s_request' % type,
-                    lambda request: self.set_request_proxy(request, proxy, type)
-                    )
-            # We don't want urllib2.ProxyHandler coming in our way
+            if self._debuglevel > 0:
+                print 'Will unbind %s_open for %r' % (type, proxy)
             delattr(self, '%s_open' % type)
 
-    def set_request_proxy(self, request, proxy, type):
+        # We are interested only by the http[s] proxies and the
+        # no_proxy one.
+        no_proxy = self.get_proxy('no')
+        http_proxy = self.get_proxy('http')
+        https_proxy = self.get_proxy('https')
+
+        if http_proxy is not None:
+            if self._debuglevel > 0:
+                print 'Will bind http_request for %r' % http_proxy
+            setattr(self, 'http_request',
+                    lambda request: self.set_proxy(request, 'http'))
+
+        if https_proxy is not None:
+            if self._debuglevel > 0:
+                print 'Will bind http_request for %r' % https_proxy
+            setattr(self, 'https_request',
+                    lambda request: self.set_proxy(request, 'https'))
+
+    def get_proxy(self, name, default=None):
+        """Get a proxy env var. Returns default if not defined."""
+        try:
+            return self.proxies[name.lower()]
+        except KeyError:
+            return default
+
+    def set_proxy(self, request, type):
+        proxy = self.get_proxy(type)
+        if self._debuglevel > 0:
+            print 'set_proxy %s_request for %r' % (type, proxy)
         orig_type = request.get_type()
         type, r_type = urllib.splittype(proxy)
+        # FIXME: We should not set the proxy if the host matches no_proxy
         host, XXX = urllib.splithost(r_type)
         if '@' in host:
             user_pass, host = host.split('@', 1)
@@ -645,6 +679,8 @@ class ProxyHandler(urllib2.ProxyHandler):
                 req.add_header('Proxy-authorization', 'Basic ' + user_pass)
         host = urllib.unquote(host)
         request.set_proxy(host, type)
+        if self._debuglevel > 0:
+            print 'set_proxy: proxy set to %r://%r' % (type, host)
         return request
 
 
