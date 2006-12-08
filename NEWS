@@ -45,6 +45,12 @@ IN DEVELOPMENT
     * bzr now supports Win32 UNC path (e.g. \\HOST\path). 
       (Alexander Belchenko, #57869)
 
+    * pycurl and urllib can detect short reads at different places. Update
+      the test suite to test more cases. Also detect http error code 416
+      which was raised for that specific bug. Also enhance the urllib
+      robustness by detecting invalid ranges (and pycurl's one by detecting
+      short reads during the initial GET). (Vincent Ladeuil, #73948)
+
 
 bzr 0.13  2006-12-05
     
