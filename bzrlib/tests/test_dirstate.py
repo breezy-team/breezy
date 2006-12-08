@@ -280,6 +280,15 @@ class TestDirstateManipulations(TestCaseWithTransport):
     ### add a path via _set_data - so we dont need delta work, just
     # raw data in, and ensure that it comes out via get_lines happily.
 
+    def test_add_path_to_root_no_parents_all_data(self):
+        # The most trivial addition of a path is when there are no parents and
+        # its in the root and all data about the file is supplied
+        state = dirstate.DirState.initialize('dirstate')
+        self.build_tree(['a file'])
+        stat = os.lstat('a file')
+        # the 1*20 is the sha1 pretend value.
+        state.add('a file', 'a file id', 'file', stat, '1'*20)
+
 
 class TestGetLines(TestCaseWithTransport):
 
