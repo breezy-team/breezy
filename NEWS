@@ -2,10 +2,29 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * PyCurlTransport now use a single curl object. By specifying explicitly
+      the 'Range' header, we avoid the need to use two different curl objects
+      (and two connections to the same server). (Vincent Ladeuil)
+
+    * ``bzr commit`` does not prompt for a message until it is very likely to
+      succeed.  (Aaron Bentley)
+
+    * ``bzr conflicts`` now takes --text to list pathnames of text conflicts
+      (Aaron Bentley)
+
+    * Fix ``iter_lines_added_or_present_in_versions`` to use a set instead
+      of a list while checking if a revision id was requested. Takes 10s
+      off of the ``fileids_affected_by_revision_ids`` time, which is 10s
+      of the ``bzr branch`` time. (John Arbash Meinel)
+
   INTERNALS:
 
   BUG FIXES:
 
+bzr 0.13  2006-12-05
+    
+  No changes from 0.13rc1
+    
 bzr 0.13rc1  2006-11-27
 
   IMPROVEMENTS:

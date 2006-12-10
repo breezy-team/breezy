@@ -17,7 +17,7 @@
 """Tests for repository commit builder."""
 
 from bzrlib import inventory
-from bzrlib.errors import UnsupportedOperation
+from bzrlib.errors import NonAsciiRevisionId, CannotSetRevisionId
 from bzrlib.repository import CommitBuilder
 from bzrlib import tests
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
@@ -54,19 +54,30 @@ class TestCommitBuilder(TestCaseWithRepository):
 
     def test_commit_with_revision_id(self):
         tree = self.make_branch_and_tree(".")
+        # use a unicode revision id to test more corner cases.
+        # The repository layer is meant to handle this.
+        revision_id = u'\xc8abc'
         try:
-            builder = tree.branch.get_commit_builder([], revision_id="foo")
-        except UnsupportedOperation:
+            try:
+                builder = tree.branch.get_commit_builder([],
+                    revision_id=revision_id)
+            except NonAsciiRevisionId:
+                revision_id = 'abc'
+                builder = tree.branch.get_commit_builder([],
+                    revision_id=revision_id)
+        except CannotSetRevisionId:
             # This format doesn't support supplied revision ids
             return
         self.record_root(builder, tree)
         builder.finish_inventory()
-        self.assertEqual("foo", builder.commit('foo bar'))
-        self.assertTrue(tree.branch.repository.has_revision("foo"))
-        # the revision id must be set on the inventory when saving it. This does not
-        # precisely test that - a repository that wants to can add it on deserialisation,
-        # but thats all the current contract guarantees anyway.
-        self.assertEqual('foo', tree.branch.repository.get_inventory('foo').revision_id)
+        self.assertEqual(revision_id, builder.commit('foo bar'))
+        self.assertTrue(tree.branch.repository.has_revision(revision_id))
+        # the revision id must be set on the inventory when saving it. This
+        # does not precisely test that - a repository that wants to can add it
+        # on deserialisation, but thats all the current contract guarantees
+        # anyway.
+        self.assertEqual(revision_id,
+            tree.branch.repository.get_inventory(revision_id).revision_id)
 
     def test_commit_without_root(self):
         """This should cause a deprecation warning, not an assertion failure"""

@@ -25,13 +25,12 @@ import re
 import urlparse
 import urllib
 
-from bzrlib import errors
+from bzrlib import errors, ui
 from bzrlib.trace import mutter
 from bzrlib.transport import (
     smart,
     Transport,
     )
-from bzrlib.ui import ui_factory
 
 
 # TODO: This is not used anymore by HttpTransport_urllib
@@ -61,7 +60,7 @@ def extract_auth(url, password_manager):
         if password is not None:
             password = urllib.unquote(password)
         else:
-            password = ui_factory.get_password(
+            password = ui.ui_factory.get_password(
                 prompt='HTTP %(user)s@%(host)s password',
                 user=username, host=host)
         password_manager.add_password(None, host, username, password)

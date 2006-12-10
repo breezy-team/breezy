@@ -89,6 +89,7 @@ from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
      sha_strings
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.tsort import topo_sort
+import bzrlib.ui
 import bzrlib.weave
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 
@@ -118,8 +119,7 @@ class KnitContent(object):
 
     def annotate_iter(self):
         """Yield tuples of (origin, text) for each content line."""
-        for origin, text in self._lines:
-            yield origin, text
+        return iter(self._lines)
 
     def annotate(self):
         """Return a list of (origin, text) tuples."""
@@ -127,14 +127,14 @@ class KnitContent(object):
 
     def line_delta_iter(self, new_lines):
         """Generate line-based delta from this content to new_lines."""
-        new_texts = [text for origin, text in new_lines._lines]
-        old_texts = [text for origin, text in self._lines]
+        new_texts = new_lines.text()
+        old_texts = self.text()
         s = KnitSequenceMatcher(None, old_texts, new_texts)
-        for op in s.get_opcodes():
-            if op[0] == 'equal':
+        for tag, i1, i2, j1, j2 in s.get_opcodes():
+            if tag == 'equal':
                 continue
-            #     ofrom   oto   length        data
-            yield (op[1], op[2], op[4]-op[3], new_lines._lines[op[3]:op[4]])
+            # ofrom, oto, length, data
+            yield i1, i2, j2 - j1, new_lines._lines[j1:j2]
 
     def line_delta(self, new_lines):
         return list(self.line_delta_iter(new_lines))
@@ -175,8 +175,7 @@ class KnitAnnotateFactory(_KnitFactory):
         return KnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
-        for result_item in self.parse_line_delta[lines]:
-            yield result_item
+        return iter(self.parse_line_delta(lines))
 
     def parse_line_delta(self, lines, version):
         """Convert a line based delta into internal representation.
@@ -240,15 +239,18 @@ class KnitPlainFactory(_KnitFactory):
         return self.make(content, version)
 
     def parse_line_delta_iter(self, lines, version):
-        while lines:
-            header = lines.pop(0)
+        cur = 0
+        num_lines = len(lines)
+        while cur < num_lines:
+            header = lines[cur]
+            cur += 1
             start, end, c = [int(n) for n in header.split(',')]
-            yield start, end, c, zip([version] * c, lines[:c])
-            del lines[:c]
+            yield start, end, c, zip([version] * c, lines[cur:cur+c])
+            cur += c
 
     def parse_line_delta(self, lines, version):
         return list(self.parse_line_delta_iter(lines, version))
-    
+
     def lower_fulltext(self, content):
         return content.text()
 
@@ -794,8 +796,7 @@ class KnitVersionedFile(VersionedFile):
                         assert content is None
                         content = self.factory.parse_fulltext(data, version_idx)
                     elif method == 'line-delta':
-                        delta = self.factory.parse_line_delta(data[:], 
-                                                              version_idx)
+                        delta = self.factory.parse_line_delta(data, version_idx)
                         content = content.copy()
                         content._lines = self._apply_delta(content._lines, 
                                                            delta)
@@ -827,16 +828,14 @@ class KnitVersionedFile(VersionedFile):
         # but we need to setup a list of records to visit.
         # we need version_id, position, length
         version_id_records = []
-        requested_versions = list(version_ids)
+        requested_versions = set(version_ids)
         # filter for available versions
         for version_id in requested_versions:
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
         # get a in-component-order queue:
-        version_ids = []
         for version_id in self.versions():
             if version_id in requested_versions:
-                version_ids.append(version_id)
                 data_pos, length = self._index.get_position(version_id)
                 version_id_records.append((version_id, data_pos, length))
 
@@ -1063,7 +1062,7 @@ class _KnitIndex(_KnitComponentFile):
             self._history.append(version_id)
         else:
             index = self._cache[version_id][5]
-        self._cache[version_id] = (version_id, 
+        self._cache[version_id] = (version_id,
                                    options,
                                    pos,
                                    size,
@@ -1082,6 +1081,7 @@ class _KnitIndex(_KnitComponentFile):
         # so - wc -l of a knit index is != the number of unique names
         # in the knit.
         self._history = []
+        decode_utf8 = cache_utf8.decode
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             count = 0
@@ -1115,7 +1115,7 @@ class _KnitIndex(_KnitComponentFile):
                         for value in rec[4:-1]:
                             if '.' == value[0]:
                                 # uncompressed reference
-                                parents.append(value[1:])
+                                parents.append(decode_utf8(value[1:]))
                             else:
                                 # this is 15/4000ms faster than isinstance,
                                 # (in lsprof)
@@ -1124,7 +1124,7 @@ class _KnitIndex(_KnitComponentFile):
                                 assert value.__class__ is str
                                 parents.append(self._history[int(value)])
                         # end self._parse_parents
-                        # self._cache_version(rec[0], 
+                        # self._cache_version(decode_utf8(rec[0]),
                         #                     rec[1].split(','),
                         #                     int(rec[2]),
                         #                     int(rec[3]),
@@ -1132,7 +1132,7 @@ class _KnitIndex(_KnitComponentFile):
                         # --- self._cache_version
                         # only want the _history index to reference the 1st 
                         # index entry for version_id
-                        version_id = rec[0]
+                        version_id = decode_utf8(rec[0])
                         if version_id not in self._cache:
                             index = len(self._history)
                             self._history.append(version_id)
@@ -1174,7 +1174,7 @@ class _KnitIndex(_KnitComponentFile):
         for value in compressed_parents:
             if value[-1] == '.':
                 # uncompressed reference
-                result.append(value[1:])
+                result.append(cache_utf8.decode_utf8(value[1:]))
             else:
                 # this is 15/4000ms faster than isinstance,
                 # this function is called thousands of times a 
