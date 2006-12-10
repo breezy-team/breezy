@@ -1247,8 +1247,8 @@ class Inventory(object):
         for file_id in reversed(to_delete):
             ie = self[file_id]
             del self._byid[file_id]
-            if ie.parent_id is not None:
-                del self[ie.parent_id].children[ie.name]
+        if ie.parent_id is not None:
+            del self[ie.parent_id].children[ie.name]
 
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.

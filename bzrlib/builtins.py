@@ -2925,6 +2925,43 @@ class cmd_serve(Command):
             raise errors.BzrCommandError("bzr serve requires one of --inet or --port")
         server.serve()
 
+class cmd_join(Command):
+    """Combine a subtree into its containing tree.
+    
+    This is marked as a merge of the subtree into the containing tree, and all
+    history is preserved.
+    """
+
+    takes_args = ['tree']
+
+    def run(self, tree):
+        sub_tree = WorkingTree.open(tree)
+        parent_dir = osutils.dirname(sub_tree.basedir)
+        containing_tree = WorkingTree.open_containing(parent_dir)[0]
+        try:
+            containing_tree.subsume(sub_tree)
+        except errors.BadSubsumeSource, e:
+            raise errors.BzrCommandError("Cannot join %s.  %s" % 
+                                         (tree, e.reason))
+
+
+class cmd_split(Command):
+    """Split a tree into two trees.
+    """
+
+    takes_args = ['tree']
+
+    def run(self, tree):
+        containing_tree, subdir = WorkingTree.open_containing(tree)
+        sub_id = containing_tree.path2id(subdir)
+        if sub_id is None:
+            raise errors.NotVersionedError(subdir)
+        try:
+            containing_tree.extract(sub_id)
+        except errors.RootNotRich:
+            raise errors.UpgradeRequired(containing_tree.branch.base)
+
+
 
 # command-line interpretation helper for merge-related commands
 def _merge_helper(other_revision, base_revision,

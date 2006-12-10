@@ -1505,10 +1505,14 @@ class UnexpectedInventoryFormat(BadInventoryFormat):
         BadInventoryFormat.__init__(self, msg=msg)
 
 
+class RootNotRich(BzrError):
+
+    _fmt = """This operation requires rich root data storage"""
+
+
 class NoSmartMedium(BzrError):
 
     _fmt = "The transport '%(transport)s' cannot tunnel the smart protocol."
-
     def __init__(self, transport):
         self.transport = transport
 
@@ -1583,3 +1587,19 @@ class UnsupportedInventoryKind(BzrNewError):
 
     def __init__(self, kind):
         self.kind = kind
+
+
+class BadSubsumeSource(BzrNewError):
+    """Can't subsume %(other_tree)s into %(tree)s.  %(reason)s"""
+
+    def __init__(self, tree, other_tree, reason):
+        self.tree = tree
+        self.other_tree = other_tree
+        self.reason = reason
+
+
+class SubsumeTargetNeedsUpgrade(BzrNewError):
+    """Subsume target %(other_tree)s needs to be upgraded."""
+
+    def __init__(self, other_tree):
+        self.other_tree = other_tree

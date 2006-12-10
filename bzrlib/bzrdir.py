@@ -1939,3 +1939,17 @@ class ConvertMetaToMeta(Converter):
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
         return to_convert
+
+
+def get_knit1_format():
+    from bzrlib import repository
+    format = BzrDirMetaFormat1()
+    format.repository_format = repository.RepositoryFormatKnit1()
+    return format
+
+
+def get_knit2_format():
+    from bzrlib import repository
+    format = BzrDirMetaFormat1()
+    format.repository_format = repository.RepositoryFormatKnit2()
+    return format

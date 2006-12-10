@@ -957,6 +957,8 @@ class TestCase(unittest.TestCase):
         where it may be useful for debugging.  See also run_captured.
 
         :param stdin: A string to be used as stdin for the command.
+        :param retcode: The status code the command should return
+        :param working_dir: The directory to run the command in
         """
         retcode = kwargs.pop('retcode', 0)
         encoding = kwargs.pop('encoding', None)
@@ -1721,6 +1723,7 @@ def test_suite():
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
+                   'bzrlib.tests.test_extract',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_generate_ids',
@@ -1769,6 +1772,7 @@ def test_suite():
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
+                   'bzrlib.tests.test_subsume',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_textfile',

@@ -52,6 +52,7 @@ import warnings
 
 import bzrlib
 from bzrlib import (
+    branch,
     bzrdir,
     conflicts as _mod_conflicts,
     errors,
@@ -59,6 +60,7 @@ from bzrlib import (
     ignores,
     merge,
     osutils,
+    repository,
     textui,
     transform,
     urlutils,
@@ -794,6 +796,101 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         finally:
             pb.finished()
         return conflicts
+
+    @needs_write_lock
+    def subsume(self, other_tree):
+        def add_children(inventory, entry):
+            for child_entry in entry.children.values():
+                inventory._byid[child_entry.file_id] = child_entry
+                if child_entry.kind == 'directory':
+                    add_children(inventory, child_entry)
+        if other_tree.get_root_id() == self.get_root_id():
+            raise errors.BadSubsumeSource(self, other_tree, 
+                                          'Trees have the same root')
+        try:
+            other_tree_path = self.relpath(other_tree.basedir)
+        except errors.PathNotChild:
+            raise errors.BadSubsumeSource(self, other_tree, 
+                'Tree is not contained by the other')
+        new_root_parent = self.path2id(osutils.dirname(other_tree_path))
+        if new_root_parent is None:
+            raise errors.BadSubsumeSource(self, other_tree, 
+                'Parent directory is not versioned.')
+        # We need to ensure that the result of a fetch will have a
+        # versionedfile for the other_tree root, and only fetching into
+        # RepositoryKnit2 guarantees that.
+        if not self.branch.repository.supports_rich_root():
+            raise errors.SubsumeTargetNeedsUpgrade(other_tree)
+        other_tree.lock_tree_write()
+        try:
+            for parent_id in other_tree.get_parent_ids():
+                self.branch.fetch(other_tree.branch, parent_id)
+                self.add_parent_tree_id(parent_id)
+            other_root = other_tree.inventory.root
+            other_root.parent_id = new_root_parent
+            other_root.name = osutils.basename(other_tree_path)
+            self.inventory.add(other_root)
+            add_children(self.inventory, other_root)
+            self._write_inventory(self.inventory)
+        finally:
+            other_tree.unlock()
+        other_tree.bzrdir.destroy_workingtree_metadata()
+
+    @needs_tree_write_lock
+    def extract(self, file_id, format=None):
+        """Extract a subtree from this tree.
+        
+        A new branch will be created, relative to the path for this tree.
+        """
+        def mkdirs(path):
+            segments = osutils.splitpath(path)
+            transport = self.branch.bzrdir.root_transport
+            for name in segments:
+                transport = transport.clone(name)
+                try:
+                    transport.mkdir('.')
+                except errors.FileExists:
+                    pass
+            return transport
+            
+        sub_path = self.id2path(file_id)
+        branch_transport = mkdirs(sub_path)
+        if format is None:
+            format = bzrdir.get_knit2_format()
+        try:
+            branch_transport.mkdir('.')
+        except errors.FileExists:
+            pass
+        branch_bzrdir = format.initialize_on_transport(branch_transport)
+        try:
+            repo = branch_bzrdir.find_repository()
+        except errors.NoRepositoryPresent:
+            repo = branch_bzrdir.create_repository()
+            assert repo.supports_rich_root()
+        else:
+            if not repo.supports_rich_root():
+                raise errors.RootNotRich()
+        new_branch = branch_bzrdir.create_branch()
+        new_branch.pull(self.branch)
+        for parent_id in self.get_parent_ids():
+            new_branch.fetch(self.branch, parent_id)
+        tree_transport = self.bzrdir.root_transport.clone(sub_path)
+        if tree_transport.base != branch_transport.base:
+            tree_bzrdir = format.initialize_on_transport(tree_transport)
+            branch.BranchReferenceFormat().initialize(tree_bzrdir, new_branch)
+        else:
+            tree_bzrdir = branch_bzrdir
+        wt = tree_bzrdir.create_workingtree(NULL_REVISION)
+        wt.set_parent_ids(self.get_parent_ids())
+        my_inv = self.inventory
+        child_inv = Inventory(root_id=None)
+        new_root = my_inv[file_id]
+        my_inv.remove_recursive_id(file_id)
+        new_root.parent_id = None
+        child_inv.add(new_root)
+        self._write_inventory(my_inv)
+        wt._write_inventory(child_inv)
+        return wt
 
     @needs_read_lock
     def merge_modified(self):
@@ -2092,13 +2189,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
-        # WorkingTree3 can handle an inventory which has a unique root id.
-        # as of bzr 0.12. However, bzr 0.11 and earlier fail to handle
-        # those trees. And because there isn't a format bump inbetween, we
-        # are maintaining compatibility with older clients.
-        # inv = Inventory(root_id=gen_root_id())
-        inv = Inventory()
-        wt = self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
+        inv = Inventory(root_id=generate_ids.gen_root_id())
+        wt = WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
