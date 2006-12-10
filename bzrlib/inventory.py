@@ -1056,6 +1056,16 @@ class Inventory(object):
     def get_child(self, parent_id, filename):
         return self[parent_id].children.get(filename)
 
+    def _add_child(self, entry):
+        """Add an entry to the inventory, without adding it to its parent"""
+        if entry.file_id in self._byid:
+            raise BzrError("inventory already contains entry with id {%s}" %
+                           entry.file_id)
+        self._byid[entry.file_id] = entry
+        for child in getattr(entry, 'children', {}).itervalues():
+            self._add_child(child)
+        return entry
+
     def add(self, entry):
         """Add entry to inventory.
 
@@ -1065,24 +1075,24 @@ class Inventory(object):
         Returns the new entry object.
         """
         if entry.file_id in self._byid:
-            raise BzrError("inventory already contains entry with id {%s}" % entry.file_id)
-
+            raise BzrError("inventory already contains entry with id {%s}" %
+                           entry.file_id)
         if entry.parent_id is None:
             assert self.root is None and len(self._byid) == 0
-            self._set_root(entry)
-            return entry
-        try:
-            parent = self._byid[entry.parent_id]
-        except KeyError:
-            raise BzrError("parent_id {%s} not in inventory" % entry.parent_id)
+            self.root = entry
+        else:
+            try:
+                parent = self._byid[entry.parent_id]
+            except KeyError:
+                raise BzrError("parent_id {%s} not in inventory" %
+                               entry.parent_id)
 
-        if entry.name in parent.children:
-            raise BzrError("%s is already versioned" %
-                    osutils.pathjoin(self.id2path(parent.file_id), entry.name))
-
-        self._byid[entry.file_id] = entry
-        parent.children[entry.name] = entry
-        return entry
+            if entry.name in parent.children:
+                raise BzrError("%s is already versioned" %
+                        osutils.pathjoin(self.id2path(parent.file_id),
+                        entry.name))
+            parent.children[entry.name] = entry
+        return self._add_child(entry)
 
     def add_path(self, relpath, kind, file_id=None, parent_id=None):
         """Add entry from a path.

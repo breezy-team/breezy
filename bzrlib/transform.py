@@ -778,7 +778,7 @@ class TreeTransform(object):
                     file_id = self.tree_file_id(trans_id)
                     if file_id is not None:
                         limbo_inv[trans_id] = inv[file_id]
-                        del inv[file_id]
+                        inv.remove_recursive_id(file_id)
         finally:
             child_pb.finished()
 

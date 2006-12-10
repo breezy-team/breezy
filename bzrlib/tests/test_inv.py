@@ -137,6 +137,14 @@ class TestInventory(TestCase):
         ie = inv.add_path('foo.txt', 'file')
         ## XXX
 
+    def test_add_recursive(self):
+        parent = InventoryDirectory('src-id', 'src', ROOT_ID)
+        child = InventoryFile('hello-id', 'hello.c', 'src-id')
+        parent.children[child.file_id] = child
+        inv = Inventory()
+        inv.add(parent)
+        self.assertEqual('src/hello.c', inv.id2path('hello-id'))
+
 
 class TestInventoryEntry(TestCase):
 
