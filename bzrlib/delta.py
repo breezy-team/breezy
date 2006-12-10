@@ -91,9 +91,9 @@ class TreeDelta(object):
         return False
             
 
-    def show(self, to_file, show_ids=False, show_unchanged=False):
+    def show(self, to_file, show_ids=False, show_unchanged=False, short_status=False):
         """output this delta in status-like form to to_file."""
-        def show_list(files):
+        def show_list(files, short_status_letter=''):
             for item in files:
                 path, fid, kind = item[:3]
 
@@ -106,22 +106,31 @@ class TreeDelta(object):
                     path += '*'
 
                 if show_ids:
-                    print >>to_file, '  %-30s %s' % (path, fid)
+                    print >>to_file, '%s  %-30s %s' % (short_status_letter, path, fid)
                 else:
-                    print >>to_file, ' ', path
+                    print >>to_file, '%s  %s' % (short_status_letter, path)
             
         if self.removed:
-            print >>to_file, 'removed:'
-            show_list(self.removed)
+            if not short_status:
+                print >>to_file, 'removed:'
+                show_list(self.removed)
+            else:
+                show_list(self.removed, 'D')
                 
         if self.added:
-            print >>to_file, 'added:'
-            show_list(self.added)
+            if not short_status:
+                print >>to_file, 'added:'
+                show_list(self.added)
+            else:
+                show_list(self.added, 'A')
 
         extra_modified = []
 
         if self.renamed:
-            print >>to_file, 'renamed:'
+            short_status_letter = 'R'
+            if not short_status:
+                print >>to_file, 'renamed:'
+                short_status_letter = ''
             for (oldpath, newpath, fid, kind,
                  text_modified, meta_modified) in self.renamed:
                 if text_modified or meta_modified:
@@ -130,18 +139,26 @@ class TreeDelta(object):
                 if meta_modified:
                     newpath += '*'
                 if show_ids:
-                    print >>to_file, '  %s => %s %s' % (oldpath, newpath, fid)
+                    print >>to_file, '%s  %s => %s %s' % (short_status_letter,
+                                                          oldpath, newpath, fid)
                 else:
-                    print >>to_file, '  %s => %s' % (oldpath, newpath)
+                    print >>to_file, '%s  %s => %s' % (short_status_letter,
+                                                       oldpath, newpath)
                     
         if self.modified or extra_modified:
-            print >>to_file, 'modified:'
-            show_list(self.modified)
-            show_list(extra_modified)
+            short_status_letter = 'M'
+            if not short_status:
+                print >>to_file, 'modified:'
+                short_status_letter = ''
+            show_list(self.modified, short_status_letter)
+            show_list(extra_modified, short_status_letter)
             
         if show_unchanged and self.unchanged:
-            print >>to_file, 'unchanged:'
-            show_list(self.unchanged)
+            if not short_status:
+                print >>to_file, 'unchanged:'
+                show_list(self.unchanged)
+            else:
+                show_list(self.unchanged, 'S')
 
 
 @deprecated_function(zero_nine)

@@ -27,6 +27,7 @@ import bzrlib
 from bzrlib import (
         bzrdir,
         cache_utf8,
+        config as _mod_config,
         errors,
         lockdir,
         lockable_files,
@@ -1230,8 +1231,9 @@ class BzrBranch(Branch):
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
-        self.get_config().set_user_option('push_location', location, 
-                                          local=True)
+        self.get_config().set_user_option(
+            'push_location', location,
+            store=_mod_config.STORE_LOCATION_NORECURSE)
 
     @needs_write_lock
     def set_parent(self, url):
