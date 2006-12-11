@@ -24,6 +24,7 @@ import mimetools
 import re
 import urlparse
 import urllib
+import sys
 
 from bzrlib import errors, ui
 from bzrlib.trace import mutter
@@ -273,7 +274,10 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
             code, f = self._get(relpath, ranges)
             return try_again, code, f
         else:
-            # We tried all the tricks, nothing worked
+            # We tried all the tricks, nothing worked. We
+            # re-reaised original exception, the 'mutter' calls
+            # above will indicate that further tries were
+            # unsuccessful
             raise exc_info[0], exc_info[1], exc_info[2]
 
     def readv(self, relpath, offsets):
