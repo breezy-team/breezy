@@ -2247,7 +2247,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
-        inv = Inventory(root_id=generate_ids.gen_root_id())
+        inv = self._initial_inventory()
         wt = self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
@@ -2272,6 +2272,9 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             control_files.unlock()
             wt.unlock()
         return wt
+
+    def _initial_inventory(self):
+        return Inventory()
 
     def __init__(self):
         super(WorkingTreeFormat3, self).__init__()
@@ -2320,6 +2323,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 4"
 
+    def _initial_inventory(self):
+        return Inventory(root_id=generate_ids.gen_root_id())
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.

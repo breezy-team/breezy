@@ -21,7 +21,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
 
     def make_branch_and_tree(self, relpath, format=None):
         if format is None:
-            format = bzrdir.get_knit2_format()
+            format = bzrdir.get_knit3_format()
         return tests.TestCaseWithTransport.make_branch_and_tree(self, relpath, 
                                                           format)
 
@@ -34,7 +34,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         base_tree.add('file', 'file-id')
         base_tree.commit('first commit', rev_id='tree-1')
         sub_tree = self.make_branch_and_tree('tree/subtree', 
-                                             format=bzrdir.get_knit1_format())
+                                             format=bzrdir.get_knit3_format())
         if same_root is True:
             sub_tree.set_root_id(base_tree.get_root_id())
         sub_tree.add('file2', 'file2-id')
