@@ -2066,7 +2066,8 @@ class cmd_selftest(Command):
                             help='a directory to cache intermediate'
                                  ' benchmark steps'),
                      Option('clean',
-                            help='clean temporary tests directories'),
+                            help='clean temporary tests directories'
+                                 ' without running tests'),
                      ]
 
     def run(self, testspecs_list=None, verbose=None, one=False,
