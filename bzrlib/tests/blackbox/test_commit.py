@@ -21,6 +21,9 @@ import os
 import re
 import sys
 
+from bzrlib import (
+    ignores,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrCommandError
@@ -39,18 +42,6 @@ class TestCommit(ExternalBase):
         self.assertEqual('', out)
         self.assertStartsWith(err, 'bzr: ERROR: no changes to commit.'
                                   ' use --unchanged to commit anyhow\n')
-
-    def test_save_commit_message(self):
-        """Failed commit should save the message in a file"""
-        self.run_bzr("init")
-        out,err = self.run_bzr("commit", "-m", "message", retcode=3)
-        self.assertEqual('', out)
-        self.assertStartsWith(err, 'bzr: ERROR: no changes to commit.'
-                                  ' use --unchanged to commit anyhow\n'
-                                  'Commit message saved. To reuse the message,'
-                                  ' do\nbzr commit --file ')
-        message_file = re.compile('bzr-commit-\S*').search(err).group()
-        self.check_file_contents(message_file, 'message')
 
     def test_commit_success(self):
         """Successful commit should not leave behind a bzr-commit-* file"""
@@ -325,6 +316,7 @@ class TestCommit(ExternalBase):
 
     def test_strict_commit(self):
         """Commit with --strict works if everything is known"""
+        ignores._set_user_ignores([])
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
         tree.add('a')

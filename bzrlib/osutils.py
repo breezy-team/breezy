@@ -372,6 +372,11 @@ def get_terminal_encoding():
             mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
     else:
         mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+    if output_encoding == 'cp0':
+        # invalid encoding (cp0 means 'no codepage' on Windows)
+        output_encoding = bzrlib.user_encoding
+        mutter('cp0 is invalid encoding.'
+               ' encoding stdout as bzrlib.user_encoding %r', output_encoding)
     return output_encoding
 
 
@@ -1085,7 +1090,10 @@ def get_user_encoding():
                          "  Continuing with ascii encoding.\n"
                          % (e, os.environ.get('LANG')))
 
-    if _cached_user_encoding is None:
+    # Windows returns 'cp0' to indicate there is no code page. So we'll just
+    # treat that as ASCII, and not support printing unicode characters to the
+    # console.
+    if _cached_user_encoding in (None, 'cp0'):
         _cached_user_encoding = 'ascii'
     return _cached_user_encoding
 

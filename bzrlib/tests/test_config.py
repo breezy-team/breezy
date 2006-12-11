@@ -35,56 +35,69 @@ from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 
 
 sample_long_alias="log -r-15..-1 --line"
-sample_config_text = ("[DEFAULT]\n"
-                      u"email=Erik B\u00e5gfors <erik@bagfors.nu>\n"
-                      "editor=vim\n"
-                      "gpg_signing_command=gnome-gpg\n"
-                      "log_format=short\n"
-                      "user_global_option=something\n"
-                      "[ALIASES]\n"
-                      "h=help\n"
-                      "ll=" + sample_long_alias + "\n")
+sample_config_text = u"""
+[DEFAULT]
+email=Erik B\u00e5gfors <erik@bagfors.nu>
+editor=vim
+gpg_signing_command=gnome-gpg
+log_format=short
+user_global_option=something
+[ALIASES]
+h=help
+ll=""" + sample_long_alias + "\n"
 
 
-sample_always_signatures = ("[DEFAULT]\n"
-                            "check_signatures=ignore\n"
-                            "create_signatures=always")
+sample_always_signatures = """
+[DEFAULT]
+check_signatures=ignore
+create_signatures=always
+"""
 
+sample_ignore_signatures = """
+[DEFAULT]
+check_signatures=require
+create_signatures=never
+"""
 
-sample_ignore_signatures = ("[DEFAULT]\n"
-                            "check_signatures=require\n"
-                            "create_signatures=never")
+sample_maybe_signatures = """
+[DEFAULT]
+check_signatures=ignore
+create_signatures=when-required
+"""
 
-
-sample_maybe_signatures = ("[DEFAULT]\n"
-                            "check_signatures=ignore\n"
-                            "create_signatures=when-required")
-
-
-sample_branches_text = ("[http://www.example.com]\n"
-                        "# Top level policy\n"
-                        "email=Robert Collins <robertc@example.org>\n"
-                        "[http://www.example.com/ignoreparent]\n"
-                        "# different project: ignore parent dir config\n"
-                        "ignore_parents=true\n"
-                        "[http://www.example.com/norecurse]\n"
-                        "# configuration items that only apply to this dir\n"
-                        "recurse=false\n"
-                        "[/b/]\n"
-                        "check_signatures=require\n"
-                        "# test trailing / matching with no children\n"
-                        "[/a/]\n"
-                        "check_signatures=check-available\n"
-                        "gpg_signing_command=false\n"
-                        "user_local_option=local\n"
-                        "# test trailing / matching\n"
-                        "[/a/*]\n"
-                        "#subdirs will match but not the parent\n"
-                        "[/a/c]\n"
-                        "check_signatures=ignore\n"
-                        "post_commit=bzrlib.tests.test_config.post_commit\n"
-                        "#testing explicit beats globs\n")
-
+sample_branches_text = """
+[http://www.example.com]
+# Top level policy
+email=Robert Collins <robertc@example.org>
+normal_option = normal
+appendpath_option = append
+appendpath_option:policy = appendpath
+norecurse_option = norecurse
+norecurse_option:policy = norecurse
+[http://www.example.com/ignoreparent]
+# different project: ignore parent dir config
+ignore_parents=true
+[http://www.example.com/norecurse]
+# configuration items that only apply to this dir
+recurse=false
+normal_option = norecurse
+[http://www.example.com/dir]
+appendpath_option = normal
+[/b/]
+check_signatures=require
+# test trailing / matching with no children
+[/a/]
+check_signatures=check-available
+gpg_signing_command=false
+user_local_option=local
+# test trailing / matching
+[/a/*]
+#subdirs will match but not the parent
+[/a/c]
+check_signatures=ignore
+post_commit=bzrlib.tests.test_config.post_commit
+#testing explicit beats globs
+"""
 
 
 class InstrumentedConfigObj(object):
@@ -104,8 +117,23 @@ class InstrumentedConfigObj(object):
     def __setitem__(self, key, value):
         self._calls.append(('__setitem__', key, value))
 
+    def __delitem__(self, key):
+        self._calls.append(('__delitem__', key))
+
+    def keys(self):
+        self._calls.append(('keys',))
+        return []
+
     def write(self, arg):
         self._calls.append(('write',))
+
+    def as_bool(self, value):
+        self._calls.append(('as_bool', value))
+        return False
+
+    def get_value(self, section, name):
+        self._calls.append(('get_value', section, name))
+        return None
 
 
 class FakeBranch(object):
@@ -391,7 +419,11 @@ class TestBranchConfig(TestCaseWithTransport):
         local_path = osutils.getcwd().encode('utf8')
         # Surprisingly ConfigObj doesn't create a trailing newline
         self.check_file_contents(locations,
-            '[%s/branch]\npush_location = http://foobar' % (local_path,))
+            '[%s/branch]\npush_location = http://foobar\npush_location:policy = norecurse' % (local_path,))
+
+    def test_autonick_urlencoded(self):
+        b = self.make_branch('!repo')
+        self.assertEqual('!repo', b.get_config().get_nickname())
 
 
 class TestGlobalConfigItems(TestCase):
@@ -566,18 +598,6 @@ class TestLocationConfig(TestCaseInTempDir):
         self.assertEqual([('http://www.example.com/ignoreparent', 'childbranch')],
                          self.my_location_config._get_matching_sections())
 
-    def test__get_matching_sections_norecurse(self):
-        self.get_branch_config('http://www.example.com/norecurse')
-        self.assertEqual([('http://www.example.com/norecurse', ''),
-                          ('http://www.example.com', 'norecurse')],
-                         self.my_location_config._get_matching_sections())
-
-    def test__get_matching_sections_norecurse_subdir(self):
-        self.get_branch_config(
-            'http://www.example.com/norecurse/childbranch')
-        self.assertEqual([('http://www.example.com', 'norecurse/childbranch')],
-                         self.my_location_config._get_matching_sections())
-
     def test__get_matching_sections_subdir_trailing_slash(self):
         self.get_branch_config('/b')
         self.assertEqual([('/b/', '')],
@@ -606,6 +626,32 @@ class TestLocationConfig(TestCaseInTempDir):
         self.get_branch_config('/a/c')
         self.assertEqual([('/a/c', ''), ('/a/*', ''), ('/a/', 'c')],
                          self.my_location_config._get_matching_sections())
+
+    def test__get_option_policy_normal(self):
+        self.get_branch_config('http://www.example.com')
+        self.assertEqual(
+            self.my_location_config._get_config_policy(
+            'http://www.example.com', 'normal_option'),
+            config.POLICY_NONE)
+
+    def test__get_option_policy_norecurse(self):
+        self.get_branch_config('http://www.example.com')
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com', 'norecurse_option'),
+            config.POLICY_NORECURSE)
+        # Test old recurse=False setting:
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com/norecurse', 'normal_option'),
+            config.POLICY_NORECURSE)
+
+    def test__get_option_policy_normal(self):
+        self.get_branch_config('http://www.example.com')
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com', 'appendpath_option'),
+            config.POLICY_APPENDPATH)
 
     def test_location_without_username(self):
         self.get_branch_config('http://www.example.com/ignoreparent')
@@ -664,6 +710,86 @@ class TestLocationConfig(TestCaseInTempDir):
         self.assertEqual('local',
                          self.my_config.get_user_option('user_local_option'))
 
+    def test_get_user_option_appendpath(self):
+        # returned as is for the base path:
+        self.get_branch_config('http://www.example.com')
+        self.assertEqual('append',
+                         self.my_config.get_user_option('appendpath_option'))
+        # Extra path components get appended:
+        self.get_branch_config('http://www.example.com/a/b/c')
+        self.assertEqual('append/a/b/c',
+                         self.my_config.get_user_option('appendpath_option'))
+        # Overriden for http://www.example.com/dir, where it is a
+        # normal option:
+        self.get_branch_config('http://www.example.com/dir/a/b/c')
+        self.assertEqual('normal',
+                         self.my_config.get_user_option('appendpath_option'))
+
+    def test_get_user_option_norecurse(self):
+        self.get_branch_config('http://www.example.com')
+        self.assertEqual('norecurse',
+                         self.my_config.get_user_option('norecurse_option'))
+        self.get_branch_config('http://www.example.com/dir')
+        self.assertEqual(None,
+                         self.my_config.get_user_option('norecurse_option'))
+        # http://www.example.com/norecurse is a recurse=False section
+        # that redefines normal_option.  Subdirectories do not pick up
+        # this redefinition.
+        self.get_branch_config('http://www.example.com/norecurse')
+        self.assertEqual('norecurse',
+                         self.my_config.get_user_option('normal_option'))
+        self.get_branch_config('http://www.example.com/norecurse/subdir')
+        self.assertEqual('normal',
+                         self.my_config.get_user_option('normal_option'))
+
+    def test_set_user_option_norecurse(self):
+        self.get_branch_config('http://www.example.com')
+        self.my_config.set_user_option('foo', 'bar',
+                                       store=config.STORE_LOCATION_NORECURSE)
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com', 'foo'),
+            config.POLICY_NORECURSE)
+
+    def test_set_user_option_appendpath(self):
+        self.get_branch_config('http://www.example.com')
+        self.my_config.set_user_option('foo', 'bar',
+                                       store=config.STORE_LOCATION_APPENDPATH)
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com', 'foo'),
+            config.POLICY_APPENDPATH)
+
+    def test_set_user_option_change_policy(self):
+        self.get_branch_config('http://www.example.com')
+        self.my_config.set_user_option('norecurse_option', 'normal',
+                                       store=config.STORE_LOCATION)
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com', 'norecurse_option'),
+            config.POLICY_NONE)
+
+    def test_set_user_option_recurse_false_section(self):
+        # The following section has recurse=False set.  The test is to
+        # make sure that a normal option can be added to the section,
+        # converting recurse=False to the norecurse policy.
+        self.get_branch_config('http://www.example.com/norecurse')
+        self.callDeprecated(['The recurse option is deprecated as of 0.14.  '
+                             'The section "http://www.example.com/norecurse" '
+                             'has been converted to use policies.'],
+                            self.my_config.set_user_option,
+                            'foo', 'bar', store=config.STORE_LOCATION)
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com/norecurse', 'foo'),
+            config.POLICY_NONE)
+        # The previously existing option is still norecurse:
+        self.assertEqual(
+            self.my_location_config._get_option_policy(
+            'http://www.example.com/norecurse', 'normal_option'),
+            config.POLICY_NORECURSE)
+        
+
     def test_post_commit_default(self):
         self.get_branch_config('/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
@@ -696,7 +822,11 @@ class TestLocationConfig(TestCaseInTempDir):
 
         os.mkdir = checked_mkdir
         try:
-            self.my_config.set_user_option('foo', 'bar', local=True)
+            self.callDeprecated(['The recurse option is deprecated as of '
+                                 '0.14.  The section "/a/c" has been '
+                                 'converted to use policies.'],
+                                self.my_config.set_user_option,
+                                'foo', 'bar', store=config.STORE_LOCATION)
         finally:
             os.mkdir = real_mkdir
 
@@ -706,6 +836,14 @@ class TestLocationConfig(TestCaseInTempDir):
                           ('__setitem__', '/a/c', {}),
                           ('__getitem__', '/a/c'),
                           ('__setitem__', 'foo', 'bar'),
+                          ('__getitem__', '/a/c'),
+                          ('as_bool', 'recurse'),
+                          ('__getitem__', '/a/c'),
+                          ('__delitem__', 'recurse'),
+                          ('__getitem__', '/a/c'),
+                          ('keys',),
+                          ('__getitem__', '/a/c'),
+                          ('__contains__', 'foo:policy'),
                           ('write',)],
                          record._calls[1:])
 
@@ -717,7 +855,8 @@ class TestLocationConfig(TestCaseInTempDir):
             self.my_config.branch.control_files.files['branch.conf'], 
             'foo = bar')
         self.assertEqual(self.my_config.get_user_option('foo'), 'bar')
-        self.my_config.set_user_option('foo', 'baz', local=True)
+        self.my_config.set_user_option('foo', 'baz',
+                                       store=config.STORE_LOCATION)
         self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
         self.my_config.set_user_option('foo', 'qux')
         self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
@@ -821,7 +960,8 @@ class TestBranchConfigItems(TestCaseInTempDir):
         # post-commit is ignored when bresent in branch data
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          my_config.post_commit())
-        my_config.set_user_option('post_commit', 'rmtree_root', local=True)
+        my_config.set_user_option('post_commit', 'rmtree_root',
+                                  store=config.STORE_LOCATION)
         self.assertEqual('rmtree_root', my_config.post_commit())
 
     def test_config_precedence(self):

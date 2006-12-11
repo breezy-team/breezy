@@ -40,9 +40,9 @@ from bzrlib.osutils import getcwd
 import bzrlib.revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
-from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
@@ -595,7 +595,8 @@ class TestBranchPushLocations(TestCaseWithBranch):
         branch.set_push_location('foo')
         local_path = urlutils.local_path_from_url(branch.base[:-1])
         self.assertFileEqual("[%s]\n"
-                             "push_location = foo" % local_path,
+                             "push_location = foo\n"
+                             "push_location:policy = norecurse" % local_path,
                              fn)
 
     # TODO RBC 20051029 test getting a push location from a branch in a 

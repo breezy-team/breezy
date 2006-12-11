@@ -42,6 +42,7 @@ from bzrlib import (
     generate_ids,
     osutils,
     symbol_versioning,
+    workingtree,
     )
 """)
 

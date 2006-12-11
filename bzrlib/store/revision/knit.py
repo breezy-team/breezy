@@ -22,7 +22,7 @@ parallel knit.
 
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import errors, osutils
 from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
 from bzrlib.store.revision import RevisionStore
 from bzrlib.store.versioned import VersionedFileStore
@@ -66,12 +66,12 @@ class KnitRevisionStore(RevisionStore):
         self.get_revision_file(transaction).add_lines_with_ghosts(
             revision.revision_id,
             revision.parent_ids,
-            bzrlib.osutils.split_lines(revision_as_file.read()))
+            osutils.split_lines(revision_as_file.read()))
 
     def add_revision_signature_text(self, revision_id, signature_text, transaction):
         """See RevisionStore.add_revision_signature_text()."""
         self.get_signature_file(transaction).add_lines(
-            revision_id, [], bzrlib.osutils.split_lines(signature_text))
+            revision_id, [], osutils.split_lines(signature_text))
 
     def all_revision_ids(self, transaction):
         """See RevisionStore.all_revision_ids()."""

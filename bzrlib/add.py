@@ -19,6 +19,7 @@ import os
 from os.path import dirname
 import sys
 
+import bzrlib.bzrdir
 import bzrlib.errors as errors
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter, note, warning

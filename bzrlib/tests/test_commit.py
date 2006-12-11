@@ -557,3 +557,54 @@ class TestCommit(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.PathsNotVersionedError, tree.commit, 
                           'message', specific_files=['bogus'])
+
+    class Callback(object):
+        
+        def __init__(self, message, testcase):
+            self.called = False
+            self.message = message
+            self.testcase = testcase
+
+        def __call__(self, commit_obj):
+            self.called = True
+            self.testcase.assertTrue(isinstance(commit_obj, Commit))
+            return self.message
+
+    def test_commit_callback(self):
+        """Commit should invoke a callback to get the message"""
+
+        tree = self.make_branch_and_tree('.')
+        try:
+            tree.commit()
+        except Exception, e:
+            self.assertTrue(isinstance(e, BzrError))
+            self.assertEqual('The message or message_callback keyword'
+                             ' parameter is required for commit().', str(e))
+        else:
+            self.fail('exception not raised')
+        cb = self.Callback(u'commit 1', self)
+        tree.commit(message_callback=cb)
+        self.assertTrue(cb.called)
+        repository = tree.branch.repository
+        message = repository.get_revision(tree.last_revision()).message
+        self.assertEqual('commit 1', message)
+
+    def test_no_callback_pointless(self):
+        """Callback should not be invoked for pointless commit"""
+        tree = self.make_branch_and_tree('.')
+        cb = self.Callback(u'commit 2', self)
+        self.assertRaises(PointlessCommit, tree.commit, message_callback=cb, 
+                          allow_pointless=False)
+        self.assertFalse(cb.called)
+
+    def test_no_callback_netfailure(self):
+        """Callback should not be invoked if connectivity fails"""
+        tree = self.make_branch_and_tree('.')
+        cb = self.Callback(u'commit 2', self)
+        repository = tree.branch.repository
+        # simulate network failure
+        def raise_(self, arg, arg2):
+            raise errors.NoSuchFile('foo')
+        repository.add_inventory = raise_
+        self.assertRaises(errors.NoSuchFile, tree.commit, message_callback=cb)
+        self.assertFalse(cb.called)

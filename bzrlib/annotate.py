@@ -59,20 +59,26 @@ def _annotate_file(branch, rev_id, file_id ):
     w = branch.repository.weave_store.get_weave(file_id, 
         branch.repository.get_transaction())
     last_origin = None
-    for origin, text in w.annotate_iter(rev_id):
+    annotations = list(w.annotate_iter(rev_id))
+    revision_ids = set(o for o, t in annotations)
+    revision_ids = [o for o in revision_ids if 
+                    branch.repository.has_revision(o)]
+    revisions = dict((r.revision_id, r) for r in 
+                     branch.repository.get_revisions(revision_ids))
+    for origin, text in annotations:
         text = text.rstrip('\r\n')
         if origin == last_origin:
             (revno_str, author, date_str) = ('','','')
         else:
             last_origin = origin
-            if not branch.repository.has_revision(origin):
+            if origin not in revisions:
                 (revno_str, author, date_str) = ('?','?','?')
             else:
                 if origin in rh:
                     revno_str = str(rh.index(origin) + 1)
                 else:
                     revno_str = 'merge'
-            rev = branch.repository.get_revision(origin)
+            rev = revisions[origin]
             tz = rev.timezone or 0
             date_str = time.strftime('%Y%m%d', 
                                      time.gmtime(rev.timestamp + tz))

@@ -2,9 +2,69 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * PyCurlTransport now use a single curl object. By specifying explicitly
+      the 'Range' header, we avoid the need to use two different curl objects
+      (and two connections to the same server). (Vincent Ladeuil)
+
+    * ``bzr commit`` does not prompt for a message until it is very likely to
+      succeed.  (Aaron Bentley)
+
+    * ``bzr conflicts`` now takes --text to list pathnames of text conflicts
+      (Aaron Bentley)
+
+    * Fix ``iter_lines_added_or_present_in_versions`` to use a set instead
+      of a list while checking if a revision id was requested. Takes 10s
+      off of the ``fileids_affected_by_revision_ids`` time, which is 10s
+      of the ``bzr branch`` time. (John Arbash Meinel)
+
+    * Policy can be set for each configuration key. This allows keys to be
+      inherited properly across configuration entries. For example, this
+      should enable you to do::
+        
+        [/home/user/project]
+        push_location = sftp://host/srv/project/
+        push_location:policy = appendpath
+
+      And then a branch like ``/home/user/project/mybranch`` should get an
+      automatic push location of ``sftp://host/srv/project/mybranch``.
+      (James Henstridge)
+
+    * Added ``bzr status --short`` to make status report svn style flags
+      for each file.  For example::
+
+        $ bzr status --short
+        A  foo
+        A  bar
+        D  baz
+        ?  wooley
+      
+  INTERNALS:
+
+    * Change Revision serialization to only write out millisecond
+      resolution. Rather than expecting floating point serialization to
+      preserve more resolution than we need. (Henri Weichers, Martin Pool)
+
+  BUG FIXES:
+
+    * bzr now supports Win32 UNC path (e.g. \\HOST\path). 
+      (Alexander Belchenko, #57869)
+
+
+bzr 0.13  2006-12-05
+    
+  No changes from 0.13rc1
+    
+bzr 0.13rc1  2006-11-27
+
+  IMPROVEMENTS:
+
     * New command ``bzr remove-tree`` allows the removal of the working
       tree from a branch.
       (Daniel Silverstone)
+
+    * urllib uses shared keep-alive connections, so http 
+      operations are substantially faster.
+      (Vincent Ladeuil, #53654)
 
     * ``bzr export`` allows an optional branch parameter, to export a bzr
       tree from some other url. For example:
@@ -15,12 +75,18 @@ IN DEVELOPMENT
       location for general information, outside of a specific command.
       This includes updates for ``bzr help revisionspec`` the first topic
       included. (Goffredo Baroncelli, John Arbash Meinel, #42714)
-      
-  INTERNALS:
 
-    * Change Revision serialization to only write out millisecond
-      resolution. Rather than expecting floating point serialization to
-      preserve more resolution than we need. (Henri Weichers, Martin Pool)
+    * WSGI-compatible HTTP smart server.  See ``doc/http_smart_server.txt``.
+      (Andrew Bennetts)
+
+    * Knit files will now cache full texts only when the size of the
+      deltas is as large as the size of the fulltext. (Or after 200
+      deltas, whichever comes first). This has the most benefit on large
+      files with small changes, such as the inventory for a large project.
+      (eg For a project with 2500 files, and 7500 revisions, it changes
+      the size of inventory.knit from 11MB to 5.4MB) (John Arbash Meinel)
+
+  INTERNALS:
 
     * New -D option given before the command line turns on debugging output
       for particular areas.  -Derror shows tracebacks on all errors.
@@ -38,12 +104,30 @@ IN DEVELOPMENT
     * ``MemoryTransport.list_dir()`` would strip the first character for
       files or directories in root directory. (John Arbash Meinel)
   
+    * New ``ChrootTransportDecorator``, accessible via the ``chroot+`` url
+      prefix.  It disallows any access to locations above a set URL.  (Andrew
+      Bennetts)
+
   BUG FIXES:
 
     * ``bzrlib/bzrdir.py`` was directly referencing ``bzrlib.workingtree``,
       without importing it. This prevented ``bzr upgrade`` from working
       unless a plugin already imported ``bzrlib.workingtree``
       (John Arbash Meinel, #70716)
+
+    * Suppress the traceback on invalid URLs (Vincent Ladeuil, #70803).
+
+    * Give nicer error message when an http server returns a 403
+      error code. (Vincent Ladeuil, #57644).
+
+    * When a multi-range http GET request fails, try a single
+      range one. If it fails too, forget about ranges. Remember that until 
+      the death of the transport and propagates that to the clones.
+      (Vincent Ladeuil, #62276, #62029).
+
+    * Handles user/passwords supplied in url from command
+      line (for the urllib implementation). Don't request already
+      known passwords (Vincent Ladeuil, #42383, #44647, #48527)
 
     * _KnitIndex.add_versions() dictionary compresses revision ids as they
       are added. This fixes bug where fetching remote revisions records
@@ -78,6 +162,11 @@ IN DEVELOPMENT
       different id's, the default is the file in the new tree. The user can
       use "--name-from-revision" to select the file in the old tree.
       (Cheuksan Edward Wang, #30190)
+
+  TESTING:
+
+    * TestingHTTPRequestHandler really handles the Range header
+      (previously it was ignoring it and returning the whole file,).
 
 bzr 0.12  2006-10-30
 
