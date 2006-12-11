@@ -1590,15 +1590,17 @@ class ImportNameCollision(BzrError):
         self.name = name
 
 
-class UnsupportedInventoryKind(BzrNewError):
-    """Unsupported entry kind %(kind)s"""
+class UnsupportedInventoryKind(BzrError):
+    
+    _fmt = """Unsupported entry kind %(kind)s"""
 
     def __init__(self, kind):
         self.kind = kind
 
 
-class BadSubsumeSource(BzrNewError):
-    """Can't subsume %(other_tree)s into %(tree)s.  %(reason)s"""
+class BadSubsumeSource(BzrError):
+
+    _fmt = """Can't subsume %(other_tree)s into %(tree)s.  %(reason)s"""
 
     def __init__(self, tree, other_tree, reason):
         self.tree = tree
@@ -1606,8 +1608,9 @@ class BadSubsumeSource(BzrNewError):
         self.reason = reason
 
 
-class SubsumeTargetNeedsUpgrade(BzrNewError):
-    """Subsume target %(other_tree)s needs to be upgraded."""
+class SubsumeTargetNeedsUpgrade(BzrError):
+    
+    _fmt = """Subsume target %(other_tree)s needs to be upgraded."""
 
     def __init__(self, other_tree):
         self.other_tree = other_tree
