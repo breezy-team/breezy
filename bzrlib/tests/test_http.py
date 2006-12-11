@@ -18,7 +18,9 @@
 # implementation; at the moment we have urllib and pycurl.
 
 # TODO: Should be renamed to bzrlib.transport.http.tests?
+# TODO: What about renaming to bzrlib.tests.transport.http ?
 
+import os
 import select
 import socket
 import threading
@@ -38,10 +40,12 @@ from bzrlib.tests.HttpServer import (
 from bzrlib.tests.HTTPTestUtil import (
     BadProtocolRequestHandler,
     BadStatusRequestHandler,
+    FakeProxyRequestHandler,
     ForbiddenRequestHandler,
     InvalidStatusRequestHandler,
     NoRangeRequestHandler,
     SingleRangeRequestHandler,
+    TestCaseWithTwoWebservers,
     TestCaseWithWebserver,
     WallRequestHandler,
     )
@@ -532,7 +536,7 @@ class TestRecordingServer(TestCase):
 
 
 class TestRangeRequestServer(object):
-    """Test the http connections.
+    """Tests readv requests against server.
 
     This MUST be used by daughter classes that also inherit from
     TestCaseWithWebserver.
@@ -545,8 +549,6 @@ class TestRangeRequestServer(object):
     def setUp(self):
         TestCaseWithWebserver.setUp(self)
         self.build_tree_contents([('a', '0123456789')],)
-
-    """Tests readv requests against server"""
 
     def test_readv(self):
         server = self.get_readonly_server()
@@ -621,3 +623,83 @@ class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
     """Tests range requests refusing server for pycurl implementation"""
 
 
+class TestProxyHttpServer(object):
+    """Tests proxy server.
+
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithTwoWebservers.
+
+    We can't inherit directly from TestCaseWithTwoWebservers or
+    the test framework will try to create an instance which
+    cannot run, its implementation being incomplete.
+    """
+
+    def setUp(self):
+        TestCaseWithTwoWebservers.setUp(self)
+        self.build_tree_contents([('foo', 'contents of foo\n'),
+                                  ('foo-proxied', 'proxied contents of foo\n')])
+        # Create the server now. Otherwise, it will created when
+        # test methods are invoked. At that point the test
+        # methods may have set env vars and the HttpServer
+        # creation will erase them.
+        server = self.get_readonly_server()
+        # The secondary server is the proxy
+
+        # NOTE: We do not setup a real proxy, instead we check
+        # that the connection goes thru the proxy by serving
+        # different content
+        proxy = self.get_secondary_server()
+        proxy_url = proxy.get_url()
+        # All tests will rely on the secondary server being set
+        # as the proxy
+        os.environ['http_proxy'] = proxy_url
+
+    def create_transport_secondary_server(self):
+        """Creates an http server that will serve files with
+        '-proxied' appended to their names.
+        """
+        return HttpServer(FakeProxyRequestHandler)
+
+    def test_http_proxy(self):
+        server = self.get_readonly_server()
+        url = server.get_url()
+        t = self._transport(url)
+        self.assertEqual(t.get('foo').read(),
+                         'proxied contents of foo\n')
+
+    def test_http_no_proxy(self):
+        server = self.get_readonly_server()
+        url = server.get_url()
+        os.environ['no_proxy'] = 'localhost:%d' % server.port
+        t = self._transport(url)
+        try:
+            self.assertEqual(t.get('foo').read(),
+                             'contents of foo\n')
+        finally:
+            del os.environ['no_proxy']
+
+
+class TestProxyHttpServer_urllib(TestProxyHttpServer,
+                                 TestCaseWithTwoWebservers):
+    """Tests proxy server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestProxyHttpServer_pycurl(TestWithTransport_pycurl,
+                                 TestProxyHttpServer,
+                                 TestCaseWithTwoWebservers):
+    """Tests proxy server for pycurl implementation"""
+
+    def test_http_no_proxy(self):
+        server = self.get_readonly_server()
+        url = server.get_url()
+        # Oh my ! pycurl do not check the port part :-( So we
+        # just test the host part
+        os.environ['no_proxy'] = 'localhost'
+        t = self._transport(url)
+        try:
+            self.assertEqual(t.get('foo').read(),
+                             'contents of foo\n')
+        finally:
+            del os.environ['no_proxy']

@@ -662,28 +662,22 @@ class ProxyHandler(urllib2.ProxyHandler):
 
     def proxy_bypass(self, host):
         """Check if host should be proxied or not"""
-        if self._debuglevel > 0:
-            print 'Is [%r] proxied or not' % host
         no_proxy = self.get_proxy('no')
         if no_proxy is None:
             return False
         hhost, hport = urllib.splitport(host)
-        if self._debuglevel > 0:
-            print 'hhost [%r], hport [%r]' % (hhost, hport)
         # Does host match any of the domains mentionned in
         # no_proxy The rules about what is authorized in no_proxy
         # are fuzzy (too say the least). We try to allows most
         # commonly seen values.
         for domain in no_proxy.split(','):
             dhost, dport = urllib.splitport(domain)
-            if self._debuglevel > 0:
-                print 'dhost [%r], dport [%r]' % (hhost, hport)
-            if hport == dport:
+            if hport == dport or dport is None:
                 # Protect glob chars
                 dhost = dhost.replace(".", r"\.")
                 dhost = dhost.replace("*", r".*")
                 dhost = dhost.replace("?", r".")
-                if re.match(domain, hhost, re.IGNORECASE):
+                if re.match(dhost, hhost, re.IGNORECASE):
                     return True
         # Nevertheless, there are platform specific ways to
         # ignore proxies...

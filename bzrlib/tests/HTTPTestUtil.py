@@ -170,3 +170,46 @@ class TestCaseWithWebserver(TestCaseWithTransport):
     def setUp(self):
         super(TestCaseWithWebserver, self).setUp()
         self.transport_readonly_server = HttpServer
+
+
+class TestCaseWithTwoWebservers(TestCaseWithWebserver):
+    """A support class providinf readonly urls (on two servers) that are http://.
+
+    We setup two webservers to allows various tests involving
+    proxies or redirections from one server to the other.
+    """
+    def setUp(self):
+        super(TestCaseWithTwoWebservers, self).setUp()
+        self.transport_secondary_server = HttpServer
+        self.__secondary_server = None
+
+    def create_transport_secondary_server(self):
+        """Create a transport server from class defined at init.
+
+        This is mostly a hook for daughter classes.
+        """
+        return self.transport_secondary_server()
+
+    def get_secondary_server(self):
+        """Get the server instance for the secondary transport."""
+        if self.__secondary_server is None:
+            self.__secondary_server = self.create_transport_secondary_server()
+            self.__secondary_server.setUp()
+            # Note that addCleanup ensures that last added
+            # callables are called first. That will ensures that
+            # our cleanup is called before the other http server
+            # cleanup if we are created last and our cleanup is
+            # called after the other http server cleanup if we
+            # are created first.
+            self.addCleanup(self.__secondary_server.tearDown)
+        return self.__secondary_server
+
+
+class FakeProxyRequestHandler(TestingHTTPRequestHandler):
+    """Append a '-proxied' suffix to file served"""
+
+    def translate_path(self, path):
+        return TestingHTTPRequestHandler.translate_path(self,
+                                                        path + '-proxied')
+
+
