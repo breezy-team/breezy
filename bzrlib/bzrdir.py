@@ -429,8 +429,8 @@ class BzrDir(object):
         """Get the transport for use by workingtree format in this BzrDir.
 
         Note that bzr dirs that do not support format strings will raise
-        IncompatibleFormat if the workingtree format they are given has
-        a format string, and vice versa.
+        IncompatibleFormat if the workingtree format they are given has a
+        format string, and vice versa.
 
         If workingtree_format is None, the transport is returned with no 
         checking. if it is not None, then the returned transport is

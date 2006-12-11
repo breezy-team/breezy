@@ -2939,16 +2939,24 @@ class cmd_join(Command):
     """
 
     takes_args = ['tree']
+    takes_options = [Option('reference', 'join by reference')]
 
-    def run(self, tree):
+    def run(self, tree, reference=False):
         sub_tree = WorkingTree.open(tree)
         parent_dir = osutils.dirname(sub_tree.basedir)
         containing_tree = WorkingTree.open_containing(parent_dir)[0]
-        try:
-            containing_tree.subsume(sub_tree)
-        except errors.BadSubsumeSource, e:
-            raise errors.BzrCommandError("Cannot join %s.  %s" % 
-                                         (tree, e.reason))
+        if reference:
+            try: 
+                containing_tree.add_reference(sub_tree)
+            except errors.BadReferenceTarget:
+                raise errors.BzrCommandError("Cannot join %s.  %s" % 
+                                             (tree, e.reason))
+        else:
+            try:
+                containing_tree.subsume(sub_tree)
+            except errors.BadSubsumeSource, e:
+                raise errors.BzrCommandError("Cannot join %s.  %s" % 
+                                             (tree, e.reason))
 
 
 class cmd_split(Command):
