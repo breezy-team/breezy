@@ -84,7 +84,7 @@ from bzrlib.errors import (BzrCheckError,
                            MergeModifiedFormatError,
                            UnsupportedOperation,
                            )
-from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID
+from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID, TreeReference
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
@@ -592,6 +592,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             else:
                 inv.add_path(f, kind=kind, file_id=file_id)
         self._write_inventory(inv)
+
+    def add_reference(self, sub_tree):
+        """Add a TreeReference to the tree, pointing at sub_tree"""
+        raise UnsupportedOperation(self.add_reference, self)
 
     @needs_tree_write_lock
     def _gather_kinds(self, files, kinds):
@@ -1991,7 +1995,25 @@ class WorkingTree3(WorkingTree):
 
 
 class WorkingTree4(WorkingTree3):
-    pass
+
+    def add_reference(self, sub_tree):
+        try:
+            sub_tree_path = self.relpath(sub_tree.basedir)
+        except errors.PathNotChild:
+            raise errors.BadReferenceTarget(self, sub_tree, 
+                                            'Target not inside tree.')
+        parent_id = self.path2id(osutils.dirname(sub_tree_path))
+        name = osutils.basename(sub_tree_path)
+        sub_tree_id = sub_tree.get_root_id()
+        if sub_tree_id == self.get_root_id():
+            raise errors.BadReferenceTarget(self, sub_tree, 
+                                     'Trees have the same root id.')
+        if sub_tree_id in self.inventory:
+            raise errors.BadReferenceTarget(self, sub_tree, 
+                                            'Root id already present in tree')
+        entry = TreeReference(sub_tree_id, name, parent_id, None, 
+                              None)
+        self.inventory.add(entry)
 
 
 def get_conflicted_stem(path):
@@ -2213,7 +2235,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         if revision_id is None:
             revision_id = branch.last_revision()
         inv = Inventory(root_id=generate_ids.gen_root_id())
-        wt = WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
+        wt = self._tree_class(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
