@@ -38,6 +38,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
             assert tree.__class__ in (workingtree.WorkingTree2, 
                                       workingtree.WorkingTree3)
             raise tests.TestSkipped('Tree format does not support references')
+        tree = workingtree.WorkingTree.open('tree')
         self.assertEqual(tree.path2id('sub-tree'), 'sub-tree-root-id')
         self.assertEqual(tree.inventory['sub-tree-root-id'].kind, 
                          'tree-reference')

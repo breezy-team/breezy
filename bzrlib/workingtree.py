@@ -66,6 +66,7 @@ from bzrlib import (
     urlutils,
     xml5,
     xml6,
+    xml7,
     )
 import bzrlib.branch
 from bzrlib.transport import get_transport
@@ -943,10 +944,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if self._control_files._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
         sio = StringIO()
-        xml5.serializer_v5.write_inventory(self._inventory, sio)
+        self._serialize(self._inventory, sio)
         sio.seek(0)
         self._control_files.put('inventory', sio)
         self._inventory_is_modified = False
+
+    def _serialize(self, inventory, out_file):
+        xml5.serializer_v5.write_inventory(self._inventory, out_file)
+
+    def _deserialize(selt, in_file):
+        return xml5.serializer_v5.read_inventory(in_file)
 
     def list_files(self, include_root=False):
         """Recursively list all files as (path, class, kind, id, entry).
@@ -1608,8 +1615,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # binary.
         if self._inventory_is_modified:
             raise errors.InventoryModified(self)
-        result = xml5.serializer_v5.read_inventory(
-            self._control_files.get('inventory'))
+        result = self._deserialize(self._control_files.get('inventory'))
         self._set_inventory(result, dirty=False)
         return result
 
@@ -2014,6 +2020,13 @@ class WorkingTree4(WorkingTree3):
         entry = TreeReference(sub_tree_id, name, parent_id, None, 
                               None)
         self.inventory.add(entry)
+        self._write_inventory(self.inventory)
+
+    def _serialize(self, inventory, out_file):
+        xml7.serializer_v7.write_inventory(self._inventory, out_file)
+
+    def _deserialize(selt, in_file):
+        return xml7.serializer_v7.read_inventory(in_file)
 
 
 def get_conflicted_stem(path):

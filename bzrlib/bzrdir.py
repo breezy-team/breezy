@@ -912,7 +912,7 @@ class BzrDirMeta1(BzrDir):
     def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree."""
         from bzrlib.workingtree import WorkingTreeFormat
-        return WorkingTreeFormat.get_default_format().initialize(self, revision_id)
+        return self._format.workingtree_format.initialize(self, revision_id)
 
     def destroy_workingtree(self):
         """See BzrDir.destroy_workingtree."""
@@ -1410,6 +1410,9 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     _lock_class = lockdir.LockDir
 
+    def __init__(self):
+        self._workingtree_format = None
+
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
         if format is None:
@@ -1443,6 +1446,18 @@ class BzrDirMetaFormat1(BzrDirFormat):
         self._repository_format = value
 
     repository_format = property(__return_repository_format, __set_repository_format)
+
+    def __get_workingtree_format(self):
+        if self._workingtree_format is None:
+            from bzrlib.workingtree import WorkingTreeFormat
+            self._workingtree_format = WorkingTreeFormat.get_default_format()
+        return self._workingtree_format
+
+    def __set_workingtree_format(self, wt_format):
+        self._workingtree_format = wt_format
+
+    workingtree_format = property(__get_workingtree_format,
+                                  __set_workingtree_format)
 
 
 BzrDirFormat.register_format(BzrDirFormat4())
@@ -1954,4 +1969,11 @@ def get_knit2_format():
     from bzrlib import repository
     format = BzrDirMetaFormat1()
     format.repository_format = repository.RepositoryFormatKnit2()
+    return format
+
+def get_knit3_format():
+    from bzrlib import repository, workingtree
+    format = BzrDirMetaFormat1()
+    format.repository_format = repository.RepositoryFormatKnit2()
+    format.workingtree_format = workingtree.WorkingTreeFormat4()
     return format
