@@ -32,6 +32,14 @@ from bzrlib.uncommit import uncommit
 
 class TestInventory(TestCase):
 
+    def test_add_path(self):
+
+        inv = Inventory(root_id=None)
+        self.assertIs(None, inv.root)
+        ie = inv.add_path("", "directory", "my-root")
+        self.assertEqual("my-root", ie.file_id)
+        self.assertIs(ie, inv.root)
+
     def test_is_within(self):
 
         SRC_FOO_C = pathjoin('src', 'foo.c')
