@@ -149,7 +149,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
 
 class TestFileMapping(TestCase):
     def apply_mappings(self, mappings, find_children=None):
-        map = {}
+        map = {"": ("ROOT", "first-revision") }
         revids = mappings.keys()
         revids.sort()
         for r in revids:
@@ -159,7 +159,7 @@ class TestFileMapping(TestCase):
 
     def test_simple(self):
         map = self.apply_mappings({"svn-v%d:1@uuid-" % MAPPING_VERSION: {"foo": ('A', None, None)}})
-        self.assertEqual({'': ('TREE_ROOT', "svn-v%d:1@uuid-" % MAPPING_VERSION), 
+        self.assertEqual({'': ('ROOT', "first-revision"),
                                'foo': ("svn-v%d:1@uuid--foo" % MAPPING_VERSION, 
                                        "svn-v%d:1@uuid-" % MAPPING_VERSION)
                          }, map)
