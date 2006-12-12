@@ -507,7 +507,6 @@ class SvnCheckout(BzrDir):
 
     def open_repository(self):
         repos = SvnRepository(self, self.svn_root_transport)
-        repos._format = self._format
         return repos
 
     # Subversion has all-in-one, so a repository is always present
