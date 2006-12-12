@@ -33,6 +33,7 @@ from bzrlib import (
     gpg,
     graph,
     knit,
+    lazy_regex,
     lockable_files,
     lockdir,
     osutils,
@@ -81,6 +82,11 @@ class Repository(object):
     describe the disk data format and the way of accessing the (possibly 
     remote) disk.
     """
+
+    _file_ids_altered_regex = lazy_regex.lazy_compile(
+        r'file_id="(?P<file_id>[^"]+)"'
+        r'.*revision="(?P<revision_id>[^"]+)"'
+        )
 
     @needs_write_lock
     def add_inventory(self, revid, inv, parents):
@@ -433,6 +439,9 @@ class Repository(object):
         # not present in one of those inventories is unnecessary but not 
         # harmful because we are filtering by the revision id marker in the
         # inventory lines : we only select file ids altered in one of those  
+        unescape_revid_cache = {}
+        unescape_fileid_cache = {}
+
         # revisions. We don't need to see all lines in the inventory because
         # only those added in an inventory in rev X can contain a revision=X
         # line.
@@ -440,18 +449,15 @@ class Repository(object):
         try:
             for line in w.iter_lines_added_or_present_in_versions(
                 selected_revision_ids, pb=pb):
-                start = line.find('file_id="')+9
-                if start < 9: continue
-                end = line.find('"', start)
-                assert end>= 0
-                file_id = _unescape_xml(line[start:end])
-
-                start = line.find('revision="')+10
-                if start < 10: continue
-                end = line.find('"', start)
-                assert end>= 0
-                revision_id = _unescape_xml(line[start:end])
+                match = self._file_ids_altered_regex.search(line)
+                if match is None:
+                    continue
+                file_id, revision_id = match.group('file_id', 'revision_id')
+                revision_id = _unescape_xml_cached(revision_id,
+                                                   unescape_revid_cache)
                 if revision_id in selected_revision_ids:
+                    file_id = _unescape_xml_cached(file_id,
+                                                   unescape_fileid_cache)
                     result.setdefault(file_id, set()).add(revision_id)
         finally:
             pb.finished()
@@ -2536,3 +2542,12 @@ def _unescape_xml(data):
     if _unescape_re is None:
         _unescape_re = re.compile('\&([^;]*);')
     return _unescape_re.sub(_unescaper, data)
+
+
+def _unescape_xml_cached(data, cache):
+    try:
+        return cache[data]
+    except KeyError:
+        unescaped = _unescape_xml(data)
+        cache[data] = unescaped
+        return unescaped

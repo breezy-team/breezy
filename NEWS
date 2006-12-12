@@ -15,7 +15,9 @@ IN DEVELOPMENT
     * Fix ``iter_lines_added_or_present_in_versions`` to use a set instead
       of a list while checking if a revision id was requested. Takes 10s
       off of the ``fileids_affected_by_revision_ids`` time, which is 10s
-      of the ``bzr branch`` time. (John Arbash Meinel)
+      of the ``bzr branch`` time. Also improve ``fileids_...`` time by
+      filtering lines with a regex rather than multiple ``str.find()``
+      calls. (saves another 300ms) (John Arbash Meinel)
 
   INTERNALS:
 
