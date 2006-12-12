@@ -384,7 +384,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertTrue(tree.has_filename("foo"))
         self.assertEqual("data", tree.get_file_by_path("foo/bla").read())
 
-    def test_non_utf8_msg(self):
+    def test_control_code_msg(self):
         repos_url = self.make_client('d', 'dc')
 
         self.build_tree({'dc/trunk': None})
@@ -392,17 +392,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "\x24")
 
         self.build_tree({'dc/trunk/hosts': 'hej2'})
-        self.client_commit("dc", "rev 2") #2
+        self.client_add("dc/trunk/hosts")
+        self.client_commit("dc", "bla\xfcbla") #2
 
         self.build_tree({'dc/trunk/hosts': 'hej3'})
-        self.client_commit("dc", "rev 3") #3
+        self.client_commit("dc", "a\x0cb") #3
 
         self.build_tree({'dc/branches/foobranch/file': 'foohosts'})
         self.client_add("dc/branches")
         self.client_commit("dc", "foohosts") #4
 
-        oldrepos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat(), 
-                                   TrunkBranchingScheme()).open_repository()
+        oldrepos = Repository.open("svn+"+repos_url+"/trunk")
         dir = BzrDir.create("f")
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -419,6 +419,18 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             "svn-v%d:4@%s-trunk" % (MAPPING_VERSION, oldrepos.uuid)))
         self.assertFalse(newrepos.has_revision(
             "svn-v%d:2@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+
+        rev = newrepos.get_revision(
+                "svn-v%d:1@%s-trunk" % (MAPPING_VERSION, oldrepos.uuid))
+        self.assertEqual("$", rev.message)
+
+        rev = newrepos.get_revision(
+            "svn-v%d:2@%s-trunk" % (MAPPING_VERSION, oldrepos.uuid))
+        self.assertEqual(u'bla\xfcbla', rev.message)
+
+        rev = newrepos.get_revision(
+            "svn-v%d:3@%s-trunk" % (MAPPING_VERSION, oldrepos.uuid))
+        self.assertEqual(u"a\\x0cb", rev.message)
 
     def test_fetch_replace(self):
         repos_url = self.make_client('d', 'dc')
