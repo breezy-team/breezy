@@ -632,27 +632,27 @@ class TestProxyHttpServer(object):
     We can't inherit directly from TestCaseWithTwoWebservers or
     the test framework will try to create an instance which
     cannot run, its implementation being incomplete.
+
+    Be aware that we do not setup a real proxy here. Instead, we
+    check that the *conention* goes through the proxy by serving
+    different content (the faked proxy server append '-proxied'
+    to the file names).
     """
+
+    # FIXME: We don't have an https server available, so we don't
+    # test https connections.
 
     def setUp(self):
         TestCaseWithTwoWebservers.setUp(self)
         self.build_tree_contents([('foo', 'contents of foo\n'),
                                   ('foo-proxied', 'proxied contents of foo\n')])
-        # Create the server now. Otherwise, it will created when
-        # test methods are invoked. At that point the test
-        # methods may have set env vars and the HttpServer
-        # creation will erase them.
-        server = self.get_readonly_server()
+        # Let's setup some attributes for tests
+        self.server = self.get_readonly_server()
+        self.no_proxy_host = 'localhost:%d' % self.server.port
         # The secondary server is the proxy
-
-        # NOTE: We do not setup a real proxy, instead we check
-        # that the connection goes thru the proxy by serving
-        # different content
-        proxy = self.get_secondary_server()
-        proxy_url = proxy.get_url()
-        # All tests will rely on the secondary server being set
-        # as the proxy
-        os.environ['http_proxy'] = proxy_url
+        self.proxy = self.get_secondary_server()
+        self.proxy_url = self.proxy.get_url()
+        self._old_env = {}
 
     def create_transport_secondary_server(self):
         """Creates an http server that will serve files with
@@ -660,23 +660,63 @@ class TestProxyHttpServer(object):
         """
         return HttpServer(FakeProxyRequestHandler)
 
-    def test_http_proxy(self):
-        server = self.get_readonly_server()
-        url = server.get_url()
-        t = self._transport(url)
-        self.assertEqual(t.get('foo').read(),
-                         'proxied contents of foo\n')
+    def _set_and_capture_env_var(self, name, new_value):
+        """Set an environment variable, and reset it when finished."""
+        self._old_env[name] = osutils.set_or_unset_env(name, new_value)
 
-    def test_http_no_proxy(self):
-        server = self.get_readonly_server()
-        url = server.get_url()
-        os.environ['no_proxy'] = 'localhost:%d' % server.port
+    def _install_env(self, env):
+        for name, value in env.iteritems():
+            self._set_and_capture_env_var(name, value)
+
+    def _restore_env(self):
+        for name, value in self._old_env.iteritems():
+            osutils.set_or_unset_env(name, value)
+
+    def proxied_in_env(self, env):
+        self._install_env(env)
+        url = self.server.get_url()
         t = self._transport(url)
         try:
-            self.assertEqual(t.get('foo').read(),
-                             'contents of foo\n')
+            self.assertEqual(t.get('foo').read(), 'proxied contents of foo\n')
         finally:
-            del os.environ['no_proxy']
+            self._restore_env()
+
+    def not_proxied_in_env(self, env):
+        self._install_env(env)
+        url = self.server.get_url()
+        t = self._transport(url)
+        try:
+            self.assertEqual(t.get('foo').read(), 'contents of foo\n')
+        finally:
+            self._restore_env()
+
+    def test_http_proxy(self):
+        self.proxied_in_env({'http_proxy': self.proxy_url})
+
+    def test_HTTP_PROXY(self):
+        self.proxied_in_env({'HTTP_PROXY': self.proxy_url})
+
+    def test_all_proxy(self):
+        self.proxied_in_env({'all_proxy': self.proxy_url})
+
+    def test_ALL_PROXY(self):
+        self.proxied_in_env({'ALL_PROXY': self.proxy_url})
+
+    def test_http_proxy_with_no_proxy(self):
+        self.not_proxied_in_env({'http_proxy': self.proxy_url,
+                                 'no_proxy': self.no_proxy_host})
+
+    def test_HTTP_PROXY_with_NO_PROXY(self):
+        self.not_proxied_in_env({'HTTP_PROXY': self.proxy_url,
+                                 'NO_PROXY': self.no_proxy_host})
+
+    def test_all_proxy_with_no_proxy(self):
+        self.not_proxied_in_env({'all_proxy': self.proxy_url,
+                                 'no_proxy': self.no_proxy_host})
+
+    def test_ALL_PROXY_with_NO_PROXY(self):
+        self.not_proxied_in_env({'ALL_PROXY': self.proxy_url,
+                                 'NO_PROXY': self.no_proxy_host})
 
 
 class TestProxyHttpServer_urllib(TestProxyHttpServer,
@@ -691,15 +731,17 @@ class TestProxyHttpServer_pycurl(TestWithTransport_pycurl,
                                  TestCaseWithTwoWebservers):
     """Tests proxy server for pycurl implementation"""
 
-    def test_http_no_proxy(self):
-        server = self.get_readonly_server()
-        url = server.get_url()
-        # Oh my ! pycurl do not check the port part :-( So we
-        # just test the host part
-        os.environ['no_proxy'] = 'localhost'
-        t = self._transport(url)
-        try:
-            self.assertEqual(t.get('foo').read(),
-                             'contents of foo\n')
-        finally:
-            del os.environ['no_proxy']
+    def setUp(self):
+        TestProxyHttpServer.setUp(self)
+        # Oh my ! pycurl does not check for the port as part of
+        # no_proxy :-( So we just test the host part
+        self.no_proxy_host = 'localhost'
+
+    def test_HTTP_PROXY(self):
+        # pycurl do not check HTTP_PROXY for security reasons
+        # (for use in a CGI context that we do not care
+        # about. Should we ?)
+        raise TestSkipped()
+
+    def test_HTTP_PROXY_with_NO_PROXY(self):
+        raise TestSkipped()

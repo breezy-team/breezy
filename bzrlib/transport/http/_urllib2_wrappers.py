@@ -638,8 +638,8 @@ class ProxyHandler(urllib2.ProxyHandler):
             delattr(self, '%s_open' % type)
 
         # We are interested only by the http[s] proxies
-        http_proxy = self.get_proxy('http')
-        https_proxy = self.get_proxy('https')
+        http_proxy = self.get_proxy_env_var('http')
+        https_proxy = self.get_proxy_env_var('https')
 
         if http_proxy is not None:
             if self._debuglevel > 0:
@@ -653,16 +653,27 @@ class ProxyHandler(urllib2.ProxyHandler):
             setattr(self, 'https_request',
                     lambda request: self.set_proxy(request, 'https'))
 
-    def get_proxy(self, name, default=None):
-        """Get a proxy env var. Returns default if not defined."""
+    def get_proxy_env_var(self, name, default_to='all'):
+        """Get a proxy env var.
+
+        Note that we indirectly relies on
+        urllib.getproxies_environment taking into account the
+        uppercased values for proxy variables.
+        """
         try:
             return self.proxies[name.lower()]
         except KeyError:
-            return default
+            if default_to is not None:
+                # Try to get the alternate environment variable
+                try:
+                    return self.proxies[default_to]
+                except KeyError:
+                    pass
+        return None
 
     def proxy_bypass(self, host):
         """Check if host should be proxied or not"""
-        no_proxy = self.get_proxy('no')
+        no_proxy = self.get_proxy_env_var('no', None)
         if no_proxy is None:
             return False
         hhost, hport = urllib.splitport(host)
@@ -687,7 +698,7 @@ class ProxyHandler(urllib2.ProxyHandler):
         if self.proxy_bypass(request.get_host()):
             return request
 
-        proxy = self.get_proxy(type)
+        proxy = self.get_proxy_env_var(type)
         if self._debuglevel > 0:
             print 'set_proxy %s_request for %r' % (type, proxy)
         orig_type = request.get_type()

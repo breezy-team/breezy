@@ -792,6 +792,20 @@ class TestCase(unittest.TestCase):
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
+            # Proxies
+            'http_proxy': None,
+            'HTTP_PROXY': None,
+            'https_proxy': None,
+            'HTTPS_PROXY': None,
+            'no_proxy': None,
+            'NO_PROXY': None,
+            'all_proxy': None,
+            'ALL_PROXY': None,
+            # Nobody cares about these ones AFAIK. So far at
+            # least. If you do (care), please update this comment
+            # -- vila 20061212
+            'ftp_proxy': None,
+            'FTP_PROXY': None,
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)

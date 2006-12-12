@@ -195,12 +195,6 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
         if self.__secondary_server is None:
             self.__secondary_server = self.create_transport_secondary_server()
             self.__secondary_server.setUp()
-            # Note that addCleanup ensures that last added
-            # callables are called first. That will ensures that
-            # our cleanup is called before the other http server
-            # cleanup if we are created last and our cleanup is
-            # called after the other http server cleanup if we
-            # are created first.
             self.addCleanup(self.__secondary_server.tearDown)
         return self.__secondary_server
 

@@ -270,8 +270,6 @@ class HttpServer(Server):
         else:
             remote_path = '/'.join(path_parts)
 
-        self._http_starting.acquire()
-        self._http_starting.release()
         return self._http_base_url + remote_path
 
     def log(self, format, *args):
@@ -288,30 +286,16 @@ class HttpServer(Server):
         self._http_base_url = None
         self._http_thread = threading.Thread(target=self._http_start)
         self._http_thread.setDaemon(True)
-        # Ensure we are not influenced by the environment
-        self._http_proxy = os.environ.get("http_proxy")
-        if self._http_proxy is not None:
-            del os.environ["http_proxy"]
-        self._no_proxy = os.environ.get("no_proxy")
-        if self._no_proxy is not None:
-            del os.environ["no_proxy"]
         self._http_thread.start()
+        # Wait for the server thread to start (i.e release the lock)
+        self._http_starting.acquire()
+        self._http_starting.release()
         self.logs = []
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
         self._http_running = False
         self._http_thread.join()
-        if self._http_proxy is None:
-            if os.environ.get("http_proxy") is not None:
-                del os.environ["http_proxy"]
-        else:
-            os.environ["http_proxy"] = self._http_proxy
-        if self._no_proxy is None:
-            if os.environ.get("no_proxy") is not None:
-                del os.environ["no_proxy"]
-        else:
-            os.environ["no_proxy"] = self.no_proxy
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
