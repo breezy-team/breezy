@@ -42,7 +42,7 @@ IN DEVELOPMENT
         A  bar
         D  baz
         ?  wooley
-      
+
   INTERNALS:
 
     * Change Revision serialization to only write out millisecond
@@ -53,6 +53,10 @@ IN DEVELOPMENT
 
     * bzr now supports Win32 UNC path (e.g. \\HOST\path). 
       (Alexander Belchenko, #57869)
+
+    * Replace broken fnmatch based ignore pattern matching with custom pattern
+      matcher.
+      (Kent Gibson, Jan Hudec #57637)
 
 
 bzr 0.13  2006-12-05
