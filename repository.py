@@ -18,13 +18,14 @@ import bzrlib
 from bzrlib.branch import BranchCheckResult
 from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile, 
-                           NoSuchRevision, NotBranchError)
+                           NoSuchRevision, NotBranchError, 
+                           UninitializableFormat)
 from bzrlib.graph import Graph
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar
-from bzrlib.repository import Repository
+from bzrlib.repository import Repository, RepositoryFormat
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
 from bzrlib.trace import mutter
@@ -164,6 +165,20 @@ See http://bazaar-vcs.org/BzrSvn for details.
     return cache_dir
 
 
+class SvnRepositoryFormat(RepositoryFormat):
+    rich_root_data = False
+
+    def __init__(self):
+        super(SvnRepositoryFormat, self).__init__()
+
+    def get_format_description(self):
+        return "Subversion Repository"
+
+    def initialize(self, url, shared=False, _internal=False):
+        """Svn repositories cannot be created."""
+        raise UninitializableFormat(self)
+
+
 class SvnRepository(Repository):
     """
     Provides a simplified interface to a Subversion repository 
@@ -176,7 +191,7 @@ class SvnRepository(Repository):
         assert isinstance(transport, Transport)
 
         control_files = LockableFiles(transport, '', TransportLock)
-        Repository.__init__(self, 'Subversion Smart Server', bzrdir, 
+        Repository.__init__(self, SvnRepositoryFormat(), bzrdir, 
             control_files, None, None, None)
 
         self.transport = transport
