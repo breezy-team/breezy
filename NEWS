@@ -40,6 +40,10 @@ IN DEVELOPMENT
       
   INTERNALS:
 
+    * Change Revision serialization to only write out millisecond
+      resolution. Rather than expecting floating point serialization to
+      preserve more resolution than we need. (Henri Weichers, Martin Pool)
+
   BUG FIXES:
 
     * bzr now supports Win32 UNC path (e.g. \\HOST\path). 
