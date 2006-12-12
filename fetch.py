@@ -32,7 +32,7 @@ from svn.core import SubversionException, Pool
 import svn.core, svn.ra
 
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
-                SVN_PROP_BZR_REVPROP_PREFIX)
+                SVN_PROP_BZR_REVPROP_PREFIX, SvnRepositoryFormat)
 from transport import SvnRaTransport
 from tree import apply_txdelta_handler
 
@@ -256,8 +256,8 @@ class RevisionBuildEditor(svn.delta.Editor):
 class InterSvnRepository(InterRepository):
     """Svn to any repository actions."""
 
-    _matching_repo_format = None 
-    """The format to test with - as yet there is no SvnRepoFormat."""
+    _matching_repo_format = SvnRepositoryFormat
+    """The format to test with."""
 
     @needs_write_lock
     def copy_content(self, revision_id=None, basis=None, pb=ProgressBar()):
