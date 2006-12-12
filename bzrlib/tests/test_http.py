@@ -634,7 +634,7 @@ class TestProxyHttpServer(object):
     cannot run, its implementation being incomplete.
 
     Be aware that we do not setup a real proxy here. Instead, we
-    check that the *conention* goes through the proxy by serving
+    check that the *connection* goes through the proxy by serving
     different content (the faked proxy server append '-proxied'
     to the file names).
     """

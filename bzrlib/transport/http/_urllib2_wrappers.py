@@ -619,7 +619,7 @@ class ProxyHandler(urllib2.ProxyHandler):
     too late.
 
     Note that the proxy handling *may* modify the protocol used,
-    the request may be against an https werver proxied thru an
+    the request may be against an https werver proxied through an
     http proxy. So, https_request will be called, but later it's
     really http_open that will be called. This explain why we
     don't have to call self.parent.open as the urllib2 did.
