@@ -1711,7 +1711,7 @@ def test_suite():
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
-                   'bzrlib.tests.test_command',
+                   'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
