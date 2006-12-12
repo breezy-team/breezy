@@ -16,7 +16,7 @@
 
 import bzrlib
 from bzrlib.decorators import needs_write_lock
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar
 from bzrlib.revision import Revision
@@ -84,12 +84,16 @@ class RevisionBuildEditor(svn.delta.Editor):
         return rev
 
     def open_root(self, base_revnum, baton):
+        file_id, revision_id = self.id_map[""]
         if self.inventory.revision_id is None:
-            self.dir_baserev[ROOT_ID] = []
+            self.dir_baserev[file_id] = []
         else:
-            self.dir_baserev[ROOT_ID] = [self.inventory.revision_id]
-        self.inventory.revision_id = self.revid
-        return ROOT_ID
+            self.dir_baserev[file_id] = [self.inventory.revision_id]
+        self.inventory.revision_id = revision_id
+        ie = self.inventory.add_path("", 'directory', file_id)
+        if ie is not None:
+            ie.revision = revision_id
+        return file_id
 
     def relpath(self, path):
         return path.strip("/")
@@ -100,7 +104,7 @@ class RevisionBuildEditor(svn.delta.Editor):
     def close_directory(self, id):
         revid = self.revid
 
-        if id != ROOT_ID:
+        if id != self.id_map[""][0]:
             self.inventory[id].revision = revid
 
             file_weave = self.weave_store.get_weave_or_empty(id, self.transact)
@@ -120,8 +124,7 @@ class RevisionBuildEditor(svn.delta.Editor):
 
         self.dir_baserev[file_id] = []
         ie = self.inventory.add_path(path, 'directory', file_id)
-        if ie:
-            ie.revision = revision_id
+        ie.revision = revision_id
 
         return file_id
 
@@ -130,7 +133,7 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def change_dir_prop(self, id, name, value, pool):
         if name == SVN_PROP_BZR_MERGE:
-            if id != ROOT_ID:
+            if id != self.id_map[""][0]:
                 mutter('rogue %r on non-root directory' % SVN_PROP_BZR_MERGE)
                 return
             
@@ -309,9 +312,9 @@ class InterSvnRepository(InterRepository):
                 parent_branch = None
 
             if parent_revid is None:
-                parent_id_map = {"": (ROOT_ID, None)}
+                parent_id_map = self.source.get_fileid_map(0, "")
                 id_map = self.source.get_fileid_map(revnum, branch)
-                parent_inv = Inventory(ROOT_ID)
+                parent_inv = Inventory(parent_id_map[""][0])
             elif prev_revid != parent_revid:
                 parent_id_map = self.source.get_fileid_map(parent_revnum, parent_branch)
                 id_map = self.source.get_fileid_map(revnum, branch)

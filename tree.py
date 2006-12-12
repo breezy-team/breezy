@@ -17,8 +17,7 @@
 from binascii import hexlify
 from bzrlib.bzrdir import BzrDirFormat
 from bzrlib.errors import NotBranchError, NoSuchFile
-from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile,
-                              ROOT_ID)
+from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile)
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
 import bzrlib.osutils as osutils
@@ -56,13 +55,13 @@ class SvnRevisionTree(RevisionTree):
         self._repository = repository
         self._revision_id = revision_id
         if revision_id == NULL_REVISION:
-            self._inventory = Inventory(ROOT_ID)
+            self._inventory = Inventory(root_id=None)
             self._inventory.revision_id = NULL_REVISION
         else:
             (self.branch_path, self.revnum) = repository.parse_revision_id(revision_id)
-            self._inventory = Inventory(ROOT_ID)
-            self._inventory.revision_id = revision_id
             self.id_map = repository.get_fileid_map(self.revnum, self.branch_path)
+            self._inventory = Inventory(root_id=self.id_map[""][0])
+            self._inventory.revision_id = revision_id
             self.editor = TreeBuildEditor(self)
             self.file_data = {}
 
@@ -94,7 +93,7 @@ class TreeBuildEditor(svn.delta.Editor):
         self.revnum = revnum
 
     def open_root(self, revnum, baton):
-        return ROOT_ID
+        return self.tree.id_map[""][0]
 
     def relpath(self, path):
         bp, rp = self.tree._repository.scheme.unprefix(path)
@@ -118,7 +117,7 @@ class TreeBuildEditor(svn.delta.Editor):
         elif name == svn.core.SVN_PROP_IGNORE:
             self.dir_ignores[id] = value
         elif name == SVN_PROP_BZR_MERGE or name == SVN_PROP_SVK_MERGE:
-            if id != ROOT_ID:
+            if id != self.tree.id_map[""][0]:
                 mutter('%r set on non-root dir!' % SVN_PROP_BZR_MERGE)
                 return
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,

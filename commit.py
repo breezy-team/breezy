@@ -19,7 +19,7 @@ from svn.core import Pool, SubversionException
 
 from bzrlib.errors import (UnsupportedOperation, BzrError, InvalidRevisionId, 
                            DivergedBranches)
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.repository import CommitBuilder
 from bzrlib.trace import mutter, warning
@@ -86,10 +86,7 @@ class SvnCommitBuilder(CommitBuilder):
         assert (self.branch.last_revision() is None or 
                 self.branch.last_revision() in parents)
 
-        if self.branch.last_revision() is None:
-            self.old_inv = Inventory(ROOT_ID)
-        else:
-            self.old_inv = self.repository.get_inventory(
+        self.old_inv = self.repository.get_inventory(
                                self.branch.last_revision())
 
         self.modified_files = {}
@@ -351,7 +348,7 @@ def push_as_merged(target, source, revision_id):
             continue
 
         id = ie.file_id
-        while id != ROOT_ID:
+        while id != inv.root.file_id:
             if inv[id].revision is None:
                 break
             inv[id].revision = None

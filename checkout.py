@@ -17,8 +17,7 @@
 from binascii import hexlify
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import NotBranchError, NoSuchFile, InvalidRevisionId
-from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile,
-                              ROOT_ID)
+from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile)
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import rand_bytes, fingerprint_file
@@ -171,7 +170,7 @@ class SvnWorkingTree(WorkingTree):
             svn.wc.adm_close(to_wc)
 
     def read_working_inventory(self):
-        inv = Inventory(ROOT_ID)
+        inv = Inventory()
 
         def add_file_to_inv(relpath, id, revid, parent_id):
             """Add a file to the inventory."""
@@ -238,13 +237,7 @@ class SvnWorkingTree(WorkingTree):
             self.base_revnum = max(self.base_revnum, entry.revision)
 
             # First handle directory itself
-            if relpath == "":
-                inv.add_path("", 'directory', ROOT_ID)
-                inv.revision_id = revid
-            else:
-                inventry = InventoryDirectory(id, os.path.basename(relpath), parent_id)
-                inventry.revision = revid
-                inv.add(inventry)
+            inv.add_path(relpath, 'directory', id, parent_id).revision = revid
 
             for name in entries:
                 if name == "":

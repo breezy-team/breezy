@@ -20,7 +20,7 @@ from bzrlib.config import config_dir, ensure_config_dir_exists
 from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile, 
                            NoSuchRevision, NotBranchError)
 from bzrlib.graph import Graph
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar
@@ -326,7 +326,7 @@ class SvnRepository(Repository):
             revision_id = NULL_REVISION
 
         if revision_id == NULL_REVISION:
-            inventory = Inventory(ROOT_ID)
+            inventory = Inventory(root_id=None)
 
         return SvnRevisionTree(self, revision_id, inventory)
 
@@ -651,9 +651,6 @@ class SvnRepositoryRenaming(SvnRepository):
         mutter('creating file id for %r:%d' % (path, revnum))
 
         (path_branch, filename) = self.scheme.unprefix(path)
-
-        if filename == "":
-            return (ROOT_ID, self.generate_revision_id(revnum, path_branch))
 
         introduced_revision_id = None
         last_changed_revid = None

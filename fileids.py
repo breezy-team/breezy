@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.errors import RevisionNotPresent
-from bzrlib.inventory import ROOT_ID
 from bzrlib.progress import ProgressBar
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
@@ -36,8 +35,8 @@ def generate_svn_file_id(uuid, revnum, branch, path):
     :param branch: Branch path of the branch in which the file was introduced.
     :param path: Original path of the file.
     """
-    if path == "":
-        return ROOT_ID
+    if revnum == 0:
+        return None
     introduced_revision_id = generate_svn_revision_id(uuid, revnum, branch)
     return "%s-%s" % (introduced_revision_id, escape_svn_path(path))
 
@@ -104,7 +103,9 @@ class FileIdMap(object):
         # First, find the last cached map
         todo = []
         next_parent_revs = []
-        map = {"": (ROOT_ID, None)} # No history -> empty map
+        # No history -> empty map
+        map = {"": (generate_svn_file_id(uuid, revnum, branch, ""),
+                    generate_svn_revision_id(uuid, revnum, branch))}
         for (bp, paths, rev) in self._log.follow_history(branch, revnum):
             revid = generate_svn_revision_id(uuid, rev, bp)
             try:
@@ -150,8 +151,6 @@ class FileIdMap(object):
 class SimpleFileIdMap(FileIdMap):
     @staticmethod
     def _apply_changes(map, revid, changes, find_children=None):
-        map[""] = (ROOT_ID, revid)
-
         sorted_paths = changes.keys()
         sorted_paths.sort()
         for p in sorted_paths:
@@ -176,8 +175,6 @@ class SimpleFileIdMap(FileIdMap):
                             map[c.replace(data[1], p, 1)] = generate_file_id(revid, c), revid
 
             elif data[0] == 'M':
-                if p == "":
-                    map[p] = (ROOT_ID, "")
                 assert map.has_key(p), "Map has no item %s to modify" % p
                 map[p] = map[p][0], revid
             
