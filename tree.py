@@ -54,28 +54,24 @@ class SvnRevisionTree(RevisionTree):
      def __init__(self, repository, revision_id, inventory=None):
         self._repository = repository
         self._revision_id = revision_id
-        if revision_id == NULL_REVISION:
-            self._inventory = Inventory(root_id=None)
-            self._inventory.revision_id = NULL_REVISION
-        else:
-            (self.branch_path, self.revnum) = repository.parse_revision_id(revision_id)
-            self.id_map = repository.get_fileid_map(self.revnum, self.branch_path)
-            self._inventory = Inventory(root_id=self.id_map[""][0])
-            self._inventory.revision_id = revision_id
-            self.editor = TreeBuildEditor(self)
-            self.file_data = {}
+        (self.branch_path, self.revnum) = repository.parse_revision_id(revision_id)
+        self.id_map = repository.get_fileid_map(self.revnum, self.branch_path)
+        self._inventory = Inventory(root_id=self.id_map[""][0])
+        self._inventory.revision_id = revision_id
+        self.editor = TreeBuildEditor(self)
+        self.file_data = {}
 
-            editor, baton = svn.delta.make_editor(self.editor)
+        editor, baton = svn.delta.make_editor(self.editor)
 
-            root_repos = repository.transport.get_repos_root()
-            mutter('svn checkout -r %r %r' % (self.revnum, self.branch_path))
-            reporter, reporter_baton = repository.transport.do_switch(
-                    self.revnum, "", True, 
-                    os.path.join(root_repos, self.branch_path), editor, baton)
+        root_repos = repository.transport.get_repos_root()
+        mutter('svn checkout -r %r %r' % (self.revnum, self.branch_path))
+        reporter, reporter_baton = repository.transport.do_switch(
+                self.revnum, "", True, 
+                os.path.join(root_repos, self.branch_path), editor, baton)
 
-            svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", 0, True, None)
+        svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", 0, True, None)
 
-            svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton)
+        svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton)
 
      def get_file_lines(self, file_id):
         return osutils.split_lines(self.file_data[file_id])

@@ -17,7 +17,7 @@
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchRevision, NoSuchFile
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.inventory import Inventory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -183,7 +183,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_add("dc/test")
         tree = WorkingTree.open("dc")
         inv = tree.read_working_inventory()
-        self.assertEqual(ROOT_ID, inv.path2id(""))
+        self.assertEqual(inv.path2id(""), inv.root.file_id)
         self.assertTrue(inv.path2id("foo") != "")
         self.assertTrue(inv.has_filename("bl"))
         self.assertTrue(inv.has_filename("foo"))

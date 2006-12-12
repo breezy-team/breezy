@@ -26,6 +26,7 @@ from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar
 from bzrlib.repository import Repository, RepositoryFormat
+from bzrlib.revisiontree import RevisionTree
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
 from bzrlib.trace import mutter
@@ -264,6 +265,9 @@ class SvnRepository(Repository):
 
         path = path.strip("/")
 
+        if revnum == 0:
+            return ("ROOT-%s" % self.uuid, None)
+
         (bp, rp) = self.scheme.unprefix(path)
 
         revid = self.generate_revision_id(revnum, bp)
@@ -341,7 +345,9 @@ class SvnRepository(Repository):
             revision_id = NULL_REVISION
 
         if revision_id == NULL_REVISION:
-            inventory = Inventory(root_id=None)
+            inventory = Inventory(root_id=self.path_to_file_id(0, ""))
+            inventory.revision_id = revision_id
+            return RevisionTree(self, inventory, revision_id)
 
         return SvnRevisionTree(self, revision_id, inventory)
 

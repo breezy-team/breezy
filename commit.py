@@ -87,7 +87,8 @@ class SvnCommitBuilder(CommitBuilder):
                 self.branch.last_revision() in parents)
 
         if self.branch.last_revision() is None:
-            self.old_inv = Inventory()
+            # FIXME: revnum might be different... where to get it, though?
+            self.old_inv = Inventory(repository.path_to_file_id(0, branch.branch_path))
         else:
             self.old_inv = self.repository.get_inventory(
                                self.branch.last_revision())
@@ -123,8 +124,11 @@ class SvnCommitBuilder(CommitBuilder):
 
         svn.delta.svn_txdelta_send_string(contents, txdelta, txbaton, self.pool)
 
-    def _dir_process(self, path, file_id, baton):
-        mutter('processing %r' % path)
+    def _dir_process(self, file_id, baton):
+        path = self.new_inventory.id2path(file_id)
+        mutter('processing %r (%r)' % (path, file_id))
+        mutter('old inventory: %r' % self.old_inv.entries())
+        mutter('new inventory: %r' % self.new_inventory.entries())
         if path == "":
             # Set all the revprops
             for prop, value in self._svnprops.items():
@@ -262,8 +266,7 @@ class SvnCommitBuilder(CommitBuilder):
 
             # Handle this directory
             if child_ie.file_id in self.modified_dirs:
-                self._dir_process(self.new_inventory.id2path(child_ie.file_id), 
-                        child_ie.file_id, child_baton)
+                self._dir_process( child_ie.file_id, child_baton)
 
             svn.delta.editor_invoke_close_directory(self.editor, child_baton, 
                                              self.pool)
@@ -307,7 +310,7 @@ class SvnCommitBuilder(CommitBuilder):
         branch_batons = self.open_branch_batons(root,
                                 self.branch.branch_path.split("/"))
 
-        self._dir_process("", self.new_inventory.root.file_id, branch_batons[-1])
+        self._dir_process(self.new_inventory.root.file_id, branch_batons[-1])
 
         branch_batons.reverse()
         for baton in branch_batons:
@@ -351,7 +354,7 @@ def push_as_merged(target, source, revision_id):
             continue
 
         id = ie.file_id
-        while id != inv.root.file_id:
+        while inv[id].parent_id is not None:
             if inv[id].revision is None:
                 break
             inv[id].revision = None

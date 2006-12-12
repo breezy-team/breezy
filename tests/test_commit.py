@@ -142,6 +142,8 @@ class TestCommitFromBazaar(TestCaseWithSubversionRepository):
         wt.commit(message="data")
         wt.add('foo')
         wt.add('foo/bla')
+        self.assertTrue(wt.inventory.has_filename("bla"))
+        self.assertTrue(wt.inventory.has_filename("foo/bla"))
         wt.set_pending_merges(["some-ghost-revision"])
         wt.commit(message="data")
         self.assertEqual([
