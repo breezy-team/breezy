@@ -46,6 +46,7 @@ class RevisionBuildEditor(svn.delta.Editor):
     def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, svn_revprops, id_map, parent_branch, parent_id_map):
         self.branch_path = branch_path
         self.inventory = copy(prev_inventory)
+        assert self.inventory.root is None or revnum > 0
         self.revid = revid
         self.revnum = revnum
         self.id_map = id_map
@@ -85,12 +86,13 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def open_root(self, base_revnum, baton):
         file_id, revision_id = self.id_map[""]
-        if self.inventory.revision_id is None:
+        if self.inventory.root is None:
             self.dir_baserev[file_id] = []
+            ie = self.inventory.add_path("", 'directory', file_id)
         else:
             self.dir_baserev[file_id] = [self.inventory.revision_id]
-        self.inventory.revision_id = revision_id
-        ie = self.inventory.add_path("", 'directory', file_id)
+            ie = self.inventory[file_id]
+
         if ie is not None:
             ie.revision = revision_id
         return file_id
@@ -325,7 +327,6 @@ class InterSvnRepository(InterRepository):
                                         revnum, branch, 
                                         changes, id_map)
                 parent_inv = prev_inv
-
 
             editor = RevisionBuildEditor(self.source, self.target, branch, 
                                          revnum, parent_inv, revid, 

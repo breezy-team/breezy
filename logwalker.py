@@ -29,11 +29,12 @@ from bsddb import dbshelve as shelve
 shelves = {}
 
 class NotSvnBranchPath(BzrError):
-    _fmt = """{%(branch_path)s} is not a valid Svn branch path"""
+    _fmt = """{%(branch_path)s}:%(revnum)s is not a valid Svn branch path"""
 
-    def __init__(self, branch_path):
+    def __init__(self, branch_path, revnum=None):
         BzrError.__init__(self)
         self.branch_path = branch_path
+        self.revnum = revnum
 
 
 class LogWalker(object):
@@ -107,7 +108,7 @@ class LogWalker(object):
         assert revnum >= 0
 
         if not branch_path is None and not self.scheme.is_branch(branch_path):
-            raise NotSvnBranchPath(branch_path)
+            raise NotSvnBranchPath(branch_path, revnum)
 
         if branch_path:
             branch_path = branch_path.strip("/")

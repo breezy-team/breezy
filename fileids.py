@@ -106,6 +106,8 @@ class FileIdMap(object):
         # No history -> empty map
         map = {"": (generate_svn_file_id(uuid, revnum, branch, ""),
                     generate_svn_revision_id(uuid, revnum, branch))}
+        if branch == "" and revnum == 0:
+            return map
         for (bp, paths, rev) in self._log.follow_history(branch, revnum):
             revid = generate_svn_revision_id(uuid, rev, bp)
             try:
