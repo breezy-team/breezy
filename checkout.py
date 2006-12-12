@@ -53,7 +53,7 @@ class SvnWorkingTree(WorkingTree):
         self.client_ctx.log_msg_func2 = svn.client.svn_swig_py_get_commit_log_func
         self.client_ctx.log_msg_baton2 = self.log_message_func
 
-        self._set_inventory(self.read_working_inventory())
+        self._set_inventory(self.read_working_inventory(), dirty=False)
         mutter('working inv: %r' % self.read_working_inventory().entries())
 
         self.base_revid = branch.repository.generate_revision_id(

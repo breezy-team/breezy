@@ -29,7 +29,7 @@ import md5
 import os
 
 from svn.core import SubversionException, Pool
-import svn.core
+import svn.core, svn.ra
 
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
                 SVN_PROP_BZR_REVPROP_PREFIX)
@@ -273,7 +273,7 @@ class InterSvnRepository(InterRepository):
         else:
             (path, until_revnum) = self.source.parse_revision_id(revision_id)
 
-        repos_root = svn.ra.get_repos_root(self.source.ra)
+        repos_root = self.source.transport.get_repos_root()
         
         needed = []
         parents = {}
@@ -331,31 +331,22 @@ class InterSvnRepository(InterRepository):
 
             edit, edit_baton = svn.delta.make_editor(editor)
 
-            if hasattr(svn.ra, 'reparent'):
-                if parent_branch is None:
-                    svn.ra.reparent(self.source.ra, repos_root)
-                else:
-                    svn.ra.reparent(self.source.ra, "%s/%s" % (repos_root, parent_branch))
-
-                ra = self.source.ra
+            if parent_branch is None:
+                self.source.transport.reparent(repos_root)
             else:
-                if parent_branch is None:
-                    ra = self.source.ra
-                else:
-                    ra = SvnRaTransport("%s/%s" % (repos_root, parent_branch)).ra
-
+                self.source.transport.reparent("%s/%s" % (repos_root, parent_branch))
             pool = Pool()
             if parent_branch != branch:
                 mutter('svn switch %r:%r -> %r:%r' % 
                                (parent_branch, parent_revnum, branch, revnum))
-                reporter, reporter_baton = svn.ra.do_switch(ra, 
+                reporter, reporter_baton = self.source.transport.do_switch(
                            revnum, "", True, 
                            "%s/%s" % (repos_root, branch),
                            edit, edit_baton, pool)
             else:
                 mutter('svn update -r %r:%r %r' % 
                                (parent_revnum, revnum, branch))
-                reporter, reporter_baton = svn.ra.do_update(ra, 
+                reporter, reporter_baton = self.source.transport.do_update(
                            revnum, "", True, 
                            edit, edit_baton, pool)
 
@@ -365,8 +356,7 @@ class InterSvnRepository(InterRepository):
 
             svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton)
 
-            if hasattr(svn.ra, 'reparent'):
-                svn.ra.reparent(self.source.ra, repos_root)
+            self.source.transport.reparent(repos_root)
 
             prev_inv = editor.inventory
             prev_revid = revid

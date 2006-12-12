@@ -25,13 +25,13 @@ import bzrlib.osutils as osutils
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
-from bzrlib.tree import RevisionTree
+from bzrlib.revisiontree import RevisionTree
 
 import os
 import md5
 from cStringIO import StringIO
 
-import svn.core, svn.wc, svn.delta
+import svn.core, svn.wc, svn.delta, svn.ra
 from svn.core import SubversionException, Pool
 
 _global_pool = Pool()
@@ -68,9 +68,11 @@ class SvnRevisionTree(RevisionTree):
 
             editor, baton = svn.delta.make_editor(self.editor)
 
-            root_repos = svn.ra.get_repos_root(repository.ra)
+            root_repos = repository.transport.get_repos_root()
             mutter('svn checkout -r %r %r' % (self.revnum, self.branch_path))
-            reporter, reporter_baton = svn.ra.do_switch(repository.ra, self.revnum, "", True, os.path.join(root_repos, self.branch_path), editor, baton)
+            reporter, reporter_baton = repository.transport.do_switch(
+                    self.revnum, "", True, 
+                    os.path.join(root_repos, self.branch_path), editor, baton)
 
             svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", 0, True, None)
 

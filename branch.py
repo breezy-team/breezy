@@ -27,7 +27,7 @@ from bzrlib.workingtree import WorkingTree
 
 import os
 
-import svn.core, svn.ra
+import svn.core
 from svn.core import SubversionException
 
 from commit import push_as_merged

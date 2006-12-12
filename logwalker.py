@@ -14,39 +14,44 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import NoSuchRevision, BzrNewError, NotBranchError
+from bzrlib.errors import NoSuchRevision, BzrError, NotBranchError
 from bzrlib.progress import ProgressBar, DummyProgress
 from bzrlib.trace import mutter
 
 import os
-from bsddb import dbshelve as shelve
 
 from svn.core import SubversionException
-import svn.ra
 from transport import SvnRaTransport
+import svn.core
 
-class NotSvnBranchPath(BzrNewError):
-    """{%(branch_path)s} is not a valid Svn branch path"""
+from bsddb import dbshelve as shelve
+
+shelves = {}
+
+class NotSvnBranchPath(BzrError):
+    _fmt = """{%(branch_path)s} is not a valid Svn branch path"""
 
     def __init__(self, branch_path):
-        BzrNewError.__init__(self)
+        BzrError.__init__(self)
         self.branch_path = branch_path
 
 
 class LogWalker(object):
-    def __init__(self, scheme, ra=None, cache_dir=None, last_revnum=None, repos_url=None, pb=None):
-        if ra is None:
-            ra = SvnRaTransport(repos_url).ra
+    def __init__(self, scheme, transport=None, cache_dir=None, last_revnum=None, repos_url=None, pb=None):
+        if transport is None:
+            transport = SvnRaTransport(repos_url)
 
         if last_revnum is None:
-            last_revnum = svn.ra.get_latest_revnum(ra)
+            last_revnum = transport.get_latest_revnum()
 
-        self.ra = ra
+        self.transport = transport
         self.scheme = scheme
 
-        # Try to load cache from file
-        if cache_dir is not None:
-            self.revisions = shelve.open(os.path.join(cache_dir, 'log'))
+        if not cache_dir is None:
+            cache_file = os.path.join(cache_dir, 'log-v2')
+            if not shelves.has_key(cache_file):
+                shelves[cache_file] = shelve.open(cache_file)
+            self.revisions = shelves[cache_file]
         else:
             self.revisions = {}
         self.saved_revnum = max(len(self.revisions)-1, 0)
@@ -85,7 +90,7 @@ class LogWalker(object):
         try:
             try:
                 mutter('getting log %r:%r' % (self.saved_revnum, to_revnum))
-                svn.ra.get_log(self.ra, ["/"], self.saved_revnum, to_revnum, 
+                self.transport.get_log(["/"], self.saved_revnum, to_revnum, 
                                0, True, True, rcvr)
                 self.last_revnum = to_revnum
             finally:
@@ -202,8 +207,8 @@ class LogWalker(object):
         mutter("svn ls -r %d '%r'" % (revnum, path))
 
         try:
-            (dirents, _, _) = svn.ra.get_dir(
-                self.ra, path.encode('utf8'), revnum)
+            (dirents, _, _) = self.transport.get_dir(
+                path.encode('utf8'), revnum)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
                 return

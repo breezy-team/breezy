@@ -22,7 +22,7 @@ from bzrlib.workingtree import WorkingTree
 import os
 
 from tests import TestCaseWithSubversionRepository
-from bzrlib.plugins.svn.dumpfile import SvnDumpFile
+from dumpfile import SvnDumpFile
 from repository import MAPPING_VERSION
 
 class TestDumpFile(TestCaseWithSubversionRepository):
@@ -44,7 +44,6 @@ V 27
 PROPS-END
 """)
         dir = BzrDir.open(filename)
-        self.assertIsInstance(dir, SvnDumpFile)
         self.assertEqual("file://%s" % filename, 
                 dir.root_transport.base.rstrip("/"))
 

@@ -34,6 +34,18 @@ svn.ra.initialize()
 svn_config = svn.core.svn_config_get_config(None)
 
 
+def need_lock(unbound):
+    def locked(self, *args, **kwargs):
+        self.lock()
+        try:
+            return unbound(self, *args, **kwargs)
+        finally:
+            self.unlock()
+    locked.__doc__ = unbound.__doc__
+    locked.__name__ = unbound.__name__
+    return locked
+
+
 def _create_auth_baton(pool):
     """Create a Subversion authentication baton. """
     import svn.client
@@ -94,31 +106,34 @@ class SvnRaTransport(Transport):
     
     This implements just as much of Transport as is necessary 
     to fool Bazaar-NG. """
-    def __init__(self, url="", ra=None):
+    def __init__(self, url=""):
         self.pool = Pool()
+        self.is_locked = False
         bzr_url = url
         self.svn_url = bzr_to_svn_url(url)
         Transport.__init__(self, bzr_url)
 
-		# Only Subversion 1.4 has reparent()
-        if ra is None or not hasattr(svn.ra, 'reparent'):
-            self.callbacks = SvnRaCallbacks(self.pool)
-            try:
-                mutter('opening SVN RA connection to %r' % self.svn_url)
-                self.ra = svn.ra.open2(self.svn_url.encode('utf8'), self.callbacks, svn_config, None)
-            except SubversionException, (_, num):
-                if num == svn.core.SVN_ERR_RA_ILLEGAL_URL:
-                    raise NotBranchError(path=url)
-                if num == svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED:
-                    raise NotBranchError(path=url)
-                if num == svn.core.SVN_ERR_BAD_URL:
-                    raise NotBranchError(path=url)
-                raise
+        self.callbacks = SvnRaCallbacks(self.pool)
+        try:
+            mutter('opening SVN RA connection to %r' % self.svn_url)
+            self._ra = svn.ra.open2(self.svn_url.encode('utf8'), 
+                    self.callbacks, svn_config, None)
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_RA_ILLEGAL_URL:
+                raise NotBranchError(path=url)
+            if num == svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED:
+                raise NotBranchError(path=url)
+            if num == svn.core.SVN_ERR_BAD_URL:
+                raise NotBranchError(path=url)
+            raise
 
-        else:
-            self.ra = ra
-            mutter('svn reparent %r' % self.svn_url)
-            svn.ra.reparent(self.ra, self.svn_url.encode('utf8'))
+    def lock(self):
+        assert (not self.is_locked)
+        self.is_locked = True
+
+    def unlock(self):
+        assert self.is_locked
+        self.is_locked = False
 
     def has(self, relpath):
         """See Transport.has()."""
@@ -136,12 +151,62 @@ class SvnRaTransport(Transport):
         """See Transport.stat()."""
         raise TransportNotPossible('stat not supported on Subversion')
 
+    @need_lock
+    def get_uuid(self):
+        return svn.ra.get_uuid(self._ra)
+
+    @need_lock
+    def get_repos_root(self):
+        return svn.ra.get_repos_root(self._ra)
+
+    @need_lock
+    def get_latest_revnum(self):
+        return svn.ra.get_latest_revnum(self._ra)
+
+    @need_lock
+    def do_switch(self, *args, **kwargs):
+        return svn.ra.do_switch(self._ra, *args, **kwargs)
+
+    @need_lock
+    def get_log(self, *args, **kwargs):
+        return svn.ra.get_log(self._ra, *args, **kwargs)
+
+    @need_lock
+    def reparent(self, url):
+        url = url.rstrip("/")
+        if hasattr(svn.ra, 'reparent'):
+            return svn.ra.reparent(self._ra, url)
+        else:
+            self._ra = svn.ra.open2(url.encode('utf8'), 
+                    self.callbacks, svn_config, None)
+
+    @need_lock
+    def get_dir(self, *args, **kwargs):
+        return svn.ra.get_dir(self._ra, *args, **kwargs)
+
+    @need_lock
+    def get_file(self, *args, **kwargs):
+        return svn.ra.get_file(self._ra, *args, **kwargs)
+
+    @need_lock
+    def check_path(self, *args, **kwargs):
+        return svn.ra.check_path(self._ra, *args, **kwargs)
+
+    @need_lock
+    def do_update(self, *args, **kwargs):
+        return svn.ra.do_update(self._ra, *args, **kwargs)
+
+    @need_lock
+    def get_commit_editor(self, *args, **kwargs):
+        return svn.ra.get_commit_editor(self._ra, *args, **kwargs)
+
     def get_root(self):
         """Open a connection to the root of this repository.
         
         :return: A new instance of SvnRaTransport connected to the root.
         """
-        return SvnRaTransport(svn_to_bzr_url(svn.ra.get_repos_root(self.ra)), ra=self.ra)
+        root_url = svn_to_bzr_url(self.get_repos_root())
+        return SvnRaTransport(root_url)
 
     def listable(self):
         """See Transport.listable().
@@ -151,7 +216,8 @@ class SvnRaTransport(Transport):
         return False
 
     # There is no real way to do locking directly on the transport 
-    # nor is there a need to.
+    # nor is there a need to as the remote server will take care of 
+    # locking
     class PhonyLock:
         def unlock(self):
             pass
@@ -169,4 +235,4 @@ class SvnRaTransport(Transport):
         if offset is None:
             return self.__class__(self.base)
 
-        return SvnRaTransport(urlutils.join(self.base, offset), ra=self.ra)
+        return SvnRaTransport(urlutils.join(self.base, offset))
