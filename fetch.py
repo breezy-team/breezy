@@ -190,6 +190,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         base_file_id, base_revid = self.source.path_to_file_id(base_revnum, os.path.join(self.parent_branch, path))
         file_id, revid = self.id_map[path]
         self.is_executable = None
+        mutter('bla; %s and %s' % (base_file_id, file_id))
+        mutter('inventory: %s' % self.inventory.entries())
         self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
         file_weave = self.weave_store.get_weave_or_empty(base_file_id, self.transact)
         self.file_data = file_weave.get_text(base_revid)

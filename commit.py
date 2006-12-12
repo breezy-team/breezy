@@ -86,7 +86,10 @@ class SvnCommitBuilder(CommitBuilder):
         assert (self.branch.last_revision() is None or 
                 self.branch.last_revision() in parents)
 
-        self.old_inv = self.repository.get_inventory(
+        if self.branch.last_revision() is None:
+            self.old_inv = Inventory()
+        else:
+            self.old_inv = self.repository.get_inventory(
                                self.branch.last_revision())
 
         self.modified_files = {}
