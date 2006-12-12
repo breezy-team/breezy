@@ -406,9 +406,10 @@ class SvnRepository(Repository):
             if not name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
                 continue
 
-            bzr_props[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = svn_props[name].decode('utf8')
+            bzr_props[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = svn_props[name]
 
         (rev.committer, rev.message, date, _) = self._log.get_revision_info(revnum)
+        mutter('msg: %r' % rev.message)
 
         if rev.committer is None:
             rev.committer = ""
