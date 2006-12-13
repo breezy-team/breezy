@@ -88,12 +88,21 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
     _tail_regexp = re.compile(r'^-(?P<tail>\d+)$')
 
     def parse_ranges(self, ranges_header):
-        """Parse the range header value and returns ranges and tail"""
+        """Parse the range header value and returns ranges and tail.
+
+        RFC2616 14.35 says that syntactically invalid range
+        specifiers MUST be ignored. In that case, we return 0 for
+        tail and [] for ranges.
+        """
         tail = 0
         ranges = []
-        assert ranges_header.startswith('bytes=')
+        if not ranges_header.startswith('bytes='):
+            # Syntactically invalid header
+            return 0, []
+
         ranges_header = ranges_header[len('bytes='):]
         for range_str in ranges_header.split(','):
+            # FIXME: RFC2616 says end is optional and default to file_size
             range_match = self._range_regexp.match(range_str)
             if range_match is not None:
                 ranges.append((int(range_match.group('start')),
@@ -102,6 +111,9 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
                 tail_match = self._tail_regexp.match(range_str)
                 if tail_match is not None:
                     tail = int(tail_match.group('tail'))
+                else:
+                    # Syntactically invalid range
+                    return 0, []
         return tail, ranges
 
     def send_range_content(self, file, start, length):
@@ -167,23 +179,32 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         if tail != 0:
             ranges.append((file_size - tail, file_size))
 
-        ranges_valid = True
+        satisfiable_ranges = True
         if len(ranges) == 0:
-            ranges_valid = False
+            satisfiable_ranges = False
         else:
-            for (start, end) in ranges:
-                if start >= file_size or end >= file_size:
-                    ranges_valid = False
-                    break
-        if not ranges_valid:
-            # RFC2616 14.35 says that invalid Range headers must
-            # be ignored. If they are, the whole file should be
-            # returned as though no Range header was present. If
-            # they aren't, the server should return a 416 error.
-            # FIXME: per 14.35, ranges are only invalid if start > end.
-            # end values should be truncated to file_size -1 if they exceed it.
-            # only start values >= file_size should produce a 416.
+            def check_range(range_specifier):
+                start, end = range_specifier
+                # RFC2616 14.35, ranges are invalid if start > end
+                # or start > file_size
+                if start > end or start > file_size:
+                    satisfiable_ranges = False
+                    return 0, 0
+                # RFC2616 14.35, end values should be truncated
+                # to file_size -1 if they exceed it
+                end = min(end, file_size - 1)
+                return start, end
+
+            ranges = map(check_range, ranges)
+
+        if not satisfiable_ranges:
+            # RFC2616 14.16 and 14.35 says that when a server
+            # encounters unsatisfiable range specifiers, it
+            # SHOULD return a 416.
             file.close()
+            # FIXME: We SHOULD send a Content-Range header too,
+            # but the implementation of send_error does not
+            # allows that. So far.
             self.send_error(416, "Requested range not satisfiable")
             return
 
