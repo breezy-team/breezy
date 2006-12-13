@@ -25,6 +25,7 @@ from bzrlib.osutils import rand_bytes, fingerprint_file
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
+from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
@@ -466,6 +467,8 @@ class SvnWorkingTreeFormat(WorkingTreeFormat):
 
 
 class SvnCheckout(BzrDir):
+    """BzrDir implementation for Subversion checkouts (directories 
+    containing a .svn subdirectory."""
     def __init__(self, transport, format):
         super(SvnCheckout, self).__init__(transport, format)
         self.local_path = transport.local_abspath(".")
@@ -513,6 +516,11 @@ class SvnCheckout(BzrDir):
     find_repository = open_repository
 
     def create_workingtree(self, revision_id=None):
+        """See BzrDir.create_workingtree().
+
+        Not implemented for Subversion because having a .svn directory
+        implies having a working copy.
+        """
         raise NotImplementedError(self.create_workingtree)
 
     def create_branch(self):
@@ -535,13 +543,15 @@ class SvnCheckout(BzrDir):
 
 
 class SvnWorkingTreeDirFormat(BzrDirFormat):
+    """Working Tree implementation that uses Subversion working copies."""
     _lock_class = TransportLock
 
     @classmethod
     def probe_transport(klass, transport):
         format = klass()
 
-        if transport.has(svn.wc.get_adm_dir()):
+        if isinstance(transport, LocalTransport) and \
+            transport.has(svn.wc.get_adm_dir()):
             return format
 
         raise NotBranchError(path=transport.base)
