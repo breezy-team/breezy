@@ -50,7 +50,8 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         max_revid_len = max(len(x[3]) for x in annotation)
 
     if not verbose:
-        max_revno_len = max(min(max_revno_len, 12), 3)
+        max_revno_len = min(max_revno_len, 12)
+    max_revno_len = max(max_revno_len, 3)
 
     last_rev_id = None
     for (revno_str, author, date_str, line_rev_id, text) in annotation:

@@ -24,16 +24,9 @@ rather starts again from the run_bzr function.
 """
 
 
-from cStringIO import StringIO
 import os
-import shutil
-import sys
 
-from bzrlib.branch import Branch
-from bzrlib.errors import BzrCommandError
-from bzrlib.osutils import has_symlinks
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.annotate import annotate_file
 
 
 class TestAnnotate(TestCaseWithTransport):
@@ -45,11 +38,22 @@ class TestAnnotate(TestCaseWithTransport):
         self.build_tree_contents([('hello.txt', 'my helicopter\n'),
                                   ('nomail.txt', 'nomail\n')])
         wt.add(['hello.txt'])
-        self.rev_id_1 = wt.commit('add hello', committer='test@user')
+        self.revision_id_1 = wt.commit('add hello',
+                              committer='test@user', timestamp=1165960000.00)
         wt.add(['nomail.txt'])
-        self.rev_id_2 = wt.commit('add nomail', committer='no mail')
-        file('hello.txt', 'ab').write('your helicopter')
-        self.rev_id_3 = wt.commit('mod hello', committer='user@test')
+        self.revision_id_2 = wt.commit('add nomail',
+                              committer='no mail', timestamp=1165970000.00)
+        self.build_tree_contents([('hello.txt', 'my helicopter\n'
+                                                'your helicopter\n')])
+        self.revision_id_3 = wt.commit('mod hello',
+                              committer='user@test', timestamp=1166040000.00)
+        self.build_tree_contents([('hello.txt', 'my helicopter\n'
+                                                'your helicopter\n'
+                                                'all of\n'
+                                                'our helicopters\n'
+                                  )])
+        self.revision_id_4 = wt.commit('mod hello',
+                              committer='user@test', timestamp=1166050000.00)
 
     def test_help_annotate(self):
         """Annotate command exists"""
@@ -61,7 +65,47 @@ class TestAnnotate(TestCaseWithTransport):
         self.assertEqualDiff('''\
 1   test@us | my helicopter
 3   user@te | your helicopter
+4   user@te | all of
+            | our helicopters
 ''', out)
+
+    def test_annotate_cmd_full(self):
+        out, err = self.run_bzr('annotate', 'hello.txt', '--all')
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
+1   test@us | my helicopter
+3   user@te | your helicopter
+4   user@te | all of
+4   user@te | our helicopters
+''', out)
+
+    def test_annotate_cmd_long(self):
+        out, err = self.run_bzr('annotate', 'hello.txt', '--long')
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
+1   test@user 20061212 | my helicopter
+3   user@test 20061213 | your helicopter
+4   user@test 20061213 | all of
+                       | our helicopters
+''', out)
+
+    def test_annotate_cmd_show_ids(self):
+        out, err = self.run_bzr('annotate', 'hello.txt', '--show-ids')
+        max_len = max([len(self.revision_id_1),
+                       len(self.revision_id_3),
+                       len(self.revision_id_4)])
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
+%*s | my helicopter
+%*s | your helicopter
+%*s | all of
+%*s | our helicopters
+''' % (max_len, self.revision_id_1,
+       max_len, self.revision_id_3,
+       max_len, self.revision_id_4,
+       max_len, '',
+      )
+, out)
 
     def test_no_mail(self):
         out, err = self.run_bzr('annotate', 'nomail.txt')
