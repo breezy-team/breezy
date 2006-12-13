@@ -49,10 +49,15 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         max_origin_len = max(len(origin) for origin in set(x[1] for x in annotation))
         max_revno_len = max(len(x[0]) for x in annotation)
 
+    if not verbose:
+        max_revno_len = min(max_revno_len, 10)
+
     for (revno_str, author, date_str, line_rev_id, text ) in annotation:
         if verbose:
             anno = '%-*s %-*s %8s ' % (max_revno_len, revno_str, max_origin_len, author, date_str)
         else:
+            if len(revno_str) > max_revno_len:
+                revno_str = revno_str[:9] + '>'
             anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7] )
 
         if anno.lstrip() == "" and full: anno = prevanno
