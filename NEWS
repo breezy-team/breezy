@@ -38,8 +38,8 @@ IN DEVELOPMENT
         D  baz
         ?  wooley
 
-    * 'bzr selftest --clean' allows easily clean temporary tests directories
-      without running tests. (Alexander Belchenko)
+    * 'bzr selftest --clean-output' allows easily clean temporary tests 
+      directories without running tests. (Alexander Belchenko)
 
   INTERNALS:
 

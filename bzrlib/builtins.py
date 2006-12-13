@@ -2065,27 +2065,22 @@ class cmd_selftest(Command):
                      Option('cache-dir', type=str,
                             help='a directory to cache intermediate'
                                  ' benchmark steps'),
-                     Option('clean',
+                     Option('clean-output',
                             help='clean temporary tests directories'
                                  ' without running tests'),
                      ]
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
-            lsprof_timed=None, cache_dir=None, clean=False):
+            lsprof_timed=None, cache_dir=None, clean_output=False):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
 
-        if clean:
-            import re
-            import shutil
-            re_dir = re.compile(r'''test\d\d\d\d\.tmp''')
-            for i in os.listdir(u'.'):
-                if os.path.isdir(i) and re_dir.match(i):
-                    print 'delete directory:', i
-                    shutil.rmtree(i)
+        if clean_output:
+            from bzrlib.tests import clean_selftest_output
+            clean_selftest_output()
             return 0
 
         if cache_dir is not None:
