@@ -28,7 +28,7 @@ class TestCat(TestCaseWithTransport):
     def test_cat(self):
 
         def bzr(*args, **kwargs):
-            return self.run_bzr(*args, **kwargs)[0]
+            return self.run_bzr_subprocess(*args, **kwargs)[0]
 
         os.mkdir('branch')
         os.chdir('branch')

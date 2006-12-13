@@ -294,3 +294,13 @@ class TestExternalDiff(DiffBase):
                                    "+++ goodbye\t")
         self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
                                  "+baz\n\n")
+
+
+class TestDiffOutput(DiffBase):
+
+    def test_diff_output(self):
+        # check that output don't mangle line-endings
+        self.make_example_branch()
+        file('hello', 'wb').write('hello world!\n')
+        output = self.run_bzr_subprocess('diff', retcode=1)[0]
+        self.assert_('\n+hello world!\n' in output)
