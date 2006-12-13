@@ -21,6 +21,11 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * A few tweaks directly to ``fileids_affected_by_revision_ids`` to
+      help speed up processing, as well allowing to extract unannotated
+      lines. Between the two ``fileids_affected_by_revision_ids`` is
+      improved by approx 10%. (John Arbash Meinel)
+
   BUG FIXES:
 
 bzr 0.13  2006-12-05
