@@ -2683,11 +2683,13 @@ class cmd_annotate(Command):
     takes_args = ['filename']
     takes_options = [Option('all', help='show annotations on all lines'),
                      Option('long', help='show date in annotations'),
-                     'revision'
+                     'revision',
+                     'show-ids',
                      ]
 
     @display_command
-    def run(self, filename, all=False, long=False, revision=None):
+    def run(self, filename, all=False, long=False, revision=None,
+            show_ids=False):
         from bzrlib.annotate import annotate_file
         tree, relpath = WorkingTree.open_containing(filename)
         branch = tree.branch
@@ -2702,7 +2704,8 @@ class cmd_annotate(Command):
             file_id = tree.inventory.path2id(relpath)
             tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
-            annotate_file(branch, file_version, file_id, long, all, sys.stdout)
+            annotate_file(branch, file_version, file_id, long, all, sys.stdout,
+                          show_ids=show_ids)
         finally:
             branch.unlock()
 

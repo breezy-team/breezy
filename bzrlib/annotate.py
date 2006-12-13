@@ -28,12 +28,15 @@
 import sys
 import time
 
+from bzrlib import (
+    errors,
+    tsort,
+    )
 from bzrlib.config import extract_email_address
-from bzrlib.errors import NoEmailInUsername
 
 
 def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
-        to_file=None):
+                  to_file=None, show_ids=False):
     if to_file is None:
         to_file = sys.stdout
 
@@ -41,13 +44,16 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
     annotation = list(_annotate_file(branch, rev_id, file_id))
     if len(annotation) == 0:
         max_origin_len = 0
+        max_revno_len = 0
     else:
         max_origin_len = max(len(origin) for origin in set(x[1] for x in annotation))
+        max_revno_len = max(len(x[0]) for x in annotation)
+
     for (revno_str, author, date_str, line_rev_id, text ) in annotation:
         if verbose:
-            anno = '%5s %-*s %8s ' % (revno_str, max_origin_len, author, date_str)
+            anno = '%-*s %-*s %8s ' % (max_revno_len, revno_str, max_origin_len, author, date_str)
         else:
-            anno = "%5s %-7s " % ( revno_str, author[:7] )
+            anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7] )
 
         if anno.lstrip() == "" and full: anno = prevanno
         print >>to_file, '%s| %s' % (anno, text)
@@ -56,7 +62,16 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
 def _annotate_file(branch, rev_id, file_id ):
 
     rh = branch.revision_history()
-    w = branch.repository.weave_store.get_weave(file_id, 
+    revision_graph = branch.repository.get_revision_graph(rev_id)
+    merge_sorted_revisions = tsort.merge_sort(
+        revision_graph,
+        rev_id,
+        None,
+        generate_revno=True)
+    revision_id_to_revno = dict((rev_id, revno)
+                                for seq_num, rev_id, depth, revno, end_of_merge
+                                 in merge_sorted_revisions)
+    w = branch.repository.weave_store.get_weave(file_id,
         branch.repository.get_transaction())
     last_origin = None
     annotations = list(w.annotate_iter(rev_id))
@@ -74,10 +89,8 @@ def _annotate_file(branch, rev_id, file_id ):
             if origin not in revisions:
                 (revno_str, author, date_str) = ('?','?','?')
             else:
-                if origin in rh:
-                    revno_str = str(rh.index(origin) + 1)
-                else:
-                    revno_str = 'merge'
+                revno_str = '.'.join(str(i) for i in
+                                            revision_id_to_revno[origin])
             rev = revisions[origin]
             tz = rev.timezone or 0
             date_str = time.strftime('%Y%m%d', 
@@ -87,6 +100,6 @@ def _annotate_file(branch, rev_id, file_id ):
             author = rev.committer
             try:
                 author = extract_email_address(author)
-            except NoEmailInUsername:
+            except errors.NoEmailInUsername:
                 pass        # use the whole name
         yield (revno_str, author, date_str, origin, text)
