@@ -566,18 +566,18 @@ class TestRangeRequestServer(object):
         self.assertEqual(l[2], (0, '0'))
         self.assertEqual(l[3], (3, '34'))
 
-    def test_readv_short_read(self):
+    def test_readv_invalid_ranges(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
 
         # This is intentionally reading off the end of the file
         # since we are sure that it cannot get there
-        self.assertListRaises((errors.ShortReadvError, AssertionError),
+        self.assertListRaises((errors.InvalidRange, errors.ShortReadvError,),
                               t.readv, 'a', [(1,1), (8,10)])
 
         # This is trying to seek past the end of the file, it should
         # also raise a special error
-        self.assertListRaises(errors.ShortReadvError,
+        self.assertListRaises((errors.InvalidRange, errors.ShortReadvError,),
                               t.readv, 'a', [(12,2)])
 
 

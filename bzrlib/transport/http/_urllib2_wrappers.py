@@ -655,6 +655,11 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
                                                     hdrs, fp))
         elif code == 403:
             raise errors.TransportError('Server refuses to fullfil the request')
+        elif code == 416:
+            # We don't know which, but one of the ranges we
+            # specified was wrong. So we raise with 0 for a lack
+            # of a better magic value.
+            raise errors.InvalidRange(req.get_full_url(),0)
         else:
             # TODO: A test is needed to exercise that code path
             raise errors.InvalidHttpResponse(req.get_full_url(),
