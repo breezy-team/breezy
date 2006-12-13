@@ -176,10 +176,13 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
                     ranges_valid = False
                     break
         if not ranges_valid:
-            # RFC2616 14-16 says that invalid Range headers could
+            # RFC2616 14.35 says that invalid Range headers must
             # be ignored. If they are, the whole file should be
             # returned as though no Range header was present. If
             # they aren't, the server should return a 416 error.
+            # FIXME: per 14.35, ranges are only invalid if start > end.
+            # end values should be truncated to file_size -1 if they exceed it.
+            # only start values >= file_size should produce a 416.
             file.close()
             self.send_error(416, "Requested range not satisfiable")
             return

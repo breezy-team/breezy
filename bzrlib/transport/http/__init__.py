@@ -268,14 +268,14 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
             try_again = True
         if try_again:
             # Note that since the offsets and the ranges may not
-            # be in the same order we dont't try to calculate a
+            # be in the same order, we don't try to calculate a
             # restricted single range encompassing unprocessed
             # offsets.
             code, f = self._get(relpath, ranges)
             return try_again, code, f
         else:
-            # We tried all the tricks, nothing worked. We
-            # re-reaised original exception, the 'mutter' calls
+            # We tried all the tricks, but nothing worked. We
+            # re-raise original exception; the 'mutter' calls
             # above will indicate that further tries were
             # unsuccessful
             raise exc_info[0], exc_info[1], exc_info[2]
