@@ -1067,6 +1067,21 @@ class InvalidHttpContentType(InvalidHttpResponse):
         InvalidHttpResponse.__init__(self, path, msg)
 
 
+class RedirectRequested(TransportError):
+
+    _fmt = '%(source)s is%(permanently)s redirected to %(target)s'
+
+    def __init__(self, source, target, is_permament=False):
+        self.source = source
+        self.target = target
+        if is_permament:
+            self.permanently = ' permanently'
+        else:
+            self.permanently = ''
+        self.is_permament = is_permament
+        TransportError.__init__(self, source)
+
+
 class ConflictsInTree(BzrError):
 
     _fmt = "Working tree has conflicts."

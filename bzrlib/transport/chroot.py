@@ -69,17 +69,13 @@ class ChrootTransportDecorator(TransportDecorator):
         self._ensure_relpath_is_child(relpath)
         return TransportDecorator.delete_tree(self, relpath)
 
-    def get(self, relpath):
+    def get(self, relpath, hints={}):
         self._ensure_relpath_is_child(relpath)
         return TransportDecorator.get(self, relpath)
 
     def get_bytes(self, relpath):
         self._ensure_relpath_is_child(relpath)
         return TransportDecorator.get_bytes(self, relpath)
-
-    def get(self, relpath):
-        self._ensure_relpath_is_child(relpath)
-        return TransportDecorator.get(self, relpath)
 
     def has(self, relpath):
         self._ensure_relpath_is_child(relpath)

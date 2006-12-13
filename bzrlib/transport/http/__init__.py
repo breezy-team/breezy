@@ -217,20 +217,26 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
     def has(self, relpath):
         raise NotImplementedError("has() is abstract on %r" % self)
 
-    def get(self, relpath):
+    def get(self, relpath, hints={}):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
+        :param hints: A dict of hints applicable to the get.
+            follow_redirections: False
+                will raise RedirectRequested instead of silently
+                following the redirections.
         """
-        code, response_file = self._get(relpath, None)
+        code, response_file = self._get(relpath, None, hints=hints)
         return response_file
 
-    def _get(self, relpath, ranges):
+    def _get(self, relpath, ranges, tail_amount=0, hints={}):
         """Get a file, or part of a file.
 
         :param relpath: Path relative to transport base URL
-        :param byte_range: None to get the whole file;
+        :param ranges: None to get the whole file;
             or [(start,end)] to fetch parts of a file.
+        :param tail_amount: to fetch that amount from file tail.
+        :param hints: A dict of hints (see get).
 
         :returns: (http_code, result_file)
 

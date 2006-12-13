@@ -79,8 +79,8 @@ class FakeVFATTransportDecorator(TransportDecorator):
             raise ValueError("illegal characters for VFAT filename: %r" % name)
         return name.lower()
 
-    def get(self, relpath):
-        return self._decorated.get(self._squash_name(relpath))
+    def get(self, relpath, hints={}):
+        return self._decorated.get(self._squash_name(relpath), hints=hints)
 
     def mkdir(self, relpath, mode=None):
         return self._decorated.mkdir(self._squash_name(relpath), 0755)

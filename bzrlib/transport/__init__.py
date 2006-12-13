@@ -432,7 +432,7 @@ class Transport(object):
                                           "(but must claim to be listable "
                                           "to trigger this error).")
 
-    def get(self, relpath):
+    def get(self, relpath, hints={}):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
@@ -1148,9 +1148,12 @@ class TransportLogger(object):
         self._adapted = adapted
         self._calls = []
 
-    def get(self, name):
+    def get(self, name, hints={}):
+        # There is only one test using the information collected
+        # below and it asks for the name only. So we do not
+        # record the hints parameter.
         self._calls.append((name,))
-        return self._adapted.get(name)
+        return self._adapted.get(name, hints=hints)
 
     def __getattr__(self, name):
         """Thunk all undefined access through to self._adapted."""

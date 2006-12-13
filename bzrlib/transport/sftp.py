@@ -379,7 +379,7 @@ class SFTPTransport(SFTPUrlHandling):
         except IOError:
             return False
 
-    def get(self, relpath):
+    def get(self, relpath, hints={}):
         """
         Get the file at the given relative path.
 

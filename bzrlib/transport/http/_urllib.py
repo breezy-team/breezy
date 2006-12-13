@@ -16,8 +16,10 @@
 
 from cStringIO import StringIO
 
-from bzrlib import ui
-from bzrlib.errors import NoSuchFile
+from bzrlib import (
+    ui,
+    errors,
+    )
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase
@@ -107,6 +109,12 @@ class HttpTransport_urllib(HttpTransportBase):
             self._user = request.user
             self._password = request.password
 
+        code = response.code
+        if request.follow_redirections is False and code in (301, 302, 303, 307):
+            raise errors.RedirectRequested(request.get_full_url(),
+                                           request.redirected_to,
+                                           is_permament=(code == 301))
+
         if request.redirected_to is not None:
             # TODO: Update the transport so that subsequent
             # requests goes directly to the right host
@@ -115,7 +123,7 @@ class HttpTransport_urllib(HttpTransportBase):
 
         return response
 
-    def _get(self, relpath, ranges, tail_amount=0):
+    def _get(self, relpath, ranges, tail_amount=0, hints={}):
         """See HttpTransport._get"""
 
         abspath = self._real_abspath(relpath)
@@ -127,12 +135,13 @@ class HttpTransport_urllib(HttpTransportBase):
                 headers = {'Range': bytes}
 
         request = Request('GET', abspath, None, headers)
+        request.follow_redirections = getattr(hints, 'follow_redirections', True)
         response = self._perform(request)
 
         code = response.code
         if code == 404: # not found
             self._connection.fake_close()
-            raise NoSuchFile(abspath)
+            raise errors.NoSuchFile(abspath)
 
         data = handle_response(abspath, code, response.headers, response)
         # Close response to free the httplib.HTTPConnection pipeline

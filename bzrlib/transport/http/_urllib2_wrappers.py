@@ -155,6 +155,9 @@ class Request(urllib2.Request):
         # To handle redirections
         self.parent = parent
         self.redirected_to = None
+        # Unless told otherwise, redirections are followed
+        # silently
+        self.follow_redirections = True
 
     def extract_auth(self, url):
         """Extracts authentification information from url.
@@ -504,7 +507,7 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         # reference to the following request in the redirect
         # chain.
 
-        # Some codes make no sense on out context and are treated
+        # Some codes make no sense in our context and are treated
         # as errors:
 
         # 300: Multiple choices for different representations of
@@ -519,11 +522,10 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 
         # 306: Unused (if the RFC says so...)
 
-        # FIXME: If the code is 302 and the request is HEAD, we
-        # MAY avoid following the redirections if the intent is
-        # to check the existence, we have a hint that the file
-        # exist, now if we want to be sure, we must follow the
-        # redirection. Let's do that for now.
+        # If the code is 302 and the request is HEAD, some may
+        # think that it is a sufficent hint that the file exists
+        # and that we MAY avoid following the redirections. But
+        # if we want to be sure, we MUST follow them.
 
         if code in (301, 302, 303, 307):
             return Request(req.get_method(),newurl,
@@ -560,7 +562,12 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         else:
             return
         if self._debuglevel > 0:
-            print 'Redirected to: %s' % newurl
+            print 'Redirected to: %s (followed: %r)' % (newurl,
+                                                        req.follow_redirections)
+        if req.follow_redirections is False:
+            req.redirected_to = newurl
+            return fp
+
         newurl = urlparse.urljoin(req.get_full_url(), newurl)
 
         # This call succeeds or raise an error. urllib2 returns

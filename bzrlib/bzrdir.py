@@ -61,7 +61,10 @@ from bzrlib.transport import get_transport
 from bzrlib.weave import Weave
 """)
 
-from bzrlib.trace import mutter
+from bzrlib.trace import (
+    mutter,
+    note,
+    )
 from bzrlib.transport.local import LocalTransport
 
 
@@ -502,7 +505,42 @@ class BzrDir(object):
         :param transport: Transport containing the bzrdir.
         :param _unsupported: private.
         """
-        format = BzrDirFormat.find_format(transport)
+        initial_base = transport.base
+        redirected = True # to enter the loop
+        redirections = 0
+        # If a loop occurs, there is little we can do. So we
+        # don't try to detect them, just getting out if too much
+        # redirections occurs. The solution is outside: where the
+        # loop is defined.
+        while redirected and redirections < 8:
+            try:
+                transport.follow_redirections = False
+                format = BzrDirFormat.find_format(transport)
+                redirected = False
+            except errors.RedirectRequested, e:
+                # In case someone above in the call stack want to
+                # continue using this transport
+                transport.follow_redirections = True
+
+                relpath = transport.relpath(e.source)
+                if not e.target.endswith(relpath):
+                    # Not redirected to a branch-format, not a branch
+                    raise errors.NotBranchError(path=e.target)
+
+                target = e.target[:-len(relpath)]
+                note('%s has been%s redirected to %s',
+                     transport.base,
+                     e.permanently,
+                     target)
+                # Let's try with a new transport
+                transport = get_transport(target)
+                redirections += 1
+        if redirected:
+            # Out of the loop and still redirected ? Either the
+            # user have kept a very very very old reference to a
+            # branch or a loop occured in the redirections.
+            # Nothing we can cure here: tell the user.
+            raise errors.NotBranchError(path=initial_base)
         BzrDir._check_supported(format, _unsupported)
         return format.open(transport, _found=True)
 
@@ -1062,7 +1100,8 @@ class BzrDirFormat(object):
     def probe_transport(klass, transport):
         """Return the .bzrdir style transport present at URL."""
         try:
-            format_string = transport.get(".bzr/branch-format").read()
+            format_string = transport.get(
+                ".bzr/branch-format", hints={'follow_redirections':False}).read()
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 
