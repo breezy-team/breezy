@@ -45,58 +45,59 @@ class TestAnnotate(TestCaseWithTransport):
         self.build_tree_contents([('hello.txt', 'my helicopter\n'),
                                   ('nomail.txt', 'nomail\n')])
         wt.add(['hello.txt'])
-        wt.commit('add hello', committer='test@user')
+        self.rev_id_1 = wt.commit('add hello', committer='test@user')
         wt.add(['nomail.txt'])
-        wt.commit('add nomail', committer='no mail')
+        self.rev_id_2 = wt.commit('add nomail', committer='no mail')
         file('hello.txt', 'ab').write('your helicopter')
-        wt.commit('mod hello', committer='user@test')
+        self.rev_id_3 = wt.commit('mod hello', committer='user@test')
 
     def test_help_annotate(self):
         """Annotate command exists"""
-        out, err = self.run_bzr_captured(['--no-plugins', 'annotate', '--help'])
+        out, err = self.run_bzr('--no-plugins', 'annotate', '--help')
 
     def test_annotate_cmd(self):
-        out, err = self.run_bzr_captured(['annotate', 'hello.txt'])
-        self.assertEquals(err, '')
-        self.assertEqualDiff(out, '''\
+        out, err = self.run_bzr('annotate', 'hello.txt')
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
 1   test@us | my helicopter
 3   user@te | your helicopter
-''')
+''', out)
 
     def test_no_mail(self):
-        out, err = self.run_bzr_captured(['annotate', 'nomail.txt'])
-        self.assertEquals(err, '')
-        self.assertEqualDiff(out, '''\
+        out, err = self.run_bzr('annotate', 'nomail.txt')
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
 2   no mail | nomail
-''')
+''', out)
 
     def test_annotate_cmd_revision(self):
-        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r1'])
-        self.assertEquals(err, '')
-        self.assertEqualDiff(out, '''\
+        out, err = self.run_bzr('annotate', 'hello.txt', '-r1')
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
 1   test@us | my helicopter
-''')
+''', out)
 
     def test_annotate_cmd_revision3(self):
-        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r3'])
-        self.assertEquals(err, '')
-        self.assertEqualDiff(out, '''\
+        out, err = self.run_bzr('annotate', 'hello.txt', '-r3')
+        self.assertEqual('', err)
+        self.assertEqualDiff('''\
 1   test@us | my helicopter
 3   user@te | your helicopter
-''')
+''', out)
 
     def test_annotate_cmd_unknown_revision(self):
-        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r', '10'],
-                                         retcode=3)
-        self.assertEquals(out, '')
+        out, err = self.run_bzr('annotate', 'hello.txt', '-r', '10',
+                                retcode=3)
+        self.assertEqual('', out)
         self.assertContainsRe(err, 'Requested revision: \'10\' does not exist')
 
     def test_annotate_cmd_two_revisions(self):
-        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r1..2'],
-                                         retcode=3)
-        self.assertEquals(out, '')
-        self.assertEquals(err, 'bzr: ERROR: bzr annotate --revision takes'
-                               ' exactly 1 argument\n')
+        out, err = self.run_bzr('annotate', 'hello.txt', '-r1..2',
+                                retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: bzr annotate --revision takes'
+                         ' exactly 1 argument\n',
+                         err)
 
     def test_annotate_empty_file(self):
         tree = self.make_branch_and_tree('tree')
