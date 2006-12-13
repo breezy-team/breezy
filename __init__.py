@@ -47,6 +47,9 @@ class GitBranchConfig(config.BranchConfig):
 
 
 def gitrevid_from_bzr(revision_id):
+    if revision_id is None:
+        import pdb;pdb.set_trace()
+        return None
     return revision_id[4:]
 
 
@@ -222,12 +225,19 @@ class GitRepository(bzrlib.repository.Repository):
         self._revision_cache = {}
 
     def _ancestor_revisions(self, revision_ids):
-        git_revisions = [gitrevid_from_bzr(r) for r in revision_ids]
+        if revision_ids is not None:
+            git_revisions = [gitrevid_from_bzr(r) for r in revision_ids]
+        else:
+            git_revisions = None
         for lines in self.git.ancestor_lines(git_revisions):
             yield self.parse_rev(lines)
 
     def get_revision_graph(self, revision_id=None):
-        return self.get_revision_graph_with_ghosts([revision_id]).get_ancestors()
+        if revision_id is None:
+            revisions = None
+        else:
+            revisions = [revision_id]
+        return self.get_revision_graph_with_ghosts(revisions).get_ancestors()
 
     def get_revision_graph_with_ghosts(self, revision_ids=None):
         result = graph.Graph()
@@ -303,7 +313,10 @@ class GitModel(object):
             args.append('--max-count=%d' % max_count)
         if header is not False:
             args.append('--header')
-        args.extend(heads)
+        if heads is None:
+            args.append('--all')
+        else:
+            args.extend(heads)
         return self.git_lines('rev-list', args)
 
     def rev_parse(self, git_id):
