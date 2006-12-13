@@ -1327,10 +1327,12 @@ class TransportTests(TestTransportImplementation):
 
         # This is intentionally reading off the end of the file
         # since we are sure that it cannot get there
-        self.assertListRaises((errors.ShortReadvError, AssertionError),
+        self.assertListRaises((errors.ShortReadvError, errors.InvalidRange,
+                               # Can be raised by paramiko
+                               AssertionError),
                               transport.readv, 'a', [(1,1), (8,10)])
 
         # This is trying to seek past the end of the file, it should
         # also raise a special error
-        self.assertListRaises(errors.ShortReadvError,
+        self.assertListRaises((errors.ShortReadvError, errors.InvalidRange),
                               transport.readv, 'a', [(12,2)])
