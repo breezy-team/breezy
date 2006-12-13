@@ -376,7 +376,8 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        self.stream.write(self._ellipsize_to_right(name, 60))
+        self.stream.write(self._ellipsize_to_right(name,
+                            osutils.terminal_width()-20))
         self.stream.flush()
 
     def report_error(self, test, err):
@@ -386,7 +387,7 @@ class VerboseTestResult(ExtendedTestResult):
 
     def report_failure(self, test, err):
         self.failure_count += 1
-        self.stream.writeln('FAIL %s\n    %s'
+        self.stream.writeln(' FAIL %s\n    %s'
                 % (self._testTimeString(), err[1]))
 
     def report_success(self, test):
