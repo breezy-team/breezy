@@ -48,16 +48,19 @@ class BadStatusRequestHandler(TestingHTTPRequestHandler):
             self.send_response(0, "Bad status")
             self.end_headers()
         except socket.error, e:
-            if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
-                # We don't want to pollute the test reuslts with
-                # spurious server errors while test succeed. In
-                # our case, it may occur that the test have
-                # already read the 'Bad Status' and closed the
-                # socket while we are still trying to send some
-                # headers... So the test is ok but if we raise
-                # the exception the output is dirty. So we don't
-                # raise, but we close the connection, just to be
-                # safe :)
+            # We don't want to pollute the test results with
+            # spurious server errors while test succeed. In our
+            # case, it may occur that the test have already read
+            # the 'Bad Status' and closed the socket while we are
+            # still trying to send some headers... So the test is
+            # ok but if we raise the exception the output is
+            # dirty. So we don't raise, but we close the
+            # connection, just to be safe :)
+            spurious = [errno.EPIPE,
+                        errno.ECONNRESET,
+                        errno.ECONNABORTED,
+                        ]
+            if (len(e.args) > 0) and (e.args[0] in spurious):
                 self.close_connection = 1
                 pass
             else:
