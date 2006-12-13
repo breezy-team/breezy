@@ -176,7 +176,6 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.failure_count = 0
         self.skip_count = 0
         self.count = 0
-        self.terminal_width = osutils.terminal_width()
         self._overall_start_time = time.time()
     
     def extractBenchmarkTime(self, testCase):
@@ -378,7 +377,7 @@ class VerboseTestResult(ExtendedTestResult):
         self.count += 1
         name = self._shortened_test_description(test)
         self.stream.write(self._ellipsize_to_right(name,
-                                                   self.terminal_width-20))
+                            osutils.terminal_width()-20))
         self.stream.flush()
 
     def report_error(self, test, err):
