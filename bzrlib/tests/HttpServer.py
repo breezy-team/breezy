@@ -105,8 +105,12 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
             # FIXME: RFC2616 says end is optional and default to file_size
             range_match = self._range_regexp.match(range_str)
             if range_match is not None:
-                ranges.append((int(range_match.group('start')),
-                               int(range_match.group('end'))))
+                start = int(range_match.group('start'))
+                end = int(range_match.group('end'))
+                if start > end:
+                    # Syntactically invalid range
+                    return 0, []
+                ranges.append((start, end))
             else:
                 tail_match = self._tail_regexp.match(range_str)
                 if tail_match is not None:
@@ -179,16 +183,15 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         if tail != 0:
             ranges.append((file_size - tail, file_size))
 
-        satisfiable_ranges = True
+        self._satisfiable_ranges = True
         if len(ranges) == 0:
-            satisfiable_ranges = False
+            self._satisfiable_ranges = False
         else:
             def check_range(range_specifier):
                 start, end = range_specifier
-                # RFC2616 14.35, ranges are invalid if start > end
-                # or start > file_size
-                if start > end or start > file_size:
-                    satisfiable_ranges = False
+                # RFC2616 14.35, ranges are invalid if start >= file_size
+                if start >= file_size:
+                    self._satisfiable_ranges = False # Side-effect !
                     return 0, 0
                 # RFC2616 14.35, end values should be truncated
                 # to file_size -1 if they exceed it
@@ -197,7 +200,7 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
 
             ranges = map(check_range, ranges)
 
-        if not satisfiable_ranges:
+        if not self._satisfiable_ranges:
             # RFC2616 14.16 and 14.35 says that when a server
             # encounters unsatisfiable range specifiers, it
             # SHOULD return a 416.

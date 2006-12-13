@@ -621,3 +621,57 @@ class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
     """Tests range requests refusing server for pycurl implementation"""
 
 
+class TestRanges(object):
+    """Test the Range header in GET methods..
+
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithWebserver.
+
+    We can't inherit directly from TestCaseWithWebserver or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete.
+    """
+
+    def setUp(self):
+        TestCaseWithWebserver.setUp(self)
+        self.build_tree_contents([('a', '0123456789')],)
+        server = self.get_readonly_server()
+        self.transport = self._transport(server.get_url())
+
+    def _file_contents(self, relpath, ranges, tail_amount=0):
+         code, data = self.transport._get(relpath, ranges)
+         self.assertTrue(code in (200, 206),'_get returns: %d' % code)
+         for start, end in ranges:
+             data.seek(start)
+             yield data.read(end - start + 1)
+
+    def _file_tail(self, relpath, tail_amount):
+         code, data = self.transport._get(relpath, [], tail_amount)
+         self.assertTrue(code in (200, 206),'_get returns: %d' % code)
+         data.seek(-tail_amount + 1, 2)
+         return data.read(tail_amount)
+
+    def test_range_header(self):
+        # Valid ranges
+        map(self.assertEqual,['0', '234'],
+            list(self._file_contents('a', [(0,0), (2,4)])),)
+        # Tail
+        self.assertEqual('789', self._file_tail('a', 3))
+        # Syntactically invalid range
+        self.assertRaises(errors.InvalidRange,
+                          self.transport._get, 'a', [(4, 3)])
+        # Semantically invalid range
+        self.assertRaises(errors.InvalidRange,
+                          self.transport._get, 'a', [(42, 128)])
+
+
+class TestRanges_urllib(TestRanges, TestCaseWithWebserver):
+    """Test the Range header in GET methods for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestRanges_pycurl(TestWithTransport_pycurl,
+                        TestRanges,
+                        TestCaseWithWebserver):
+    """Test the Range header in GET methods for pycurl implementation"""
