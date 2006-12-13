@@ -326,8 +326,7 @@ class SvnCommitBuilder(CommitBuilder):
 
         # Make sure the logwalker doesn't try to use ra 
         # during checkouts...
-        self.repository._log.fetch_revisions(
-            self.repository._log.last_revnum, self.revnum)
+        self.repository._log.fetch_revisions(self.revnum)
 
         return revid
 
