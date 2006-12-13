@@ -882,13 +882,15 @@ class KnitVersionedFile(VersionedFile):
             pb.update('Walking content.', version_idx, total)
             method = self._index.get_method(version_id)
             version_idx = self._index.lookup(version_id)
+
             assert method in ('fulltext', 'line-delta')
             if method == 'fulltext':
-                for line in self.factory.get_fulltext_content(data):
-                    yield line
+                line_iterator = self.factory.get_fulltext_content(data)
             else:
-                for line in self.factory.get_linedelta_content(data):
-                    yield line
+                line_iterator = self.factory.get_linedelta_content(data)
+            for line in line_iterator:
+                yield line
+
         pb.update('Walking content.', total, total)
         
     def num_versions(self):
