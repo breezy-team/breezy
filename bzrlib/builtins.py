@@ -1218,6 +1218,7 @@ class cmd_diff(Command):
     takes_options = ['revision', 'diff-options', 'prefix']
     aliases = ['di', 'dif']
     encoding_type = 'exact'
+    binary_stdout = True
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
@@ -1738,6 +1739,7 @@ class cmd_cat(Command):
 
     takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
+    binary_stdout = True
 
     @display_command
     def run(self, filename, revision=None, name_from_revision=False):

@@ -98,6 +98,7 @@ class cmd_bundle_revisions(Command):
                             type=unicode)]
     takes_args = ['base?']
     aliases = ['bundle']
+    binary_stdout = True
 
     def run(self, base=None, revision=None, output=None, remember=False):
         from bzrlib import user_encoding

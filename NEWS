@@ -54,6 +54,9 @@ IN DEVELOPMENT
     * bzr now supports Win32 UNC path (e.g. \\HOST\path). 
       (Alexander Belchenko, #57869)
 
+    * Win32-specific: output of cat, bundle and diff commands don't mangle
+      line-endings (Alexander Belchenko, #55276)
+
 
 bzr 0.13  2006-12-05
     

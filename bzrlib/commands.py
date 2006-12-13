@@ -214,11 +214,18 @@ class Command(object):
             replace - put in a bogus character (typically '?')
             exact - do not encode sys.stdout
 
+    binary_stdout
+        Typically output of Command use native line-endings on each
+        platform. This leads to problems on win32 with some commands,
+        because Windows convert LF to CRLF.
+        If this attribute is True then output forced to binary
+        (without such conversion) on Windows
     """
     aliases = []
     takes_args = []
     takes_options = []
     encoding_type = 'strict'
+    binary_stdout = False
 
     hidden = False
     
@@ -242,6 +249,11 @@ class Command(object):
     def _setup_outf(self):
         """Return a file linked to stdout, which has proper encoding."""
         assert self.encoding_type in ['strict', 'exact', 'replace']
+
+        if sys.platform == 'win32' and self.binary_stdout:
+            if hasattr(sys.stdout, 'fileno'):
+                import msvcrt
+                msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
 
         # Originally I was using self.stdout, but that looks
         # *way* too much like sys.stdout
