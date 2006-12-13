@@ -1705,6 +1705,7 @@ def test_suite():
     """
     testmod_names = [
                    'bzrlib.tests.test_ancestry',
+                   'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',

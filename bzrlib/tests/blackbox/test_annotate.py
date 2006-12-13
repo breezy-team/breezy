@@ -59,30 +59,30 @@ class TestAnnotate(TestCaseWithTransport):
         out, err = self.run_bzr_captured(['annotate', 'hello.txt'])
         self.assertEquals(err, '')
         self.assertEqualDiff(out, '''\
-    1 test@us | my helicopter
-    3 user@te | your helicopter
+1   test@us | my helicopter
+3   user@te | your helicopter
 ''')
 
     def test_no_mail(self):
         out, err = self.run_bzr_captured(['annotate', 'nomail.txt'])
         self.assertEquals(err, '')
         self.assertEqualDiff(out, '''\
-    2 no mail | nomail
+2   no mail | nomail
 ''')
 
     def test_annotate_cmd_revision(self):
         out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r1'])
         self.assertEquals(err, '')
         self.assertEqualDiff(out, '''\
-    1 test@us | my helicopter
+1   test@us | my helicopter
 ''')
 
     def test_annotate_cmd_revision3(self):
         out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r3'])
         self.assertEquals(err, '')
         self.assertEqualDiff(out, '''\
-    1 test@us | my helicopter
-    3 user@te | your helicopter
+1   test@us | my helicopter
+3   user@te | your helicopter
 ''')
 
     def test_annotate_cmd_unknown_revision(self):
