@@ -45,7 +45,7 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
     if len(annotation) == 0:
         max_origin_len = max_revno_len = max_revid_len = 0
     else:
-        max_origin_len = max(len(origin) for origin in set(x[1] for x in annotation))
+        max_origin_len = max(len(x[1]) for x in annotation)
         max_revno_len = max(len(x[0]) for x in annotation)
         max_revid_len = max(len(x[3]) for x in annotation)
 
@@ -63,11 +63,12 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
             last_rev_id = line_rev_id
         else:
             if verbose:
-                anno = '%-*s %-*s %8s ' % (max_revno_len, revno_str, max_origin_len, author, date_str)
+                anno = '%-*s %-*s %8s ' % (max_revno_len, revno_str,
+                                           max_origin_len, author, date_str)
             else:
                 if len(revno_str) > max_revno_len:
                     revno_str = revno_str[:max_revno_len-1] + '>'
-                anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7] )
+                anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7])
 
         if anno.lstrip() == "" and full: anno = prevanno
         print >>to_file, '%s| %s' % (anno, text)
@@ -107,7 +108,7 @@ def _annotate_file(branch, rev_id, file_id ):
                                             revision_id_to_revno[origin])
             rev = revisions[origin]
             tz = rev.timezone or 0
-            date_str = time.strftime('%Y%m%d', 
+            date_str = time.strftime('%Y%m%d',
                                      time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
