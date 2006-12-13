@@ -64,6 +64,11 @@ IN DEVELOPMENT
       robustness by detecting invalid ranges (and pycurl's one by detecting
       short reads during the initial GET). (Vincent Ladeuil, #73948)
 
+    * The urllib connection sharing interacts badly with urllib2
+      proxy setting (the connections didn't go thru the proxy
+      anymore). Defining a proper ProxyHandler solves the
+      problem.  (Vincent Ladeuil, #74759)
+
 
 bzr 0.13  2006-12-05
     
