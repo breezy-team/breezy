@@ -376,6 +376,43 @@ foohosts""")
             'svn-v%d:6@%s-branches%%2ffoobranch' % (MAPPING_VERSION, uuid)],
                           weave.versions())
  
+    def test_create_checkout(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/trunk': None, 
+                         'dc/trunk/hosts': 'hej1'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "created trunk and added hosts") #1
+
+        url = "svn+"+repos_url+"/trunk"
+        oldbranch = Branch.open(url)
+
+        newtree = oldbranch.create_checkout("e")
+        self.assertTrue(
+            newtree.branch.repository.has_revision(
+           'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, oldbranch.repository.uuid)))
+
+        self.assertTrue(os.path.exists("e/.bzr"))
+        self.assertFalse(os.path.exists("e/.svn"))
+
+    def test_create_checkout_lightweight(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/trunk': None, 
+                         'dc/trunk/hosts': 'hej1'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "created trunk and added hosts") #1
+
+        url = "svn+"+repos_url+"/trunk"
+        oldbranch = Branch.open(url)
+
+        newtree = oldbranch.create_checkout("e", lightweight=True)
+        self.assertTrue(
+            newtree.branch.repository.has_revision(
+           'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, oldbranch.repository.uuid)))
+        self.assertTrue(os.path.exists("e/.svn"))
+        self.assertFalse(os.path.exists("e/.bzr"))
+
     def test_fetch_branch(self):
         repos_url = self.make_client('d', 'sc')
 

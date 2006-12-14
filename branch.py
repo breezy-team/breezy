@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, BzrBranch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.config import TreeConfig
 from bzrlib.errors import (NotBranchError, NoWorkingTree, NoSuchRevision, 
                            NoSuchFile, DivergedBranches)
@@ -27,11 +28,12 @@ from bzrlib.workingtree import WorkingTree
 
 import os
 
-import svn.core
+import svn.client, svn.core
 from svn.core import SubversionException
 
 from commit import push_as_merged
 from repository import SvnRepository
+from transport import bzr_to_svn_url
 from tree import SvnRevisionTree
 
 
@@ -67,7 +69,43 @@ class SvnBranch(Branch):
         Doesn't do anything for Subversion repositories at the moment (yet).
         """
         return BranchCheckResult(self)
-        
+
+    def _create_heavyweight_checkout(self, to_location, revision_id=None):
+        checkout_branch = BzrDir.create_branch_convenience(
+            to_location, force_new_tree=False)
+        checkout = checkout_branch.bzrdir
+        checkout_branch.bind(self)
+        # pull up to the specified revision_id to set the initial 
+        # branch tip correctly, and seed it with history.
+        checkout_branch.pull(self, stop_revision=revision_id)
+        return checkout.create_workingtree(revision_id)
+
+    def _create_lightweight_checkout(self, to_location, revision_id=None):
+        peg_rev = svn.core.svn_opt_revision_t()
+        peg_rev.kind = svn.core.svn_opt_revision_head
+
+        rev = svn.core.svn_opt_revision_t()
+        if revision_id is None:
+            rev.kind = svn.core.svn_opt_revision_head
+        else:
+            (bp, revnum) = self.repository.parse_revision_id(revision_id)
+            assert bp == self.branch_path
+            rev.kind = svn.core.svn_opt_revision_number
+            rev.value.number = revnum
+
+        client_ctx = svn.client.create_context()
+        svn.client.checkout(bzr_to_svn_url(self.base), to_location, rev, 
+                            True, client_ctx)
+
+        return WorkingTree.open(to_location)
+
+    def create_checkout(self, to_location, revision_id=None,
+            lightweight=False):
+        if lightweight:
+            return self._create_lightweight_checkout(to_location, revision_id)
+        else:
+            return self._create_heavyweight_checkout(to_location, revision_id)
+       
     def _generate_revision_history(self, last_revnum):
         self._revision_history = []
         for (branch, _, rev) in self.repository._log.follow_history(
