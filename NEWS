@@ -54,6 +54,12 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr annotate`` now defaults to showing dotted revnos for merged
+      revisions. It cuts them off at a depth of 12 characters, but you can
+      supply ``--long`` to see the full number. You can also use
+      ``--show-ids`` to display the original revision ids, rather than
+      revision numbers and committer names. (John Arbash Meinel, #75637)
+
     * bzr now supports Win32 UNC path (e.g. \\HOST\path). 
       (Alexander Belchenko, #57869)
 
