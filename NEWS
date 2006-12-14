@@ -46,6 +46,8 @@ IN DEVELOPMENT
     * 'bzr selftest --clean-output' allows easily clean temporary tests 
       directories without running tests. (Alexander Belchenko)
 
+    * ``bzr help hidden-commands`` lists all hidden commands. (Aaron Bentley)
+
   INTERNALS:
 
     * Change Revision serialization to only write out millisecond
