@@ -470,6 +470,7 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
 
         root = os.getcwdu()
         before = os.listdir(root)
+        before.sort()
         self.assertEquals(['bzr','bzrlib','setup.py',
                            'test0000.tmp','test0001.tmp',
                            'test9999.tmp','tests'],
@@ -484,6 +485,7 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
         self.assertEquals('', err)
 
         after = os.listdir(root)
+        after.sort()
         self.assertEquals(['bzr','bzrlib','setup.py',
                            'test9999.tmp','tests'],
                            after)
