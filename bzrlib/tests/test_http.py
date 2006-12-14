@@ -18,7 +18,9 @@
 # implementation; at the moment we have urllib and pycurl.
 
 # TODO: Should be renamed to bzrlib.transport.http.tests?
+# TODO: What about renaming to bzrlib.tests.transport.http ?
 
+import os
 import select
 import socket
 import threading
@@ -38,10 +40,12 @@ from bzrlib.tests.HttpServer import (
 from bzrlib.tests.HTTPTestUtil import (
     BadProtocolRequestHandler,
     BadStatusRequestHandler,
+    FakeProxyRequestHandler,
     ForbiddenRequestHandler,
     InvalidStatusRequestHandler,
     NoRangeRequestHandler,
     SingleRangeRequestHandler,
+    TestCaseWithTwoWebservers,
     TestCaseWithWebserver,
     WallRequestHandler,
     )
@@ -532,7 +536,7 @@ class TestRecordingServer(TestCase):
 
 
 class TestRangeRequestServer(object):
-    """Test the http connections.
+    """Tests readv requests against server.
 
     This MUST be used by daughter classes that also inherit from
     TestCaseWithWebserver.
@@ -545,8 +549,6 @@ class TestRangeRequestServer(object):
     def setUp(self):
         TestCaseWithWebserver.setUp(self)
         self.build_tree_contents([('a', '0123456789')],)
-
-    """Tests readv requests against server"""
 
     def test_readv(self):
         server = self.get_readonly_server()
@@ -566,18 +568,18 @@ class TestRangeRequestServer(object):
         self.assertEqual(l[2], (0, '0'))
         self.assertEqual(l[3], (3, '34'))
 
-    def test_readv_short_read(self):
+    def test_readv_invalid_ranges(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
 
         # This is intentionally reading off the end of the file
         # since we are sure that it cannot get there
-        self.assertListRaises((errors.ShortReadvError, AssertionError),
+        self.assertListRaises((errors.InvalidRange, errors.ShortReadvError,),
                               t.readv, 'a', [(1,1), (8,10)])
 
         # This is trying to seek past the end of the file, it should
         # also raise a special error
-        self.assertListRaises(errors.ShortReadvError,
+        self.assertListRaises((errors.InvalidRange, errors.ShortReadvError,),
                               t.readv, 'a', [(12,2)])
 
 
@@ -621,3 +623,181 @@ class TestNoRangeRequestServer_pycurl(TestWithTransport_pycurl,
     """Tests range requests refusing server for pycurl implementation"""
 
 
+class TestProxyHttpServer(object):
+    """Tests proxy server.
+
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithTwoWebservers.
+
+    We can't inherit directly from TestCaseWithTwoWebservers or
+    the test framework will try to create an instance which
+    cannot run, its implementation being incomplete.
+
+    Be aware that we do not setup a real proxy here. Instead, we
+    check that the *connection* goes through the proxy by serving
+    different content (the faked proxy server append '-proxied'
+    to the file names).
+    """
+
+    # FIXME: We don't have an https server available, so we don't
+    # test https connections.
+
+    def setUp(self):
+        TestCaseWithTwoWebservers.setUp(self)
+        self.build_tree_contents([('foo', 'contents of foo\n'),
+                                  ('foo-proxied', 'proxied contents of foo\n')])
+        # Let's setup some attributes for tests
+        self.server = self.get_readonly_server()
+        self.no_proxy_host = 'localhost:%d' % self.server.port
+        # The secondary server is the proxy
+        self.proxy = self.get_secondary_server()
+        self.proxy_url = self.proxy.get_url()
+        self._old_env = {}
+
+    def create_transport_secondary_server(self):
+        """Creates an http server that will serve files with
+        '-proxied' appended to their names.
+        """
+        return HttpServer(FakeProxyRequestHandler)
+
+    def _set_and_capture_env_var(self, name, new_value):
+        """Set an environment variable, and reset it when finished."""
+        self._old_env[name] = osutils.set_or_unset_env(name, new_value)
+
+    def _install_env(self, env):
+        for name, value in env.iteritems():
+            self._set_and_capture_env_var(name, value)
+
+    def _restore_env(self):
+        for name, value in self._old_env.iteritems():
+            osutils.set_or_unset_env(name, value)
+
+    def proxied_in_env(self, env):
+        self._install_env(env)
+        url = self.server.get_url()
+        t = self._transport(url)
+        try:
+            self.assertEqual(t.get('foo').read(), 'proxied contents of foo\n')
+        finally:
+            self._restore_env()
+
+    def not_proxied_in_env(self, env):
+        self._install_env(env)
+        url = self.server.get_url()
+        t = self._transport(url)
+        try:
+            self.assertEqual(t.get('foo').read(), 'contents of foo\n')
+        finally:
+            self._restore_env()
+
+    def test_http_proxy(self):
+        self.proxied_in_env({'http_proxy': self.proxy_url})
+
+    def test_HTTP_PROXY(self):
+        self.proxied_in_env({'HTTP_PROXY': self.proxy_url})
+
+    def test_all_proxy(self):
+        self.proxied_in_env({'all_proxy': self.proxy_url})
+
+    def test_ALL_PROXY(self):
+        self.proxied_in_env({'ALL_PROXY': self.proxy_url})
+
+    def test_http_proxy_with_no_proxy(self):
+        self.not_proxied_in_env({'http_proxy': self.proxy_url,
+                                 'no_proxy': self.no_proxy_host})
+
+    def test_HTTP_PROXY_with_NO_PROXY(self):
+        self.not_proxied_in_env({'HTTP_PROXY': self.proxy_url,
+                                 'NO_PROXY': self.no_proxy_host})
+
+    def test_all_proxy_with_no_proxy(self):
+        self.not_proxied_in_env({'all_proxy': self.proxy_url,
+                                 'no_proxy': self.no_proxy_host})
+
+    def test_ALL_PROXY_with_NO_PROXY(self):
+        self.not_proxied_in_env({'ALL_PROXY': self.proxy_url,
+                                 'NO_PROXY': self.no_proxy_host})
+
+
+class TestProxyHttpServer_urllib(TestProxyHttpServer,
+                                 TestCaseWithTwoWebservers):
+    """Tests proxy server for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestProxyHttpServer_pycurl(TestWithTransport_pycurl,
+                                 TestProxyHttpServer,
+                                 TestCaseWithTwoWebservers):
+    """Tests proxy server for pycurl implementation"""
+
+    def setUp(self):
+        TestProxyHttpServer.setUp(self)
+        # Oh my ! pycurl does not check for the port as part of
+        # no_proxy :-( So we just test the host part
+        self.no_proxy_host = 'localhost'
+
+    def test_HTTP_PROXY(self):
+        # pycurl do not check HTTP_PROXY for security reasons
+        # (for use in a CGI context that we do not care
+        # about. Should we ?)
+        raise TestSkipped()
+
+    def test_HTTP_PROXY_with_NO_PROXY(self):
+        raise TestSkipped()
+
+
+class TestRanges(object):
+    """Test the Range header in GET methods..
+
+    This MUST be used by daughter classes that also inherit from
+    TestCaseWithWebserver.
+
+    We can't inherit directly from TestCaseWithWebserver or the
+    test framework will try to create an instance which cannot
+    run, its implementation being incomplete.
+    """
+
+    def setUp(self):
+        TestCaseWithWebserver.setUp(self)
+        self.build_tree_contents([('a', '0123456789')],)
+        server = self.get_readonly_server()
+        self.transport = self._transport(server.get_url())
+
+    def _file_contents(self, relpath, ranges, tail_amount=0):
+         code, data = self.transport._get(relpath, ranges)
+         self.assertTrue(code in (200, 206),'_get returns: %d' % code)
+         for start, end in ranges:
+             data.seek(start)
+             yield data.read(end - start + 1)
+
+    def _file_tail(self, relpath, tail_amount):
+         code, data = self.transport._get(relpath, [], tail_amount)
+         self.assertTrue(code in (200, 206),'_get returns: %d' % code)
+         data.seek(-tail_amount + 1, 2)
+         return data.read(tail_amount)
+
+    def test_range_header(self):
+        # Valid ranges
+        map(self.assertEqual,['0', '234'],
+            list(self._file_contents('a', [(0,0), (2,4)])),)
+        # Tail
+        self.assertEqual('789', self._file_tail('a', 3))
+        # Syntactically invalid range
+        self.assertRaises(errors.InvalidRange,
+                          self.transport._get, 'a', [(4, 3)])
+        # Semantically invalid range
+        self.assertRaises(errors.InvalidRange,
+                          self.transport._get, 'a', [(42, 128)])
+
+
+class TestRanges_urllib(TestRanges, TestCaseWithWebserver):
+    """Test the Range header in GET methods for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
+
+class TestRanges_pycurl(TestWithTransport_pycurl,
+                        TestRanges,
+                        TestCaseWithWebserver):
+    """Test the Range header in GET methods for pycurl implementation"""

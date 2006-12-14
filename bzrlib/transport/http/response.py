@@ -279,6 +279,11 @@ def handle_response(url, code, headers, data):
         return data
     elif code == 404:
         raise errors.NoSuchFile(url)
+    elif code == 416:
+        # We don't know which, but one of the ranges we specified
+        # was wrong. So we raise with 0 for a lack of a better
+        # magic value.
+        raise errors.InvalidRange(url,0)
 
     # TODO: jam 20060713 Properly handle redirects (302 Found, etc)
     #       The '_get' code says to follow redirects, we probably 

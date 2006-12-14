@@ -932,11 +932,12 @@ class KnitError(BzrError):
 
 class KnitHeaderError(KnitError):
 
-    _fmt = "Knit header error: %(badline)r unexpected"
+    _fmt = "Knit header error: %(badline)r unexpected for file %(filename)s"
 
-    def __init__(self, badline):
+    def __init__(self, badline, filename):
         KnitError.__init__(self)
         self.badline = badline
+        self.filename = filename
 
 
 class KnitCorrupt(KnitError):
