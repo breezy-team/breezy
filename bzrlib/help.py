@@ -131,11 +131,14 @@ def _help_commands_to_text(topic):
                                  plugin_command_names,
                                  get_cmd_object)
     out = []
-
+    if topic == 'hidden':
+        hidden = True
+    else:
+        hidden = False
     names = set(builtin_command_names()) # to eliminate duplicates
     names.update(plugin_command_names())
     commands = ((n, get_cmd_object(n)) for n in names)
-    shown_commands = [(n, o) for n, o in commands if not o.hidden]
+    shown_commands = [(n, o) for n, o in commands if o.hidden == hidden]
     max_name = max(len(n) for n, o in shown_commands)
     indent = ' ' * (max_name + 1)
     width = osutils.terminal_width() - 1
@@ -163,3 +166,6 @@ def _help_commands_to_text(topic):
 help_topics.topic_registry.register("commands",
                                     _help_commands_to_text,
                                     "Basic help for all commands")
+help_topics.topic_registry.register("hidden", 
+                                    _help_commands_to_text,
+                                    "All hidden commands")
