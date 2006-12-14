@@ -41,6 +41,21 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         to_file = sys.stdout
 
     prevanno=''
+    last_rev_id = None
+    if show_ids:
+        w = branch.repository.weave_store.get_weave(file_id,
+            branch.repository.get_transaction())
+        annotations = list(w.annotate_iter(rev_id))
+        max_origin_len = max(len(origin) for origin, text in annotations)
+        for origin, text in annotations:
+            if full or last_rev_id != origin:
+                this = origin
+            else:
+                this = ''
+            to_file.write('%*s | %s' % (max_origin_len, this, text))
+            last_rev_id = origin
+        return
+
     annotation = list(_annotate_file(branch, rev_id, file_id))
     if len(annotation) == 0:
         max_origin_len = max_revno_len = max_revid_len = 0
@@ -53,22 +68,14 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         max_revno_len = min(max_revno_len, 12)
     max_revno_len = max(max_revno_len, 3)
 
-    last_rev_id = None
     for (revno_str, author, date_str, line_rev_id, text) in annotation:
-        if show_ids:
-            if full or last_rev_id != line_rev_id:
-                anno = '%*s ' % (max_revid_len, str(line_rev_id))
-            else:
-                anno = ' ' * (max_revid_len+1)
-            last_rev_id = line_rev_id
+        if verbose:
+            anno = '%-*s %-*s %8s ' % (max_revno_len, revno_str,
+                                       max_origin_len, author, date_str)
         else:
-            if verbose:
-                anno = '%-*s %-*s %8s ' % (max_revno_len, revno_str,
-                                           max_origin_len, author, date_str)
-            else:
-                if len(revno_str) > max_revno_len:
-                    revno_str = revno_str[:max_revno_len-1] + '>'
-                anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7])
+            if len(revno_str) > max_revno_len:
+                revno_str = revno_str[:max_revno_len-1] + '>'
+            anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7])
 
         if anno.lstrip() == "" and full: anno = prevanno
         print >>to_file, '%s| %s' % (anno, text)
