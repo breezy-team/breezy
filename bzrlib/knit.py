@@ -980,8 +980,13 @@ class _KnitComponentFile(object):
 
     def check_header(self, fp):
         line = fp.readline()
+        if line == '':
+            # An empty file can actually be treated as though the file doesn't
+            # exist yet.
+            raise errors.NoSuchFile(self._transport.base + self._filename)
         if line != self.HEADER:
-            raise KnitHeaderError(badline=line)
+            raise KnitHeaderError(badline=line,
+                              filename=self._transport.abspath(self._filename))
 
     def commit(self):
         """Commit is a nop."""

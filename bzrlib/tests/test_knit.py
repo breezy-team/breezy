@@ -20,6 +20,7 @@
 import difflib
 
 
+from bzrlib import errors
 from bzrlib.errors import KnitError, RevisionAlreadyPresent, NoSuchFile
 from bzrlib.knit import (
     KnitContent,
@@ -84,6 +85,7 @@ class KnitContentTests(TestCase):
         it = content1.line_delta_iter(content2)
         self.assertEqual(it.next(), (1, 2, 2, [("", "a"), ("", "c")]))
         self.assertRaises(StopIteration, it.next)
+
 
 class KnitTests(TestCaseWithTransport):
     """Class containing knit test helper routines."""
@@ -746,3 +748,19 @@ class TestKnitIndex(KnitTests):
         # And it shouldn't be modified
         self.assertEqual(['a-1'], idx._history)
         self.assertEqual({'a-1':('a-1', ['fulltext'], 0, 0, [], 0)}, idx._cache)
+
+    def test_knit_index_ignores_empty_files(self):
+        # There was a race condition in older bzr, where a ^C at the right time
+        # could leave an empty .kndx file, which bzr would later claim was a
+        # corrupted file since the header was not present. In reality, the file
+        # just wasn't created, so it should be ignored.
+        t = get_transport('.')
+        t.put_bytes('test.kndx', '')
+
+        knit = self.make_test_knit()
+
+    def test_knit_index_checks_header(self):
+        t = get_transport('.')
+        t.put_bytes('test.kndx', '# not really a knit header\n\n')
+
+        self.assertRaises(errors.KnitHeaderError, self.make_test_knit)

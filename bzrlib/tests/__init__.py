@@ -376,7 +376,8 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        self.stream.write(self._ellipsize_to_right(name, 60))
+        self.stream.write(self._ellipsize_to_right(name,
+                            osutils.terminal_width()-20))
         self.stream.flush()
 
     def report_error(self, test, err):
@@ -386,7 +387,7 @@ class VerboseTestResult(ExtendedTestResult):
 
     def report_failure(self, test, err):
         self.failure_count += 1
-        self.stream.writeln('FAIL %s\n    %s'
+        self.stream.writeln(' FAIL %s\n    %s'
                 % (self._testTimeString(), err[1]))
 
     def report_success(self, test):
@@ -792,6 +793,20 @@ class TestCase(unittest.TestCase):
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
+            # Proxies
+            'http_proxy': None,
+            'HTTP_PROXY': None,
+            'https_proxy': None,
+            'HTTPS_PROXY': None,
+            'no_proxy': None,
+            'NO_PROXY': None,
+            'all_proxy': None,
+            'ALL_PROXY': None,
+            # Nobody cares about these ones AFAIK. So far at
+            # least. If you do (care), please update this comment
+            # -- vila 20061212
+            'ftp_proxy': None,
+            'FTP_PROXY': None,
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
@@ -1711,7 +1726,7 @@ def test_suite():
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
-                   'bzrlib.tests.test_command',
+                   'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
@@ -1724,6 +1739,7 @@ def test_suite():
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_generate_ids',
+                   'bzrlib.tests.test_globbing',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',

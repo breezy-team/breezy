@@ -1581,20 +1581,32 @@ class cmd_ignore(Command):
     To remove patterns from the ignore list, edit the .bzrignore file.
 
     Trailing slashes on patterns are ignored. 
-    If the pattern contains a slash, it is compared to the whole path
-    from the branch root.  Otherwise, it is compared to only the last
-    component of the path.  To match a file only in the root directory,
-    prepend './'.
+    If the pattern contains a slash or is a regular expression, it is compared 
+    to the whole path from the branch root.  Otherwise, it is compared to only
+    the last component of the path.  To match a file only in the root 
+    directory, prepend './'.
 
     Ignore patterns specifying absolute paths are not allowed.
 
-    Ignore patterns are case-insensitive on case-insensitive systems.
+    Ignore patterns may include globbing wildcards such as:
+      ? - Matches any single character except '/'
+      * - Matches 0 or more characters except '/'
+      /**/ - Matches 0 or more directories in a path
+      [a-z] - Matches a single character from within a group of characters
+ 
+    Ignore patterns may also be Python regular expressions.  
+    Regular expression ignore patterns are identified by a 'RE:' prefix 
+    followed by the regular expression.  Regular expression ignore patterns
+    may not include named or numbered groups.
 
-    Note: wildcards must be quoted from the shell on Unix.
+    Note: ignore patterns containing shell wildcards must be quoted from 
+    the shell on Unix.
 
     examples:
         bzr ignore ./Makefile
         bzr ignore '*.class'
+        bzr ignore 'lib/**/*.o'
+        bzr ignore 'RE:lib/.*\.o'
     """
     takes_args = ['name_pattern*']
     takes_options = [
@@ -1749,13 +1761,14 @@ class cmd_cat(Command):
         try:
             tree, relpath = WorkingTree.open_containing(filename)
             b = tree.branch
-        except errors.NotBranchError:
+        except (errors.NotBranchError, errors.NotLocalUrl):
             pass
 
-        if tree is None:
-            b, relpath = Branch.open_containing(filename)
         if revision is not None and revision[0].get_branch() is not None:
             b = Branch.open(revision[0].get_branch())
+        if tree is None:
+            b, relpath = Branch.open_containing(filename)
+            tree = b.basis_tree()
         if revision is None:
             revision_id = b.last_revision()
         else:
