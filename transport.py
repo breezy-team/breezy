@@ -67,16 +67,6 @@ def get_test_permutations():
     return []
 
 
-def svn_to_bzr_url(url):
-    """Convert a Subversion URL to a URL understood by Bazaar.
-
-    This will optionally prefix the URL with "svn+".
-    """
-    if not (url.startswith("svn+") or url.startswith("svn:")):
-        url = "svn+%s" % url
-    return url
-
-
 def bzr_to_svn_url(url):
     """Convert a Bazaar URL to a URL understood by Subversion.
 
@@ -205,7 +195,7 @@ class SvnRaTransport(Transport):
         
         :return: A new instance of SvnRaTransport connected to the root.
         """
-        root_url = svn_to_bzr_url(self.get_repos_root())
+        root_url = self.get_repos_root()
         return SvnRaTransport(root_url)
 
     def listable(self):

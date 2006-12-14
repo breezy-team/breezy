@@ -17,7 +17,7 @@
 from tests import TestCaseWithSubversionRepository
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NotBranchError
-from transport import SvnRaTransport, svn_to_bzr_url, bzr_to_svn_url
+from transport import SvnRaTransport, bzr_to_svn_url
 from unittest import TestCase
 
 class SvnRaTest(TestCaseWithSubversionRepository):
@@ -65,18 +65,10 @@ class SvnRaTest(TestCaseWithSubversionRepository):
 
         t = SvnRaTransport("%s/dir" % repos_url)
         root = t.get_root()
-        self.assertEqual("svn+"+repos_url, root.base)
+        self.assertEqual(repos_url, root.base)
  
 
 class UrlConversionTest(TestCase):
-    def test_svn_to_bzr_url(self):
-        self.assertEqual("svn://host/location", 
-                         svn_to_bzr_url("svn://host/location"))
-        self.assertEqual("svn+http://host/location", 
-                         svn_to_bzr_url("http://host/location"))
-        self.assertEqual("svn+http://host/location", 
-                         svn_to_bzr_url("svn+http://host/location"))
-
     def test_bzr_to_svn_url(self):
         self.assertEqual("svn://host/location", 
                          bzr_to_svn_url("svn://host/location"))

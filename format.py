@@ -27,7 +27,7 @@ import svn.core, svn.repos
 from branch import SvnBranch
 from repository import SvnRepository
 from scheme import BranchingScheme
-from transport import SvnRaTransport, bzr_to_svn_url, svn_to_bzr_url
+from transport import SvnRaTransport, bzr_to_svn_url
 
 
 class SvnRemoteAccess(BzrDir):
@@ -166,7 +166,7 @@ class SvnFormat(BzrDirFormat):
 
         local_path = transport._local_base.rstrip("/")
         repos = svn.repos.create(local_path, '', '', None, None)
-        return self.open(SvnRaTransport(svn_to_bzr_url(transport.base)), _found=True)
+        return self.open(SvnRaTransport(transport.base), _found=True)
 
     def is_supported(self):
         """See BzrDir.is_supported()."""

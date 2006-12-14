@@ -32,8 +32,7 @@ from branch import SvnBranch
 from repository import (SvnRepository, escape_svn_path, SVN_PROP_BZR_MERGE,
                         SVN_PROP_SVK_MERGE, revision_id_to_svk_feature) 
 from scheme import BranchingScheme
-from transport import (SvnRaTransport, svn_config, 
-                       svn_to_bzr_url, bzr_to_svn_url) 
+from transport import (SvnRaTransport, svn_config, bzr_to_svn_url) 
 from tree import SvnBasisTree
 
 import os
@@ -479,8 +478,6 @@ class SvnCheckout(BzrDir):
             svn_url = svn.wc.entry(self.local_path, wc, True).url
         finally:
             svn.wc.adm_close(wc)
-
-        bzr_url = svn_to_bzr_url(svn_url)
 
         self.remote_transport = SvnRaTransport(svn_url)
         self.svn_root_transport = self.remote_transport.get_root()
