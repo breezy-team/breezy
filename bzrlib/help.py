@@ -131,7 +131,7 @@ def _help_commands_to_text(topic):
                                  plugin_command_names,
                                  get_cmd_object)
     out = []
-    if topic == 'hidden':
+    if topic == 'hidden-commands':
         hidden = True
     else:
         hidden = False
@@ -166,6 +166,6 @@ def _help_commands_to_text(topic):
 help_topics.topic_registry.register("commands",
                                     _help_commands_to_text,
                                     "Basic help for all commands")
-help_topics.topic_registry.register("hidden", 
+help_topics.topic_registry.register("hidden-commands", 
                                     _help_commands_to_text,
                                     "All hidden commands")

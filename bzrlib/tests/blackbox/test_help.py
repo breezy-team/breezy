@@ -54,7 +54,7 @@ class TestHelp(ExternalBase):
     def test_help_commands(self):
         dash_help  = self.runbzr('--help commands')[0]
         commands   = self.runbzr('help commands')[0]
-        hidden = self.runbzr('help hidden')[0]
+        hidden = self.runbzr('help hidden-commands')[0]
         long_help  = self.runbzr('help --long')[0]
         qmark_long = self.runbzr('? --long')[0]
         qmark_cmds = self.runbzr('? commands')[0]
@@ -64,8 +64,8 @@ class TestHelp(ExternalBase):
         self.assertEquals(dash_help, qmark_cmds)
 
     def test_hidden(self):
-        commands   = self.runbzr('help commands')[0]
-        hidden   = self.runbzr('help hidden')[0]
+        commands = self.runbzr('help commands')[0]
+        hidden = self.runbzr('help hidden-commands')[0]
         self.assertTrue('commit' in commands)
         self.assertTrue('commit' not in hidden)
         self.assertTrue('rocks' in hidden)
