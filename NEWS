@@ -43,6 +43,9 @@ IN DEVELOPMENT
         D  baz
         ?  wooley
 
+    * 'bzr selftest --clean-output' allows easily clean temporary tests 
+      directories without running tests. (Alexander Belchenko)
+
   INTERNALS:
 
     * Change Revision serialization to only write out millisecond

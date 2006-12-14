@@ -1839,3 +1839,23 @@ def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
     for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
         suite.addTests(adapter.adapt(test))
+
+
+def clean_selftest_output(root=None, quiet=False):
+    """Remove all selftest output directories from root directory.
+
+    :param  root:   root directory for clean
+                    (if ommitted or None then clean current directory).
+    :param  quiet:  suppress report about deleting directories
+    """
+    import re
+    import shutil
+
+    re_dir = re.compile(r'''test\d\d\d\d\.tmp''')
+    if root is None:
+        root = u'.'
+    for i in os.listdir(root):
+        if os.path.isdir(i) and re_dir.match(i):
+            if not quiet:
+                print 'delete directory:', i
+            shutil.rmtree(i)
