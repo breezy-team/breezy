@@ -24,7 +24,7 @@ from StringIO import StringIO
 import stgit
 import stgit.git as git
 
-from bzrlib import config, graph, urlutils
+from bzrlib import config, iterablefile, graph, osutils, urlutils
 from bzrlib.decorators import *
 import bzrlib.branch
 import bzrlib.bzrdir
@@ -48,7 +48,6 @@ class GitBranchConfig(config.BranchConfig):
 
 def gitrevid_from_bzr(revision_id):
     if revision_id is None:
-        import pdb;pdb.set_trace()
         return None
     return revision_id[4:]
 
@@ -232,6 +231,9 @@ class GitRepository(bzrlib.repository.Repository):
         for lines in self.git.ancestor_lines(git_revisions):
             yield self.parse_rev(lines)
 
+    def is_shared(self):
+        return True
+
     def get_revision_graph(self, revision_id=None):
         if revision_id is None:
             revisions = None
@@ -252,6 +254,14 @@ class GitRepository(bzrlib.repository.Repository):
         raw = self.git.rev_list([gitrevid_from_bzr(revision_id)], max_count=1,
                                 header=True)
         return self.parse_rev(raw)
+
+    def has_revision(self, revision_id):
+        try:
+            self.get_revision(revision_id)
+        except NoSuchRevision:
+            return False
+        else:
+            return True
 
     def get_revisions(self, revisions):
         return [self.get_revision(r) for r in revisions]
@@ -276,6 +286,8 @@ class GitRepository(bzrlib.repository.Repository):
                     committer = ' '.join(commit_fields[1:-3])
                 timestamp = commit_fields[-2]
                 timezone = commit_fields[-1]
+            elif field.startswith('tree '):
+                tree_id = field.split()[1]
             elif in_log:
                 log.append(field[4:])
             elif field == '\n':
@@ -289,7 +301,92 @@ class GitRepository(bzrlib.repository.Repository):
         result.timezone = timezone and int(timezone)
         result.timestamp = float(timestamp)
         result.committer = committer 
+        result.properties['git-tree-id'] = tree_id
         return result
+
+    def revision_tree(self, revision_id):
+        return GitRevisionTree(self, revision_id)
+
+    def get_inventory(self, revision_id):
+        revision = self.get_revision(revision_id)
+        inventory = GitInventory(revision_id)
+        tree_id = revision.properties['git-tree-id']
+        type_map = {'blob': 'file', 'tree': 'directory' }
+        def get_inventory(tree_id, prefix):
+            for perms, type, obj_id, name in self.git.get_inventory(tree_id):
+                full_path = prefix + name
+                if type == 'blob':
+                    text_sha1 = obj_id
+                else:
+                    text_sha1 = None
+                executable = (perms[-3] in ('1', '3', '5', '7'))
+                entry = GitEntry(full_path, type_map[type], revision_id,
+                                 text_sha1, executable)
+                inventory.entries[full_path] = entry
+                if type == 'tree':
+                    get_inventory(obj_id, full_path+'/')
+        get_inventory(tree_id, '')
+        return inventory
+
+
+class GitRevisionTree(object):
+
+    def __init__(self, repository, revision_id):
+        self.repository = repository
+        self.revision_id = revision_id
+        self.inventory = repository.get_inventory(revision_id)
+
+    def get_file(self, file_id):
+        obj_id = self.inventory[file_id].text_sha1
+        lines = self.repository.git.cat_file('blob', obj_id)
+        return iterablefile.IterableFile(lines)
+
+    def is_executable(self, file_id):
+        return self.inventory[file_id].executable
+
+
+class GitInventory(object):
+
+    def __init__(self, revision_id):
+        self.entries = {}
+        self.root = GitEntry('', 'directory', revision_id)
+        self.entries[''] = self.root
+
+    def __getitem__(self, key):
+        return self.entries[key]
+
+    def iter_entries(self):
+        return iter(sorted(self.entries.items()))
+
+    def iter_entries_by_dir(self):
+        return self.iter_entries()
+
+    def __len__(self):
+        return len(self.entries)
+
+
+class GitEntry(object):
+
+    def __init__(self, path, kind, revision, text_sha1=None, executable=False,
+                 text_size=None):
+        self.path = path
+        self.file_id = path
+        self.kind = kind
+        self.executable = executable
+        self.name = osutils.basename(path)
+        if path == '':
+            self.parent_id = None
+        else:
+            self.parent_id = osutils.dirname(path)
+        self.revision = revision
+        self.symlink_target = None
+        self.text_sha1 = text_sha1
+        self.text_size = None
+
+    def __repr__(self):
+        return "GitEntry(%r, %r, %r, %r)" % (self.path, self.kind, 
+                                             self.revision, self.parent_id)
+
 
 class GitModel(object):
     """API that follows GIT model closely"""
@@ -306,6 +403,15 @@ class GitModel(object):
 
     def git_line(self, command, args):
         return stgit.git._output_one_line(self.git_command(command, args))
+
+    def cat_file(self, type, object_id, pretty=False):
+        args = []
+        if pretty:
+            args.append('-p')
+        else:
+            args.append(type)
+        args.append(object_id)
+        return self.git_lines('cat-file', args)
 
     def rev_list(self, heads, max_count=None, header=False):
         args = []
@@ -335,3 +441,12 @@ class GitModel(object):
             else:
                 revision_lines.append(line.decode('latin-1'))
         assert revision_lines == ['']
+
+    def get_inventory(self, tree_id):
+        for line in self.cat_file('tree', tree_id, True):
+            sections = line.split(' ', 2)
+            obj_id, name = sections[2].split('\t', 1)
+            name = name.rstrip('\n')
+            if name.startswith('"'):
+                name = name[1:-1].decode('string_escape').decode('utf-8')
+            yield (sections[0], sections[1], obj_id, name)
