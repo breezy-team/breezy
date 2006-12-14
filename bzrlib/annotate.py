@@ -81,7 +81,13 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         print >>to_file, '%s| %s' % (anno, text)
         prevanno=anno
 
+
 def _annotate_file(branch, rev_id, file_id ):
+    """Yield the origins for each line of a file.
+
+    This includes detailed information, such as the committer name, and
+    date string for the commit, rather than just the revision id.
+    """
 
     rh = branch.revision_history()
     revision_graph = branch.repository.get_revision_graph(rev_id)
