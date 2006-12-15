@@ -33,6 +33,11 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
     def setUp(self):
         super(TestCaseWithSubversionRepository, self).setUp()
         self.client_ctx = svn.client.create_context()
+        self.client_ctx.log_msg_func2 = svn.client.svn_swig_py_get_commit_log_func
+        self.client_ctx.log_msg_baton2 = self.log_message_func
+
+    def log_message_func(self, items, pool):
+        return self.next_message
 
     def make_repository(self, relpath):
         """Create a repository.
@@ -112,6 +117,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         :param relpath: List of paths to commit.
         """
         olddir = os.path.abspath('.')
+        self.next_message = message
         os.chdir(dir)
         info = svn.client.commit3(["."], recursive, False, self.client_ctx)
         os.chdir(olddir)

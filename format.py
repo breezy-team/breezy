@@ -27,7 +27,7 @@ import svn.core, svn.repos
 from branch import SvnBranch
 from repository import SvnRepository
 from scheme import BranchingScheme
-from transport import SvnRaTransport, bzr_to_svn_url, svn_to_bzr_url
+from transport import SvnRaTransport, bzr_to_svn_url, get_svn_ra_transport
 
 
 class SvnRemoteAccess(BzrDir):
@@ -38,9 +38,9 @@ class SvnRemoteAccess(BzrDir):
     """
     def __init__(self, _transport, _format, scheme=None):
         """See BzrDir.__init__()."""
+        _transport = get_svn_ra_transport(_transport)
         super(SvnRemoteAccess, self).__init__(_transport, _format)
 
-        self.transport = None
         self.svn_root_transport = _transport.get_root()
 
         svn_url = bzr_to_svn_url(self.root_transport.base)
@@ -143,13 +143,20 @@ class SvnFormat(BzrDirFormat):
     def probe_transport(klass, transport):
         format = klass()
 
+        transport = get_svn_ra_transport(transport)
+
         if isinstance(transport, SvnRaTransport):
             return format
 
         raise NotBranchError(path=transport.base)
 
     def _open(self, transport):
-        return SvnRemoteAccess(transport, self)
+        try: 
+            return SvnRemoteAccess(transport, self)
+        except SubversionException, (msg, num):
+            if num == svn.core.SVN_ERR_RA_DAV_REQUEST_FAILED:
+                raise NotBranchError(transport.base)
+            raise
 
     def get_format_string(self):
         return 'Subversion Smart Server'
@@ -166,7 +173,7 @@ class SvnFormat(BzrDirFormat):
 
         local_path = transport._local_base.rstrip("/")
         repos = svn.repos.create(local_path, '', '', None, None)
-        return self.open(SvnRaTransport(svn_to_bzr_url(transport.base)), _found=True)
+        return self.open(SvnRaTransport(transport.base), _found=True)
 
     def is_supported(self):
         """See BzrDir.is_supported()."""

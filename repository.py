@@ -212,7 +212,7 @@ class SvnRepository(Repository):
         self._latest_revnum = transport.get_latest_revnum()
 
         self._log = logwalker.LogWalker(self.scheme, 
-                                        repos_url=transport.svn_url,
+                                        transport=transport,
                                         cache_dir=self.create_cache_dir(), 
                                         last_revnum=self._latest_revnum)
 
@@ -412,9 +412,10 @@ class SvnRepository(Repository):
             if not name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
                 continue
 
-            bzr_props[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = svn_props[name].decode('utf8')
+            bzr_props[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = svn_props[name]
 
         (rev.committer, rev.message, date, _) = self._log.get_revision_info(revnum)
+        mutter('msg: %r' % rev.message)
 
         if rev.committer is None:
             rev.committer = ""

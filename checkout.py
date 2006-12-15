@@ -24,14 +24,14 @@ from bzrlib.osutils import rand_bytes, fingerprint_file
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
+from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
 from repository import (SvnRepository, escape_svn_path, SVN_PROP_BZR_MERGE,
                         SVN_PROP_SVK_MERGE, revision_id_to_svk_feature) 
 from scheme import BranchingScheme
-from transport import (SvnRaTransport, svn_config, 
-                       svn_to_bzr_url, bzr_to_svn_url) 
+from transport import (SvnRaTransport, svn_config, bzr_to_svn_url) 
 from tree import SvnBasisTree
 
 import os
@@ -459,6 +459,8 @@ class SvnWorkingTreeFormat(WorkingTreeFormat):
 
 
 class SvnCheckout(BzrDir):
+    """BzrDir implementation for Subversion checkouts (directories 
+    containing a .svn subdirectory."""
     def __init__(self, transport, format):
         super(SvnCheckout, self).__init__(transport, format)
         self.local_path = transport.local_abspath(".")
@@ -469,8 +471,6 @@ class SvnCheckout(BzrDir):
             svn_url = svn.wc.entry(self.local_path, wc, True).url
         finally:
             svn.wc.adm_close(wc)
-
-        bzr_url = svn_to_bzr_url(svn_url)
 
         self.remote_transport = SvnRaTransport(svn_url)
         self.svn_root_transport = self.remote_transport.get_root()
@@ -506,6 +506,11 @@ class SvnCheckout(BzrDir):
     find_repository = open_repository
 
     def create_workingtree(self, revision_id=None):
+        """See BzrDir.create_workingtree().
+
+        Not implemented for Subversion because having a .svn directory
+        implies having a working copy.
+        """
         raise NotImplementedError(self.create_workingtree)
 
     def create_branch(self):
@@ -528,13 +533,15 @@ class SvnCheckout(BzrDir):
 
 
 class SvnWorkingTreeDirFormat(BzrDirFormat):
+    """Working Tree implementation that uses Subversion working copies."""
     _lock_class = TransportLock
 
     @classmethod
     def probe_transport(klass, transport):
         format = klass()
 
-        if transport.has(svn.wc.get_adm_dir()):
+        if isinstance(transport, LocalTransport) and \
+            transport.has(svn.wc.get_adm_dir()):
             return format
 
         raise NotBranchError(path=transport.base)

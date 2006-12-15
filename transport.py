@@ -67,14 +67,11 @@ def get_test_permutations():
     return []
 
 
-def svn_to_bzr_url(url):
-    """Convert a Subversion URL to a URL understood by Bazaar.
+def get_svn_ra_transport(bzr_transport):
+    if isinstance(bzr_transport, SvnRaTransport):
+        return bzr_transport
 
-    This will optionally prefix the URL with "svn+".
-    """
-    if not (url.startswith("svn+") or url.startswith("svn:")):
-        url = "svn+%s" % url
-    return url
+    return SvnRaTransport(bzr_transport.base)
 
 
 def bzr_to_svn_url(url):
@@ -101,6 +98,7 @@ class SvnRaCallbacks(svn.ra.callbacks2_t):
     def open_tmp_file(self, pool):
         return mktemp(prefix='bzr-svn')
 
+
 class SvnRaTransport(Transport):
     """Fake transport for Subversion-related namespaces.
     
@@ -118,12 +116,10 @@ class SvnRaTransport(Transport):
             mutter('opening SVN RA connection to %r' % self.svn_url)
             self._ra = svn.ra.open2(self.svn_url.encode('utf8'), 
                     self.callbacks, svn_config, None)
-        except SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_RA_ILLEGAL_URL:
-                raise NotBranchError(path=url)
-            if num == svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED:
-                raise NotBranchError(path=url)
-            if num == svn.core.SVN_ERR_BAD_URL:
+        except SubversionException, (msg, num):
+            if num in (svn.core.SVN_ERR_RA_ILLEGAL_URL, \
+                       svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED, \
+                       svn.core.SVN_ERR_BAD_URL):
                 raise NotBranchError(path=url)
             raise
 
@@ -205,7 +201,7 @@ class SvnRaTransport(Transport):
         
         :return: A new instance of SvnRaTransport connected to the root.
         """
-        root_url = svn_to_bzr_url(self.get_repos_root())
+        root_url = self.get_repos_root()
         return SvnRaTransport(root_url)
 
     def listable(self):

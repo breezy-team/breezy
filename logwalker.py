@@ -28,6 +28,24 @@ from bsddb import dbshelve as shelve
 
 shelves = {}
 
+def _escape_commit_message(message):
+    """Replace xml-incompatible control characters."""
+    import re
+    # FIXME: RBC 20060419 this should be done by the revision
+    # serialiser not by commit. Then we can also add an unescaper
+    # in the deserializer and start roundtripping revision messages
+    # precisely. See repository_implementations/test_repository.py
+    
+    # Python strings can include characters that can't be
+    # represented in well-formed XML; escape characters that
+    # aren't listed in the XML specification
+    # (http://www.w3.org/TR/REC-xml/#NT-Char).
+    message, _ = re.subn(
+        u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+        lambda match: match.group(0).encode('unicode_escape'),
+        message)
+    return message
+
 class NotSvnBranchPath(BzrError):
     _fmt = """{%(branch_path)s}:%(revnum)s is not a valid Svn branch path"""
 
@@ -38,12 +56,24 @@ class NotSvnBranchPath(BzrError):
 
 
 class LogWalker(object):
-    def __init__(self, scheme, transport=None, cache_dir=None, last_revnum=None, repos_url=None, pb=None):
-        if transport is None:
-            transport = SvnRaTransport(repos_url)
+    """Easy way to access the history of a Subversion repository."""
+    def __init__(self, scheme, transport=None, cache_dir=None, last_revnum=None, pb=None):
+        """Create a new instance.
+
+        :param scheme:  Branching scheme to use.
+        :param transport:   SvnRaTransport to use to access the repository.
+        :param cache_dir:   Optional cache directory to use. Doesn't cache if 
+                            not set.
+        :param last_revnum: Last known revnum in the repository. Will be 
+                            determined if not specified.
+        :param pb:          Progress bar to report progress to.
+        """
+        assert isinstance(transport, SvnRaTransport)
 
         if last_revnum is None:
             last_revnum = transport.get_latest_revnum()
+
+        self.last_revnum = last_revnum
 
         self.transport = transport
         self.scheme = scheme
@@ -57,12 +87,7 @@ class LogWalker(object):
             self.revisions = {}
         self.saved_revnum = max(len(self.revisions)-1, 0)
 
-        if self.saved_revnum < last_revnum:
-            self.fetch_revisions(self.saved_revnum, last_revnum, pb)
-        else:
-            self.last_revnum = self.saved_revnum
-
-    def fetch_revisions(self, from_revnum, to_revnum, pb=None):
+    def fetch_revisions(self, to_revnum, pb=None):
         def rcvr(orig_paths, rev, author, date, message, pool):
             pb.update('fetching svn revision info', rev, to_revnum)
             paths = {}
@@ -81,6 +106,9 @@ class LogWalker(object):
                     'date': date,
                     'message': message
                     }
+            self.saved_revnum = rev
+
+        to_revnum = max(self.last_revnum, to_revnum)
 
         # Don't bother for only a few revisions
         if abs(self.saved_revnum-to_revnum) < 10:
@@ -93,7 +121,6 @@ class LogWalker(object):
                 mutter('getting log %r:%r' % (self.saved_revnum, to_revnum))
                 self.transport.get_log(["/"], self.saved_revnum, to_revnum, 
                                0, True, True, rcvr)
-                self.last_revnum = to_revnum
             finally:
                 pb.clear()
         except SubversionException, (_, num):
@@ -113,8 +140,8 @@ class LogWalker(object):
         if branch_path:
             branch_path = branch_path.strip("/")
 
-        if revnum > self.last_revnum:
-            self.fetch_revisions(self.last_revnum, revnum)
+        if revnum > self.saved_revnum:
+            self.fetch_revisions(revnum)
 
         continue_revnum = None
         for i in range(revnum+1):
@@ -161,6 +188,9 @@ class LogWalker(object):
     def find_branches(self, revnum):
         created_branches = {}
 
+        if revnum > self.saved_revnum:
+            self.fetch_revisions(revnum)
+
         for i in range(revnum):
             if i == 0:
                 continue
@@ -183,15 +213,16 @@ class LogWalker(object):
         :param revnum: Revision number.
         :returns: Tuple with author, log message and date of the revision.
         """
-        if revnum > self.last_revnum:
-            self.fetch_revisions(self.saved_revnum, revnum, pb)
+        if revnum > self.saved_revnum:
+            self.fetch_revisions(revnum, pb)
         rev = self.revisions[str(revnum)]
         if rev['author'] is None:
             author = None
         else:
-            author = rev['author'].decode('utf-8', 'ignore')
-        return (author, rev['message'].decode('utf-8', 'ignore'), 
-                rev['date'], rev['paths'])
+            author = rev['author']
+        return (author, 
+             _escape_commit_message(rev['message']), 
+             rev['date'], rev['paths'])
 
     
     def find_latest_change(self, path, revnum):
@@ -200,6 +231,8 @@ class LogWalker(object):
         return revnum
 
     def touches_path(self, path, revnum):
+        if revnum > self.saved_revnum:
+            self.fetch_revisions(revnum)
         return (path in self.revisions[str(revnum)]['paths'])
 
     def find_children(self, path, revnum):
@@ -209,7 +242,7 @@ class LogWalker(object):
 
         try:
             (dirents, _, _) = self.transport.get_dir(
-                path.encode('utf8'), revnum)
+                "/" + path.encode('utf8'), revnum)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
                 return
