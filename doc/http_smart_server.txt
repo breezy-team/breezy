@@ -123,7 +123,8 @@ Here's what it looks like::
     smart_server_app = wsgi.make_app(
         root='/srv/example.com/code',
         prefix='/code/',
-        path_var='REQUEST_URI')
+        path_var='REQUEST_URI',
+        readonly=True)
 
     fcgi.WSGIServer(smart_server_app).run()
         
@@ -146,7 +147,8 @@ Here's what it looks like::
     smart_server_app = wsgi.make_app(
         root='/srv/example.com/code',
         prefix='/code/',
-        path_var='REQUEST_URI')
+        path_var='REQUEST_URI',
+        readonly=True)
 
     def handler(request):
         """Handle a single request."""
@@ -195,6 +197,22 @@ directly.  Refer to the docstrings of `bzrlib.transport.http.wsgi` and the `WSGI
 standard`_ for further information.
 
 .. _WSGI standard: http://www.python.org/dev/peps/pep-0333/
+
+
+Pushing over ``bzr+http://``
+----------------------------
+
+It is possible to allow pushing data over the http smart server. The
+easiest way to do this, is to just supply ``readonly=False`` to the
+``wsgi.make_app()`` call. But be careful, because the smart protocol does
+not contain any Authentication. So if you enable write support, you will
+want to restrict access to ``.bzr/smart`` URLs to restrict who can
+actually write data on your system.  At this time, it is not possible to
+allow some people to have read-only access and others to have read-write
+access to the same urls. Because at the HTTP layer (which is doing the
+Authenticating), everything is just a POST request.  However, with a
+simple symlink, you could configure 2 URLs where one has restricted write
+access, and the other has read-only access.
 
 .. 
    vim: ft=rst tw=74 et
