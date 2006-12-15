@@ -48,7 +48,7 @@ will look like::
         Options Indexes, FollowSymLinks
         RewriteEngine On
         RewriteBase /code
-        RewriteRule ^(.*)/\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
+        RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
     </Directory>
     
     # bzr-smart.fcgi isn't under the DocumentRoot, so Alias it into the URL
@@ -81,11 +81,11 @@ httpd.conf::
 Define the rewrite rules with mod_rewrite the same way as for FastCGI, except
 change::
 
-    RewriteRule ^(.*)/\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
+    RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
 
 to::
 
-    RewriteRule ^(.*)/\.bzr/smart$ /srv/example.com/scripts/bzr-smart.py
+    RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.py
 
 Like with mod_fastcgi, we also define how our script is to be handled::
 
