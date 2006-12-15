@@ -81,10 +81,7 @@ def convert_svn_exception(unbound):
     return convert
 
 from bzrlib.transport import register_transport
-register_transport('svn:', transport.SvnRaTransport)
-register_transport('http:', transport.SvnRaTransport)
-register_transport('https:', transport.SvnRaTransport)
-register_transport('file:', transport.SvnRaTransport)
+register_transport('svn://', transport.SvnRaTransport)
 register_transport('svn+', transport.SvnRaTransport)
 
 from bzrlib.bzrdir import BzrDirFormat

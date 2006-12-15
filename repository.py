@@ -211,7 +211,7 @@ class SvnRepository(Repository):
         self._latest_revnum = transport.get_latest_revnum()
 
         self._log = logwalker.LogWalker(self.scheme, 
-                                        repos_url=transport.svn_url,
+                                        transport=transport,
                                         cache_dir=self.create_cache_dir(), 
                                         last_revnum=self._latest_revnum)
 

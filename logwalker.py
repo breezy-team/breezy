@@ -56,8 +56,7 @@ class NotSvnBranchPath(BzrError):
 
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
-    def __init__(self, scheme, transport=None, cache_dir=None, 
-                 last_revnum=None, repos_url=None, pb=None):
+    def __init__(self, scheme, transport=None, cache_dir=None, last_revnum=None, pb=None):
         """Create a new instance.
 
         :param scheme:  Branching scheme to use.
@@ -66,11 +65,9 @@ class LogWalker(object):
                             not set.
         :param last_revnum: Last known revnum in the repository. Will be 
                             determined if not specified.
-        :param repos_url:   Location of repository.
         :param pb:          Progress bar to report progress to.
         """
-        if transport is None:
-            transport = SvnRaTransport(repos_url)
+        assert isinstance(transport, SvnRaTransport)
 
         if last_revnum is None:
             last_revnum = transport.get_latest_revnum()

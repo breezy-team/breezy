@@ -27,7 +27,7 @@ import svn.core, svn.repos
 from branch import SvnBranch
 from repository import SvnRepository
 from scheme import BranchingScheme
-from transport import SvnRaTransport, bzr_to_svn_url
+from transport import SvnRaTransport, bzr_to_svn_url, get_svn_ra_transport
 
 
 class SvnRemoteAccess(BzrDir):
@@ -38,9 +38,9 @@ class SvnRemoteAccess(BzrDir):
     """
     def __init__(self, _transport, _format, scheme=None):
         """See BzrDir.__init__()."""
+        _transport = get_svn_ra_transport(_transport)
         super(SvnRemoteAccess, self).__init__(_transport, _format)
 
-        self.transport = None
         self.svn_root_transport = _transport.get_root()
 
         svn_url = bzr_to_svn_url(self.root_transport.base)
@@ -142,6 +142,8 @@ class SvnFormat(BzrDirFormat):
     @classmethod
     def probe_transport(klass, transport):
         format = klass()
+
+        transport = get_svn_ra_transport(transport)
 
         if isinstance(transport, SvnRaTransport):
             return format

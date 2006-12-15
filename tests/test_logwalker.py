@@ -22,6 +22,7 @@ import os
 import logwalker
 from scheme import NoBranchingScheme, TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository
+from transport import SvnRaTransport
 
 class TestLogWalker(TestCaseWithSubversionRepository):
     def setUp(self):
@@ -31,7 +32,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
     def test_create(self):
         repos_url = self.make_client("a", "ac")
-        logwalker.LogWalker(NoBranchingScheme(), repos_url=repos_url)
+        logwalker.LogWalker(NoBranchingScheme(), transport=SvnRaTransport(repos_url))
 
     def test_get_branch_log(self):
         repos_url = self.make_client("a", "dc")
@@ -39,19 +40,22 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
 
-        walker = logwalker.LogWalker(NoBranchingScheme(), repos_url=repos_url)
+        walker = logwalker.LogWalker(NoBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
 
         self.assertEqual(1, len(list(walker.follow_history("", 1))))
 
     def test_get_branch_invalid_revision(self):
         repos_url = self.make_client("a", "dc")
-        walker = logwalker.LogWalker(NoBranchingScheme(), repos_url=repos_url)
+        walker = logwalker.LogWalker(NoBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
         self.assertRaises(NoSuchRevision, list, 
                           walker.follow_history("/", 20))
 
     def test_invalid_branch_path(self):
         repos_url = self.make_client("a", "dc")
-        walker = logwalker.LogWalker(NoBranchingScheme(), repos_url=repos_url)
+        walker = logwalker.LogWalker(NoBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
 
         self.assertRaises(logwalker.NotSvnBranchPath, list, 
                           walker.follow_history("foobar", 0))
@@ -64,7 +68,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
 
         walker = logwalker.LogWalker(TrunkBranchingScheme(), 
-                                     repos_url=repos_url)
+                                     transport=SvnRaTransport(repos_url))
 
         self.assertEqual(1, len(list(walker.follow_history(None, 1))))
 
@@ -80,14 +84,15 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
 
         walker = logwalker.LogWalker(TrunkBranchingScheme(), 
-                                     repos_url=repos_url)
+                                     transport=SvnRaTransport(repos_url))
 
         self.assertEqual(1, len(list(walker.follow_history("branches/brancha",
             1))))
 
     def test_follow_history(self):
         repos_url = self.make_client("a", "dc")
-        walker = logwalker.LogWalker(NoBranchingScheme(), repos_url=repos_url)
+        walker = logwalker.LogWalker(NoBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
@@ -101,7 +106,8 @@ class TestLogWalker(TestCaseWithSubversionRepository):
     def test_later_update(self):
         repos_url = self.make_client("a", "dc")
 
-        walker = logwalker.LogWalker(NoBranchingScheme(), repos_url=repos_url)
+        walker = logwalker.LogWalker(NoBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
@@ -126,7 +132,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Create branch")
 
         walker = logwalker.LogWalker(TrunkBranchingScheme(), 
-                                     repos_url=repos_url)
+                                     transport=SvnRaTransport(repos_url))
 
         items = list(walker.follow_history("branches/abranch", 2))
         self.assertEqual(2, len(items))
