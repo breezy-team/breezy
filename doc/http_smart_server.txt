@@ -94,7 +94,7 @@ Like with mod_fastcgi, we also define how our script is to be handled::
         <Files bzr-smart.py>
             PythonPath "sys.path+['/srv/example.com/scripts']"
             AddHandler python-program .py
-            PythonHandler bzr-smart
+            PythonHandler bzr-smart::handler
         </Files>
     </Directory>
 
@@ -148,7 +148,10 @@ Here's what it looks like::
         prefix='/code/',
         path_var='REQUEST_URI')
 
-    modpywsgi.WSGIServer(smart_server_app).run()
+    def handler(request):
+        """Handle a single request."""
+        wsgi_server = modpywsgi.WSGIServer(smart_server_app)
+        return wsgi_server.run(request)
         
 The `modpywsgi` module can be found at http://trac.pocoo.org/wiki/ModPyWsgi.  It
 is part of pocoo_.
@@ -193,3 +196,5 @@ standard`_ for further information.
 
 .. _WSGI standard: http://www.python.org/dev/peps/pep-0333/
 
+.. 
+   vim: ft=rst tw=74 et
