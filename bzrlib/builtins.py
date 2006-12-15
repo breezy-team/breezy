@@ -1215,7 +1215,11 @@ class cmd_diff(Command):
     # TODO: This probably handles non-Unix newlines poorly.
     
     takes_args = ['file*']
-    takes_options = ['revision', 'diff-options', 'prefix']
+    takes_options = ['revision', 'diff-options',
+        Option('prefix', type=str, 
+               help='Set prefixes to added to old and new filenames, as '
+                    'two values separated by a colon.'),
+        ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
@@ -1234,7 +1238,7 @@ class cmd_diff(Command):
         else:
             if not ':' in prefix:
                  raise BzrCommandError(
-                     "--diff-prefix expects two values separated by a colon")
+                     "--prefix expects two values separated by a colon")
             old_label, new_label = prefix.split(":")
         
         try:

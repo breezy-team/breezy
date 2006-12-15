@@ -48,6 +48,13 @@ IN DEVELOPMENT
 
     * ``bzr help hidden-commands`` lists all hidden commands. (Aaron Bentley)
 
+    * New option ``bzr diff -C`` shows the changes in the specified revision
+      (by default, the tip) relative to its primary parent.  So ``bzr diff
+      -C -r 324`` shows the changes committed by 324, rather than the changes 
+      from 324 to the working tree.
+      (#56299, Martin Pool)
+     
+
   INTERNALS:
 
     * Change Revision serialization to only write out millisecond
@@ -55,6 +62,9 @@ IN DEVELOPMENT
       preserve more resolution than we need. (Henri Weichers, Martin Pool)
 
     * Test suite ends cleanly on Windows.  (Vincent Ladeuil)
+
+    * Single-letter short options are no longer globally declared.  (Martin
+      Pool)
 
   BUG FIXES:
 
