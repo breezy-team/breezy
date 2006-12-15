@@ -39,21 +39,25 @@ class TestAnnotate(TestCaseWithTransport):
                                   ('nomail.txt', 'nomail\n')])
         wt.add(['hello.txt'])
         self.revision_id_1 = wt.commit('add hello',
-                              committer='test@user', timestamp=1165960000.00)
+                              committer='test@user',
+                              timestamp=1165960000.00, timezone=0)
         wt.add(['nomail.txt'])
         self.revision_id_2 = wt.commit('add nomail',
-                              committer='no mail', timestamp=1165970000.00)
+                              committer='no mail',
+                              timestamp=1165970000.00, timezone=0)
         self.build_tree_contents([('hello.txt', 'my helicopter\n'
                                                 'your helicopter\n')])
         self.revision_id_3 = wt.commit('mod hello',
-                              committer='user@test', timestamp=1166040000.00)
+                              committer='user@test',
+                              timestamp=1166040000.00, timezone=0)
         self.build_tree_contents([('hello.txt', 'my helicopter\n'
                                                 'your helicopter\n'
                                                 'all of\n'
                                                 'our helicopters\n'
                                   )])
         self.revision_id_4 = wt.commit('mod hello',
-                              committer='user@test', timestamp=1166050000.00)
+                              committer='user@test',
+                              timestamp=1166050000.00, timezone=0)
 
     def test_help_annotate(self):
         """Annotate command exists"""

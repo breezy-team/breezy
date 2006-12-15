@@ -34,17 +34,20 @@ class TestAnnotate(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree1/a', 'first\n')])
         tree1.add(['a'], ['a-id'])
         tree1.commit('a', rev_id='rev-1',
-                     committer="joe@foo.com", timestamp=1166046000.00)
+                     committer="joe@foo.com",
+                     timestamp=1166046000.00, timezone=0)
 
         tree2 = tree1.bzrdir.clone('tree2').open_workingtree()
 
         self.build_tree_contents([('tree1/a', 'first\nsecond\n')])
         tree1.commit('b', rev_id='rev-2',
-                     committer='joe@foo.com', timestamp=1166046001.00)
+                     committer='joe@foo.com',
+                     timestamp=1166046001.00, timezone=0)
 
         self.build_tree_contents([('tree2/a', 'first\nthird\n')])
         tree2.commit('c', rev_id='rev-1_1_1',
-                     committer="barry@foo.com", timestamp=1166046002.00)
+                     committer="barry@foo.com",
+                     timestamp=1166046002.00, timezone=0)
 
         num_conflicts = tree1.merge_from_branch(tree2.branch)
         self.assertEqual(1, num_conflicts)
@@ -53,7 +56,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                  'first\nsecond\nthird\n')])
         tree1.set_conflicts(conflicts.ConflictList())
         tree1.commit('merge 2', rev_id='rev-3',
-                     committer='sal@foo.com', timestamp=1166046003.00)
+                     committer='sal@foo.com',
+                     timestamp=1166046003.00, timezone=0)
         return tree1, tree2
 
     def create_deeply_merged_trees(self):
@@ -67,19 +71,22 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
         self.build_tree_contents([('tree3/a', 'first\nthird\nfourth\n')])
         tree3.commit('four', rev_id='rev-1_1_1_1_1',
-                     committer='jerry@foo.com', timestamp=1166046003.00)
+                     committer='jerry@foo.com',
+                     timestamp=1166046003.00, timezone=0)
 
         tree4 = tree3.bzrdir.clone('tree4').open_workingtree()
 
         tree3.commit('noop', rev_id='rev-1.1.1.1.2',
-                     committer='jerry@foo.com', timestamp=1166046004.00)
+                     committer='jerry@foo.com',
+                     timestamp=1166046004.00, timezone=0)
         self.assertEqual(0, tree1.merge_from_branch(tree3.branch))
         tree1.commit('merge four', rev_id='rev-5')
 
         self.build_tree_contents([('tree4/a',
                                    'first\nthird\nfourth\nfifth\nsixth\n')])
         tree4.commit('five and six', rev_id='rev-1_1_1_1_1_1_1',
-                     committer='george@foo.com', timestamp=1166046005.00)
+                     committer='george@foo.com',
+                     timestamp=1166046005.00, timezone=0)
         self.assertEqual(0, tree1.merge_from_branch(tree4.branch))
         tree1.commit('merge five and six', rev_id='rev-6')
         return tree1
