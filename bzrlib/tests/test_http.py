@@ -112,6 +112,9 @@ class RecordingServer(object):
         except socket.timeout:
             # Make sure the client isn't stuck waiting for us to e.g. accept.
             self._sock.close()
+        except socket.error:
+            # The client may have already closed the socket.
+            pass
 
     def tearDown(self):
         try:
@@ -304,7 +307,7 @@ class TestOffsets(TestCase):
         self.assertEqual([[10, 12], [22, 26]], ranges)
 
 
-class TestPost(TestCase):
+class TestPost(object):
 
     def _test_post_body_is_received(self, scheme):
         server = RecordingServer(expect_body_tail='end-of-body')
@@ -325,8 +328,18 @@ class TestPost(TestCase):
         self.assertTrue(
             server.received_bytes.endswith('\r\n\r\nabc def end-of-body'))
 
+
+class TestPost_urllib(TestCase, TestPost):
+    """TestPost for urllib implementation"""
+
+    _transport = HttpTransport_urllib
+
     def test_post_body_is_received_urllib(self):
         self._test_post_body_is_received('http+urllib')
+
+
+class TestPost_pycurl(TestWithTransport_pycurl, TestCase, TestPost):
+    """TestPost for pycurl implementation"""
 
     def test_post_body_is_received_pycurl(self):
         self._test_post_body_is_received('http+pycurl')

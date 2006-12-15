@@ -54,6 +54,8 @@ IN DEVELOPMENT
       resolution. Rather than expecting floating point serialization to
       preserve more resolution than we need. (Henri Weichers, Martin Pool)
 
+    * Test suite ends cleanly on Windows.  (Vincent Ladeuil)
+
   BUG FIXES:
 
     * ``bzr annotate`` now defaults to showing dotted revnos for merged
