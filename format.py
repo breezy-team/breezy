@@ -151,7 +151,12 @@ class SvnFormat(BzrDirFormat):
         raise NotBranchError(path=transport.base)
 
     def _open(self, transport):
-        return SvnRemoteAccess(transport, self)
+        try: 
+            return SvnRemoteAccess(transport, self)
+        except SubversionException, (msg, num):
+            if num == svn.core.SVN_ERR_RA_DAV_REQUEST_FAILED:
+                raise NotBranchError(transport.base)
+            raise
 
     def get_format_string(self):
         return 'Subversion Smart Server'
