@@ -241,7 +241,7 @@ class LogWalker(object):
 
         try:
             (dirents, _, _) = self.transport.get_dir(
-                path.encode('utf8'), revnum)
+                "/" + path.encode('utf8'), revnum)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
                 return
