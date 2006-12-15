@@ -102,7 +102,7 @@ from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
 import bzrlib.tree
 from bzrlib.progress import DummyProgress, ProgressPhase
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import NULL_REVISION, CURRENT_REVISION
 import bzrlib.revisiontree
 from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import (deprecated_passed,
@@ -468,6 +468,32 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
+    def annotate_iter(self, file_id):
+        """See Tree.annotate_iter
+
+        This implementation will use the basis tree implementation if possible.
+        Lines not in the basis are attributed to CURRENT_REVISION
+
+        If there are pending merges, lines added by those merges will be
+        incorrectly attributed to CURRENT_REVISION (but after committing, the
+        attribution will be correct).
+        """
+        basis = self.basis_tree()
+        changes = self._iter_changes(basis, True, [file_id]).next()
+        changed_content, kind = changes[2], changes[6]
+        if not changed_content:
+            return basis.annotate_iter(file_id)
+        if kind[1] is None:
+            return None
+        import annotate
+        if kind[0] != 'file':
+            old_lines = []
+        else:
+            old_lines = list(basis.annotate_iter(file_id))
+        return annotate.reannotate(old_lines, 
+                                   self.get_file(file_id).readlines(),
+                                   CURRENT_REVISION)
+            
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
         

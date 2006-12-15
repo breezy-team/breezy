@@ -178,6 +178,16 @@ class Tree(object):
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path))
 
+    def annotate_iter(self, file_id):
+        """Return an iterator of revision_id, line tuples 
+        
+        For working trees (and mutable trees in general), the special
+        revision_id 'current:' will be used for lines that are new in this
+        tree, e.g. uncommitted changes.
+        :param file_id: The file to produce an annotated version from
+        """
+        raise NotImplementedError(self.annotate_iter)
+
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
 

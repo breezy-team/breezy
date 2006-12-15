@@ -192,6 +192,7 @@ def test_suite():
     result = TestSuite()
     test_tree_implementations = [
         'bzrlib.tests.tree_implementations.test_test_trees',
+        'bzrlib.tests.tree_implementations.test_tree',
         ]
     adapter = TreeTestProviderAdapter(
         default_transport,

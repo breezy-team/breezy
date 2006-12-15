@@ -73,6 +73,11 @@ class RevisionTree(Tree):
     def get_file(self, file_id):
         return StringIO(self.get_file_text(file_id))
 
+    def annotate_iter(self, file_id):
+        """See Tree.annotate_iter"""
+        w = self.get_weave(file_id)
+        return w.annotate_iter(self.inventory[file_id].revision)        
+
     def get_file_size(self, file_id):
         return self._inventory[file_id].text_size
 

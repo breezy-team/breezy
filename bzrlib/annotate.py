@@ -90,3 +90,25 @@ def _annotate_file(branch, rev_id, file_id ):
             except NoEmailInUsername:
                 pass        # use the whole name
         yield (revno_str, author, date_str, origin, text)
+
+
+def reannotate(parent_lines, new_lines, new_revision_id):
+    """Create a new annotated version from new lines and parent annotations.
+    
+    :param parent_lines: The annotated lines from the parent
+    :param new_lines: The un-annotated new lines
+    :param new_revision_id: The revision-id to associate with new lines
+        (will often be CURRENT_REVISION)
+    """
+    plain_parent_lines = [l for r, l in parent_lines]
+    import patiencediff
+    patiencediff.PatienceSequenceMatcher()
+    matcher = patiencediff.PatienceSequenceMatcher(None, plain_parent_lines, 
+                                                   new_lines)
+    new_cur = 0
+    for i, j, n in matcher.get_matching_blocks():
+        for line in new_lines[new_cur:j]:
+            yield new_revision_id, line
+        for data in parent_lines[i:i+n]:
+            yield data 
+        new_cur = j + n
