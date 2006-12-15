@@ -490,8 +490,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             old_lines = []
         else:
             old_lines = list(basis.annotate_iter(file_id))
-        return annotate.reannotate(old_lines, 
-                                   self.get_file(file_id).readlines(),
+        old = [old_lines]
+        for tree in self.branch.repository.revision_trees(
+            self.get_parent_ids()[1:]):
+            if file_id not in tree:
+                continue
+            old.append(list(tree.annotate_iter(file_id)))
+        return annotate.reannotate(old, self.get_file(file_id).readlines(),
                                    CURRENT_REVISION)
             
     def get_parent_ids(self):
