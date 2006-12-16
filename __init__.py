@@ -23,7 +23,7 @@ import unittest
 import bzrlib
 
 __version__ = '0.2.0'
-required_bzr_version = (0,13)
+required_bzr_version = (0,14)
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
@@ -49,8 +49,8 @@ def check_bzrlib_version(desired):
         raise Exception, ('Version mismatch', desired)
     else:
         warning('bzr-svn is not up to date with installed bzr version %s.'
-                ' \nThere should be a newer version available, e.g. %i.%i.' 
-                % (bzrlib.__version__, bzrlib_version[0], bzrlib_version[1]))
+                ' \nThere should be a newer version of bzr-svn available.' 
+                % (bzrlib.__version__))
         if bzrlib_version != desired_plus:
             raise Exception, 'Version mismatch'
 
