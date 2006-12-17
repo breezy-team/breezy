@@ -16,9 +16,11 @@
 
 from tests import TestCaseWithSubversionRepository
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, NoSuchFile, FileExists
 from transport import SvnRaTransport, bzr_to_svn_url
 from unittest import TestCase
+
+import os
 
 class SvnRaTest(TestCaseWithSubversionRepository):
     def test_open_nonexisting(self):
@@ -45,6 +47,29 @@ class SvnRaTest(TestCaseWithSubversionRepository):
 
         t = SvnRaTransport(repos_url)
         self.assertEqual("%s/dir" % repos_url, t.clone('dir').base)
+
+    def test_mkdir(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        t.mkdir("bla")
+        self.client_update("dc")
+        self.assertTrue(os.path.isdir("dc/bla"))
+        t.mkdir("bla/subdir")
+        self.client_update("dc")
+        self.assertTrue(os.path.isdir("dc/bla/subdir"))
+
+    def test_mkdir_missing_parent(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        self.assertRaises(NoSuchFile, t.mkdir, "bla/subdir")
+        self.client_update("dc")
+        self.assertFalse(os.path.isdir("dc/bla/subdir"))
+
+    def test_mkdir_twice(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        t.mkdir("bla")
+        self.assertRaises(FileExists, t.mkdir, "bla")
 
     def test_clone(self):
         repos_url = self.make_client('d', 'dc')
