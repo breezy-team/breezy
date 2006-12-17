@@ -30,6 +30,7 @@ import time
 
 from bzrlib import (
     errors,
+    patiencediff,
     tsort,
     )
 from bzrlib.config import extract_email_address
@@ -131,3 +132,41 @@ def _annotate_file(branch, rev_id, file_id ):
             except errors.NoEmailInUsername:
                 pass        # use the whole name
         yield (revno_str, author, date_str, origin, text)
+
+
+def reannotate(parents_lines, new_lines, new_revision_id):
+    """Create a new annotated version from new lines and parent annotations.
+    
+    :param parents_lines: List of annotated lines for all parents
+    :param new_lines: The un-annotated new lines
+    :param new_revision_id: The revision-id to associate with new lines
+        (will often be CURRENT_REVISION)
+    """
+    if len(parents_lines) == 1:
+        for data in _reannotate(parents_lines[0], new_lines, new_revision_id):
+            yield data
+    else:
+        reannotations = [list(_reannotate(p, new_lines, new_revision_id)) for
+                         p in parents_lines]
+        for annos in zip(*reannotations):
+            origins = set(a for a, l in annos)
+            line = annos[0][1]
+            if len(origins) == 1:
+                yield iter(origins).next(), line
+            elif len(origins) == 2 and new_revision_id in origins:
+                yield (x for x in origins if x != new_revision_id).next(), line
+            else:
+                yield new_revision_id, line
+
+
+def _reannotate(parent_lines, new_lines, new_revision_id):
+    plain_parent_lines = [l for r, l in parent_lines]
+    matcher = patiencediff.PatienceSequenceMatcher(None, plain_parent_lines,
+                                                   new_lines)
+    new_cur = 0
+    for i, j, n in matcher.get_matching_blocks():
+        for line in new_lines[new_cur:j]:
+            yield new_revision_id, line
+        for data in parent_lines[i:i+n]:
+            yield data
+        new_cur = j + n
