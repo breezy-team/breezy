@@ -498,7 +498,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             old.append(list(tree.annotate_iter(file_id)))
         return annotate.reannotate(old, self.get_file(file_id).readlines(),
                                    CURRENT_REVISION)
-            
+
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
         

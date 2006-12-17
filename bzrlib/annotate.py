@@ -115,18 +115,17 @@ def reannotate(parents_lines, new_lines, new_revision_id):
                 yield (x for x in origins if x != new_revision_id).next(), line
             else:
                 yield new_revision_id, line
-                       
+
 
 def _reannotate(parent_lines, new_lines, new_revision_id):
     plain_parent_lines = [l for r, l in parent_lines]
-    import patiencediff
     patiencediff.PatienceSequenceMatcher()
-    matcher = patiencediff.PatienceSequenceMatcher(None, plain_parent_lines, 
+    matcher = patiencediff.PatienceSequenceMatcher(None, plain_parent_lines,
                                                    new_lines)
     new_cur = 0
     for i, j, n in matcher.get_matching_blocks():
         for line in new_lines[new_cur:j]:
             yield new_revision_id, line
         for data in parent_lines[i:i+n]:
-            yield data 
+            yield data
         new_cur = j + n

@@ -179,8 +179,8 @@ class Tree(object):
         return self.get_file(self._inventory.path2id(path))
 
     def annotate_iter(self, file_id):
-        """Return an iterator of revision_id, line tuples 
-        
+        """Return an iterator of revision_id, line tuples
+
         For working trees (and mutable trees in general), the special
         revision_id 'current:' will be used for lines that are new in this
         tree, e.g. uncommitted changes.

@@ -16,8 +16,10 @@
 
 from bzrlib import annotate, tests
 
+
 def annotation(text):
     return [tuple(l.split(' ', 1)) for l in text.splitlines(True)]
+
 
 parent_1 = annotation("""\
 rev1 a
@@ -26,6 +28,7 @@ rev3 c
 rev4 d
 rev5 e
 """)
+
 
 parent_2 = annotation("""\
 rev1 a
@@ -36,6 +39,7 @@ rev7 e
 rev8 h
 """)
 
+
 expected_2_1 = annotation("""\
 rev1 a
 blahblah b
@@ -43,6 +47,7 @@ rev3 c
 rev4 d
 rev7 e
 """)
+
 
 # a: in both, same value, kept
 # b: in 1, kept
@@ -62,6 +67,7 @@ blahblah g
 rev8 h
 """)
 
+
 new_1 = """\
 a
 b
@@ -69,6 +75,7 @@ c
 d
 e
 """.splitlines(True)
+
 
 new_2 = """\
 a

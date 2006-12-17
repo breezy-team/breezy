@@ -86,6 +86,7 @@ class LocalTransport(Transport):
         """
         if relative_reference in ('.', ''):
             return self._local_base
+        assert not relative_reference.startswith('/')
         return self._local_base + urlutils.unescape(relative_reference)
 
     def abspath(self, relpath):
