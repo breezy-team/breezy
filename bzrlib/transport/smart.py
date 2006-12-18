@@ -1764,7 +1764,7 @@ class SmartHTTPTransport(SmartTransport):
     It uses a plain http:// transport underneath, which defines what remote
     .bzr/smart URL we are connected to. From there, all paths that are sent are
     sent as relative paths, this way, the remote side can properly
-    de-reference them. Since it is likely doing rewrite rules to translate an
+    de-reference them, since it is likely doing rewrite rules to translate an
     HTTP path into a local path.
     """
 
