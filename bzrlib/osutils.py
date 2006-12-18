@@ -25,6 +25,7 @@ import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import codecs
 import errno
 from ntpath import (abspath as _nt_abspath,
                     join as _nt_join,
@@ -377,6 +378,17 @@ def get_terminal_encoding():
         output_encoding = bzrlib.user_encoding
         mutter('cp0 is invalid encoding.'
                ' encoding stdout as bzrlib.user_encoding %r', output_encoding)
+    # check encoding
+    try:
+        codecs.lookup(output_encoding)
+    except LookupError:
+        sys.stderr.write('bzr: warning:'
+                         ' unknown encoding %s.\n'
+                         '  Using encoding %s instead.\n'
+                         % (output_encoding, bzrlib.user_encoding)
+                        )
+        output_encoding = bzrlib.user_encoding
+
     return output_encoding
 
 
@@ -1095,6 +1107,18 @@ def get_user_encoding():
     # console.
     if _cached_user_encoding in (None, 'cp0'):
         _cached_user_encoding = 'ascii'
+    else:
+        # check encoding
+        try:
+            codecs.lookup(_cached_user_encoding)
+        except LookupError:
+            sys.stderr.write('bzr: warning:'
+                             ' unknown encoding %s.'
+                             ' Continuing with ascii encoding.\n'
+                             % _cached_user_encoding
+                            )
+            _cached_user_encoding = 'ascii'
+
     return _cached_user_encoding
 
 
