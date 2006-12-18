@@ -55,6 +55,11 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * A few tweaks directly to ``fileids_affected_by_revision_ids`` to
+      help speed up processing, as well allowing to extract unannotated
+      lines. Between the two ``fileids_affected_by_revision_ids`` is
+      improved by approx 10%. (John Arbash Meinel)
+
     * Change Revision serialization to only write out millisecond
       resolution. Rather than expecting floating point serialization to
       preserve more resolution than we need. (Henri Weichers, Martin Pool)
