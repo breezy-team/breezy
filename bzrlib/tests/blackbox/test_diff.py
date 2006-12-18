@@ -34,7 +34,8 @@ def subst_dates(string):
                   'YYYY-MM-DD HH:MM:SS +ZZZZ', string)
 
 
-class TestDiff(ExternalBase):
+class DiffBase(ExternalBase):
+    """Base class with common setup method"""
 
     def make_example_branch(self):
         # FIXME: copied from test_too_much -- share elsewhere?
@@ -45,6 +46,9 @@ class TestDiff(ExternalBase):
         open('goodbye', 'wb').write('baz\n')
         tree.add(['goodbye'])
         tree.commit('setup')
+
+
+class TestDiff(DiffBase):
 
     def test_diff(self):
         self.make_example_branch()
@@ -230,7 +234,7 @@ class TestCheckoutDiff(TestDiff):
         os.chdir('checkouts')
 
 
-class TestDiffLabels(TestDiff):
+class TestDiffLabels(DiffBase):
 
     def test_diff_label_removed(self):
         super(TestDiffLabels, self).make_example_branch()
@@ -258,7 +262,7 @@ class TestDiffLabels(TestDiff):
         self.assertTrue("=== renamed file 'hello' => 'gruezi'" in diff[0])
 
 
-class TestExternalDiff(TestDiff):
+class TestExternalDiff(DiffBase):
 
     def test_external_diff(self):
         """Test that we can spawn an external diff process"""

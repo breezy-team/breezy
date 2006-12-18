@@ -932,11 +932,12 @@ class KnitError(BzrError):
 
 class KnitHeaderError(KnitError):
 
-    _fmt = "Knit header error: %(badline)r unexpected"
+    _fmt = "Knit header error: %(badline)r unexpected for file %(filename)s"
 
-    def __init__(self, badline):
+    def __init__(self, badline, filename):
         KnitError.__init__(self)
         self.badline = badline
+        self.filename = filename
 
 
 class KnitCorrupt(KnitError):
@@ -1411,6 +1412,14 @@ class UnsupportedOperation(BzrError):
         self.method = method
         self.mname = method.__name__
         self.tname = type(method_self).__name__
+
+
+class CannotSetRevisionId(UnsupportedOperation):
+    """Raised when a commit is attempting to set a revision id but cant."""
+
+
+class NonAsciiRevisionId(UnsupportedOperation):
+    """Raised when a commit is attempting to set a non-ascii revision id but cant."""
 
 
 class BinaryFile(BzrError):

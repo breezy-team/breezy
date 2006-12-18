@@ -27,6 +27,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
         )
 
 NULL_REVISION="null:"
+CURRENT_REVISION="current:"
 
 
 class Revision(object):
