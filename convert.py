@@ -51,17 +51,17 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True, working
         except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):            
             raise BzrError("%s is not a dump file" % url)
         
-        url = "svn+file://%s" % tmp_repos
+        url = "file://%s" % tmp_repos
 
     if create_shared_repo:
         target_repos = BzrDir.create_repository(output_dir, shared=True)
         target_repos.set_make_working_trees(working_trees)
 
     try:
-        source_repos = SvnRemoteAccess(SvnRaTransport(url), SvnFormat(), 
-                                       scheme).open_repository()
+        source_repos = Repository.open(url)
 
-        branches = source_repos._log.find_branches(source_repos._latest_revnum)
+        branches = source_repos._log.find_branches(
+                source_repos.transport.get_latest_revnum())
         existing_branches = filter(lambda (bp, revnum, exists): exists, 
                                    branches)
         info('Importing branches: \n%s' % "".join(map(lambda (bp,revnum,exists): "%s\n" % bp, existing_branches)))

@@ -44,7 +44,7 @@ The following features are currently present:
 
  * Recognizes file metadata (executable bits, symlinks).
  
- * 'import-svn' command with functionality similar to svn2bzr.
+ * 'svn-import' command with functionality similar to svn2bzr.
 
  * Ability to track merges done with SVK (http://svk.elixus.org/) 
    and write merges.

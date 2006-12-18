@@ -100,7 +100,7 @@ InterRepository.register_optimiser(InterSvnRepository)
 
 from bzrlib.commands import Command, register_command, display_command, Option
 
-class cmd_import_svn(Command):
+class cmd_svn_import(Command):
     """Convert a Subversion repository to a Bazaar repository.
     
     """
@@ -117,7 +117,7 @@ class cmd_import_svn(Command):
                            trees)
 
 
-register_command(cmd_import_svn)
+register_command(cmd_svn_import)
 
 def test_suite():
     from unittest import TestSuite, TestLoader
