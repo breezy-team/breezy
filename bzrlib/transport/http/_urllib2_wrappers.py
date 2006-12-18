@@ -54,6 +54,7 @@ import socket
 import urllib
 import urllib2
 import urlparse
+import re
 import sys
 
 from bzrlib import __version__ as bzrlib_version
@@ -608,6 +609,116 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
         return response
 
 
+class ProxyHandler(urllib2.ProxyHandler):
+    """Handles proxy setting.
+
+    Copied and modified from urllib2 to be able to modify the
+    request during the request pre-processing instead of
+    modifying it at _open time. As we capture (or create) the
+    connection object during request processing, _open time was
+    too late.
+
+    Note that the proxy handling *may* modify the protocol used;
+    the request may be against an https server proxied through an
+    http proxy. So, https_request will be called, but later it's
+    really http_open that will be called. This explain why we
+    don't have to call self.parent.open as the urllib2 did.
+    """
+
+    # Proxies must be in front
+    handler_order = 100
+    _debuglevel = DEBUG
+
+    def __init__(self, proxies=None):
+        urllib2.ProxyHandler.__init__(self, proxies)
+        # First, let's get rid of urllib2 implementation
+        for type, proxy in self.proxies.items():
+            if self._debuglevel > 0:
+                print 'Will unbind %s_open for %r' % (type, proxy)
+            delattr(self, '%s_open' % type)
+
+        # We are interested only by the http[s] proxies
+        http_proxy = self.get_proxy_env_var('http')
+        https_proxy = self.get_proxy_env_var('https')
+
+        if http_proxy is not None:
+            if self._debuglevel > 0:
+                print 'Will bind http_request for %r' % http_proxy
+            setattr(self, 'http_request',
+                    lambda request: self.set_proxy(request, 'http'))
+
+        if https_proxy is not None:
+            if self._debuglevel > 0:
+                print 'Will bind http_request for %r' % https_proxy
+            setattr(self, 'https_request',
+                    lambda request: self.set_proxy(request, 'https'))
+
+    def get_proxy_env_var(self, name, default_to='all'):
+        """Get a proxy env var.
+
+        Note that we indirectly rely on
+        urllib.getproxies_environment taking into account the
+        uppercased values for proxy variables.
+        """
+        try:
+            return self.proxies[name.lower()]
+        except KeyError:
+            if default_to is not None:
+                # Try to get the alternate environment variable
+                try:
+                    return self.proxies[default_to]
+                except KeyError:
+                    pass
+        return None
+
+    def proxy_bypass(self, host):
+        """Check if host should be proxied or not"""
+        no_proxy = self.get_proxy_env_var('no', None)
+        if no_proxy is None:
+            return False
+        hhost, hport = urllib.splitport(host)
+        # Does host match any of the domains mentioned in
+        # no_proxy ? The rules about what is authorized in no_proxy
+        # are fuzzy (to say the least). We try to allow most
+        # commonly seen values.
+        for domain in no_proxy.split(','):
+            dhost, dport = urllib.splitport(domain)
+            if hport == dport or dport is None:
+                # Protect glob chars
+                dhost = dhost.replace(".", r"\.")
+                dhost = dhost.replace("*", r".*")
+                dhost = dhost.replace("?", r".")
+                if re.match(dhost, hhost, re.IGNORECASE):
+                    return True
+        # Nevertheless, there are platform-specific ways to
+        # ignore proxies...
+        return urllib.proxy_bypass(host)
+
+    def set_proxy(self, request, type):
+        if self.proxy_bypass(request.get_host()):
+            return request
+
+        proxy = self.get_proxy_env_var(type)
+        if self._debuglevel > 0:
+            print 'set_proxy %s_request for %r' % (type, proxy)
+        orig_type = request.get_type()
+        type, r_type = urllib.splittype(proxy)
+        host, XXX = urllib.splithost(r_type)
+        if '@' in host:
+            user_pass, host = host.split('@', 1)
+            if ':' in user_pass:
+                user, password = user_pass.split(':', 1)
+                user_pass = '%s:%s' % (urllib.unquote(user),
+                               urllib.unquote(password))
+                user_pass.encode('base64').strip()
+                req.add_header('Proxy-authorization', 'Basic ' + user_pass)
+        host = urllib.unquote(host)
+        request.set_proxy(host, type)
+        if self._debuglevel > 0:
+            print 'set_proxy: proxy set to %r://%r' % (type, host)
+        return request
+
+
 class HTTPBasicAuthHandler(urllib2.HTTPBasicAuthHandler):
     """Custom basic authentification handler.
 
@@ -655,6 +766,11 @@ class HTTPDefaultErrorHandler(urllib2.HTTPDefaultErrorHandler):
                                                     hdrs, fp))
         elif code == 403:
             raise errors.TransportError('Server refuses to fullfil the request')
+        elif code == 416:
+            # We don't know which, but one of the ranges we
+            # specified was wrong. So we raise with 0 for a lack
+            # of a better magic value.
+            raise errors.InvalidRange(req.get_full_url(),0)
         else:
             # TODO: A test is needed to exercise that code path
             raise errors.InvalidHttpResponse(req.get_full_url(),
@@ -677,7 +793,7 @@ class Opener(object):
         # commented out below
         self._opener = urllib2.build_opener( \
             connection, redirect, error,
-            #urllib2.ProxyHandler,
+            ProxyHandler,
             urllib2.HTTPBasicAuthHandler(self.password_manager),
             #urllib2.HTTPDigestAuthHandler(self.password_manager),
             #urllib2.ProxyBasicAuthHandler,

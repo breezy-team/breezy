@@ -76,7 +76,7 @@ def register_command(cmd, decorate=False):
         k_unsquished = k
     if k_unsquished not in plugin_cmds:
         plugin_cmds[k_unsquished] = cmd
-        trace.mutter('registered plugin command %s', k_unsquished)
+        ## trace.mutter('registered plugin command %s', k_unsquished)
         if decorate and k_unsquished in builtin_command_names():
             return _builtin_commands()[k_unsquished]
     elif decorate:
@@ -270,7 +270,7 @@ class Command(object):
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
         if argv is None:
-            warn("Passing None for [] is deprecated from bzrlib 0.10", 
+            warn("Passing None for [] is deprecated from bzrlib 0.10",
                  DeprecationWarning, stacklevel=2)
             argv = []
         args, opts = parse_args(self, argv, alias_argv)
@@ -301,7 +301,7 @@ class Command(object):
         shell error code if not.  It's OK for this method to allow
         an exception to raise up.
         """
-        raise NotImplementedError('no implementation of command %r' 
+        raise NotImplementedError('no implementation of command %r'
                                   % self.name())
 
     def help(self):
@@ -376,7 +376,7 @@ def parse_args(command, argv, alias_argv=None):
         args = argv
 
     options, args = parser.parse_args(args)
-    opts = dict([(k, v) for k, v in options.__dict__.iteritems() if 
+    opts = dict([(k, v) for k, v in options.__dict__.iteritems() if
                  v is not option.OptionParser.DEFAULT_VALUE])
     return args, opts
 
@@ -463,12 +463,23 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     return ret
 
 
-def get_alias(cmd):
-    """Return an expanded alias, or None if no alias exists"""
-    import bzrlib.config
-    alias = bzrlib.config.GlobalConfig().get_alias(cmd)
+def get_alias(cmd, config=None):
+    """Return an expanded alias, or None if no alias exists.
+
+    cmd
+        Command to be checked for an alias.
+    config
+        Used to specify an alternative config to use,
+        which is especially useful for testing.
+        If it is unspecified, the global config will be used.
+    """
+    if config is None:
+        import bzrlib.config
+        config = bzrlib.config.GlobalConfig()
+    alias = config.get_alias(cmd)
     if (alias):
-        return alias.split(' ')
+        import shlex
+        return [a.decode('utf-8') for a in shlex.split(alias.encode('utf-8'))]
     return None
 
 
@@ -505,6 +516,7 @@ def run_bzr(argv):
         Run under the Python lsprof profiler.
     """
     argv = list(argv)
+    trace.mutter("bzr arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
                 opt_no_aliases = False

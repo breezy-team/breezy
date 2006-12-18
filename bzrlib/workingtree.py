@@ -38,14 +38,12 @@ WorkingTree.open(dir).
 
 from cStringIO import StringIO
 import os
-import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
 from copy import deepcopy
 import errno
-import fnmatch
 import stat
 from time import time
 import warnings
@@ -56,6 +54,7 @@ from bzrlib import (
     conflicts as _mod_conflicts,
     errors,
     generate_ids,
+    globbing,
     ignores,
     merge,
     osutils,
@@ -103,7 +102,7 @@ from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
 import bzrlib.tree
 from bzrlib.progress import DummyProgress, ProgressPhase
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import NULL_REVISION, CURRENT_REVISION
 import bzrlib.revisiontree
 from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import (deprecated_passed,
@@ -468,6 +467,37 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
+
+    def annotate_iter(self, file_id):
+        """See Tree.annotate_iter
+
+        This implementation will use the basis tree implementation if possible.
+        Lines not in the basis are attributed to CURRENT_REVISION
+
+        If there are pending merges, lines added by those merges will be
+        incorrectly attributed to CURRENT_REVISION (but after committing, the
+        attribution will be correct).
+        """
+        basis = self.basis_tree()
+        changes = self._iter_changes(basis, True, [file_id]).next()
+        changed_content, kind = changes[2], changes[6]
+        if not changed_content:
+            return basis.annotate_iter(file_id)
+        if kind[1] is None:
+            return None
+        import annotate
+        if kind[0] != 'file':
+            old_lines = []
+        else:
+            old_lines = list(basis.annotate_iter(file_id))
+        old = [old_lines]
+        for tree in self.branch.repository.revision_trees(
+            self.get_parent_ids()[1:]):
+            if file_id not in tree:
+                continue
+            old.append(list(tree.annotate_iter(file_id)))
+        return annotate.reannotate(old, self.get_file(file_id).readlines(),
+                                   CURRENT_REVISION)
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -1223,60 +1253,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 subp = pathjoin(path, subf)
                 yield subp
 
-    def _translate_ignore_rule(self, rule):
-        """Translate a single ignore rule to a regex.
-
-        There are two types of ignore rules.  Those that do not contain a / are
-        matched against the tail of the filename (that is, they do not care
-        what directory the file is in.)  Rules which do contain a slash must
-        match the entire path.  As a special case, './' at the start of the
-        string counts as a slash in the string but is removed before matching
-        (e.g. ./foo.c, ./src/foo.c)
-
-        :return: The translated regex.
-        """
-        if rule[:2] in ('./', '.\\'):
-            # rootdir rule
-            result = fnmatch.translate(rule[2:])
-        elif '/' in rule or '\\' in rule:
-            # path prefix 
-            result = fnmatch.translate(rule)
-        else:
-            # default rule style.
-            result = "(?:.*/)?(?!.*/)" + fnmatch.translate(rule)
-        assert result[-1] == '$', "fnmatch.translate did not add the expected $"
-        return "(" + result + ")"
-
-    def _combine_ignore_rules(self, rules):
-        """Combine a list of ignore rules into a single regex object.
-
-        Each individual rule is combined with | to form a big regex, which then
-        has $ added to it to form something like ()|()|()$. The group index for
-        each subregex's outermost group is placed in a dictionary mapping back 
-        to the rule. This allows quick identification of the matching rule that
-        triggered a match.
-        :return: a list of the compiled regex and the matching-group index 
-        dictionaries. We return a list because python complains if you try to 
-        combine more than 100 regexes.
-        """
-        result = []
-        groups = {}
-        next_group = 0
-        translated_rules = []
-        for rule in rules:
-            translated_rule = self._translate_ignore_rule(rule)
-            compiled_rule = re.compile(translated_rule)
-            groups[next_group] = rule
-            next_group += compiled_rule.groups
-            translated_rules.append(translated_rule)
-            if next_group == 99:
-                result.append((re.compile("|".join(translated_rules)), groups))
-                groups = {}
-                next_group = 0
-                translated_rules = []
-        if len(translated_rules):
-            result.append((re.compile("|".join(translated_rules)), groups))
-        return result
 
     def ignored_files(self):
         """Yield list of PATH, IGNORE_PATTERN"""
@@ -1296,29 +1272,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         ignore_globs = set(bzrlib.DEFAULT_IGNORE)
         ignore_globs.update(ignores.get_runtime_ignores())
-
         ignore_globs.update(ignores.get_user_ignores())
-
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
             try:
                 ignore_globs.update(ignores.parse_ignore_file(f))
             finally:
                 f.close()
-
         self._ignoreset = ignore_globs
-        self._ignore_regex = self._combine_ignore_rules(ignore_globs)
         return ignore_globs
 
-    def _get_ignore_rules_as_regex(self):
-        """Return a regex of the ignore rules and a mapping dict.
-
-        :return: (ignore rules compiled regex, dictionary mapping rule group 
-        indices to original rule.)
-        """
-        if getattr(self, '_ignoreset', None) is None:
-            self.get_ignore_list()
-        return self._ignore_regex
+    def _flush_ignore_list_cache(self):
+        """Resets the cached ignore list to force a cache rebuild."""
+        self._ignoreset = None
+        self._ignoreglobster = None
 
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
@@ -1329,27 +1296,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         If the file is ignored, returns the pattern which caused it to
         be ignored, otherwise None.  So this can simply be used as a
         boolean if desired."""
-
-        # TODO: Use '**' to match directories, and other extended
-        # globbing stuff from cvs/rsync.
-
-        # XXX: fnmatch is actually not quite what we want: it's only
-        # approximately the same as real Unix fnmatch, and doesn't
-        # treat dotfiles correctly and allows * to match /.
-        # Eventually it should be replaced with something more
-        # accurate.
-    
-        rules = self._get_ignore_rules_as_regex()
-        for regex, mapping in rules:
-            match = regex.match(filename)
-            if match is not None:
-                # one or more of the groups in mapping will have a non-None
-                # group match.
-                groups = match.groups()
-                rules = [mapping[group] for group in 
-                    mapping if groups[group] is not None]
-                return rules[0]
-        return None
+        if getattr(self, '_ignoreglobster', None) is None:
+            self._ignoreglobster = globbing.Globster(self.get_ignore_list())
+        return self._ignoreglobster.match(filename)
 
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
