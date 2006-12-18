@@ -153,6 +153,8 @@ bzr 0.13rc1  2006-11-27
 
   BUG FIXES:
 
+    * Now _KnitIndex properly decode revision ids when loading index data.
+
     * ``bzrlib/bzrdir.py`` was directly referencing ``bzrlib.workingtree``,
       without importing it. This prevented ``bzr upgrade`` from working
       unless a plugin already imported ``bzrlib.workingtree``

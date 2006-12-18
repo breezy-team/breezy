@@ -16,18 +16,23 @@
 
 """Tests for Knit data structure"""
 
-
+from cStringIO import StringIO
 import difflib
 
-
-from bzrlib import errors
-from bzrlib.errors import KnitError, RevisionAlreadyPresent, NoSuchFile
+from bzrlib.errors import (
+    RevisionAlreadyPresent,
+    KnitHeaderError,
+    RevisionNotPresent,
+    NoSuchFile,
+    )
 from bzrlib.knit import (
     KnitContent,
     KnitVersionedFile,
     KnitPlainFactory,
     KnitAnnotateFactory,
-    WeaveToKnit)
+    _KnitIndex,
+    WeaveToKnit,
+    )
 from bzrlib.osutils import split_lines
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import TransportLogger, get_transport
@@ -85,6 +90,454 @@ class KnitContentTests(TestCase):
         it = content1.line_delta_iter(content2)
         self.assertEqual(it.next(), (1, 2, 2, [("", "a"), ("", "c")]))
         self.assertRaises(StopIteration, it.next)
+
+
+class MockTransport(object):
+
+    def __init__(self, file_lines=None):
+        self.file_lines = file_lines
+        self.calls = []
+
+    def get(self, filename):
+        if self.file_lines is None:
+            raise NoSuchFile(filename)
+        else:
+            return StringIO("\n".join(self.file_lines))
+
+    def __getattr__(self, name):
+        def queue_call(*args, **kwargs):
+            self.calls.append((name, args, kwargs))
+        return queue_call
+
+
+class LowLevelKnitIndexTests(TestCase):
+
+    def test_no_such_file(self):
+        transport = MockTransport()
+
+        self.assertRaises(NoSuchFile, _KnitIndex, transport, "filename", "r")
+        self.assertRaises(NoSuchFile, _KnitIndex, transport,
+            "filename", "w", create=False)
+
+    def test_create_file(self):
+        transport = MockTransport()
+
+        index = _KnitIndex(transport, "filename", "w",
+            file_mode="wb", create=True)
+        self.assertEqual(
+                ("put_bytes_non_atomic",
+                    ("filename", index.HEADER), {"mode": "wb"}),
+                transport.calls.pop(0))
+
+    def test_delay_create_file(self):
+        transport = MockTransport()
+
+        index = _KnitIndex(transport, "filename", "w",
+            create=True, file_mode="wb", create_parent_dir=True,
+            delay_create=True, dir_mode=0777)
+        self.assertEqual([], transport.calls)
+
+        index.add_versions([])
+        name, (filename, f), kwargs = transport.calls.pop(0)
+        self.assertEqual("put_file_non_atomic", name)
+        self.assertEqual(
+            {"dir_mode": 0777, "create_parent_dir": True, "mode": "wb"},
+            kwargs)
+        self.assertEqual("filename", filename)
+        self.assertEqual(index.HEADER, f.read())
+
+        index.add_versions([])
+        self.assertEqual(("append_bytes", ("filename", ""), {}),
+            transport.calls.pop(0))
+
+    def test_read_utf8_version_id(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            u"version-\N{CYRILLIC CAPITAL LETTER A}"
+                u" option 0 1 :".encode("utf-8")
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+        self.assertTrue(
+            index.has_version(u"version-\N{CYRILLIC CAPITAL LETTER A}"))
+
+    def test_read_utf8_parents(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            u"version option 0 1"
+                u" .version-\N{CYRILLIC CAPITAL LETTER A} :".encode("utf-8")
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+        self.assertEqual([u"version-\N{CYRILLIC CAPITAL LETTER A}"],
+            index.get_parents_with_ghosts("version"))
+
+    def test_read_ignore_corrupted_lines(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "corrupted",
+            "corrupted options 0 1 .b .c ",
+            "version options 0 1 :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+        self.assertEqual(1, index.num_versions())
+        self.assertTrue(index.has_version(u"version"))
+
+    def test_read_corrupted_header(self):
+        transport = MockTransport([])
+        self.assertRaises(KnitHeaderError,
+            _KnitIndex, transport, "filename", "r")
+
+    def test_read_duplicate_entries(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "parent options 0 1 :",
+            "version options1 0 1 0 :",
+            "version options2 1 2 .other :",
+            "version options3 3 4 0 .other :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+        self.assertEqual(2, index.num_versions())
+        self.assertEqual(1, index.lookup(u"version"))
+        self.assertEqual((3, 4), index.get_position(u"version"))
+        self.assertEqual(["options3"], index.get_options(u"version"))
+        self.assertEqual([u"parent", u"other"],
+            index.get_parents_with_ghosts(u"version"))
+
+    def test_read_compressed_parents(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 0 1 0 :",
+            "c option 0 1 1 0 :",
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+        self.assertEqual([u"a"], index.get_parents(u"b"))
+        self.assertEqual([u"b", u"a"], index.get_parents(u"c"))
+
+    def test_write_utf8_version_id(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+        index.add_version(u"version-\N{CYRILLIC CAPITAL LETTER A}",
+            ["option"], 0, 1, [])
+        self.assertEqual(("append_bytes", ("filename",
+            u"\nversion-\N{CYRILLIC CAPITAL LETTER A}"
+                u" option 0 1  :".encode("utf-8")),
+            {}),
+            transport.calls.pop(0))
+
+    def test_write_utf8_parents(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+        index.add_version(u"version", ["option"], 0, 1,
+            [u"version-\N{CYRILLIC CAPITAL LETTER A}"])
+        self.assertEqual(("append_bytes", ("filename",
+            u"\nversion option 0 1"
+                u" .version-\N{CYRILLIC CAPITAL LETTER A} :".encode("utf-8")),
+            {}),
+            transport.calls.pop(0))
+
+    def test_get_graph(self):
+        transport = MockTransport()
+        index = _KnitIndex(transport, "filename", "w", create=True)
+        self.assertEqual([], index.get_graph())
+
+        index.add_version(u"a", ["option"], 0, 1, [u"b"])
+        self.assertEqual([(u"a", [u"b"])], index.get_graph())
+
+        index.add_version(u"c", ["option"], 0, 1, [u"d"])
+        self.assertEqual([(u"a", [u"b"]), (u"c", [u"d"])],
+            sorted(index.get_graph()))
+
+    def test_get_ancestry(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 0 1 0 .e :",
+            "c option 0 1 1 0 :",
+            "d option 0 1 2 .f :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        self.assertEqual([], index.get_ancestry([]))
+        self.assertEqual([u"a"], index.get_ancestry([u"a"]))
+        self.assertEqual([u"a", u"b"], index.get_ancestry([u"b"]))
+        self.assertEqual([u"a", u"b", u"c"], index.get_ancestry([u"c"]))
+        self.assertEqual([u"a", u"b", u"c", u"d"], index.get_ancestry([u"d"]))
+        self.assertEqual([u"a", u"b"], index.get_ancestry([u"a", u"b"]))
+        self.assertEqual([u"a", u"b", u"c"], index.get_ancestry([u"a", u"c"]))
+
+        self.assertRaises(RevisionNotPresent, index.get_ancestry, [u"e"])
+
+    def test_get_ancestry_with_ghosts(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 0 1 0 .e :",
+            "c option 0 1 0 .f .g :",
+            "d option 0 1 2 .h .j .k :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        self.assertEqual([], index.get_ancestry_with_ghosts([]))
+        self.assertEqual([u"a"], index.get_ancestry_with_ghosts([u"a"]))
+        self.assertEqual([u"a", u"e", u"b"],
+            index.get_ancestry_with_ghosts([u"b"]))
+        self.assertEqual([u"a", u"g", u"f", u"c"],
+            index.get_ancestry_with_ghosts([u"c"]))
+        self.assertEqual([u"a", u"g", u"f", u"c", u"k", u"j", u"h", u"d"],
+            index.get_ancestry_with_ghosts([u"d"]))
+        self.assertEqual([u"a", u"e", u"b"],
+            index.get_ancestry_with_ghosts([u"a", u"b"]))
+        self.assertEqual([u"a", u"g", u"f", u"c"],
+            index.get_ancestry_with_ghosts([u"a", u"c"]))
+        self.assertEqual(
+            [u"a", u"g", u"f", u"c", u"e", u"b", u"k", u"j", u"h", u"d"],
+            index.get_ancestry_with_ghosts([u"b", u"d"]))
+
+        self.assertRaises(RevisionNotPresent,
+            index.get_ancestry_with_ghosts, [u"e"])
+
+    def test_num_versions(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        self.assertEqual(0, index.num_versions())
+        self.assertEqual(0, len(index))
+
+        index.add_version(u"a", ["option"], 0, 1, [])
+        self.assertEqual(1, index.num_versions())
+        self.assertEqual(1, len(index))
+
+        index.add_version(u"a", ["option2"], 1, 2, [])
+        self.assertEqual(1, index.num_versions())
+        self.assertEqual(1, len(index))
+
+        index.add_version(u"b", ["option"], 0, 1, [])
+        self.assertEqual(2, index.num_versions())
+        self.assertEqual(2, len(index))
+
+    def test_get_versions(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        self.assertEqual([], index.get_versions())
+
+        index.add_version(u"a", ["option"], 0, 1, [])
+        self.assertEqual([u"a"], index.get_versions())
+
+        index.add_version(u"a", ["option"], 0, 1, [])
+        self.assertEqual([u"a"], index.get_versions())
+
+        index.add_version(u"b", ["option"], 0, 1, [])
+        self.assertEqual([u"a", u"b"], index.get_versions())
+
+    def test_idx_to_name(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 0 1 :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        self.assertEqual(u"a", index.idx_to_name(0))
+        self.assertEqual(u"b", index.idx_to_name(1))
+        self.assertEqual(u"b", index.idx_to_name(-1))
+        self.assertEqual(u"a", index.idx_to_name(-2))
+
+    def test_lookup(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 0 1 :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        self.assertEqual(0, index.lookup(u"a"))
+        self.assertEqual(1, index.lookup(u"b"))
+
+    def test_add_version(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        index.add_version(u"a", ["option"], 0, 1, [u"b"])
+        self.assertEqual(("append_bytes",
+            ("filename", "\na option 0 1 .b :"),
+            {}), transport.calls.pop(0))
+        self.assertTrue(index.has_version(u"a"))
+        self.assertEqual(1, index.num_versions())
+        self.assertEqual((0, 1), index.get_position(u"a"))
+        self.assertEqual(["option"], index.get_options(u"a"))
+        self.assertEqual([u"b"], index.get_parents_with_ghosts(u"a"))
+
+        index.add_version(u"a", ["opt"], 1, 2, [u"c"])
+        self.assertEqual(("append_bytes",
+            ("filename", "\na opt 1 2 .c :"),
+            {}), transport.calls.pop(0))
+        self.assertTrue(index.has_version(u"a"))
+        self.assertEqual(1, index.num_versions())
+        self.assertEqual((1, 2), index.get_position(u"a"))
+        self.assertEqual(["opt"], index.get_options(u"a"))
+        self.assertEqual([u"c"], index.get_parents_with_ghosts(u"a"))
+
+        index.add_version(u"b", ["option"], 2, 3, [u"a"])
+        self.assertEqual(("append_bytes",
+            ("filename", "\nb option 2 3 0 :"),
+            {}), transport.calls.pop(0))
+        self.assertTrue(index.has_version(u"b"))
+        self.assertEqual(2, index.num_versions())
+        self.assertEqual((2, 3), index.get_position(u"b"))
+        self.assertEqual(["option"], index.get_options(u"b"))
+        self.assertEqual([u"a"], index.get_parents_with_ghosts(u"b"))
+
+    def test_add_versions(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        index.add_versions([
+            (u"a", ["option"], 0, 1, [u"b"]),
+            (u"a", ["opt"], 1, 2, [u"c"]),
+            (u"b", ["option"], 2, 3, [u"a"])
+            ])
+        self.assertEqual(("append_bytes", ("filename",
+            "\na option 0 1 .b :"
+            "\na opt 1 2 .c :"
+            "\nb option 2 3 0 :"
+            ), {}), transport.calls.pop(0))
+        self.assertTrue(index.has_version(u"a"))
+        self.assertTrue(index.has_version(u"b"))
+        self.assertEqual(2, index.num_versions())
+        self.assertEqual((1, 2), index.get_position(u"a"))
+        self.assertEqual((2, 3), index.get_position(u"b"))
+        self.assertEqual(["opt"], index.get_options(u"a"))
+        self.assertEqual(["option"], index.get_options(u"b"))
+        self.assertEqual([u"c"], index.get_parents_with_ghosts(u"a"))
+        self.assertEqual([u"a"], index.get_parents_with_ghosts(u"b"))
+
+    def test_delay_create_and_add_versions(self):
+        transport = MockTransport()
+
+        index = _KnitIndex(transport, "filename", "w",
+            create=True, file_mode="wb", create_parent_dir=True,
+            delay_create=True, dir_mode=0777)
+        self.assertEqual([], transport.calls)
+
+        index.add_versions([
+            (u"a", ["option"], 0, 1, [u"b"]),
+            (u"a", ["opt"], 1, 2, [u"c"]),
+            (u"b", ["option"], 2, 3, [u"a"])
+            ])
+        name, (filename, f), kwargs = transport.calls.pop(0)
+        self.assertEqual("put_file_non_atomic", name)
+        self.assertEqual(
+            {"dir_mode": 0777, "create_parent_dir": True, "mode": "wb"},
+            kwargs)
+        self.assertEqual("filename", filename)
+        self.assertEqual(
+            index.HEADER +
+            "\na option 0 1 .b :"
+            "\na opt 1 2 .c :"
+            "\nb option 2 3 0 :",
+            f.read())
+
+    def test_has_version(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        self.assertTrue(index.has_version(u"a"))
+        self.assertFalse(index.has_version(u"b"))
+
+    def test_get_position(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 1 2 :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        self.assertEqual((0, 1), index.get_position(u"a"))
+        self.assertEqual((1, 2), index.get_position(u"b"))
+
+    def test_get_method(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a fulltext,unknown 0 1 :",
+            "b unknown,line-delta 1 2 :",
+            "c bad 3 4 :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        self.assertEqual("fulltext", index.get_method(u"a"))
+        self.assertEqual("line-delta", index.get_method(u"b"))
+        self.assertRaises(AssertionError, index.get_method, u"c")
+
+    def test_get_options(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a opt1 0 1 :",
+            "b opt2,opt3 1 2 :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        self.assertEqual(["opt1"], index.get_options(u"a"))
+        self.assertEqual(["opt2", "opt3"], index.get_options(u"b"))
+
+    def test_get_parents(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 1 2 0 .c :",
+            "c option 1 2 1 0 .e :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        self.assertEqual([], index.get_parents(u"a"))
+        self.assertEqual([u"a", u"c"], index.get_parents(u"b"))
+        self.assertEqual([u"b", u"a"], index.get_parents(u"c"))
+
+    def test_get_parents_with_ghosts(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 1 2 0 .c :",
+            "c option 1 2 1 0 .e :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        self.assertEqual([], index.get_parents_with_ghosts(u"a"))
+        self.assertEqual([u"a", u"c"], index.get_parents_with_ghosts(u"b"))
+        self.assertEqual([u"b", u"a", u"e"],
+            index.get_parents_with_ghosts(u"c"))
+
+    def test_check_versions_present(self):
+        transport = MockTransport([
+            _KnitIndex.HEADER,
+            "a option 0 1 :",
+            "b option 0 1 :"
+            ])
+        index = _KnitIndex(transport, "filename", "r")
+
+        check = index.check_versions_present
+
+        check([])
+        check([u"a"])
+        check([u"b"])
+        check([u"a", u"b"])
+        self.assertRaises(RevisionNotPresent, check, [u"c"])
+        self.assertRaises(RevisionNotPresent, check, [u"a", u"b", u"c"])
 
 
 class KnitTests(TestCaseWithTransport):
@@ -763,4 +1216,4 @@ class TestKnitIndex(KnitTests):
         t = get_transport('.')
         t.put_bytes('test.kndx', '# not really a knit header\n\n')
 
-        self.assertRaises(errors.KnitHeaderError, self.make_test_knit)
+        self.assertRaises(KnitHeaderError, self.make_test_knit)
