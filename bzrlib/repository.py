@@ -445,10 +445,13 @@ class Repository(object):
         unescape_revid_cache = {}
         unescape_fileid_cache = {}
 
+        # jam 20061218 In a big fetch, this handles hundreds of thousands
+        # of lines, so it has had a lot of inlining and optimizing done.
+        # Sorry that it is a little bit messy.
         # Move several functions to be local variables, since this is a long
         # running loop.
         search = self._file_ids_altered_regex.search
-        unescape = _unescape_xml_cached
+        unescape = _unescape_xml
         setdefault = result.setdefault
         pb = ui.ui_factory.nested_progress_bar()
         try:
@@ -457,10 +460,33 @@ class Repository(object):
                 match = search(line)
                 if match is None:
                     continue
+                # One call to match.group() returning multiple items is quite a
+                # bit faster than 2 calls to match.group() each returning 1
                 file_id, revision_id = match.group('file_id', 'revision_id')
-                revision_id = unescape(revision_id, unescape_revid_cache)
+
+                # Inlining the cache lookups helps a lot when you make 170,000
+                # lines and 350k ids, versus 8.4 unique ids.
+                # Using a cache helps in 2 ways:
+                #   1) Avoids unnecessary decoding calls
+                #   2) Re-uses cached strings, which helps in future set and
+                #      equality checks.
+                # (2) is enough that removing encoding entirely along with
+                # the cache (so we are using plain strings) results in no
+                # performance improvement.
+                try:
+                    revision_id = unescape_revid_cache[revision_id]
+                except KeyError:
+                    unescaped = unescape(revision_id)
+                    unescape_revid_cache[revision_id] = unescaped
+                    revision_id = unescaped
+
                 if revision_id in selected_revision_ids:
-                    file_id = unescape(file_id, unescape_fileid_cache)
+                    try:
+                        file_id = unescape_fileid_cache[file_id]
+                    except KeyError:
+                        unescaped = unescape(file_id)
+                        unescape_fileid_cache[file_id] = unescaped
+                        file_id = unescaped
                     setdefault(file_id, set()).add(revision_id)
         finally:
             pb.finished()
@@ -2545,12 +2571,3 @@ def _unescape_xml(data):
     if _unescape_re is None:
         _unescape_re = re.compile('\&([^;]*);')
     return _unescape_re.sub(_unescaper, data)
-
-
-def _unescape_xml_cached(data, cache):
-    try:
-        return cache[data]
-    except KeyError:
-        unescaped = _unescape_xml(data)
-        cache[data] = unescaped
-        return unescaped
