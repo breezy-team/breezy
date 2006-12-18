@@ -118,3 +118,25 @@ class TestMissing(TestCaseInTempDir):
         self.assertEqual("Branches are up to date.\n", 
                          bzr('missing', '../a'))
 
+    def test_missing_check_last_location(self):
+        # check that last location shown as filepath not file URL
+        def bzr(*args, **kwargs):
+            return self.run_bzr(*args, **kwargs)[0]
+
+        # create a source branch
+        os.mkdir('a')
+        os.chdir('a')
+        location = os.getcwd().replace('\\','/') + '/'
+        bzr('init')
+        open('a', 'wb').write('initial\n')
+        bzr('add', 'a')
+        bzr('commit', '-m', 'inital')
+        # clone
+        bzr('branch', '.', '../b')
+        os.chdir('../b')
+
+        # check last location
+        lines = bzr('missing')
+        self.assertEquals('Using last location: %s\n'
+                          'Branches are up to date.\n' % location,
+                          lines)
