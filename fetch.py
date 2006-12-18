@@ -354,7 +354,9 @@ class InterSvnRepository(InterRepository):
             svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
                 "", parent_revnum, False, None)
 
+            transport.lock()
             svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton)
+            transport.unlock()
 
             prev_inv = editor.inventory
             prev_revid = revid

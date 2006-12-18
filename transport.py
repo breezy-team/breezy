@@ -69,6 +69,7 @@ def get_test_permutations():
 
 
 def get_svn_ra_transport(bzr_transport):
+    """Obtain corresponding SvnRaTransport for a stock Bazaar transport."""
     if isinstance(bzr_transport, SvnRaTransport):
         return bzr_transport
 
@@ -236,6 +237,6 @@ class SvnRaTransport(Transport):
     def clone(self, offset=None):
         """See Transport.clone()."""
         if offset is None:
-            return self.__class__(self.base)
+            return SvnRaTransport(self.base)
 
         return SvnRaTransport(urlutils.join(self.base, offset))

@@ -111,6 +111,13 @@ class FileIdMap(object):
         return map
 
     def apply_changes(self, uuid, revnum, branch, global_changes, map):
+        """Change file id map to incorporate specified changes.
+
+        :param uuid: UUID of repository changes happen in
+        :param revnum: Revno for revision in which changes happened
+        :param branch: Branch path where changes happened
+        :param global_changes: Dict with global changes that happened
+        """
         changes = get_local_changes(global_changes, self._log.scheme,
                                         uuid)
 

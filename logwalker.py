@@ -46,6 +46,7 @@ def _escape_commit_message(message):
         message)
     return message
 
+
 class NotSvnBranchPath(BzrError):
     _fmt = """{%(branch_path)s} is not a valid Svn branch path"""
 
@@ -74,7 +75,7 @@ class LogWalker(object):
 
         self.last_revnum = last_revnum
 
-        self.transport = transport
+        self.transport = transport.clone()
         self.scheme = scheme
 
         if not cache_dir is None:
@@ -87,6 +88,12 @@ class LogWalker(object):
         self.saved_revnum = max(len(self.revisions)-1, 0)
 
     def fetch_revisions(self, to_revnum, pb=None):
+        """Fetch information about all revisions in the remote repository
+        until to_revnum.
+
+        :param to_revnum: End of range to fetch information for
+        :param pb: Optional progress bar to use
+        """
         def rcvr(orig_paths, rev, author, date, message, pool):
             pb.update('fetching svn revision info', rev, to_revnum)
             paths = {}
@@ -129,8 +136,12 @@ class LogWalker(object):
             raise
 
     def follow_history(self, branch_path, revnum):
-        """Return iterator over all the revisions between from_revnum and 
-        to_revnum that touch branch_path."""
+        """Return iterator over all the revisions between revnum and 
+        0 that touch branch_path.
+        
+        :param branch_path:   Branch path to start reporting (in revnum)
+        :param revnum:        Start revision.
+        """
         assert revnum >= 0
 
         if not branch_path is None and not self.scheme.is_branch(branch_path):
@@ -185,6 +196,10 @@ class LogWalker(object):
                 branch_path = rev['paths'][branch_path][1]
 
     def find_branches(self, revnum):
+        """Find all branches that were changed in the specified revision number.
+
+        :param revnum: Revision to search for branches.
+        """
         created_branches = {}
 
         if revnum > self.saved_revnum:
@@ -225,16 +240,27 @@ class LogWalker(object):
 
     
     def find_latest_change(self, path, revnum):
+        """Find latest revision that touched path.
+
+        :param path: Path to check for changes
+        :param revnum: First revision to check
+        """
         while revnum > 0 and not self.touches_path(path, revnum):
             revnum = revnum - 1
         return revnum
 
     def touches_path(self, path, revnum):
+        """Check whether path was changed in specified revision.
+
+        :param path:  Path to check
+        :param revnum:  Revision to check
+        """
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
         return (path in self.revisions[str(revnum)]['paths'])
 
     def find_children(self, path, revnum):
+        """Find all children of path in revnum."""
         # TODO: Find children by walking history, or use 
         # cache?
         mutter("svn ls -r %d '%r'" % (revnum, path))
