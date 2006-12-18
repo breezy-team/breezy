@@ -164,11 +164,11 @@ class SvnRaTransport(Transport):
         url = url.rstrip("/")
         if url == self.svn_url:
             return
+        self.base = url
+        self.svn_url = url
         if hasattr(svn.ra, 'reparent'):
-            self.svn_url = url
             svn.ra.reparent(self._ra, url)
         else:
-            self.svn_url = url
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
     @need_lock
