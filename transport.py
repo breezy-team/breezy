@@ -162,6 +162,8 @@ class SvnRaTransport(Transport):
     @need_lock
     def reparent(self, url):
         url = url.rstrip("/")
+        if url == self.svn_url:
+            return
         if hasattr(svn.ra, 'reparent'):
             self.svn_url = url
             svn.ra.reparent(self._ra, url)
