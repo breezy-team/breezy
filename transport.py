@@ -176,6 +176,17 @@ class SvnRaTransport(Transport):
     def get_dir(self, *args, **kwargs):
         return svn.ra.get_dir(self._ra, *args, **kwargs)
 
+    def list_dir(self, relpath):
+        if relpath == ".":
+            relpath = ""
+        try:
+            (dirents, _, _) = self.get_dir(relpath.rstrip("/"), self.get_latest_revnum())
+        except SubversionException, (msg, num):
+            if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
+                raise NoSuchFile(relpath)
+            raise
+        return dirents.keys()
+
     @need_lock
     def get_file(self, *args, **kwargs):
         return svn.ra.get_file(self._ra, *args, **kwargs)
@@ -214,10 +225,8 @@ class SvnRaTransport(Transport):
 
     def listable(self):
         """See Transport.listable().
-        
-        :return: False.
         """
-        return False
+        return True
 
     # There is no real way to do locking directly on the transport 
     # nor is there a need to as the remote server will take care of 

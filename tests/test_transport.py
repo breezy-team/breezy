@@ -45,6 +45,31 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         t.reparent("%s/foo" % repos_url)
         self.assertEqual("%s/foo" % repos_url, t.base)
 
+    def test_listable(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        self.assertTrue(t.listable())
+
+    def test_list_dir(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        self.assertEqual([], t.list_dir("."))
+        t.mkdir("foo")
+        self.assertEqual(["foo"], t.list_dir("."))
+        self.assertEqual([], t.list_dir("foo"))
+        t.mkdir("foo/bar")
+        self.assertEqual(["bar"], t.list_dir("foo"))
+
+    def test_list_dir_file(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({"dc/file": "data"})
+        self.client_add("dc/file")
+        self.client_commit("dc", "Bla")
+
+        t = SvnRaTransport(repos_url)
+        self.assertEqual(["file"], t.list_dir("."))
+        self.assertRaises(NoSuchFile, t.list_dir, "file")
+
     def test_clone(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({"dc/dir": None, "dc/bl": "data"})
