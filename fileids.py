@@ -93,6 +93,7 @@ class FileIdMap(object):
             self.cachedb = dbs[cache_path]
         self.cachedb.executescript("""
         create table if not exists filemap (filename text, id integer, create_revid text, revid text);
+        create index if not exists revid on filemap(revid);
         """)
         self.cachedb.commit()
 
