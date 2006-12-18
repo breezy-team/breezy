@@ -19,11 +19,14 @@ __all__ = ['show_bzrdir_info']
 import time
 
 
-import bzrlib.diff as diff
+from bzrlib import (
+    diff,
+    osutils,
+    urlutils,
+    )
 from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
-import bzrlib.osutils as osutils
 from bzrlib.symbol_versioning import (deprecated_function, 
         zero_eight)
 
@@ -37,20 +40,22 @@ def plural(n, base='', pl=None):
         return 's'
 
 
-def _repo_relpath(repo_path, path):
+def _repo_rel_url(repo_url, inner_url):
     """Return path with common prefix of repository path removed.
 
     If path is not part of the repository, the original path is returned.
     If path is equal to the repository, the current directory marker '.' is
     returned.
+    Otherwise, a relative path is returned, with trailing '/' stripped.
     """
-    path = osutils.normalizepath(path)
-    repo_path = osutils.normalizepath(repo_path)
-    if path == repo_path:
+    inner_url = urlutils.normalize_url(inner_url)
+    repo_url = urlutils.normalize_url(repo_url)
+    if inner_url == repo_url:
         return '.'
-    if osutils.is_inside(repo_path, path):
-        return osutils.relpath(repo_path, path)
-    return path
+    result = urlutils.relative_url(repo_url, inner_url)
+    if result != inner_url:
+        result = result.strip('/')
+    return result
 
 
 def _show_location_info(repository, branch=None, working=None):
@@ -67,7 +72,7 @@ def _show_location_info(repository, branch=None, working=None):
                 # lightweight checkout of branch in shared repository
                 print '   shared repository: %s' % repository_path
                 print '   repository branch: %s' % (
-                    _repo_relpath(repository_path, branch_path))
+                    _repo_rel_url(repository_path, branch_path))
             else:
                 # lightweight checkout of standalone branch
                 print '  checkout of branch: %s' % branch_path
@@ -75,7 +80,7 @@ def _show_location_info(repository, branch=None, working=None):
             # branch with tree inside shared repository
             print '    shared repository: %s' % repository_path
             print '  repository checkout: %s' % (
-                _repo_relpath(repository_path, branch_path))
+                _repo_rel_url(repository_path, branch_path))
         elif branch.get_bound_location():
             # normal checkout
             print '       checkout root: %s' % working_path
@@ -89,7 +94,7 @@ def _show_location_info(repository, branch=None, working=None):
             # branch is part of shared repository
             print '  shared repository: %s' % repository_path
             print '  repository branch: %s' % (
-                _repo_relpath(repository_path, branch_path))
+                _repo_rel_url(repository_path, branch_path))
         else:
             # standalone branch
             print '  branch root: %s' % branch_path
