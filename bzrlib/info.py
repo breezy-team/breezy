@@ -54,7 +54,7 @@ def _repo_rel_url(repo_url, inner_url):
         return '.'
     result = urlutils.relative_url(repo_url, inner_url)
     if result != inner_url:
-        result = result.strip('/')
+        result = result.rstrip('/')
     return result
 
 
