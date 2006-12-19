@@ -85,11 +85,13 @@ class TestReadonly(TestCaseWithWorkingTree):
 
         # XXX: *Ugly* *ugly* hack, we need the hashcache to think it is out of
         # date, but we don't want to actually wait 3 seconds doing nothing.
-
-        the_hashcache = getattr(tree, '_hashcache')
-        if (the_hashcache is not None
-            and isinstance(the_hashcache, hashcache.HashCache)):
-            the_hashcache._cutoff_time = self._custom_cutoff_time
+        # WorkingTree formats that don't have a _hashcache should update this
+        # test so that they pass. For now, we just assert that we have the
+        # right type of objects available.
+        the_hashcache = getattr(tree, '_hashcache', None)
+        self.assertNotEqual(None, the_hashcache)
+        self.assertIsInstance(the_hashcache, hashcache.HashCache)
+        the_hashcache._cutoff_time = self._custom_cutoff_time
 
         # Make it a little dirty
         self.build_tree_contents([('tree/a', 'new contents of a\n')])
