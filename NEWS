@@ -66,6 +66,11 @@ IN DEVELOPMENT
 
     * Test suite ends cleanly on Windows.  (Vincent Ladeuil)
 
+    * Attribute 'encoding_type' of class Command equals to 'exact' 
+      force sys.stdout to be binary stream on Windows and therefore
+      keep exact line-endings (without LF -> CRLF conversion).
+      (Alexander Belchenko)
+
   BUG FIXES:
 
     * ``bzr annotate`` now defaults to showing dotted revnos for merged
