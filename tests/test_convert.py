@@ -43,6 +43,25 @@ class TestConversion(TestCaseWithSubversionRepository):
                 TrunkBranchingScheme(), True)
 
         self.assertTrue(Repository.open("e").is_shared())
+
+    def test_shared_import_continue_branch(self):
+        convert_repository("svn+"+self.repos_url, "e", 
+                TrunkBranchingScheme(), True)
+
+        self.build_tree({'dc/trunk/file': 'foodata'})
+        self.client_commit("dc", "msg")
+
+        self.assertEqual("svn-v%d:2@%s-trunk" % 
+                        (MAPPING_VERSION, Repository.open(self.repos_url).uuid),
+                        Branch.open("e/trunk").last_revision())
+
+        convert_repository("svn+"+self.repos_url, "e", 
+                TrunkBranchingScheme(), True)
+
+        self.assertEqual("svn-v%d:3@%s-trunk" % 
+                        (MAPPING_VERSION, Repository.open(self.repos_url).uuid),
+                        Branch.open("e/trunk").last_revision())
+
  
     def test_shared_import(self):
         convert_repository("svn+"+self.repos_url, "e", 

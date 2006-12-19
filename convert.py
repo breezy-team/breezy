@@ -85,8 +85,12 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True, working
             source_branch = Branch.open("%s/%s" % (source_repos.base, branch))
 
             target_dir = os.path.join(output_dir, branch)
-            os.makedirs(target_dir)
-            source_branch.bzrdir.sprout(target_dir, source_branch.last_revision())
+            try:
+                target_branch = Branch.open(target_dir)
+                target_branch.pull(source_branch)
+            except NotBranchError:
+                os.makedirs(target_dir)
+                source_branch.bzrdir.sprout(target_dir, source_branch.last_revision())
             
             info('Converted %s:%d' % (branch, revnum))
 
