@@ -2226,11 +2226,13 @@ class cmd_merge(Command):
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
                      Option('show-base', help="Show base revision text in "
-                            "conflicts"), 
+                            "conflicts"),
                      Option('uncommitted', help='Apply uncommitted changes'
                             ' from a working copy, instead of branch changes'),
-                     Option('pull', help='If the branches are not diverged,'
-                            ' chage to remote revision as via pull command'),
+                     Option('pull', help='If the destination is already'
+                             ' completely merged into the source, pull from the'
+                             ' source rather than merging. When this happens,'
+                             ' you do not need to commit the result.'),
                      ]
 
     def help(self):
