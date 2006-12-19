@@ -236,7 +236,8 @@ _global_option('prefix', type=str,
                     'two values separated by a colon.')
 _global_option('profile',
                help='show performance profiling information')
-_global_option('revision', type=_parse_revision_str)
+_global_option('revision', type=_parse_revision_str,
+               help='See \'help revisionspec\' for details')
 _global_option('show-ids', 
                help='show internal object ids')
 _global_option('timezone', 
