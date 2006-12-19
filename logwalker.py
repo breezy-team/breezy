@@ -205,17 +205,18 @@ class LogWalker(object):
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
 
-        for i in range(revnum):
+        for i in range(revnum+1):
             if i == 0:
-                continue
-            rev = self.revisions[str(i)]
-            for p in rev['paths']:
+                paths = {'': ('A', None, None)}
+            else:
+                paths = self.revisions[str(i)]['paths']
+            for p in paths:
                 if self.scheme.is_branch(p):
-                    if rev['paths'][p][0] in ('R', 'D'):
+                    if paths[p][0] in ('R', 'D'):
                         del created_branches[p]
                         yield (p, i, False)
 
-                    if rev['paths'][p][0] in ('A', 'R'): 
+                    if paths[p][0] in ('A', 'R'): 
                         created_branches[p] = i
 
         for p in created_branches:
