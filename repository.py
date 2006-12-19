@@ -619,6 +619,11 @@ class SvnRepository(Repository):
 
         return self._ancestry
 
+    def find_branches(self, revnum=None):
+        if revnum is None:
+            revnum = self._latest_revnum
+        return self._log.find_branches(revnum)
+
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         return True

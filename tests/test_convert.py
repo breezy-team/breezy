@@ -34,6 +34,14 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.build_tree({'dc/trunk/file': 'otherdata'})
         self.client_commit("dc", "change")
 
+    def test_shared_import_continue(self):
+        BzrDir.create_repository("e", shared=True)
+
+        convert_repository("svn+"+self.repos_url, "e", 
+                TrunkBranchingScheme(), True)
+
+        self.assertTrue(Repository.open("e").is_shared())
+ 
     def test_shared_import(self):
         convert_repository("svn+"+self.repos_url, "e", 
                 TrunkBranchingScheme(), True)

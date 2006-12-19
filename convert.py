@@ -28,7 +28,7 @@ load_plugins()
 
 from bzrlib.bzrdir import BzrDir
 from bzrlib.branch import Branch
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, NotBranchError
 import bzrlib.osutils as osutils
 from bzrlib.repository import Repository
 from bzrlib.trace import info
@@ -51,20 +51,24 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True, working
         except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):            
             raise BzrError("%s is not a dump file" % url)
         
-        url = "file://%s" % tmp_repos
+        url = tmp_repos
 
     if create_shared_repo:
-        target_repos = BzrDir.create_repository(output_dir, shared=True)
+        try:
+            target_repos = Repository.open(output_dir)
+            assert target_repos.is_shared()
+        except NotBranchError:
+            target_repos = BzrDir.create_repository(output_dir, shared=True)
         target_repos.set_make_working_trees(working_trees)
 
     try:
         source_repos = Repository.open(url)
 
-        branches = source_repos._log.find_branches(
-                source_repos.transport.get_latest_revnum())
+        branches = source_repos.find_branches()
+                
         existing_branches = filter(lambda (bp, revnum, exists): exists, 
                                    branches)
-        info('Importing branches: \n%s' % "".join(map(lambda (bp,revnum,exists): "%s\n" % bp, existing_branches)))
+        info('Importing %d branches' % len(existing_branches))
 
         for (branch, revnum, exists) in existing_branches:
             source_branch = Branch.open("%s/%s" % (source_repos.base, branch))
@@ -73,7 +77,7 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True, working
             os.makedirs(target_dir)
             source_branch.bzrdir.sprout(target_dir, source_branch.last_revision())
             
-            info('Converted %s:%d\n' % (branch, revnum))
+            info('Converted %s:%d' % (branch, revnum))
 
     finally:
         if tmp_repos:
