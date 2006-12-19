@@ -44,6 +44,24 @@ class TestConversion(TestCaseWithSubversionRepository):
 
         self.assertTrue(Repository.open("e").is_shared())
 
+    def test_shared_import_with_wt(self):
+        BzrDir.create_repository("e", shared=True)
+
+        convert_repository("svn+"+self.repos_url, "e", 
+                TrunkBranchingScheme(), True)
+
+        self.assertTrue(os.path.isfile(os.path.join(
+                        self.test_dir, "e", "trunk", "file")))
+
+    def test_shared_import_without_wt(self):
+        BzrDir.create_repository("e", shared=True)
+
+        convert_repository("svn+"+self.repos_url, "e", 
+                TrunkBranchingScheme(), False)
+
+        self.assertFalse(os.path.isfile(os.path.join(
+                        self.test_dir, "e", "trunk", "file")))
+
     def test_shared_import_continue_branch(self):
         convert_repository("svn+"+self.repos_url, "e", 
                 TrunkBranchingScheme(), True)
