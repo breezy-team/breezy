@@ -76,7 +76,7 @@ def register_command(cmd, decorate=False):
         k_unsquished = k
     if k_unsquished not in plugin_cmds:
         plugin_cmds[k_unsquished] = cmd
-        trace.mutter('registered plugin command %s', k_unsquished)
+        ## trace.mutter('registered plugin command %s', k_unsquished)
         if decorate and k_unsquished in builtin_command_names():
             return _builtin_commands()[k_unsquished]
     elif decorate:
@@ -528,6 +528,7 @@ def run_bzr(argv):
         Run under the Python lsprof profiler.
     """
     argv = list(argv)
+    trace.mutter("bzr arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
                 opt_no_aliases = False

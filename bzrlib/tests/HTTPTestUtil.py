@@ -48,16 +48,19 @@ class BadStatusRequestHandler(TestingHTTPRequestHandler):
             self.send_response(0, "Bad status")
             self.end_headers()
         except socket.error, e:
-            if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
-                # We don't want to pollute the test reuslts with
-                # spurious server errors while test succeed. In
-                # our case, it may occur that the test have
-                # already read the 'Bad Status' and closed the
-                # socket while we are still trying to send some
-                # headers... So the test is ok but if we raise
-                # the exception the output is dirty. So we don't
-                # raise, but we close the connection, just to be
-                # safe :)
+            # We don't want to pollute the test results with
+            # spurious server errors while test succeed. In our
+            # case, it may occur that the test has already read
+            # the 'Bad Status' and closed the socket while we are
+            # still trying to send some headers... So the test is
+            # ok, but if we raise the exception, the output is
+            # dirty. So we don't raise, but we close the
+            # connection, just to be safe :)
+            spurious = [errno.EPIPE,
+                        errno.ECONNRESET,
+                        errno.ECONNABORTED,
+                        ]
+            if (len(e.args) > 0) and (e.args[0] in spurious):
                 self.close_connection = 1
                 pass
             else:
@@ -170,3 +173,40 @@ class TestCaseWithWebserver(TestCaseWithTransport):
     def setUp(self):
         super(TestCaseWithWebserver, self).setUp()
         self.transport_readonly_server = HttpServer
+
+
+class TestCaseWithTwoWebservers(TestCaseWithWebserver):
+    """A support class providinf readonly urls (on two servers) that are http://.
+
+    We setup two webservers to allows various tests involving
+    proxies or redirections from one server to the other.
+    """
+    def setUp(self):
+        super(TestCaseWithTwoWebservers, self).setUp()
+        self.transport_secondary_server = HttpServer
+        self.__secondary_server = None
+
+    def create_transport_secondary_server(self):
+        """Create a transport server from class defined at init.
+
+        This is mostly a hook for daughter classes.
+        """
+        return self.transport_secondary_server()
+
+    def get_secondary_server(self):
+        """Get the server instance for the secondary transport."""
+        if self.__secondary_server is None:
+            self.__secondary_server = self.create_transport_secondary_server()
+            self.__secondary_server.setUp()
+            self.addCleanup(self.__secondary_server.tearDown)
+        return self.__secondary_server
+
+
+class FakeProxyRequestHandler(TestingHTTPRequestHandler):
+    """Append a '-proxied' suffix to file served"""
+
+    def translate_path(self, path):
+        return TestingHTTPRequestHandler.translate_path(self,
+                                                        path + '-proxied')
+
+

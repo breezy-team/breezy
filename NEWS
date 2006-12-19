@@ -2,6 +2,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * New connection: ``bzr+http://`` which supports tunnelling the smart
+      protocol over an HTTP connection. If writing is enabled on the bzr
+      server, then you can write over the http connection.
+      (Andrew Bennetts, John Arbash Meinel)
+
     * Aliases now support quotation marks, so they can contain whitespace
       (Marius Kruger)
 
@@ -42,20 +47,53 @@ IN DEVELOPMENT
         A  bar
         D  baz
         ?  wooley
-      
+
+    * 'bzr selftest --clean-output' allows easily clean temporary tests 
+      directories without running tests. (Alexander Belchenko)
+
+    * ``bzr help hidden-commands`` lists all hidden commands. (Aaron Bentley)
+
   INTERNALS:
+
+    * A few tweaks directly to ``fileids_affected_by_revision_ids`` to
+      help speed up processing, as well allowing to extract unannotated
+      lines. Between the two ``fileids_affected_by_revision_ids`` is
+      improved by approx 10%. (John Arbash Meinel)
 
     * Change Revision serialization to only write out millisecond
       resolution. Rather than expecting floating point serialization to
       preserve more resolution than we need. (Henri Weichers, Martin Pool)
 
+    * Test suite ends cleanly on Windows.  (Vincent Ladeuil)
+
   BUG FIXES:
+
+    * ``bzr annotate`` now defaults to showing dotted revnos for merged
+      revisions. It cuts them off at a depth of 12 characters, but you can
+      supply ``--long`` to see the full number. You can also use
+      ``--show-ids`` to display the original revision ids, rather than
+      revision numbers and committer names. (John Arbash Meinel, #75637)
 
     * bzr now supports Win32 UNC path (e.g. \\HOST\path). 
       (Alexander Belchenko, #57869)
 
     * Win32-specific: output of cat, bundle and diff commands don't mangle
       line-endings (Alexander Belchenko, #55276)
+
+    * Replace broken fnmatch based ignore pattern matching with custom pattern
+      matcher.
+      (Kent Gibson, Jan Hudec #57637)
+
+    * pycurl and urllib can detect short reads at different places. Update
+      the test suite to test more cases. Also detect http error code 416
+      which was raised for that specific bug. Also enhance the urllib
+      robustness by detecting invalid ranges (and pycurl's one by detecting
+      short reads during the initial GET). (Vincent Ladeuil, #73948)
+
+    * The urllib connection sharing interacts badly with urllib2
+      proxy setting (the connections didn't go thru the proxy
+      anymore). Defining a proper ProxyHandler solves the
+      problem.  (Vincent Ladeuil, #74759)
 
 
 bzr 0.13  2006-12-05
@@ -197,11 +235,6 @@ bzr 0.12rc1  2006-10-23
       For instance, ``bzr diff -r 1.2.1..1.2.3. (Robert Collins)
 
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
-
-    * New connection: ``bzr+http://`` which supports tunnelling the smart
-      protocol over an HTTP connection. If writing is enabled on the bzr
-      server, then you can write over the http connection.
-      (Andrew Bennetts)
 
     * ``bzr`` now uses lazy importing to reduce the startup time. This has
       a moderate effect on lots of actions, especially ones that have

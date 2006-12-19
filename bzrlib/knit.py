@@ -203,6 +203,25 @@ class KnitAnnotateFactory(_KnitFactory):
             result.append((start, end, count, contents))
         return result
 
+    def get_fulltext_content(self, lines):
+        """Extract just the content lines from a fulltext."""
+        return (line.split(' ', 1)[1] for line in lines)
+
+    def get_linedelta_content(self, lines):
+        """Extract just the content from a line delta.
+
+        This doesn't return all of the extra information stored in a delta.
+        Only the actual content lines.
+        """
+        lines = iter(lines)
+        next = lines.next
+        for header in lines:
+            header = header.split(',')
+            count = int(header[2])
+            for i in xrange(count):
+                origin, text = next().split(' ', 1)
+                yield text
+
     def lower_fulltext(self, content):
         """convert a fulltext content record into a serializable form.
 
@@ -250,6 +269,24 @@ class KnitPlainFactory(_KnitFactory):
 
     def parse_line_delta(self, lines, version):
         return list(self.parse_line_delta_iter(lines, version))
+
+    def get_fulltext_content(self, lines):
+        """Extract just the content lines from a fulltext."""
+        return iter(lines)
+
+    def get_linedelta_content(self, lines):
+        """Extract just the content from a line delta.
+
+        This doesn't return all of the extra information stored in a delta.
+        Only the actual content lines.
+        """
+        lines = iter(lines)
+        next = lines.next
+        for header in lines:
+            header = header.split(',')
+            count = int(header[2])
+            for i in xrange(count):
+                yield next()
 
     def lower_fulltext(self, content):
         return content.text()
@@ -845,16 +882,15 @@ class KnitVersionedFile(VersionedFile):
             pb.update('Walking content.', version_idx, total)
             method = self._index.get_method(version_id)
             version_idx = self._index.lookup(version_id)
+
             assert method in ('fulltext', 'line-delta')
             if method == 'fulltext':
-                content = self.factory.parse_fulltext(data, version_idx)
-                for line in content.text():
-                    yield line
+                line_iterator = self.factory.get_fulltext_content(data)
             else:
-                delta = self.factory.parse_line_delta(data, version_idx)
-                for start, end, count, lines in delta:
-                    for origin, line in lines:
-                        yield line
+                line_iterator = self.factory.get_linedelta_content(data)
+            for line in line_iterator:
+                yield line
+
         pb.update('Walking content.', total, total)
         
     def num_versions(self):

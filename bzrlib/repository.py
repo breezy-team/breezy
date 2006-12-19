@@ -439,26 +439,29 @@ class Repository(object):
         # not present in one of those inventories is unnecessary but not 
         # harmful because we are filtering by the revision id marker in the
         # inventory lines : we only select file ids altered in one of those  
-        unescape_revid_cache = {}
-        unescape_fileid_cache = {}
-
         # revisions. We don't need to see all lines in the inventory because
         # only those added in an inventory in rev X can contain a revision=X
         # line.
+        unescape_revid_cache = {}
+        unescape_fileid_cache = {}
+
+        # Move several functions to be local variables, since this is a long
+        # running loop.
+        search = self._file_ids_altered_regex.search
+        unescape = _unescape_xml_cached
+        setdefault = result.setdefault
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for line in w.iter_lines_added_or_present_in_versions(
-                selected_revision_ids, pb=pb):
-                match = self._file_ids_altered_regex.search(line)
+                                        selected_revision_ids, pb=pb):
+                match = search(line)
                 if match is None:
                     continue
                 file_id, revision_id = match.group('file_id', 'revision_id')
-                revision_id = _unescape_xml_cached(revision_id,
-                                                   unescape_revid_cache)
+                revision_id = unescape(revision_id, unescape_revid_cache)
                 if revision_id in selected_revision_ids:
-                    file_id = _unescape_xml_cached(file_id,
-                                                   unescape_fileid_cache)
-                    result.setdefault(file_id, set()).add(revision_id)
+                    file_id = unescape(file_id, unescape_fileid_cache)
+                    setdefault(file_id, set()).add(revision_id)
         finally:
             pb.finished()
         return result

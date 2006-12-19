@@ -585,18 +585,18 @@ class TestTestResult(TestCase):
         result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
         # without explicit benchmarking, we should get a simple time.
-        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms$")
         # if a benchmark time is given, we want a x of y style result.
         self.time(time.sleep, 0.001)
         result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^   [ 1-9][0-9]ms/   [ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms/ *[ 1-9][0-9]ms$")
         # extracting the time from a non-bzrlib testcase sets to None
         result._recordTestStartTime()
         result.extractBenchmarkTime(
             unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms$")
         # cheat. Yes, wash thy mouth out with soap.
         self._benchtime = None
 
@@ -999,3 +999,34 @@ class TestSelftest(TestCase):
         self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
+
+
+class TestSelftestCleanOutput(TestCaseInTempDir):
+
+    def test_clean_output(self):
+        # test functionality of clean_selftest_output()
+        from bzrlib.tests import clean_selftest_output
+
+        dirs = ('test0000.tmp', 'test0001.tmp', 'bzrlib', 'tests')
+        files = ('bzr', 'setup.py', 'test9999.tmp')
+        for i in dirs:
+            os.mkdir(i)
+        for i in files:
+            f = file(i, 'wb')
+            f.write('content of ')
+            f.write(i)
+            f.close()
+
+        root = os.getcwdu()
+        before = os.listdir(root)
+        before.sort()
+        self.assertEquals(['bzr','bzrlib','setup.py',
+                           'test0000.tmp','test0001.tmp',
+                           'test9999.tmp','tests'],
+                           before)
+        clean_selftest_output(root, quiet=True)
+        after = os.listdir(root)
+        after.sort()
+        self.assertEquals(['bzr','bzrlib','setup.py',
+                           'test9999.tmp','tests'],
+                           after)

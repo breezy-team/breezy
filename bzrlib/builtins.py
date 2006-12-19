@@ -1582,20 +1582,32 @@ class cmd_ignore(Command):
     To remove patterns from the ignore list, edit the .bzrignore file.
 
     Trailing slashes on patterns are ignored. 
-    If the pattern contains a slash, it is compared to the whole path
-    from the branch root.  Otherwise, it is compared to only the last
-    component of the path.  To match a file only in the root directory,
-    prepend './'.
+    If the pattern contains a slash or is a regular expression, it is compared 
+    to the whole path from the branch root.  Otherwise, it is compared to only
+    the last component of the path.  To match a file only in the root 
+    directory, prepend './'.
 
     Ignore patterns specifying absolute paths are not allowed.
 
-    Ignore patterns are case-insensitive on case-insensitive systems.
+    Ignore patterns may include globbing wildcards such as:
+      ? - Matches any single character except '/'
+      * - Matches 0 or more characters except '/'
+      /**/ - Matches 0 or more directories in a path
+      [a-z] - Matches a single character from within a group of characters
+ 
+    Ignore patterns may also be Python regular expressions.  
+    Regular expression ignore patterns are identified by a 'RE:' prefix 
+    followed by the regular expression.  Regular expression ignore patterns
+    may not include named or numbered groups.
 
-    Note: wildcards must be quoted from the shell on Unix.
+    Note: ignore patterns containing shell wildcards must be quoted from 
+    the shell on Unix.
 
     examples:
         bzr ignore ./Makefile
         bzr ignore '*.class'
+        bzr ignore 'lib/**/*.o'
+        bzr ignore 'RE:lib/.*\.o'
     """
     takes_args = ['name_pattern*']
     takes_options = [
@@ -2068,15 +2080,23 @@ class cmd_selftest(Command):
                      Option('cache-dir', type=str,
                             help='a directory to cache intermediate'
                                  ' benchmark steps'),
+                     Option('clean-output',
+                            help='clean temporary tests directories'
+                                 ' without running tests'),
                      ]
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
-            lsprof_timed=None, cache_dir=None):
+            lsprof_timed=None, cache_dir=None, clean_output=False):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
+
+        if clean_output:
+            from bzrlib.tests import clean_selftest_output
+            clean_selftest_output()
+            return 0
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
@@ -2673,11 +2693,13 @@ class cmd_annotate(Command):
     takes_args = ['filename']
     takes_options = [Option('all', help='show annotations on all lines'),
                      Option('long', help='show date in annotations'),
-                     'revision'
+                     'revision',
+                     'show-ids',
                      ]
 
     @display_command
-    def run(self, filename, all=False, long=False, revision=None):
+    def run(self, filename, all=False, long=False, revision=None,
+            show_ids=False):
         from bzrlib.annotate import annotate_file
         tree, relpath = WorkingTree.open_containing(filename)
         branch = tree.branch
@@ -2692,7 +2714,8 @@ class cmd_annotate(Command):
             file_id = tree.inventory.path2id(relpath)
             tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
-            annotate_file(branch, file_version, file_id, long, all, sys.stdout)
+            annotate_file(branch, file_version, file_id, long, all, sys.stdout,
+                          show_ids=show_ids)
         finally:
             branch.unlock()
 
