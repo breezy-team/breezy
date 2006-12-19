@@ -2110,7 +2110,7 @@ class cmd_selftest(Command):
             if verbose is None:
                 verbose = True
             # TODO: should possibly lock the history file...
-            benchfile = open(".perf_history", "at")
+            benchfile = open(".perf_history", "at", buffering=1)
         else:
             test_suite_factory = None
             if verbose is None:
