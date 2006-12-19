@@ -92,6 +92,9 @@ IN DEVELOPMENT
       anymore). Defining a proper ProxyHandler solves the
       problem.  (Vincent Ladeuil, #74759)
 
+    * Use urlutils to generate relative URLs, not osutils 
+      (Aaron Bentley, #76229)
+
 
 bzr 0.13  2006-12-05
     
