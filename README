@@ -6,12 +6,15 @@ Bazaar (http://www.bazaar-vcs.org/)
 
 == Dependencies == 
 
-You will need at least version 0.13 of Bazaar or higher.
+You will need at least version 0.14 of Bazaar or higher.
 
 You also need a fairly recent version of the Python bindings to the 
 Subversion libraries. At the moment, the svn plugin only works with 
 Subversion 1.5 (trunk). The python-subversion package in Ubuntu Edgy and 
 Debian Sid also contains the required changes.
+
+If you are running an older version of Python (under 2.5), you will also 
+need to have the pysqlite package installed.
 
 == Features ==
 
