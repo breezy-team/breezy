@@ -48,7 +48,7 @@ will look like::
         Options Indexes, FollowSymLinks
         RewriteEngine On
         RewriteBase /code
-        RewriteRule ^(.*)/\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
+        RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
     </Directory>
     
     # bzr-smart.fcgi isn't under the DocumentRoot, so Alias it into the URL
@@ -81,11 +81,11 @@ httpd.conf::
 Define the rewrite rules with mod_rewrite the same way as for FastCGI, except
 change::
 
-    RewriteRule ^(.*)/\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
+    RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
 
 to::
 
-    RewriteRule ^(.*)/\.bzr/smart$ /srv/example.com/scripts/bzr-smart.py
+    RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.py
 
 Like with mod_fastcgi, we also define how our script is to be handled::
 
@@ -94,7 +94,7 @@ Like with mod_fastcgi, we also define how our script is to be handled::
         <Files bzr-smart.py>
             PythonPath "sys.path+['/srv/example.com/scripts']"
             AddHandler python-program .py
-            PythonHandler bzr-smart
+            PythonHandler bzr-smart::handler
         </Files>
     </Directory>
 
@@ -123,7 +123,8 @@ Here's what it looks like::
     smart_server_app = wsgi.make_app(
         root='/srv/example.com/code',
         prefix='/code/',
-        path_var='REQUEST_URI')
+        path_var='REQUEST_URI',
+        readonly=True)
 
     fcgi.WSGIServer(smart_server_app).run()
         
@@ -146,9 +147,13 @@ Here's what it looks like::
     smart_server_app = wsgi.make_app(
         root='/srv/example.com/code',
         prefix='/code/',
-        path_var='REQUEST_URI')
+        path_var='REQUEST_URI',
+        readonly=True)
 
-    modpywsgi.WSGIServer(smart_server_app).run()
+    def handler(request):
+        """Handle a single request."""
+        wsgi_server = modpywsgi.WSGIServer(smart_server_app)
+        return wsgi_server.run(request)
         
 The `modpywsgi` module can be found at http://trac.pocoo.org/wiki/ModPyWsgi.  It
 is part of pocoo_.
@@ -193,3 +198,22 @@ standard`_ for further information.
 
 .. _WSGI standard: http://www.python.org/dev/peps/pep-0333/
 
+
+Pushing over ``bzr+http://``
+----------------------------
+
+It is possible to allow pushing data over the http smart server. The
+easiest way to do this, is to just supply ``readonly=False`` to the
+``wsgi.make_app()`` call. But be careful, because the smart protocol does
+not contain any Authentication. So if you enable write support, you will
+want to restrict access to ``.bzr/smart`` URLs to restrict who can
+actually write data on your system.  At this time, it is not possible to
+allow some people to have read-only access and others to have read-write
+access to the same urls. Because at the HTTP layer (which is doing the
+Authenticating), everything is just a POST request.  However, it would
+certainly be possible to have HTTPS require authentication and use a
+writable server, and plain HTTP allow read-only access.
+
+
+.. 
+   vim: ft=rst tw=74 et

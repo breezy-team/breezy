@@ -2,6 +2,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * New connection: ``bzr+http://`` which supports tunnelling the smart
+      protocol over an HTTP connection. If writing is enabled on the bzr
+      server, then you can write over the http connection.
+      (Andrew Bennetts, John Arbash Meinel)
+
     * Aliases now support quotation marks, so they can contain whitespace
       (Marius Kruger)
 
@@ -49,6 +54,11 @@ IN DEVELOPMENT
     * ``bzr help hidden-commands`` lists all hidden commands. (Aaron Bentley)
 
   INTERNALS:
+
+    * A few tweaks directly to ``fileids_affected_by_revision_ids`` to
+      help speed up processing, as well allowing to extract unannotated
+      lines. Between the two ``fileids_affected_by_revision_ids`` is
+      improved by approx 10%. (John Arbash Meinel)
 
     * Change Revision serialization to only write out millisecond
       resolution. Rather than expecting floating point serialization to
@@ -225,11 +235,6 @@ bzr 0.12rc1  2006-10-23
       For instance, ``bzr diff -r 1.2.1..1.2.3. (Robert Collins)
 
     * ``bzr help commands`` output is now shorter (Aaron Bentley)
-
-    * New connection: ``bzr+http://`` which supports tunnelling the smart
-      protocol over an HTTP connection. If writing is enabled on the bzr
-      server, then you can write over the http connection.
-      (Andrew Bennetts)
 
     * ``bzr`` now uses lazy importing to reduce the startup time. This has
       a moderate effect on lots of actions, especially ones that have
