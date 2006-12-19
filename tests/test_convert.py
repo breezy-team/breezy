@@ -48,7 +48,7 @@ class TestConversion(TestCaseWithSubversionRepository):
         BzrDir.create_repository("e", shared=True)
 
         convert_repository("svn+"+self.repos_url, "e", 
-                TrunkBranchingScheme(), True)
+                TrunkBranchingScheme(), True, True)
 
         self.assertTrue(os.path.isfile(os.path.join(
                         self.test_dir, "e", "trunk", "file")))
@@ -57,7 +57,7 @@ class TestConversion(TestCaseWithSubversionRepository):
         BzrDir.create_repository("e", shared=True)
 
         convert_repository("svn+"+self.repos_url, "e", 
-                TrunkBranchingScheme(), False)
+                TrunkBranchingScheme(), True, False)
 
         self.assertFalse(os.path.isfile(os.path.join(
                         self.test_dir, "e", "trunk", "file")))

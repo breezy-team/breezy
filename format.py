@@ -80,8 +80,9 @@ class SvnRemoteAccess(BzrDir):
                 result_repo = repo.clone(result, revision_id, basis)
 
         branch = self.open_branch()
-        branch.sprout(result, revision_id)
-        result.create_workingtree()
+        result_branch = branch.sprout(result, revision_id)
+        if result_branch.repository.make_working_trees():
+            result.create_workingtree()
         return result
 
     def open_repository(self):
