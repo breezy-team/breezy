@@ -55,6 +55,7 @@ from bzrlib import (
     errors,
     generate_ids,
     globbing,
+    hashcache,
     ignores,
     merge,
     osutils,
@@ -232,8 +233,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self._set_inventory(wt._inventory, dirty=False)
             self._format = wt._format
             self.bzrdir = wt.bzrdir
-        from bzrlib.hashcache import HashCache
-        from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
         basedir = safe_unicode(basedir)
@@ -267,7 +266,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # cache file, and have the parser take the most recent entry for a
         # given path only.
         cache_filename = self.bzrdir.get_workingtree_transport(None).local_abspath('stat-cache')
-        hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
+        self._hashcache = hashcache.HashCache(basedir, cache_filename,
+                                              self._control_files._file_mode)
+        hc = self._hashcache
         hc.read()
         # is this scan needed ? it makes things kinda slow.
         #hc.scan()
@@ -1698,6 +1699,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                   this_tree=self)
         return result
 
+    def _write_hashcache_if_dirty(self):
+        """Write out the hashcache if it is dirty."""
+        if self._hashcache.needs_write:
+            try:
+                self._hashcache.write()
+            except OSError, e:
+                if e.errno not in (errno.EPERM, errno.EACCES):
+                    raise
+                # TODO: jam 20061219 Should this be a warning? A single line
+                #       warning might be sufficient to let the user know what
+                #       is going on.
+                mutter('Could not write hashcache for %s\nError: %s',
+                       self._hashcache.cache_file_name(), e)
+
     @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
@@ -1764,8 +1779,8 @@ class WorkingTree2(WorkingTree):
             # _inventory_is_modified is always False during a read lock.
             if self._inventory_is_modified:
                 self.flush()
-            if self._hashcache.needs_write:
-                self._hashcache.write()
+            self._write_hashcache_if_dirty()
+                    
         # reverse order of locking.
         try:
             return self._control_files.unlock()
@@ -1833,8 +1848,7 @@ class WorkingTree3(WorkingTree):
             # _inventory_is_modified is always False during a read lock.
             if self._inventory_is_modified:
                 self.flush()
-            if self._hashcache.needs_write:
-                self._hashcache.write()
+            self._write_hashcache_if_dirty()
         # reverse order of locking.
         try:
             return self._control_files.unlock()
