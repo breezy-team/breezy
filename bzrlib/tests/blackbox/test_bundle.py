@@ -85,7 +85,8 @@ class TestBundle(TestCaseInTempDir):
 
     def test_output(self):
         # check output for consistency
-        # win32 stdout convert LF to CRLF and this is break created bundle
+        # win32 stdout converts LF to CRLF,
+        # and this is breaks the created bundle
         self.make_trees()        
         os.chdir('branch')
         stdout = self.run_bzr_subprocess('bundle')[0]

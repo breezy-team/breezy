@@ -214,11 +214,12 @@ class Command(object):
             replace - put in a bogus character (typically '?')
             exact - do not encode sys.stdout
 
-            NOTE: by default on Windows sys.stdout opened as text stream,
-            therefore line-endings LF converted to CRLF.
-            When command use encoding_type = 'exact' then
-            sys.stdout forced to be binary stream and line-endings
+            NOTE: by default on Windows, sys.stdout is opened as a text
+            stream, therefore LF line-endings are converted to CRLF.
+            When a command uses encoding_type = 'exact', then
+            sys.stdout is forced to be a binary stream, and line-endings
             will not mangled.
+
     """
     aliases = []
     takes_args = []

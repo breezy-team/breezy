@@ -299,7 +299,7 @@ class TestExternalDiff(DiffBase):
 class TestDiffOutput(DiffBase):
 
     def test_diff_output(self):
-        # check that output don't mangle line-endings
+        # check that output doesn't mangle line-endings
         self.make_example_branch()
         file('hello', 'wb').write('hello world!\n')
         output = self.run_bzr_subprocess('diff', retcode=1)[0]
