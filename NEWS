@@ -129,6 +129,9 @@ bzr 0.13rc1  2006-11-27
       (eg For a project with 2500 files, and 7500 revisions, it changes
       the size of inventory.knit from 11MB to 5.4MB) (John Arbash Meinel)
 
+    * ``bzr merge`` now has an option ``--pull`` to fall back to pull if
+      local is fully merged into remote. (Jan Hudec)
+
   INTERNALS:
 
     * New -D option given before the command line turns on debugging output
