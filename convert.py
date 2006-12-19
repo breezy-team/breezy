@@ -31,26 +31,35 @@ from bzrlib.branch import Branch
 from bzrlib.errors import BzrError, NotBranchError
 import bzrlib.osutils as osutils
 from bzrlib.repository import Repository
-from bzrlib.trace import info
+from bzrlib.trace import info, mutter
 
 from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
 from transport import SvnRaTransport
+
+def load_dumpfile(dumpfile, outputdir):
+    import svn
+    from svn.core import SubversionException
+    from cStringIO import StringIO
+    repos = svn.repos.svn_repos_create(outputdir, '', '', None, None)
+    try:
+        file = open(dumpfile)
+        svn.repos.load_fs2(repos, file, StringIO(), 
+                svn.repos.load_uuid_default, '', 0, 0, None)
+    except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):            
+        raise BzrError("%s is not a dump file" % dumpfile)
+    return repos
+
 
 def convert_repository(url, output_dir, scheme, create_shared_repo=True, working_trees=False):
     tmp_repos = None
 
     if os.path.isfile(url):
         tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
-        import svn
-        from svn.core import SubversionException
-        from cStringIO import StringIO
-        repos = svn.repos.svn_repos_create(tmp_repos, '', '', None, None)
-        try:
-            svn.repos.load_fs2(repos, open(url), StringIO(), svn.repos.load_uuid_default, '', 0, 0, None)
-        except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):            
-            raise BzrError("%s is not a dump file" % url)
-        
+        mutter('loading dumpfile %r to %r' % (url, tmp_repos))
+
+        load_dumpfile(url, tmp_repos)
+            
         url = tmp_repos
 
     if create_shared_repo:
@@ -62,9 +71,11 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True, working
         target_repos.set_make_working_trees(working_trees)
 
     try:
-        source_repos = Repository.open(url)
+        source_repos = SvnRepository.open(url+"/trunk")
 
-        branches = source_repos.find_branches()
+        branches = list(source_repos.find_branches())
+
+        mutter('branches: %r' % list(branches))
                 
         existing_branches = filter(lambda (bp, revnum, exists): exists, 
                                    branches)

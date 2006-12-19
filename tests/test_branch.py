@@ -23,6 +23,7 @@ import os
 
 import svn.core, svn.client
 
+from convert import load_dumpfile
 import format
 from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
@@ -310,8 +311,11 @@ Content-length: 8
 
 foohosts""")
         os.mkdir("new")
+        os.mkdir("old")
 
-        url = "dumpfile/branches/foobranch"
+        load_dumpfile("dumpfile", "old")
+
+        url = "old/branches/foobranch"
         mutter('open %r' % url)
         olddir = BzrDir.open(url)
 

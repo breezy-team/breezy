@@ -232,7 +232,6 @@ def test_suite():
             'test_branch', 
             'test_commit',
             'test_convert',
-            'test_dumpfile',
             'test_fileids', 
             'test_logwalker',
             'test_repos', 

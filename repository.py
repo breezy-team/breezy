@@ -621,7 +621,7 @@ class SvnRepository(Repository):
 
     def find_branches(self, revnum=None):
         if revnum is None:
-            revnum = self._latest_revnum
+            revnum = self.transport.get_latest_revnum()
         return self._log.find_branches(revnum)
 
     def is_shared(self):

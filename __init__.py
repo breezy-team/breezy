@@ -58,7 +58,6 @@ check_bzrlib_version(required_bzr_version)
 
 import branch
 import convert
-import dumpfile
 import format
 import transport
 import checkout
@@ -93,8 +92,6 @@ from fetch import InterSvnRepository
 BzrDirFormat.register_control_format(format.SvnFormat)
 
 BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
-
-BzrDirFormat.register_control_format(dumpfile.SvnDumpFileFormat)
 
 InterRepository.register_optimiser(InterSvnRepository)
 
