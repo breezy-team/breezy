@@ -18,10 +18,7 @@ clean:
 	dh_testroot
 	rm -f build-stamp install-all-stamp
 
-	# Add here commands to clean up after the build process.
-	python setup.py clean
-	rm -rf build/
-
+	python setup.py clean --all
 	dh_clean
 
 install: build $(PYVERS:%=install-python%)
@@ -33,20 +30,15 @@ install-all-stamp:
 	dh_installdirs
 	touch install-all-stamp
 
-
-
 install-python%: install-all-stamp
 	python$* setup.py install --root=$(CURDIR)/debian/bzr-builddeb --no-compile
 
-
-# Build architecture-independent files here.
 binary-indep: build install
 	dh_testdir
 	dh_testroot
 	dh_installchangelogs
 	dh_installdocs
 	dh_installexamples
-#	dh_install
 	dh_compress
 	dh_fixperms
 	dh_pycentral
@@ -57,9 +49,7 @@ binary-indep: build install
 	dh_md5sums
 	dh_builddeb
 
-# Build architecture-dependent files here.
 binary-arch: build install
-# We have nothing to do by default.
 
 binary: binary-indep binary-arch
 .PHONY: build clean binary-indep binary-arch binary install
