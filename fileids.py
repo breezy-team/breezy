@@ -23,11 +23,6 @@ from bzrlib.knit import KnitVersionedFile
 from warnings import warn
 
 import os
-from bsddb import dbshelve as shelve
-try:
-    import sqlite3
-except ImportError:
-    from pysqlite2 import dbapi2 as sqlite3
 
 import logwalker
 from repository import (escape_svn_path, generate_svn_revision_id, 
@@ -81,15 +76,9 @@ class FileIdMap(object):
 
     revnum -> branch -> path -> fileid
     """
-    def __init__(self, log, cache_dir=None, cache_db=None):
+    def __init__(self, log, cache_db):
         self._log = log
-        if cache_db is not None:
-            self.cachedb = cache_db
-        else:
-            cache_path = os.path.join(cache_dir, 'fileids')
-            if not dbs.has_key(cache_path):
-                dbs[cache_path] = sqlite3.connect(cache_path)
-            self.cachedb = dbs[cache_path]
+        self.cachedb = cache_db
         self.cachedb.executescript("""
         create table if not exists filemap (filename text, id integer, create_revid text, revid text);
         create index if not exists revid on filemap(revid);

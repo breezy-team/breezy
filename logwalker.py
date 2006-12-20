@@ -24,12 +24,19 @@ from svn.core import SubversionException
 from transport import SvnRaTransport
 import svn.core
 
-from bsddb import dbshelve as shelve
+import base64
+
+try:
+    import sqlite3
+except ImportError:
+    from pysqlite2 import dbapi2 as sqlite3
 
 shelves = {}
 
 def _escape_commit_message(message):
     """Replace xml-incompatible control characters."""
+    if message is None:
+        return None
     import re
     # FIXME: RBC 20060419 this should be done by the revision
     # serialiser not by commit. Then we can also add an unescaper
@@ -58,13 +65,13 @@ class NotSvnBranchPath(BzrError):
 
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
-    def __init__(self, scheme, transport=None, cache_dir=None, last_revnum=None, pb=None):
+    def __init__(self, scheme, transport=None, cache_db=None, last_revnum=None, pb=None):
         """Create a new instance.
 
         :param scheme:  Branching scheme to use.
         :param transport:   SvnRaTransport to use to access the repository.
-        :param cache_dir:   Optional cache directory to use. Doesn't cache if 
-                            not set.
+        :param cache_db:    Optional sql database connection to use. Doesn't 
+                            cache if not set.
         :param last_revnum: Last known revnum in the repository. Will be 
                             determined if not specified.
         :param pb:          Progress bar to report progress to.
@@ -79,14 +86,21 @@ class LogWalker(object):
         self.transport = transport.clone()
         self.scheme = scheme
 
-        if not cache_dir is None:
-            cache_file = os.path.join(cache_dir, 'log-v2')
-            if not shelves.has_key(cache_file):
-                shelves[cache_file] = shelve.open(cache_file)
-            self.revisions = shelves[cache_file]
+        if cache_db is None:
+            self.db = sqlite3.connect(":memory:")
         else:
-            self.revisions = {}
-        self.saved_revnum = max(len(self.revisions)-1, 0)
+            self.db = cache_db
+
+        self.db.executescript("""
+          create table if not exists revision(revno integer unique, author text, message text, date text);
+          create unique index if not exists revision_revno on revision (revno);
+          create table if not exists changed_path(rev integer, action text, path text, copyfrom_path text, copyfrom_rev integer);
+          create index if not exists path_rev_path on changed_path(rev, path);
+        """)
+        self.db.commit()
+        self.saved_revnum = self.db.execute("SELECT MAX(revno) FROM revision").fetchone()[0]
+        if self.saved_revnum is None:
+            self.saved_revnum = 0
 
     def fetch_revisions(self, to_revnum, pb=None):
         """Fetch information about all revisions in the remote repository
@@ -104,15 +118,16 @@ class LogWalker(object):
                 copyfrom_path = orig_paths[p].copyfrom_path
                 if copyfrom_path:
                     copyfrom_path = copyfrom_path.strip("/")
-                paths[p.strip("/")] = (orig_paths[p].action,
-                            copyfrom_path, orig_paths[p].copyfrom_rev)
 
-            self.revisions[str(rev)] = {
-                    'paths': paths,
-                    'author': author,
-                    'date': date,
-                    'message': message
-                    }
+                self.db.execute(
+                     "insert into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
+                     (rev, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
+
+            if message is not None:
+                message = base64.b64encode(message)
+
+            self.db.execute("replace into revision (revno, author, date, message) values (?,?,?,?)", (rev, author, date, message))
+
             self.saved_revnum = rev
 
         to_revnum = max(self.last_revnum, to_revnum)
@@ -135,6 +150,7 @@ class LogWalker(object):
                 raise NoSuchRevision(branch=self, 
                     revision="Revision number %d" % to_revnum)
             raise
+        self.db.commit()
 
     def follow_history(self, branch_path, revnum):
         """Return iterator over all the revisions between revnum and 
@@ -169,9 +185,9 @@ class LogWalker(object):
 
             continue_revnum = None
 
-            rev = self.revisions[str(i)]
             changed_paths = {}
-            for p in rev['paths']:
+            revpaths = self._get_revision_paths(i)
+            for p in revpaths:
                 if (branch_path is None or 
                     p == branch_path or
                     branch_path == "" or
@@ -181,7 +197,7 @@ class LogWalker(object):
                         (bp, rp) = self.scheme.unprefix(p)
                         if not changed_paths.has_key(bp):
                             changed_paths[bp] = {}
-                        changed_paths[bp][p] = rev['paths'][p]
+                        changed_paths[bp][p] = revpaths[p]
                     except NotBranchError:
                         pass
 
@@ -191,13 +207,13 @@ class LogWalker(object):
                 yield (bp, changed_paths[bp], i)
 
             if (not branch_path is None and 
-                branch_path in rev['paths'] and 
-                not rev['paths'][branch_path][1] is None):
+                branch_path in revpaths and 
+                not revpaths[branch_path][1] is None):
                 # In this revision, this branch was copied from 
                 # somewhere else
                 # FIXME: What if copyfrom_path is not a branch path?
-                continue_revnum = rev['paths'][branch_path][2]
-                branch_path = rev['paths'][branch_path][1]
+                continue_revnum = revpaths[branch_path][2]
+                branch_path = revpaths[branch_path][1]
 
     def find_branches(self, revnum):
         """Find all branches that were changed in the specified revision number.
@@ -213,7 +229,7 @@ class LogWalker(object):
             if i == 0:
                 paths = {'': ('A', None, None)}
             else:
-                paths = self.revisions[str(i)]['paths']
+                paths = self._get_revision_paths(i)
             for p in paths:
                 if self.scheme.is_branch(p):
                     if paths[p][0] in ('R', 'D'):
@@ -226,6 +242,12 @@ class LogWalker(object):
         for p in created_branches:
             yield (p, i, True)
 
+    def _get_revision_paths(self, revnum):
+        paths = {}
+        for p, act, cf, cr in self.db.execute("select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)):
+            paths[p] = (act, cf, cr)
+        return paths
+
     def get_revision_info(self, revnum, pb=None):
         """Obtain basic information for a specific revision.
 
@@ -234,14 +256,11 @@ class LogWalker(object):
         """
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum, pb)
-        rev = self.revisions[str(revnum)]
-        if rev['author'] is None:
+        (author, message, date) = self.db.execute("select author, message, date from revision where revno="+ str(revnum)).fetchone()
+        paths = self._get_revision_paths(revnum)
+        if author is None:
             author = None
-        else:
-            author = rev['author']
-        return (author, 
-             _escape_commit_message(rev['message']), 
-             rev['date'], rev['paths'])
+        return (author, _escape_commit_message(base64.b64decode(message)), date, paths)
 
     
     def find_latest_change(self, path, revnum):
@@ -262,7 +281,7 @@ class LogWalker(object):
         """
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
-        return (path in self.revisions[str(revnum)]['paths'])
+        return (path in self._get_revision_paths(revnum))
 
     def find_children(self, path, revnum):
         """Find all children of path in revnum."""

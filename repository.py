@@ -36,7 +36,10 @@ import svn.core
 
 import os
 from cStringIO import StringIO
-from bsddb import dbshelve as shelve
+try:
+    import sqlite3
+except ImportError:
+    from pysqlite2 import dbapi2 as sqlite3
 
 import branch
 import logwalker
@@ -179,6 +182,7 @@ class SvnRepositoryFormat(RepositoryFormat):
         """Svn repositories cannot be created."""
         raise UninitializableFormat(self)
 
+cachedbs = {}
 
 class SvnRepository(Repository):
     """
@@ -211,16 +215,23 @@ class SvnRepository(Repository):
         mutter('svn latest-revnum')
         self._latest_revnum = transport.get_latest_revnum()
 
+        cache_file = os.path.join(self.create_cache_dir(), 'cache-v1')
+        if not cachedbs.has_key(cache_file):
+            cachedbs[cache_file] = sqlite3.connect(cache_file)
+        self.cachedb = cachedbs[cache_file]
+
         self._log = logwalker.LogWalker(self.scheme, 
                                         transport=transport,
-                                        cache_dir=self.create_cache_dir(), 
+                                        cache_db=self.cachedb,
                                         last_revnum=self._latest_revnum)
 
-        self.branchprop_cache = shelve.open(os.path.join(
-                                            self.create_cache_dir(),
-                                            'branchprops'))
+        self.cachedb.executescript("""
+            create table if not exists branchprop (name text, value text, branchpath text, revnum integer);
+            create index if not exists branch_path_revnum on branchprop (branchpath, revnum);
+            create index if not exists branch_path_revnum_name on branchprop (branchpath, revnum, name);
+        """)
 
-        self.fileid_map = SimpleFileIdMap(self._log, self.create_cache_dir())
+        self.fileid_map = SimpleFileIdMap(self._log, self.cachedb)
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated
@@ -416,8 +427,6 @@ class SvnRepository(Repository):
             bzr_props[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = svn_props[name]
 
         (rev.committer, rev.message, date, _) = self._log.get_revision_info(revnum)
-        mutter('msg: %r' % rev.message)
-
         if rev.committer is None:
             rev.committer = ""
 
@@ -556,7 +565,6 @@ class SvnRepository(Repository):
         return None
 
     def _get_branch_proplist(self, path, revnum):
-        i = 0
         proplist = {}
         # Search backwards in the cache
         for i in range(revnum):
@@ -564,14 +572,18 @@ class SvnRepository(Repository):
 
             key = "%s:%d" % (path, i)
 
-            try:
-                proplist = self.branchprop_cache[key]
-            except: 
-                pass
+            proplist = {}
+            for (name, value) in self.cachedb.execute("select name, value from branchprop where revnum=%d and branchpath='%s'" % (i, path)):
+                proplist[name] = value
+
+            if proplist != {}:
+                return proplist
 
             if self._log.touches_path(path, i):
                 proplist = self._get_dir_proplist(path, i)
-                self.branchprop_cache[key] = proplist
+                for name in proplist:
+                    self.cachedb.execute("insert into branchprop (name, value, revnum, branchpath) values (?,?,?,?)", (name, proplist[name], i, path))
+                self.cachedb.commit()
                 break
 
         return proplist
