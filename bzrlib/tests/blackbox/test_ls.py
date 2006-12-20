@@ -18,7 +18,7 @@
 
 import os
 
-from bzrlib import ignores
+from bzrlib import errors, ignores
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -157,3 +157,13 @@ class TestLS(TestCaseWithTransport):
                        'a\n'
                        , '--versioned')
 
+    def test_kinds(self):
+        self.build_tree(['subdir/'])
+        self.ls_equals('.bzrignore\n' 
+                       'a\n', 
+                       '--kind=file')
+        self.ls_equals('subdir\n',
+                       '--kind=directory')
+        self.ls_equals('',
+                       '--kind=symlink')
+        self.run_bzr_error('invalid kind specified', 'ls', '--kind=pile')
