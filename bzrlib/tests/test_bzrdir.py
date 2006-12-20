@@ -21,6 +21,9 @@ For interface contract tests, see tests/bzr_dir_implementations.
 
 from StringIO import StringIO
 
+from bzrlib import (
+    help_topics,
+    )
 import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
@@ -51,6 +54,69 @@ class TestDefaultFormat(TestCase):
             bzrdir.BzrDirFormat.set_default_format(old_format)
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
 
+
+class TestFormatRegistry(TestCase):
+
+    def make_format_registry(self):
+        my_format_registry = bzrdir.BzrDirFormatRegistry()
+        my_format_registry.register_factory('weave', bzrdir.BzrDirFormat6,
+            'Pre-0.8 format.  Slower and does not support checkouts or shared'
+            ' repositories')
+        my_format_registry.register('direct', lambda x: bzrdir.BzrDirFormat6(),
+            'Bazaar format registered directly')
+        my_format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
+            'native format using knits')
+        my_format_registry.set_default('knit')
+        my_format_registry.register_metadir('metaweave', 'RepositoryFormat7',
+            'Transitional format in 0.8.  Slower than knit.')
+        my_format_registry.register_metadir('experimental-knit2', 
+                                            'RepositoryFormatKnit2',
+            'Experimental successor to knit.  Use at your own risk.')
+        return my_format_registry
+
+    def test_format_registry(self):
+        my_format_registry = self.make_format_registry()
+        my_bzrdir = my_format_registry.make_bzrdir('direct')
+        self.assertTrue(isinstance(my_bzrdir, bzrdir.BzrDirFormat6))
+        my_bzrdir = my_format_registry.make_bzrdir('weave')
+        self.assertTrue(isinstance(my_bzrdir, bzrdir.BzrDirFormat6))
+        my_bzrdir = my_format_registry.make_bzrdir('default')
+        self.assertTrue(isinstance(my_bzrdir.repository_format, 
+            repository.RepositoryFormatKnit1))
+        my_bzrdir = my_format_registry.make_bzrdir('knit')
+        self.assertTrue(isinstance(my_bzrdir.repository_format, 
+            repository.RepositoryFormatKnit1))
+        my_bzrdir = my_format_registry.make_bzrdir('metaweave')
+        self.assertTrue(isinstance(my_bzrdir.repository_format, 
+            repository.RepositoryFormat7))
+
+    def test_lazy(self):
+        my_format_registry = bzrdir.BzrDirFormatRegistry()
+        self.assertRaises(NotImplementedError, 
+                          my_format_registry.register_lazy)
+
+    def test_get_help(self):
+        my_format_registry = self.make_format_registry()
+        self.assertEqual('Bazaar format registered directly',
+                         my_format_registry.get_help('direct'))
+        self.assertEqual('native format using knits', 
+                         my_format_registry.get_help('knit'))
+        self.assertEqual('native format using knits', 
+                         my_format_registry.get_help('default'))
+        self.assertEqual('Pre-0.8 format.  Slower and does not support'
+                         ' checkouts or shared repositories', 
+                         my_format_registry.get_help('weave'))
+        
+    def test_help_topic(self):
+        topics = help_topics.HelpTopicRegistry()
+        topics.register('formats', self.make_format_registry().help_topic, 
+                        'Directory formats')
+        topic = topics.get_detail('formats')
+        self.assertContainsRe(topic, 'Bazaar directory formats')
+        self.assertContainsRe(topic, 
+            '  knit/default:\n    native format using knits\n')
+        self.assertContainsRe(topic, 
+            '  direct:\n    Bazaar format registered directly\n')
 
 class SampleBranch(bzrlib.branch.Branch):
     """A dummy branch for guess what, dummy use."""

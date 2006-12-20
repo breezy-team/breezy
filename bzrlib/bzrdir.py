@@ -30,6 +30,7 @@ directories.
 
 from cStringIO import StringIO
 import os
+import textwrap
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -42,6 +43,7 @@ from bzrlib import (
     errors,
     lockable_files,
     lockdir,
+    registry,
     revision as _mod_revision,
     repository as _mod_repository,
     urlutils,
@@ -1941,3 +1943,101 @@ class ConvertMetaToMeta(Converter):
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
         return to_convert
+
+
+class BzrDirFormatRegistry(registry.Registry):
+    """Registry of user-selectable BzrDir subformats.
+    
+    Differs from BzrDirFormat._control_formats in that it provides sub-formats,
+    e.g. BzrDirMeta1 with weave repository.  Also, it's more user-oriented.
+    """
+
+    def register_metadir(self, key, repo, help):
+        """Register a metadir subformat.
+        
+        repo is the repository format name as a string.
+        """
+        # This should be expanded to support setting WorkingTree and Branch
+        # formats, once BzrDirMetaFormat1 supports that.
+        def helper(key):
+            import bzrlib.repository
+            repo_format = getattr(bzrlib.repository, repo)
+            bd = BzrDirMetaFormat1()
+            bd.repository_format = repo_format()
+            return bd
+        self.register(key, helper, help)
+
+    def register_factory(self, key, factory, help):
+        """Register a BzrDirFormat factory.
+
+        The factory must be a callable (usually a class), and produce an
+        instance of the BzrDirFormat when called.
+        """
+        self.register(key, lambda x: factory(), help)
+
+    def register(self, key, factory, help):
+        """Register a BzrDirFormat factory.
+        
+        The factory must be a callable that takes one parameter: the key.
+        It must produce an instance of the BzrDirFormat when called.
+
+        This function mainly exists to prevent the info object from being
+        supplied directly.
+        """
+        registry.Registry.register(self, key, factory, help)
+
+    def register_lazy(self):
+        # prevent use of Registry.register_lazy
+        # lazy-loading can be done by registering a suitable factory.
+        raise NotImplementedError(self.register_lazy)
+
+    def set_default(self, key):
+        """Set the 'default' key to be a clone of the supplied key.
+        
+        This method must be called once and only once.
+        """
+        self.register('default', self.get(key), self.get_help(key))
+
+    def make_bzrdir(self, key):
+        return self.get(key)(key)
+
+    def help_topic(self, topic):
+        output = textwrap.dedent("""\
+            Bazaar directory formats
+            ------------------------
+
+            These formats can be used for creating branches, working trees, and
+            repositories.
+            """)
+        default_help = self.get_help('default')
+        help_pairs = []
+        for key in self.keys():
+            if key == 'default':
+                continue
+            help = self.get_help(key)
+            if help == default_help:
+                default_realkey = key
+            else:
+                help_pairs.append((key, help))
+
+        def wrapped(key, help):
+            return '  %s:\n%s\n' % (key, 
+                    textwrap.fill(help, initial_indent='    ', 
+                    subsequent_indent='    '))
+        output += wrapped('%s/default' % default_realkey, default_help)
+        for key, help in help_pairs:
+            output += wrapped(key, help)
+        return output
+
+
+format_registry = BzrDirFormatRegistry()
+format_registry.register_factory('weave', BzrDirFormat6,
+    '(native) Pre-0.8 format.  Slower than knit and does not support'
+    ' checkouts or shared repositories')
+format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
+    '(native) format using knits')
+format_registry.set_default('knit')
+format_registry.register_metadir('metaweave', 'RepositoryFormat7',
+    '(native) Transitional format in 0.8.  Slower than knit.')
+format_registry.register_metadir('experimental-knit2', 'RepositoryFormatKnit2',
+    '(native) Experimental successor to knit.  Use at your own risk.')
