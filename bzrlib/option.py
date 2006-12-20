@@ -228,9 +228,10 @@ _global_option('message', type=unicode,
 _global_option('no-recurse')
 _global_option('profile',
                help='show performance profiling information')
-_global_option('revision', 
+_global_option('revision',
                type=_parse_revision_str,
-               short_name='r')
+               short_name='r',
+               help='See \'help revisionspec\' for details')
 _global_option('show-ids', 
                help='show internal object ids')
 _global_option('timezone', 
