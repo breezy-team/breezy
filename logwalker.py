@@ -144,7 +144,7 @@ class LogWalker(object):
         """
         assert revnum >= 0
 
-        if revnum == 0:
+        if revnum == 0 and branch_path in (None, ""):
             return
 
         if not branch_path is None and not self.scheme.is_branch(branch_path):
