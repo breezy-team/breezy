@@ -118,6 +118,10 @@ class TestDiff(DiffBase):
         out, err = self.runbzr('diff does-not-exist', retcode=3)
         self.assertContainsRe(err, 'not versioned.*does-not-exist')
 
+    def test_diff_illegal_revision_specifiers(self):
+        out, err = self.runbzr('diff -r 1..23..123', retcode=3)
+        self.assertContainsRe(err, 'one or two revision specifiers')
+
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.
         # (Malone #3619)
