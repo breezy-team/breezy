@@ -625,6 +625,11 @@ class SvnRepository(Repository):
 
         return self._ancestry
 
+    def find_branches(self, revnum=None):
+        if revnum is None:
+            revnum = self.transport.get_latest_revnum()
+        return self._log.find_branches(revnum)
+
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         return True
@@ -656,87 +661,3 @@ class SvnRepository(Repository):
         return SvnCommitBuilder(self, branch, parents, config, revprops)
 
 
-class SvnRepositoryRenaming(SvnRepository):
-    """Instance of SvnRepository that tracks renames."""
-
-    def path_to_file_id(self, revnum, path):
-        """Generate a bzr file id from a Subversion file name. """
-        assert isinstance(revnum, int)
-        assert isinstance(path, basestring)
-        assert revnum >= 0
-
-        try:
-            return self.path_map[revnum][path]
-        except:
-            pass
-
-        mutter('creating file id for %r:%d' % (path, revnum))
-
-        (path_branch, filename) = self.scheme.unprefix(path)
-
-        introduced_revision_id = None
-        last_changed_revid = None
-        continue_revnum = None
-        for (branch, paths, rev) in self._log.follow_history(path_branch, 
-                                                             revnum):
-            if not (continue_revnum is None or continue_revnum == rev):
-                continue
-
-            continue_revnum = None
-
-            expected_path = ("%s/%s" % (branch, filename)).strip("/")
-            parent_changed = False
-            # FIXME: Handle renames of directories
-            for p in paths:
-                otherpath = p[len(branch):].strip("/")
-                if expected_path.startswith(otherpath+"/") and paths[p][0] != 'M':
-                    parent_changed = True
-
-            revid = self.generate_revision_id(rev, branch)
-            if parent_changed:
-                introduced_revision_id = revid
-                break
-
-            if not expected_path in paths:
-                # File changed in this revision
-                continue
-
-            if last_changed_revid is None:
-                mutter('change in %r' % rev)
-                last_changed_revid = revid
-            
-            introduced_revision_id = revid
-
-            # File is being copied from somewhere else
-            if paths[expected_path][1]:
-                copyfrom_path = paths[expected_path][1]
-                copyfrom_rev = paths[expected_path][2]
-                (bp, rp) = self.scheme.unprefix(copyfrom_path)
-
-                # individual non-root dir/file copied from somewhere in 
-                # another branch, don't track a rename
-                if bp != branch:
-                    break
-
-                # check if there is other offspring of that location
-                offspring = self._log.get_offspring(copyfrom_path, copyfrom_rev, rev)
-                # FIXME: Filter out files from offspring that are not in this branch.
-                if list(offspring) != [path]:
-                    break
-
-                filename = rp
-                continue_revnum = copyfrom_rev
-            elif paths[expected_path][0] in ('A', 'R'):
-                break
-
-        assert continue_revnum is None
-        assert last_changed_revid is not None
-
-        if introduced_revision_id is None:
-            raise NoSuchFile(path=filename)
-
-        file_id = "%s-%s" % (introduced_revision_id, escape_svn_path(filename))
-        assert file_id != None
-
-        self.path_map[revnum, path] = (file_id, last_changed_revid)
-        return (file_id, last_changed_revid)

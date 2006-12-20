@@ -14,7 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import NoSuchFile, NotBranchError, TransportNotPossible
+from bzrlib.errors import (NoSuchFile, NotBranchError, TransportNotPossible, 
+                           FileExists)
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 import bzrlib.urlutils as urlutils
@@ -26,6 +27,7 @@ from tempfile import mktemp
 from svn.core import SubversionException, Pool
 import svn.ra
 import svn.core
+import svn.client
 
 # Some older versions of the Python bindings need to be 
 # explicitly initialized
@@ -48,7 +50,6 @@ def need_lock(unbound):
 
 def _create_auth_baton(pool):
     """Create a Subversion authentication baton. """
-    import svn.client
     # Give the client context baton a suite of authentication
     # providers.h
     providers = [
@@ -68,6 +69,7 @@ def get_test_permutations():
 
 
 def get_svn_ra_transport(bzr_transport):
+    """Obtain corresponding SvnRaTransport for a stock Bazaar transport."""
     if isinstance(bzr_transport, SvnRaTransport):
         return bzr_transport
 
@@ -88,17 +90,6 @@ def bzr_to_svn_url(url):
     return url.rstrip('/')
 
 
-class SvnRaCallbacks(svn.ra.callbacks2_t):
-    """Remote access callbacks implementation for bzr-svn."""
-    def __init__(self, pool):
-        svn.ra.callbacks2_t.__init__(self)
-        self.auth_baton = _create_auth_baton(pool)
-        self.pool = pool
-    
-    def open_tmp_file(self, pool):
-        return mktemp(prefix='bzr-svn')
-
-
 class SvnRaTransport(Transport):
     """Fake transport for Subversion-related namespaces.
     
@@ -111,11 +102,13 @@ class SvnRaTransport(Transport):
         self.svn_url = bzr_to_svn_url(url)
         Transport.__init__(self, bzr_url)
 
-        self.callbacks = SvnRaCallbacks(self.pool)
+        self._client = svn.client.create_context(self.pool)
+        self._client.auth_baton = _create_auth_baton(self.pool)
+
         try:
             mutter('opening SVN RA connection to %r' % self.svn_url)
-            self._ra = svn.ra.open2(self.svn_url.encode('utf8'), 
-                    self.callbacks, svn_config, None)
+            self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
+                    self._client, self.pool)
         except SubversionException, (msg, num):
             if num in (svn.core.SVN_ERR_RA_ILLEGAL_URL, \
                        svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED, \
@@ -170,15 +163,29 @@ class SvnRaTransport(Transport):
     @need_lock
     def reparent(self, url):
         url = url.rstrip("/")
+        if url == self.svn_url:
+            return
+        self.base = url
+        self.svn_url = url
         if hasattr(svn.ra, 'reparent'):
-            return svn.ra.reparent(self._ra, url)
+            svn.ra.reparent(self._ra, url)
         else:
-            self._ra = svn.ra.open2(url.encode('utf8'), 
-                    self.callbacks, svn_config, None)
-
+            self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
+                    self._client, self.pool)
     @need_lock
     def get_dir(self, *args, **kwargs):
         return svn.ra.get_dir(self._ra, *args, **kwargs)
+
+    def list_dir(self, relpath):
+        if relpath == ".":
+            relpath = ""
+        try:
+            (dirents, _, _) = self.get_dir(relpath.rstrip("/"), self.get_latest_revnum())
+        except SubversionException, (msg, num):
+            if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
+                raise NoSuchFile(relpath)
+            raise
+        return dirents.keys()
 
     @need_lock
     def get_file(self, *args, **kwargs):
@@ -187,6 +194,18 @@ class SvnRaTransport(Transport):
     @need_lock
     def check_path(self, *args, **kwargs):
         return svn.ra.check_path(self._ra, *args, **kwargs)
+
+    @need_lock
+    def mkdir(self, relpath, mode=None):
+        path = "%s/%s" % (self.svn_url, relpath)
+        try:
+            svn.client.mkdir([path.encode("utf-8")], self._client)
+        except SubversionException, (msg, num):
+            if num == svn.core.SVN_ERR_FS_NOT_FOUND:
+                raise NoSuchFile(path)
+            if num == svn.core.SVN_ERR_FS_ALREADY_EXISTS:
+                raise FileExists(path)
+            raise
 
     @need_lock
     def do_update(self, *args, **kwargs):
@@ -206,10 +225,8 @@ class SvnRaTransport(Transport):
 
     def listable(self):
         """See Transport.listable().
-        
-        :return: False.
         """
-        return False
+        return True
 
     # There is no real way to do locking directly on the transport 
     # nor is there a need to as the remote server will take care of 
@@ -229,6 +246,6 @@ class SvnRaTransport(Transport):
     def clone(self, offset=None):
         """See Transport.clone()."""
         if offset is None:
-            return self.__class__(self.base)
+            return SvnRaTransport(self.base)
 
         return SvnRaTransport(urlutils.join(self.base, offset))

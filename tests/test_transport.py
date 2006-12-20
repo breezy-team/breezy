@@ -16,9 +16,11 @@
 
 from tests import TestCaseWithSubversionRepository
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, NoSuchFile, FileExists
 from transport import SvnRaTransport, bzr_to_svn_url
 from unittest import TestCase
+
+import os
 
 class SvnRaTest(TestCaseWithSubversionRepository):
     def test_open_nonexisting(self):
@@ -36,6 +38,38 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         self.assertIsInstance(t, SvnRaTransport)
         self.assertEqual(t.base, repos_url)
 
+    def test_reparent(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        t.mkdir("foo")
+        t.reparent("%s/foo" % repos_url)
+        self.assertEqual("%s/foo" % repos_url, t.base)
+
+    def test_listable(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        self.assertTrue(t.listable())
+
+    def test_list_dir(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        self.assertEqual([], t.list_dir("."))
+        t.mkdir("foo")
+        self.assertEqual(["foo"], t.list_dir("."))
+        self.assertEqual([], t.list_dir("foo"))
+        t.mkdir("foo/bar")
+        self.assertEqual(["bar"], t.list_dir("foo"))
+
+    def test_list_dir_file(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({"dc/file": "data"})
+        self.client_add("dc/file")
+        self.client_commit("dc", "Bla")
+
+        t = SvnRaTransport(repos_url)
+        self.assertEqual(["file"], t.list_dir("."))
+        self.assertRaises(NoSuchFile, t.list_dir, "file")
+
     def test_clone(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({"dc/dir": None, "dc/bl": "data"})
@@ -45,6 +79,29 @@ class SvnRaTest(TestCaseWithSubversionRepository):
 
         t = SvnRaTransport(repos_url)
         self.assertEqual("%s/dir" % repos_url, t.clone('dir').base)
+
+    def test_mkdir(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        t.mkdir("bla")
+        self.client_update("dc")
+        self.assertTrue(os.path.isdir("dc/bla"))
+        t.mkdir("bla/subdir")
+        self.client_update("dc")
+        self.assertTrue(os.path.isdir("dc/bla/subdir"))
+
+    def test_mkdir_missing_parent(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        self.assertRaises(NoSuchFile, t.mkdir, "bla/subdir")
+        self.client_update("dc")
+        self.assertFalse(os.path.isdir("dc/bla/subdir"))
+
+    def test_mkdir_twice(self):
+        repos_url = self.make_client('d', 'dc')
+        t = SvnRaTransport(repos_url)
+        t.mkdir("bla")
+        self.assertRaises(FileExists, t.mkdir, "bla")
 
     def test_clone(self):
         repos_url = self.make_client('d', 'dc')

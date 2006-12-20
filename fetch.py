@@ -33,7 +33,6 @@ import svn.core, svn.ra
 
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
                 SVN_PROP_BZR_REVPROP_PREFIX, SvnRepositoryFormat)
-from transport import SvnRaTransport
 from tree import apply_txdelta_handler
 
 
@@ -302,6 +301,7 @@ class InterSvnRepository(InterRepository):
         num = 0
         needed.reverse()
         prev_revid = None
+        transport = self.source.transport
         for (branch, revnum, revid, changes) in needed:
             if pb is not None:
                 pb.update('copying revision', num+1, len(needed)+1)
@@ -338,21 +338,21 @@ class InterSvnRepository(InterRepository):
             edit, edit_baton = svn.delta.make_editor(editor)
 
             if parent_branch is None:
-                self.source.transport.reparent(repos_root)
+                transport.reparent(repos_root)
             else:
-                self.source.transport.reparent("%s/%s" % (repos_root, parent_branch))
+                transport.reparent("%s/%s" % (repos_root, parent_branch))
             pool = Pool()
             if parent_branch != branch:
                 mutter('svn switch %r:%r -> %r:%r' % 
                                (parent_branch, parent_revnum, branch, revnum))
-                reporter, reporter_baton = self.source.transport.do_switch(
+                reporter, reporter_baton = transport.do_switch(
                            revnum, "", True, 
                            "%s/%s" % (repos_root, branch),
                            edit, edit_baton, pool)
             else:
                 mutter('svn update -r %r:%r %r' % 
                                (parent_revnum, revnum, branch))
-                reporter, reporter_baton = self.source.transport.do_update(
+                reporter, reporter_baton = transport.do_update(
                            revnum, "", True, 
                            edit, edit_baton, pool)
 
@@ -360,9 +360,9 @@ class InterSvnRepository(InterRepository):
             svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
                 "", parent_revnum, False, None)
 
+            transport.lock()
             svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton)
-
-            self.source.transport.reparent(repos_root)
+            transport.unlock()
 
             prev_inv = editor.inventory
             prev_revid = revid
@@ -370,6 +370,7 @@ class InterSvnRepository(InterRepository):
         if pb is not None:
             pb.clear()
 
+        self.source.transport.reparent(repos_root)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=ProgressBar()):

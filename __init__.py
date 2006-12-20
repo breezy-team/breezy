@@ -49,8 +49,8 @@ def check_bzrlib_version(desired):
         raise Exception, ('Version mismatch', desired)
     else:
         warning('bzr-svn is not up to date with installed bzr version %s.'
-                ' \nThere should be a newer version available, e.g. %i.%i.' 
-                % (bzrlib.__version__, bzrlib_version[0], bzrlib_version[1]))
+                ' \nThere should be a newer version of bzr-svn available.' 
+                % (bzrlib.__version__))
         if bzrlib_version != desired_plus:
             raise Exception, 'Version mismatch'
 
@@ -58,7 +58,6 @@ check_bzrlib_version(required_bzr_version)
 
 import branch
 import convert
-import dumpfile
 import format
 import transport
 import checkout
@@ -94,13 +93,11 @@ BzrDirFormat.register_control_format(format.SvnFormat)
 
 BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
 
-BzrDirFormat.register_control_format(dumpfile.SvnDumpFileFormat)
-
 InterRepository.register_optimiser(InterSvnRepository)
 
 from bzrlib.commands import Command, register_command, display_command, Option
 
-class cmd_import_svn(Command):
+class cmd_svn_import(Command):
     """Convert a Subversion repository to a Bazaar repository.
     
     """
@@ -117,7 +114,7 @@ class cmd_import_svn(Command):
                            trees)
 
 
-register_command(cmd_import_svn)
+register_command(cmd_svn_import)
 
 def test_suite():
     from unittest import TestSuite, TestLoader

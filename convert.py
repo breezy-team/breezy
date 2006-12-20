@@ -28,52 +28,71 @@ load_plugins()
 
 from bzrlib.bzrdir import BzrDir
 from bzrlib.branch import Branch
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, NotBranchError
 import bzrlib.osutils as osutils
 from bzrlib.repository import Repository
-from bzrlib.trace import info
+from bzrlib.trace import info, mutter
 
 from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
 from transport import SvnRaTransport
+
+def load_dumpfile(dumpfile, outputdir):
+    import svn
+    from svn.core import SubversionException
+    from cStringIO import StringIO
+    repos = svn.repos.svn_repos_create(outputdir, '', '', None, None)
+    try:
+        file = open(dumpfile)
+        svn.repos.load_fs2(repos, file, StringIO(), 
+                svn.repos.load_uuid_default, '', 0, 0, None)
+    except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):            
+        raise BzrError("%s is not a dump file" % dumpfile)
+    return repos
+
 
 def convert_repository(url, output_dir, scheme, create_shared_repo=True, working_trees=False):
     tmp_repos = None
 
     if os.path.isfile(url):
         tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
-        import svn
-        from svn.core import SubversionException
-        from cStringIO import StringIO
-        repos = svn.repos.svn_repos_create(tmp_repos, '', '', None, None)
-        try:
-            svn.repos.load_fs2(repos, open(url), StringIO(), svn.repos.load_uuid_default, '', 0, 0, None)
-        except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):            
-            raise BzrError("%s is not a dump file" % url)
-        
-        url = "svn+file://%s" % tmp_repos
+        mutter('loading dumpfile %r to %r' % (url, tmp_repos))
+
+        load_dumpfile(url, tmp_repos)
+            
+        url = tmp_repos
 
     if create_shared_repo:
-        target_repos = BzrDir.create_repository(output_dir, shared=True)
+        try:
+            target_repos = Repository.open(output_dir)
+            assert target_repos.is_shared()
+        except NotBranchError:
+            target_repos = BzrDir.create_repository(output_dir, shared=True)
         target_repos.set_make_working_trees(working_trees)
 
     try:
-        source_repos = SvnRemoteAccess(SvnRaTransport(url), SvnFormat(), 
-                                       scheme).open_repository()
+        source_repos = SvnRepository.open(url+"/trunk")
 
-        branches = source_repos._log.find_branches(source_repos._latest_revnum)
+        branches = list(source_repos.find_branches())
+
+        mutter('branches: %r' % list(branches))
+                
         existing_branches = filter(lambda (bp, revnum, exists): exists, 
                                    branches)
-        info('Importing branches: \n%s' % "".join(map(lambda (bp,revnum,exists): "%s\n" % bp, existing_branches)))
+        info('Importing %d branches' % len(existing_branches))
 
         for (branch, revnum, exists) in existing_branches:
             source_branch = Branch.open("%s/%s" % (source_repos.base, branch))
 
             target_dir = os.path.join(output_dir, branch)
-            os.makedirs(target_dir)
-            source_branch.bzrdir.sprout(target_dir, source_branch.last_revision())
+            try:
+                target_branch = Branch.open(target_dir)
+                target_branch.pull(source_branch)
+            except NotBranchError:
+                os.makedirs(target_dir)
+                source_branch.bzrdir.sprout(target_dir, source_branch.last_revision())
             
-            info('Converted %s:%d\n' % (branch, revnum))
+            info('Converted %s:%d' % (branch, revnum))
 
     finally:
         if tmp_repos:

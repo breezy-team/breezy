@@ -376,7 +376,7 @@ class SvnWorkingTree(WorkingTree):
         self.base_revid = self.branch.repository.generate_revision_id(fetched, self.branch.branch_path)
         return fetched-rev.value.number
 
-    def get_file_sha1(self, file_id, path=None):
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
         if not path:
             path = self._inventory.id2path(file_id)
 

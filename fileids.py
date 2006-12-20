@@ -23,6 +23,11 @@ from warnings import warn
 
 import os
 from bsddb import dbshelve as shelve
+try:
+    import sqlite3
+except ImportError:
+    from pysqlite2 import dbapi2 as sqlite3
+
 import logwalker
 from repository import (escape_svn_path, generate_svn_revision_id, 
                         parse_svn_revision_id, MAPPING_VERSION)
@@ -66,6 +71,8 @@ def get_local_changes(paths, scheme, uuid):
         new_paths[new_p] = data
     return new_paths
 
+dbs = {}
+
 
 class FileIdMap(object):
     """ File id store. 
@@ -74,18 +81,42 @@ class FileIdMap(object):
 
     revnum -> branch -> path -> fileid
     """
-    def __init__(self, log, cache_dir):
+    def __init__(self, log, cache_dir=None, cache_db=None):
         self._log = log
-        self.cache_dict = shelve.open(os.path.join(cache_dir, 'fileids-v2'))
+        if cache_db is not None:
+            self.cachedb = cache_db
+        else:
+            cache_path = os.path.join(cache_dir, 'fileids')
+            if not dbs.has_key(cache_path):
+                dbs[cache_path] = sqlite3.connect(cache_path)
+            self.cachedb = dbs[cache_path]
+        self.cachedb.executescript("""
+        create table if not exists filemap (filename text, id integer, create_revid text, revid text);
+        create index if not exists revid on filemap(revid);
+        """)
+        self.cachedb.commit()
 
     def save(self, revid, parent_revids, _map):
         mutter('saving file id map for %r' % revid)
-        self.cache_dict[revid] = _map
+        for filename in _map:
+            self.cachedb.execute("insert into filemap (filename, id, create_revid, revid) values(?,?,?,?)", (filename, _map[filename][0], _map[filename][1], revid))
+        self.cachedb.commit()
 
     def load(self, revid):
-        return self.cache_dict[revid]
+        map = {}
+        for filename,create_revid,id in self.cachedb.execute("select filename, create_revid, id from filemap where revid='%s'"%revid):
+            map[filename] = (id,create_revid)
+
+        return map
 
     def apply_changes(self, uuid, revnum, branch, global_changes, map):
+        """Change file id map to incorporate specified changes.
+
+        :param uuid: UUID of repository changes happen in
+        :param revnum: Revno for revision in which changes happened
+        :param branch: Branch path where changes happened
+        :param global_changes: Dict with global changes that happened
+        """
         changes = get_local_changes(global_changes, self._log.scheme,
                                         uuid)
 
@@ -110,15 +141,15 @@ class FileIdMap(object):
             return map
         for (bp, paths, rev) in self._log.follow_history(branch, revnum):
             revid = generate_svn_revision_id(uuid, rev, bp)
-            try:
-                map = self.load(revid)
+            map = self.load(revid)
+            if map != {}:
                 # found the nearest cached map
                 next_parent_revs = [revid]
                 break
-            except KeyError:
+            else:
                 todo.append((revid, paths))
                 continue
-        
+    
         # target revision was present
         if len(todo) == 0:
             return map
