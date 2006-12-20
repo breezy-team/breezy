@@ -18,7 +18,7 @@
 
 import os
 
-from bzrlib import errors, ignores
+from bzrlib import ignores
 from bzrlib.tests import TestCaseWithTransport
 
 
