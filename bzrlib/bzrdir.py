@@ -2008,6 +2008,7 @@ class BzrDirFormatRegistry(registry.Registry):
 
             These formats can be used for creating branches, working trees, and
             repositories.
+
             """)
         default_help = self.get_help('default')
         help_pairs = []
@@ -2021,7 +2022,7 @@ class BzrDirFormatRegistry(registry.Registry):
                 help_pairs.append((key, help))
 
         def wrapped(key, help):
-            return '  %s:\n%s\n' % (key, 
+            return '  %s:\n%s\n\n' % (key, 
                     textwrap.fill(help, initial_indent='    ', 
                     subsequent_indent='    '))
         output += wrapped('%s/default' % default_realkey, default_help)
@@ -2032,12 +2033,12 @@ class BzrDirFormatRegistry(registry.Registry):
 
 format_registry = BzrDirFormatRegistry()
 format_registry.register_factory('weave', BzrDirFormat6,
-    '(native) Pre-0.8 format.  Slower than knit and does not support'
-    ' checkouts or shared repositories')
+    '(native)(deprecated) Pre-0.8 format.  Slower than knit and does not'
+    ' support checkouts or shared repositories')
 format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
-    '(native) format using knits')
+    '(native) Format using knits.  Recommended.')
 format_registry.set_default('knit')
 format_registry.register_metadir('metaweave', 'RepositoryFormat7',
-    '(native) Transitional format in 0.8.  Slower than knit.')
+    '(native)(deprecated) Transitional format in 0.8.  Slower than knit.')
 format_registry.register_metadir('experimental-knit2', 'RepositoryFormatKnit2',
     '(native) Experimental successor to knit.  Use at your own risk.')
