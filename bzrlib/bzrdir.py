@@ -1945,6 +1945,13 @@ class ConvertMetaToMeta(Converter):
         return to_convert
 
 
+class BzrDirFormatInfo(object):
+
+    def __init__(self, native, deprecated):
+        self.deprecated = deprecated
+        self.native = native
+
+
 class BzrDirFormatRegistry(registry.Registry):
     """Registry of user-selectable BzrDir subformats.
     
@@ -1952,7 +1959,7 @@ class BzrDirFormatRegistry(registry.Registry):
     e.g. BzrDirMeta1 with weave repository.  Also, it's more user-oriented.
     """
 
-    def register_metadir(self, key, repo, help):
+    def register_metadir(self, key, repo, help, native=True, deprecated=False):
         """Register a metadir subformat.
         
         repo is the repository format name as a string.
@@ -1965,17 +1972,18 @@ class BzrDirFormatRegistry(registry.Registry):
             bd = BzrDirMetaFormat1()
             bd.repository_format = repo_format()
             return bd
-        self.register(key, helper, help)
+        self.register(key, helper, help, native, deprecated)
 
-    def register_factory(self, key, factory, help):
+    def register_factory(self, key, factory, help, native=True, 
+                         deprecated=False):
         """Register a BzrDirFormat factory.
 
         The factory must be a callable (usually a class), and produce an
         instance of the BzrDirFormat when called.
         """
-        self.register(key, lambda x: factory(), help)
+        self.register(key, lambda x: factory(), help, native, deprecated)
 
-    def register(self, key, factory, help):
+    def register(self, key, factory, help, native=True, deprecated=False):
         """Register a BzrDirFormat factory.
         
         The factory must be a callable that takes one parameter: the key.
@@ -1984,7 +1992,8 @@ class BzrDirFormatRegistry(registry.Registry):
         This function mainly exists to prevent the info object from being
         supplied directly.
         """
-        registry.Registry.register(self, key, factory, help)
+        registry.Registry.register(self, key, factory, help, 
+            BzrDirFormatInfo(native, deprecated))
 
     def register_lazy(self):
         # prevent use of Registry.register_lazy
@@ -1996,7 +2005,8 @@ class BzrDirFormatRegistry(registry.Registry):
         
         This method must be called once and only once.
         """
-        self.register('default', self.get(key), self.get_help(key))
+        registry.Registry.register(self, 'default', self.get(key), 
+            self.get_help(key), info=self.get_info(key))
 
     def make_bzrdir(self, key):
         return self.get(key)(key)
@@ -2021,24 +2031,39 @@ class BzrDirFormatRegistry(registry.Registry):
             else:
                 help_pairs.append((key, help))
 
-        def wrapped(key, help):
+        def wrapped(key, help, info):
+            if info.native:
+                help = '(native) ' + help
             return '  %s:\n%s\n\n' % (key, 
                     textwrap.fill(help, initial_indent='    ', 
                     subsequent_indent='    '))
-        output += wrapped('%s/default' % default_realkey, default_help)
+        output += wrapped('%s/default' % default_realkey, default_help,
+                          self.get_info('default'))
+        deprecated_pairs = []
         for key, help in help_pairs:
-            output += wrapped(key, help)
+            info = self.get_info(key)
+            if info.deprecated:
+                deprecated_pairs.append((key, help))
+            else:
+                output += wrapped(key, help, info)
+        if len(deprecated_pairs) > 0:
+            output += "Deprecated formats\n------------------\n\n"
+            for key, help in deprecated_pairs:
+                info = self.get_info(key)
+                output += wrapped(key, help, info)
+
         return output
 
 
 format_registry = BzrDirFormatRegistry()
 format_registry.register_factory('weave', BzrDirFormat6,
-    '(native)(deprecated) Pre-0.8 format.  Slower than knit and does not'
-    ' support checkouts or shared repositories')
+    'Pre-0.8 format.  Slower than knit and does not'
+    ' support checkouts or shared repositories', deprecated=True)
 format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
-    '(native) Format using knits.  Recommended.')
+    'Format using knits.  Recommended.')
 format_registry.set_default('knit')
 format_registry.register_metadir('metaweave', 'RepositoryFormat7',
-    '(native)(deprecated) Transitional format in 0.8.  Slower than knit.')
+    'Transitional format in 0.8.  Slower than knit.',
+    deprecated=True)
 format_registry.register_metadir('experimental-knit2', 'RepositoryFormatKnit2',
-    '(native) Experimental successor to knit.  Use at your own risk.')
+    'Experimental successor to knit.  Use at your own risk.')

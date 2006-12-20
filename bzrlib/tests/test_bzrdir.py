@@ -61,14 +61,14 @@ class TestFormatRegistry(TestCase):
         my_format_registry = bzrdir.BzrDirFormatRegistry()
         my_format_registry.register_factory('weave', bzrdir.BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
-            ' repositories')
+            ' repositories', deprecated=True)
         my_format_registry.register('direct', lambda x: bzrdir.BzrDirFormat6(),
-            'Bazaar format registered directly')
+            'Format registered directly', deprecated=True)
         my_format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
-            'native format using knits')
+            'Format using knits')
         my_format_registry.set_default('knit')
         my_format_registry.register_metadir('metaweave', 'RepositoryFormat7',
-            'Transitional format in 0.8.  Slower than knit.')
+            'Transitional format in 0.8.  Slower than knit.', deprecated=True)
         my_format_registry.register_metadir('experimental-knit2', 
                                             'RepositoryFormatKnit2',
             'Experimental successor to knit.  Use at your own risk.')
@@ -97,11 +97,11 @@ class TestFormatRegistry(TestCase):
 
     def test_get_help(self):
         my_format_registry = self.make_format_registry()
-        self.assertEqual('Bazaar format registered directly',
+        self.assertEqual('Format registered directly',
                          my_format_registry.get_help('direct'))
-        self.assertEqual('native format using knits', 
+        self.assertEqual('Format using knits', 
                          my_format_registry.get_help('knit'))
-        self.assertEqual('native format using knits', 
+        self.assertEqual('Format using knits', 
                          my_format_registry.get_help('default'))
         self.assertEqual('Pre-0.8 format.  Slower and does not support'
                          ' checkouts or shared repositories', 
@@ -112,11 +112,12 @@ class TestFormatRegistry(TestCase):
         topics.register('formats', self.make_format_registry().help_topic, 
                         'Directory formats')
         topic = topics.get_detail('formats')
-        self.assertContainsRe(topic, 'Bazaar directory formats')
-        self.assertContainsRe(topic, 
-            '  knit/default:\n    native format using knits\n')
-        self.assertContainsRe(topic, 
-            '  direct:\n    Bazaar format registered directly\n')
+        new, deprecated = topic.split('Deprecated formats')
+        self.assertContainsRe(new, 'Bazaar directory formats')
+        self.assertContainsRe(new, 
+            '  knit/default:\n    \(native\) Format using knits\n')
+        self.assertContainsRe(deprecated, 
+            '  direct:\n    \(native\) Format registered directly\n')
 
 class SampleBranch(bzrlib.branch.Branch):
     """A dummy branch for guess what, dummy use."""
