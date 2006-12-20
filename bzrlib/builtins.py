@@ -1757,6 +1757,7 @@ class cmd_cat(Command):
 
     takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
+    encoding_type = 'exact'
 
     @display_command
     def run(self, filename, revision=None, name_from_revision=False):

@@ -53,6 +53,9 @@ IN DEVELOPMENT
 
     * ``bzr help hidden-commands`` lists all hidden commands. (Aaron Bentley)
 
+    * ``bzr merge`` now has an option ``--pull`` to fall back to pull if
+      local is fully merged into remote. (Jan Hudec)
+
   INTERNALS:
 
     * A few tweaks directly to ``fileids_affected_by_revision_ids`` to
@@ -65,6 +68,11 @@ IN DEVELOPMENT
       preserve more resolution than we need. (Henri Weichers, Martin Pool)
 
     * Test suite ends cleanly on Windows.  (Vincent Ladeuil)
+
+    * When 'encoding_type' attribute of class Command is equal to 'exact', 
+      force sys.stdout to be a binary stream on Windows, and therefore
+      keep exact line-endings (without LF -> CRLF conversion).
+      (Alexander Belchenko)
 
     * Single-letter short options are no longer globally declared.  (Martin
       Pool)
@@ -79,6 +87,9 @@ IN DEVELOPMENT
 
     * bzr now supports Win32 UNC path (e.g. \\HOST\path). 
       (Alexander Belchenko, #57869)
+
+    * Win32-specific: output of cat, bundle and diff commands don't mangle
+      line-endings (Alexander Belchenko, #55276)
 
     * Replace broken fnmatch based ignore pattern matching with custom pattern
       matcher.
@@ -136,9 +147,6 @@ bzr 0.13rc1  2006-11-27
       files with small changes, such as the inventory for a large project.
       (eg For a project with 2500 files, and 7500 revisions, it changes
       the size of inventory.knit from 11MB to 5.4MB) (John Arbash Meinel)
-
-    * ``bzr merge`` now has an option ``--pull`` to fall back to pull if
-      local is fully merged into remote. (Jan Hudec)
 
   INTERNALS:
 
