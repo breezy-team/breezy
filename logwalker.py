@@ -24,6 +24,8 @@ from svn.core import SubversionException
 from transport import SvnRaTransport
 import svn.core
 
+import base64
+
 try:
     import sqlite3
 except ImportError:
@@ -33,6 +35,8 @@ shelves = {}
 
 def _escape_commit_message(message):
     """Replace xml-incompatible control characters."""
+    if message is None:
+        return None
     import re
     # FIXME: RBC 20060419 this should be done by the revision
     # serialiser not by commit. Then we can also add an unescaper
@@ -60,13 +64,13 @@ class NotSvnBranchPath(BzrError):
 
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
-    def __init__(self, scheme, transport=None, cache_dir=None, last_revnum=None, pb=None):
+    def __init__(self, scheme, transport=None, cache_db=None, last_revnum=None, pb=None):
         """Create a new instance.
 
         :param scheme:  Branching scheme to use.
         :param transport:   SvnRaTransport to use to access the repository.
-        :param cache_dir:   Optional cache directory to use. Doesn't cache if 
-                            not set.
+        :param cache_db:    Optional sql database connection to use. Doesn't 
+                            cache if not set.
         :param last_revnum: Last known revnum in the repository. Will be 
                             determined if not specified.
         :param pb:          Progress bar to report progress to.
@@ -81,16 +85,13 @@ class LogWalker(object):
         self.transport = transport.clone()
         self.scheme = scheme
 
-        if not cache_dir is None:
-            cache_file = os.path.join(cache_dir, 'log-v3')
-            if not shelves.has_key(cache_file):
-                shelves[cache_file] = sqlite3.connect(cache_file)
-            self.db = shelves[cache_file]
-        else:
+        if cache_db is None:
             self.db = sqlite3.connect(":memory:")
+        else:
+            self.db = cache_db
 
         self.db.executescript("""
-          create table if not exists revision(revno integer unique, author text, message blob, date text);
+          create table if not exists revision(revno integer unique, author text, message text, date text);
           create unique index if not exists revision_revno on revision (revno);
           create table if not exists changed_path(rev integer, action text, path text, copyfrom_path text, copyfrom_rev integer);
           create index if not exists path_rev_path on changed_path(rev, path);
@@ -120,6 +121,9 @@ class LogWalker(object):
                 self.db.execute(
                      "insert into changed_path (rev, path, action, copyfrom_path, copyfrom_rev) values (?, ?, ?, ?, ?)", 
                      (rev, p.strip("/"), orig_paths[p].action, copyfrom_path, orig_paths[p].copyfrom_rev))
+
+            if message is not None:
+                message = base64.b64encode(message)
 
             self.db.execute("replace into revision (revno, author, date, message) values (?,?,?,?)", (rev, author, date, message))
 
@@ -255,7 +259,7 @@ class LogWalker(object):
         paths = self._get_revision_paths(revnum)
         if author is None:
             author = None
-        return (author, _escape_commit_message(message), date, paths)
+        return (author, _escape_commit_message(base64.b64decode(message)), date, paths)
 
     
     def find_latest_change(self, path, revnum):
