@@ -409,8 +409,6 @@ class SvnRepository(Repository):
             bzr_props[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = svn_props[name]
 
         (rev.committer, rev.message, date, _) = self._log.get_revision_info(revnum)
-        mutter('msg: %r' % rev.message)
-
         if rev.committer is None:
             rev.committer = ""
 
@@ -558,13 +556,13 @@ class SvnRepository(Repository):
             key = "%s:%d" % (path, i)
 
             try:
-                proplist = self.branchprop_cache[key]
+                proplist = self.branchprop_cache[str(key)]
             except: 
                 pass
 
             if self._log.touches_path(path, i):
                 proplist = self._get_dir_proplist(path, i)
-                self.branchprop_cache[key] = proplist
+                self.branchprop_cache[str(key)] = proplist
                 break
 
         return proplist

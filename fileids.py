@@ -23,7 +23,6 @@ from bzrlib.knit import KnitVersionedFile
 from warnings import warn
 
 import os
-from bsddb import dbshelve as shelve
 try:
     import sqlite3
 except ImportError:
@@ -87,7 +86,7 @@ class FileIdMap(object):
         if cache_db is not None:
             self.cachedb = cache_db
         else:
-            cache_path = os.path.join(cache_dir, 'fileids')
+            cache_path = os.path.join(cache_dir, 'fileids-v3')
             if not dbs.has_key(cache_path):
                 dbs[cache_path] = sqlite3.connect(cache_path)
             self.cachedb = dbs[cache_path]
