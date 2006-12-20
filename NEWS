@@ -79,6 +79,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr missing --verbose`` was showing adds/removals in the wrong
+      direction. (John Arbash Meinel)
+
     * ``bzr annotate`` now defaults to showing dotted revnos for merged
       revisions. It cuts them off at a depth of 12 characters, but you can
       supply ``--long`` to see the full number. You can also use
