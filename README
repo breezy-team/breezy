@@ -34,6 +34,17 @@ This will give you a ``bzr builddeb`` command (alias ``bd``).
 
 Help for this plugin can be found by running ``bzr help builddeb``.
 
+There is also a script named ``bzr-buildpackage`` provided in /usr/bin
+that provides access to the tool as well. It is just a wrapper script that
+calls ``bzr builddeb`` with the arguments you provide, so the rest of the
+documentation applies equally well to using this script. Probably the only
+difference is that help will be got with ``bzr-buildpackage ---help`` 
+(as ``bze builddeb --help`` also works and does the same as
+``bzr help builddeb``). The script is provided for two reasons, the first
+is similarity to the other ``-buildpackage`` systems, and the second is so
+that the Debian package can provide the ``bzr-buildpackage`` package, and
+so make it easier for people to find the package.
+
 Configuration
 -------------
 
