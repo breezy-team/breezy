@@ -66,6 +66,9 @@ IN DEVELOPMENT
 
     * Test suite ends cleanly on Windows.  (Vincent Ladeuil)
 
+    * Single-letter short options are no longer globally declared.  (Martin
+      Pool)
+
   BUG FIXES:
 
     * ``bzr annotate`` now defaults to showing dotted revnos for merged

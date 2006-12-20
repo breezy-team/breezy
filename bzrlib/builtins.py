@@ -1215,7 +1215,12 @@ class cmd_diff(Command):
     # TODO: This probably handles non-Unix newlines poorly.
     
     takes_args = ['file*']
-    takes_options = ['revision', 'diff-options', 'prefix']
+    takes_options = ['revision', 'diff-options',
+        Option('prefix', type=str,
+               short_name='p',
+               help='Set prefixes to added to old and new filenames, as '
+                    'two values separated by a colon.'),
+        ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
@@ -1234,7 +1239,7 @@ class cmd_diff(Command):
         else:
             if not ':' in prefix:
                  raise BzrCommandError(
-                     "--diff-prefix expects two values separated by a colon")
+                     "--prefix expects two values separated by a colon")
             old_label, new_label = prefix.split(":")
         
         try:
@@ -1375,11 +1380,13 @@ class cmd_log(Command):
                             help='show from oldest to newest'),
                      'timezone', 
                      Option('verbose', 
+                             short_name='v',
                              help='show files changed in each revision'),
                      'show-ids', 'revision',
                      'log-format',
                      'line', 'long', 
                      Option('message',
+                            short_name='m',
                             help='show revisions whose message matches this regexp',
                             type=str),
                      'short',
@@ -1829,6 +1836,7 @@ class cmd_commit(Command):
                      Option('unchanged',
                             help='commit even if nothing has changed'),
                      Option('file', type=str, 
+                            short_name='F',
                             argname='msgfile',
                             help='file containing commit message'),
                      Option('strict',
