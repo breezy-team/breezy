@@ -110,13 +110,18 @@ def get_merge_type(typestring):
         raise errors.BzrCommandError(msg)
 
 class Option(object):
-    """Description of a command line option"""
+    """Description of a command line option
+    
+    :ivar short_name: If this option has a single-letter name, this is it.
+    Otherwise None.
+    """
+
     # TODO: Some way to show in help a description of the option argument
 
     OPTIONS = {}
-    SHORT_OPTIONS = {}
 
-    def __init__(self, name, help='', type=None, argname=None):
+    def __init__(self, name, help='', type=None, argname=None,
+                 short_name=None):
         """Make a new command option.
 
         name -- regular name of the command, used in the double-dash
@@ -130,25 +135,15 @@ class Option(object):
 
         argname -- name of option argument, if any
         """
-        # TODO: perhaps a subclass that automatically does 
-        # --option, --no-option for reversible booleans
         self.name = name
         self.help = help
         self.type = type
+        self.short_name = short_name
         if type is None:
             assert argname is None
         elif argname is None:
             argname = 'ARG'
         self.argname = argname
-
-    def short_name(self):
-        """Return the single character option for this command, if any.
-
-        Short options are globally registered.
-        """
-        for short, option in Option.SHORT_OPTIONS.iteritems():
-            if option is self:
-                return short
 
     def get_negation_name(self):
         if self.name.startswith('no-'):
@@ -189,7 +184,7 @@ class Option(object):
         argname =  self.argname
         if argname is not None:
             argname = argname.upper()
-        yield self.name, self.short_name(), argname, self.help
+        yield self.name, self.short_name, argname, self.help
 
 
 class OptionParser(optparse.OptionParser):
@@ -206,10 +201,8 @@ def get_optparser(options):
 
     parser = OptionParser()
     parser.remove_option('--help')
-    short_options = dict((k.name, v) for v, k in 
-                         Option.SHORT_OPTIONS.iteritems())
     for option in options.itervalues():
-        option.add_option(parser, short_options.get(option.name))
+        option.add_option(parser, option.short_name)
     return parser
 
 
@@ -224,19 +217,20 @@ _global_option('basis', type=str)
 _global_option('bound')
 _global_option('diff-options', type=str)
 _global_option('help',
-               help='show help message')
-_global_option('file', type=unicode)
+               help='show help message',
+               short_name='h')
+_global_option('file', type=unicode, short_name='F')
 _global_option('force')
 _global_option('format', type=unicode)
 _global_option('forward')
-_global_option('message', type=unicode)
+_global_option('message', type=unicode,
+               short_name='m')
 _global_option('no-recurse')
-_global_option('prefix', type=str, 
-               help='Set prefixes to added to old and new filenames, as '
-                    'two values separated by a colon.')
 _global_option('profile',
                help='show performance profiling information')
-_global_option('revision', type=_parse_revision_str)
+_global_option('revision', 
+               type=_parse_revision_str,
+               short_name='r')
 _global_option('show-ids', 
                help='show internal object ids')
 _global_option('timezone', 
@@ -244,12 +238,14 @@ _global_option('timezone',
                help='display timezone as local, original, or utc')
 _global_option('unbound')
 _global_option('verbose',
-               help='display more information')
+               help='display more information',
+               short_name='v')
 _global_option('version')
 _global_option('email')
 _global_option('update')
 _global_option('log-format', type=str, help="Use this log format")
-_global_option('long', help='Use detailed log format. Same as --log-format long')
+_global_option('long', help='Use detailed log format. Same as --log-format long',
+               short_name='l')
 _global_option('short', help='Use moderately short log format. Same as --log-format short')
 _global_option('line', help='Use log format with one line per revision. Same as --log-format line')
 _global_option('root', type=str)
@@ -257,7 +253,7 @@ _global_option('no-backup')
 _global_option('merge-type', type=_parse_merge_type, 
                help='Select a particular merge algorithm')
 _global_option('pattern', type=str)
-_global_option('quiet')
+_global_option('quiet', short_name='q')
 _global_option('remember', help='Remember the specified location as a'
                ' default.')
 _global_option('reprocess', help='Reprocess to reduce spurious conflicts')
@@ -265,18 +261,3 @@ _global_option('kind', type=str)
 _global_option('dry-run',
                help="show what would be done, but don't actually do anything")
 _global_option('name-from-revision', help='The path name in the old tree.')
-
-
-def _global_short(short_name, long_name):
-    assert short_name not in Option.SHORT_OPTIONS
-    Option.SHORT_OPTIONS[short_name] = Option.OPTIONS[long_name]
-    
-
-Option.SHORT_OPTIONS['F'] = Option.OPTIONS['file']
-Option.SHORT_OPTIONS['h'] = Option.OPTIONS['help']
-Option.SHORT_OPTIONS['m'] = Option.OPTIONS['message']
-Option.SHORT_OPTIONS['r'] = Option.OPTIONS['revision']
-Option.SHORT_OPTIONS['v'] = Option.OPTIONS['verbose']
-Option.SHORT_OPTIONS['l'] = Option.OPTIONS['long']
-Option.SHORT_OPTIONS['q'] = Option.OPTIONS['quiet']
-Option.SHORT_OPTIONS['p'] = Option.OPTIONS['prefix']
