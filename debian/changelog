@@ -1,3 +1,10 @@
+bzr-builddeb (0.13) unstable; urgency=low
+
+  * New release. 
+  * Comptible with bzr 0.13.
+
+ -- James Westby <jw+debian@jameswestby.net>  Wed, 20 Dec 2006 00:22:18 +0000
+
 bzr-builddeb (0.11) unstable; urgency=low
 
   * Initial Release. (Closes: #380198)
