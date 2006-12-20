@@ -331,7 +331,8 @@ class SvnWorkingTree(WorkingTree):
 
         commit_info = svn.client.commit3(specific_files, True, False, self.client_ctx)
 
-        revid = self.branch.repository.generate_revision_id(commit_info.revision, self.branch.branch_path)
+        revid = self.branch.repository.generate_revision_id(
+                commit_info.revision, self.branch.branch_path)
 
         self.base_revid = revid
         self.branch._revision_history.append(revid)

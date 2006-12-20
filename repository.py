@@ -21,7 +21,7 @@ from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile,
                            NoSuchRevision, NotBranchError, 
                            UninitializableFormat)
 from bzrlib.graph import Graph
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar
@@ -266,7 +266,8 @@ class SvnRepository(Repository):
         path = path.strip("/")
 
         if revnum == 0:
-            return (ROOT_ID, NULL_REVISION)
+            from fileids import generate_svn_file_id
+            return (generate_svn_file_id(self.uuid, 0, "", ""), NULL_REVISION)
 
         (bp, rp) = self.scheme.unprefix(path)
 

@@ -21,7 +21,7 @@ from bzrlib.errors import (UnsupportedOperation, BzrError, InvalidRevisionId,
                            DivergedBranches)
 from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
-from bzrlib.repository import CommitBuilder
+from bzrlib.repository import RootCommitBuilder
 from bzrlib.trace import mutter, warning
 
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE, 
@@ -29,10 +29,8 @@ from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
 
 import os
 
-class SvnCommitBuilder(CommitBuilder):
+class SvnCommitBuilder(RootCommitBuilder):
     """Commit Builder implementation wrapped around svn_delta_editor. """
-
-    record_root_entry = True 
 
     def __init__(self, repository, branch, parents, config, revprops):
         """Instantiate a new SvnCommitBuilder.
@@ -87,15 +85,13 @@ class SvnCommitBuilder(CommitBuilder):
                 self.branch.last_revision() in parents)
 
         if self.branch.last_revision() is None:
-            # FIXME: revnum might be different... where to get it, though?
-            self.old_inv = Inventory(repository.path_to_file_id(0, branch.branch_path))
+            self.old_inv = Inventory(root_id=None)
         else:
-            self.old_inv = self.repository.get_inventory(
-                               self.branch.last_revision())
+            self.old_inv = self.repository.get_inventory(self.branch.last_revision())
 
         self.modified_files = {}
         self.modified_dirs = []
-        
+
     def _generate_revision_if_needed(self):
         pass
 
@@ -126,9 +122,8 @@ class SvnCommitBuilder(CommitBuilder):
 
     def _dir_process(self, file_id, baton):
         path = self.new_inventory.id2path(file_id)
+        assert file_id in self.old_inv, "%r not in old inventory" % file_id
         mutter('processing %r (%r)' % (path, file_id))
-        mutter('old inventory: %r' % self.old_inv.entries())
-        mutter('new inventory: %r' % self.new_inventory.entries())
         if path == "":
             # Set all the revprops
             for prop, value in self._svnprops.items():
@@ -266,7 +261,7 @@ class SvnCommitBuilder(CommitBuilder):
 
             # Handle this directory
             if child_ie.file_id in self.modified_dirs:
-                self._dir_process( child_ie.file_id, child_baton)
+                self._dir_process(child_ie.file_id, child_baton)
 
             svn.delta.editor_invoke_close_directory(self.editor, child_baton, 
                                              self.pool)

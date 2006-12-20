@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.errors import RevisionNotPresent, NotBranchError
-from bzrlib.inventory import ROOT_ID
 from bzrlib.progress import ProgressBar
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
@@ -42,10 +41,9 @@ def generate_svn_file_id(uuid, revnum, branch, path):
     :param branch: Branch path of the branch in which the file was introduced.
     :param path: Original path of the file.
     """
-    if revnum == 0:
-        return NULL_REVISION
-    introduced_revision_id = generate_svn_revision_id(uuid, revnum, branch)
-    return "%s-%s" % (introduced_revision_id, escape_svn_path(path))
+    # FIXME: is the branch path required here?
+    return "svn-v%d:%d@%s-%s-%s" % (MAPPING_VERSION, revnum, 
+            uuid, escape_svn_path(branch), escape_svn_path(path))
 
 
 def generate_file_id(revid, path):
@@ -154,7 +152,7 @@ class FileIdMap(object):
 
         if len(next_parent_revs) == 0:
             if self._log.scheme.is_branch(""):
-                map = {"": (ROOT_ID, NULL_REVISION)}
+                map = {"": (generate_svn_file_id(uuid, 0, "", ""), NULL_REVISION)}
             else:
                 map = {}
     
