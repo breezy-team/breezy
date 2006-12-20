@@ -117,7 +117,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.make_client_and_bzrdir('a', 'dc')
         wt = WorkingTree.open("dc")
         self.assertEqual(NULL_REVISION, wt.basis_tree().inventory.revision_id)
-        self.assertEqual(Inventory(), wt.basis_tree().inventory)
+        self.assertEqual(Inventory(root_id=None), wt.basis_tree().inventory)
 
     def test_basis_tree(self):
         self.make_client_and_bzrdir('a', 'dc')

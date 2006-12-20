@@ -14,8 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import RevisionNotPresent
+from bzrlib.errors import RevisionNotPresent, NotBranchError
+from bzrlib.inventory import ROOT_ID
 from bzrlib.progress import ProgressBar
+from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.knit import KnitVersionedFile
@@ -41,7 +43,7 @@ def generate_svn_file_id(uuid, revnum, branch, path):
     :param path: Original path of the file.
     """
     if revnum == 0:
-        return None
+        return NULL_REVISION
     introduced_revision_id = generate_svn_revision_id(uuid, revnum, branch)
     return "%s-%s" % (introduced_revision_id, escape_svn_path(path))
 
@@ -134,11 +136,11 @@ class FileIdMap(object):
         # First, find the last cached map
         todo = []
         next_parent_revs = []
+        
+        if revnum == 0:
+            return {}
+
         # No history -> empty map
-        map = {"": (generate_svn_file_id(uuid, revnum, branch, ""),
-                    generate_svn_revision_id(uuid, revnum, branch))}
-        if branch == "" and revnum == 0:
-            return map
         for (bp, paths, rev) in self._log.follow_history(branch, revnum):
             revid = generate_svn_revision_id(uuid, rev, bp)
             map = self.load(revid)
@@ -149,6 +151,12 @@ class FileIdMap(object):
             else:
                 todo.append((revid, paths))
                 continue
+
+        if len(next_parent_revs) == 0:
+            if self._log.scheme.is_branch(""):
+                map = {"": (ROOT_ID, NULL_REVISION)}
+            else:
+                map = {}
     
         # target revision was present
         if len(todo) == 0:

@@ -42,12 +42,14 @@ def md5_strings(strings):
     return s.hexdigest()
 
 class RevisionBuildEditor(svn.delta.Editor):
-    def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, svn_revprops, id_map, parent_branch, parent_id_map):
+    def __init__(self, source, target, branch_path, revnum, prev_inventory, 
+                 revid, svn_revprops, id_map, parent_branch, parent_id_map):
         self.branch_path = branch_path
         self.inventory = copy(prev_inventory)
         assert self.inventory.root is None or revnum > 0
         self.revid = revid
         self.revnum = revnum
+        mutter('idmap for %r %r' % (revid, id_map))
         self.id_map = id_map
         self.parent_branch = parent_branch
         self.parent_id_map = parent_id_map
@@ -189,8 +191,6 @@ class RevisionBuildEditor(svn.delta.Editor):
         base_file_id, base_revid = self.source.path_to_file_id(base_revnum, os.path.join(self.parent_branch, path))
         file_id, revid = self.id_map[path]
         self.is_executable = None
-        mutter('bla; %s and %s' % (base_file_id, file_id))
-        mutter('inventory: %s' % self.inventory.entries())
         self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
         file_weave = self.weave_store.get_weave_or_empty(base_file_id, self.transact)
         self.file_data = file_weave.get_text(base_revid)
@@ -281,6 +281,7 @@ class InterSvnRepository(InterRepository):
 
         repos_root = self.source.transport.get_repos_root()
         
+        # first, figure out what revisions need to be fetched
         needed = []
         parents = {}
         prev_revid = None
@@ -316,9 +317,11 @@ class InterSvnRepository(InterRepository):
                 parent_branch = None
 
             if parent_revid is None:
-                parent_id_map = self.source.get_fileid_map(0, "")
+                # if there is no parent id, that means this is the 
+                # first revision on this branch
                 id_map = self.source.get_fileid_map(revnum, branch)
-                parent_inv = Inventory(parent_id_map[""][0])
+                parent_id_map = None
+                parent_inv = Inventory(root_id=None)
             elif prev_revid != parent_revid:
                 parent_id_map = self.source.get_fileid_map(parent_revnum, parent_branch)
                 id_map = self.source.get_fileid_map(revnum, branch)
@@ -381,7 +384,6 @@ class InterSvnRepository(InterRepository):
     def is_compatible(source, target):
         """Be compatible with SvnRepository."""
         # FIXME: Also check target uses VersionedFile
-        mutter('test %r' % source)
         return isinstance(source, SvnRepository)
 
 

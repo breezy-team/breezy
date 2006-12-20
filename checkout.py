@@ -53,11 +53,9 @@ class SvnWorkingTree(WorkingTree):
         self.client_ctx.log_msg_baton2 = self.log_message_func
 
         self._set_inventory(self.read_working_inventory(), dirty=False)
-        mutter('working inv: %r' % self.read_working_inventory().entries())
 
         self.base_revid = branch.repository.generate_revision_id(
                     self.base_revnum, branch.branch_path)
-        mutter('basis inv: %r' % self.basis_tree().inventory.entries())
         self.controldir = os.path.join(self.basedir, svn.wc.get_adm_dir(), 'bzr')
         try:
             os.makedirs(self.controldir)

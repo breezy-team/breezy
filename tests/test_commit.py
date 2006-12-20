@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.branch import BranchReferenceFormat
-from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
+from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.errors import DivergedBranches
 from bzrlib.inventory import Inventory
 from bzrlib.workingtree import WorkingTree
@@ -90,7 +90,7 @@ class TestCommitFromBazaar(TestCaseWithSubversionRepository):
         self.repos_url = self.make_repository('d')
         source = BzrDir.open("svn+"+self.repos_url)
         os.mkdir('dc')
-        self.checkout = BzrDirMetaFormat1().initialize('dc')
+        self.checkout = BzrDirFormat.get_default_format().initialize('dc')
         BranchReferenceFormat().initialize(self.checkout, source.open_branch())
 
     def test_simple_commit(self):
