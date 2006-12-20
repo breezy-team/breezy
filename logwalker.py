@@ -145,6 +145,9 @@ class LogWalker(object):
         """
         assert revnum >= 0
 
+        if revnum == 0:
+            return
+
         if not branch_path is None and not self.scheme.is_branch(branch_path):
             raise NotSvnBranchPath(branch_path, revnum)
 

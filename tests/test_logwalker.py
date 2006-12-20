@@ -155,6 +155,13 @@ class TestLogWalker(TestCaseWithSubversionRepository):
            self.assertTrue(paths.has_key("foo"))
            self.assertEqual(rev, 1)
 
+    def test_follow_history_nohist(self):
+        repos_url = self.make_client("a", "dc")
+        walker = logwalker.LogWalker(NoBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual([], list(walker.follow_history("", 0)))
+
     def test_later_update(self):
         repos_url = self.make_client("a", "dc")
 
