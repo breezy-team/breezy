@@ -59,11 +59,11 @@ class TestFormatRegistry(TestCase):
 
     def make_format_registry(self):
         my_format_registry = bzrdir.BzrDirFormatRegistry()
-        my_format_registry.register_factory('weave', bzrdir.BzrDirFormat6,
+        my_format_registry.register('weave', bzrdir.BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True)
-        my_format_registry.register('direct', lambda x: bzrdir.BzrDirFormat6(),
-            'Format registered directly', deprecated=True)
+        my_format_registry.register_lazy('lazy', 'bzrlib.bzrdir', 
+            'BzrDirFormat6', 'Format registered lazily', deprecated=True)
         my_format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
             'Format using knits')
         my_format_registry.set_default('knit')
@@ -76,29 +76,24 @@ class TestFormatRegistry(TestCase):
 
     def test_format_registry(self):
         my_format_registry = self.make_format_registry()
-        my_bzrdir = my_format_registry.make_bzrdir('direct')
-        self.assertTrue(isinstance(my_bzrdir, bzrdir.BzrDirFormat6))
+        my_bzrdir = my_format_registry.make_bzrdir('lazy')
+        self.assertIsInstance(my_bzrdir, bzrdir.BzrDirFormat6)
         my_bzrdir = my_format_registry.make_bzrdir('weave')
-        self.assertTrue(isinstance(my_bzrdir, bzrdir.BzrDirFormat6))
+        self.assertIsInstance(my_bzrdir, bzrdir.BzrDirFormat6)
         my_bzrdir = my_format_registry.make_bzrdir('default')
-        self.assertTrue(isinstance(my_bzrdir.repository_format, 
-            repository.RepositoryFormatKnit1))
+        self.assertIsInstance(my_bzrdir.repository_format, 
+            repository.RepositoryFormatKnit1)
         my_bzrdir = my_format_registry.make_bzrdir('knit')
-        self.assertTrue(isinstance(my_bzrdir.repository_format, 
-            repository.RepositoryFormatKnit1))
+        self.assertIsInstance(my_bzrdir.repository_format, 
+            repository.RepositoryFormatKnit1)
         my_bzrdir = my_format_registry.make_bzrdir('metaweave')
-        self.assertTrue(isinstance(my_bzrdir.repository_format, 
-            repository.RepositoryFormat7))
-
-    def test_lazy(self):
-        my_format_registry = bzrdir.BzrDirFormatRegistry()
-        self.assertRaises(NotImplementedError, 
-                          my_format_registry.register_lazy)
+        self.assertIsInstance(my_bzrdir.repository_format, 
+            repository.RepositoryFormat7)
 
     def test_get_help(self):
         my_format_registry = self.make_format_registry()
-        self.assertEqual('Format registered directly',
-                         my_format_registry.get_help('direct'))
+        self.assertEqual('Format registered lazily',
+                         my_format_registry.get_help('lazy'))
         self.assertEqual('Format using knits', 
                          my_format_registry.get_help('knit'))
         self.assertEqual('Format using knits', 
@@ -117,7 +112,7 @@ class TestFormatRegistry(TestCase):
         self.assertContainsRe(new, 
             '  knit/default:\n    \(native\) Format using knits\n')
         self.assertContainsRe(deprecated, 
-            '  direct:\n    \(native\) Format registered directly\n')
+            '  lazy:\n    \(native\) Format registered lazily\n')
 
 class SampleBranch(bzrlib.branch.Branch):
     """A dummy branch for guess what, dummy use."""

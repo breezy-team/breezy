@@ -1966,22 +1966,13 @@ class BzrDirFormatRegistry(registry.Registry):
         """
         # This should be expanded to support setting WorkingTree and Branch
         # formats, once BzrDirMetaFormat1 supports that.
-        def helper(key):
+        def helper():
             import bzrlib.repository
             repo_format = getattr(bzrlib.repository, repo)
             bd = BzrDirMetaFormat1()
             bd.repository_format = repo_format()
             return bd
         self.register(key, helper, help, native, deprecated)
-
-    def register_factory(self, key, factory, help, native=True, 
-                         deprecated=False):
-        """Register a BzrDirFormat factory.
-
-        The factory must be a callable (usually a class), and produce an
-        instance of the BzrDirFormat when called.
-        """
-        self.register(key, lambda x: factory(), help, native, deprecated)
 
     def register(self, key, factory, help, native=True, deprecated=False):
         """Register a BzrDirFormat factory.
@@ -1995,10 +1986,10 @@ class BzrDirFormatRegistry(registry.Registry):
         registry.Registry.register(self, key, factory, help, 
             BzrDirFormatInfo(native, deprecated))
 
-    def register_lazy(self):
-        # prevent use of Registry.register_lazy
-        # lazy-loading can be done by registering a suitable factory.
-        raise NotImplementedError(self.register_lazy)
+    def register_lazy(self, key, module_name, member_name, help, native=True,
+                      deprecated=False):
+        registry.Registry.register_lazy(self, key, module_name, member_name, 
+            help, BzrDirFormatInfo(native, deprecated))
 
     def set_default(self, key):
         """Set the 'default' key to be a clone of the supplied key.
@@ -2009,7 +2000,7 @@ class BzrDirFormatRegistry(registry.Registry):
             self.get_help(key), info=self.get_info(key))
 
     def make_bzrdir(self, key):
-        return self.get(key)(key)
+        return self.get(key)()
 
     def help_topic(self, topic):
         output = textwrap.dedent("""\
@@ -2056,7 +2047,7 @@ class BzrDirFormatRegistry(registry.Registry):
 
 
 format_registry = BzrDirFormatRegistry()
-format_registry.register_factory('weave', BzrDirFormat6,
+format_registry.register('weave', BzrDirFormat6,
     'Pre-0.8 format.  Slower than knit and does not'
     ' support checkouts or shared repositories.', deprecated=True)
 format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
