@@ -72,10 +72,11 @@ import bzrlib.ui
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.errors import (BzrCheckError,
+from bzrlib.errors import (AlreadyVersionedError,
+                           BzrCheckError,
                            BzrError,
                            ConflictFormatError,
-                           WeaveRevisionNotPresent,
+                           FilesExist,                     
                            NotADirectory,
                            NotBranchError,
                            NotInWorkingDirectory,
@@ -83,6 +84,7 @@ from bzrlib.errors import (BzrCheckError,
                            NotVersionedError,
                            MergeModifiedFormatError,
                            UnsupportedOperation,
+                           WeaveRevisionNotPresent,
                            )
 from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID
 from bzrlib.lockable_files import LockableFiles, TransportLock
@@ -1045,7 +1047,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         inv = self.inventory
         to_abs = self.abspath(to_dir)
         if not isdir(to_abs):
-            raise NotADirectory(to_abs, extra="(Invalid move destination)")
+            raise NotADirectory(to_abs, extra="Invalid move destination")
         if not self.has_filename(to_dir):
             raise NotInWorkingDirectory(to_dir, extra=
                 "(Invalid move destination)")
@@ -1056,7 +1058,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             
         to_dir_ie = inv[to_dir_id]
         if to_dir_ie.kind != 'directory':
-            raise NotADirectory(to_abs, extra="(Invalid move destination)")
+            raise NotADirectory(to_abs, extra="Invalid move destination")
 
         # create rename entries and tuples
         for from_rel in from_paths:
@@ -1112,18 +1114,18 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
             # check the inventory for source and destination
             if from_id is None:
-                raise BzrError("can't rename: old name %r is not versioned" % 
-                               from_rel)
+                raise NotVersionedError(path=str(from_rel),
+                    contextInfo="Invalid move source")
             if to_id is not None:
-                raise BzrError("can't rename: new name %r is already"
-                               " versioned" % to_rel)
+                raise AlreadyVersionedError(path=str(to_rel),
+                    contextInfo="Invalid move destination")
 
             # try to determine the mode for rename (only change inv or change 
             # inv and file system)
             if after:
                 if not self.has_filename(to_rel):
-                    raise BzrError("can't rename: new working file %r does not"
-                                   " exist" % to_rel)
+                    raise NoSuchFile(path=str(to_rel),
+                        extra="New file has not been created yet")
                 only_change_inv = True
             elif not self.has_filename(from_rel) and self.has_filename(to_rel):
                 only_change_inv = True
@@ -1133,12 +1135,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 # something is wrong, so lets determine what exactly
                 if not self.has_filename(from_rel) and \
                    not self.has_filename(to_rel):
-                    raise BzrError("can't rename: neither old name %r nor new"
-                                   " name %r exist" % (from_rel, to_rel))
+                    raise PathsDoNotExist(paths=(str(from_rel), str(to_rel)),
+                        extra="can't rename")
                 else:
-                    raise BzrError("can't rename: both, old name %r and new"
-                                   " name %r exist. Use option '--after' to"
-                                   " force rename." % (from_rel, to_rel))
+                    raise FilesExist(paths=(str(from_rel), str(to_rel)),
+                        extra="can't rename. Use option '--after' to"
+                              " force rename.")
             rename_entry.only_change_inv = only_change_inv                       
         return rename_entries
 

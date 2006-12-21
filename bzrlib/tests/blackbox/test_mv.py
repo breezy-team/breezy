@@ -171,7 +171,7 @@ class TestMove(TestCaseWithTransport):
     
         os.remove('a')
         self.run_bzr_error(
-            ["^bzr: ERROR: can't rename: new name .* is already versioned$"],
+            ["^bzr: ERROR: Invalid move destination: .* is already versioned$"],
             'mv', 'a', 'b')
         self.failIfExists('a')
         self.failUnlessExists('b')
@@ -245,8 +245,8 @@ class TestMove(TestCaseWithTransport):
         tree.commit('initial commit')
 
         self.run_bzr_error(
-            ["^bzr: ERROR: can't rename: both, old name .* and new name .*"
-             " exist. Use option '--after' to force rename."],
+            ["^bzr: ERROR: File\(s\) exist: .+ .+: can't rename."
+             " Use option '--after' to force rename."],
             'mv', 'a', 'b')
         self.failUnlessExists('a')
         self.failUnlessExists('b')
@@ -273,8 +273,8 @@ class TestMove(TestCaseWithTransport):
         tree.commit('initial commit')
 
         self.run_bzr_error(
-            ["^bzr: ERROR: can't rename: both, old name .* and new name .*"
-             " exist. Use option '--after' to force rename."],
+            ["^bzr: ERROR: File\(s\) exist: .+ .+: can't rename."
+             " Use option '--after' to force rename."],
             'mv', 'a1', 'a2', 'sub1')
         self.failUnlessExists('a1')
         self.failUnlessExists('a2')

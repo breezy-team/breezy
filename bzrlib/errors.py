@@ -319,6 +319,23 @@ class FileExists(PathError):
     _fmt = "File exists: %(path)r%(extra)s"
 
 
+class FilesExist(PathError):
+    
+    _fmt = "File(s) exist: %(paths_as_string)s%(extra)s"
+
+    # used when reporting that files do exist
+
+    def __init__(self, paths, extra=None):
+        # circular import
+        from bzrlib.osutils import quotefn
+        BzrError.__init__(self)
+        self.paths = paths
+        self.paths_as_string = ' '.join([quotefn(p) for p in paths])
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
+
 class NotADirectory(PathError):
 
     _fmt = "%(path)r is not a directory %(extra)s"
@@ -501,8 +518,29 @@ class IncompatibleRevision(BzrError):
         self.repo_format = repo_format
 
 
+class AlreadyVersionedError(BzrError):
+    #Used when a path is expected not to be versioned, but it is.
+    
+    _fmt = "%(contextInfo)s%(path)s is already versioned"
+
+    def __init__(self, path, contextInfo=None):
+        """Construct a new NotVersionedError.
+
+        :param path: This is the path which is versioned, 
+        which should be in a user friendly form.
+        :param contextInfo: If given, this is information about the context,
+        which could explain why this is expected to not be versioned.
+        """
+        BzrError.__init__(self)
+        self.path = path
+        if contextInfo is None:
+            self.contextInfo = ''
+        else:
+            self.contextInfo = contextInfo + ": "
+
+
 class NotVersionedError(BzrError):
-    #Used when a path is expected to be versioned, but is it is not.
+    #Used when a path is expected to be versioned, but it is not.
     
     _fmt = "%(contextInfo)s%(path)s is not versioned"
 
@@ -536,17 +574,21 @@ class PathsNotVersionedError(BzrError):
 
 class PathsDoNotExist(BzrError):
 
-    _fmt = "Path(s) do not exist: %(paths_as_string)s"
+    _fmt = "Path(s) do not exist: %(paths_as_string)s%(extra)s"
 
     # used when reporting that paths are neither versioned nor in the working
     # tree
 
-    def __init__(self, paths):
+    def __init__(self, paths, extra=None):
         # circular import
         from bzrlib.osutils import quotefn
         BzrError.__init__(self)
         self.paths = paths
         self.paths_as_string = ' '.join([quotefn(p) for p in paths])
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
 
 
 class BadFileKindError(BzrError):
