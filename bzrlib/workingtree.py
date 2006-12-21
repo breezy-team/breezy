@@ -1135,7 +1135,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     raise BzrError("can't rename: both, old name %r and new"
                                    " name %r exist. Use option '--after' to"
                                    " force rename." % (from_rel, to_rel))
-            rename_entry.set_only_change_inv(only_change_inv)                       
+            rename_entry.only_change_inv = only_change_inv                       
         return rename_entries
 
     def _move(self, rename_entries):
@@ -1168,10 +1168,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             try:
                 self._move_entry(entry, inverse=True)
             except OSError, e:
-                raise BzrError("error moving files. rollback failed. the"
+                raise BzrError("error moving files. Rollback failed. The"
                                " working tree is in an inconsistent state."
-                               " please consider doing a 'bzr revert'."
-                               " error message is: %s" % e[1])
+                               " Please consider doing a 'bzr revert'."
+                               " Error message is: %s" % e[1])
 
     def _move_entry(self, entry, inverse=False):
         inv = self.inventory
@@ -1197,8 +1197,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         This can change the directory or the filename or both.
 
-        rename_one has several 'modes' to work. First it can rename a physical 
-        file and change the file_id. That is the normal mode. Second it can 
+        rename_one has several 'modes' to work. First, it can rename a physical 
+        file and change the file_id. That is the normal mode. Second, it can 
         only change the file_id without touching any physical file. This is 
         the new mode introduced in version 0.13.
         
@@ -1268,9 +1268,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self.to_tail = to_tail
             self.to_parent_id = to_parent_id
             self.only_change_inv = False
-
-        def set_only_change_inv(self, only_change_inv):
-            self.only_change_inv = only_change_inv
 
     @needs_read_lock
     def unknowns(self):
