@@ -32,7 +32,7 @@ from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 from repository import (parse_svn_revision_id, generate_svn_revision_id, 
                         svk_feature_to_revision_id, revision_id_to_svk_feature,
-                        MAPPING_VERSION)
+                        MAPPING_VERSION, escape_svn_path, unescape_svn_path)
 
 
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
@@ -750,3 +750,27 @@ class RevisionIdMappingTest(TestCase):
               revision_id_to_svk_feature("svn-v%d:6@auuid-" % MAPPING_VERSION))
 
 
+class EscapeTest(TestCase):
+    def test_escape_svn_path_none(self):      
+        self.assertEqual("", escape_svn_path(""))
+
+    def test_escape_svn_path_simple(self):
+        self.assertEqual("ab", escape_svn_path("ab"))
+
+    def test_escape_svn_path_percent(self):
+        self.assertEqual("a%25b", escape_svn_path("a%b"))
+
+    def test_escape_svn_path_whitespace(self):
+        self.assertEqual("foobar%20", escape_svn_path("foobar "))
+
+    def test_escape_svn_path_slash(self):
+        self.assertEqual("foobar%2f", escape_svn_path("foobar/"))
+
+    def test_unescape_svn_path_slash(self):
+        self.assertEqual("foobar/", unescape_svn_path("foobar%2f"))
+
+    def test_unescape_svn_path_none(self):
+        self.assertEqual("foobar", unescape_svn_path("foobar"))
+
+    def test_unescape_svn_path_percent(self):
+        self.assertEqual("foobar%b", unescape_svn_path("foobar%25b"))
