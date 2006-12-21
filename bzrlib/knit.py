@@ -1014,12 +1014,16 @@ class _KnitComponentFile(object):
         self._create_parent_dir = create_parent_dir
         self._need_to_create = False
 
+    def _full_path(self):
+        """Return the full path to this file."""
+        return self._transport.base + self._filename
+
     def check_header(self, fp):
         line = fp.readline()
         if line == '':
             # An empty file can actually be treated as though the file doesn't
             # exist yet.
-            raise errors.NoSuchFile(self._transport.base + self._filename)
+            raise errors.NoSuchFile(self._full_path())
         if line != self.HEADER:
             raise KnitHeaderError(badline=line,
                               filename=self._transport.abspath(self._filename))
@@ -1326,7 +1330,8 @@ class _KnitIndex(_KnitComponentFile):
         if 'fulltext' in options:
             return 'fulltext'
         else:
-            assert 'line-delta' in options
+            if 'line-delta' not in options:
+                raise errors.KnitIndexUnknownMethod(self._full_path(), options)
             return 'line-delta'
 
     def get_options(self, version_id):

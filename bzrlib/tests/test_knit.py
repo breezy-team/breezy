@@ -19,6 +19,9 @@
 from cStringIO import StringIO
 import difflib
 
+from bzrlib import (
+    errors,
+    )
 from bzrlib.errors import (
     RevisionAlreadyPresent,
     KnitHeaderError,
@@ -484,7 +487,7 @@ class LowLevelKnitIndexTests(TestCase):
 
         self.assertEqual("fulltext", index.get_method(u"a"))
         self.assertEqual("line-delta", index.get_method(u"b"))
-        self.assertRaises(AssertionError, index.get_method, u"c")
+        self.assertRaises(errors.KnitIndexUnknownMethod, index.get_method, u"c")
 
     def test_get_options(self):
         transport = MockTransport([
