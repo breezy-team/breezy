@@ -95,6 +95,10 @@ def internal_tree_files(file_list, default_branch=u'.'):
 
 def get_format_type(typestring):
     """Parse and return a format specifier."""
+    # Have to use BzrDirMetaFormat1 directly, so that
+    # RepositoryFormat.set_default_format works
+    if typestring == "default":
+        return bzrdir.BzrDirMetaFormat1()
     try:
         return bzrdir.format_registry.make_bzrdir(typestring)
     except KeyError:
