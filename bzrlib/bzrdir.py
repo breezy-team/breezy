@@ -505,6 +505,10 @@ class BzrDir(object):
         :param transport: Transport containing the bzrdir.
         :param _unsupported: private.
         """
+        # FIXME: Put that outside the static method once I
+        # understand how to do it.
+        MAX_REDIRECTIONS = 8
+
         initial_base = transport.base
         redirected = True # to enter the loop
         redirections = 0
@@ -512,15 +516,11 @@ class BzrDir(object):
         # don't try to detect them, just getting out if too much
         # redirections occurs. The solution is outside: where the
         # loop is defined.
-        while redirected and redirections < 8:
+        while redirected and redirections < MAX_REDIRECTIONS:
             try:
-                transport.follow_redirections = False
                 format = BzrDirFormat.find_format(transport)
                 redirected = False
             except errors.RedirectRequested, e:
-                # In case someone above in the call stack want to
-                # continue using this transport
-                transport.follow_redirections = True
 
                 relpath = transport.relpath(e.source)
                 if not e.target.endswith(relpath):
@@ -1100,8 +1100,9 @@ class BzrDirFormat(object):
     def probe_transport(klass, transport):
         """Return the .bzrdir style transport present at URL."""
         try:
-            format_string = transport.get(
-                ".bzr/branch-format", hints={'follow_redirections':False}).read()
+            format_file = transport.get(".bzr/branch-format",
+                                        hints={'follow_redirections':False})
+            format_string = format_file.read()
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 

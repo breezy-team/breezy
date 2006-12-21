@@ -135,7 +135,7 @@ class HttpTransport_urllib(HttpTransportBase):
                 headers = {'Range': bytes}
 
         request = Request('GET', abspath, None, headers)
-        request.follow_redirections = getattr(hints, 'follow_redirections', True)
+        request.follow_redirections = hints.get('follow_redirections', True)
         response = self._perform(request)
 
         code = response.code

@@ -152,7 +152,7 @@ class PyCurlTransport(HttpTransportBase):
 
         return abspath, data, header
 
-    def _get_full(self, relpath, hints):
+    def _get_full(self, relpath, hints={}):
         """Make a request for the entire file"""
         curl = self._curl
         abspath, data, header = self._setup_get_request(curl, relpath)
