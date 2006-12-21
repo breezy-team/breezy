@@ -20,17 +20,71 @@
 import difflib
 
 
+from bzrlib import errors
 from bzrlib.errors import KnitError, RevisionAlreadyPresent, NoSuchFile
 from bzrlib.knit import (
+    KnitContent,
     KnitVersionedFile,
     KnitPlainFactory,
     KnitAnnotateFactory,
     WeaveToKnit)
 from bzrlib.osutils import split_lines
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import TransportLogger, get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.weave import Weave
+
+
+class KnitContentTests(TestCase):
+
+    def test_constructor(self):
+        content = KnitContent([])
+
+    def test_text(self):
+        content = KnitContent([])
+        self.assertEqual(content.text(), [])
+
+        content = KnitContent([("origin1", "text1"), ("origin2", "text2")])
+        self.assertEqual(content.text(), ["text1", "text2"])
+
+    def test_annotate(self):
+        content = KnitContent([])
+        self.assertEqual(content.annotate(), [])
+
+        content = KnitContent([("origin1", "text1"), ("origin2", "text2")])
+        self.assertEqual(content.annotate(),
+            [("origin1", "text1"), ("origin2", "text2")])
+
+    def test_annotate_iter(self):
+        content = KnitContent([])
+        it = content.annotate_iter()
+        self.assertRaises(StopIteration, it.next)
+
+        content = KnitContent([("origin1", "text1"), ("origin2", "text2")])
+        it = content.annotate_iter()
+        self.assertEqual(it.next(), ("origin1", "text1"))
+        self.assertEqual(it.next(), ("origin2", "text2"))
+        self.assertRaises(StopIteration, it.next)
+
+    def test_copy(self):
+        content = KnitContent([("origin1", "text1"), ("origin2", "text2")])
+        copy = content.copy()
+        self.assertIsInstance(copy, KnitContent)
+        self.assertEqual(copy.annotate(),
+            [("origin1", "text1"), ("origin2", "text2")])
+
+    def test_line_delta(self):
+        content1 = KnitContent([("", "a"), ("", "b")])
+        content2 = KnitContent([("", "a"), ("", "a"), ("", "c")])
+        self.assertEqual(content1.line_delta(content2),
+            [(1, 2, 2, [("", "a"), ("", "c")])])
+
+    def test_line_delta_iter(self):
+        content1 = KnitContent([("", "a"), ("", "b")])
+        content2 = KnitContent([("", "a"), ("", "a"), ("", "c")])
+        it = content1.line_delta_iter(content2)
+        self.assertEqual(it.next(), (1, 2, 2, [("", "a"), ("", "c")]))
+        self.assertRaises(StopIteration, it.next)
 
 
 class KnitTests(TestCaseWithTransport):
@@ -694,3 +748,19 @@ class TestKnitIndex(KnitTests):
         # And it shouldn't be modified
         self.assertEqual(['a-1'], idx._history)
         self.assertEqual({'a-1':('a-1', ['fulltext'], 0, 0, [], 0)}, idx._cache)
+
+    def test_knit_index_ignores_empty_files(self):
+        # There was a race condition in older bzr, where a ^C at the right time
+        # could leave an empty .kndx file, which bzr would later claim was a
+        # corrupted file since the header was not present. In reality, the file
+        # just wasn't created, so it should be ignored.
+        t = get_transport('.')
+        t.put_bytes('test.kndx', '')
+
+        knit = self.make_test_knit()
+
+    def test_knit_index_checks_header(self):
+        t = get_transport('.')
+        t.put_bytes('test.kndx', '# not really a knit header\n\n')
+
+        self.assertRaises(errors.KnitHeaderError, self.make_test_knit)

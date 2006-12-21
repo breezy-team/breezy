@@ -33,7 +33,7 @@ from bzrlib import (
 from bzrlib.smart import client, medium, protocol
 
 # must do this otherwise urllib can't parse the urls properly :(
-for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh']:
+for scheme in ['ssh', 'bzr', 'bzr+loopback', 'bzr+ssh', 'bzr+http']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
 
@@ -437,6 +437,60 @@ class SmartSSHTransport(RemoteTransport):
         client_medium = medium.SmartSSHClientMedium(_host, _port,
                                                     _username, _password)
         super(SmartSSHTransport, self).__init__(url, medium=client_medium)
+
+
+class SmartHTTPTransport(RemoteTransport):
+    """Just a way to connect between a bzr+http:// url and http://.
+    
+    This connection operates slightly differently than the SmartSSHTransport.
+    It uses a plain http:// transport underneath, which defines what remote
+    .bzr/smart URL we are connected to. From there, all paths that are sent are
+    sent as relative paths, this way, the remote side can properly
+    de-reference them, since it is likely doing rewrite rules to translate an
+    HTTP path into a local path.
+    """
+
+    def __init__(self, url, http_transport=None):
+        assert url.startswith('bzr+http://')
+
+        if http_transport is None:
+            http_url = url[len('bzr+'):]
+            self._http_transport = transport.get_transport(http_url)
+        else:
+            self._http_transport = http_transport
+        http_medium = self._http_transport.get_smart_medium()
+        super(SmartHTTPTransport, self).__init__(url, medium=http_medium)
+
+    def _remote_path(self, relpath):
+        """After connecting HTTP Transport only deals in relative URLs."""
+        if relpath == '.':
+            return ''
+        else:
+            return relpath
+
+    def abspath(self, relpath):
+        """Return the full url to the given relative path.
+        
+        :param relpath: the relative path or path components
+        :type relpath: str or list
+        """
+        return self._unparse_url(self._combine_paths(self._path, relpath))
+
+    def clone(self, relative_url):
+        """Make a new SmartHTTPTransport related to me.
+
+        This is re-implemented rather than using the default
+        SmartTransport.clone() because we must be careful about the underlying
+        http transport.
+        """
+        if relative_url:
+            abs_url = self.abspath(relative_url)
+        else:
+            abs_url = self.base
+        # By cloning the underlying http_transport, we are able to share the
+        # connection.
+        new_transport = self._http_transport.clone(relative_url)
+        return SmartHTTPTransport(abs_url, http_transport=new_transport)
 
 
 def get_test_permutations():

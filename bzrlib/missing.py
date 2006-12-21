@@ -34,7 +34,7 @@ def iter_log_data(revisions, revision_source, verbose):
             revision_tree = revision_source.revision_tree(rev_id)
             last_rev_id = rev_id
             last_tree = revision_tree
-            delta = parent_tree.changes_from(revision_tree)
+            delta = revision_tree.changes_from(parent_tree)
         else:
             delta = None
         yield revno, rev, delta

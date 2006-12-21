@@ -82,3 +82,13 @@ class TestBundle(TestCaseInTempDir):
         bi = read_bundle(StringIO(self.run_bzr('bundle', '-r', '-2..-1')[0]))
         self.assertRevisions(bi, ['revision3'])
         self.run_bzr('bundle', '../grandparent', '-r', '-2..-1', retcode=3)
+
+    def test_output(self):
+        # check output for consistency
+        # win32 stdout converts LF to CRLF,
+        # and this is breaks the created bundle
+        self.make_trees()        
+        os.chdir('branch')
+        stdout = self.run_bzr_subprocess('bundle')[0]
+        br = read_bundle(StringIO(stdout))
+        self.assertRevisions(br, ['revision3'])

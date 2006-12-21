@@ -128,26 +128,29 @@ class cmd_status(Command):
     This reports on versioned and unknown files, reporting them
     grouped by state.  Possible states are:
 
-    added
+    added / A
         Versioned in the working copy but not in the previous revision.
 
-    removed
+    removed / D
         Versioned in the previous revision but removed or deleted
         in the working copy.
 
-    renamed
+    renamed / R
         Path of this file changed from the previous revision;
         the text may also have changed.  This includes files whose
         parent directory was renamed.
 
-    modified
+    modified / M
         Text has changed since the previous revision.
 
-    unknown
+    unknown / ?
         Not versioned and not matching an ignore pattern.
 
     To see ignored files use 'bzr ignored'.  For details in the
     changes to file texts, use 'bzr diff'.
+    
+    --short gives a one character status flag for each item, similar
+    to the SVN's status command.
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
@@ -161,20 +164,21 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['show-ids', 'revision']
+    takes_options = ['show-ids', 'revision', 'short']
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
     
     @display_command
-    def run(self, show_ids=False, file_list=None, revision=None):
+    def run(self, show_ids=False, file_list=None, revision=None, short=False):
         from bzrlib.status import show_tree_status
 
         tree, file_list = tree_files(file_list)
             
         show_tree_status(tree, show_ids=show_ids,
                          specific_files=file_list, revision=revision,
-                         to_file=self.outf)
+                         to_file=self.outf,
+                         short=short)
 
 
 class cmd_cat_revision(Command):
@@ -1209,9 +1213,14 @@ class cmd_diff(Command):
     #       deleted files.
 
     # TODO: This probably handles non-Unix newlines poorly.
-    
+
     takes_args = ['file*']
-    takes_options = ['revision', 'diff-options', 'prefix']
+    takes_options = ['revision', 'diff-options',
+        Option('prefix', type=str,
+               short_name='p',
+               help='Set prefixes to added to old and new filenames, as '
+                    'two values separated by a colon.'),
+        ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
@@ -1227,11 +1236,15 @@ class cmd_diff(Command):
         elif prefix == '1':
             old_label = 'old/'
             new_label = 'new/'
-        else:
-            if not ':' in prefix:
-                 raise BzrCommandError(
-                     "--diff-prefix expects two values separated by a colon")
+        elif ':' in prefix:
             old_label, new_label = prefix.split(":")
+        else:
+            raise BzrCommandError(
+                "--prefix expects two values separated by a colon")
+
+        if revision and len(revision) > 2:
+            raise errors.BzrCommandError('bzr diff --revision takes exactly'
+                                         ' one or two revision specifiers')
         
         try:
             tree1, file_list = internal_tree_files(file_list)
@@ -1257,29 +1270,23 @@ class cmd_diff(Command):
                 tree1, tree2 = None, None
             else:
                 raise
-        if revision is not None:
-            if tree2 is not None:
-                raise errors.BzrCommandError("Can't specify -r with two branches")
-            if (len(revision) == 1) or (revision[1].spec is None):
-                return diff_cmd_helper(tree1, file_list, diff_options,
-                                       revision[0], 
-                                       old_label=old_label, new_label=new_label)
-            elif len(revision) == 2:
-                return diff_cmd_helper(tree1, file_list, diff_options,
-                                       revision[0], revision[1],
-                                       old_label=old_label, new_label=new_label)
-            else:
-                raise errors.BzrCommandError('bzr diff --revision takes exactly'
-                                             ' one or two revision identifiers')
-        else:
-            if tree2 is not None:
-                return show_diff_trees(tree1, tree2, sys.stdout, 
-                                       specific_files=file_list,
-                                       external_diff_options=diff_options,
-                                       old_label=old_label, new_label=new_label)
-            else:
-                return diff_cmd_helper(tree1, file_list, diff_options,
-                                       old_label=old_label, new_label=new_label)
+
+        if tree2 is not None:
+            if revision is not None:
+                # FIXME: but there should be a clean way to diff between
+                # non-default versions of two trees, it's not hard to do
+                # internally...
+                raise errors.BzrCommandError(
+                        "Sorry, diffing arbitrary revisions across branches "
+                        "is not implemented yet")
+            return show_diff_trees(tree1, tree2, sys.stdout, 
+                                   specific_files=file_list,
+                                   external_diff_options=diff_options,
+                                   old_label=old_label, new_label=new_label)
+
+        return diff_cmd_helper(tree1, file_list, diff_options,
+                               revision_specs=revision,
+                               old_label=old_label, new_label=new_label)
 
 
 class cmd_deleted(Command):
@@ -1371,11 +1378,13 @@ class cmd_log(Command):
                             help='show from oldest to newest'),
                      'timezone', 
                      Option('verbose', 
+                             short_name='v',
                              help='show files changed in each revision'),
                      'show-ids', 'revision',
                      'log-format',
                      'line', 'long', 
                      Option('message',
+                            short_name='m',
                             help='show revisions whose message matches this regexp',
                             type=str),
                      'short',
@@ -1512,8 +1521,8 @@ class cmd_touching_revisions(Command):
 class cmd_ls(Command):
     """List files in a tree.
     """
+
     # TODO: Take a revision or remote path and list that tree instead.
-    hidden = True
     takes_options = ['verbose', 'revision',
                      Option('non-recursive',
                             help='don\'t recurse into sub-directories'),
@@ -1524,12 +1533,16 @@ class cmd_ls(Command):
                      Option('ignored', help='Print ignored files'),
 
                      Option('null', help='Null separate the files'),
+                     'kind',
                     ]
     @display_command
     def run(self, revision=None, verbose=False, 
             non_recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
-            null=False):
+            null=False, kind=None):
+
+        if kind and kind not in ('file', 'directory', 'symlink'):
+            raise errors.BzrCommandError('invalid kind specified')
 
         if verbose and null:
             raise errors.BzrCommandError('Cannot set both --verbose and --null')
@@ -1546,12 +1559,14 @@ class cmd_ls(Command):
             tree = tree.branch.repository.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
 
-        for fp, fc, kind, fid, entry in tree.list_files(include_root=False):
+        for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
             if fp.startswith(relpath):
                 fp = fp[len(relpath):]
                 if non_recursive and '/' in fp:
                     continue
                 if not all and not selection[fc]:
+                    continue
+                if kind is not None and fkind != kind:
                     continue
                 if verbose:
                     kindch = entry.kind_character()
@@ -1577,20 +1592,32 @@ class cmd_ignore(Command):
     To remove patterns from the ignore list, edit the .bzrignore file.
 
     Trailing slashes on patterns are ignored. 
-    If the pattern contains a slash, it is compared to the whole path
-    from the branch root.  Otherwise, it is compared to only the last
-    component of the path.  To match a file only in the root directory,
-    prepend './'.
+    If the pattern contains a slash or is a regular expression, it is compared 
+    to the whole path from the branch root.  Otherwise, it is compared to only
+    the last component of the path.  To match a file only in the root 
+    directory, prepend './'.
 
     Ignore patterns specifying absolute paths are not allowed.
 
-    Ignore patterns are case-insensitive on case-insensitive systems.
+    Ignore patterns may include globbing wildcards such as:
+      ? - Matches any single character except '/'
+      * - Matches 0 or more characters except '/'
+      /**/ - Matches 0 or more directories in a path
+      [a-z] - Matches a single character from within a group of characters
+ 
+    Ignore patterns may also be Python regular expressions.  
+    Regular expression ignore patterns are identified by a 'RE:' prefix 
+    followed by the regular expression.  Regular expression ignore patterns
+    may not include named or numbered groups.
 
-    Note: wildcards must be quoted from the shell on Unix.
+    Note: ignore patterns containing shell wildcards must be quoted from 
+    the shell on Unix.
 
     examples:
         bzr ignore ./Makefile
         bzr ignore '*.class'
+        bzr ignore 'lib/**/*.o'
+        bzr ignore 'RE:lib/.*\.o'
     """
     takes_args = ['name_pattern*']
     takes_options = [
@@ -1734,6 +1761,7 @@ class cmd_cat(Command):
 
     takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
+    encoding_type = 'exact'
 
     @display_command
     def run(self, filename, revision=None, name_from_revision=False):
@@ -1745,13 +1773,14 @@ class cmd_cat(Command):
         try:
             tree, relpath = WorkingTree.open_containing(filename)
             b = tree.branch
-        except errors.NotBranchError:
+        except (errors.NotBranchError, errors.NotLocalUrl):
             pass
 
-        if tree is None:
-            b, relpath = Branch.open_containing(filename)
         if revision is not None and revision[0].get_branch() is not None:
             b = Branch.open(revision[0].get_branch())
+        if tree is None:
+            b, relpath = Branch.open_containing(filename)
+            tree = b.basis_tree()
         if revision is None:
             revision_id = b.last_revision()
         else:
@@ -1812,6 +1841,7 @@ class cmd_commit(Command):
                      Option('unchanged',
                             help='commit even if nothing has changed'),
                      Option('file', type=str, 
+                            short_name='F',
                             argname='msgfile',
                             help='file containing commit message'),
                      Option('strict',
@@ -1848,20 +1878,25 @@ class cmd_commit(Command):
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
-        if message is None and not file:
-            template = make_commit_message_template(tree, selected_list)
-            message = edit_commit_message(template)
-            if message is None:
-                raise errors.BzrCommandError("please specify a commit message"
-                                             " with either --message or --file")
-        elif message and file:
-            raise errors.BzrCommandError("please specify either --message or --file")
-        
-        if file:
-            message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
-        if message == "":
-            raise errors.BzrCommandError("empty commit message specified")
+        def get_message(commit_obj):
+            """Callback to get commit message"""
+            my_message = message
+            if my_message is None and not file:
+                template = make_commit_message_template(tree, selected_list)
+                my_message = edit_commit_message(template)
+                if my_message is None:
+                    raise errors.BzrCommandError("please specify a commit"
+                        " message with either --message or --file")
+            elif my_message and file:
+                raise errors.BzrCommandError(
+                    "please specify either --message or --file")
+            if file:
+                my_message = codecs.open(file, 'rt', 
+                                         bzrlib.user_encoding).read()
+            if my_message == "":
+                raise errors.BzrCommandError("empty commit message specified")
+            return my_message
         
         if verbose:
             reporter = ReportCommitToLog()
@@ -1869,7 +1904,8 @@ class cmd_commit(Command):
             reporter = NullCommitReporter()
 
         try:
-            tree.commit(message, specific_files=selected_list,
+            tree.commit(message_callback=get_message,
+                        specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
                         reporter=reporter)
         except PointlessCommit:
@@ -2055,15 +2091,23 @@ class cmd_selftest(Command):
                      Option('cache-dir', type=str,
                             help='a directory to cache intermediate'
                                  ' benchmark steps'),
+                     Option('clean-output',
+                            help='clean temporary tests directories'
+                                 ' without running tests'),
                      ]
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
-            lsprof_timed=None, cache_dir=None):
+            lsprof_timed=None, cache_dir=None, clean_output=False):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
+
+        if clean_output:
+            from bzrlib.tests import clean_selftest_output
+            clean_selftest_output()
+            return 0
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
@@ -2079,7 +2123,7 @@ class cmd_selftest(Command):
             if verbose is None:
                 verbose = True
             # TODO: should possibly lock the history file...
-            benchfile = open(".perf_history", "at")
+            benchfile = open(".perf_history", "at", buffering=1)
         else:
             test_suite_factory = None
             if verbose is None:
@@ -2195,9 +2239,14 @@ class cmd_merge(Command):
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
                      Option('show-base', help="Show base revision text in "
-                            "conflicts"), 
+                            "conflicts"),
                      Option('uncommitted', help='Apply uncommitted changes'
-                            ' from a working copy, instead of branch changes')]
+                            ' from a working copy, instead of branch changes'),
+                     Option('pull', help='If the destination is already'
+                             ' completely merged into the source, pull from the'
+                             ' source rather than merging. When this happens,'
+                             ' you do not need to commit the result.'),
+                     ]
 
     def help(self):
         from inspect import getdoc
@@ -2205,7 +2254,7 @@ class cmd_merge(Command):
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False, 
-            uncommitted=False):
+            uncommitted=False, pull=False):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2276,6 +2325,7 @@ class cmd_merge(Command):
                     merge_type=merge_type,
                     reprocess=reprocess,
                     show_base=show_base,
+                    pull=pull,
                     pb=pb, file_list=interesting_files)
             finally:
                 pb.finished()
@@ -2660,11 +2710,13 @@ class cmd_annotate(Command):
     takes_args = ['filename']
     takes_options = [Option('all', help='show annotations on all lines'),
                      Option('long', help='show date in annotations'),
-                     'revision'
+                     'revision',
+                     'show-ids',
                      ]
 
     @display_command
-    def run(self, filename, all=False, long=False, revision=None):
+    def run(self, filename, all=False, long=False, revision=None,
+            show_ids=False):
         from bzrlib.annotate import annotate_file
         tree, relpath = WorkingTree.open_containing(filename)
         branch = tree.branch
@@ -2679,7 +2731,8 @@ class cmd_annotate(Command):
             file_id = tree.inventory.path2id(relpath)
             tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
-            annotate_file(branch, file_version, file_id, long, all, sys.stdout)
+            annotate_file(branch, file_version, file_id, long, all, sys.stdout,
+                          show_ids=show_ids)
         finally:
             branch.unlock()
 
@@ -2934,6 +2987,7 @@ def _merge_helper(other_revision, base_revision,
                   this_dir=None, backup_files=False,
                   merge_type=None,
                   file_list=None, show_base=False, reprocess=False,
+                  pull=False,
                   pb=DummyProgress()):
     """Merge changes into a tree.
 
@@ -2988,6 +3042,12 @@ def _merge_helper(other_revision, base_revision,
         if merger.base_rev_id == merger.other_rev_id:
             note('Nothing to do.')
             return 0
+        if file_list is None:
+            if pull and merger.base_rev_id == merger.this_rev_id:
+                count = merger.this_tree.pull(merger.this_branch,
+                        False, merger.other_rev_id)
+                note('%d revision(s) pulled.' % (count,))
+                return 0
         merger.backup_files = backup_files
         merger.merge_type = merge_type 
         merger.set_interesting_files(file_list)

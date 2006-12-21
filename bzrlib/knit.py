@@ -89,6 +89,7 @@ from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
      sha_strings
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.tsort import topo_sort
+import bzrlib.ui
 import bzrlib.weave
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 
@@ -118,8 +119,7 @@ class KnitContent(object):
 
     def annotate_iter(self):
         """Yield tuples of (origin, text) for each content line."""
-        for origin, text in self._lines:
-            yield origin, text
+        return iter(self._lines)
 
     def annotate(self):
         """Return a list of (origin, text) tuples."""
@@ -127,14 +127,14 @@ class KnitContent(object):
 
     def line_delta_iter(self, new_lines):
         """Generate line-based delta from this content to new_lines."""
-        new_texts = [text for origin, text in new_lines._lines]
-        old_texts = [text for origin, text in self._lines]
+        new_texts = new_lines.text()
+        old_texts = self.text()
         s = KnitSequenceMatcher(None, old_texts, new_texts)
-        for op in s.get_opcodes():
-            if op[0] == 'equal':
+        for tag, i1, i2, j1, j2 in s.get_opcodes():
+            if tag == 'equal':
                 continue
-            #     ofrom   oto   length        data
-            yield (op[1], op[2], op[4]-op[3], new_lines._lines[op[3]:op[4]])
+            # ofrom, oto, length, data
+            yield i1, i2, j2 - j1, new_lines._lines[j1:j2]
 
     def line_delta(self, new_lines):
         return list(self.line_delta_iter(new_lines))
@@ -175,8 +175,7 @@ class KnitAnnotateFactory(_KnitFactory):
         return KnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
-        for result_item in self.parse_line_delta[lines]:
-            yield result_item
+        return iter(self.parse_line_delta(lines))
 
     def parse_line_delta(self, lines, version):
         """Convert a line based delta into internal representation.
@@ -203,6 +202,25 @@ class KnitAnnotateFactory(_KnitFactory):
                 contents.append((decode_utf8(origin), text))
             result.append((start, end, count, contents))
         return result
+
+    def get_fulltext_content(self, lines):
+        """Extract just the content lines from a fulltext."""
+        return (line.split(' ', 1)[1] for line in lines)
+
+    def get_linedelta_content(self, lines):
+        """Extract just the content from a line delta.
+
+        This doesn't return all of the extra information stored in a delta.
+        Only the actual content lines.
+        """
+        lines = iter(lines)
+        next = lines.next
+        for header in lines:
+            header = header.split(',')
+            count = int(header[2])
+            for i in xrange(count):
+                origin, text = next().split(' ', 1)
+                yield text
 
     def lower_fulltext(self, content):
         """convert a fulltext content record into a serializable form.
@@ -240,15 +258,36 @@ class KnitPlainFactory(_KnitFactory):
         return self.make(content, version)
 
     def parse_line_delta_iter(self, lines, version):
-        while lines:
-            header = lines.pop(0)
+        cur = 0
+        num_lines = len(lines)
+        while cur < num_lines:
+            header = lines[cur]
+            cur += 1
             start, end, c = [int(n) for n in header.split(',')]
-            yield start, end, c, zip([version] * c, lines[:c])
-            del lines[:c]
+            yield start, end, c, zip([version] * c, lines[cur:cur+c])
+            cur += c
 
     def parse_line_delta(self, lines, version):
         return list(self.parse_line_delta_iter(lines, version))
-    
+
+    def get_fulltext_content(self, lines):
+        """Extract just the content lines from a fulltext."""
+        return iter(lines)
+
+    def get_linedelta_content(self, lines):
+        """Extract just the content from a line delta.
+
+        This doesn't return all of the extra information stored in a delta.
+        Only the actual content lines.
+        """
+        lines = iter(lines)
+        next = lines.next
+        for header in lines:
+            header = header.split(',')
+            count = int(header[2])
+            for i in xrange(count):
+                yield next()
+
     def lower_fulltext(self, content):
         return content.text()
 
@@ -794,8 +833,7 @@ class KnitVersionedFile(VersionedFile):
                         assert content is None
                         content = self.factory.parse_fulltext(data, version_idx)
                     elif method == 'line-delta':
-                        delta = self.factory.parse_line_delta(data[:], 
-                                                              version_idx)
+                        delta = self.factory.parse_line_delta(data, version_idx)
                         content = content.copy()
                         content._lines = self._apply_delta(content._lines, 
                                                            delta)
@@ -827,16 +865,14 @@ class KnitVersionedFile(VersionedFile):
         # but we need to setup a list of records to visit.
         # we need version_id, position, length
         version_id_records = []
-        requested_versions = list(version_ids)
+        requested_versions = set(version_ids)
         # filter for available versions
         for version_id in requested_versions:
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
         # get a in-component-order queue:
-        version_ids = []
         for version_id in self.versions():
             if version_id in requested_versions:
-                version_ids.append(version_id)
                 data_pos, length = self._index.get_position(version_id)
                 version_id_records.append((version_id, data_pos, length))
 
@@ -846,16 +882,15 @@ class KnitVersionedFile(VersionedFile):
             pb.update('Walking content.', version_idx, total)
             method = self._index.get_method(version_id)
             version_idx = self._index.lookup(version_id)
+
             assert method in ('fulltext', 'line-delta')
             if method == 'fulltext':
-                content = self.factory.parse_fulltext(data, version_idx)
-                for line in content.text():
-                    yield line
+                line_iterator = self.factory.get_fulltext_content(data)
             else:
-                delta = self.factory.parse_line_delta(data, version_idx)
-                for start, end, count, lines in delta:
-                    for origin, line in lines:
-                        yield line
+                line_iterator = self.factory.get_linedelta_content(data)
+            for line in line_iterator:
+                yield line
+
         pb.update('Walking content.', total, total)
         
     def num_versions(self):
@@ -981,8 +1016,13 @@ class _KnitComponentFile(object):
 
     def check_header(self, fp):
         line = fp.readline()
+        if line == '':
+            # An empty file can actually be treated as though the file doesn't
+            # exist yet.
+            raise errors.NoSuchFile(self._transport.base + self._filename)
         if line != self.HEADER:
-            raise KnitHeaderError(badline=line)
+            raise KnitHeaderError(badline=line,
+                              filename=self._transport.abspath(self._filename))
 
     def commit(self):
         """Commit is a nop."""

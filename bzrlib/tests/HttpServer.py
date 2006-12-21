@@ -88,20 +88,36 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
     _tail_regexp = re.compile(r'^-(?P<tail>\d+)$')
 
     def parse_ranges(self, ranges_header):
-        """Parse the range header value and returns ranges and tail"""
+        """Parse the range header value and returns ranges and tail.
+
+        RFC2616 14.35 says that syntactically invalid range
+        specifiers MUST be ignored. In that case, we return 0 for
+        tail and [] for ranges.
+        """
         tail = 0
         ranges = []
-        assert ranges_header.startswith('bytes=')
+        if not ranges_header.startswith('bytes='):
+            # Syntactically invalid header
+            return 0, []
+
         ranges_header = ranges_header[len('bytes='):]
         for range_str in ranges_header.split(','):
+            # FIXME: RFC2616 says end is optional and default to file_size
             range_match = self._range_regexp.match(range_str)
             if range_match is not None:
-                ranges.append((int(range_match.group('start')),
-                               int(range_match.group('end'))))
+                start = int(range_match.group('start'))
+                end = int(range_match.group('end'))
+                if start > end:
+                    # Syntactically invalid range
+                    return 0, []
+                ranges.append((start, end))
             else:
                 tail_match = self._tail_regexp.match(range_str)
                 if tail_match is not None:
                     tail = int(tail_match.group('tail'))
+                else:
+                    # Syntactically invalid range
+                    return 0, []
         return tail, ranges
 
     def send_range_content(self, file, start, length):
@@ -159,7 +175,7 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
             file = open(path, 'rb')
         except IOError:
             self.send_error(404, "File not found")
-            return None
+            return
 
         file_size = os.fstat(file.fileno())[6]
         tail, ranges = self.parse_ranges(ranges_header_value)
@@ -167,21 +183,33 @@ class TestingHTTPRequestHandler(SimpleHTTPRequestHandler):
         if tail != 0:
             ranges.append((file_size - tail, file_size))
 
-        ranges_valid = True
+        self._satisfiable_ranges = True
         if len(ranges) == 0:
-            ranges_valid = False
+            self._satisfiable_ranges = False
         else:
-            for (start, end) in ranges:
-                if start >= file_size or end >= file_size:
-                    ranges_valid = False
-                    break
-        if not ranges_valid:
-            # RFC2616 14-16 says that invalid Range headers
-            # should be ignored and in that case, the whole file
-            # should be returned as if no Range header was
-            # present
-            file.close() # Will be reopened by the following call
-            return SimpleHTTPRequestHandler.do_GET(self)
+            def check_range(range_specifier):
+                start, end = range_specifier
+                # RFC2616 14.35, ranges are invalid if start >= file_size
+                if start >= file_size:
+                    self._satisfiable_ranges = False # Side-effect !
+                    return 0, 0
+                # RFC2616 14.35, end values should be truncated
+                # to file_size -1 if they exceed it
+                end = min(end, file_size - 1)
+                return start, end
+
+            ranges = map(check_range, ranges)
+
+        if not self._satisfiable_ranges:
+            # RFC2616 14.16 and 14.35 says that when a server
+            # encounters unsatisfiable range specifiers, it
+            # SHOULD return a 416.
+            file.close()
+            # FIXME: We SHOULD send a Content-Range header too,
+            # but the implementation of send_error does not
+            # allows that. So far.
+            self.send_error(416, "Requested range not satisfiable")
+            return
 
         if len(ranges) == 1:
             (start, end) = ranges[0]
@@ -248,8 +276,9 @@ class HttpServer(Server):
     def _http_start(self):
         httpd = None
         httpd = self._get_httpd()
-        host, port = httpd.socket.getsockname()
-        self._http_base_url = '%s://localhost:%s/' % (self._url_protocol, port)
+        host, self.port = httpd.socket.getsockname()
+        self._http_base_url = '%s://localhost:%s/' % (self._url_protocol,
+                                                      self.port)
         self._http_starting.release()
         httpd.socket.settimeout(0.1)
 
@@ -269,8 +298,6 @@ class HttpServer(Server):
         else:
             remote_path = '/'.join(path_parts)
 
-        self._http_starting.acquire()
-        self._http_starting.release()
         return self._http_base_url + remote_path
 
     def log(self, format, *args):
@@ -293,18 +320,15 @@ class HttpServer(Server):
         self._http_thread = threading.Thread(target=self._http_start)
         self._http_thread.setDaemon(True)
         self._http_thread.start()
-        self._http_proxy = os.environ.get("http_proxy")
-        if self._http_proxy is not None:
-            del os.environ["http_proxy"]
+        # Wait for the server thread to start (i.e release the lock)
+        self._http_starting.acquire()
+        self._http_starting.release()
         self.logs = []
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
         self._http_running = False
         self._http_thread.join()
-        if self._http_proxy is not None:
-            import os
-            os.environ["http_proxy"] = self._http_proxy
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""

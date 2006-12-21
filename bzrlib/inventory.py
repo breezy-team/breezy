@@ -42,6 +42,7 @@ from bzrlib import (
     generate_ids,
     osutils,
     symbol_versioning,
+    workingtree,
     )
 """)
 
@@ -1088,7 +1089,7 @@ class Inventory(object):
                 file_id = generate_ids.gen_root_id()
             self.root = InventoryDirectory(file_id, '', None)
             self._byid = {self.root.file_id: self.root}
-            return
+            return self.root
         else:
             parent_path = parts[:-1]
             parent_id = self.path2id(parent_path)

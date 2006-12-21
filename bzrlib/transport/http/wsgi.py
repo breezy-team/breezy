@@ -27,14 +27,18 @@ from bzrlib.transport import chroot, get_transport
 from bzrlib.urlutils import local_path_to_url
     
 
-def make_app(root, prefix, path_var):
+def make_app(root, prefix, path_var, readonly=True):
     """Convenience function to construct a WSGI bzr smart server.
     
     :param root: a local path that requests will be relative to.
     :param prefix: See RelpathSetter.
     :param path_var: See RelpathSetter.
     """
-    base_transport = get_transport('readonly+' + local_path_to_url(root))
+    local_url = local_path_to_url(root)
+    if readonly:
+        base_transport = get_transport('readonly+' + local_url)
+    else:
+        base_transport = get_transport(local_url)
     app = SmartWSGIApp(base_transport)
     app = RelpathSetter(app, prefix, path_var)
     return app

@@ -1193,6 +1193,9 @@ register_lazy_transport('vfat+',
 register_lazy_transport('bzr://',
                         'bzrlib.transport.remote',
                         'SmartTCPTransport')
+register_lazy_transport('bzr+http://',
+                        'bzrlib.transport.remote',
+                        'SmartHTTPTransport')
 register_lazy_transport('bzr+ssh://',
                         'bzrlib.transport.remote',
                         'SmartSSHTransport')

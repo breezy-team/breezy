@@ -106,7 +106,7 @@ class TextRevisionStore(RevisionStore):
         try:
             return self.text_store.get(revision_id)
         except (IndexError, KeyError):
-            raise bzrlib.errors.NoSuchRevision(self, revision_id)
+            raise errors.NoSuchRevision(self, revision_id)
 
     def _get_signature_text(self, revision_id, transaction):
         """See RevisionStore._get_signature_text()."""

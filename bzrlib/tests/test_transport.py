@@ -304,15 +304,15 @@ class ChrootDecoratorTransportTest(TestCase):
         self.assertEqual('/B/', transport.chroot_relative)
 
     def test_append_file(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.append_file, '/foo', None)
 
     def test_append_bytes(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.append_bytes, '/foo', 'bytes')
 
     def test_clone(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         # relpath from root and root path are the same
         relpath_cloned = transport.clone('foo')
         abspath_cloned = transport.clone('/foo')
@@ -322,71 +322,71 @@ class ChrootDecoratorTransportTest(TestCase):
             abspath_cloned.chroot_relative)
         transport = transport.clone('subdir')
         # clone preserves chroot_url and adjusts chroot_relative
-        self.assertEqual('file:///foo/bar/', transport.chroot_url)
+        self.assertEqual('memory:///foo/bar/', transport.chroot_url)
         self.assertEqual('/subdir/', transport.chroot_relative)
         transport = transport.clone('/otherdir')
         # clone preserves chroot_url and adjusts chroot_relative
-        self.assertEqual('file:///foo/bar/', transport.chroot_url)
+        self.assertEqual('memory:///foo/bar/', transport.chroot_url)
         self.assertEqual('/otherdir/', transport.chroot_relative)
 
     def test_delete(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.delete, '/foo')
 
     def test_delete_tree(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.delete_tree, '/foo')
 
     def test_get(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.get, '/foo')
 
     def test_get_bytes(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.get_bytes, '/foo')
 
     def test_has(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.has, '/foo')
 
     def test_list_dir(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.list_dir, '/foo')
 
     def test_lock_read(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.lock_read, '/foo')
 
     def test_lock_write(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.lock_write, '/foo')
 
     def test_mkdir(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.mkdir, '/foo')
 
     def test_put_bytes(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.put_bytes, '/foo', 'bytes')
 
     def test_put_file(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.put_file, '/foo', None)
 
     def test_rename(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.rename, '/aaa', 'bbb')
         self.assertRaises(PathNotChild, transport.rename, 'ccc', '/d')
 
     def test_rmdir(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.rmdir, '/foo')
 
     def test_stat(self):
-        transport = get_transport('chroot+file:///foo/bar')
+        transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.stat, '/foo')
 
-        
+
 class ReadonlyDecoratorTransportTest(TestCase):
     """Readonly decoration specific tests."""
 
