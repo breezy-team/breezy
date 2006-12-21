@@ -492,16 +492,28 @@ class IncompatibleRevision(BzrError):
 
 
 class NotVersionedError(BzrError):
+    #Used when a path is expected to be versioned, but is it is not.
+    
+    _fmt = "%(contextInfo)s%(path)s is not versioned"
 
-    _fmt = "%(path)s is not versioned"
+    def __init__(self, path, contextInfo=None):
+        """Construct a new NotVersionedError.
 
-    def __init__(self, path):
+        :param path: This is the path which is not versioned, 
+        which should be in a user friendly form.
+        :param contextInfo: If given, this is information about the context,
+        which could explain why this is expected to be versioned.
+        """
         BzrError.__init__(self)
         self.path = path
-
-
+        if contextInfo is None:
+            self.contextInfo = ''
+        else:
+            self.contextInfo = contextInfo + ": "
+        
+        
 class PathsNotVersionedError(BzrError):
-    # used when reporting several paths are not versioned
+    # used when reporting several paths which are not versioned
 
     _fmt = "Path(s) are not versioned: %(paths_as_string)s"
 

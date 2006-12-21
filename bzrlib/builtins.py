@@ -472,10 +472,9 @@ class cmd_mv(Command):
     """
 
     takes_args = ['names*']
-    takes_options = [Option("after", help="move only the bzr identifier of the"
-                                          " file (file has already been" 
-                                          " moved). Use this flag if bzr is"
-                                          " not able to detect this itself.")]
+    takes_options = [Option("after", help="move only the bzr identifier"
+        " of the file (file has already been moved). Use this flag if"
+        " bzr is not able to detect this itself.")]
     aliases = ['move', 'rename']
     encoding_type = 'replace'
 

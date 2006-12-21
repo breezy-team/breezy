@@ -78,7 +78,7 @@ class TestMove(TestCaseWithTransport):
         tree.add(['test.txt'])
 
         self.run_bzr_error(
-            ["^bzr: ERROR: destination .* is not a versioned directory$"],
+            ["^bzr: ERROR: Invalid destination: .* is not versioned$"],
             'mv', 'test.txt', 'sub1')
         
         self.run_bzr_error(
@@ -228,8 +228,8 @@ class TestMove(TestCaseWithTransport):
         tree.commit('initial commit')
 
         os.rename('a1', 'sub1/a1')
-        self.run_bzr_error(
-            ["^bzr: ERROR: destination .* is not a versioned directory$"],
+        self.run_bzr_error(            
+            ["^bzr: ERROR: Invalid destination: .* is not versioned$"],
             'mv', 'a1', 'a2', 'sub1')
         self.failIfExists('a1')
         self.failUnlessExists('a2')
@@ -295,4 +295,3 @@ class TestMove(TestCaseWithTransport):
         self.failUnlessExists('a2')
         self.failUnlessExists('sub1/a1')
         self.failUnlessExists('sub1/a2')
-

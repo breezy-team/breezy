@@ -1023,7 +1023,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         Everything else results in an error.
 
         This returns a list of (from_path, to_path) pairs for each
-        entry that is moved.
+        entry, that is moved.
         """
         rename_entries = []
         rename_tuples = []
@@ -1048,8 +1048,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             raise BzrError("destination %r not in working directory" % to_abs)
         to_dir_id = inv.path2id(to_dir)
         if to_dir_id is None:
-            raise BzrError("destination %r is not a versioned"
-                           " directory" % to_dir)
+            raise NotVersionedError(path=str(to_dir),
+                contextInfo="Invalid destination")
+            
         to_dir_ie = inv[to_dir_id]
         if to_dir_ie.kind != 'directory':
             raise BzrError("destination %r is not a directory" % to_abs)
