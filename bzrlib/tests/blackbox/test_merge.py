@@ -239,3 +239,33 @@ class TestMerge(ExternalBase):
         tree_b.revert([])
         self.run_bzr_error(('Cannot use --uncommitted and --revision',), 
                            'merge', '../a', '--uncommitted', '-r1')
+
+    def pullable_branch(self):
+        os.mkdir('a')
+        os.chdir('a')
+        self.example_branch()
+        os.chdir('..')
+        self.runbzr('branch a b')
+        os.chdir('b')
+        file('goodbye', 'wt').write('quux')
+        self.runbzr(['commit', '-m', "mode u's are always good"])
+        os.chdir('../a')
+
+    def pullable_branch(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/file'])
+        tree_a.add(['file'])
+        self.id1 = tree_a.commit('commit 1')
+        
+        tree_b = self.make_branch_and_tree('b')
+        tree_b.pull(tree_a.branch)
+        file('b/file', 'wb').write('foo')
+        self.id2 = tree_b.commit('commit 2')
+
+    def test_merge_pull(self):
+        self.pullable_branch()
+        os.chdir('a')
+        (out, err) = self.run_bzr('merge', '--pull', '../b')
+        self.assertContainsRe(err, '1 revision\\(s\\) pulled')
+        tree_a = WorkingTree.open('.')
+        self.assertEqual([self.id2], tree_a.get_parent_ids())

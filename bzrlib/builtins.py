@@ -1217,6 +1217,7 @@ class cmd_diff(Command):
     takes_args = ['file*']
     takes_options = ['revision', 'diff-options',
         Option('prefix', type=str,
+               short_name='p',
                help='Set prefixes to added to old and new filenames, as '
                     'two values separated by a colon.'),
         ]
@@ -1377,11 +1378,13 @@ class cmd_log(Command):
                             help='show from oldest to newest'),
                      'timezone', 
                      Option('verbose', 
+                             short_name='v',
                              help='show files changed in each revision'),
                      'show-ids', 'revision',
                      'log-format',
                      'line', 'long', 
                      Option('message',
+                            short_name='m',
                             help='show revisions whose message matches this regexp',
                             type=str),
                      'short',
@@ -1752,6 +1755,7 @@ class cmd_cat(Command):
 
     takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
+    encoding_type = 'exact'
 
     @display_command
     def run(self, filename, revision=None, name_from_revision=False):
@@ -1831,6 +1835,7 @@ class cmd_commit(Command):
                      Option('unchanged',
                             help='commit even if nothing has changed'),
                      Option('file', type=str, 
+                            short_name='F',
                             argname='msgfile',
                             help='file containing commit message'),
                      Option('strict',
@@ -2112,7 +2117,7 @@ class cmd_selftest(Command):
             if verbose is None:
                 verbose = True
             # TODO: should possibly lock the history file...
-            benchfile = open(".perf_history", "at")
+            benchfile = open(".perf_history", "at", buffering=1)
         else:
             test_suite_factory = None
             if verbose is None:
@@ -2228,9 +2233,14 @@ class cmd_merge(Command):
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
                      Option('show-base', help="Show base revision text in "
-                            "conflicts"), 
+                            "conflicts"),
                      Option('uncommitted', help='Apply uncommitted changes'
-                            ' from a working copy, instead of branch changes')]
+                            ' from a working copy, instead of branch changes'),
+                     Option('pull', help='If the destination is already'
+                             ' completely merged into the source, pull from the'
+                             ' source rather than merging. When this happens,'
+                             ' you do not need to commit the result.'),
+                     ]
 
     def help(self):
         from inspect import getdoc
@@ -2238,7 +2248,7 @@ class cmd_merge(Command):
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False, 
-            uncommitted=False):
+            uncommitted=False, pull=False):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2309,6 +2319,7 @@ class cmd_merge(Command):
                     merge_type=merge_type,
                     reprocess=reprocess,
                     show_base=show_base,
+                    pull=pull,
                     pb=pb, file_list=interesting_files)
             finally:
                 pb.finished()
@@ -2968,6 +2979,7 @@ def _merge_helper(other_revision, base_revision,
                   this_dir=None, backup_files=False,
                   merge_type=None,
                   file_list=None, show_base=False, reprocess=False,
+                  pull=False,
                   pb=DummyProgress()):
     """Merge changes into a tree.
 
@@ -3022,6 +3034,12 @@ def _merge_helper(other_revision, base_revision,
         if merger.base_rev_id == merger.other_rev_id:
             note('Nothing to do.')
             return 0
+        if file_list is None:
+            if pull and merger.base_rev_id == merger.this_rev_id:
+                count = merger.this_tree.pull(merger.this_branch,
+                        False, merger.other_rev_id)
+                note('%d revision(s) pulled.' % (count,))
+                return 0
         merger.backup_files = backup_files
         merger.merge_type = merge_type 
         merger.set_interesting_files(file_list)

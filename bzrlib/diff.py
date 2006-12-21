@@ -335,6 +335,12 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
+
+    # TODO: perhaps remove the old parameters old_revision_spec and
+    # new_revision_spec, since this is only really for use from cmd_diff and
+    # it now always passes through a sequence of revision_specs -- mbp
+    # 20061221
+
     def spec_tree(spec):
         if tree:
             revision = spec.in_store(tree.branch)
