@@ -1482,27 +1482,37 @@ class _KnitData(_KnitComponentFile):
                  as (stream, header_record)
         """
         df = GzipFile(mode='rb', fileobj=StringIO(raw_data))
-        rec = df.readline().split()
-        if len(rec) != 4:
-            raise KnitCorrupt(self._filename, 'unexpected number of elements in record header')
-        if cache_utf8.decode(rec[1]) != version_id:
-            raise KnitCorrupt(self._filename, 
-                              'unexpected version, wanted %r, got %r' % (
-                                version_id, rec[1]))
+        rec = self._check_header(version_id, df.readline())
         return df, rec
+
+    def _check_header(self, version_id, line):
+        rec = line.split()
+        if len(rec) != 4:
+            raise KnitCorrupt(self._filename,
+                              'unexpected number of elements in record header')
+        if cache_utf8.decode(rec[1]) != version_id:
+            raise KnitCorrupt(self._filename,
+                              'unexpected version, wanted %r, got %r'
+                              % (version_id, rec[1]))
+        return rec
 
     def _parse_record(self, version_id, data):
         # profiling notes:
         # 4168 calls in 2880 217 internal
         # 4168 calls to _parse_record_header in 2121
         # 4168 calls to readlines in 330
-        df, rec = self._parse_record_header(version_id, data)
+        df = GzipFile(mode='rb', fileobj=StringIO(data))
+
         record_contents = df.readlines()
-        l = record_contents.pop()
+        header = record_contents.pop(0)
+        rec = self._check_header(version_id, header)
+
+        last_line = record_contents.pop()
         assert len(record_contents) == int(rec[2])
-        if l != 'end %s\n' % cache_utf8.encode(version_id):
-            raise KnitCorrupt(self._filename, 'unexpected version end line %r, wanted %r' 
-                        % (l, version_id))
+        if last_line != 'end %s\n' % rec[1]:
+            raise KnitCorrupt(self._filename,
+                              'unexpected version end line %r, wanted %r' 
+                              % (last_line, version_id))
         df.close()
         return record_contents, rec[3]
 
