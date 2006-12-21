@@ -78,7 +78,7 @@ class TestMove(TestCaseWithTransport):
         tree.add(['test.txt'])
 
         self.run_bzr_error(
-            ["^bzr: ERROR: Invalid destination: .* is not versioned$"],
+            ["^bzr: ERROR: Invalid move destination: .* is not versioned$"],
             'mv', 'test.txt', 'sub1')
         
         self.run_bzr_error(
@@ -229,7 +229,7 @@ class TestMove(TestCaseWithTransport):
 
         os.rename('a1', 'sub1/a1')
         self.run_bzr_error(            
-            ["^bzr: ERROR: Invalid destination: .* is not versioned$"],
+            ["^bzr: ERROR: Invalid move destination: .* is not versioned$"],
             'mv', 'a1', 'a2', 'sub1')
         self.failIfExists('a1')
         self.failUnlessExists('a2')

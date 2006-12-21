@@ -319,6 +319,16 @@ class FileExists(PathError):
     _fmt = "File exists: %(path)r%(extra)s"
 
 
+class NotADirectory(PathError):
+
+    _fmt = "%(path)r is not a directory %(extra)s"
+
+
+class NotInWorkingDirectory(PathError):
+
+    _fmt = "%(path)r is not a the working directory %(extra)s"
+
+
 class DirectoryNotEmpty(PathError):
 
     _fmt = "Directory not empty: %(path)r%(extra)s"

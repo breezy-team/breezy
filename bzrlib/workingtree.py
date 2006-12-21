@@ -76,7 +76,9 @@ from bzrlib.errors import (BzrCheckError,
                            BzrError,
                            ConflictFormatError,
                            WeaveRevisionNotPresent,
+                           NotADirectory,
                            NotBranchError,
+                           NotInWorkingDirectory,
                            NoSuchFile,
                            NotVersionedError,
                            MergeModifiedFormatError,
@@ -1043,25 +1045,27 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         inv = self.inventory
         to_abs = self.abspath(to_dir)
         if not isdir(to_abs):
-            raise BzrError("destination %r is not a directory" % to_abs)
+            raise NotADirectory(to_abs, extra="(Invalid move destination)")
         if not self.has_filename(to_dir):
-            raise BzrError("destination %r not in working directory" % to_abs)
+            raise NotInWorkingDirectory(to_dir, extra=
+                "(Invalid move destination)")
         to_dir_id = inv.path2id(to_dir)
         if to_dir_id is None:
             raise NotVersionedError(path=str(to_dir),
-                contextInfo="Invalid destination")
+                contextInfo="Invalid move destination")
             
         to_dir_ie = inv[to_dir_id]
         if to_dir_ie.kind != 'directory':
-            raise BzrError("destination %r is not a directory" % to_abs)
+            raise NotADirectory(to_abs, extra="(Invalid move destination)")
 
         # create rename entries and tuples
         for from_rel in from_paths:
             from_tail = splitpath(from_rel)[-1]
             from_id = inv.path2id(from_rel)
             if from_id is None:
-                raise BzrError("can't rename: old name %r is not versioned" % 
-                               from_rel)
+                raise NotVersionedError(path=str(from_rel),
+                    contextInfo="Invalid source")
+
             from_entry = inv[from_id]
             from_parent_id = from_entry.parent_id
             to_rel = pathjoin(to_dir, from_tail)
