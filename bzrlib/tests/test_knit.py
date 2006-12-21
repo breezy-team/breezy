@@ -97,6 +97,8 @@ class MockTransport(object):
     def __init__(self, file_lines=None):
         self.file_lines = file_lines
         self.calls = []
+        # We have no base directory for the MockTransport
+        self.base = ''
 
     def get(self, filename):
         if self.file_lines is None:
@@ -182,7 +184,7 @@ class LowLevelKnitIndexTests(TestCase):
         self.assertTrue(index.has_version(u"version"))
 
     def test_read_corrupted_header(self):
-        transport = MockTransport([])
+        transport = MockTransport(['not a bzr knit index header\n'])
         self.assertRaises(KnitHeaderError,
             _KnitIndex, transport, "filename", "r")
 

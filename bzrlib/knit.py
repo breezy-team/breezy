@@ -1128,6 +1128,12 @@ class _KnitIndex(_KnitComponentFile):
             pb.update('read knit index', 0, 1)
             try:
                 fp = self._transport.get(self._filename)
+                try:
+                    # _load_data may raise NoSuchFile if the target knit is
+                    # completely empty.
+                    self._load_data(fp)
+                finally:
+                    fp.close()
             except NoSuchFile:
                 if mode != 'w' or not create:
                     raise
@@ -1136,11 +1142,6 @@ class _KnitIndex(_KnitComponentFile):
                 else:
                     self._transport.put_bytes_non_atomic(
                         self._filename, self.HEADER, mode=self._file_mode)
-            else:
-                try:
-                    self._load_data(fp)
-                finally:
-                    fp.close()
         finally:
             pb.update('read knit index', 1, 1)
             pb.finished()
