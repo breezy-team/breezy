@@ -192,15 +192,17 @@ class ExtendedTestResult(unittest._TextTestResult):
                 self._formatTime(self._benchmarkTime),
                 self._elapsedTestTimeString())
         else:
-            return "      %s" % self._elapsedTestTimeString()
+            return "           %s" % self._elapsedTestTimeString()
 
     def _formatTime(self, seconds):
         """Format seconds as milliseconds with leading spaces."""
-        return "%5dms" % (1000 * seconds)
+        # some benchmarks can take thousands of seconds to run, so we need 8
+        # places
+        return "%8dms" % (1000 * seconds)
 
     def _shortened_test_description(self, test):
         what = test.id()
-        what = re.sub(r'^bzrlib\.(tests|benchmark)\.', '', what)
+        what = re.sub(r'^bzrlib\.(tests|benchmarks)\.', '', what)
         return what
 
     def startTest(self, test):
@@ -376,8 +378,10 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
+        # width needs space for 6 char status, plus 1 for slash, plus 2 10-char
+        # numbers, plus a trailing blank
         self.stream.write(self._ellipsize_to_right(name,
-                            osutils.terminal_width()-20))
+                            osutils.terminal_width()-30))
         self.stream.flush()
 
     def report_error(self, test, err):
@@ -1494,7 +1498,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 os.chdir(self.test_dir)
                 break
 
-    def build_tree(self, shape, line_endings='native', transport=None):
+    def build_tree(self, shape, line_endings='binary', transport=None):
         """Build a test tree according to a pattern.
 
         shape is a sequence of file specifications.  If the final

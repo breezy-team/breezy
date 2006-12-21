@@ -929,6 +929,8 @@ class KnitError(BzrError):
     
     _fmt = "Knit error"
 
+    internal_error = True
+
 
 class KnitHeaderError(KnitError):
 

@@ -118,6 +118,10 @@ class TestDiff(DiffBase):
         out, err = self.runbzr('diff does-not-exist', retcode=3)
         self.assertContainsRe(err, 'not versioned.*does-not-exist')
 
+    def test_diff_illegal_revision_specifiers(self):
+        out, err = self.runbzr('diff -r 1..23..123', retcode=3)
+        self.assertContainsRe(err, 'one or two revision specifiers')
+
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.
         # (Malone #3619)
@@ -294,3 +298,13 @@ class TestExternalDiff(DiffBase):
                                    "+++ goodbye\t")
         self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
                                  "+baz\n\n")
+
+
+class TestDiffOutput(DiffBase):
+
+    def test_diff_output(self):
+        # check that output doesn't mangle line-endings
+        self.make_example_branch()
+        file('hello', 'wb').write('hello world!\n')
+        output = self.run_bzr_subprocess('diff', retcode=1)[0]
+        self.assert_('\n+hello world!\n' in output)
