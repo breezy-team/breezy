@@ -990,122 +990,286 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 stack.pop()
 
     @needs_tree_write_lock
-    def move(self, from_paths, to_name):
+    def move(self, from_paths, to_dir=None, after=False, **kwargs):
         """Rename files.
 
-        to_name must exist in the inventory.
+        to_dir must exist in the inventory.
 
-        If to_name exists and is a directory, the files are moved into
+        If to_dir exists and is a directory, the files are moved into
         it, keeping their old names.  
 
-        Note that to_name is only the last component of the new name;
+        Note that to_dir is only the last component of the new name;
         this doesn't change the directory.
+
+        For each entry in from_paths the move mode will be determined 
+        independently.
+
+        The first mode moves the file in the filesystem and updates the 
+        inventory. The second mode only updates the inventory without 
+        touching the file on the filesystem. This is the new mode introduced 
+        in version 0.13.
+        
+        move uses the second mode if 'after == True' and the target is not
+        versioned but present in the working tree.
+
+        move uses the second mode if 'after == False' and the source is 
+        versioned but no longer in the working tree, and the target is not 
+        versioned but present in the working tree.
+
+        move uses the first mode if 'after == False' and the source is 
+        versioned and present in the working tree, and the target is not 
+        versioned and not present in the working tree.
+
+        Everything else results in an error.
 
         This returns a list of (from_path, to_path) pairs for each
         entry that is moved.
         """
-        result = []
-        ## TODO: Option to move IDs only
+        rename_entries = []
+        rename_tuples = []
+
+        # check for deprecated use of signature
+        if to_dir is None:
+            to_dir = kwargs.get('to_name', None)
+            if to_dir is None:
+                raise TypeError('You must supply a target directory')
+            else:
+                symbol_versioning.warn('The parameter to_name was deprecated'
+                                       ' in version 0.13. Use to_dir instead',
+                                       DeprecationWarning)
+
+        # check destination directory
         assert not isinstance(from_paths, basestring)
         inv = self.inventory
-        to_abs = self.abspath(to_name)
+        to_abs = self.abspath(to_dir)
         if not isdir(to_abs):
             raise BzrError("destination %r is not a directory" % to_abs)
-        if not self.has_filename(to_name):
+        if not self.has_filename(to_dir):
             raise BzrError("destination %r not in working directory" % to_abs)
-        to_dir_id = inv.path2id(to_name)
-        if to_dir_id is None and to_name != '':
-            raise BzrError("destination %r is not a versioned directory" % to_name)
+        to_dir_id = inv.path2id(to_dir)
+        if to_dir_id is None:
+            raise BzrError("destination %r is not a versioned"
+                           " directory" % to_dir)
         to_dir_ie = inv[to_dir_id]
         if to_dir_ie.kind != 'directory':
             raise BzrError("destination %r is not a directory" % to_abs)
 
-        to_idpath = inv.get_idpath(to_dir_id)
+        # create rename entries and tuples
+        for from_rel in from_paths:
+            from_tail = splitpath(from_rel)[-1]
+            from_id = inv.path2id(from_rel)
+            if from_id is None:
+                raise BzrError("can't rename: old name %r is not versioned" % 
+                               from_rel)
+            from_entry = inv[from_id]
+            from_parent_id = from_entry.parent_id
+            to_rel = pathjoin(to_dir, from_tail)
+            rename_entry = WorkingTree._RenameEntry(from_rel=from_rel, 
+                                         from_id=from_id,
+                                         from_tail=from_tail,
+                                         from_parent_id=from_parent_id,
+                                         to_rel=to_rel, to_tail=from_tail,
+                                         to_parent_id=to_dir_id)
+            rename_entries.append(rename_entry)
+            rename_tuples.append((from_rel, to_rel))
 
-        for f in from_paths:
-            if not self.has_filename(f):
-                raise BzrError("%r does not exist in working tree" % f)
-            f_id = inv.path2id(f)
-            if f_id is None:
-                raise BzrError("%r is not versioned" % f)
-            name_tail = splitpath(f)[-1]
-            dest_path = pathjoin(to_name, name_tail)
-            if self.has_filename(dest_path):
-                raise BzrError("destination %r already exists" % dest_path)
-            if f_id in to_idpath:
-                raise BzrError("can't move %r to a subdirectory of itself" % f)
+        # determine which move mode to use. checks also for movability
+        rename_entries = self._determine_mv_mode(rename_entries, after)
 
-        # OK, so there's a race here, it's possible that someone will
-        # create a file in this interval and then the rename might be
-        # left half-done.  But we should have caught most problems.
-        orig_inv = deepcopy(self.inventory)
+        # move pairs.
         original_modified = self._inventory_is_modified
         try:
-            if len(from_paths):
+            if len(from_paths): 
                 self._inventory_is_modified = True
-            for f in from_paths:
-                name_tail = splitpath(f)[-1]
-                dest_path = pathjoin(to_name, name_tail)
-                result.append((f, dest_path))
-                inv.rename(inv.path2id(f), to_dir_id, name_tail)
-                try:
-                    osutils.rename(self.abspath(f), self.abspath(dest_path))
-                except OSError, e:
-                    raise BzrError("failed to rename %r to %r: %s" %
-                                   (f, dest_path, e[1]))
+            self._move(rename_entries)
         except:
             # restore the inventory on error
-            self._set_inventory(orig_inv, dirty=original_modified)
+            self._inventory_is_modified = original_modified
             raise
         self._write_inventory(inv)
-        return result
+        return rename_tuples
+
+    def _determine_mv_mode(self, rename_entries, after=False):
+        """Determines for each from-to pair if both inventory and working tree
+        or only the inventory has to be changed.
+
+        Also does basic plausability tests.
+        """
+        inv = self.inventory
+
+        for rename_entry in rename_entries:
+            # store to local variables for easier reference
+            from_rel = rename_entry.from_rel
+            from_id = rename_entry.from_id
+            to_rel = rename_entry.to_rel
+            to_id = inv.path2id(to_rel)
+            only_change_inv = False
+
+            # check the inventory for source and destination
+            if from_id is None:
+                raise BzrError("can't rename: old name %r is not versioned" % 
+                               from_rel)
+            if to_id is not None:
+                raise BzrError("can't rename: new name %r is already"
+                               " versioned" % to_rel)
+
+            # try to determine the mode for rename (only change inv or change 
+            # inv and file system)
+            if after:
+                if not self.has_filename(to_rel):
+                    raise BzrError("can't rename: new working file %r does not"
+                                   " exist" % to_rel)
+                only_change_inv = True
+            elif not self.has_filename(from_rel) and self.has_filename(to_rel):
+                only_change_inv = True
+            elif self.has_filename(from_rel) and not self.has_filename(to_rel):
+                only_change_inv = False
+            else:
+                # something is wrong, so lets determine what exactly
+                if not self.has_filename(from_rel) and \
+                   not self.has_filename(to_rel):
+                    raise BzrError("can't rename: neither old name %r nor new"
+                                   " name %r exist" % (from_rel, to_rel))
+                else:
+                    raise BzrError("can't rename: both, old name %r and new"
+                                   " name %r exist. Use option '--after' to"
+                                   " force rename." % (from_rel, to_rel))
+            rename_entry.set_only_change_inv(only_change_inv)                       
+        return rename_entries
+
+    def _move(self, rename_entries):
+        """Moves a list of files.
+
+        Depending on the value of the flag 'only_change_inv', the
+        file will be moved on the file system or not.
+        """
+        inv = self.inventory
+        moved = []
+
+        for entry in rename_entries:
+            try:
+                self._move_entry(entry)
+            except OSError, e:
+                self._rollback_move(moved)
+                raise BzrError("failed to rename %r to %r: %s" %
+                               (entry.from_rel, entry.to_rel, e[1]))
+            except BzrError, e:
+                self._rollback_move(moved)
+                raise
+            moved.append(entry)
+
+    def _rollback_move(self, moved):
+        """Try to rollback a previous move in case of an error in the 
+        filesystem.
+        """
+        inv = self.inventory
+        for entry in moved:
+            try:
+                self._move_entry(entry, inverse=True)
+            except OSError, e:
+                raise BzrError("error moving files. rollback failed. the"
+                               " working tree is in an inconsistent state."
+                               " please consider doing a 'bzr revert'."
+                               " error message is: %s" % e[1])
+
+    def _move_entry(self, entry, inverse=False):
+        inv = self.inventory
+        from_rel_abs = self.abspath(entry.from_rel)
+        to_rel_abs = self.abspath(entry.to_rel)
+
+        if from_rel_abs == to_rel_abs:
+            raise BzrError("error moving files. Source %r and target %r are"
+                           " identical." % (from_rel, to_rel))
+                           
+        if inverse:
+            if not entry.only_change_inv:
+                osutils.rename(to_rel_abs, from_rel_abs)
+            inv.rename(entry.from_id, entry.from_parent_id, entry.from_tail)
+        else:
+            if not entry.only_change_inv:
+                osutils.rename(from_rel_abs, to_rel_abs)
+            inv.rename(entry.from_id, entry.to_parent_id, entry.to_tail)
 
     @needs_tree_write_lock
-    def rename_one(self, from_rel, to_rel):
+    def rename_one(self, from_rel, to_rel, after=False):
         """Rename one file.
 
         This can change the directory or the filename or both.
+
+        rename_one has several 'modes' to work. First it can rename a physical 
+        file and change the file_id. That is the normal mode. Second it can 
+        only change the file_id without touching any physical file. This is 
+        the new mode introduced in version 0.13.
+        
+        rename_one uses the second mode if 'after == True' and 'to_rel' is not
+        versioned but present in the working tree.
+
+        rename_one uses the second mode if 'after == False' and 'from_rel' is 
+        versioned but no longer in the working tree, and 'to_rel' is not 
+        versioned but present in the working tree.
+
+        rename_one uses the first mode if 'after == False' and 'from_rel' is 
+        versioned and present in the working tree, and 'to_rel' is not 
+        versioned and not present in the working tree.
+
+        Everything else results in an error.
         """
         inv = self.inventory
-        if not self.has_filename(from_rel):
-            raise BzrError("can't rename: old working file %r does not exist" % from_rel)
-        if self.has_filename(to_rel):
-            raise BzrError("can't rename: new working file %r already exists" % to_rel)
+        rename_entries = []
 
-        file_id = inv.path2id(from_rel)
-        if file_id is None:
-            raise BzrError("can't rename: old name %r is not versioned" % from_rel)
-
-        entry = inv[file_id]
-        from_parent = entry.parent_id
-        from_name = entry.name
-        
-        if inv.path2id(to_rel):
-            raise BzrError("can't rename: new name %r is already versioned" % to_rel)
-
+        # create rename entries and tuples
+        from_tail = splitpath(from_rel)[-1]
+        from_id = inv.path2id(from_rel)
+        if from_id is None:
+            raise BzrError("can't rename: old name %r is not versioned" % 
+                           from_rel)
+        from_entry = inv[from_id]
+        from_parent_id = from_entry.parent_id
         to_dir, to_tail = os.path.split(to_rel)
         to_dir_id = inv.path2id(to_dir)
-        if to_dir_id is None and to_dir != '':
-            raise BzrError("can't determine destination directory id for %r" % to_dir)
+        rename_entry = WorkingTree._RenameEntry(from_rel=from_rel, 
+                                     from_id=from_id,
+                                     from_tail=from_tail,
+                                     from_parent_id=from_parent_id,
+                                     to_rel=to_rel, to_tail=to_tail,
+                                     to_parent_id=to_dir_id)
+        rename_entries.append(rename_entry)
 
-        mutter("rename_one:")
-        mutter("  file_id    {%s}" % file_id)
-        mutter("  from_rel   %r" % from_rel)
-        mutter("  to_rel     %r" % to_rel)
-        mutter("  to_dir     %r" % to_dir)
-        mutter("  to_dir_id  {%s}" % to_dir_id)
+        # determine which move mode to use. checks also for movability
+        rename_entries = self._determine_mv_mode(rename_entries, after)
 
-        inv.rename(file_id, to_dir_id, to_tail)
+        # check if the target changed directory and if the target directory is
+        # versioned
+        if to_dir_id is None:
+            raise BzrError("destination %r is not a versioned"
+                           " directory" % to_dir)
+        
+        # all checks done. now we can continue with our actual work
+        mutter('rename_one:\n'
+               '  from_id   {%s}\n'
+               '  from_rel: %r\n'
+               '  to_rel:   %r\n'
+               '  to_dir    %r\n'
+               '  to_dir_id {%s}\n',
+               from_id, from_rel, to_rel, to_dir, to_dir_id)
 
-        from_abs = self.abspath(from_rel)
-        to_abs = self.abspath(to_rel)
-        try:
-            osutils.rename(from_abs, to_abs)
-        except OSError, e:
-            inv.rename(file_id, from_parent, from_name)
-            raise BzrError("failed to rename %r to %r: %s"
-                    % (from_abs, to_abs, e[1]))
+        self._move(rename_entries)
         self._write_inventory(inv)
+
+    class _RenameEntry(object):
+        def __init__(self, from_rel, from_id, from_tail, from_parent_id,
+                     to_rel, to_tail, to_parent_id):
+            self.from_rel = from_rel
+            self.from_id = from_id
+            self.from_tail = from_tail
+            self.from_parent_id = from_parent_id
+            self.to_rel = to_rel
+            self.to_tail = to_tail
+            self.to_parent_id = to_parent_id
+            self.only_change_inv = False
+
+        def set_only_change_inv(self, only_change_inv):
+            self.only_change_inv = only_change_inv
 
     @needs_read_lock
     def unknowns(self):

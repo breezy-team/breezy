@@ -460,16 +460,26 @@ class cmd_mv(Command):
 
     If the last argument is a versioned directory, all the other names
     are moved into it.  Otherwise, there must be exactly two arguments
-    and the file is changed to a new name, which must not already exist.
+    and the file is changed to a new name.
+
+    If OLDNAME does not exist on the filesystem but is versioned and
+    NEWNAME does exist on the filesystem but is not versioned, mv
+    assumes that the file has been manually moved and only updates
+    its internal inventory to reflect that change.
+    The same is valid when moving many SOURCE files to a DESTINATION.
 
     Files cannot be moved between branches.
     """
 
     takes_args = ['names*']
+    takes_options = [Option("after", help="move only the bzr identifier of the"
+                                          " file (file has already been" 
+                                          " moved). Use this flag if bzr is"
+                                          " not able to detect this itself.")]
     aliases = ['move', 'rename']
     encoding_type = 'replace'
 
-    def run(self, names_list):
+    def run(self, names_list, after=False):
         if names_list is None:
             names_list = []
 
@@ -479,13 +489,14 @@ class cmd_mv(Command):
         
         if os.path.isdir(names_list[-1]):
             # move into existing directory
-            for pair in tree.move(rel_names[:-1], rel_names[-1]):
+            for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
                 self.outf.write("%s => %s\n" % pair)
         else:
             if len(names_list) != 2:
-                raise errors.BzrCommandError('to mv multiple files the destination '
-                                             'must be a versioned directory')
-            tree.rename_one(rel_names[0], rel_names[1])
+                raise errors.BzrCommandError('to mv multiple files the'
+                                             ' destination must be a versioned'
+                                             ' directory')
+            tree.rename_one(rel_names[0], rel_names[1], after=after)
             self.outf.write("%s => %s\n" % (rel_names[0], rel_names[1]))
             
     
