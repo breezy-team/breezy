@@ -123,7 +123,7 @@ class NormalizedFilename(TestCaseWithTransport):
         # route, and maintains the right files
         files = [a_circle_c+'.1', a_dots_c+'.2', z_umlat_c+'.3']
         try:
-            self.build_tree(files)
+            self.build_tree(files, line_endings='native')
         except UnicodeError:
             raise TestSkipped("filesystem cannot create unicode files")
 
