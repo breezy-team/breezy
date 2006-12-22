@@ -83,19 +83,18 @@ The same rules apply to the roots of branches. This means there is no
 predefined file id for tree roots.
 
 Alternatively, these file ids can be mapped to more specific file ids. Such 
-a map should be stored in the bzr:file-ids property that is set on the 
+a map should be stored in the `bzr:file-ids' property that is set on the 
 branch path.
 
 The bzr:file-ids property should contain a list of mappings. Entries are 
-separated by newlines. The original file-id and the new file-id are 
-separated by a tab.
+separated by newlines. The path in the branch and new file-id are separated 
+by a tab.
 
-The original file ids are specified in the following format:
+Given, the path, the revision the mapping was added, the repository uuid 
+and the path the property is set on the (the branch path), the original 
+file id can be determined.  
 
-<PATH>:<REVNUM>
-
-where revnum is the revision in which the path was created. Tabs, newlines 
-and percent signs in path will be urlencoded.
+Tabs, newlines and percent signs in path will be urlencoded.
 
 Neither the original nor the target file id may occur more than once. 
 

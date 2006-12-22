@@ -48,13 +48,14 @@ from tree import SvnRevisionTree
 MAPPING_VERSION = 2
 REVISION_ID_PREFIX = "svn-v%d:" % MAPPING_VERSION
 SVN_PROP_BZR_MERGE = 'bzr:merge'
+SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
-_unsafe = "%/-\t "
-def escape_svn_path(id):
-    r = [((c in _unsafe) and ('%%%02x' % ord(c)) or c)
+def escape_svn_path(id, unsafe="%/-\t \n"):
+    assert "%" in unsafe
+    r = [((c in unsafe) and ('%%%02x' % ord(c)) or c)
          for c in id]
     return ''.join(r)
 

@@ -153,6 +153,15 @@ class TestCommitFromBazaar(TestCaseWithSubversionRepository):
         self.assertEqual("some-ghost-revision\n", 
                 self.client_get_prop(self.repos_url, "bzr:merge", 2))
 
+    def test_commit_fileids(self):
+        wt = self.checkout.create_workingtree()
+        self.build_tree({'dc/file': 'data'})
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")
+        self.assertEqual("file\t%s\n" % wt.inventory.path2id("file"), 
+                self.client_get_prop(self.repos_url, "bzr:file-ids", 1))
+
+
 class TestPush(TestCaseWithSubversionRepository):
     def setUp(self):
         super(TestPush, self).setUp()
@@ -289,3 +298,4 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.assertTrue(wt.branch.last_revision() in 
              repos.get_ancestry("svn-v%d:3@%s-" % (MAPPING_VERSION, repos.uuid)))
+
