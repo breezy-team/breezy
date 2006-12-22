@@ -982,32 +982,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
-    def _getRenameFailedMessage(self, from_path, to_path, action="rename"):
-        
-        return self._getMoveFailedMessage(from_path, to_path, action)
-        
-    def _getMoveFailedMessage(self, from_path, to_path, action="move"):
-
-        #RFC maybe we want the relative path not just the last component:
-        #from_path = self.relpath(from_path)
-        #to_rel = self.relpath(to_path)
-        
-        has_from = len(from_path) > 0
-        has_to = len(to_path) > 0
-        if has_from:
-            from_path = splitpath(from_path)[-1]
-        if has_to:
-            to_path = splitpath(to_path)[-1]
-
-        prefix = "Could not %s " % action
-        if has_from and has_to:
-            return "%s%s => %s"%(prefix,from_path,to_path)
-        if has_from:
-            return "%sfrom %s"%(prefix,from_path)
-        if has_to:
-            return "%sto %s"%(prefix,to_path)
-        return "%sfile"%prefix        
-
     @needs_tree_write_lock
     def move(self, from_paths, to_dir=None, after=False, **kwargs):
         """Rename files.
@@ -1062,28 +1036,28 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         inv = self.inventory
         to_abs = self.abspath(to_dir)
         if not isdir(to_abs):
-            raise errors.NotADirectory(to_abs, 
-                extra=self._getMoveFailedMessage('',to_dir))
+            raise errors.BzrMoveFailedError('',to_dir, 
+                errors.NotADirectory(to_abs))
         if not self.has_filename(to_dir):
-            raise errors.NotInWorkingDirectory(to_dir, 
-                extra=self._getMoveFailedMessage('',to_dir))
+            raise errors.BzrMoveFailedError('',to_dir,
+                errors.NotInWorkingDirectory(to_dir))
         to_dir_id = inv.path2id(to_dir)
         if to_dir_id is None:
-            raise errors.NotVersionedError(path=str(to_dir),
-                context_info=self._getMoveFailedMessage('',to_dir))
+            raise errors.BzrMoveFailedError('',to_dir,
+                errors.NotVersionedError(path=str(to_dir)))
             
         to_dir_ie = inv[to_dir_id]
         if to_dir_ie.kind != 'directory':
-            raise errors.NotADirectory(to_abs, 
-                extra=self._getMoveFailedMessage('',to_dir))
+            raise errors.BzrMoveFailedError('',to_dir,
+                errors.NotADirectory(to_abs))
 
         # create rename entries and tuples
         for from_rel in from_paths:
             from_tail = splitpath(from_rel)[-1]
             from_id = inv.path2id(from_rel)
             if from_id is None:
-                raise errors.NotVersionedError(path=str(from_rel),
-                    context_info=self._getMoveFailedMessage(from_rel,to_dir))
+                raise errors.BzrMoveFailedError(from_rel,to_dir,
+                    errors.NotVersionedError(path=str(from_rel)))
 
             from_entry = inv[from_id]
             from_parent_id = from_entry.parent_id
@@ -1131,18 +1105,19 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
             # check the inventory for source and destination
             if from_id is None:
-                raise errors.NotVersionedError(path=str(from_rel),
-                    context_info=self._getMoveFailedMessage(from_rel,to_rel))
+                raise errors.BzrMoveFailedError(from_rel,to_rel,
+                    errors.NotVersionedError(path=str(from_rel)))
             if to_id is not None:
-                raise errors.AlreadyVersionedError(path=str(to_rel),
-                    context_info=self._getMoveFailedMessage(from_rel,to_rel))
+                raise errors.BzrMoveFailedError(from_rel,to_rel,
+                    errors.AlreadyVersionedError(path=str(to_rel)))
 
             # try to determine the mode for rename (only change inv or change 
             # inv and file system)
             if after:
                 if not self.has_filename(to_rel):
-                    raise errors.NoSuchFile(path=str(to_rel),
-                        extra="New file has not been created yet")
+                    raise errors.BzrMoveFailedError(from_id,to_rel,
+                        errors.NoSuchFile(path=str(to_rel),
+                        extra="New file has not been created yet"))
                 only_change_inv = True
             elif not self.has_filename(from_rel) and self.has_filename(to_rel):
                 only_change_inv = True
@@ -1152,12 +1127,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 # something is wrong, so lets determine what exactly
                 if not self.has_filename(from_rel) and \
                    not self.has_filename(to_rel):
-                    raise PathsDoNotExist(paths=(str(from_rel), str(to_rel)),
-                        extra=self._getRenameFailedMessage(from_rel,to_rel))
+                    raise errors.BzrRenameFailedError(from_rel,to_rel,
+                        errors.PathsDoNotExist(paths=(str(from_rel), 
+                        str(to_rel))))
                 else:
-                    raise errors.FilesExist(paths=(str(from_rel), str(to_rel)),
-                        extra=self._getRenameFailedMessage(from_rel,to_rel)+
-                        ". Use option '--after' to force rename.")
+                    raise errors.BzrRenameFailedError(from_rel,to_rel,
+                        errors.FilesExist(paths=(str(from_rel), str(to_rel)),
+                        extra="(Use option '--after' to force rename)"))
             rename_entry.only_change_inv = only_change_inv                       
         return rename_entries
 
@@ -1175,8 +1151,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 self._move_entry(entry)
             except OSError, e:
                 self._rollback_move(moved)
-                raise errors.BzrError("failed to rename %r to %r: %s" %
-                               (entry.from_rel, entry.to_rel, e[1]))
+                raise errors.BzrRenameFailedError(entry.from_rel, entry.to_rel,
+                    e[1])
             except errors.BzrError, e:
                 self._rollback_move(moved)
                 raise
@@ -1191,10 +1167,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             try:
                 self._move_entry(entry, inverse=True)
             except OSError, e:
-                raise errors.BzrError("error moving files. Rollback failed."
-                               " The working tree is in an inconsistent state."
-                               " Please consider doing a 'bzr revert'."
-                               " Error message is: %s" % e[1])
+                raise errors.BzrMoveFailedError( '', '', 
+                    errors.BzrError("Rollback failed."
+                        " The working tree is in an inconsistent state."
+                        " Please consider doing a 'bzr revert'."
+                        " Error message is: %s" % e[1]))
 
     def _move_entry(self, entry, inverse=False):
         inv = self.inventory
@@ -1202,8 +1179,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         to_rel_abs = self.abspath(entry.to_rel)
 
         if from_rel_abs == to_rel_abs:
-            raise errors.BzrError("error moving files. Source %r and target %r"
-                " are identical." % (from_rel, to_rel))
+            raise errors.BzrMoveFailedError(from_rel, to_rel,
+                "Source and target are identical.")
                            
         if inverse:
             if not entry.only_change_inv:
@@ -1245,8 +1222,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         from_tail = splitpath(from_rel)[-1]
         from_id = inv.path2id(from_rel)
         if from_id is None:
-            raise errors.NotVersionedError(path=str(from_rel),
-                    context_info=self._getRenameFailedMessage(from_rel,to_rel,))
+            raise errors.BzrRenameFailedError(from_rel,to_rel,
+                errors.NotVersionedError(path=str(from_rel)))
         from_entry = inv[from_id]
         from_parent_id = from_entry.parent_id
         to_dir, to_tail = os.path.split(to_rel)
@@ -1265,8 +1242,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # check if the target changed directory and if the target directory is
         # versioned
         if to_dir_id is None:
-            raise errors.BzrError("destination %r is not a versioned"
-                           " directory" % to_dir)
+            raise errors.BzrMoveFailedError(from_rel,to_rel,
+                errors.NotVersionedError(path=str(to_dir)))
         
         # all checks done. now we can continue with our actual work
         mutter('rename_one:\n'

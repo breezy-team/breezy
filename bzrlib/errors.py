@@ -18,7 +18,8 @@
 """
 
 
-from bzrlib import symbol_versioning
+from bzrlib import (symbol_versioning, 
+                    osutils,)
 from bzrlib.patches import (PatchSyntax, 
                             PatchConflict, 
                             MalformedPatchHeader,
@@ -338,6 +339,7 @@ class FilesExist(PathError):
             self.plural = 's'
         else:
             self.plural = ''
+
 
 class NotADirectory(PathError):
 
@@ -1319,6 +1321,48 @@ class ReusingTransform(BzrError):
 class CantMoveRoot(BzrError):
 
     _fmt = "Moving the root directory is not supported at this time"
+
+
+class BzrMoveFailedError(BzrError):
+    
+    _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
+
+    def __init__(self, from_path, to_path, extra=None):
+        BzrError.__init__(self)
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
+            
+        has_from = len(from_path) > 0
+        has_to = len(to_path) > 0
+        if has_from:
+            self.from_path = osutils.splitpath(from_path)[-1]
+        else:
+            self.from_path = ''
+            
+        if has_to:
+            self.to_path = osutils.splitpath(to_path)[-1]
+        else:
+            self.to_path = ''
+
+        self.operator = ""
+        if has_from and has_to:
+            self.operator = " =>"
+        elif has_from:            
+            self.from_path = "from " + from_path
+        elif has_to:
+            self.operator = "to"
+        else:
+            self.operator = "file"
+
+
+class BzrRenameFailedError(BzrMoveFailedError):
+    
+    _fmt = "Could not rename %(from_path)s%(operator)s %(to_path)s%(extra)s"
+    
+    def __init__(self, from_path, to_path, extra=None):
+        BzrMoveFailedError.__init__(self, from_path, to_path, extra)
 
 
 class BzrBadParameterNotString(BzrBadParameter):

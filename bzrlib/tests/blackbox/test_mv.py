@@ -26,7 +26,9 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     TestSkipped,
     )
-
+from bzrlib.osutils import (
+    splitpath
+    )
 
 class TestMove(TestCaseWithTransport):
 
@@ -80,11 +82,12 @@ class TestMove(TestCaseWithTransport):
         tree.add(['test.txt'])
 
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not move to sub1. sub1 is not versioned$"],
+            ["^bzr: ERROR: Could not move to sub1: sub1 is not versioned$"],
             'mv', 'test.txt', 'sub1')
 
         self.run_bzr_error(
-            ["^bzr: ERROR: destination .* is not a versioned directory$"],
+            ["^bzr: ERROR: Could not move test.txt => .*hello.txt: "
+             "sub1 is not versioned$"],
             'mv', 'test.txt', 'sub1/hello.txt')
         
     def test_mv_dirs(self):
@@ -201,7 +204,7 @@ class TestMove(TestCaseWithTransport):
 
         os.rename('a', 'sub1/a')
         self.run_bzr_error(
-            ["^bzr: ERROR: destination .* is not a versioned directory$"],
+            ["^bzr: ERROR: Could not move a => a: sub1 is not versioned$"],
             'mv', 'a', 'sub1/a')
         self.failIfExists('a')
         self.failUnlessExists('sub1/a')
@@ -247,8 +250,8 @@ class TestMove(TestCaseWithTransport):
         tree.commit('initial commit')
 
         self.run_bzr_error(
-            ["^bzr: ERROR: Files exist: a b: Could not rename a => b."
-             " Use option '--after' to force rename."],
+            ["^bzr: ERROR: Could not rename a => b: Files exist: a b:"
+             " \(Use option '--after' to force rename\)$"],
             'mv', 'a', 'b')
         self.failUnlessExists('a')
         self.failUnlessExists('b')
@@ -275,8 +278,8 @@ class TestMove(TestCaseWithTransport):
         tree.commit('initial commit')
 
         self.run_bzr_error(
-            ["^bzr: ERROR: Files exist: a1 .*a1: Could not rename a1 => a1."
-             " Use option '--after' to force rename."],
+            ["^bzr: ERROR: Could not rename a1 => a1: Files exist: a1 .*a1:"
+             " \(Use option '--after' to force rename\)$"],
             'mv', 'a1', 'a2', 'sub1')
         self.failUnlessExists('a1')
         self.failUnlessExists('a2')
