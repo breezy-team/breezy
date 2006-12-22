@@ -39,7 +39,7 @@ class TestLS(TestCaseWithTransport):
     def ls_equals(self, value, *args):
         out, err = self.run_bzr('ls', *args)
         self.assertEqual('', err)
-        self.assertEqual(value, out)
+        self.assertEqualDiff(value, out)
 
     def test_ls_null_verbose(self):
         # Can't supply both
@@ -82,6 +82,23 @@ class TestLS(TestCaseWithTransport):
                        'V        subdir/\n'
                        'V        subdir/b\n'
                        , '--verbose')
+
+    def test_show_ids(self):
+        self.build_tree(['subdir/'])
+        self.wt.add(['a', 'subdir'], ['a-id', 'subdir-id'])
+        self.ls_equals(
+            '.bzrignore                                         \n'
+            'a                                                  a-id\n'
+            'subdir                                             subdir-id\n', 
+            '--show-ids')
+        self.ls_equals(
+            '?        .bzrignore\n'
+            'V        a                                         a-id\n'
+            'V        subdir/                                   subdir-id\n', 
+            '--show-ids', '--verbose')
+        self.ls_equals('.bzrignore\0\0'
+                       'a\0a-id\0'
+                       'subdir\0subdir-id\0', '--show-ids', '--null')
 
     def test_ls_recursive(self):
         self.build_tree(['subdir/', 'subdir/b'])
