@@ -82,12 +82,12 @@ from bzrlib.osutils import (
     compact_date,
     file_kind,
     isdir,
-    pathjoin,
+    normpath,
+    pathjoin,    
+    rand_chars,    
+    realpath,
     safe_unicode,
     splitpath,
-    rand_chars,
-    normpath,
-    realpath,
     supports_executable,
     )
 from bzrlib.trace import mutter, note
@@ -982,6 +982,32 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
+    def _getRenameFailedMessage(self, from_path, to_path, action="rename"):
+        
+        return self._getMoveFailedMessage(from_path, to_path, action)
+        
+    def _getMoveFailedMessage(self, from_path, to_path, action="move"):
+
+        #RFC maybe we want the relative path not just the last component:
+        #from_path = self.relpath(from_path)
+        #to_rel = self.relpath(to_path)
+        
+        has_from = len(from_path) > 0
+        has_to = len(to_path) > 0
+        if has_from:
+            from_path = splitpath(from_path)[-1]
+        if has_to:
+            to_path = splitpath(to_path)[-1]
+
+        prefix = "Could not %s " % action
+        if has_from and has_to:
+            return "%s%s => %s"%(prefix,from_path,to_path)
+        if has_from:
+            return "%sfrom %s"%(prefix,from_path)
+        if has_to:
+            return "%sto %s"%(prefix,to_path)
+        return "%sfile"%prefix        
+
     @needs_tree_write_lock
     def move(self, from_paths, to_dir=None, after=False, **kwargs):
         """Rename files.
@@ -1037,19 +1063,19 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         to_abs = self.abspath(to_dir)
         if not isdir(to_abs):
             raise errors.NotADirectory(to_abs, 
-                extra="Invalid move destination")
+                extra=self._getMoveFailedMessage('',to_dir))
         if not self.has_filename(to_dir):
             raise errors.NotInWorkingDirectory(to_dir, 
-                extra="(Invalid move destination)")
+                extra=self._getMoveFailedMessage('',to_dir))
         to_dir_id = inv.path2id(to_dir)
         if to_dir_id is None:
             raise errors.NotVersionedError(path=str(to_dir),
-                context_info="Invalid move destination")
+                context_info=self._getMoveFailedMessage('',to_dir))
             
         to_dir_ie = inv[to_dir_id]
         if to_dir_ie.kind != 'directory':
             raise errors.NotADirectory(to_abs, 
-                extra="Invalid move destination")
+                extra=self._getMoveFailedMessage('',to_dir))
 
         # create rename entries and tuples
         for from_rel in from_paths:
@@ -1057,7 +1083,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             from_id = inv.path2id(from_rel)
             if from_id is None:
                 raise errors.NotVersionedError(path=str(from_rel),
-                    context_info="Invalid source")
+                    context_info=self._getMoveFailedMessage(from_rel,to_dir))
 
             from_entry = inv[from_id]
             from_parent_id = from_entry.parent_id
@@ -1106,10 +1132,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # check the inventory for source and destination
             if from_id is None:
                 raise errors.NotVersionedError(path=str(from_rel),
-                    context_info="Could not move file")
+                    context_info=self._getMoveFailedMessage(from_rel,to_rel))
             if to_id is not None:
                 raise errors.AlreadyVersionedError(path=str(to_rel),
-                    context_info="Could not move file")
+                    context_info=self._getMoveFailedMessage(from_rel,to_rel))
 
             # try to determine the mode for rename (only change inv or change 
             # inv and file system)
@@ -1127,11 +1153,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 if not self.has_filename(from_rel) and \
                    not self.has_filename(to_rel):
                     raise PathsDoNotExist(paths=(str(from_rel), str(to_rel)),
-                        extra="Could not rename file")
+                        extra=self._getRenameFailedMessage(from_rel,to_rel))
                 else:
                     raise errors.FilesExist(paths=(str(from_rel), str(to_rel)),
-                        extra="Could not rename file. Use option '--after' to"
-                              " force rename.")
+                        extra=self._getRenameFailedMessage(from_rel,to_rel)+
+                        ". Use option '--after' to force rename.")
             rename_entry.only_change_inv = only_change_inv                       
         return rename_entries
 
@@ -1220,7 +1246,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         from_id = inv.path2id(from_rel)
         if from_id is None:
             raise errors.NotVersionedError(path=str(from_rel),
-                    context_info="Could not rename file")
+                    context_info=self._getRenameFailedMessage(from_rel,to_rel,))
         from_entry = inv[from_id]
         from_parent_id = from_entry.parent_id
         to_dir, to_tail = os.path.split(to_rel)

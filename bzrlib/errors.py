@@ -561,8 +561,8 @@ class NotVersionedError(BzrError):
             self.context_info = ''
         else:
             self.context_info = context_info + ". "
-        
-        
+
+
 class PathsNotVersionedError(BzrError):
     """Used when reporting several paths which are not versioned"""
 
