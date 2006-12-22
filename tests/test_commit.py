@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.branch import BranchReferenceFormat
+from bzrlib.branch import Branch, BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.errors import DivergedBranches
 from bzrlib.inventory import Inventory
@@ -23,6 +23,7 @@ from bzrlib.workingtree import WorkingTree
 import os
 import format
 import checkout
+import svn.core
 from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
 
@@ -158,9 +159,28 @@ class TestCommitFromBazaar(TestCaseWithSubversionRepository):
         self.build_tree({'dc/file': 'data'})
         wt.add('file')
         wt.commit(message="Commit from Bzr")
-        self.assertEqual("file\t%s\n" % wt.inventory.path2id("file"), 
+        self.assertEqual("\t%s\nfile\t%s\n" % (wt.inventory.root.file_id, wt.inventory.path2id("file")), 
                 self.client_get_prop(self.repos_url, "bzr:file-ids", 1))
 
+    def test_commit_fileids_added(self):
+    
+        rev = svn.core.svn_opt_revision_t()
+        rev.kind = svn.core.svn_opt_revision_head
+
+        svn.client.checkout2(self.repos_url, "db", 
+                rev, rev, True, False, self.client_ctx)
+
+        self.build_tree({'dc/file1': 'data', 'db/file2': "otherdata"})
+        self.client_add("db/file2")
+        self.client_commit("db", "amesg")
+        branch = Branch.open(self.repos_url)
+        inv = branch.repository.get_inventory(branch.last_revision())
+        wt = self.checkout.create_workingtree()
+        self.assertEqual(wt.inventory.root.file_id, inv.root.file_id)
+        wt.add('file1')
+        wt.commit(message="Commit from Bzr")
+        self.assertEqual("file1\t%s\n" % wt.inventory.path2id("file1"), 
+                self.client_get_prop(self.repos_url, "bzr:file-ids", 2))
 
 class TestPush(TestCaseWithSubversionRepository):
     def setUp(self):
