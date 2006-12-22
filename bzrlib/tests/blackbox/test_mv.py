@@ -61,12 +61,12 @@ class TestMove(TestCaseWithTransport):
     def test_mv_unversioned(self):
         self.build_tree(['unversioned.txt'])
         self.run_bzr_error(
-            ["^bzr: ERROR: can't rename: old name .* is not versioned$"],
+            ["^bzr: ERROR: Could not rename file. .* is not versioned$"],
             'mv', 'unversioned.txt', 'elsewhere')
 
     def test_mv_nonexisting(self):
         self.run_bzr_error(
-            ["^bzr: ERROR: can't rename: old name .* is not versioned$"],
+            ["^bzr: ERROR: Could not rename file. .* is not versioned$"],
             'mv', 'doesnotexist', 'somewhereelse')
 
     def test_mv_unqualified(self):
@@ -78,9 +78,9 @@ class TestMove(TestCaseWithTransport):
         tree.add(['test.txt'])
 
         self.run_bzr_error(
-            ["^bzr: ERROR: Invalid move destination: .* is not versioned$"],
+            ["^bzr: ERROR: Invalid move destination. .* is not versioned$"],
             'mv', 'test.txt', 'sub1')
-        
+
         self.run_bzr_error(
             ["^bzr: ERROR: destination .* is not a versioned directory$"],
             'mv', 'test.txt', 'sub1/hello.txt')
@@ -171,7 +171,7 @@ class TestMove(TestCaseWithTransport):
     
         os.remove('a')
         self.run_bzr_error(
-            ["^bzr: ERROR: Invalid move destination: .* is already versioned$"],
+            ["^bzr: ERROR: Could not move file. .+ is already versioned$"],
             'mv', 'a', 'b')
         self.failIfExists('a')
         self.failUnlessExists('b')
@@ -229,7 +229,7 @@ class TestMove(TestCaseWithTransport):
 
         os.rename('a1', 'sub1/a1')
         self.run_bzr_error(            
-            ["^bzr: ERROR: Invalid move destination: .* is not versioned$"],
+            ["^bzr: ERROR: Invalid move destination. .* is not versioned$"],
             'mv', 'a1', 'a2', 'sub1')
         self.failIfExists('a1')
         self.failUnlessExists('a2')
@@ -245,7 +245,7 @@ class TestMove(TestCaseWithTransport):
         tree.commit('initial commit')
 
         self.run_bzr_error(
-            ["^bzr: ERROR: File\(s\) exist: .+ .+: can't rename."
+            ["^bzr: ERROR: Files exist: .+ .+: Could not rename file."
              " Use option '--after' to force rename."],
             'mv', 'a', 'b')
         self.failUnlessExists('a')
@@ -273,7 +273,7 @@ class TestMove(TestCaseWithTransport):
         tree.commit('initial commit')
 
         self.run_bzr_error(
-            ["^bzr: ERROR: File\(s\) exist: .+ .+: can't rename."
+            ["^bzr: ERROR: Files exist: .+ .+: Could not rename file."
              " Use option '--after' to force rename."],
             'mv', 'a1', 'a2', 'sub1')
         self.failUnlessExists('a1')

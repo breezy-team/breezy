@@ -320,21 +320,24 @@ class FileExists(PathError):
 
 
 class FilesExist(PathError):
+    """Used when reporting that files do exist"""
     
-    _fmt = "File(s) exist: %(paths_as_string)s%(extra)s"
-
-    # used when reporting that files do exist
+    _fmt = "File%(plural)s exist: %(paths_as_string)s%(extra)s"
 
     def __init__(self, paths, extra=None):
         # circular import
         from bzrlib.osutils import quotefn
         BzrError.__init__(self)
         self.paths = paths
-        self.paths_as_string = ' '.join([quotefn(p) for p in paths])
+        self.paths_as_string = ' '.join(paths)
         if extra:
             self.extra = ': ' + str(extra)
         else:
             self.extra = ''
+        if len(paths) > 1:
+            self.plural = 's'
+        else:
+            self.plural = ''
 
 class NotADirectory(PathError):
 
@@ -519,49 +522,49 @@ class IncompatibleRevision(BzrError):
 
 
 class AlreadyVersionedError(BzrError):
-    #Used when a path is expected not to be versioned, but it is.
+    """Used when a path is expected not to be versioned, but it is."""
     
-    _fmt = "%(contextInfo)s%(path)s is already versioned"
+    _fmt = "%(context_info)s%(path)s is already versioned"
 
-    def __init__(self, path, contextInfo=None):
+    def __init__(self, path, context_info=None):
         """Construct a new NotVersionedError.
 
         :param path: This is the path which is versioned, 
         which should be in a user friendly form.
-        :param contextInfo: If given, this is information about the context,
+        :param context_info: If given, this is information about the context,
         which could explain why this is expected to not be versioned.
         """
         BzrError.__init__(self)
         self.path = path
-        if contextInfo is None:
-            self.contextInfo = ''
+        if context_info is None:
+            self.context_info = ''
         else:
-            self.contextInfo = contextInfo + ": "
+            self.context_info = context_info + ". "
 
 
 class NotVersionedError(BzrError):
-    #Used when a path is expected to be versioned, but it is not.
+    """Used when a path is expected to be versioned, but it is not."""
     
-    _fmt = "%(contextInfo)s%(path)s is not versioned"
+    _fmt = "%(context_info)s%(path)s is not versioned"
 
-    def __init__(self, path, contextInfo=None):
+    def __init__(self, path, context_info=None):
         """Construct a new NotVersionedError.
 
         :param path: This is the path which is not versioned, 
         which should be in a user friendly form.
-        :param contextInfo: If given, this is information about the context,
+        :param context_info: If given, this is information about the context,
         which could explain why this is expected to be versioned.
         """
         BzrError.__init__(self)
         self.path = path
-        if contextInfo is None:
-            self.contextInfo = ''
+        if context_info is None:
+            self.context_info = ''
         else:
-            self.contextInfo = contextInfo + ": "
+            self.context_info = context_info + ". "
         
         
 class PathsNotVersionedError(BzrError):
-    # used when reporting several paths which are not versioned
+    """Used when reporting several paths which are not versioned"""
 
     _fmt = "Path(s) are not versioned: %(paths_as_string)s"
 
