@@ -1543,13 +1543,13 @@ class cmd_ls(Command):
                      Option('ignored', help='Print ignored files'),
 
                      Option('null', help='Null separate the files'),
-                     'kind',
+                     'kind', 'show-ids'
                     ]
     @display_command
     def run(self, revision=None, verbose=False, 
             non_recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
-            null=False, kind=None):
+            null=False, kind=None, show_ids=False):
 
         if kind and kind not in ('file', 'directory', 'symlink'):
             raise errors.BzrCommandError('invalid kind specified')
@@ -1580,12 +1580,26 @@ class cmd_ls(Command):
                     continue
                 if verbose:
                     kindch = entry.kind_character()
-                    self.outf.write('%-8s %s%s\n' % (fc, fp, kindch))
+                    outstring = '%-8s %s%s' % (fc, fp, kindch)
+                    if show_ids and fid is not None:
+                        outstring = "%-50s %s" % (outstring, fid)
+                    self.outf.write(outstring + '\n')
                 elif null:
                     self.outf.write(fp + '\0')
+                    if show_ids:
+                        if fid is not None:
+                            self.outf.write(fid)
+                        self.outf.write('\0')
                     self.outf.flush()
                 else:
-                    self.outf.write(fp + '\n')
+                    if fid is not None:
+                        my_id = fid
+                    else:
+                        my_id = ''
+                    if show_ids:
+                        self.outf.write('%-50s %s\n' % (fp, my_id))
+                    else:
+                        self.outf.write(fp + '\n')
 
 
 class cmd_unknowns(Command):
@@ -2105,6 +2119,7 @@ class cmd_selftest(Command):
                             help='clean temporary tests directories'
                                  ' without running tests'),
                      ]
+    encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
