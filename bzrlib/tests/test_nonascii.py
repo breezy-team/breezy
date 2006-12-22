@@ -144,7 +144,7 @@ class NormalizedFilename(TestCaseWithTransport):
             finally:
                 f.close()
             self.assertEqual(shouldbe, actual, 
-                             'contents of %s is incorrect: %r != %r'
+                             'contents of %r is incorrect: %r != %r'
                              % (path, shouldbe, actual))
 
     def test_access_non_normalized(self):
