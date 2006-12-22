@@ -37,7 +37,7 @@ _revision_v4 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
     inventory_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
     inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
     revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
-    timestamp="1125907235.211783886"
+    timestamp="1125907235.212"
     timezone="36000">
 <message>- start splitting code for xml (de)serialization away from objects
   preparatory to supporting multiple formats by a single library
@@ -51,7 +51,7 @@ _revision_v4 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
 _revision_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
     inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
     revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
-    timestamp="1125907235.211783886"
+    timestamp="1125907235.212"
     timezone="36000">
 <message>- start splitting code for xml (de)serialization away from objects
   preparatory to supporting multiple formats by a single library
@@ -66,7 +66,7 @@ _revision_v5_utc = """\
 <revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
     inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
     revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
-    timestamp="1125907235.211783886"
+    timestamp="1125907235.212"
     timezone="0">
 <message>- start splitting code for xml (de)serialization away from objects
   preparatory to supporting multiple formats by a single library
@@ -107,7 +107,7 @@ _basis_inv_v5 = """<inventory revision_id="mbp@sourcefrog.net-20050905063503-439
 
 
 # DO NOT REFLOW THIS. Its the exact revision we want.
-_expected_rev_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;" format="5" inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41" revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9" timestamp="1125907235.211783886" timezone="36000">
+_expected_rev_v5 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;" format="5" inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41" revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9" timestamp="1125907235.212" timezone="36000">
 <message>- start splitting code for xml (de)serialization away from objects
   preparatory to supporting multiple formats by a single library
 </message>

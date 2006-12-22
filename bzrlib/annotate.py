@@ -28,35 +28,79 @@
 import sys
 import time
 
+from bzrlib import (
+    errors,
+    patiencediff,
+    tsort,
+    )
 from bzrlib.config import extract_email_address
-from bzrlib.errors import NoEmailInUsername
 
 
 def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
-        to_file=None):
+                  to_file=None, show_ids=False):
     if to_file is None:
         to_file = sys.stdout
 
     prevanno=''
+    last_rev_id = None
+    if show_ids:
+        w = branch.repository.weave_store.get_weave(file_id,
+            branch.repository.get_transaction())
+        annotations = list(w.annotate_iter(rev_id))
+        max_origin_len = max(len(origin) for origin, text in annotations)
+        for origin, text in annotations:
+            if full or last_rev_id != origin:
+                this = origin
+            else:
+                this = ''
+            to_file.write('%*s | %s' % (max_origin_len, this, text))
+            last_rev_id = origin
+        return
+
     annotation = list(_annotate_file(branch, rev_id, file_id))
     if len(annotation) == 0:
-        max_origin_len = 0
+        max_origin_len = max_revno_len = max_revid_len = 0
     else:
-        max_origin_len = max(len(origin) for origin in set(x[1] for x in annotation))
-    for (revno_str, author, date_str, line_rev_id, text ) in annotation:
+        max_origin_len = max(len(x[1]) for x in annotation)
+        max_revno_len = max(len(x[0]) for x in annotation)
+        max_revid_len = max(len(x[3]) for x in annotation)
+
+    if not verbose:
+        max_revno_len = min(max_revno_len, 12)
+    max_revno_len = max(max_revno_len, 3)
+
+    for (revno_str, author, date_str, line_rev_id, text) in annotation:
         if verbose:
-            anno = '%5s %-*s %8s ' % (revno_str, max_origin_len, author, date_str)
+            anno = '%-*s %-*s %8s ' % (max_revno_len, revno_str,
+                                       max_origin_len, author, date_str)
         else:
-            anno = "%5s %-7s " % ( revno_str, author[:7] )
+            if len(revno_str) > max_revno_len:
+                revno_str = revno_str[:max_revno_len-1] + '>'
+            anno = "%-*s %-7s " % (max_revno_len, revno_str, author[:7])
 
         if anno.lstrip() == "" and full: anno = prevanno
         print >>to_file, '%s| %s' % (anno, text)
         prevanno=anno
 
+
 def _annotate_file(branch, rev_id, file_id ):
+    """Yield the origins for each line of a file.
+
+    This includes detailed information, such as the committer name, and
+    date string for the commit, rather than just the revision id.
+    """
 
     rh = branch.revision_history()
-    w = branch.repository.weave_store.get_weave(file_id, 
+    revision_graph = branch.repository.get_revision_graph(rev_id)
+    merge_sorted_revisions = tsort.merge_sort(
+        revision_graph,
+        rev_id,
+        None,
+        generate_revno=True)
+    revision_id_to_revno = dict((rev_id, revno)
+                                for seq_num, rev_id, depth, revno, end_of_merge
+                                 in merge_sorted_revisions)
+    w = branch.repository.weave_store.get_weave(file_id,
         branch.repository.get_transaction())
     last_origin = None
     annotations = list(w.annotate_iter(rev_id))
@@ -74,19 +118,55 @@ def _annotate_file(branch, rev_id, file_id ):
             if origin not in revisions:
                 (revno_str, author, date_str) = ('?','?','?')
             else:
-                if origin in rh:
-                    revno_str = str(rh.index(origin) + 1)
-                else:
-                    revno_str = 'merge'
+                revno_str = '.'.join(str(i) for i in
+                                            revision_id_to_revno[origin])
             rev = revisions[origin]
             tz = rev.timezone or 0
-            date_str = time.strftime('%Y%m%d', 
+            date_str = time.strftime('%Y%m%d',
                                      time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
             author = rev.committer
             try:
                 author = extract_email_address(author)
-            except NoEmailInUsername:
+            except errors.NoEmailInUsername:
                 pass        # use the whole name
         yield (revno_str, author, date_str, origin, text)
+
+
+def reannotate(parents_lines, new_lines, new_revision_id):
+    """Create a new annotated version from new lines and parent annotations.
+    
+    :param parents_lines: List of annotated lines for all parents
+    :param new_lines: The un-annotated new lines
+    :param new_revision_id: The revision-id to associate with new lines
+        (will often be CURRENT_REVISION)
+    """
+    if len(parents_lines) == 1:
+        for data in _reannotate(parents_lines[0], new_lines, new_revision_id):
+            yield data
+    else:
+        reannotations = [list(_reannotate(p, new_lines, new_revision_id)) for
+                         p in parents_lines]
+        for annos in zip(*reannotations):
+            origins = set(a for a, l in annos)
+            line = annos[0][1]
+            if len(origins) == 1:
+                yield iter(origins).next(), line
+            elif len(origins) == 2 and new_revision_id in origins:
+                yield (x for x in origins if x != new_revision_id).next(), line
+            else:
+                yield new_revision_id, line
+
+
+def _reannotate(parent_lines, new_lines, new_revision_id):
+    plain_parent_lines = [l for r, l in parent_lines]
+    matcher = patiencediff.PatienceSequenceMatcher(None, plain_parent_lines,
+                                                   new_lines)
+    new_cur = 0
+    for i, j, n in matcher.get_matching_blocks():
+        for line in new_lines[new_cur:j]:
+            yield new_revision_id, line
+        for data in parent_lines[i:i+n]:
+            yield data
+        new_cur = j + n

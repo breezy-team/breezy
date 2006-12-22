@@ -160,7 +160,7 @@ def load_from_dirs(dirs):
             if getattr(plugins, f, None):
                 mutter('Plugin name %s already loaded', f)
             else:
-                mutter('add plugin name %s', f)
+                # mutter('add plugin name %s', f)
                 plugin_names.add(f)
 
         plugin_names = list(plugin_names)
@@ -168,7 +168,7 @@ def load_from_dirs(dirs):
         for name in plugin_names:
             try:
                 plugin_info = imp.find_module(name, [d])
-                mutter('load plugin %r', plugin_info)
+                # mutter('load plugin %r', plugin_info)
                 try:
                     plugin = imp.load_module('bzrlib.plugins.' + name,
                                              *plugin_info)
@@ -176,8 +176,7 @@ def load_from_dirs(dirs):
                 finally:
                     if plugin_info[0] is not None:
                         plugin_info[0].close()
-
-                mutter('loaded succesfully')
+                # mutter('loaded succesfully')
             except KeyboardInterrupt:
                 raise
             except Exception, e:

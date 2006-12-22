@@ -88,9 +88,8 @@ class KnitRevisionStore(RevisionStore):
                 assert r.revision_id == revision_id
                 revisions.append(r)
         except SyntaxError, e:
-            raise errors.BzrError('failed to unpack revision_xml',
-                                   [revision_id,
-                                   str(e)])
+            raise errors.BzrError('failed to unpack revision_xml for %s: %s' %
+                                   (revision_id, str(e)))
         return revisions 
 
     def _get_serialized_revisions(self, revision_ids, transaction):

@@ -275,6 +275,21 @@ class TestUrlToPath(TestCase):
 
         self.assertEqual('file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
 
+    def test_win32_unc_path_to_url(self):
+        to_url = urlutils._win32_local_path_to_url
+        self.assertEqual('file://HOST/path',
+            to_url(r'\\HOST\path'))
+        self.assertEqual('file://HOST/path',
+            to_url('//HOST/path'))
+
+        try:
+            result = to_url(u'//HOST/path/to/r\xe4ksm\xf6rg\xe5s')
+        except UnicodeError:
+            raise TestSkipped("local encoding cannot handle unicode")
+
+        self.assertEqual('file://HOST/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
+
+
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
         self.assertEqual('C:/path/to/foo',
@@ -288,7 +303,19 @@ class TestUrlToPath(TestCase):
         # Not a valid _win32 url, no drive letter
         self.assertRaises(InvalidURL, from_url, 'file:///path/to/foo')
 
-    def test__win32_extract_drive_letter(self):
+    def test_win32_unc_path_from_url(self):
+        from_url = urlutils._win32_local_path_from_url
+        self.assertEqual('//HOST/path', from_url('file://HOST/path'))
+        # despite IE allows 2, 4, 5 and 6 slashes in URL to another machine
+        # we want to use only 2 slashes
+        # Firefox understand only 5 slashes in URL, but it's ugly
+        self.assertRaises(InvalidURL, from_url, 'file:////HOST/path')
+        self.assertRaises(InvalidURL, from_url, 'file://///HOST/path')
+        self.assertRaises(InvalidURL, from_url, 'file://////HOST/path')
+        # check for file://C:/ instead of file:///C:/
+        self.assertRaises(InvalidURL, from_url, 'file://C:/path')
+
+    def test_win32_extract_drive_letter(self):
         extract = urlutils._win32_extract_drive_letter
         self.assertEqual(('file:///C:', '/foo'), extract('file://', '/C:/foo'))
         self.assertEqual(('file:///d|', '/path'), extract('file://', '/d|/path'))
@@ -329,7 +356,7 @@ class TestUrlToPath(TestCase):
         self.assertEqual(('path/..', 'foo'), split('path/../foo'))
         self.assertEqual(('../path', 'foo'), split('../path/foo'))
 
-    def test__win32_strip_local_trailing_slash(self):
+    def test_win32_strip_local_trailing_slash(self):
         strip = urlutils._win32_strip_local_trailing_slash
         self.assertEqual('file://', strip('file://'))
         self.assertEqual('file:///', strip('file:///'))

@@ -6,7 +6,7 @@ Serving Bazaar with FastCGI
 arbitrary files on your server.**
 
 This document describes one way to setup a Bazaar HTTP smart server, using
-Apache 2.0 and FastCGI.
+Apache 2.0 and FastCGI or mod_python.
 
 Example
 =======
@@ -20,6 +20,9 @@ access.
 
 Configuring Apache 2.0
 ----------------------
+
+FastCGI
+~~~~~~~
 
 First, configure mod_fastcgi, e.g. by adding lines like these to your
 httpd.conf::
@@ -45,7 +48,7 @@ will look like::
         Options Indexes, FollowSymLinks
         RewriteEngine On
         RewriteBase /code
-        RewriteRule ^(.*)/\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
+        RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
     </Directory>
     
     # bzr-smart.fcgi isn't under the DocumentRoot, so Alias it into the URL
@@ -67,8 +70,47 @@ information.
 .. _mod_rewrite: http://httpd.apache.org/docs/2.0/mod/mod_rewrite.html
 .. _mod_fastcgi: http://www.fastcgi.com/mod_fastcgi/docs/mod_fastcgi.html
 
+mod_python
+~~~~~~~~~~
+
+First, configure mod_python, e.g. by adding lines like these to your
+httpd.conf::
+
+    LoadModule python_module /usr/lib/apache2/modules/mod_python.so
+
+Define the rewrite rules with mod_rewrite the same way as for FastCGI, except
+change::
+
+    RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
+
+to::
+
+    RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.py
+
+Like with mod_fastcgi, we also define how our script is to be handled::
+
+    Alias /srv/example.com/scripts/bzr-smart.py /srv/example.com/scripts/bzr-smart.py
+    <Directory /srv/example.com/scripts>
+        <Files bzr-smart.py>
+            PythonPath "sys.path+['/srv/example.com/scripts']"
+            AddHandler python-program .py
+            PythonHandler bzr-smart::handler
+        </Files>
+    </Directory>
+
+This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
+inside `/code` to a Bazaar smart server via mod_python.
+
+Refer to the mod_python_ documentation for further information.
+
+.. _mod_python: http://www.modpython.org/
+
+
 Configuring Bazaar
 ------------------
+
+FastCGI
+~~~~~~~
 
 We've configured Apache to run the smart server at
 `/srv/example.com/scripts/bzr-smart.fcgi`.  This is just a simple script we need
@@ -81,7 +123,8 @@ Here's what it looks like::
     smart_server_app = wsgi.make_app(
         root='/srv/example.com/code',
         prefix='/code/',
-        path_var='REQUEST_URI')
+        path_var='REQUEST_URI',
+        readonly=True)
 
     fcgi.WSGIServer(smart_server_app).run()
         
@@ -89,6 +132,33 @@ The `fcgi` module can be found at http://svn.saddi.com/py-lib/trunk/fcgi.py.  It
 is part of flup_.
 
 .. _flup: http://www.saddi.com/software/flup/
+
+mod_python
+~~~~~~~~~~
+
+We've configured Apache to run the smart server at
+`/srv/example.com/scripts/bzr-smart.py`.  This is just a simple script we need
+to write to configure a smart server, and glue it to the mod_python gateway.
+Here's what it looks like::
+
+    import modpywsgi
+    from bzrlib.transport.http import wsgi
+
+    smart_server_app = wsgi.make_app(
+        root='/srv/example.com/code',
+        prefix='/code/',
+        path_var='REQUEST_URI',
+        readonly=True)
+
+    def handler(request):
+        """Handle a single request."""
+        wsgi_server = modpywsgi.WSGIServer(smart_server_app)
+        return wsgi_server.run(request)
+        
+The `modpywsgi` module can be found at http://trac.pocoo.org/wiki/ModPyWsgi.  It
+is part of pocoo_.
+
+.. _pocoo: http://trac.pocoo.org/wiki/
 
 Clients
 -------
@@ -128,3 +198,22 @@ standard`_ for further information.
 
 .. _WSGI standard: http://www.python.org/dev/peps/pep-0333/
 
+
+Pushing over ``bzr+http://``
+----------------------------
+
+It is possible to allow pushing data over the http smart server. The
+easiest way to do this, is to just supply ``readonly=False`` to the
+``wsgi.make_app()`` call. But be careful, because the smart protocol does
+not contain any Authentication. So if you enable write support, you will
+want to restrict access to ``.bzr/smart`` URLs to restrict who can
+actually write data on your system.  At this time, it is not possible to
+allow some people to have read-only access and others to have read-write
+access to the same urls. Because at the HTTP layer (which is doing the
+Authenticating), everything is just a POST request.  However, it would
+certainly be possible to have HTTPS require authentication and use a
+writable server, and plain HTTP allow read-only access.
+
+
+.. 
+   vim: ft=rst tw=74 et

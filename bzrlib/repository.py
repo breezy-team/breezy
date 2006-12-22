@@ -33,6 +33,7 @@ from bzrlib import (
     gpg,
     graph,
     knit,
+    lazy_regex,
     lockable_files,
     lockdir,
     osutils,
@@ -81,6 +82,11 @@ class Repository(object):
     describe the disk data format and the way of accessing the (possibly 
     remote) disk.
     """
+
+    _file_ids_altered_regex = lazy_regex.lazy_compile(
+        r'file_id="(?P<file_id>[^"]+)"'
+        r'.*revision="(?P<revision_id>[^"]+)"'
+        )
 
     @needs_write_lock
     def add_inventory(self, revid, inv, parents):
@@ -436,23 +442,52 @@ class Repository(object):
         # revisions. We don't need to see all lines in the inventory because
         # only those added in an inventory in rev X can contain a revision=X
         # line.
+        unescape_revid_cache = {}
+        unescape_fileid_cache = {}
+
+        # jam 20061218 In a big fetch, this handles hundreds of thousands
+        # of lines, so it has had a lot of inlining and optimizing done.
+        # Sorry that it is a little bit messy.
+        # Move several functions to be local variables, since this is a long
+        # running loop.
+        search = self._file_ids_altered_regex.search
+        unescape = _unescape_xml
+        setdefault = result.setdefault
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for line in w.iter_lines_added_or_present_in_versions(
-                selected_revision_ids, pb=pb):
-                start = line.find('file_id="')+9
-                if start < 9: continue
-                end = line.find('"', start)
-                assert end>= 0
-                file_id = _unescape_xml(line[start:end])
+                                        selected_revision_ids, pb=pb):
+                match = search(line)
+                if match is None:
+                    continue
+                # One call to match.group() returning multiple items is quite a
+                # bit faster than 2 calls to match.group() each returning 1
+                file_id, revision_id = match.group('file_id', 'revision_id')
 
-                start = line.find('revision="')+10
-                if start < 10: continue
-                end = line.find('"', start)
-                assert end>= 0
-                revision_id = _unescape_xml(line[start:end])
+                # Inlining the cache lookups helps a lot when you make 170,000
+                # lines and 350k ids, versus 8.4 unique ids.
+                # Using a cache helps in 2 ways:
+                #   1) Avoids unnecessary decoding calls
+                #   2) Re-uses cached strings, which helps in future set and
+                #      equality checks.
+                # (2) is enough that removing encoding entirely along with
+                # the cache (so we are using plain strings) results in no
+                # performance improvement.
+                try:
+                    revision_id = unescape_revid_cache[revision_id]
+                except KeyError:
+                    unescaped = unescape(revision_id)
+                    unescape_revid_cache[revision_id] = unescaped
+                    revision_id = unescaped
+
                 if revision_id in selected_revision_ids:
-                    result.setdefault(file_id, set()).add(revision_id)
+                    try:
+                        file_id = unescape_fileid_cache[file_id]
+                    except KeyError:
+                        unescaped = unescape(file_id)
+                        unescape_fileid_cache[file_id] = unescaped
+                        file_id = unescaped
+                    setdefault(file_id, set()).add(revision_id)
         finally:
             pb.finished()
         return result

@@ -595,7 +595,8 @@ class TestBranchPushLocations(TestCaseWithBranch):
         branch.set_push_location('foo')
         local_path = urlutils.local_path_from_url(branch.base[:-1])
         self.assertFileEqual("[%s]\n"
-                             "push_location = foo" % local_path,
+                             "push_location = foo\n"
+                             "push_location:policy = norecurse" % local_path,
                              fn)
 
     # TODO RBC 20051029 test getting a push location from a branch in a 

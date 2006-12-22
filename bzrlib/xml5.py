@@ -186,7 +186,7 @@ class Serializer_v5(Serializer):
         """Revision object -> xml tree"""
         root = Element('revision',
                        committer = rev.committer,
-                       timestamp = '%.9f' % rev.timestamp,
+                       timestamp = '%.3f' % rev.timestamp,
                        revision_id = rev.revision_id,
                        inventory_sha1 = rev.inventory_sha1,
                        format='5',

@@ -192,15 +192,17 @@ class ExtendedTestResult(unittest._TextTestResult):
                 self._formatTime(self._benchmarkTime),
                 self._elapsedTestTimeString())
         else:
-            return "      %s" % self._elapsedTestTimeString()
+            return "           %s" % self._elapsedTestTimeString()
 
     def _formatTime(self, seconds):
         """Format seconds as milliseconds with leading spaces."""
-        return "%5dms" % (1000 * seconds)
+        # some benchmarks can take thousands of seconds to run, so we need 8
+        # places
+        return "%8dms" % (1000 * seconds)
 
     def _shortened_test_description(self, test):
         what = test.id()
-        what = re.sub(r'^bzrlib\.(tests|benchmark)\.', '', what)
+        what = re.sub(r'^bzrlib\.(tests|benchmarks)\.', '', what)
         return what
 
     def startTest(self, test):
@@ -376,7 +378,10 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        self.stream.write(self._ellipsize_to_right(name, 60))
+        # width needs space for 6 char status, plus 1 for slash, plus 2 10-char
+        # numbers, plus a trailing blank
+        self.stream.write(self._ellipsize_to_right(name,
+                            osutils.terminal_width()-30))
         self.stream.flush()
 
     def report_error(self, test, err):
@@ -386,7 +391,7 @@ class VerboseTestResult(ExtendedTestResult):
 
     def report_failure(self, test, err):
         self.failure_count += 1
-        self.stream.writeln('FAIL %s\n    %s'
+        self.stream.writeln(' FAIL %s\n    %s'
                 % (self._testTimeString(), err[1]))
 
     def report_success(self, test):
@@ -792,6 +797,20 @@ class TestCase(unittest.TestCase):
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
+            # Proxies
+            'http_proxy': None,
+            'HTTP_PROXY': None,
+            'https_proxy': None,
+            'HTTPS_PROXY': None,
+            'no_proxy': None,
+            'NO_PROXY': None,
+            'all_proxy': None,
+            'ALL_PROXY': None,
+            # Nobody cares about these ones AFAIK. So far at
+            # least. If you do (care), please update this comment
+            # -- vila 20061212
+            'ftp_proxy': None,
+            'FTP_PROXY': None,
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
@@ -1481,7 +1500,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 os.chdir(self.test_dir)
                 break
 
-    def build_tree(self, shape, line_endings='native', transport=None):
+    def build_tree(self, shape, line_endings='binary', transport=None):
         """Build a test tree according to a pattern.
 
         shape is a sequence of file specifications.  If the final
@@ -1706,6 +1725,7 @@ def test_suite():
     """
     testmod_names = [
                    'bzrlib.tests.test_ancestry',
+                   'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
@@ -1713,7 +1733,7 @@ def test_suite():
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
-                   'bzrlib.tests.test_command',
+                   'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
@@ -1727,6 +1747,7 @@ def test_suite():
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_generate_ids',
+                   'bzrlib.tests.test_globbing',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
@@ -1827,3 +1848,23 @@ def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
     for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
         suite.addTests(adapter.adapt(test))
+
+
+def clean_selftest_output(root=None, quiet=False):
+    """Remove all selftest output directories from root directory.
+
+    :param  root:   root directory for clean
+                    (if ommitted or None then clean current directory).
+    :param  quiet:  suppress report about deleting directories
+    """
+    import re
+    import shutil
+
+    re_dir = re.compile(r'''test\d\d\d\d\.tmp''')
+    if root is None:
+        root = u'.'
+    for i in os.listdir(root):
+        if os.path.isdir(i) and re_dir.match(i):
+            if not quiet:
+                print 'delete directory:', i
+            shutil.rmtree(i)

@@ -21,8 +21,11 @@ import os
 from bzrlib import (
     osutils,
     workingtree,
-)
-from bzrlib.tests import TestCaseWithTransport
+    )
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 
 
 class TestMove(TestCaseWithTransport):
