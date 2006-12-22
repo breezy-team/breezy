@@ -309,6 +309,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._control_files.break_lock()
         self.branch.break_lock()
 
+    def requires_rich_root(self):
+        return self._format.requires_rich_root
+
     def _set_inventory(self, inv, dirty):
         """Set the internal cached inventory.
 
@@ -1518,7 +1521,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
         inventory.revision_id = revision_id
-        return xml6.serializer_v6.write_inventory_to_string(inventory)
+        return xml7.serializer_v7.write_inventory_to_string(inventory)
 
     def _cache_basis_inventory(self, new_revision):
         """Cache new_revision as the basis inventory."""
@@ -1539,7 +1542,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             xml = self.branch.repository.get_inventory_xml(new_revision)
             firstline = xml.split('\n', 1)[0]
             if (not 'revision_id="' in firstline or 
-                'format="6"' not in firstline):
+                'format="7"' not in firstline):
                 inv = self.branch.repository.deserialise_inventory(
                     new_revision, xml)
                 xml = self._create_basis_xml_from_inventory(new_revision, inv)
@@ -2037,6 +2040,8 @@ class WorkingTreeFormat(object):
     _formats = {}
     """The known formats."""
 
+    requires_rich_root = False
+
     @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the working tree object in a_bzrdir."""
@@ -2277,6 +2282,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
     """Working tree format that supports unique roots and nested trees"""
 
     _tree_class = WorkingTree4
+
+    requires_rich_root = True
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""

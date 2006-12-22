@@ -220,6 +220,55 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertEqual([], tree.get_parent_ids())
 
 
+class TestWorkingTreeFormat4(TestCaseWithTransport):
+    """Tests specific to WorkingTreeFormat3."""
+
+    def test_disk_layout(self):
+        tree = self.make_branch_and_tree('.', format=bzrdir.get_knit3_format())
+        control = tree.bzrdir
+        # we want:
+        # format 'Bazaar-NG Working Tree format 4'
+        # inventory = 1 entry for root
+        # pending-merges = ''
+        # no inventory.basis yet
+        t = control.get_workingtree_transport(None)
+        self.assertEqualDiff('Bazaar-NG Working Tree format 4',
+                             t.get('format').read())
+        self.assertContainsRe(t.get('inventory').read(), 
+                              '<inventory format="7">\n'
+                              '<directory file_id="[^"]*" name="" />\n'
+                              '</inventory>\n',
+                             )
+        self.assertEqualDiff('### bzr hashcache v5\n',
+                             t.get('stat-cache').read())
+        self.assertFalse(t.has('basis-inventory-cache'))
+        # no last-revision file means 'None' or 'NULLREVISION'
+        self.assertFalse(t.has('last-revision'))
+        tree.set_root_id('my-root-id')
+        tree.commit('test', rev_id='revision-1')
+        self.assertTrue(t.has('basis-inventory-cache'))
+        self.assertTrue(t.has('last-revision'))
+        self.assertEqualDiff(t.get('basis-inventory-cache').read(), 
+            '<inventory format="7" revision_id="revision-1">\n'
+            '<directory file_id="my-root-id" name="" revision="revision-1" />\n'
+            '</inventory>\n')
+    
+    def test_incompatible_repo(self):
+        control = bzrdir.get_knit1_format()
+        control.workingtree_format = workingtree.WorkingTreeFormat4()
+        tree = self.make_branch_and_tree('.', format=control)
+        self.assertRaises(errors.RootNotRich, tree.commit)
+
+    def test_compatible_repo(self):
+        tree = self.make_branch_and_tree('.', format=bzrdir.get_knit3_format())
+        tree.set_root_id('my-root-id')
+        tree.commit('test', rev_id='revision-1')
+        tree.commit('test', rev_id='revision-2')
+        revision_tree = tree.branch.repository.revision_tree('revision-2')
+        self.assertEqual('revision-1', 
+                         revision_tree.inventory['my-root-id'].revision)
+
+
 class TestFormat2WorkingTree(TestCaseWithTransport):
     """Tests that are specific to format 2 trees."""
 

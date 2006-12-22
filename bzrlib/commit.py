@@ -212,6 +212,9 @@ class Commit(object):
         else:
             self.work_tree = working_tree
             self.branch = self.work_tree.branch
+            if getattr(self.work_tree, 'requires_rich_root', lambda: False)():
+                if not self.branch.repository.supports_rich_root():
+                    raise errors.RootNotRich()
         if message_callback is None:
             if message is not None:
                 if isinstance(message, str):
