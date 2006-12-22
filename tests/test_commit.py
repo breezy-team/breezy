@@ -151,6 +151,17 @@ class TestCommitFromBazaar(TestCaseWithSubversionRepository):
         self.assertEqual("some-ghost-revision\n", 
                 self.client_get_prop(self.repos_url, "bzr:merge", 2))
 
+    def test_commit_branchnick(self):
+        wt = self.checkout.create_workingtree()
+        self.build_tree({'dc/foo/bla': "data", 'dc/bla': "otherdata"})
+        wt.add('bla')
+        wt.commit(message="data")
+        wt.add('foo')
+        wt.add('foo/bla')
+        wt.commit(message="data", revprops={"branch-nick": "mybranch"})
+        self.assertEqual("mybranch", 
+                self.client_get_prop(self.repos_url, "bzr:revprop:branch-nick", 2))
+
 class TestPush(TestCaseWithSubversionRepository):
     def setUp(self):
         super(TestPush, self).setUp()

@@ -1,2 +1,1 @@
-- replace shelve with sqlite
 - get rid of use of `svn ls' in logwalker

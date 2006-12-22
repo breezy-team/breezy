@@ -90,6 +90,14 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         self.client_update("dc")
         self.assertTrue(os.path.isdir("dc/bla/subdir"))
 
+    def test_has_dot(self):
+        t = SvnRaTransport(self.make_client('d', 'dc'))
+        self.assertEqual(False, t.has("."))
+
+    def test_has_nonexistent(self):
+        t = SvnRaTransport(self.make_client('d', 'dc'))
+        self.assertEqual(False, t.has("bar"))
+
     def test_mkdir_missing_parent(self):
         repos_url = self.make_client('d', 'dc')
         t = SvnRaTransport(repos_url)
