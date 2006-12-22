@@ -1508,6 +1508,21 @@ class SampleSocket(object):
         else:
             return self.writefile
 
+
+class SmartHTTPTransportTestCase(tests.TestCase):
+
+    def test_remote_path_after_close(self):
+        # If a user enters "bzr+http://host/foo", we want to sent all smart
+        # requests to that URL, even when accessing child URLs.  i.e., we want
+        # to POST to "bzr+http://host/foo/.bzr/smart" and never something like
+        # "bzr+http://host/foo/.bzr/brancch/.bzr/smart".  So, a cloned
+        # SmartHTTPTransport remembers the initial URL, and adjusts the relpaths
+        # it sends in smart requests accordingly.
+        base_transport = smart.SmartHTTPTransport('bzr+http://host/path')
+        new_transport = base_transport.clone('child_dir')
+        self.assertEqual(base_transport._http_transport, new_transport._http_transport)
+        self.assertEqual('child_dir/foo', new_transport._remote_path('foo'))
+
         
 # TODO: Client feature that does get_bundle and then installs that into a
 # branch; this can be used in place of the regular pull/fetch operation when

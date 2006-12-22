@@ -1781,10 +1781,12 @@ class SmartHTTPTransport(SmartTransport):
 
     def _remote_path(self, relpath):
         """After connecting HTTP Transport only deals in relative URLs."""
-        if relpath == '.':
-            return ''
-        else:
-            return relpath
+        # Adjust the relpath based on which URL this smart transport is
+        # connected to.
+        base = self._http_transport.base
+        url = urlutils.join(self.base[len('bzr+'):], relpath)
+        url = urlutils.normalize_url(url)
+        return urlutils.relative_url(base, url)
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -1800,15 +1802,20 @@ class SmartHTTPTransport(SmartTransport):
         This is re-implemented rather than using the default
         SmartTransport.clone() because we must be careful about the underlying
         http transport.
+
+        Also, the cloned smart transport will POST to the same .bzr/smart
+        location as this transport (although obviously the relative paths in the
+        smart requests may be different).  This is so that the server doesn't
+        have to handle .bzr/smart requests at arbitrarily places, just at the
+        initial URL the user uses.
         """
         if relative_url:
             abs_url = self.abspath(relative_url)
         else:
             abs_url = self.base
-        # By cloning the underlying http_transport, we are able to share the
+        # By sharing the underlying http_transport, we are able to share the
         # connection.
-        new_transport = self._http_transport.clone(relative_url)
-        return SmartHTTPTransport(abs_url, http_transport=new_transport)
+        return SmartHTTPTransport(abs_url, http_transport=self._http_transport)
 
 
 def get_test_permutations():
