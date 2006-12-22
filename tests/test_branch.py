@@ -76,7 +76,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_append_revision(self):
         repos_url = self.make_client('a', 'dc')
         branch = Branch.open("svn+"+repos_url)
-        self.assertRaises(NotImplementedError, branch.append_revision, [])
+        branch.append_revision([])
 
     def test_get_push_location(self):
         repos_url = self.make_client('a', 'dc')

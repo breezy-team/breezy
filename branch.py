@@ -123,7 +123,6 @@ class SvnBranch(Branch):
         return inv.root.file_id
 
     def _get_nick(self):
-        # FIXME: Get nick name from branch properties?
         try:
             if self.branch_path == "":
                 return None
@@ -209,7 +208,8 @@ class SvnBranch(Branch):
         pass # FIXME: Use svn.client.switch()
 
     def append_revision(self, *revision_ids):
-        raise NotImplementedError(self.append_revision)
+        #raise NotImplementedError(self.append_revision)
+        pass
 
     def get_physical_lock_status(self):
         return False
