@@ -387,7 +387,7 @@ class TestRepository(TestCaseWithRepository):
         t._control_files.get_utf8('basis-inventory-cache')
 
         basis_inv_txt = t.read_basis_inventory()
-        basis_inv = bzrlib.xml6.serializer_v6.read_inventory_from_string(basis_inv_txt)
+        basis_inv = bzrlib.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
         self.assertEquals('r2', basis_inv.revision_id)
         store_inv = b.repository.get_inventory('r2')
 

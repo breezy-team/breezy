@@ -1413,6 +1413,15 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def __init__(self):
         self._workingtree_format = None
 
+    def __eq__(self, other):
+        if other.__class__ is not self.__class__:
+            return False
+        if other.repository_format != self.repository_format:
+            return False
+        if other.workingtree_format != self.workingtree_format:
+            return False
+        return True
+
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
         if format is None:

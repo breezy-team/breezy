@@ -2194,6 +2194,11 @@ class WorkingTreeFormat3(WorkingTreeFormat):
     _lock_class = LockDir
     _tree_class = WorkingTree3
 
+    def __get_matchingbzrdir(self):
+        return bzrdir.BzrDirMetaFormat1()
+
+    _matchingbzrdir = property(__get_matchingbzrdir)
+
     def _open_control_files(self, a_bzrdir):
         transport = a_bzrdir.get_workingtree_transport(None)
         return LockableFiles(transport, self._lock_file_name, 
@@ -2246,7 +2251,6 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
     def __init__(self):
         super(WorkingTreeFormat3, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
 
     def open(self, a_bzrdir, _found=False):
         """Return the WorkingTree object for a_bzrdir
@@ -2284,6 +2288,14 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
     _tree_class = WorkingTree4
 
     requires_rich_root = True
+
+    def __init__(self):
+        WorkingTreeFormat3.__init__(self)
+        
+    def __get_matchingbzrdir(self):
+        return bzrdir.get_knit3_format()
+
+    _matchingbzrdir = property(__get_matchingbzrdir)
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
