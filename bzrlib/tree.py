@@ -141,7 +141,7 @@ class Tree(object):
         """
         return self.bzrdir.is_control_filename(filename)
 
-    def iter_entries_by_dir(self):
+    def iter_entries_by_dir(self, specific_file_ids=None):
         """Walk the tree in 'by_dir' order.
 
         This will yield each entry in the tree as a (path, entry) tuple. The
@@ -149,7 +149,8 @@ class Tree(object):
         preceeded by the parent of a directory, and all the contents of a 
         directory are grouped together.
         """
-        return self.inventory.iter_entries_by_dir()
+        return self.inventory.iter_entries_by_dir(
+            specific_file_ids=specific_file_ids)
 
     def kind(self, file_id):
         raise NotImplementedError("subclasses must implement kind")
@@ -476,21 +477,15 @@ class InterTree(InterObject):
         Iteration is done in parent-to-child order, relative to the to_tree.
         """
         to_paths = {}
-        from_entries_by_dir = list(from_tree.inventory.iter_entries_by_dir())
+        from_entries_by_dir = list(from_tree.inventory.iter_entries_by_dir(
+            specific_file_ids=specific_file_ids))
         from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
-        to_entries_by_dir = list(to_tree.inventory.iter_entries_by_dir())
-        if specific_file_ids is not None:
-            specific_file_ids = set(specific_file_ids)
-            num_entries = len(specific_file_ids)
-        else:
-            num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
+        to_entries_by_dir = list(to_tree.inventory.iter_entries_by_dir(specific_file_ids=specific_file_ids))
+        num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
         for to_path, to_entry in to_entries_by_dir:
             file_id = to_entry.file_id
             to_paths[file_id] = to_path
-            if (specific_file_ids is not None and 
-                file_id not in specific_file_ids):
-                continue
             entry_count += 1
             changed_content = False
             from_path, from_entry = from_data.get(file_id, (None, None))
@@ -501,8 +496,7 @@ class InterTree(InterObject):
                 from_parent = from_entry.parent_id
                 from_kind, from_executable, from_stat = \
                     from_tree._comparison_data(from_entry, from_path)
-                if specific_file_ids is None:
-                    entry_count += 1
+                entry_count += 1
             else:
                 from_versioned = False
                 from_kind = None
@@ -548,9 +542,6 @@ class InterTree(InterObject):
                 to_path = osutils.pathjoin(to_paths[from_entry.parent_id],
                                            from_entry.name)
             to_paths[file_id] = to_path
-            if (specific_file_ids is not None and 
-                file_id not in specific_file_ids):
-                continue
             entry_count += 1
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
