@@ -272,7 +272,7 @@ class LogWalker(object):
             self.fetch_revisions(revnum)
 
         row = self.db.execute(
-             "select rev from changed_path where path=%r and rev <= %d order by rev desc limit 1" % (path.strip("/"), revnum)).fetchone()
+             "select rev from changed_path where path='%s' and rev <= %d order by rev desc limit 1" % (path.strip("/"), revnum)).fetchone()
         if row is None and path == "":
             return 0
 
