@@ -280,28 +280,6 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             "svn-v%d:0@%s-" % (MAPPING_VERSION, repository.uuid), 
             "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid)])
 
-    def test_get_dir(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/foo/bla': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/foo/blo': "data2", "dc/bar/foo": "data3"})
-        self.client_add("dc/foo/blo")
-        self.client_add("dc/bar")
-        self.client_commit("dc", "Second Message")
-        repository = Repository.open("svn+%s" % repos_url)
-        (_, dirents) = repository._cache_get_dir("foo", 1)
-        self.assertTrue(dirents.has_key("bla"))
-        self.assertFalse(dirents.has_key("foo"))
-        self.assertRaises(NoSuchRevision, repository._cache_get_dir, "bar", 4)
-        (_, dirents) = repository._cache_get_dir("foo", 2)
-        self.assertTrue(dirents.has_key("bla"))
-        self.assertTrue(dirents.has_key("blo"))
-        self.assertFalse(dirents.has_key("foox"))
-        (_, dirents) = repository._cache_get_dir("bar", 2)
-        self.assertTrue(dirents.has_key("foo"))
-        self.assertFalse(dirents.has_key("foox"))
-
     def test_copy_contents_into(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})

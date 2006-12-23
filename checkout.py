@@ -392,12 +392,12 @@ class SvnWorkingTree(WorkingTree):
         return fingerprint_file(open(self.abspath(path)))['sha1']
 
     def _get_bzr_merges(self):
-        return self.branch.repository._get_branch_prop(self.branch.branch_path, 
+        return self.branch.repository.branchprop_list.get_property(self.branch.branch_path, 
                                             self.base_revnum, 
                                             SVN_PROP_BZR_MERGE, "")
 
     def _get_svk_merges(self):
-        return self.branch.repository._get_branch_prop(self.branch.branch_path, 
+        return self.branch.repository.branchprop_list.get_property(self.branch.branch_path, 
                                             self.base_revnum, 
                                             SVN_PROP_SVK_MERGE, "")
 
