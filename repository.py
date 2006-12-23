@@ -259,13 +259,16 @@ class SvnRepository(Repository):
     def get_fileid_map(self, revnum, path, pb=None):
         return self.fileid_map.get_map(self.uuid, revnum, path, pb)
 
-    def transform_fileid_map(self, uuid, revnum, branch, changes, map, renames={}):
-        return self.fileid_map.apply_changes(uuid, revnum, branch, changes, map, renames={})
+    def transform_fileid_map(self, uuid, revnum, branch, changes, map, renames):
+        return self.fileid_map.apply_changes(uuid, revnum, branch, changes, map, renames)
 
     def path_to_file_id(self, revnum, path):
         """Generate a bzr file id from a Subversion file name. 
         
         This implementation DOES NOT track renames.
+
+        Use get_fileid_map() directly instead of calling this function 
+        multiple times if possible.
 
         :param revnum: Revision number.
         :param path: Absolute path.
@@ -363,6 +366,12 @@ class SvnRepository(Repository):
             return RevisionTree(self, inventory, revision_id)
 
         return SvnRevisionTree(self, revision_id, inventory)
+
+    def revision_fileid_renames(self, revid):
+        (path, revnum) = self.parse_revision_id(revid)
+        items = self._get_branch_prop(path, revnum, 
+                                  SVN_PROP_BZR_FILEIDS, "").splitlines()
+        return dict(map(lambda x: x.split("\t"), items))
 
     def revision_parents(self, revision_id, merged_data=None):
         (path, revnum) = self.parse_revision_id(revision_id)

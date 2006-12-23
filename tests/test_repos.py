@@ -373,6 +373,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open("svn+%s" % repos_url)
         self.assertTrue(repository.is_shared())
 
+    def test_revision_fileid_renames(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/test': "data"})
+        self.client_add("dc/test")
+        self.client_set_prop("dc", "bzr:file-ids", "test\tbla\n")
+        self.client_commit("dc", "Msg")
+
+        repos = Repository.open(repos_url)
+        renames = repos.revision_fileid_renames("svn-v%d:1@%s-" % (MAPPING_VERSION, repos.uuid))
+        self.assertEqual({"test": "bla"}, renames)
+
     def test_fetch_local(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
@@ -720,6 +731,7 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
                 "svn-v%d:2@%s-" % (MAPPING_VERSION, self.repos.uuid))
 
         self.assertTrue(inventory[inventory.path2id("foo/bla")].executable)
+
 
     def test_symlink(self):
         os.symlink('foo/bla', 'dc/bar')
