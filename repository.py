@@ -364,7 +364,7 @@ class SvnRepository(Repository):
                 break
 
         # if the branch didn't change, bzr:merge can't have changed
-        if not path in self._log.get_revision_info(revnum)[3]:
+        if not self._log.touches_path(branch, revnum):
             return parent_ids
        
         if merged_data is None:
@@ -414,7 +414,7 @@ class SvnRepository(Repository):
 
             bzr_props[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = svn_props[name]
 
-        (rev.committer, rev.message, date, _) = self._log.get_revision_info(revnum)
+        (rev.committer, rev.message, date) = self._log.get_revision_info(revnum)
         if rev.committer is None:
             rev.committer = ""
 

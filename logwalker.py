@@ -256,10 +256,9 @@ class LogWalker(object):
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum, pb)
         (author, message, date) = self.db.execute("select author, message, date from revision where revno="+ str(revnum)).fetchone()
-        paths = self._get_revision_paths(revnum)
         if author is None:
             author = None
-        return (author, _escape_commit_message(base64.b64decode(message)), date, paths)
+        return (author, _escape_commit_message(base64.b64decode(message)), date)
 
     
     def find_latest_change(self, path, revnum):
@@ -308,3 +307,18 @@ class LogWalker(object):
             yield os.path.join(path, p)
             for c in self.find_children(os.path.join(path, p), revnum):
                 yield c
+
+    def get_previous(self, path, revnum):
+        """Return path,revnum pair specified pair was derived from.
+
+        :param path:  Path to check
+        :param revnum:  Revision to check
+        """
+        if revnum > self.saved_revnum:
+            self.fetch_revisions(revnum)
+        if revnum == 0:
+            return (None, -1)
+        row = self.db.execute("select copyfrom_path, copyfrom_rev from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone()
+        if row[1] == -1:
+            return (path, revnum-1)
+        return row

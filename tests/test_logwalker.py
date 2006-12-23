@@ -325,3 +325,45 @@ class TestLogWalker(TestCaseWithSubversionRepository):
                                      transport=SvnRaTransport(repos_url))
 
         self.assertFalse(walker.touches_path("trunk", 2))
+
+    def test_get_previous_simple(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/afile': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/trunk/afile': "data2"})
+        self.client_set_prop("dc/trunk", "myprop", "mydata")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(("trunk", 1), walker.get_previous("trunk", 2))
+
+    def test_get_previous_copy(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/afile': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.client_copy("dc/trunk", "dc/anotherfile")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(("trunk", 1), walker.get_previous("anotherfile", 2))
+
+    def test_get_revision_info(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/afile': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        info = walker.get_revision_info(1)
+
+        self.assertEqual("", info[0])
+        self.assertEqual("My Message", info[1])
+

@@ -78,3 +78,15 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.assertEqual('1', props["svn:entry:committed-rev"])
         self.assertTrue("svn:entry:last-author" in props)
         self.assertTrue("svn:entry:committed-date" in props)
+
+    def test_get_property_diff(self):
+        repos_url = self.make_client('d', 'dc')
+        self.client_set_prop("dc", "myprop", "data\n")
+        self.client_commit("dc", "My Message")
+        self.client_set_prop("dc", "myprop", "data\ndata2\n")
+        self.client_commit("dc", "My Message")
+
+        logwalk = LogWalker(scheme=NoBranchingScheme(), transport=SvnRaTransport(repos_url))
+
+        bp = BranchPropertyList(logwalk, self.db)
+        self.assertEqual("data2\n", bp.get_property_diff("", 2, "myprop"))

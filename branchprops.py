@@ -73,11 +73,17 @@ class BranchPropertyList:
             return props[name]
         return default
 
-    def _get_branch_prop_added(self, path, revnum, name):
+    def get_property_diff(self, path, revnum, name):
         """Returns the new lines that were added to a particular property."""
         # If the path this property is set on didn't change, then 
         # the property can't have changed.
         if not self.log.touches_path(path, revnum):
             return ""
 
-        #FIXME
+        current = self.get_property(path, revnum, name, "")
+        (prev_path, prev_revnum) = self.log.get_previous(path, revnum)
+        previous = self.get_property(prev_path, prev_revnum, name, "")
+        if len(previous) > len(current) or current[0:len(previous)] != previous:
+            mutter('original part changed!')
+            return ""
+        return current[len(previous):] 
