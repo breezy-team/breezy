@@ -33,7 +33,7 @@ from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 from repository import (parse_svn_revision_id, generate_svn_revision_id, 
                         svk_feature_to_revision_id, revision_id_to_svk_feature,
-                        MAPPING_VERSION)
+                        MAPPING_VERSION, escape_svn_path, unescape_svn_path)
 
 
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
@@ -291,32 +291,6 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository.check([
             "svn-v%d:0@%s-" % (MAPPING_VERSION, repository.uuid), 
             "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid)])
-
-    def test_get_file(self):
-        repos_url = self.make_client('d', 'dc')
-        repository = Repository.open("svn+%s" % repos_url)
-        self.build_tree({'dc/foo': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/foo': "data2", "dc/bar/foo": "data3"})
-        self.client_add("dc/bar")
-        self.client_commit("dc", "Second Message")
-        self.build_tree({'dc/foo': "data3"})
-        self.client_commit("dc", "Third Message")
-        stream = repository._cache_get_file("foo", 1)[1]
-        stream.seek(0)
-        self.assertEqual("data", stream.read())
-        stream = repository._cache_get_file("foo", 2)[1]
-        stream.seek(0)
-        self.assertEqual("data2", stream.read())
-        self.assertEqual(repository.uuid, 
-                repository._cache_get_file("foo", 1)[0]['svn:entry:uuid'])
-        self.assertEqual('1', 
-            repository._cache_get_file("foo", 1)[0]['svn:entry:committed-rev'])
-        self.assertTrue(repository._cache_get_file("foo", 1)[0].has_key(
-            'svn:entry:last-author'))
-        self.assertTrue(repository._cache_get_file("foo", 1)[0].has_key(
-            'svn:entry:committed-date'))
 
     def test_get_dir(self):
         repos_url = self.make_client('d', 'dc')
@@ -774,3 +748,27 @@ class RevisionIdMappingTest(TestCase):
               revision_id_to_svk_feature("svn-v%d:6@auuid-" % MAPPING_VERSION))
 
 
+class EscapeTest(TestCase):
+    def test_escape_svn_path_none(self):      
+        self.assertEqual("", escape_svn_path(""))
+
+    def test_escape_svn_path_simple(self):
+        self.assertEqual("ab", escape_svn_path("ab"))
+
+    def test_escape_svn_path_percent(self):
+        self.assertEqual("a%25b", escape_svn_path("a%b"))
+
+    def test_escape_svn_path_whitespace(self):
+        self.assertEqual("foobar%20", escape_svn_path("foobar "))
+
+    def test_escape_svn_path_slash(self):
+        self.assertEqual("foobar%2f", escape_svn_path("foobar/"))
+
+    def test_unescape_svn_path_slash(self):
+        self.assertEqual("foobar/", unescape_svn_path("foobar%2f"))
+
+    def test_unescape_svn_path_none(self):
+        self.assertEqual("foobar", unescape_svn_path("foobar"))
+
+    def test_unescape_svn_path_percent(self):
+        self.assertEqual("foobar%b", unescape_svn_path("foobar%25b"))

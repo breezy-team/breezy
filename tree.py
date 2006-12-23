@@ -199,64 +199,6 @@ class TreeBuildEditor(svn.delta.Editor):
         return apply_txdelta_handler(StringIO(""), self.file_stream)
 
 
-class SvnInventoryFile(InventoryFile):
-    """Inventory entry that can either be a plain file or a 
-    symbolic link. Avoids fetching data until necessary. """
-    def __init__(self, file_id, name, parent_id, repository, path, revnum, 
-                 has_props):
-        self.repository = repository
-        self.path = path
-        self.has_props = has_props
-        self.revnum = revnum
-        InventoryFile.__init__(self, file_id, name, parent_id)
-
-    def _get_sha1(self):
-        text = self.repository._get_file(self.path, self.revnum).read()
-        return osutils.sha_string(text)
-
-    def _get_executable(self):
-        if not self.has_props:
-            return False
-
-        value = self.repository._get_file_prop(self.path, self.revnum, 
-                    svn.core.SVN_PROP_EXECUTABLE)
-        if value and value == svn.core.SVN_PROP_EXECUTABLE_VALUE:
-            return True
-        return False 
-
-    def _is_special(self):
-        if not self.has_props:
-            return False
-
-        value = self.repository._get_file_prop(self.path, self.revnum, 
-                    svn.core.SVN_PROP_SPECIAL)
-        if value and value == svn.core.SVN_PROP_SPECIAL_VALUE:
-            return True
-        return False 
-
-    def _get_symlink_target(self):
-        if not self._is_special():
-            return None
-        data = self.repository._get_file(self.path, self.revnum).read()
-        if not data.startswith("link "):
-            raise BzrError("Improperly formatted symlink file")
-        return data[len("link "):]
-
-    def _get_kind(self):
-        if self._is_special():
-            return 'symlink'
-        return 'file'
-
-    # FIXME: we need a set function here because of InventoryEntry.__init__
-    def _phony_set(self, data):
-        pass
-   
-    text_sha1 = property(_get_sha1, _phony_set)
-    executable = property(_get_executable, _phony_set)
-    symlink_target = property(_get_symlink_target, _phony_set)
-    kind = property(_get_kind, _phony_set)
-
-
 class SvnBasisTree(SvnRevisionTree):
     """Optimized version of SvnRevisionTree."""
     def __init__(self, workingtree, revid):

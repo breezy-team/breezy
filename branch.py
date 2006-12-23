@@ -38,6 +38,10 @@ from tree import SvnRevisionTree
 
 
 class FakeControlFiles(object):
+    """Dummy implementation of ControlFiles.
+    
+    This is required as some code relies on controlfiles being 
+    available."""
     def get_utf8(self, name):
         raise NoSuchFile(name)
 
@@ -203,11 +207,8 @@ class SvnBranch(Branch):
     def set_parent(self, url):
         pass # FIXME: Use svn.client.switch()
 
-    def get_transaction(self):
-        raise NotImplementedError(self.get_transaction)
-
     def append_revision(self, *revision_ids):
-        # FIXME: raise NotImplementedError(self.append_revision)
+        #raise NotImplementedError(self.append_revision)
         pass
 
     def get_physical_lock_status(self):
@@ -236,11 +237,6 @@ class SvnBranch(Branch):
 
     __repr__ = __str__
 
-    @deprecated_function(zero_nine)
-    def tree_config(self):
-        """DEPRECATED; call get_config instead.  
-        TreeConfig has become part of BranchConfig."""
-        return TreeConfig(self)
 
 
 class SvnBranchFormat(BranchFormat):

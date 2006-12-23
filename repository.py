@@ -203,7 +203,6 @@ class SvnRepository(Repository):
         self.transport = transport
         self.uuid = transport.get_uuid()
         self.base = transport.base
-        self.text_cache = {}
         self.dir_cache = {}
         self.scheme = bzrdir.scheme
         self.pool = Pool()
@@ -551,29 +550,6 @@ class SvnRepository(Repository):
 
         return self.dir_cache[path][revnum]
 
-    def _cache_get_file(self, path, revnum):
-        assert path != None
-        path = path.lstrip("/")
-        if self.text_cache.has_key(path) and \
-           self.text_cache[path].has_key(revnum):
-               return self.text_cache[path][revnum]
-
-        stream = StringIO()
-        mutter('svn getfile -r %r %s' % (revnum, path))
-        (realrevnum, props) = self.transport.get_file(path.encode('utf8'), 
-            revnum, stream, self.pool)
-        if not self.text_cache.has_key(path):
-            self.text_cache[path] = {}
-
-        self.text_cache[path][revnum] = (props, stream)
-        return self.text_cache[path][revnum]
-
-    def _get_file_prop(self, path, revnum, name):
-        (props, _) = self._cache_get_file(path, revnum)
-        if props.has_key(name):
-            return props[name]
-        return None
-
     def _get_branch_proplist(self, path, revnum):
         proplist = {}
         # Search backwards in the cache
@@ -624,11 +600,6 @@ class SvnRepository(Repository):
             return props[name]
         except KeyError:
             return default
-
-    def _get_file(self, path, revnum):
-        (_, stream) = self._cache_get_file(path, revnum)
-        stream.seek(0)
-        return stream
 
     def get_revision_graph(self, revision_id):
         if revision_id == NULL_REVISION:

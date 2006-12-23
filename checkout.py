@@ -202,6 +202,10 @@ class SvnWorkingTree(WorkingTree):
 
         def find_ids(entry):
             relpath = entry.url[len(entry.repos):].strip("/")
+            assert entry.schedule in (svn.wc.schedule_normal, 
+                                      svn.wc.schedule_delete,
+                                      svn.wc.schedule_add,
+                                      svn.wc.schedule_replace)
             if entry.schedule == svn.wc.schedule_normal:
                 assert entry.revision >= 0
                 # Keep old id
@@ -219,8 +223,6 @@ class SvnWorkingTree(WorkingTree):
                     return self.branch.repository.path_to_file_id(entry.copyfrom_rev,
                         entry.copyfrom_url[len(entry.repos):])
                 return ("NEW-" + escape_svn_path(entry.url[len(entry.repos):].strip("/")), None)
-            else:
-                assert 0
 
         def add_dir_to_inv(relpath, wc, parent_id):
             entries = svn.wc.entries_read(wc, False)

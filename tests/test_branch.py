@@ -16,13 +16,16 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirTestProviderAdapter, BzrDirFormat
+from bzrlib.errors import NoSuchFile
 from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 
 import os
+from unittest import TestCase
 
 import svn.core, svn.client
 
+from branch import FakeControlFiles
 from convert import load_dumpfile
 import format
 from repository import MAPPING_VERSION
@@ -55,6 +58,31 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.assertEqual("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid), 
                 branch.last_revision())
 
+    def test_set_revision_history(self):
+        repos_url = self.make_client('a', 'dc')
+        branch = Branch.open("svn+"+repos_url)
+        self.assertRaises(NotImplementedError, branch.set_revision_history, [])
+
+    def test_set_push_location(self):
+        repos_url = self.make_client('a', 'dc')
+        branch = Branch.open("svn+"+repos_url)
+        self.assertRaises(NotImplementedError, branch.set_push_location, [])
+
+    def test_get_parent(self):
+        repos_url = self.make_client('a', 'dc')
+        branch = Branch.open("svn+"+repos_url)
+        self.assertEqual("svn+"+repos_url, branch.get_parent())
+
+    def test_append_revision(self):
+        repos_url = self.make_client('a', 'dc')
+        branch = Branch.open("svn+"+repos_url)
+        branch.append_revision([])
+
+    def test_get_push_location(self):
+        repos_url = self.make_client('a', 'dc')
+        branch = Branch.open("svn+"+repos_url)
+        self.assertIs(None, branch.get_push_location())
+
     def test_revision_history(self):
         repos_url = self.make_client('a', 'dc')
 
@@ -82,7 +110,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
             "svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid)],
             branch.revision_history())
 
-    def test_get_nick(self):
+    def test_get_nick_none(self):
         repos_url = self.make_client('a', 'dc')
 
         self.build_tree({'dc/foo': "data"})
@@ -92,6 +120,20 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
 
         self.assertIs(None, branch.nick)
+
+    def test_get_revprops(self):
+        repos_url = self.make_client('a', 'dc')
+
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_set_prop("dc", "bzr:revprop:branch-nick", "mybranch")
+        self.client_commit("dc", "My Message")
+
+        branch = Branch.open("svn+"+repos_url)
+
+        rev = branch.repository.get_revision(branch.last_revision())
+
+        self.assertEqual("mybranch", rev.properties["branch-nick"])
 
     def test_fetch_replace(self):
         filename = os.path.join(self.test_dir, "dumpfile")
@@ -379,6 +421,12 @@ foohosts""")
             'svn-v%d:3@%s-trunk' % (MAPPING_VERSION, uuid), 
             'svn-v%d:6@%s-branches%%2ffoobranch' % (MAPPING_VERSION, uuid)],
                           weave.versions())
+
+    def test_check(self):
+        repos_url = self.make_client('d', 'dc')
+        branch = Branch.open('d')
+        result = branch.check()
+        self.assertEqual(branch, result.branch) 
  
     def test_create_checkout(self):
         repos_url = self.make_client('d', 'dc')
@@ -453,3 +501,14 @@ foohosts""")
                 newdir.open_branch().last_revision())
         newdir.open_repository().get_revision_inventory(
                 newdir.open_branch().last_revision())
+
+class TestFakeControlFiles(TestCase):
+    def test_get_utf8(self):
+        f = FakeControlFiles()
+        self.assertRaises(NoSuchFile, f.get_utf8, "foo")
+
+
+    def test_get(self):
+        f = FakeControlFiles()
+        self.assertRaises(NoSuchFile, f.get, "foobla")
+
