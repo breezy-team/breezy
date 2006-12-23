@@ -286,7 +286,9 @@ class LogWalker(object):
         """
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
-        return (path in self._get_revision_paths(revnum))
+        if revnum == 0:
+            return (path == "")
+        return (self.db.execute("select 1 from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone() is not None)
 
     def find_children(self, path, revnum):
         """Find all children of path in revnum."""
