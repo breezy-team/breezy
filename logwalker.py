@@ -268,9 +268,15 @@ class LogWalker(object):
         :param path: Path to check for changes
         :param revnum: First revision to check
         """
-        while revnum > 0 and not self.touches_path(path, revnum):
-            revnum = revnum - 1
-        return revnum
+        if revnum > self.saved_revnum:
+            self.fetch_revisions(revnum)
+
+        row = self.db.execute(
+             "select rev from changed_path where path=%r and rev <= %d order by rev desc limit 1" % (path.strip("/"), revnum)).fetchone()
+        if row is None and path == "":
+            return 0
+
+        return row[0]
 
     def touches_path(self, path, revnum):
         """Check whether path was changed in specified revision.

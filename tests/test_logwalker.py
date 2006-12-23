@@ -97,6 +97,90 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         self.assertEqual([("", 0, True)], list(walker.find_branches(0)))
 
+    def test_find_latest_none(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(0, walker.find_latest_change("", 1))
+
+    def test_find_latest_change(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(1, walker.find_latest_change("branches", 1))
+
+    def test_find_latest_change_children(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/branches/foo': 'data'})
+        self.client_add("dc/branches/foo")
+        self.client_commit("dc", "My Message2")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(1, walker.find_latest_change("branches", 2))
+
+    def test_find_latest_change_prop(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/branches/foo': 'data'})
+        self.client_set_prop("dc/branches", "myprop", "mydata")
+        self.client_commit("dc", "propchange")
+        self.client_add("dc/branches/foo")
+        self.client_commit("dc", "My Message2")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(2, walker.find_latest_change("branches", 3))
+
+    def test_find_latest_change_file(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/branches/foo': 'data'})
+        self.client_add("dc/branches/foo")
+        self.client_commit("dc", "propchange")
+        self.build_tree({'dc/branches/foo': 'data4'})
+        self.client_commit("dc", "My Message2")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(3, walker.find_latest_change("branches/foo", 3))
+
+    def test_find_latest_change_newer(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/branches/foo': 'data'})
+        self.client_add("dc/branches/foo")
+        self.client_commit("dc", "propchange")
+        self.build_tree({'dc/branches/foo': 'data4'})
+        self.client_commit("dc", "My Message2")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(2, walker.find_latest_change("branches/foo", 2))
+
     def test_find_branches_no_later(self):
         repos_url = self.make_client("a", "dc")
 
