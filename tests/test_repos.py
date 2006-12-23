@@ -280,32 +280,6 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             "svn-v%d:0@%s-" % (MAPPING_VERSION, repository.uuid), 
             "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid)])
 
-    def test_get_file(self):
-        repos_url = self.make_client('d', 'dc')
-        repository = Repository.open("svn+%s" % repos_url)
-        self.build_tree({'dc/foo': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "My Message")
-        self.build_tree({'dc/foo': "data2", "dc/bar/foo": "data3"})
-        self.client_add("dc/bar")
-        self.client_commit("dc", "Second Message")
-        self.build_tree({'dc/foo': "data3"})
-        self.client_commit("dc", "Third Message")
-        stream = repository._cache_get_file("foo", 1)[1]
-        stream.seek(0)
-        self.assertEqual("data", stream.read())
-        stream = repository._cache_get_file("foo", 2)[1]
-        stream.seek(0)
-        self.assertEqual("data2", stream.read())
-        self.assertEqual(repository.uuid, 
-                repository._cache_get_file("foo", 1)[0]['svn:entry:uuid'])
-        self.assertEqual('1', 
-            repository._cache_get_file("foo", 1)[0]['svn:entry:committed-rev'])
-        self.assertTrue(repository._cache_get_file("foo", 1)[0].has_key(
-            'svn:entry:last-author'))
-        self.assertTrue(repository._cache_get_file("foo", 1)[0].has_key(
-            'svn:entry:committed-date'))
-
     def test_get_dir(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})

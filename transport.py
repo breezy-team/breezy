@@ -188,10 +188,6 @@ class SvnRaTransport(Transport):
         return dirents.keys()
 
     @need_lock
-    def get_file(self, *args, **kwargs):
-        return svn.ra.get_file(self._ra, *args, **kwargs)
-
-    @need_lock
     def check_path(self, *args, **kwargs):
         return svn.ra.check_path(self._ra, *args, **kwargs)
 
