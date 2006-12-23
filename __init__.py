@@ -55,6 +55,10 @@ def check_bzrlib_version(desired):
             raise Exception, 'Version mismatch'
 
 check_bzrlib_version(required_bzr_version)
+try:
+    from bzrlib.workingtree import WorkingTreeFormat4
+except ImportError:
+    warning('this version of bzr-svn requires WorkingTreeFormat4 to be available to work properly')
 
 import branch
 import convert

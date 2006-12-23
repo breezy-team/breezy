@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
@@ -88,6 +89,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
             "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid)], 
             repository.revision_parents(
                 "svn-v%d:2@%s-" % (MAPPING_VERSION, repository.uuid)))
+
+    def test_revision_fileidmap(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_set_prop("dc", "bzr:file-ids", "foo\tsomeid\n")
+        self.client_commit("dc", "My Message")
+        repository = Repository.open("svn+%s" % repos_url)
+        tree = repository.revision_tree(Branch.open(repos_url).last_revision())
+        self.assertEqual("someid", tree.inventory.path2id("foo"))
+        self.assertFalse("svn-v2:1@%s--foo" % repository.uuid in tree.inventory)
 
     def test_revision_ghost_parents(self):
         repos_url = self.make_client('d', 'dc')

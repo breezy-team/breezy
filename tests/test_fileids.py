@@ -148,13 +148,15 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
                 revid)
 
 class TestFileMapping(TestCase):
-    def apply_mappings(self, mappings, find_children=None):
+    def apply_mappings(self, mappings, find_children=None, renames={}):
         map = {"": ("ROOT", "first-revision") }
         revids = mappings.keys()
         revids.sort()
         for r in revids:
+            if not renames.has_key(r):
+                renames[r] = {}
             map = SimpleFileIdMap._apply_changes(map, r, mappings[r], 
-                                                 find_children)
+                                                 find_children, renames=renames[r])
         return map
 
     def test_simple(self):
@@ -190,3 +192,25 @@ class TestFileMapping(TestCase):
                                    "foo/bla": ('M', None, None)}
                 })
         self.assertEqual("svn-v%d:2@uuid-" % MAPPING_VERSION, map["foo"][1])
+
+    def test_usemap(self):
+        map = self.apply_mappings(
+                {("svn-v%d:1@uuid-" % MAPPING_VERSION): {
+                                   "foo": ('A', None, None), 
+                                   "foo/bla": ('A', None, None)},
+                 ("svn-v%d:2@uuid-" % MAPPING_VERSION): {
+                                   "foo/bla": ('M', None, None)}
+                 }, 
+                renames={("svn-v%d:1@uuid-" % MAPPING_VERSION): {"foo": "myid"}})
+        self.assertEqual("myid", map["foo"][0])
+
+    def test_usemap_later(self):
+        map = self.apply_mappings(
+                {("svn-v%d:1@uuid-" % MAPPING_VERSION): {
+                                   "foo": ('A', None, None), 
+                                   "foo/bla": ('A', None, None)},
+                 ("svn-v%d:2@uuid-" % MAPPING_VERSION): {
+                                   "foo/bla": ('M', None, None)}
+                 }, 
+                renames={("svn-v%d:2@uuid-" % MAPPING_VERSION): {"foo": "myid"}})
+        self.assertEqual("svn-v%d:1@uuid--foo" % MAPPING_VERSION, map["foo"][0])

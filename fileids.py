@@ -98,7 +98,8 @@ class FileIdMap(object):
 
         return map
 
-    def apply_changes(self, uuid, revnum, branch, global_changes, map):
+    def apply_changes(self, uuid, revnum, branch, global_changes, map, 
+            renames={}):
         """Change file id map to incorporate specified changes.
 
         :param uuid: UUID of repository changes happen in
@@ -116,7 +117,7 @@ class FileIdMap(object):
 
         revid = generate_svn_revision_id(uuid, revnum, branch)
 
-        return self._apply_changes(map, revid, changes, find_children)
+        return self._apply_changes(map, revid, changes, find_children, renames)
 
     def get_map(self, uuid, revnum, branch, pb=None):
         """Make sure the map is up to date until revnum."""
@@ -178,7 +179,12 @@ class FileIdMap(object):
 
 class SimpleFileIdMap(FileIdMap):
     @staticmethod
-    def _apply_changes(map, revid, changes, find_children=None):
+    def _apply_changes(map, revid, changes, find_children=None, renames={}):
+        def new_file_id(path):
+            mutter('new file id for %r. renames: %r' % (path, renames))
+            if renames.has_key(path):
+                return renames[path]
+            return generate_file_id(revid, path)
         sorted_paths = changes.keys()
         sorted_paths.sort()
         for p in sorted_paths:
@@ -192,7 +198,7 @@ class SimpleFileIdMap(FileIdMap):
                         del map[c]
 
             if data[0] in ('A', 'R'):
-                map[p] = generate_file_id(revid, p), revid
+                map[p] = new_file_id(p), revid
 
                 if not data[1] is None:
                     mutter('%r:%s copied from %r:%s' % (p, revid, data[1], data[2]))
@@ -200,7 +206,7 @@ class SimpleFileIdMap(FileIdMap):
                         warn('incomplete data for %r' % p)
                     else:
                         for c in find_children(data[1], data[2]):
-                            map[c.replace(data[1], p, 1)] = generate_file_id(revid, c), revid
+                            map[c.replace(data[1], p, 1)] = new_file_id(c), revid
 
             elif data[0] == 'M':
                 assert map.has_key(p), "Map has no item %s to modify" % p

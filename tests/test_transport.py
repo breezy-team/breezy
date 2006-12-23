@@ -112,7 +112,7 @@ class SvnRaTest(TestCaseWithSubversionRepository):
 
         t = SvnRaTransport(repos_url)
         self.assertEqual("%s/dir" % repos_url, t.clone('dir').base)
-        
+
     def test_get_root(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({"dc/dir": None, "dc/bl": "data"})
