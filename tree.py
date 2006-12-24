@@ -106,7 +106,7 @@ class TreeBuildEditor(svn.delta.Editor):
 
     def change_dir_prop(self, id, name, value, pool):
         from repository import (SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE, 
-                        SVN_PROP_BZR_REVPROP_PREFIX)
+                        SVN_PROP_BZR_REVPROP_PREFIX, SVN_PROP_BZR_FILEIDS)
 
         if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.dir_revnum[id] = int(value)
@@ -115,6 +115,10 @@ class TreeBuildEditor(svn.delta.Editor):
         elif name == SVN_PROP_BZR_MERGE or name == SVN_PROP_SVK_MERGE:
             if id != self.tree.id_map[""][0]:
                 mutter('%r set on non-root dir!' % SVN_PROP_BZR_MERGE)
+                return
+        elif name == SVN_PROP_BZR_FILEIDS:
+            if id != self.tree.id_map[""][0]:
+                mutter('%r set on non-root dir!' % SVN_PROP_BZR_FILEIDS)
                 return
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,

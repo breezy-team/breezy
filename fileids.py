@@ -99,7 +99,7 @@ class FileIdMap(object):
         return map
 
     def apply_changes(self, uuid, revnum, branch, global_changes, map, 
-            renames={}):
+            renames):
         """Change file id map to incorporate specified changes.
 
         :param uuid: UUID of repository changes happen in
@@ -119,8 +119,10 @@ class FileIdMap(object):
 
         return self._apply_changes(map, revid, changes, find_children, renames)
 
-    def get_map(self, uuid, revnum, branch, pb=None):
+    def get_map(self, uuid, revnum, branch, pb=None, renames_cb=None):
         """Make sure the map is up to date until revnum."""
+        if renames_cb is None:
+            renames_cb = lambda x: {}
         # First, find the last cached map
         todo = []
         next_parent_revs = []
@@ -166,7 +168,7 @@ class FileIdMap(object):
                     yield self._log.scheme.unprefix(p)[1]
 
             parent_revs = next_parent_revs
-            map = self._apply_changes(map, revid, changes, find_children)
+            map = self._apply_changes(map, revid, changes, find_children, renames_cb(revid))
             next_parent_revs = [revid]
             i = i + 1
 
@@ -179,7 +181,7 @@ class FileIdMap(object):
 
 class SimpleFileIdMap(FileIdMap):
     @staticmethod
-    def _apply_changes(map, revid, changes, find_children=None, renames={}):
+    def _apply_changes(map, revid, changes, find_children, renames):
         def new_file_id(path):
             mutter('new file id for %r. renames: %r' % (path, renames))
             if renames.has_key(path):

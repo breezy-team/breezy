@@ -330,7 +330,9 @@ class InterSvnRepository(InterRepository):
                 parent_id_map = copy(id_map)
                 self.source.transform_fileid_map(self.source.uuid, 
                                         revnum, branch, 
-                                        changes, id_map)
+                                        changes, id_map, 
+                                        # FIXME: use information received in editor
+                                        self.source.revision_fileid_renames(revid))
                 parent_inv = prev_inv
 
             editor = RevisionBuildEditor(self.source, self.target, branch, 

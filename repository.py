@@ -252,7 +252,8 @@ class SvnRepository(Repository):
         return self.revision_tree(revision_id).inventory
 
     def get_fileid_map(self, revnum, path, pb=None):
-        return self.fileid_map.get_map(self.uuid, revnum, path, pb)
+        return self.fileid_map.get_map(self.uuid, revnum, path, pb, 
+                self.revision_fileid_renames)
 
     def transform_fileid_map(self, uuid, revnum, branch, changes, map, renames):
         return self.fileid_map.apply_changes(uuid, revnum, branch, changes, map, renames)
@@ -364,8 +365,8 @@ class SvnRepository(Repository):
 
     def revision_fileid_renames(self, revid):
         (path, revnum) = self.parse_revision_id(revid)
-        items = self._get_branch_prop(path, revnum, 
-                                  SVN_PROP_BZR_FILEIDS, "").splitlines()
+        items = self.branchprop_list.get_property_diff(path, revnum, 
+                                  SVN_PROP_BZR_FILEIDS).splitlines()
         return dict(map(lambda x: x.split("\t"), items))
 
     def revision_parents(self, revision_id, merged_data=None):
