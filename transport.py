@@ -173,14 +173,14 @@ class SvnRaTransport(Transport):
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
     @need_lock
-    def get_dir(self, *args, **kwargs):
-        return svn.ra.get_dir(self._ra, *args, **kwargs)
+    def get_dir2(self, *args, **kwargs):
+        return svn.ra.get_dir2(self._ra, *args, **kwargs)
 
     def list_dir(self, relpath):
         if relpath == ".":
             relpath = ""
         try:
-            (dirents, _, _) = self.get_dir(relpath.rstrip("/"), self.get_latest_revnum())
+            (dirents, _, _) = self.get_dir2(relpath.rstrip("/"), self.get_latest_revnum(), 0)
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
                 raise NoSuchFile(relpath)

@@ -20,7 +20,7 @@ from bzrlib.trace import mutter
 
 import os
 
-from svn.core import SubversionException
+from svn.core import SubversionException, Pool
 from transport import SvnRaTransport
 import svn.core
 
@@ -83,7 +83,7 @@ class LogWalker(object):
 
         self.last_revnum = last_revnum
 
-        self.transport = transport.clone()
+        self.transport = SvnRaTransport(transport.get_repos_root())
         self.scheme = scheme
 
         if cache_db is None:
@@ -138,11 +138,12 @@ class LogWalker(object):
         else:
             pb = ProgressBar()
 
+        pool = Pool()
         try:
             try:
                 mutter('getting log %r:%r' % (self.saved_revnum, to_revnum))
                 self.transport.get_log(["/"], self.saved_revnum, to_revnum, 
-                               0, True, True, rcvr)
+                               0, True, True, rcvr, pool)
             finally:
                 pb.clear()
         except SubversionException, (_, num):
@@ -151,6 +152,7 @@ class LogWalker(object):
                     revision="Revision number %d" % to_revnum)
             raise
         self.db.commit()
+        pool.destroy()
 
     def follow_history(self, branch_path, revnum):
         """Return iterator over all the revisions between revnum and 
@@ -296,11 +298,11 @@ class LogWalker(object):
         """Find all children of path in revnum."""
         # TODO: Find children by walking history, or use 
         # cache?
-        mutter("svn ls -r %d '%r'" % (revnum, path))
+        mutter("svn ls -r %d '%r' (logwalker)" % (revnum, path))
 
         try:
-            (dirents, _, _) = self.transport.get_dir(
-                "/" + path.encode('utf8'), revnum)
+            (dirents, _, _) = self.transport.get_dir2(
+                "/" + path.encode('utf8'), revnum, 0)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
                 return
