@@ -482,6 +482,50 @@ foohosts""")
                 olddir.open_branch().last_revision(),
                 newdir.open_branch().last_revision())
 
+    def test_fetch_dir_upgrade(self):
+        repos_url = self.make_client('d', 'sc')
+
+        self.build_tree({'sc/trunk/mylib/bla': "data", "sc/branches": None})
+        self.client_add("sc/trunk")
+        self.client_add("sc/branches")
+        self.client_commit("sc", "foo")
+
+        self.client_copy("sc/trunk/mylib", "sc/branches/abranch")
+        self.client_commit("sc", "Promote mylib")
+
+        olddir = BzrDir.open("sc/branches/abranch")
+
+        os.mkdir("dc")
+        
+        newdir = olddir.sprout('dc')
+
+        self.assertEqual(
+                olddir.open_branch().last_revision(),
+                newdir.open_branch().last_revision())
+
+    def test_fetch_branch_downgrade(self):
+        repos_url = self.make_client('d', 'sc')
+
+        self.build_tree({'sc/trunk': None, "sc/branches/abranch/bla": 'foo'})
+        self.client_add("sc/trunk")
+        self.client_add("sc/branches")
+        self.client_commit("sc", "foo")
+
+        self.client_copy("sc/branches/abranch", "sc/trunk/mylib")
+        self.client_commit("sc", "Demote mylib")
+
+        olddir = BzrDir.open("sc/trunk")
+
+        os.mkdir("dc")
+        
+        newdir = olddir.sprout('dc')
+
+        self.assertEqual(
+                olddir.open_branch().last_revision(),
+                newdir.open_branch().last_revision())
+
+
+
     def test_ghost_workingtree(self):
         # Looks like bazaar has trouble creating a working tree of a 
         # revision that has ghost parents
