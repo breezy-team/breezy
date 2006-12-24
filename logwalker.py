@@ -257,10 +257,9 @@ class LogWalker(object):
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum, pb)
         (author, message, date) = self.db.execute("select author, message, date from revision where revno="+ str(revnum)).fetchone()
-        paths = self._get_revision_paths(revnum)
         if author is None:
             author = None
-        return (author, _escape_commit_message(base64.b64decode(message)), date, paths)
+        return (author, _escape_commit_message(base64.b64decode(message)), date)
 
     
     def find_latest_change(self, path, revnum):
@@ -269,9 +268,17 @@ class LogWalker(object):
         :param path: Path to check for changes
         :param revnum: First revision to check
         """
-        while revnum > 0 and not self.touches_path(path, revnum):
-            revnum = revnum - 1
-        return revnum
+        if revnum > self.saved_revnum:
+            self.fetch_revisions(revnum)
+
+        row = self.db.execute(
+             "select rev from changed_path where path='%s' and rev <= %d order by rev desc limit 1" % (path.strip("/"), revnum)).fetchone()
+        if row is None and path == "":
+            return 0
+
+        assert row is not None, "now latest change for %r:%d" % (path, revnum)
+
+        return row[0]
 
     def touches_path(self, path, revnum):
         """Check whether path was changed in specified revision.
@@ -281,7 +288,9 @@ class LogWalker(object):
         """
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
-        return (path in self._get_revision_paths(revnum))
+        if revnum == 0:
+            return (path == "")
+        return (self.db.execute("select 1 from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone() is not None)
 
     def find_children(self, path, revnum):
         """Find all children of path in revnum."""
@@ -301,3 +310,20 @@ class LogWalker(object):
             yield os.path.join(path, p)
             for c in self.find_children(os.path.join(path, p), revnum):
                 yield c
+
+    def get_previous(self, path, revnum):
+        """Return path,revnum pair specified pair was derived from.
+
+        :param path:  Path to check
+        :param revnum:  Revision to check
+        """
+        if revnum > self.saved_revnum:
+            self.fetch_revisions(revnum)
+        if revnum == 0:
+            return (None, -1)
+        row = self.db.execute("select action, copyfrom_path, copyfrom_rev from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone()
+        if row[2] == -1:
+            if row[0] == 'A':
+                return (None, -1)
+            return (path, revnum-1)
+        return (row[1], row[2])

@@ -42,6 +42,7 @@ except ImportError:
     from pysqlite2 import dbapi2 as sqlite3
 
 import branch
+from branchprops import BranchPropertyList
 import logwalker
 from tree import SvnRevisionTree
 
@@ -225,12 +226,7 @@ class SvnRepository(Repository):
                                         cache_db=self.cachedb,
                                         last_revnum=self._latest_revnum)
 
-        self.cachedb.executescript("""
-            create table if not exists branchprop (name text, value text, branchpath text, revnum integer);
-            create index if not exists branch_path_revnum on branchprop (branchpath, revnum);
-            create index if not exists branch_path_revnum_name on branchprop (branchpath, revnum, name);
-        """)
-
+        self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
         self.fileid_map = SimpleFileIdMap(self._log, self.cachedb)
 
     def _warn_if_deprecated(self):
@@ -319,7 +315,7 @@ class SvnRepository(Repository):
 
         ancestry = []
 
-        for l in self._get_branch_prop(path, revnum, 
+        for l in self.branchprop_list.get_property(path, revnum, 
                                     SVN_PROP_BZR_MERGE, "").splitlines():
             ancestry.extend(l.split("\n"))
 
@@ -385,17 +381,17 @@ class SvnRepository(Repository):
                 break
 
         # if the branch didn't change, bzr:merge can't have changed
-        if not path in self._log.get_revision_info(revnum)[3]:
+        if not self._log.touches_path(branch, revnum):
             return parent_ids
        
         if merged_data is None:
-            new_merge = self._get_branch_prop(path, revnum, 
+            new_merge = self.branchprop_list.get_property(path, revnum, 
                                            SVN_PROP_BZR_MERGE, "").splitlines()
 
             if len(new_merge) == 0 or parent_path is None:
                 old_merge = ""
             else:
-                old_merge = self._get_branch_prop(parent_path, parent_revnum, 
+                old_merge = self.branchprop_list.get_property(parent_path, parent_revnum, 
                         SVN_PROP_BZR_MERGE, "").splitlines()
 
             assert (len(old_merge) == len(new_merge) or 
@@ -427,7 +423,7 @@ class SvnRepository(Repository):
         # Commit SVN revision properties to a Revision object
         rev = Revision(revision_id=revision_id, parent_ids=parent_ids)
 
-        svn_props = self._get_branch_proplist(path, revnum)
+        svn_props = self.branchprop_list.get_properties(path, revnum)
         bzr_props = {}
         for name in svn_props:
             if not name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
@@ -435,7 +431,7 @@ class SvnRepository(Repository):
 
             bzr_props[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = svn_props[name]
 
-        (rev.committer, rev.message, date, _) = self._log.get_revision_info(revnum)
+        (rev.committer, rev.message, date) = self._log.get_revision_info(revnum)
         if rev.committer is None:
             rev.committer = ""
 
@@ -523,83 +519,6 @@ class SvnRepository(Repository):
         # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 
         # SVN doesn't store GPG signatures
         raise NoSuchRevision(self, revision_id)
-
-    def _cache_get_dir(self, path, revnum):
-        assert path != None
-        path = path.lstrip("/")
-        try:
-           return self.dir_cache[path][revnum]
-        except KeyError:
-            pass
-
-        mutter("svn ls -r %d '%r'" % (revnum, path))
-
-        try:
-            (dirents, _, props) = self.transport.get_dir(
-                path.encode('utf8'), 
-                revnum, self.pool)
-        except SubversionException, (msg, num):
-            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
-                raise NoSuchRevision(self, revnum)
-            raise
-
-        if not self.dir_cache.has_key(path):
-            self.dir_cache[path] = {}
-
-        self.dir_cache[path][revnum] = (props, dirents)
-
-        return self.dir_cache[path][revnum]
-
-    def _get_branch_proplist(self, path, revnum):
-        proplist = {}
-        # Search backwards in the cache
-        for i in range(revnum):
-            i = revnum - i
-
-            key = "%s:%d" % (path, i)
-
-            proplist = {}
-            for (name, value) in self.cachedb.execute("select name, value from branchprop where revnum=%d and branchpath='%s'" % (i, path)):
-                proplist[name] = value
-
-            if proplist != {}:
-                return proplist
-
-            if self._log.touches_path(path, i):
-                proplist = self._get_dir_proplist(path, i)
-                for name in proplist:
-                    self.cachedb.execute("insert into branchprop (name, value, revnum, branchpath) values (?,?,?,?)", (name, proplist[name], i, path))
-                self.cachedb.commit()
-                break
-
-        return proplist
-
-    def _get_branch_prop(self, path, revnum, name, default=None):
-        props = self._get_branch_proplist(path, revnum)
-        if props.has_key(name):
-            return props[name]
-        return default
-
-    def _get_dir_proplist(self, path, revnum):
-        # find previous ancestor in which properties could've been changed
-        revnum = self._log.find_latest_change(path, revnum)
-
-        (props, _) = self._cache_get_dir(path, revnum)
-        return props
-
-    def _get_dir_prop(self, path, revnum, name, default=None):
-        """Get the Subversion property on a directory.
-
-        Uses the cache.
-        """
-        assert isinstance(revnum, int)
-        assert isinstance(path, basestring)
-
-        props = self._get_dir_proplist(path, revnum)
-        try:
-            return props[name]
-        except KeyError:
-            return default
 
     def get_revision_graph(self, revision_id):
         if revision_id == NULL_REVISION:
