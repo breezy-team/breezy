@@ -55,11 +55,12 @@ def _escape_commit_message(message):
 
 
 class NotSvnBranchPath(BzrError):
-    _fmt = """{%(branch_path)s} is not a valid Svn branch path"""
+    _fmt = """{%(branch_path)s}:%(revnum)s is not a valid Svn branch path"""
 
-    def __init__(self, branch_path):
+    def __init__(self, branch_path, revnum=None):
         BzrError.__init__(self)
         self.branch_path = branch_path
+        self.revnum = revnum
 
 
 class LogWalker(object):
@@ -164,7 +165,7 @@ class LogWalker(object):
             return
 
         if not branch_path is None and not self.scheme.is_branch(branch_path):
-            raise NotSvnBranchPath(branch_path)
+            raise NotSvnBranchPath(branch_path, revnum)
 
         if branch_path:
             branch_path = branch_path.strip("/")
@@ -275,6 +276,8 @@ class LogWalker(object):
         if row is None and path == "":
             return 0
 
+        assert row is not None, "now latest change for %r:%d" % (path, revnum)
+
         return row[0]
 
     def touches_path(self, path, revnum):
@@ -318,7 +321,9 @@ class LogWalker(object):
             self.fetch_revisions(revnum)
         if revnum == 0:
             return (None, -1)
-        row = self.db.execute("select copyfrom_path, copyfrom_rev from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone()
-        if row[1] == -1:
+        row = self.db.execute("select action, copyfrom_path, copyfrom_rev from changed_path where path='%s' and rev=%d" % (path, revnum)).fetchone()
+        if row[2] == -1:
+            if row[0] == 'A':
+                return (None, -1)
             return (path, revnum-1)
-        return row
+        return (row[1], row[2])
