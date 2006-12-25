@@ -193,7 +193,9 @@ class SimpleFileIdMap(FileIdMap):
                         warn('incomplete data for %r' % p)
                     else:
                         for c in find_children(data[1], data[2]):
-                            map[c.replace(data[1], p, 1)] = generate_file_id(revid, c), revid
+                            path = c.replace(data[1], p, 1)
+                            map[path] = generate_file_id(revid, c), revid
+                            mutter('added mapping %r -> %r' % (path, map[path]))
 
             elif data[0] == 'M':
                 if p == "":

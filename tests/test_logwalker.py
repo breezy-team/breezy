@@ -381,3 +381,53 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.assertEqual("", info[0])
         self.assertEqual("My Message", info[1])
 
+    def test_find_children_empty(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk': None})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual([], list(walker.find_children("trunk", 1)))
+
+    def test_find_children_one(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/data': 'foo'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(['trunk/data'], list(walker.find_children("trunk", 1)))
+
+    def test_find_children_nested(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/data/bla': 'foo', 'dc/trunk/file': 'bla'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(['trunk/data', 'trunk/data/bla', 'trunk/file'], 
+                list(walker.find_children("trunk", 1)))
+
+    def test_find_children_later(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/data/bla': 'foo'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/trunk/file': 'bla'})
+        self.client_add("dc/trunk/file")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(['trunk/data', 'trunk/data/bla'], 
+                list(walker.find_children("trunk", 1)))
+        self.assertEqual(['trunk/data', 'trunk/data/bla', 'trunk/file'], 
+                list(walker.find_children("trunk", 2)))

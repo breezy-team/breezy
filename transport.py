@@ -173,8 +173,11 @@ class SvnRaTransport(Transport):
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
     @need_lock
-    def get_dir2(self, *args, **kwargs):
-        return svn.ra.get_dir2(self._ra, *args, **kwargs)
+    def get_dir2(self, path, *args, **kwargs):
+        # ra_dav backends fail with strange errors if the path starts with a 
+        # slash while other backends don't.
+        assert len(path) == 0 or path[0] != "/"
+        return svn.ra.get_dir2(self._ra, path, *args, **kwargs)
 
     def list_dir(self, relpath):
         if relpath == ".":

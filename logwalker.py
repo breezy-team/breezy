@@ -302,7 +302,8 @@ class LogWalker(object):
 
         try:
             (dirents, _, _) = self.transport.get_dir2(
-                "/" + path.encode('utf8'), revnum, 0)
+                path.lstrip("/").encode('utf8'), revnum, 
+                svn.core.SVN_DIRENT_KIND)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
                 return
@@ -310,8 +311,9 @@ class LogWalker(object):
 
         for p in dirents:
             yield os.path.join(path, p)
-            for c in self.find_children(os.path.join(path, p), revnum):
-                yield c
+            if dirents[p].kind == svn.core.svn_node_dir:
+                for c in self.find_children(os.path.join(path, p), revnum):
+                    yield c
 
     def get_previous(self, path, revnum):
         """Return path,revnum pair specified pair was derived from.
