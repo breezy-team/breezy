@@ -328,27 +328,25 @@ class InterSvnRepository(InterRepository):
                                      self.source._log.get_revision_info(revnum),
                                      id_map, parent_branch, parent_id_map)
 
-            edit, edit_baton = svn.delta.make_editor(editor)
+            pool = Pool()
+            edit, edit_baton = svn.delta.make_editor(editor, pool)
 
             if parent_branch is None:
                 transport.reparent(repos_root)
             else:
                 transport.reparent("%s/%s" % (repos_root, parent_branch))
-            pool = Pool()
             if parent_branch != branch:
                 switch_url = "%s/%s" % (repos_root, branch)
                 mutter('svn switch %r:%r -> %r:%r' % 
                                (parent_branch, parent_revnum, switch_url, revnum))
                 reporter, reporter_baton = transport.do_switch(
                            revnum, "", True, 
-                           switch_url,
-                           edit, edit_baton, pool)
+                           switch_url, edit, edit_baton, pool)
             else:
                 mutter('svn update -r %r:%r %r' % 
                                (parent_revnum, revnum, branch))
                 reporter, reporter_baton = transport.do_update(
-                           revnum, "", True, 
-                           edit, edit_baton, pool)
+                           revnum, "", True, edit, edit_baton, pool)
 
             # Report status of existing paths
             svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
