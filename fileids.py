@@ -176,6 +176,10 @@ class SimpleFileIdMap(FileIdMap):
         sorted_paths.sort()
         for p in sorted_paths:
             data = changes[p]
+
+            # FIXME: If this was actually a replace from the same path earlier, 
+            # change data[0] to 'M'
+            
             if data[0] in ('D', 'R'):
                 assert map.has_key(p), "No map entry %s to delete/replace" % p
                 del map[p]
