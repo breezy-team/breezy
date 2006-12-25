@@ -173,18 +173,25 @@ class SvnRaTransport(Transport):
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
     @need_lock
-    def get_dir2(self, path, *args, **kwargs):
+    def get_dir(self, path, revnum, pool=None, kind=False):
         # ra_dav backends fail with strange errors if the path starts with a 
         # slash while other backends don't.
         assert len(path) == 0 or path[0] != "/"
-        return svn.ra.get_dir2(self._ra, path, *args, **kwargs)
+        if hasattr(svn.ra, 'get_dir2'):
+            fields = 0
+            if kind:
+                fields += svn.core.SVN_DIRENT_KIND
+            return svn.ra.get_dir2(self._ra, path, revnum, fields)
+        else:
+            return svn.ra.get_dir(self._ra, path, revnum)
 
     def list_dir(self, relpath):
         assert len(relpath) == 0 or relpath[0] != "/"
         if relpath == ".":
             relpath = ""
         try:
-            (dirents, _, _) = self.get_dir2(relpath.rstrip("/"), self.get_latest_revnum(), 0)
+            (dirents, _, _) = self.get_dir(relpath.rstrip("/"), 
+                                           self.get_latest_revnum())
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
                 raise NoSuchFile(relpath)

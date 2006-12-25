@@ -37,9 +37,9 @@ class BranchPropertyList:
         mutter("svn ls -r %d '%r' (branchprops)" % (revnum, path))
 
         try:
-            (_, _, props) = self.log.transport.get_dir2(
+            (_, _, props) = self.log.transport.get_dir(
                 path.encode('utf8'), 
-                revnum, 0, self.pool)
+                revnum, pool=self.pool)
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(self, revnum)

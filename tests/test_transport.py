@@ -58,7 +58,7 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         self.client_delete("dc/foo")
         self.client_commit("dc", "MSG2")
         t = SvnRaTransport(repos_url)
-        lists = t.get_dir2("foo", 1, 0)
+        lists = t.get_dir("foo", 1, 0)
         self.assertTrue("bar" in lists[0])
 
     def test_list_dir(self):

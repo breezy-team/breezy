@@ -307,9 +307,8 @@ class LogWalker(object):
         mutter("svn ls -r %d '%r' (logwalker)" % (revnum, path))
 
         try:
-            (dirents, _, _) = self.transport.get_dir2(
-                path.lstrip("/").encode('utf8'), revnum, 
-                svn.core.SVN_DIRENT_KIND)
+            (dirents, _, _) = self.transport.get_dir(
+                path.lstrip("/").encode('utf8'), revnum, kind=True)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
                 return
