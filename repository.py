@@ -174,6 +174,8 @@ class SvnRepositoryFormat(RepositoryFormat):
 
     def __init__(self):
         super(SvnRepositoryFormat, self).__init__()
+        from format import SvnFormat
+        self._matchingbzrdir = SvnFormat()
 
     def get_format_description(self):
         return "Subversion Repository"

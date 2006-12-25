@@ -255,7 +255,7 @@ class RevisionBuildEditor(svn.delta.Editor):
 class InterSvnRepository(InterRepository):
     """Svn to any repository actions."""
 
-    _matching_repo_format = SvnRepositoryFormat
+    _matching_repo_format = SvnRepositoryFormat()
     """The format to test with."""
 
     @needs_write_lock
