@@ -67,10 +67,6 @@ In the future, I also hope to support:
    but the number of corner cases is wide, so support for this 
    has not been enabled by default yet.
 
-   Those brave enough can test the current support out by 
-   registering SvnRenamingRepository instead of 
-   SvnRepository in __init__.py.
-
  * "True" push. This requires storing the Bazaar 
    inventory and revision in Subversion revision properties.
 
@@ -95,10 +91,6 @@ In the future, I also hope to support:
 	 * use svn_ra_replay() on systems that have Subversion 1.4. Saves a couple of roundtrips when fetching history.
 
 	 * implement svn_ra_get_dir_revs() in Subversion to fetch the properties set on a specific directory all at once.
-
- * Creating native Subversion working copies. This 
-   would mostly be supported for completeness' sake, there are not 
-   a lot of advantages in supporting it.
 
 Some Subversion properties can currently not be represented in Bazaar 
 and are therefore ignored for the time being:
@@ -127,6 +119,8 @@ Other features currently held back by Bazaars feature set:
    are quite large and it would therefore be nice to be able to limit 
    the amount of history that needs to be retrieved during checkouts.
 
+   Spec at https://launchpad.net/products/bzr/+spec/shallow-checkouts
+
  * Tracking copies. 
  
    Spec at https://launchpad.net/products/bzr/+spec/filecopies
@@ -152,15 +146,3 @@ plugin is at http://bazaar-vcs.org/BzrSvn.
 
 Simply place this directory in ~/.bazaar/plugins and you should be able 
 to check out branches from Subversion using bzr.
-
-== License ==
-
-GNU General Public License, v2 or later.
-
-== Unit testing ==
-
-Simply run 'bzr selftest svn'
-
-== Author ==
-
-Jelmer Vernooij <jelmer@samba.org>
