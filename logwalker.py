@@ -311,7 +311,11 @@ class LogWalker(object):
 
         for p in dirents:
             yield os.path.join(path, p)
-            if dirents[p].kind == svn.core.svn_node_dir:
+            # This needs to be != svn.core.svn_node_file because 
+            # some ra backends seem to return negative values for .kind.
+            # This if statement is just an optimization to make use of this 
+            # property when possible.
+            if dirents[p].kind != svn.core.svn_node_file:
                 for c in self.find_children(os.path.join(path, p), revnum):
                     yield c
 

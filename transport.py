@@ -180,6 +180,7 @@ class SvnRaTransport(Transport):
         return svn.ra.get_dir2(self._ra, path, *args, **kwargs)
 
     def list_dir(self, relpath):
+        assert len(relpath) == 0 or relpath[0] != "/"
         if relpath == ".":
             relpath = ""
         try:
