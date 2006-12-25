@@ -67,11 +67,17 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True, working
             target_repos = Repository.open(output_dir)
             assert target_repos.is_shared()
         except NotBranchError:
-            target_repos = BzrDir.create_repository(output_dir, shared=True)
+            if scheme.is_branch(""):
+                BzrDir.create_branch_and_repo(output_dir)
+            else:
+                BzrDir.create_repository(output_dir, shared=True)
+            target_repos = Repository.open(output_dir)
         target_repos.set_make_working_trees(working_trees)
 
     try:
-        source_repos = SvnRepository.open(url+"/trunk")
+        source_repos = SvnRepository.open(url)
+
+        source_repos.set_branching_scheme(scheme)
 
         branches = list(source_repos.find_branches())
 

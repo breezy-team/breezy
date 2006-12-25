@@ -229,6 +229,10 @@ class SvnRepository(Repository):
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
         self.fileid_map = SimpleFileIdMap(self._log, self.cachedb)
 
+    def set_branching_scheme(self, scheme):
+        self.scheme = scheme
+        self._log.scheme = scheme
+
     def _warn_if_deprecated(self):
         # This class isn't deprecated
         pass

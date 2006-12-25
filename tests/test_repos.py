@@ -29,7 +29,7 @@ import svn.fs
 
 from convert import load_dumpfile
 import format
-from scheme import TrunkBranchingScheme
+from scheme import TrunkBranchingScheme, NoBranchingScheme
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
 from repository import (parse_svn_revision_id, generate_svn_revision_id, 
@@ -731,6 +731,11 @@ Node-copyfrom-path: bla
         rev = newrepos.get_revision(
                 "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid))
         self.assertEqual([], rev.parent_ids)
+
+    def test_set_branching_scheme(self):
+        repos_url = self.make_client('d', 'dc')
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(NoBranchingScheme())
 
     def test_fetch_crosscopy(self):
         repos_url = self.make_client('d', 'dc')
