@@ -336,11 +336,12 @@ class InterSvnRepository(InterRepository):
                 transport.reparent("%s/%s" % (repos_root, parent_branch))
             pool = Pool()
             if parent_branch != branch:
+                switch_url = "%s/%s" % (repos_root, branch)
                 mutter('svn switch %r:%r -> %r:%r' % 
-                               (parent_branch, parent_revnum, branch, revnum))
+                               (parent_branch, parent_revnum, switch_url, revnum))
                 reporter, reporter_baton = transport.do_switch(
                            revnum, "", True, 
-                           "%s/%s" % (repos_root, branch),
+                           switch_url,
                            edit, edit_baton, pool)
             else:
                 mutter('svn update -r %r:%r %r' % 
@@ -351,14 +352,16 @@ class InterSvnRepository(InterRepository):
 
             # Report status of existing paths
             svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
-                "", parent_revnum, False, None)
+                "", parent_revnum, False, None, pool)
 
             transport.lock()
-            svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton)
+            svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
             transport.unlock()
 
             prev_inv = editor.inventory
             prev_revid = revid
+
+            pool.destroy()
 
         if pb is not None:
             pb.clear()
