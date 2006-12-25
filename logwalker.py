@@ -209,6 +209,12 @@ class LogWalker(object):
                 yield (bp, changed_paths[bp], i)
 
             if (not branch_path is None and 
+                revpaths.has_key(branch_path) and
+                revpaths[branch_path][0] in ('A', 'R') and
+                revpaths[branch_path][1] is None):
+               return
+
+            if (not branch_path is None and 
                 branch_path in revpaths and 
                 not revpaths[branch_path][1] is None):
                 # In this revision, this branch was copied from 

@@ -225,6 +225,26 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.assertEqual([("trunk", 1, True)], list(walker.find_branches(1)))
         self.assertEqual([("trunk", 2, False)], list(walker.find_branches(2)))
 
+    def test_follow_history_branch_replace(self):
+        repos_url = self.make_client("a", "dc")
+
+        self.build_tree({'dc/trunk/data': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "Cm1")
+
+        self.client_delete("dc/trunk")
+        self.client_commit("dc", "Cm1")
+
+        self.build_tree({'dc/trunk/data': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "Cm1")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     transport=SvnRaTransport(repos_url))
+        self.assertEqual([("trunk", {"trunk/data": ('A', None, -1),
+                                     "trunk": ('A', None, -1)}, 3)], 
+                list(walker.follow_history("trunk", 3)))
+
     def test_follow_history(self):
         repos_url = self.make_client("a", "dc")
         walker = logwalker.LogWalker(NoBranchingScheme(), 
