@@ -123,7 +123,7 @@ class cmd_svn_import(Command):
     def run(self, url, output_dir, trees=False, shared=False, scheme="trunk"):
         from convert import convert_repository
 
-        convert_repository(url, output_dir, scheme_, shared, trees)
+        convert_repository(url, output_dir, scheme, shared, trees)
 
 
 register_command(cmd_svn_import)

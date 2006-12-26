@@ -117,6 +117,12 @@ class RevisionBuildEditor(svn.delta.Editor):
                 ie.revision = revision_id
                 return file_id
 
+            # there is a strange bug in the subversion editor that causes 
+            # it to not report deletes for files that are 
+            # being replaced (R) by an older copy of themselves
+            if copyfrom_path == path and base_file_id in self.inventory:
+                del self.inventory[base_file_id]
+
         self.dir_baserev[file_id] = []
         ie = self.inventory.add_path(path, 'directory', file_id)
         ie.revision = revision_id

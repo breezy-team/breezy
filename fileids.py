@@ -177,9 +177,6 @@ class SimpleFileIdMap(FileIdMap):
         for p in sorted_paths:
             data = changes[p]
 
-            # FIXME: If this was actually a replace from the same path earlier, 
-            # change data[0] to 'M'
-            
             if data[0] in ('D', 'R'):
                 assert map.has_key(p), "No map entry %s to delete/replace" % p
                 del map[p]
@@ -191,15 +188,13 @@ class SimpleFileIdMap(FileIdMap):
             if data[0] in ('A', 'R'):
                 map[p] = generate_file_id(revid, p), revid
 
-                if not data[1] is None:
+                if data[1] is not None:
                     mutter('%r:%s copied from %r:%s' % (p, revid, data[1], data[2]))
-                    if find_children is None:
-                        warn('incomplete data for %r' % p)
-                    else:
-                        for c in find_children(data[1], data[2]):
-                            path = c.replace(data[1], p, 1)
-                            map[path] = generate_file_id(revid, c), revid
-                            mutter('added mapping %r -> %r' % (path, map[path]))
+                    assert find_children is not None, 'incomplete data for %r' % p
+                    for c in find_children(data[1], data[2]):
+                        path = c.replace(data[1], p, 1)
+                        map[path] = generate_file_id(revid, c), revid
+                        mutter('added mapping %r -> %r' % (path, map[path]))
 
             elif data[0] == 'M':
                 if p == "":
