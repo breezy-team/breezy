@@ -29,6 +29,7 @@ import svn.fs
 
 from convert import load_dumpfile
 import format
+from logwalker import NotSvnBranchPath
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
@@ -46,6 +47,50 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         
         self.assertEqual(bzrdir._format.get_format_description(), \
                 "Subversion Local Checkout")
+
+    def test_get_branch_log(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+
+        repos = Repository.open(repos_url)
+
+        self.assertEqual(1, len(list(repos.follow_branch("", 1))))
+
+    def test_get_branch_invalid_revision(self):
+        repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
+        self.assertRaises(NoSuchRevision, list, 
+                          repos.follow_branch("/", 20))
+
+    def test_branch_log_all(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/file': "data", "dc/foo/file":"data"})
+        self.client_add("dc/trunk")
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+
+        repos = Repository.open(repos_url)
+
+        self.assertEqual(1, len(list(repos.follow_branch(None, 1))))
+
+    def test_branch_log_specific(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({
+            'dc/branches': None,
+            'dc/branches/brancha': None,
+            'dc/branches/branchab': None,
+            'dc/branches/brancha/data': "data", 
+            "dc/branches/branchab/data":"data"})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        self.assertEqual(1, len(list(repos.follow_branch("branches/brancha",
+            1))))
 
     def test_url(self):
         """ Test repository URL is kept """

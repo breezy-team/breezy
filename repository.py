@@ -316,7 +316,7 @@ class SvnRepository(Repository):
                                     SVN_PROP_BZR_MERGE, "").splitlines():
             ancestry.extend(l.split("\n"))
 
-        for (branch, paths, rev) in self._log.follow_history(path, revnum - 1):
+        for (branch, rev) in self.follow_branch(path, revnum - 1):
             ancestry.append(self.generate_revision_id(rev, branch))
 
         ancestry.append(None)
@@ -362,7 +362,7 @@ class SvnRepository(Repository):
 
         parent_path = None
         parent_ids = []
-        for (branch, paths, rev) in self._log.follow_history(path, revnum):
+        for (branch, rev) in self.follow_branch(path, revnum):
             if rev < revnum:
                 parent_revnum = rev
                 parent_path = branch
@@ -499,6 +499,10 @@ class SvnRepository(Repository):
     def get_revision_sha1(self, revision_id):
         return osutils.sha_string(self.get_revision_xml(revision_id))
 
+    def follow_branch(self, branch_path, revnum):
+        for (bp, _, rev) in self._log.follow_history(branch_path, revnum):
+            yield (bp, rev)
+
     def has_signature_for_revision_id(self, revision_id):
         # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 
         return False # SVN doesn't store GPG signatures. Perhaps 
@@ -518,7 +522,7 @@ class SvnRepository(Repository):
         self._previous = revision_id
         self._ancestry = {}
         
-        for (branch, _, rev) in self._log.follow_history(path, revnum - 1):
+        for (branch, rev) in self.follow_branch(path, revnum - 1):
             revid = self.generate_revision_id(rev, branch)
             self._ancestry[self._previous] = [revid]
             self._previous = revid
@@ -538,7 +542,6 @@ class SvnRepository(Repository):
 
     def get_physical_lock_status(self):
         return False
-
 
     def get_commit_builder(self, branch, parents, config, timestamp=None, 
                            timezone=None, committer=None, revprops=None, 
