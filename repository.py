@@ -220,7 +220,6 @@ class SvnRepository(Repository):
             cachedbs[cache_file] = sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
 
-        mutter('svn latest-revnum')
         self._latest_revnum = transport.get_latest_revnum()
         self._log = logwalker.LogWalker(transport=transport, cache_db=self.cachedb, 
                                        last_revnum=self._latest_revnum)
@@ -332,7 +331,6 @@ class SvnRepository(Repository):
         except NoSuchRevision:
             return False
 
-        mutter("svn check_path -r%d %s" % (revnum, path))
         try:
             kind = self.transport.check_path(path.encode('utf8'), revnum)
         except SubversionException, (_, num):

@@ -16,10 +16,11 @@
 
 from bzrlib.errors import RevisionNotPresent
 from bzrlib.inventory import ROOT_ID
+from bzrlib.knit import KnitVersionedFile
 from bzrlib.progress import ProgressBar
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
-from bzrlib.knit import KnitVersionedFile
+import bzrlib.urlutils as urlutils
 from warnings import warn
 
 import os
@@ -192,7 +193,8 @@ class SimpleFileIdMap(FileIdMap):
                     mutter('%r:%s copied from %r:%s' % (p, revid, data[1], data[2]))
                     assert find_children is not None, 'incomplete data for %r' % p
                     for c in find_children(data[1], data[2]):
-                        path = c.replace(data[1], p, 1)
+                        mutter('replacing %r with %r' % (data[1], p))
+                        path = c.replace(data[1], p+"/", 1).replace("//", "/")
                         map[path] = generate_file_id(revid, c), revid
                         mutter('added mapping %r -> %r' % (path, map[path]))
 

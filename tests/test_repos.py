@@ -1161,7 +1161,7 @@ Node-copyfrom-path: x
             self.assertEqual(2, e.to_revnum)
 
 
-    def notest_fetch_branch_downgrade(self):
+    def test_fetch_branch_downgrade(self):
         repos_url = self.make_client('d', 'dc')
 
         self.build_tree({'dc/trunk/file': 'data'})

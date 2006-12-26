@@ -255,7 +255,6 @@ class LogWalker(object):
         """Find all children of path in revnum."""
         # TODO: Find children by walking history, or use 
         # cache?
-        mutter("svn ls -r %d '%r' (logwalker)" % (revnum, path))
 
         try:
             (dirents, _, _) = self.transport.get_dir(

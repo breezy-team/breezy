@@ -34,8 +34,6 @@ class BranchPropertyList:
         assert path != None
         path = path.lstrip("/")
 
-        mutter("svn ls -r %d '%r' (branchprops)" % (revnum, path))
-
         try:
             (_, _, props) = self.log.transport.get_dir(
                 path.encode('utf8'), 

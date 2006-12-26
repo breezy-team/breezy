@@ -150,11 +150,13 @@ class SvnRaTransport(Transport):
 
     @need_lock
     def get_latest_revnum(self):
+        mutter("svn latest-revnum")
         return svn.ra.get_latest_revnum(self._ra)
 
     @need_lock
-    def do_switch(self, *args, **kwargs):
-        return svn.ra.do_switch(self._ra, *args, **kwargs)
+    def do_switch(self, switch_rev, switch_target, *args, **kwargs):
+        mutter('svn switch -r %d %r' % (switch_rev, switch_target))
+        return svn.ra.do_switch(self._ra, switch_rev, switch_target, *args, **kwargs)
 
     @need_lock
     def get_log(self, *args, **kwargs):
@@ -174,6 +176,8 @@ class SvnRaTransport(Transport):
                     self._client, self.pool)
     @need_lock
     def get_dir(self, path, revnum, pool=None, kind=False):
+        mutter("svn ls -r %d '%r'" % (revnum, path))
+        path = path.rstrip("/")
         # ra_dav backends fail with strange errors if the path starts with a 
         # slash while other backends don't.
         assert len(path) == 0 or path[0] != "/"
@@ -199,8 +203,9 @@ class SvnRaTransport(Transport):
         return dirents.keys()
 
     @need_lock
-    def check_path(self, *args, **kwargs):
-        return svn.ra.check_path(self._ra, *args, **kwargs)
+    def check_path(self, path, revnum, *args, **kwargs):
+        mutter("svn check_path -r%d %s" % (revnum, path))
+        return svn.ra.check_path(self._ra, path, revnum, *args, **kwargs)
 
     @need_lock
     def mkdir(self, relpath, mode=None):
