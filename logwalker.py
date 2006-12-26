@@ -219,9 +219,13 @@ class LogWalker(object):
                 not revpaths[branch_path][1] is None):
                 # In this revision, this branch was copied from 
                 # somewhere else
-                # FIXME: What if copyfrom_path is not a branch path?
                 continue_revnum = revpaths[branch_path][2]
+                # FIXME: if copyfrom_path is not a branch path, 
+                # should simulate a reverse "split" of a branch
                 branch_path = revpaths[branch_path][1]
+                if not self.scheme.is_branch(branch_path):
+                    warn('directory %r:%d upgraded to branch in %d. This is not currently supported.' % 
+                            (branch_path, continue_revnum, i))
 
     def find_branches(self, revnum):
         """Find all branches that were changed in the specified revision number.
