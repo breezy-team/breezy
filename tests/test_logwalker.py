@@ -78,13 +78,6 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.assertEqual(1, len(list(walker.follow_history("branches/brancha",
             1))))
 
-    def test_find_branches_no(self):
-        repos_url = self.make_client("a", "dc")
-
-        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
-
-        self.assertEqual([("", 0, True)], list(walker.find_branches(0, NoBranchingScheme())))
-
     def test_find_latest_none(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/branches': None})
@@ -162,46 +155,6 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
 
         self.assertEqual(2, walker.find_latest_change("branches/foo", 2))
-
-    def test_find_branches_no_later(self):
-        repos_url = self.make_client("a", "dc")
-
-        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
-
-        self.assertEqual([("", 0, True)], list(walker.find_branches(0, NoBranchingScheme())))
-
-    def test_find_branches_trunk_empty(self):
-        repos_url = self.make_client("a", "dc")
-
-        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
-
-        self.assertEqual([], list(walker.find_branches(0, TrunkBranchingScheme())))
-
-    def test_find_branches_trunk_one(self):
-        repos_url = self.make_client("a", "dc")
-
-        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
-
-        self.build_tree({'dc/trunk/foo': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-
-        self.assertEqual([("trunk", 1, True)], list(walker.find_branches(1, TrunkBranchingScheme())))
-
-    def test_find_branches_removed(self):
-        repos_url = self.make_client("a", "dc")
-
-        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
-
-        self.build_tree({'dc/trunk/foo': "data"})
-        self.client_add("dc/trunk")
-        self.client_commit("dc", "My Message")
-
-        self.client_delete("dc/trunk")
-        self.client_commit("dc", "remove")
-
-        self.assertEqual([("trunk", 1, True)], list(walker.find_branches(1, TrunkBranchingScheme())))
-        self.assertEqual([("trunk", 2, False)], list(walker.find_branches(2,  TrunkBranchingScheme())))
 
     def test_follow_history_branch_replace(self):
         repos_url = self.make_client("a", "dc")

@@ -28,7 +28,7 @@ from bzrlib.progress import ProgressBar
 from bzrlib.repository import Repository, RepositoryFormat
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 
 from svn.core import SubversionException, Pool
 import svn.core
@@ -235,17 +235,15 @@ class SvnRepository(Repository):
 
         mutter("Connected to repository with UUID %s" % self.uuid)
 
-        mutter('svn latest-revnum')
-        self._latest_revnum = transport.get_latest_revnum()
-
         cache_file = os.path.join(self.create_cache_dir(), 'cache-v1')
         if not cachedbs.has_key(cache_file):
             cachedbs[cache_file] = sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
 
-        self._log = logwalker.LogWalker(transport=transport,
-                                        cache_db=self.cachedb,
-                                        last_revnum=self._latest_revnum)
+        mutter('svn latest-revnum')
+        self._latest_revnum = transport.get_latest_revnum()
+        self._log = logwalker.LogWalker(transport=transport, cache_db=self.cachedb, 
+                                       last_revnum=self._latest_revnum)
 
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
         self.fileid_map = SimpleFileIdMap(self, self.cachedb)
@@ -531,7 +529,7 @@ class SvnRepository(Repository):
             if branch_path is not None and not self.scheme.is_branch(branch_path):
                 # FIXME: if copyfrom_path is not a branch path, 
                 # should simulate a reverse "split" of a branch
-                warn('directory %r:%d upgraded to branch. This is not currently supported.' % 
+                warning('directory %r:%d upgraded to branch. This is not currently supported.' % 
                      (branch_path, revnum))
 
             changed_paths = {}
@@ -583,9 +581,31 @@ class SvnRepository(Repository):
         return self._ancestry
 
     def find_branches(self, revnum=None):
+        """Find all branches that were changed in the specified revision number.
+
+        :param revnum: Revision to search for branches.
+        """
         if revnum is None:
-            revnum = self.transport.get_latest_revnum()
-        return self._log.find_branches(revnum, self.scheme)
+            revnum = self._latest_revnum
+
+        created_branches = {}
+
+        for i in range(revnum+1):
+            if i == 0:
+                paths = {'': ('A', None, None)}
+            else:
+                paths = self._log.get_revision_paths(i)
+            for p in paths:
+                if self.scheme.is_branch(p):
+                    if paths[p][0] in ('R', 'D'):
+                        del created_branches[p]
+                        yield (p, i, False)
+
+                    if paths[p][0] in ('A', 'R'): 
+                        created_branches[p] = i
+
+        for p in created_branches:
+            yield (p, i, True)
 
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""

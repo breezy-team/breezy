@@ -92,6 +92,58 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual(1, len(list(repos.follow_branch("branches/brancha",
             1))))
 
+    def test_find_branches_no(self):
+        repos_url = self.make_client("a", "dc")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(NoBranchingScheme())
+
+        self.assertEqual([("", 0, True)], list(repos.find_branches(0)))
+
+    def test_find_branches_no_later(self):
+        repos_url = self.make_client("a", "dc")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(NoBranchingScheme())
+
+        self.assertEqual([("", 0, True)], list(repos.find_branches(0)))
+
+    def test_find_branches_trunk_empty(self):
+        repos_url = self.make_client("a", "dc")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        self.assertEqual([], list(repos.find_branches(0)))
+
+    def test_find_branches_trunk_one(self):
+        repos_url = self.make_client("a", "dc")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        self.build_tree({'dc/trunk/foo': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+
+        self.assertEqual([("trunk", 1, True)], list(repos.find_branches(1)))
+
+    def test_find_branches_removed(self):
+        repos_url = self.make_client("a", "dc")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        self.build_tree({'dc/trunk/foo': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+
+        self.client_delete("dc/trunk")
+        self.client_commit("dc", "remove")
+
+        self.assertEqual([("trunk", 1, True)], list(repos.find_branches(1)))
+        self.assertEqual([("trunk", 2, False)], list(repos.find_branches(2)))
+
     def test_url(self):
         """ Test repository URL is kept """
         bzrdir = self.make_local_bzrdir('b', 'bc')

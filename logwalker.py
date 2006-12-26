@@ -192,30 +192,6 @@ class LogWalker(object):
                 continue_revnum = revpaths[branch_path][2]
                 branch_path = revpaths[branch_path][1]
 
-    def find_branches(self, revnum, scheme):
-        """Find all branches that were changed in the specified revision number.
-
-        :param revnum: Revision to search for branches.
-        """
-        created_branches = {}
-
-        for i in range(revnum+1):
-            if i == 0:
-                paths = {'': ('A', None, None)}
-            else:
-                paths = self.get_revision_paths(i)
-            for p in paths:
-                if scheme.is_branch(p):
-                    if paths[p][0] in ('R', 'D'):
-                        del created_branches[p]
-                        yield (p, i, False)
-
-                    if paths[p][0] in ('A', 'R'): 
-                        created_branches[p] = i
-
-        for p in created_branches:
-            yield (p, i, True)
-
     def get_revision_paths(self, revnum):
         """Obtain dictionary with all the changes in a particular revision.
 
