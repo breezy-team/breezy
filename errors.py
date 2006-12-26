@@ -16,17 +16,6 @@
 
 from bzrlib.errors import BzrError
 
-class DirUpgrade(BzrError):
-    _fmt = """Dir %(from_path)s:%(from_revnum)d is upgraded to branch %(to_path)s in %(to_revnum)d. Not supported yet. """
-
-    def __init__(self, from_tuple, to_tuple):
-        BzrError.__init__(self)
-        self.to_path = to_tuple[0]
-        self.to_revnum = to_tuple[1]
-        self.from_path = from_tuple[0]
-        self.from_revnum = from_tuple[1]
-
-
 class NotSvnBranchPath(BzrError):
     _fmt = """{%(branch_path)s}:%(revnum)s is not a valid Svn branch path"""
 

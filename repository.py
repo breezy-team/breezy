@@ -313,7 +313,7 @@ class SvnRepository(Repository):
                                     SVN_PROP_BZR_MERGE, "").splitlines():
             ancestry.extend(l.split("\n"))
 
-        for (branch, rev) in self.follow_branch(path, revnum - 1):
+        for (branch, _, rev) in self.follow_branch_history(path, revnum - 1):
             ancestry.append(self.generate_revision_id(rev, branch))
 
         ancestry.append(None)
@@ -358,7 +358,7 @@ class SvnRepository(Repository):
 
         parent_path = None
         parent_ids = []
-        for (branch, rev) in self.follow_branch(path, revnum):
+        for (branch, _, rev) in self.follow_branch_history(path, revnum):
             if rev < revnum:
                 parent_revnum = rev
                 parent_path = branch
@@ -422,9 +422,7 @@ class SvnRepository(Repository):
 
         rev.timestamp = 1.0 * svn.core.secs_from_timestr(date, None)
         rev.timezone = None
-
         rev.properties = bzr_props
-
         rev.inventory_sha1 = property(lambda: self.get_inventory_sha1(revision_id))
 
         return rev
@@ -494,10 +492,6 @@ class SvnRepository(Repository):
 
     def get_revision_sha1(self, revision_id):
         return osutils.sha_string(self.get_revision_xml(revision_id))
-
-    def follow_branch(self, branch_path, revnum):
-        for (bp, _, rev) in self.follow_branch_history(branch_path, revnum):
-            yield (bp, rev)
 
     def follow_history(self, revnum):
         while revnum > 0:
@@ -569,7 +563,7 @@ class SvnRepository(Repository):
         self._previous = revision_id
         self._ancestry = {}
         
-        for (branch, rev) in self.follow_branch(path, revnum - 1):
+        for (branch, _, rev) in self.follow_branch_history(path, revnum - 1):
             revid = self.generate_revision_id(rev, branch)
             self._ancestry[self._previous] = [revid]
             self._previous = revid

@@ -59,13 +59,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         repos = Repository.open(repos_url)
 
-        self.assertEqual(1, len(list(repos.follow_branch("", 1))))
+        self.assertEqual(1, len(list(repos.follow_branch_history("", 1))))
 
     def test_get_branch_invalid_revision(self):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
         self.assertRaises(NoSuchRevision, list, 
-                          repos.follow_branch("/", 20))
+                          repos.follow_branch_history("/", 20))
 
     def test_history_all(self):
         repos_url = self.make_client("a", "dc")
@@ -92,7 +92,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos = Repository.open(repos_url)
         repos.set_branching_scheme(TrunkBranchingScheme())
 
-        self.assertEqual(1, len(list(repos.follow_branch("branches/brancha",
+        self.assertEqual(1, len(list(repos.follow_branch_history("branches/brancha",
             1))))
 
     def test_find_branches_no(self):
