@@ -109,20 +109,6 @@ class RevisionBuildEditor(svn.delta.Editor):
     def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
         file_id, revision_id = self.id_map[path]
 
-        if copyfrom_path is not None:
-            base_file_id, base_revid = self.source.path_to_file_id(copyfrom_revnum, os.path.join(self.parent_branch, copyfrom_path))
-            if base_file_id == file_id: 
-                self.dir_baserev[file_id] = [base_revid]
-                ie = self.inventory[file_id]
-                ie.revision = revision_id
-                return file_id
-
-            # there is a strange bug in the subversion editor that causes 
-            # it to not report deletes for files that are 
-            # being replaced (R) by an older copy of themselves
-            if copyfrom_path == path and base_file_id in self.inventory:
-                del self.inventory[base_file_id]
-
         self.dir_baserev[file_id] = []
         ie = self.inventory.add_path(path, 'directory', file_id)
         ie.revision = revision_id
@@ -130,7 +116,19 @@ class RevisionBuildEditor(svn.delta.Editor):
         return file_id
 
     def open_directory(self, path, parent_baton, base_revnum, pool):
-        return self.add_directory(path, parent_baton, path, base_revnum, pool)
+        file_id, revision_id = self.id_map[path]
+        assert base_revnum >= 0
+        base_file_id, base_revid = self.source.path_to_file_id(base_revnum, os.path.join(self.parent_branch, path))
+        if file_id == base_file_id:
+            self.dir_baserev[file_id] = [base_revid]
+            ie = self.inventory[file_id]
+        else:
+            # Replace
+            del self.inventory[base_file_id]
+            self.dir_baserev[file_id] = []
+            ie = self.inventory.add_path(path, 'directory', file_id)
+        ie.revision = revision_id
+        return file_id
 
     def change_dir_prop(self, id, name, value, pool):
         if name == SVN_PROP_BZR_MERGE:
