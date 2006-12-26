@@ -77,55 +77,111 @@ class NoScheme(TestCase):
 
     def test_unprefix(self):
         self.assertEqual(NoBranchingScheme().unprefix(""), ("", ""))
+
+    def test_unprefix_slash(self):
         self.assertEqual(NoBranchingScheme().unprefix("/"), ("", ""))
+
+    def test_unprefix_nested(self):
         self.assertEqual(NoBranchingScheme().unprefix("foo/foo"), ("", "foo/foo"))
+
+    def test_unprefix_slash_nested(self):
         self.assertEqual(NoBranchingScheme().unprefix("/foo/foo"), ("", "foo/foo"))
 
 class ListScheme(TestCase):
-    def test_is_branch(self):
-        scheme = ListBranchingScheme(["foo", "bar/bloe"])
-        self.assertFalse(scheme.is_branch(""))
-        self.assertFalse(scheme.is_branch("/"))
-        self.assertTrue(scheme.is_branch("/foo"))
-        self.assertTrue(scheme.is_branch("foo"))
-        self.assertFalse(scheme.is_branch("/foo/foo"))
-        self.assertFalse(scheme.is_branch("foo/bar"))
-        self.assertFalse(scheme.is_branch("foobla"))
-        self.assertTrue(scheme.is_branch("//foo/"))
-        self.assertTrue(scheme.is_branch("bar/bloe"))
+    def setUp(self):
+        self.scheme = ListBranchingScheme(["foo", "bar/bloe"])
 
-    def test_unprefix(self):
-        scheme = ListBranchingScheme(["foo", "bar/bloe"])
-        self.assertRaises(NotBranchError, scheme.unprefix, "")
-        self.assertRaises(NotBranchError, scheme.unprefix, "/")
-        self.assertRaises(NotBranchError, scheme.unprefix, "blie/bloe/bla")
-        self.assertEqual(scheme.unprefix("/foo"), ("foo", ""))
-        self.assertEqual(scheme.unprefix("foo"), ("foo", ""))
-        self.assertEqual(scheme.unprefix("/foo/foo"), ("foo", "foo"))
-        self.assertEqual(scheme.unprefix("foo/bar"), ("foo", "bar"))
-        self.assertEqual(scheme.unprefix("foo/bar/bla"), ("foo", "bar/bla"))
-        self.assertEqual(scheme.unprefix("//foo/"), ("foo", ""))
-        self.assertEqual(scheme.unprefix("bar/bloe"), ("bar/bloe", ""))
+    def test_is_branch_empty(self):
+        self.assertFalse(self.scheme.is_branch(""))
+
+    def test_is_branch_slash(self):
+        self.assertFalse(self.scheme.is_branch("/"))
+        self.assertTrue(self.scheme.is_branch("/foo"))
+        self.assertTrue(self.scheme.is_branch("foo"))
+        self.assertFalse(self.scheme.is_branch("/foo/foo"))
+        self.assertFalse(self.scheme.is_branch("foo/bar"))
+        self.assertFalse(self.scheme.is_branch("foobla"))
+        self.assertTrue(self.scheme.is_branch("//foo/"))
+        self.assertTrue(self.scheme.is_branch("bar/bloe"))
+
+    def test_unprefix_notbranch_empty(self):
+        self.assertRaises(NotBranchError, self.scheme.unprefix, "")
+
+    def test_unprefix_notbranch_slash(self):
+        self.assertRaises(NotBranchError, self.scheme.unprefix, "/")
+
+    def test_unprefix_notbranch_unknown(self):
+        self.assertRaises(NotBranchError, self.scheme.unprefix, "blie/bloe/bla")
+
+    def test_unprefix_branch_slash(self):
+        self.assertEqual(self.scheme.unprefix("/foo"), ("foo", ""))
+
+    def test_unprefix_branch(self):
+        self.assertEqual(self.scheme.unprefix("foo"), ("foo", ""))
+
+    def test_unprefix_nested_slash(self):
+        self.assertEqual(self.scheme.unprefix("/foo/foo"), ("foo", "foo"))
+
+    def test_unprefix_nested(self):
+        self.assertEqual(self.scheme.unprefix("foo/bar"), ("foo", "bar"))
+
+    def test_unprefix_double_nested(self):
+        self.assertEqual(self.scheme.unprefix("foo/bar/bla"), ("foo", "bar/bla"))
+
+    def test_unprefix_double_slash(self):
+        self.assertEqual(self.scheme.unprefix("//foo/"), ("foo", ""))
+
+    def test_unprefix_nested_branch(self):
+        self.assertEqual(self.scheme.unprefix("bar/bloe"), ("bar/bloe", ""))
 
 class TrunkScheme(TestCase):
-    def test_is_branch(self):
-        scheme = TrunkBranchingScheme()
-        self.assertFalse(scheme.is_branch(""))
-        self.assertFalse(scheme.is_branch("/"))
-        self.assertFalse(scheme.is_branch("/foo"))
-        self.assertFalse(scheme.is_branch("foo"))
-        self.assertFalse(scheme.is_branch("/foo/foo"))
-        self.assertFalse(scheme.is_branch("foo/bar"))
-        self.assertFalse(scheme.is_branch("foobla"))
-        self.assertTrue(scheme.is_branch("/trunk/"))
-        self.assertTrue(scheme.is_branch("////trunk"))
-        self.assertTrue(scheme.is_branch("/branches/foo"))
-        self.assertFalse(scheme.is_branch("/branche/foo"))
-        self.assertFalse(scheme.is_branch("/branchesfoo"))
-        self.assertTrue(scheme.is_branch("/branches/foo/"))
-        self.assertFalse(scheme.is_branch("/trunkfoo"))
-        self.assertFalse(scheme.is_branch("/trunk/foo"))
-        self.assertFalse(scheme.is_branch("/branches"))
+    def test_is_branch_empty(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch(""))
+
+    def test_is_branch_slash(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch("/"))
+
+    def test_is_branch_unknown_slash(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch("/foo"))
+
+    def test_is_branch_unknown(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch("foo"))
+
+    def test_is_branch_unknown_nested_slash(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch("/foo/foo"))
+
+    def test_is_branch_unknown_nested(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch("foo/bar"))
+
+    def test_is_branch_unknown2(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch("foobla"))
+
+    def test_is_branch_trunk(self):
+        self.assertTrue(TrunkBranchingScheme().is_branch("/trunk/"))
+
+    def test_is_branch_trunk_slashes(self):
+        self.assertTrue(TrunkBranchingScheme().is_branch("////trunk"))
+
+    def test_is_branch_branch(self):
+        self.assertTrue(TrunkBranchingScheme().is_branch("/branches/foo"))
+
+    def test_is_branch_typo(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch("/branche/foo"))
+
+    def test_is_branch_missing_slash(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch("/branchesfoo"))
+
+    def test_is_branch_branch_slash(self):
+        self.assertTrue(TrunkBranchingScheme().is_branch("/branches/foo/"))
+
+    def test_is_branch_trunk_missing_slash(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch("/trunkfoo"))
+
+    def test_is_branch_trunk_file(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch("/trunk/foo"))
+
+    def test_is_branch_branches(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch("/branches"))
 
     def test_is_branch_level(self):
         scheme = TrunkBranchingScheme(2)

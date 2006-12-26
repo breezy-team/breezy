@@ -500,7 +500,8 @@ class SvnRepository(Repository):
             yield (bp, rev)
 
     def follow_history(self, revnum):
-        for (branch_path, paths, revnum) in self._log.follow_history(None, revnum):
+        while revnum > 0:
+            paths = self._log.get_revision_paths(revnum)
             changed_paths = {}
             for p in paths:
                 try:
@@ -517,7 +518,7 @@ class SvnRepository(Repository):
                     not self.scheme.is_branch(changed_paths[bp][bp][1])):
                     # FIXME: if copyfrom_path is not a branch path, 
                     # should simulate a reverse "split" of a branch
-                    # for now, just make it look like the branch ended here
+                    # For now, just make it look like the branch originated here.
                     for c in self._log.find_children(changed_paths[bp][bp][1], changed_paths[bp][bp][2]):
                         path = c.replace(changed_paths[bp][bp][1], bp+"/", 1).replace("//", "/")
                         changed_paths[bp][path] = ('A', None, -1)
@@ -525,33 +526,29 @@ class SvnRepository(Repository):
 
                 yield (bp, changed_paths[bp], revnum)
 
+            revnum-=1
+
     def follow_branch_history(self, branch_path, revnum):
         assert branch_path is not None
         if not self.scheme.is_branch(branch_path):
             raise errors.NotSvnBranchPath(branch_path, revnum)
 
-        for (bp, paths, revnum) in self._log.follow_history(branch_path, revnum):
-            changed_paths = {}
-            for p in paths:
-                (bp_, _) = self.scheme.unprefix(p)
-                assert bp_ == bp
-                changed_paths[p] = paths[p]
-
-            if (changed_paths.has_key(bp) and 
-                changed_paths[bp][1] is not None and
-                not self.scheme.is_branch(changed_paths[bp][1])):
+        for (bp, paths, revnum) in self._log.follow_path(branch_path, revnum):
+            if (paths.has_key(bp) and 
+                paths[bp][1] is not None and
+                not self.scheme.is_branch(paths[bp][1])):
                 # FIXME: if copyfrom_path is not a branch path, 
                 # should simulate a reverse "split" of a branch
                 # for now, just make it look like the branch ended here
-                for c in self._log.find_children(changed_paths[bp][1], changed_paths[bp][2]):
-                    path = c.replace(changed_paths[bp][1], bp+"/", 1).replace("//", "/")
-                    changed_paths[path] = ('A', None, -1)
-                changed_paths[bp] = ('A', None, -1)
+                for c in self._log.find_children(paths[bp][1], paths[bp][2]):
+                    path = c.replace(paths[bp][1], bp+"/", 1).replace("//", "/")
+                    paths[path] = ('A', None, -1)
+                paths[bp] = ('A', None, -1)
 
-                yield (bp, changed_paths, revnum)
+                yield (bp, paths, revnum)
                 return
                      
-            yield (bp, changed_paths, revnum)
+            yield (bp, paths, revnum)
 
     def has_signature_for_revision_id(self, revision_id):
         # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 
@@ -592,10 +589,7 @@ class SvnRepository(Repository):
         created_branches = {}
 
         for i in range(revnum+1):
-            if i == 0:
-                paths = {'': ('A', None, None)}
-            else:
-                paths = self._log.get_revision_paths(i)
+            paths = self._log.get_revision_paths(i)
             for p in paths:
                 if self.scheme.is_branch(p):
                     if paths[p][0] in ('R', 'D'):

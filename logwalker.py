@@ -143,55 +143,44 @@ class LogWalker(object):
         self.db.commit()
         pool.destroy()
 
-    def follow_history(self, branch_path, revnum):
+    def follow_path(self, path, revnum):
         """Return iterator over all the revisions between revnum and 
-        0 names branch_path or inside branch_path.
+        0 named path or inside path.
 
-        If branch_path is None, all changes will be reported.
-        
-        :param branch_path:   Branch path to start reporting (in revnum)
+        :param path:   Branch path to start reporting (in revnum)
         :param revnum:        Start revision.
 
-        :return: An iterators that yields tuples with (branch_path, paths, revnum)
-        where paths is a dictionary with all changes that happened in branch_path 
+        :return: An iterators that yields tuples with (path, paths, revnum)
+        where paths is a dictionary with all changes that happened in path 
         in revnum.
         """
         assert revnum >= 0
 
-        if revnum == 0 and branch_path in (None, ""):
+        if revnum == 0 and path == "":
             return
 
-        if branch_path:
-            branch_path = branch_path.strip("/")
+        path = path.strip("/")
 
-        continue_revnum = None
-        for i in range(revnum+1):
-            i = revnum - i
+        i = revnum
+        while i > 0:
+            revpaths = self.get_revision_paths(i, path)
+            yield (path, revpaths, i)
 
-            if i == 0:
-                continue
-
-            if not (continue_revnum is None or continue_revnum == i):
-                continue
-
-            continue_revnum = None
-
-            revpaths = self.get_revision_paths(i, branch_path)
-            yield (branch_path, revpaths, i)
-
-            if (not branch_path is None and 
-                revpaths.has_key(branch_path) and
-                revpaths[branch_path][0] in ('A', 'R') and
-                revpaths[branch_path][1] is None):
+            if (revpaths.has_key(path) and
+                revpaths[path][0] in ('A', 'R') and
+                revpaths[path][1] is None):
+               # this path didn't exist before this revision
                return
 
-            if (not branch_path is None and 
-                branch_path in revpaths and 
-                not revpaths[branch_path][1] is None):
-                # In this revision, this branch was copied from 
+            if (not path is None and 
+                path in revpaths and 
+                not revpaths[path][1] is None):
+                # In this revision, this path was copied from 
                 # somewhere else
-                continue_revnum = revpaths[branch_path][2]
-                branch_path = revpaths[branch_path][1]
+                i = revpaths[path][2]
+                path = revpaths[path][1]
+            else:
+                i-=1
 
     def get_revision_paths(self, revnum, path=None):
         """Obtain dictionary with all the changes in a particular revision.
@@ -201,6 +190,9 @@ class LogWalker(object):
         :returns: dictionary with paths as keys and 
                   (action, copyfrom_path, copyfrom_rev) as values.
         """
+
+        if revnum == 0:
+            return {'': ('A', None, -1)}
                 
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
@@ -208,8 +200,6 @@ class LogWalker(object):
         query = "select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)
         if path is not None and path != "":
             query += " and (path='%s' or path like '%s/%%')" % (path, path)
-
-        mutter('query: %r' % query)
 
         paths = {}
         for p, act, cf, cr in self.db.execute(query):
@@ -222,6 +212,7 @@ class LogWalker(object):
         :param revnum: Revision number.
         :returns: Tuple with author, log message and date of the revision.
         """
+        assert revnum >= 1
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum, pb)
         (author, message, date) = self.db.execute("select author, message, date from revision where revno="+ str(revnum)).fetchone()
@@ -288,6 +279,7 @@ class LogWalker(object):
         :param path:  Path to check
         :param revnum:  Revision to check
         """
+        assert revnum >= 0
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
         if revnum == 0:
