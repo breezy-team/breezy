@@ -54,15 +54,6 @@ def _escape_commit_message(message):
     return message
 
 
-class NotSvnBranchPath(BzrError):
-    _fmt = """{%(branch_path)s}:%(revnum)s is not a valid Svn branch path"""
-
-    def __init__(self, branch_path, revnum=None):
-        BzrError.__init__(self)
-        self.branch_path = branch_path
-        self.revnum = revnum
-
-
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
     def __init__(self, scheme, transport=None, cache_db=None, last_revnum=None, pb=None):
@@ -156,7 +147,7 @@ class LogWalker(object):
 
     def follow_history(self, branch_path, revnum):
         """Return iterator over all the revisions between revnum and 
-        0 that touch branch_path.
+        0 names branch_path or inside branch_path.
         
         :param branch_path:   Branch path to start reporting (in revnum)
         :param revnum:        Start revision.
@@ -166,14 +157,8 @@ class LogWalker(object):
         if revnum == 0 and branch_path in (None, ""):
             return
 
-        if not branch_path is None and not self.scheme.is_branch(branch_path):
-            raise NotSvnBranchPath(branch_path, revnum)
-
         if branch_path:
             branch_path = branch_path.strip("/")
-
-        if revnum > self.saved_revnum:
-            self.fetch_revisions(revnum)
 
         continue_revnum = None
         for i in range(revnum+1):
@@ -188,7 +173,7 @@ class LogWalker(object):
             continue_revnum = None
 
             changed_paths = {}
-            revpaths = self._get_revision_paths(i)
+            revpaths = self.get_revision_paths(i)
             for p in revpaths:
                 if (branch_path is None or 
                     p == branch_path or
@@ -234,14 +219,11 @@ class LogWalker(object):
         """
         created_branches = {}
 
-        if revnum > self.saved_revnum:
-            self.fetch_revisions(revnum)
-
         for i in range(revnum+1):
             if i == 0:
                 paths = {'': ('A', None, None)}
             else:
-                paths = self._get_revision_paths(i)
+                paths = self.get_revision_paths(i)
             for p in paths:
                 if self.scheme.is_branch(p):
                     if paths[p][0] in ('R', 'D'):
@@ -254,7 +236,17 @@ class LogWalker(object):
         for p in created_branches:
             yield (p, i, True)
 
-    def _get_revision_paths(self, revnum):
+    def get_revision_paths(self, revnum):
+        """Obtain dictionary with all the changes in a particular revision.
+
+        :param revnum: Subversion revision number
+        :returns: dictionary with paths as keys and 
+                  (action, copyfrom_path, copyfrom_rev) as values.
+        """
+                
+        if revnum > self.saved_revnum:
+            self.fetch_revisions(revnum)
+
         paths = {}
         for p, act, cf, cr in self.db.execute("select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)):
             paths[p] = (act, cf, cr)
@@ -273,7 +265,6 @@ class LogWalker(object):
             author = None
         return (author, _escape_commit_message(base64.b64decode(message)), date)
 
-    
     def find_latest_change(self, path, revnum):
         """Find latest revision that touched path.
 
@@ -288,7 +279,7 @@ class LogWalker(object):
         if row is None and path == "":
             return 0
 
-        assert row is not None, "now latest change for %r:%d" % (path, revnum)
+        assert row is not None, "no latest change for %r:%d" % (path, revnum)
 
         return row[0]
 

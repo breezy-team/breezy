@@ -52,6 +52,28 @@ SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
+
+class DirUpgrade(BzrError):
+    _fmt = """Dir %(from_path):%(from_revnum) is upgraded to branch %(to_path) in %(to_revnum). Not supported yet. """
+
+    def __init__(self, to_tuple, from_tuple=None):
+        BzrError.__init__(self)
+        self.to_path = to_tuple[0]
+        self.to_revnum = to_tuple[1]
+        if from_tuple is not None:
+            self.from_path = from_tuple[0]
+            self.from_revnum = from_tuple[1]
+
+
+class NotSvnBranchPath(BzrError):
+    _fmt = """{%(branch_path)s}:%(revnum)s is not a valid Svn branch path"""
+
+    def __init__(self, branch_path, revnum=None):
+        BzrError.__init__(self)
+        self.branch_path = branch_path
+        self.revnum = revnum
+
+
 _unsafe = "%/-\t "
 def escape_svn_path(id):
     r = [((c in _unsafe) and ('%%%02x' % ord(c)) or c)
@@ -500,8 +522,18 @@ class SvnRepository(Repository):
         return osutils.sha_string(self.get_revision_xml(revision_id))
 
     def follow_branch(self, branch_path, revnum):
+        if not branch_path is None and not self.scheme.is_branch(branch_path):
+            raise NotSvnBranchPath(branch_path, revnum)
+
         for (bp, _, rev) in self._log.follow_history(branch_path, revnum):
             yield (bp, rev)
+
+    def follow_history(self, branch_path, revnum):
+        if not branch_path is None and not self.scheme.is_branch(branch_path):
+            raise NotSvnBranchPath(branch_path, revnum)
+
+        for (bp, paths, rev) in self._log.follow_history(branch_path, revnum):
+            yield (bp, paths, rev)
 
     def has_signature_for_revision_id(self, revision_id):
         # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 

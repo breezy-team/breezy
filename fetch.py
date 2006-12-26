@@ -286,7 +286,7 @@ class InterSvnRepository(InterRepository):
         parents = {}
         prev_revid = None
         for (branch, changes, revnum) in \
-            self.source._log.follow_history(path, until_revnum):
+            self.source.follow_history(path, until_revnum):
             revid = self.source.generate_revision_id(revnum, branch)
 
             if prev_revid is not None:

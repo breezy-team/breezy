@@ -52,13 +52,6 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.assertRaises(NoSuchRevision, list, 
                           walker.follow_history("/", 20))
 
-    def test_invalid_branch_path(self):
-        repos_url = self.make_client("a", "dc")
-        walker = logwalker.LogWalker(NoBranchingScheme(), 
-                                     transport=SvnRaTransport(repos_url))
-
-        self.assertRaises(logwalker.NotSvnBranchPath, list, 
-                          walker.follow_history("foobar", 0))
 
     def test_branch_log_all(self):
         repos_url = self.make_client("a", "dc")
