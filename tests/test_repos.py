@@ -78,6 +78,24 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         self.assertEqual(1, len(list(repos.follow_history(1))))
 
+    def test_follow_history_follow(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/afile': "data", "dc/branches": None})
+        self.client_add("dc/trunk")
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+
+        self.client_copy("dc/trunk", "dc/branches/abranch")
+        self.client_commit("dc", "Create branch")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        items = list(repos.follow_history(2))
+        self.assertEqual([('branches/abranch', {'branches/abranch': ('A', 'trunk', 1)}, 2), 
+                          ('trunk', {'trunk/afile': ('A', None, -1), 
+                                     'trunk': (u'A', None, -1)}, 1)], items)
+
     def test_branch_log_specific(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({
@@ -94,6 +112,27 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         self.assertEqual(1, len(list(repos.follow_branch_history("branches/brancha",
             1))))
+
+    def test_branch_log_specific_ignore(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.build_tree({
+            'dc/branches/brancha': None,
+            'dc/branches/branchab': None,
+            'dc/branches/brancha/data': "data", 
+            "dc/branches/branchab/data":"data"})
+        self.client_add("dc/branches/brancha")
+        self.client_commit("dc", "My Message")
+
+        self.client_add("dc/branches/branchab")
+        self.client_commit("dc", "My Message2")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        self.assertEqual(1, len(list(repos.follow_branch_history("branches/brancha",
+            2))))
 
     def test_find_branches_no(self):
         repos_url = self.make_client("a", "dc")

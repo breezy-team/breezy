@@ -513,6 +513,7 @@ class SvnRepository(Repository):
                     # FIXME: if copyfrom_path is not a branch path, 
                     # should simulate a reverse "split" of a branch
                     # For now, just make it look like the branch originated here.
+                    mutter('breaking off "split"')
                     for c in self._log.find_children(changed_paths[bp][bp][1], changed_paths[bp][bp][2]):
                         path = c.replace(changed_paths[bp][bp][1], bp+"/", 1).replace("//", "/")
                         changed_paths[bp][path] = ('A', None, -1)

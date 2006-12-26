@@ -130,8 +130,7 @@ class LogWalker(object):
         pool = Pool()
         try:
             try:
-                mutter('getting log %r:%r' % (self.saved_revnum, to_revnum))
-                self.transport.get_log(["/"], self.saved_revnum, to_revnum, 
+                self.transport.get_log("/", self.saved_revnum, to_revnum, 
                                0, True, True, rcvr, pool)
             finally:
                 pb.clear()
@@ -161,26 +160,24 @@ class LogWalker(object):
 
         path = path.strip("/")
 
-        i = revnum
-        while i > 0:
-            revpaths = self.get_revision_paths(i, path)
-            yield (path, revpaths, i)
+        while revnum > 0:
+            revpaths = self.get_revision_paths(revnum, path)
 
-            if (revpaths.has_key(path) and
-                revpaths[path][0] in ('A', 'R') and
-                revpaths[path][1] is None):
-               # this path didn't exist before this revision
-               return
+            if revpaths != {}:
+                yield (path, revpaths, revnum)
 
-            if (not path is None and 
-                path in revpaths and 
-                not revpaths[path][1] is None):
-                # In this revision, this path was copied from 
-                # somewhere else
-                i = revpaths[path][2]
-                path = revpaths[path][1]
-            else:
-                i-=1
+            if revpaths.has_key(path):
+                if revpaths[path][1] is None:
+                    if revpaths[path][0] in ('A', 'R'):
+                        # this path didn't exist before this revision
+                        return
+                else:
+                    # In this revision, this path was copied from 
+                    # somewhere else
+                    revnum = revpaths[path][2]
+                    path = revpaths[path][1]
+                    continue
+            revnum-=1
 
     def get_revision_paths(self, revnum, path=None):
         """Obtain dictionary with all the changes in a particular revision.

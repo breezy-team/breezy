@@ -65,7 +65,6 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.assertRaises(NoSuchRevision, list, 
                           walker.follow_path("/", 20))
 
-
     def test_branch_log_all(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/trunk/file': "data", "dc/foo/file":"data"})
@@ -92,6 +91,26 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         self.assertEqual(1, len(list(walker.follow_path("branches/brancha",
             1))))
+
+    def test_follow_path_ignore_unchanged(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.build_tree({
+            'dc/branches/brancha': None,
+            'dc/branches/branchab': None,
+            'dc/branches/brancha/data': "data", 
+            "dc/branches/branchab/data":"data"})
+        self.client_add("dc/branches/brancha")
+        self.client_commit("dc", "My Message")
+
+        self.client_add("dc/branches/branchab")
+        self.client_commit("dc", "My Message2")
+
+        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(1, len(list(walker.follow_path("branches/brancha",
+            2))))
 
     def test_find_latest_none(self):
         repos_url = self.make_client("a", "dc")
@@ -239,7 +258,9 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
 
         items = list(walker.follow_path("branches/abranch", 2))
-        self.assertEqual(2, len(items))
+        self.assertEqual([('branches/abranch', {'branches/abranch': ('A', 'trunk', 1)}, 2), 
+                          ('trunk', {'trunk/afile': ('A', None, -1), 
+                                     'trunk': (u'A', None, -1)}, 1)], items)
 
     def test_touches_path(self):
         repos_url = self.make_client("a", "dc")

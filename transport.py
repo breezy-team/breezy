@@ -142,15 +142,17 @@ class SvnRaTransport(Transport):
 
     @need_lock
     def get_uuid(self):
+        mutter('svn get-uuid')
         return svn.ra.get_uuid(self._ra)
 
     @need_lock
     def get_repos_root(self):
+        mutter("svn get-repos-root")
         return svn.ra.get_repos_root(self._ra)
 
     @need_lock
     def get_latest_revnum(self):
-        mutter("svn latest-revnum")
+        mutter("svn get-latest-revnum")
         return svn.ra.get_latest_revnum(self._ra)
 
     @need_lock
@@ -159,8 +161,9 @@ class SvnRaTransport(Transport):
         return svn.ra.do_switch(self._ra, switch_rev, switch_target, *args, **kwargs)
 
     @need_lock
-    def get_log(self, *args, **kwargs):
-        return svn.ra.get_log(self._ra, *args, **kwargs)
+    def get_log(self, path, from_revnum, to_revnum, *args, **kwargs):
+        mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
+        return svn.ra.get_log(self._ra, [path], from_revnum, to_revnum, *args, **kwargs)
 
     @need_lock
     def reparent(self, url):
@@ -170,6 +173,7 @@ class SvnRaTransport(Transport):
         self.base = url
         self.svn_url = url
         if hasattr(svn.ra, 'reparent'):
+            mutter('svn reparent %r' % url)
             svn.ra.reparent(self._ra, url, self.pool)
         else:
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
