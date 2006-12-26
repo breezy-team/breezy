@@ -77,6 +77,9 @@ IN DEVELOPMENT
     * Single-letter short options are no longer globally declared.  (Martin
       Pool)
 
+    * Before using detected user/terminal encoding bzr should check
+      that Python has corresponding codec. (Alexander Belchenko)
+
   BUG FIXES:
 
     * ``bzr missing --verbose`` was showing adds/removals in the wrong
