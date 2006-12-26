@@ -28,7 +28,7 @@ from bzrlib.progress import ProgressBar
 from bzrlib.repository import Repository, RepositoryFormat
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import mutter
 
 from svn.core import SubversionException, Pool
 import svn.core
@@ -42,6 +42,7 @@ except ImportError:
 
 import branch
 from branchprops import BranchPropertyList
+import errors
 import logwalker
 from tree import SvnRevisionTree
 
@@ -51,27 +52,6 @@ SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
-
-
-class DirUpgrade(BzrError):
-    _fmt = """Dir %(from_path):%(from_revnum) is upgraded to branch %(to_path) in %(to_revnum). Not supported yet. """
-
-    def __init__(self, to_tuple, from_tuple=None):
-        BzrError.__init__(self)
-        self.to_path = to_tuple[0]
-        self.to_revnum = to_tuple[1]
-        if from_tuple is not None:
-            self.from_path = from_tuple[0]
-            self.from_revnum = from_tuple[1]
-
-
-class NotSvnBranchPath(BzrError):
-    _fmt = """{%(branch_path)s}:%(revnum)s is not a valid Svn branch path"""
-
-    def __init__(self, branch_path, revnum=None):
-        BzrError.__init__(self)
-        self.branch_path = branch_path
-        self.revnum = revnum
 
 
 _unsafe = "%/-\t "
@@ -523,15 +503,9 @@ class SvnRepository(Repository):
 
     def follow_history(self, branch_path, revnum):
         if not branch_path is None and not self.scheme.is_branch(branch_path):
-            raise NotSvnBranchPath(branch_path, revnum)
+            raise errors.NotSvnBranchPath(branch_path, revnum)
 
         for (branch_path, paths, revnum) in self._log.follow_history(branch_path, revnum):
-            if branch_path is not None and not self.scheme.is_branch(branch_path):
-                # FIXME: if copyfrom_path is not a branch path, 
-                # should simulate a reverse "split" of a branch
-                warning('directory %r:%d upgraded to branch. This is not currently supported.' % 
-                     (branch_path, revnum))
-
             changed_paths = {}
             for p in paths:
                 if (branch_path is None or 
@@ -550,7 +524,14 @@ class SvnRepository(Repository):
             assert branch_path is None or len(changed_paths) <= 1
 
             for bp in changed_paths:
+                if (changed_paths[bp].has_key(bp) and 
+                    changed_paths[bp][bp][1] is not None and
+                    not self.scheme.is_branch(changed_paths[bp][bp][1])):
+                    # FIXME: if copyfrom_path is not a branch path, 
+                    # should simulate a reverse "split" of a branch
+                    raise errors.DirUpgrade((changed_paths[bp][bp][1], changed_paths[bp][bp][2]), (bp, revnum))
                 yield (bp, changed_paths[bp], revnum)
+
 
     def has_signature_for_revision_id(self, revision_id):
         # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 

@@ -15,12 +15,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchRevision
+from bzrlib.errors import NoSuchRevision, BzrError
 from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase
+from bzrlib.trace import mutter
 from bzrlib.transport.local import LocalTransport
 
 import os
@@ -28,12 +29,13 @@ import os
 import svn.fs
 
 from convert import load_dumpfile
+import errors
 import format
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
-from repository import (NotSvnBranchPath,
-                        parse_svn_revision_id, generate_svn_revision_id, 
+import repository
+from repository import (parse_svn_revision_id, generate_svn_revision_id, 
                         svk_feature_to_revision_id, revision_id_to_svk_feature,
                         MAPPING_VERSION, escape_svn_path, unescape_svn_path)
 
@@ -1132,6 +1134,50 @@ Node-copyfrom-path: x
         inv2 = newrepos.get_inventory(
                 "svn-v%d:5@%s-" % (MAPPING_VERSION, oldrepos.uuid))
         self.assertNotEqual(inv1.path2id("y"), inv2.path2id("y"))
+
+    def test_fetch_dir_upgrade(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/trunk/lib/file': 'data'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "trunk data")
+
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.client_copy("dc/trunk/lib", "dc/branches/mybranch")
+        self.client_commit("dc", "split out lib")
+
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        self.assertRaises(BzrError, oldrepos.copy_content_into, newrepos)
+        try:
+            oldrepos.copy_content_into(newrepos)
+        except BzrError, e:
+            self.assertEqual("trunk/lib", e.from_path)
+            self.assertEqual(1, e.from_revnum)
+            self.assertEqual("branches/mybranch", e.to_path)
+            self.assertEqual(2, e.to_revnum)
+
+
+    def notest_fetch_branch_downgrade(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/trunk/file': 'data'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "trunk data")
+
+        self.build_tree({'dc/branches/mybranch': None})
+        self.client_add("dc/branches")
+        self.client_copy("dc/trunk", "dc/branches/mybranch/lib")
+        self.client_commit("dc", "split out lib")
+
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
 
     # FIXME
     def notest_fetch_all(self):
