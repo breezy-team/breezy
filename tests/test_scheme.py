@@ -20,28 +20,66 @@ from bzrlib.tests import TestCase
 from scheme import (ListBranchingScheme, NoBranchingScheme, 
                     BranchingScheme, TrunkBranchingScheme)
 
-class NoScheme(TestCase):
-    def test_is_branch(self):
-        scheme = NoBranchingScheme()
-        self.assertTrue(scheme.is_branch(""))
-        self.assertTrue(scheme.is_branch("/"))
-        self.assertFalse(scheme.is_branch("/foo"))
-        self.assertFalse(scheme.is_branch("/foo/foo"))
-        self.assertFalse(scheme.is_branch("foo/bar"))
-        self.assertFalse(scheme.is_branch("//foo/bar"))
-
-    def test_unprefix(self):
-        scheme = NoBranchingScheme()
-        self.assertEqual(scheme.unprefix(""), ("", ""))
-        self.assertEqual(scheme.unprefix("/"), ("", ""))
-        self.assertEqual(scheme.unprefix("foo/foo"), ("", "foo/foo"))
-        self.assertEqual(scheme.unprefix("/foo/foo"), ("", "foo/foo"))
-
-    def test_guess(self):
+class BranchingSchemeTest(TestCase):
+    def test_guess_empty(self):
         self.assertIsInstance(BranchingScheme.guess_scheme(""), 
                               NoBranchingScheme)
+
+    def test_guess_not_convenience(self):
         self.assertIsInstance(BranchingScheme.guess_scheme("foo"), 
                               NoBranchingScheme)
+
+    def test_find_scheme_no(self):
+        self.assertIsInstance(BranchingScheme.find_scheme("none"),
+                              NoBranchingScheme)
+
+    def test_find_scheme_invalid(self):
+        self.assertIs(None, BranchingScheme.find_scheme("foo"))
+
+    def test_find_scheme_trunk(self):
+        scheme = BranchingScheme.find_scheme("trunk")
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(0, scheme.level)
+
+    def test_find_scheme_trunk_0(self):
+        scheme = BranchingScheme.find_scheme("trunk-0")
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(0, scheme.level)
+
+    def test_find_scheme_trunk_2(self):
+        scheme = BranchingScheme.find_scheme("trunk-2")
+        self.assertIsInstance(scheme, TrunkBranchingScheme)
+        self.assertEqual(2, scheme.level)
+
+    def test_find_scheme_trunk_invalid(self):
+        scheme = BranchingScheme.find_scheme("trunk-invalid")
+        self.assertIs(None, scheme)
+
+
+class NoScheme(TestCase):
+    def test_is_branch_empty(self):
+        self.assertTrue(NoBranchingScheme().is_branch(""))
+
+    def test_is_branch_slash(self):
+        self.assertTrue(NoBranchingScheme().is_branch("/"))
+
+    def test_is_branch_dir_slash(self):
+        self.assertFalse(NoBranchingScheme().is_branch("/foo"))
+
+    def test_is_branch_dir_slash_nested(self):
+        self.assertFalse(NoBranchingScheme().is_branch("/foo/foo"))
+
+    def test_is_branch_dir(self):
+        self.assertFalse(NoBranchingScheme().is_branch("foo/bar"))
+
+    def test_is_branch_dir_doubleslash(self):
+        self.assertFalse(NoBranchingScheme().is_branch("//foo/bar"))
+
+    def test_unprefix(self):
+        self.assertEqual(NoBranchingScheme().unprefix(""), ("", ""))
+        self.assertEqual(NoBranchingScheme().unprefix("/"), ("", ""))
+        self.assertEqual(NoBranchingScheme().unprefix("foo/foo"), ("", "foo/foo"))
+        self.assertEqual(NoBranchingScheme().unprefix("/foo/foo"), ("", "foo/foo"))
 
 class ListScheme(TestCase):
     def test_is_branch(self):
@@ -121,17 +159,17 @@ class TrunkScheme(TestCase):
     def test_guess(self):
         scheme = BranchingScheme.guess_scheme("trunk") 
         self.assertIsInstance(scheme, TrunkBranchingScheme)
-        self.assertEqual(scheme.level, 0)
+        self.assertEqual(0, scheme.level)
         scheme = BranchingScheme.guess_scheme("branches/foo/bar")
         self.assertIsInstance(scheme, TrunkBranchingScheme)
-        self.assertEqual(scheme.level, 0)
+        self.assertEqual(0, scheme.level)
         scheme = BranchingScheme.guess_scheme("test/branches/foo/bar")
         self.assertIsInstance(scheme, TrunkBranchingScheme)
-        self.assertEqual(scheme.level, 1)
+        self.assertEqual(1, scheme.level)
         scheme = BranchingScheme.guess_scheme("test/bar/branches/foo/bar")
         self.assertIsInstance(scheme, TrunkBranchingScheme)
-        self.assertEqual(scheme.level, 2)
+        self.assertEqual(2, scheme.level)
         scheme = BranchingScheme.guess_scheme("branches/trunk")
         self.assertIsInstance(scheme, TrunkBranchingScheme)
-        self.assertEqual(scheme.level, 0)
+        self.assertEqual(0, scheme.level)
 
