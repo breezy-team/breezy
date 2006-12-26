@@ -580,42 +580,8 @@ class TestCopyTree(TestCaseInTempDir):
             self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
 
 
-class TestTerminalEncoding(TestCase):
-    """Test the auto-detection of proper terminal encoding."""
-
-    def setUp(self):
-        self._stdout = sys.stdout
-        self._stderr = sys.stderr
-        self._stdin = sys.stdin
-        self._user_encoding = bzrlib.user_encoding
-
-        self.addCleanup(self._reset)
-
-        sys.stdout = StringIOWrapper()
-        sys.stdout.encoding = 'stdout_encoding'
-        sys.stderr = StringIOWrapper()
-        sys.stderr.encoding = 'stderr_encoding'
-        sys.stdin = StringIOWrapper()
-        sys.stdin.encoding = 'stdin_encoding'
-        bzrlib.user_encoding = 'user_encoding'
-
-    def _reset(self):
-        sys.stdout = self._stdout
-        sys.stderr = self._stderr
-        sys.stdin = self._stdin
-        bzrlib.user_encoding = self._user_encoding
-
-    def test_get_terminal_encoding(self):
-        # first preference is stdout encoding
-        self.assertEqual('stdout_encoding', osutils.get_terminal_encoding())
-
-        sys.stdout.encoding = None
-        # if sys.stdout is None, fall back to sys.stdin
-        self.assertEqual('stdin_encoding', osutils.get_terminal_encoding())
-
-        sys.stdin.encoding = None
-        # and in the worst case, use bzrlib.user_encoding
-        self.assertEqual('user_encoding', osutils.get_terminal_encoding())
+#class TestTerminalEncoding has been moved to test_osutils_encodings.py
+# [bialix] 2006/12/26
 
 
 class TestSetUnsetEnv(TestCase):
