@@ -77,6 +77,12 @@ from the revision it was added or was copied from another file.
 Since / is forbidden in revision ids, the '/', '-', '%' and all whitespace
 characters are urlencoded.
 
+File id mappings can only change if something about the metadata of a file changed: it 
+is in no way related to the contents of that file.
+
+If a file is being replaced by a copy of itself in an older revision it will 
+receive a new file id.
+
 NEXT VERSION: Special rules are applied to make sure that renames are tracked.
 
 == Properties ==
