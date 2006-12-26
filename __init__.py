@@ -97,6 +97,18 @@ InterRepository.register_optimiser(InterSvnRepository)
 
 from bzrlib.commands import Command, register_command, display_command, Option
 
+
+def get_scheme(schemename):
+    """Parse scheme identifier and return a branching scheme."""
+    from scheme import BranchingScheme
+    from bzrlib.errors import BzrCommandError
+    
+    ret = BranchingScheme.find_scheme(schemename)
+    if ret is None:
+        raise BzrCommandError('No such branching scheme %r' % schemename)
+    return ret
+
+
 class cmd_svn_import(Command):
     """Convert a Subversion repository to a Bazaar repository.
     
@@ -104,19 +116,14 @@ class cmd_svn_import(Command):
     takes_args = ['url', 'output_dir']
     takes_options = [Option('trees', help='Create working trees'),
                      Option('shared', help='Create shared repository'),
-                     Option('scheme', help='Branching scheme (none, trunk, or trunk-INT)')]
+                     Option('scheme', type=get_scheme,
+                         help='Branching scheme (none, trunk, or trunk-INT)')]
 
     @display_command
     def run(self, url, output_dir, trees=False, shared=False, scheme="trunk"):
         from convert import convert_repository
-        from scheme import BranchingScheme
 
-        scheme_ = BranchingScheme.find_scheme(scheme)
-        if scheme_ is None:
-            raise BzrError('No such branching scheme %r' % scheme)
-
-        convert_repository(url, output_dir, scheme_, shared, 
-                           trees)
+        convert_repository(url, output_dir, scheme_, shared, trees)
 
 
 register_command(cmd_svn_import)
