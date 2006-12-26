@@ -929,6 +929,8 @@ class KnitError(BzrError):
     
     _fmt = "Knit error"
 
+    internal_error = True
+
 
 class KnitHeaderError(KnitError):
 
@@ -948,6 +950,21 @@ class KnitCorrupt(KnitError):
         KnitError.__init__(self)
         self.filename = filename
         self.how = how
+
+
+class KnitIndexUnknownMethod(KnitError):
+    """Raised when we don't understand the storage method.
+
+    Currently only 'fulltext' and 'line-delta' are supported.
+    """
+    
+    _fmt = ("Knit index %(filename)s does not have a known method"
+            " in options: %(options)r")
+
+    def __init__(self, filename, options):
+        KnitError.__init__(self)
+        self.filename = filename
+        self.options = options
 
 
 class NoSuchExportFormat(BzrError):

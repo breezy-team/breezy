@@ -55,6 +55,7 @@ from bzrlib import (
     errors,
     generate_ids,
     globbing,
+    hashcache,
     ignores,
     merge,
     osutils,
@@ -102,7 +103,7 @@ from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
 import bzrlib.tree
 from bzrlib.progress import DummyProgress, ProgressPhase
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import NULL_REVISION, CURRENT_REVISION
 import bzrlib.revisiontree
 from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import (deprecated_passed,
@@ -232,8 +233,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self._set_inventory(wt._inventory, dirty=False)
             self._format = wt._format
             self.bzrdir = wt.bzrdir
-        from bzrlib.hashcache import HashCache
-        from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
         basedir = safe_unicode(basedir)
@@ -267,7 +266,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # cache file, and have the parser take the most recent entry for a
         # given path only.
         cache_filename = self.bzrdir.get_workingtree_transport(None).local_abspath('stat-cache')
-        hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
+        self._hashcache = hashcache.HashCache(basedir, cache_filename,
+                                              self._control_files._file_mode)
+        hc = self._hashcache
         hc.read()
         # is this scan needed ? it makes things kinda slow.
         #hc.scan()
@@ -467,6 +468,37 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
+
+    def annotate_iter(self, file_id):
+        """See Tree.annotate_iter
+
+        This implementation will use the basis tree implementation if possible.
+        Lines not in the basis are attributed to CURRENT_REVISION
+
+        If there are pending merges, lines added by those merges will be
+        incorrectly attributed to CURRENT_REVISION (but after committing, the
+        attribution will be correct).
+        """
+        basis = self.basis_tree()
+        changes = self._iter_changes(basis, True, [file_id]).next()
+        changed_content, kind = changes[2], changes[6]
+        if not changed_content:
+            return basis.annotate_iter(file_id)
+        if kind[1] is None:
+            return None
+        import annotate
+        if kind[0] != 'file':
+            old_lines = []
+        else:
+            old_lines = list(basis.annotate_iter(file_id))
+        old = [old_lines]
+        for tree in self.branch.repository.revision_trees(
+            self.get_parent_ids()[1:]):
+            if file_id not in tree:
+                continue
+            old.append(list(tree.annotate_iter(file_id)))
+        return annotate.reannotate(old, self.get_file(file_id).readlines(),
+                                   CURRENT_REVISION)
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -1667,6 +1699,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                   this_tree=self)
         return result
 
+    def _write_hashcache_if_dirty(self):
+        """Write out the hashcache if it is dirty."""
+        if self._hashcache.needs_write:
+            try:
+                self._hashcache.write()
+            except OSError, e:
+                if e.errno not in (errno.EPERM, errno.EACCES):
+                    raise
+                # TODO: jam 20061219 Should this be a warning? A single line
+                #       warning might be sufficient to let the user know what
+                #       is going on.
+                mutter('Could not write hashcache for %s\nError: %s',
+                       self._hashcache.cache_file_name(), e)
+
     @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
@@ -1733,8 +1779,8 @@ class WorkingTree2(WorkingTree):
             # _inventory_is_modified is always False during a read lock.
             if self._inventory_is_modified:
                 self.flush()
-            if self._hashcache.needs_write:
-                self._hashcache.write()
+            self._write_hashcache_if_dirty()
+                    
         # reverse order of locking.
         try:
             return self._control_files.unlock()
@@ -1802,8 +1848,7 @@ class WorkingTree3(WorkingTree):
             # _inventory_is_modified is always False during a read lock.
             if self._inventory_is_modified:
                 self.flush()
-            if self._hashcache.needs_write:
-                self._hashcache.write()
+            self._write_hashcache_if_dirty()
         # reverse order of locking.
         try:
             return self._control_files.unlock()

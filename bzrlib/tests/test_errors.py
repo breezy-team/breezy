@@ -51,6 +51,13 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual("Knit header error: 'line foo\\n' unexpected"
                          " for file path/to/file", str(error))
 
+    def test_knit_index_unknown_method(self):
+        error = errors.KnitIndexUnknownMethod('http://host/foo.kndx',
+                                              ['bad', 'no-eol'])
+        self.assertEqual("Knit index http://host/foo.kndx does not have a"
+                         " known method in options: ['bad', 'no-eol']",
+                         str(error))
+
     def test_medium_not_connected(self):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(

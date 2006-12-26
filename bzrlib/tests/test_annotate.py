@@ -27,6 +27,77 @@ from bzrlib import (
     )
 
 
+def annotation(text):
+    return [tuple(l.split(' ', 1)) for l in text.splitlines(True)]
+
+
+parent_1 = annotation("""\
+rev1 a
+rev2 b
+rev3 c
+rev4 d
+rev5 e
+""")
+
+
+parent_2 = annotation("""\
+rev1 a
+rev3 c
+rev4 d
+rev6 f
+rev7 e
+rev8 h
+""")
+
+
+expected_2_1 = annotation("""\
+rev1 a
+blahblah b
+rev3 c
+rev4 d
+rev7 e
+""")
+
+
+# a: in both, same value, kept
+# b: in 1, kept
+# c: in both, same value, kept
+# d: in both, same value, kept
+# e: 1 and 2 disagree, so it goes to blahblah
+# f: in 2, but not in new, so ignored
+# g: not in 1 or 2, so it goes to blahblah
+# h: only in parent 2, so 2 gets it
+expected_1_2_2 = annotation("""\
+rev1 a
+rev2 b
+rev3 c
+rev4 d
+blahblah e
+blahblah g
+rev8 h
+""")
+
+
+new_1 = """\
+a
+b
+c
+d
+e
+""".splitlines(True)
+
+
+new_2 = """\
+a
+b
+c
+d
+e
+g
+h
+""".splitlines(True)
+
+
 class TestAnnotate(tests.TestCaseWithTransport):
 
     def create_merged_trees(self):
@@ -178,3 +249,19 @@ class TestAnnotate(tests.TestCaseWithTransport):
                              'rev-1_1_1_1_1_1_1 | fifth\n'
                              'rev-1_1_1_1_1_1_1 | sixth\n',
                              sio.getvalue())
+
+
+class TestReannotate(tests.TestCase):
+
+    def annotateEqual(self, expected, parents, newlines, revision_id):
+        annotate_list = list(annotate.reannotate(parents, newlines,
+                             revision_id))
+        self.assertEqual(len(expected), len(annotate_list))
+        for e, a in zip(expected, annotate_list):
+            self.assertEqual(e, a)
+
+    def test_reannotate(self):
+        self.annotateEqual(parent_1, [parent_1], new_1, 'blahblah')
+        self.annotateEqual(expected_2_1, [parent_2], new_1, 'blahblah')
+        self.annotateEqual(expected_1_2_2, [parent_1, parent_2], new_2, 
+                           'blahblah')
