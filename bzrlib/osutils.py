@@ -1069,17 +1069,21 @@ def compare_paths_prefix_order(path_a, path_b):
 _cached_user_encoding = None
 
 
-def get_user_encoding():
+def get_user_encoding(use_cache=True):
     """Find out what the preferred user encoding is.
 
     This is generally the encoding that is used for command line parameters
     and file contents. This may be different from the terminal encoding
     or the filesystem encoding.
 
+    :param  use_cache:  Enable cache for detected encoding.
+                        (This parameter is turned on by default,
+                        and required only for selftesting)
+
     :return: A string defining the preferred user encoding
     """
     global _cached_user_encoding
-    if _cached_user_encoding is not None:
+    if _cached_user_encoding is not None and use_cache:
         return _cached_user_encoding
 
     if sys.platform == 'darwin':
@@ -1093,7 +1097,7 @@ def get_user_encoding():
         import locale
 
     try:
-        _cached_user_encoding = locale.getpreferredencoding()
+        user_encoding = locale.getpreferredencoding()
     except locale.Error, e:
         sys.stderr.write('bzr: warning: %s\n'
                          '  Could not determine what text encoding to use.\n'
@@ -1105,21 +1109,24 @@ def get_user_encoding():
     # Windows returns 'cp0' to indicate there is no code page. So we'll just
     # treat that as ASCII, and not support printing unicode characters to the
     # console.
-    if _cached_user_encoding in (None, 'cp0'):
-        _cached_user_encoding = 'ascii'
+    if user_encoding in (None, 'cp0'):
+        user_encoding = 'ascii'
     else:
         # check encoding
         try:
-            codecs.lookup(_cached_user_encoding)
+            codecs.lookup(user_encoding)
         except LookupError:
             sys.stderr.write('bzr: warning:'
                              ' unknown encoding %s.'
                              ' Continuing with ascii encoding.\n'
-                             % _cached_user_encoding
+                             % user_encoding
                             )
-            _cached_user_encoding = 'ascii'
+            user_encoding = 'ascii'
 
-    return _cached_user_encoding
+    if use_cache:
+        _cached_user_encoding = user_encoding
+
+    return user_encoding
 
 
 def recv_all(socket, bytes):

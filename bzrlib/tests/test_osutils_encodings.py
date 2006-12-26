@@ -17,7 +17,7 @@
 """Tests for the osutils wrapper."""
 
 import codecs
-import encodings
+import locale   # XXX: Do I need a woodoo for MacOS?
 import sys
 
 import bzrlib
@@ -143,4 +143,45 @@ class TestTerminalEncoding(TestCase):
         # check stderr
         self.assertEquals('bzr: warning: unknown encoding cpUNKNOWN.\n'
                           '  Using encoding latin-1 instead.\n', 
+                          sys.stderr.getvalue())
+
+
+class TestUserEncoding(TestCase):
+    """Test detection of default user encoding."""
+    
+    def setUp(self):
+        self._stderr = sys.stderr
+        self._getpreferredencoding = locale.getpreferredencoding
+        self.addCleanup(self._reset)
+        sys.stderr = StringIOWrapper()
+
+    def _reset(self):
+        locale.getpreferredencoding = self._getpreferredencoding
+        sys.stderr = self._stderr
+
+    def test_get_user_encoding(self):
+        def f():
+            return 'user_encoding'
+
+        locale.getpreferredencoding = f
+        fake_codec.add('user_encoding')
+        self.assertEquals('user_encoding', osutils.get_user_encoding(use_cache=False))
+        self.assertEquals('', sys.stderr.getvalue())
+
+    def test_user_cp0(self):
+        def f():
+            return 'cp0'
+
+        locale.getpreferredencoding = f
+        self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
+        self.assertEquals('', sys.stderr.getvalue())
+
+    def test_user_cpUNKNOWN(self):
+        def f():
+            return 'cpUNKNOWN'
+
+        locale.getpreferredencoding = f
+        self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
+        self.assertEquals('bzr: warning: unknown encoding cpUNKNOWN.'
+                          ' Continuing with ascii encoding.\n',
                           sys.stderr.getvalue())
