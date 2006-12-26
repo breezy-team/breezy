@@ -56,16 +56,14 @@ def _escape_commit_message(message):
 
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
-    def __init__(self, scheme, transport=None, cache_db=None, last_revnum=None, pb=None):
+    def __init__(self, transport=None, cache_db=None, last_revnum=None):
         """Create a new instance.
 
-        :param scheme:  Branching scheme to use.
         :param transport:   SvnRaTransport to use to access the repository.
         :param cache_db:    Optional sql database connection to use. Doesn't 
                             cache if not set.
         :param last_revnum: Last known revnum in the repository. Will be 
                             determined if not specified.
-        :param pb:          Progress bar to report progress to.
         """
         assert isinstance(transport, SvnRaTransport)
 
@@ -75,7 +73,6 @@ class LogWalker(object):
         self.last_revnum = last_revnum
 
         self.transport = SvnRaTransport(transport.get_repos_root())
-        self.scheme = scheme
 
         if cache_db is None:
             self.db = sqlite3.connect(":memory:")
@@ -148,9 +145,15 @@ class LogWalker(object):
     def follow_history(self, branch_path, revnum):
         """Return iterator over all the revisions between revnum and 
         0 names branch_path or inside branch_path.
+
+        If branch_path is None, all changes will be reported.
         
         :param branch_path:   Branch path to start reporting (in revnum)
         :param revnum:        Start revision.
+
+        :return: An iterators that yields tuples with (branch_path, paths, revnum)
+        where paths is a dictionary with all changes that happened in branch_path 
+        in revnum.
         """
         assert revnum >= 0
 
@@ -172,26 +175,8 @@ class LogWalker(object):
 
             continue_revnum = None
 
-            changed_paths = {}
             revpaths = self.get_revision_paths(i)
-            for p in revpaths:
-                if (branch_path is None or 
-                    p == branch_path or
-                    branch_path == "" or
-                    p.startswith(branch_path+"/")):
-
-                    try:
-                        (bp, rp) = self.scheme.unprefix(p)
-                        if not changed_paths.has_key(bp):
-                            changed_paths[bp] = {}
-                        changed_paths[bp][p] = revpaths[p]
-                    except NotBranchError:
-                        pass
-
-            assert branch_path is None or len(changed_paths) <= 1
-
-            for bp in changed_paths:
-                yield (bp, changed_paths[bp], i)
+            yield (branch_path, revpaths, i)
 
             if (not branch_path is None and 
                 revpaths.has_key(branch_path) and
@@ -205,14 +190,9 @@ class LogWalker(object):
                 # In this revision, this branch was copied from 
                 # somewhere else
                 continue_revnum = revpaths[branch_path][2]
-                # FIXME: if copyfrom_path is not a branch path, 
-                # should simulate a reverse "split" of a branch
                 branch_path = revpaths[branch_path][1]
-                if not self.scheme.is_branch(branch_path):
-                    warn('directory %r:%d upgraded to branch in %d. This is not currently supported.' % 
-                            (branch_path, continue_revnum, i))
 
-    def find_branches(self, revnum):
+    def find_branches(self, revnum, scheme):
         """Find all branches that were changed in the specified revision number.
 
         :param revnum: Revision to search for branches.
@@ -225,7 +205,7 @@ class LogWalker(object):
             else:
                 paths = self.get_revision_paths(i)
             for p in paths:
-                if self.scheme.is_branch(p):
+                if scheme.is_branch(p):
                     if paths[p][0] in ('R', 'D'):
                         del created_branches[p]
                         yield (p, i, False)

@@ -35,7 +35,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.client_set_prop("dc", "myprop", "data")
         self.client_commit("dc", "My Message")
 
-        logwalk = LogWalker(scheme=NoBranchingScheme(), transport=SvnRaTransport(repos_url))
+        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
 
         bp = BranchPropertyList(logwalk, self.db)
         self.assertEqual("data", bp.get_property("", 1, "myprop"))
@@ -48,7 +48,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
 
-        logwalk = LogWalker(scheme=NoBranchingScheme(), transport=SvnRaTransport(repos_url))
+        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
 
         bp = BranchPropertyList(logwalk, self.db)
         self.assertEqual("data", bp.get_property("", 2, "myprop"))
@@ -58,7 +58,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.client_set_prop("dc", "myprop", "data")
         self.client_commit("dc", "My Message")
 
-        logwalk = LogWalker(scheme=NoBranchingScheme(), transport=SvnRaTransport(repos_url))
+        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
 
         bp = BranchPropertyList(logwalk, self.db)
         self.assertEqual(None, bp.get_property("", 1, "otherprop"))
@@ -69,7 +69,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
 
         transport = SvnRaTransport(repos_url)
-        logwalk = LogWalker(scheme=NoBranchingScheme(), transport=transport)
+        logwalk = LogWalker(transport=transport)
 
         bp = BranchPropertyList(logwalk, self.db)
         props = bp.get_properties("", 1)
@@ -86,7 +86,7 @@ class TestBranchProps(TestCaseWithSubversionRepository):
         self.client_set_prop("dc", "myprop", "data\ndata2\n")
         self.client_commit("dc", "My Message")
 
-        logwalk = LogWalker(scheme=NoBranchingScheme(), transport=SvnRaTransport(repos_url))
+        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
 
         bp = BranchPropertyList(logwalk, self.db)
         self.assertEqual("data2\n", bp.get_property_diff("", 2, "myprop"))

@@ -77,8 +77,8 @@ class FileIdMap(object):
 
     revnum -> branch -> path -> fileid
     """
-    def __init__(self, log, cache_db):
-        self._log = log
+    def __init__(self, repos, cache_db):
+        self.repos = repos
         self.cachedb = cache_db
         self.cachedb.executescript("""
         create table if not exists filemap (filename text, id integer, create_revid text, revid text);
@@ -107,13 +107,13 @@ class FileIdMap(object):
         :param branch: Branch path where changes happened
         :param global_changes: Dict with global changes that happened
         """
-        changes = get_local_changes(global_changes, self._log.scheme,
+        changes = get_local_changes(global_changes, self.repos.scheme,
                                         uuid)
 
         def find_children(path, revid):
             (_, bp, revnum) = parse_svn_revision_id(revid)
-            for p in self._log.find_children(bp+"/"+path, revnum):
-                yield self._log.scheme.unprefix(p)[1]
+            for p in self.repos._log.find_children(bp+"/"+path, revnum):
+                yield self.repos.scheme.unprefix(p)[1]
 
         revid = generate_svn_revision_id(uuid, revnum, branch)
 
@@ -125,7 +125,7 @@ class FileIdMap(object):
         todo = []
         next_parent_revs = []
         map = {"": (ROOT_ID, None)} # No history -> empty map
-        for (bp, paths, rev) in self._log.follow_history(branch, revnum):
+        for (bp, paths, rev) in self.repos.follow_history(branch, revnum):
             revid = generate_svn_revision_id(uuid, rev, bp)
             map = self.load(revid)
             if map != {}:
@@ -144,7 +144,7 @@ class FileIdMap(object):
 
         i = 0
         for (revid, global_changes) in todo:
-            changes = get_local_changes(global_changes, self._log.scheme,
+            changes = get_local_changes(global_changes, self.repos.scheme,
                                         uuid)
             mutter('generating file id map for %r' % revid)
             if pb is not None:
@@ -152,8 +152,8 @@ class FileIdMap(object):
 
             def find_children(path, revid):
                 (_, bp, revnum) = parse_svn_revision_id(revid)
-                for p in self._log.find_children(bp+"/"+path, revnum):
-                    yield self._log.scheme.unprefix(p)[1]
+                for p in self.repos._log.find_children(bp+"/"+path, revnum):
+                    yield self.repos.scheme.unprefix(p)[1]
 
             parent_revs = next_parent_revs
             map = self._apply_changes(map, revid, changes, find_children)

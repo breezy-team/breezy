@@ -243,17 +243,15 @@ class SvnRepository(Repository):
             cachedbs[cache_file] = sqlite3.connect(cache_file)
         self.cachedb = cachedbs[cache_file]
 
-        self._log = logwalker.LogWalker(self.scheme, 
-                                        transport=transport,
+        self._log = logwalker.LogWalker(transport=transport,
                                         cache_db=self.cachedb,
                                         last_revnum=self._latest_revnum)
 
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
-        self.fileid_map = SimpleFileIdMap(self._log, self.cachedb)
+        self.fileid_map = SimpleFileIdMap(self, self.cachedb)
 
     def set_branching_scheme(self, scheme):
         self.scheme = scheme
-        self._log.scheme = scheme
 
     def _warn_if_deprecated(self):
         # This class isn't deprecated
@@ -522,18 +520,39 @@ class SvnRepository(Repository):
         return osutils.sha_string(self.get_revision_xml(revision_id))
 
     def follow_branch(self, branch_path, revnum):
-        if not branch_path is None and not self.scheme.is_branch(branch_path):
-            raise NotSvnBranchPath(branch_path, revnum)
-
-        for (bp, _, rev) in self._log.follow_history(branch_path, revnum):
+        for (bp, _, rev) in self.follow_history(branch_path, revnum):
             yield (bp, rev)
 
     def follow_history(self, branch_path, revnum):
         if not branch_path is None and not self.scheme.is_branch(branch_path):
             raise NotSvnBranchPath(branch_path, revnum)
 
-        for (bp, paths, rev) in self._log.follow_history(branch_path, revnum):
-            yield (bp, paths, rev)
+        for (branch_path, paths, revnum) in self._log.follow_history(branch_path, revnum):
+            if branch_path is not None and not self.scheme.is_branch(branch_path):
+                # FIXME: if copyfrom_path is not a branch path, 
+                # should simulate a reverse "split" of a branch
+                warn('directory %r:%d upgraded to branch. This is not currently supported.' % 
+                     (branch_path, revnum))
+
+            changed_paths = {}
+            for p in paths:
+                if (branch_path is None or 
+                    p == branch_path or
+                    branch_path == "" or
+                    p.startswith(branch_path+"/")):
+
+                    try:
+                        (bp, rp) = self.scheme.unprefix(p)
+                        if not changed_paths.has_key(bp):
+                            changed_paths[bp] = {}
+                        changed_paths[bp][p] = paths[p]
+                    except NotBranchError:
+                        pass
+
+            assert branch_path is None or len(changed_paths) <= 1
+
+            for bp in changed_paths:
+                yield (bp, changed_paths[bp], revnum)
 
     def has_signature_for_revision_id(self, revision_id):
         # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 
@@ -566,7 +585,7 @@ class SvnRepository(Repository):
     def find_branches(self, revnum=None):
         if revnum is None:
             revnum = self.transport.get_latest_revnum()
-        return self._log.find_branches(revnum)
+        return self._log.find_branches(revnum, self.scheme)
 
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
