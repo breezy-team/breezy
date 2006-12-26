@@ -126,7 +126,7 @@ class FileIdMap(object):
         todo = []
         next_parent_revs = []
         map = {"": (ROOT_ID, None)} # No history -> empty map
-        for (bp, paths, rev) in self.repos.follow_history(branch, revnum):
+        for (bp, paths, rev) in self.repos.follow_branch_history(branch, revnum):
             revid = generate_svn_revision_id(uuid, rev, bp)
             map = self.load(revid)
             if map != {}:
@@ -193,7 +193,6 @@ class SimpleFileIdMap(FileIdMap):
                     mutter('%r:%s copied from %r:%s' % (p, revid, data[1], data[2]))
                     assert find_children is not None, 'incomplete data for %r' % p
                     for c in find_children(data[1], data[2]):
-                        mutter('replacing %r with %r' % (data[1], p))
                         path = c.replace(data[1], p+"/", 1).replace("//", "/")
                         map[path] = generate_file_id(revid, c), revid
                         mutter('added mapping %r -> %r' % (path, map[path]))

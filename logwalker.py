@@ -83,6 +83,7 @@ class LogWalker(object):
           create table if not exists revision(revno integer unique, author text, message text, date text);
           create unique index if not exists revision_revno on revision (revno);
           create table if not exists changed_path(rev integer, action text, path text, copyfrom_path text, copyfrom_rev integer);
+          create index if not exists path_rev on changed_path(rev);
           create index if not exists path_rev_path on changed_path(rev, path);
         """)
         self.db.commit()
@@ -175,7 +176,7 @@ class LogWalker(object):
 
             continue_revnum = None
 
-            revpaths = self.get_revision_paths(i)
+            revpaths = self.get_revision_paths(i, branch_path)
             yield (branch_path, revpaths, i)
 
             if (not branch_path is None and 
@@ -192,10 +193,11 @@ class LogWalker(object):
                 continue_revnum = revpaths[branch_path][2]
                 branch_path = revpaths[branch_path][1]
 
-    def get_revision_paths(self, revnum):
+    def get_revision_paths(self, revnum, path=None):
         """Obtain dictionary with all the changes in a particular revision.
 
         :param revnum: Subversion revision number
+        :param path: optional path under which to return all entries
         :returns: dictionary with paths as keys and 
                   (action, copyfrom_path, copyfrom_rev) as values.
         """
@@ -203,8 +205,14 @@ class LogWalker(object):
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
 
+        query = "select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)
+        if path is not None and path != "":
+            query += " and (path='%s' or path like '%s/%%')" % (path, path)
+
+        mutter('query: %r' % query)
+
         paths = {}
-        for p, act, cf, cr in self.db.execute("select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)):
+        for p, act, cf, cr in self.db.execute(query):
             paths[p] = (act, cf, cr)
         return paths
 

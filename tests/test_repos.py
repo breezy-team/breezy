@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchRevision, BzrError
 from bzrlib.inventory import Inventory
@@ -66,7 +67,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertRaises(NoSuchRevision, list, 
                           repos.follow_branch("/", 20))
 
-    def test_branch_log_all(self):
+    def test_history_all(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/trunk/file': "data", "dc/foo/file":"data"})
         self.client_add("dc/trunk")
@@ -75,7 +76,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         repos = Repository.open(repos_url)
 
-        self.assertEqual(1, len(list(repos.follow_branch(None, 1))))
+        self.assertEqual(1, len(list(repos.follow_history(1))))
 
     def test_branch_log_specific(self):
         repos_url = self.make_client("a", "dc")
@@ -1151,14 +1152,11 @@ Node-copyfrom-path: x
         oldrepos.set_branching_scheme(TrunkBranchingScheme())
         dir = BzrDir.create("f")
         newrepos = dir.create_repository()
-        self.assertRaises(BzrError, oldrepos.copy_content_into, newrepos)
-        try:
-            oldrepos.copy_content_into(newrepos)
-        except BzrError, e:
-            self.assertEqual("trunk/lib", e.from_path)
-            self.assertEqual(1, e.from_revnum)
-            self.assertEqual("branches/mybranch", e.to_path)
-            self.assertEqual(2, e.to_revnum)
+        oldrepos.copy_content_into(newrepos)
+
+        branch = Branch.open("%s/branches/mybranch" % repos_url)
+        self.assertEqual(['svn-v%d:2@%s-branches%%2fmybranch' % (MAPPING_VERSION, oldrepos.uuid)], 
+                         branch.revision_history())
 
 
     def test_fetch_branch_downgrade(self):
