@@ -124,13 +124,13 @@ class RevisionBuildEditor(svn.delta.Editor):
             ie = self.inventory[file_id]
         else:
             # Replace if original was inside this branch
-	    # change id of base_file_id to file_id
-	    ie = self.inventory[base_file_id]
-	    for name in ie.children:
-	    	ie.children[name].parent_id = file_id
-	    del self.inventory[base_file_id]
-	    ie.file_id = file_id
-	    self.inventory.add(ie)
+            # change id of base_file_id to file_id
+            ie = self.inventory[base_file_id]
+            for name in ie.children:
+                ie.children[name].parent_id = file_id
+            del self.inventory[base_file_id]
+            ie.file_id = file_id
+            self.inventory.add(ie)
             self.dir_baserev[file_id] = []
         ie.revision = revision_id
         return file_id

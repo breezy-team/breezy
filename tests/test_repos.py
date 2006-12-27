@@ -548,6 +548,149 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 "svn-v%d:2@%s-" % (MAPPING_VERSION, oldrepos.uuid))
         self.assertNotEqual(inv1.path2id("bla"), inv2.path2id("bla"))
 
+    def test_fetch_replace_with_subreplace(self):
+        filename = os.path.join(self.test_dir, "dumpfile")
+        open(filename, 'w').write("""SVN-fs-dump-format-version: 2
+
+UUID: 606c7b1f-987c-4826-b37d-eb456ceb87e1
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-12-26T00:04:55.850520Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 103
+Content-length: 103
+
+K 7
+svn:log
+V 3
+add
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:15.504335Z
+PROPS-END
+
+Node-path: x
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+Node-path: x/t
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+Node-path: u
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+Revision-number: 2
+Prop-content-length: 105
+Content-length: 105
+
+K 7
+svn:log
+V 5
+readd
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:43.584249Z
+PROPS-END
+
+Node-path: x
+Node-action: delete
+
+Node-path: x
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 3
+Prop-content-length: 108
+Content-length: 108
+
+K 7
+svn:log
+V 8
+Replace
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:30:06.383777Z
+PROPS-END
+
+Node-path: x
+Node-action: delete
+
+Node-path: y
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: x
+
+Node-path: y/t
+Node-action: delete
+
+Node-path: y/t
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: u
+
+
+""")
+        os.mkdir("old")
+
+        load_dumpfile("dumpfile", "old")
+        oldrepos = Repository.open("old")
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision(
+            "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertTrue(newrepos.has_revision(
+            "svn-v%d:3@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        inv1 = newrepos.get_inventory(
+                "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid))
+        inv2 = newrepos.get_inventory(
+                "svn-v%d:3@%s-" % (MAPPING_VERSION, oldrepos.uuid))
+
     def test_fetch_replace_self(self):
         filename = os.path.join(self.test_dir, "dumpfile")
         open(filename, 'w').write("""SVN-fs-dump-format-version: 2
