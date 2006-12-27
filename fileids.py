@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import RevisionNotPresent
+from bzrlib.errors import RevisionNotPresent, NotBranchError
 from bzrlib.inventory import ROOT_ID
 from bzrlib.knit import KnitVersionedFile
 from bzrlib.progress import ProgressBar
@@ -48,7 +48,7 @@ def generate_file_id(revid, path):
     return generate_svn_file_id(uuid, revnum, branch, path)
 
 
-def get_local_changes(paths, scheme, uuid):
+def get_local_changes(paths, scheme, uuid, find_children=None):
     new_paths = {}
     names = paths.keys()
     names.sort()
@@ -56,14 +56,23 @@ def get_local_changes(paths, scheme, uuid):
         data = paths[p]
         new_p = scheme.unprefix(p)[1]
         if data[1] is not None:
-            (cbp, crp) = scheme.unprefix(data[1])
+            try:
+                (cbp, crp) = scheme.unprefix(data[1])
 
-            # Branch copy
-            if (crp == "" and new_p == ""):
-                data = ('M', None, None)
-            else:
-                data = (data[0], crp, generate_svn_revision_id(
-                    uuid, data[2], cbp))
+                # Branch copy
+                if (crp == "" and new_p == ""):
+                    data = ('M', None, None)
+                else:
+                    data = (data[0], crp, generate_svn_revision_id(
+                        uuid, data[2], cbp))
+            except NotBranchError:
+                # Copied from outside of a known branch
+                # Make it look like the files were added in this revision
+                assert find_children is not None
+                for c in find_children(data[1], data[2]):
+                    mutter('oops: %r child %r' % (data[1], c))
+                    new_paths[(new_p+"/"+c[len(data[1]):].strip("/")).strip("/")] = (data[0], None, -1)
+                data = (data[0], None, -1)
 
         new_paths[new_p] = data
     return new_paths
@@ -109,7 +118,7 @@ class FileIdMap(object):
         :param global_changes: Dict with global changes that happened
         """
         changes = get_local_changes(global_changes, self.repos.scheme,
-                                        uuid)
+                                        uuid, self.repos._log.find_children)
 
         def find_children(path, revid):
             (_, bp, revnum) = parse_svn_revision_id(revid)
@@ -146,7 +155,7 @@ class FileIdMap(object):
         i = 0
         for (revid, global_changes) in todo:
             changes = get_local_changes(global_changes, self.repos.scheme,
-                                        uuid)
+                                        uuid, self.repos._log.find_children)
             mutter('generating file id map for %r' % revid)
             if pb is not None:
                 pb.update('generating file id map', i, len(todo))

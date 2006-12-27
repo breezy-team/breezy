@@ -1197,6 +1197,71 @@ Node-copyfrom-path: x
         self.assertEqual(['svn-v%d:2@%s-branches%%2fmybranch' % (MAPPING_VERSION, oldrepos.uuid)], 
                          branch.revision_history())
 
+    def test_fetch_file_from_non_branch(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/old-trunk/lib/file': 'data'})
+        self.client_add("dc/old-trunk")
+        self.client_commit("dc", "trunk data")
+
+        self.build_tree({'dc/trunk/lib': None})
+        self.client_add("dc/trunk")
+        self.client_copy("dc/old-trunk/lib/file", "dc/trunk/lib/file")
+        self.client_commit("dc", "revive old trunk")
+
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+        branch = Branch.open("%s/trunk" % repos_url)
+        self.assertEqual(['svn-v%d:2@%s-trunk' % (MAPPING_VERSION, oldrepos.uuid)], 
+                         branch.revision_history())
+
+    def test_fetch_dir_from_non_branch(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/old-trunk/lib/file': 'data'})
+        self.client_add("dc/old-trunk")
+        self.client_commit("dc", "trunk data")
+
+        self.build_tree({'dc/trunk': None})
+        self.client_add("dc/trunk")
+        self.client_copy("dc/old-trunk/lib", "dc/trunk")
+        self.client_commit("dc", "revive old trunk")
+
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+        branch = Branch.open("%s/trunk" % repos_url)
+        self.assertEqual(['svn-v%d:2@%s-trunk' % (MAPPING_VERSION, oldrepos.uuid)], 
+                         branch.revision_history())
+
+    def test_fetch_from_non_branch(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/old-trunk/lib/file': 'data'})
+        self.client_add("dc/old-trunk")
+        self.client_commit("dc", "trunk data")
+
+        self.client_copy("dc/old-trunk", "dc/trunk")
+        self.client_commit("dc", "revive old trunk")
+
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+        branch = Branch.open("%s/trunk" % repos_url)
+        self.assertEqual(['svn-v%d:2@%s-trunk' % (MAPPING_VERSION, oldrepos.uuid)], 
+                         branch.revision_history())
+
+
 
     def test_fetch_branch_downgrade(self):
         repos_url = self.make_client('d', 'dc')
