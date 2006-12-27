@@ -128,9 +128,10 @@ class RevisionBuildEditor(svn.delta.Editor):
             ie = self.inventory[base_file_id]
             for name in ie.children:
                 ie.children[name].parent_id = file_id
-            del self.inventory[base_file_id]
+            # FIXME: Don't touch inventory internals
+            del self.inventory._byid[base_file_id]
+            self.inventory._byid[file_id] = ie
             ie.file_id = file_id
-            self.inventory.add(ie)
             self.dir_baserev[file_id] = []
         ie.revision = revision_id
         return file_id
