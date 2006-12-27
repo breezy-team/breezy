@@ -1,3 +1,9 @@
+bzr (0.13-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Wouter van Heyst <larstiq@larstiq.dyndns.org>  Wed, 27 Dec 2006 02:18:08 +0100
+
 bzr (0.11-1.1) unstable; urgency=medium
 
   * Non-maintainer upload.
