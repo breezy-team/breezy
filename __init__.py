@@ -120,8 +120,12 @@ class cmd_svn_import(Command):
                          help='Branching scheme (none, trunk, or trunk-INT)')]
 
     @display_command
-    def run(self, url, output_dir, trees=False, shared=False, scheme="trunk"):
+    def run(self, url, output_dir, trees=False, shared=False, scheme=None):
         from convert import convert_repository
+        from scheme import TrunkBranchingScheme
+
+        if scheme is None:
+            scheme = TrunkBranchingScheme()
 
         convert_repository(url, output_dir, scheme, shared, trees)
 
