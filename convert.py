@@ -88,7 +88,7 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True, working
         info('Importing %d branches' % len(existing_branches))
 
         for (branch, revnum, exists) in existing_branches:
-            source_branch = Branch.open("%s/%s" % (source_repos.base, branch))
+            source_branch = Branch.open("%s/%s" % (url, branch))
 
             target_dir = os.path.join(output_dir, branch)
             try:
