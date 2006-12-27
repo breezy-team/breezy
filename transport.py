@@ -156,9 +156,9 @@ class SvnRaTransport(Transport):
         return svn.ra.get_latest_revnum(self._ra)
 
     @need_lock
-    def do_switch(self, switch_rev, switch_target, *args, **kwargs):
-        mutter('svn switch -r %d %r' % (switch_rev, switch_target))
-        return svn.ra.do_switch(self._ra, switch_rev, switch_target, *args, **kwargs)
+    def do_switch(self, switch_rev, switch_target, recurse, switch_url, *args, **kwargs):
+        mutter('svn switch -r %d %r -> %r' % (switch_rev, switch_target, switch_url))
+        return svn.ra.do_switch(self._ra, switch_rev, switch_target, recurse, switch_url, *args, **kwargs)
 
     @need_lock
     def get_log(self, path, from_revnum, to_revnum, *args, **kwargs):
@@ -224,8 +224,9 @@ class SvnRaTransport(Transport):
             raise
 
     @need_lock
-    def do_update(self, *args, **kwargs):
-        return svn.ra.do_update(self._ra, *args, **kwargs)
+    def do_update(self, revnum, path, *args, **kwargs):
+        mutter('svn update -r %r %r' % (revnum, path))
+        return svn.ra.do_update(self._ra, revnum, path, *args, **kwargs)
 
     @need_lock
     def get_commit_editor(self, *args, **kwargs):

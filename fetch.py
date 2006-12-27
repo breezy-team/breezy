@@ -44,7 +44,7 @@ def md5_strings(strings):
 class RevisionBuildEditor(svn.delta.Editor):
     def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, svn_revprops, id_map, parent_branch, parent_id_map):
         self.branch_path = branch_path
-        self.inventory = copy(prev_inventory)
+        self.inventory = prev_inventory
         self.revid = revid
         self.revnum = revnum
         self.id_map = id_map
@@ -60,6 +60,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         self._parent_ids = None
         self._revprops = {}
         self._svn_revprops = svn_revprops
+
+        self.pool = Pool()
 
     def _get_revision(self, revid):
         if self._parent_ids is None:
@@ -249,6 +251,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             bzrlib.xml5.serializer_v5.write_inventory_to_string(
                 self.inventory))
         self.target.add_revision(self.revid, rev, self.inventory)
+        self.pool.destroy()
 
     def abort_edit(self):
         pass
@@ -258,7 +261,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         assert (base_checksum is None or base_checksum == actual_checksum,
             "base checksum mismatch: %r != %r" % (base_checksum, actual_checksum))
         self.file_stream = StringIO()
-        return apply_txdelta_handler(StringIO(self.file_data), self.file_stream)
+        return apply_txdelta_handler(StringIO(self.file_data), self.file_stream, self.pool)
 
 
 class InterSvnRepository(InterRepository):
@@ -350,14 +353,10 @@ class InterSvnRepository(InterRepository):
                 transport.reparent("%s/%s" % (repos_root, parent_branch))
             if parent_branch != branch:
                 switch_url = "%s/%s" % (repos_root, branch)
-                mutter('svn switch %r:%r -> %r:%r' % 
-                               (parent_branch, parent_revnum, switch_url, revnum))
                 reporter, reporter_baton = transport.do_switch(
                            revnum, "", True, 
                            switch_url, edit, edit_baton, pool)
             else:
-                mutter('svn update -r %r:%r %r' % 
-                               (parent_revnum, revnum, branch))
                 reporter, reporter_baton = transport.do_update(
                            revnum, "", True, edit, edit_baton, pool)
 
