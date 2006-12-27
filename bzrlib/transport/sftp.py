@@ -165,7 +165,8 @@ class SFTPUrlHandling(Transport):
 
     def _split_url(self, url):
         (scheme, username, password, host, port, path) = split_url(url)
-        ## assert scheme == 'sftp'
+        if scheme != 'sftp':
+            raise PathNotChild(url, self.base, ': not sftp')
 
         # the initial slash should be removed from the path, and treated
         # as a homedir relative path (the path begins with a double slash
