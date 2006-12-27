@@ -1,0 +1,19 @@
+bzr (0.8-1) unstable; urgency=low
+
+ * Versions of bzr prior to 0.7 had users setting their email address in
+   ~/.bzr.conf/email.  This has changed; email addresses are
+   now set either via environment variables ($BZREMAIL or $EMAIL) or
+   through the config file ~/.bazaar/bazaar.conf.  See the bzr(1) man
+   page for more details.
+
+ -- Andres Salomon <dilinger@debian.org>  Mon, 15 May 2006 00:38:43 -0400
+
+bzr (0.1-1) unstable; urgency=low
+
+ * This release updates the bzr tree-format, and old trees will not be
+   usable until they are upgraded with "bzr upgrade".  This should
+   proceed smoothly, but the old .bzr dir is backed up to .bzr.backup
+   should anything go wrong.
+
+ -- Rob Weir <rweir@ertius.org>  Tue, 11 Oct 2005 11:45:21 +1000
+

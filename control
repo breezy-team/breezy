@@ -1,0 +1,26 @@
+Source: bzr
+Section: devel
+Priority: optional
+Maintainer: Rob Weir <rweir@ertius.org>
+Uploaders: Jeff Bailey <jbailey@raspberryginger.com>, Andres Salomon <dilinger@debian.org>, Adeodato Simó <dato@net.com.org.es>
+Build-Depends: debhelper (>= 5.0.37.2), cdbs (>= 0.4.43), quilt, python (>= 2.4), python-central (>= 0.5)
+Build-Depends-Indep: python-docutils (>= 0.4-2), python-celementtree (>= 1.0.5-7), python-medusa, python-paramiko
+Standards-Version: 3.7.2
+XS-Python-Version: >= 2.4
+
+Package: bzr
+Architecture: all
+Depends: ${python:Depends}, python-celementtree (>= 1.0.5-7)
+Recommends: python-paramiko, python-pycurl
+Suggests: libxml2-utils
+Conflicts: bzr-doc
+XB-Python-Version: ${python:Versions}
+Description: bazaar-ng, the next-generation distributed version control system
+ Open source distributed version control system that is powerful, friendly,
+ and scalable.
+ .
+ It manages trees of files and subdirectories. In particular, it records
+ revisions of trees, representing their state at a particular point in time,
+ and information about those revisions and their relationships. Recording and
+ retrieving tree revisions is useful in several ways if you are writing
+ software or documents or doing similar creative work.

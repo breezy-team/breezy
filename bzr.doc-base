@@ -1,0 +1,12 @@
+Document: bzr
+Title: Bazaar-NG documentation
+Author: Martin Pool
+Abstract: Documentation for Bazaar-NG, in text and HTML form.
+Section: Apps/Programming
+
+Format: text
+Files: /usr/share/doc/bzr/txt/*.txt
+
+Format: HTML
+Index: /usr/share/doc/bzr/html/tutorial.html
+Files: /usr/share/doc/bzr/html/*.html

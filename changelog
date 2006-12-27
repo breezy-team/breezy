@@ -1,0 +1,366 @@
+bzr (0.11-1.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * In test_osutils.py, sort what we get from os.listdir() before checking it;
+    the OS can give back directory entries in whatever order it likes, and
+    this shouldn't break the tests. Fixes intermittent test failures and
+    FTBFS. (Closes: #395203)
+
+ -- Steinar H. Gunderson <sesse@debian.org>  Wed,  8 Nov 2006 01:28:55 +0100
+
+bzr (0.11-1) unstable; urgency=low
+
+  * New upstream release (closes: #389606).
+
+ -- Andres Salomon <dilinger@debian.org>  Sat,  7 Oct 2006 04:50:50 +0000
+
+bzr (0.10-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Andres Salomon <dilinger@debian.org>  Mon, 11 Sep 2006 07:43:50 +0000
+
+bzr (0.10~rc2-1) unstable; urgency=low
+
+  * Second release candidate for the upcoming 0.10 version, fixes Launchpad
+    #58057, `bzr selftest` only works from build tree.
+
+  * Update download URL in debian/copyright.
+
+  * Fix typo in previous changelog entry.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Tue, 29 Aug 2006 03:49:33 +0200
+
+bzr (0.10~rc1-1) unstable; urgency=low
+
+  * First release candidate of the upcoming 0.10 version. Dropped patches,
+    present upstream now (series file now empty):
+
+    + bazaar.conf_is_file_not_dir.diff
+    + bzr.dev.r1929_handle_TZ=UTC.diff
+
+  * Changes in control fields:
+
+    + add python-paramiko to Build-Depends, since now the test suite requires
+      its presence.
+    + change Build-Dependency on, er, python-all-dev, to python (>= 2.4).
+    + bump version on python-central Build-Dependency-Indep to 0.5, and move
+      it to Build-Depends; both suggested by lintian.
+
+  * Dropped Lars Wirzenius from the Uploaders field, at his request. Thanks
+    for the time you spent on the package, Lars!
+
+ -- Adeodato Simó <dato@net.com.org.es>  Mon, 28 Aug 2006 08:00:11 +0200
+
+bzr (0.9-2) unstable; urgency=low
+
+  * Instead of setting TZ in debian/rules, appply patch from bzr.dev r1929 to
+    handle TZ=UTC correctly. Thanks for the suggestion, Martin Pitt.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Wed, 16 Aug 2006 18:54:07 +0200
+
+bzr (0.9-1) unstable; urgency=low
+
+  * Bazaar 0.9 released and uploaded.
+
+  * Fix download URL in debian/copyright (thanks, Etienne Goyer), add 2004 to
+    the copyright statement, mention all co-maintainers and reformat the file
+    a bit.
+
+  * Create a stamp-doc after creating the HTML docs, so that it doesn't get
+    invoked twice (once in build, and another time in binary).
+
+  * Run test suite with TZ explicitly set to non-UTC from debian/rules, to
+    workaround Launchpad #56290.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Mon, 14 Aug 2006 19:52:23 +0200
+
+bzr (0.9~rc1-1) unstable; urgency=low
+
+  * First 0.9 release candidate packaged (closes: #381920). Bugs reported in
+    Debian's BTS fixed with this upload:
+
+    + more informative error message when paramiko is not installed and an
+      operation over SFTP is attempted.  (Closes: #370099)
+    + progress bar and other output respect terminal width.  (Closes: #374674)
+    + does not raise UnicodeEncodeError when launching an editor to enter
+      commit message, and infotext is non-ASCII.  (Closes: #375405)
+
+  * Patches updates:
+
+    + move debian/001-bazaar.conf.patch to debian/patches, and use quilt to
+      apply it (added build-dependency on it).
+    + remove 003-unboundlocalerror.patch and 004-unboundlocalerror2.patch,
+      included upstream.
+    + drop 002-execute_path.patch, which is not needed anymore as per
+      https://lists.ubuntu.com/archives/bazaar-ng/2006q2/012247.html. Add a
+      note to debian/TODO about preserving executable bits.
+
+  * Move python-all-dev from Build-Depends-Indep to Build-Depends, well
+    spotted by lintian.
+
+  * Do not run `bzr selftest` if 'nocheck' is present in DEB_BUILD_OPTIONS.
+
+  * Add python-medusa to Build-Depends-Indep to make the FTP tests runnable.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Wed,  9 Aug 2006 09:30:17 +0200
+
+bzr (0.8.2-5) unstable; urgency=high
+
+  * Add python-pycurl to Recommends.  (Addresses: #353213)
+
+ -- Adeodato Simó <dato@net.com.org.es>  Thu,  3 Aug 2006 02:05:29 +0200
+
+bzr (0.8.2-4) unstable; urgency=low
+
+  * Update debian/control to refer to python-* instead of python2.4-* for
+    docutils, paramiko, and celementtree.  (Closes: #376559, #363561)
+
+  * Promote paramiko from Suggests to Recommends.  (Closes: #376837)
+
+  * Update to new Python policy using pycentral.
+
+  * Pass --no-plugins to `bzr selftest` in debian/rules.
+
+  * Update Standards-Version to 3.7.2 (no changes needed).
+
+  * Add myself as an uploader.
+
+ -- Adeodato Simó <dato@net.com.org.es>  Mon, 24 Jul 2006 13:49:24 +0200
+
+bzr (0.8.2-3) unstable; urgency=low
+
+  * Keep unit tests around for now, since bzr's sftp transport depend upon it
+    (closes: #368760).
+
+ -- Andres Salomon <dilinger@debian.org>  Tue, 30 May 2006 16:35:29 +0000
+
+bzr (0.8.2-2) unstable; urgency=low
+
+  * Set the tutorial as the Index page for doc-base (closes: #368120).
+  * Add comments to the top of all patches in debian/ that describe upstream
+    submission status.
+  * Don't throw UnboundLocalError when attempting to write to a read-only
+    repository; thanks to Martin F. Krafft and Bob Tanner (closes: #352707).
+  * Don't throw UnboundLocalError on bzr ignore; thanks to
+    Martin F. Krafft and Bob Tanner (closes: #352791).
+
+ -- Andres Salomon <dilinger@debian.org>  Sat, 20 May 2006 03:34:32 +0000
+
+bzr (0.8.2-1) unstable; urgency=low
+
+  * New upstream release (closes: #366083).
+  * No longer call bzr_man.py; upstream's install now automatically builds
+    and installs the manpage.
+  * Upstream cleaned up their docs, and reduced the number of them quite
+    significantly (~30k vs. 300k).  There's not much point in bzr-doc anymore,
+    so drop it and merge docs into the main package.  Conflict w/ the
+    old bzr-doc package, too.
+  * Include bzr.simple in /etc/bash_completion.d.
+  * Add an entry to NEWS describing changes to how a user's email address
+    is set, and point users at the (now correct) manpage (closes: #353540).
+  * Don't install unit tests; this saves a few megs of code, and end users
+    don't really need to be running this anyways (it's certainly not
+    documented in end-user stuff).
+  * Throw 002-execute_path.patch into debian/, as this is needed to shut
+    lintian up (as originally done by Lars).
+  * Misc additional lintian/linda changes/suggestions.
+  * Don't create empty doc/text directory; create doc/txt instead
+    (closes: #357254).
+
+ -- Andres Salomon <dilinger@debian.org>  Fri, 19 May 2006 02:08:17 -0400
+
+bzr (0.7-3) unstable; urgency=low
+
+  * Adding myself to Uploaders with the agreement of Andreas and Jeff.
+    Unfortunately, it seems that Rob is inaccessible right now.
+  * bzrlib/uncommit.py, bzrlib/tests/test_weave.py: Removed #! line.
+    This silences lintian, and the lines also didn't do anything
+    useful since the files didn't have a main program so executing
+    them was a no-op, basically.
+  * doc/Makefile: Call rst2html, not rest2html.
+  * debian/bzr-doc.linda-overrides: Added an override to silence linda
+    about html-only-changelogs. This is actually a bug in linda, which
+    will be filed, but until it's fixed, we still need to be quiet.
+  * debian/control: Added python2.4-paramiko to Suggests for bzr.
+    Closes: #352921.
+
+ -- Lars Wirzenius <liw@iki.fi>  Thu, 13 Apr 2006 21:26:57 +0300
+
+bzr (0.7-2) unstable; urgency=low
+
+  * Update copyright file (closes: #345128).
+  * Be sure to really clean up after build, working around a CDBS bug;
+    thanks Bob Tanner (closes: #336550).
+
+ -- Andres Salomon <dilinger@debian.org>  Wed, 25 Jan 2006 14:30:06 +0000
+
+bzr (0.7-1) unstable; urgency=low
+
+  * New upstream release.
+  * Add myself to uploaders.
+  * bzr-man.py -> bzr_man.py, and be sure to clean *all* .pyc files (by
+    searching in root, not just in bzrlib/ subdir).
+
+ -- Andres Salomon <dilinger@debian.org>  Tue, 24 Jan 2006 21:28:02 +0000
+
+bzr (0.6-2) unstable; urgency=low
+
+  * Update NEWS.Debian file to have the correct backup dir name.
+
+ -- Rob Weir <rweir@ertius.org>  Mon, 31 Oct 2005 00:43:25 +1100
+
+bzr (0.6-1) unstable; urgency=low
+
+  * New upstream release.
+  * Remove {build-,}deps on python, use python2.4 specifically
+    (Closes: #334838).  Thanks, Bob Tanner.
+  * Also explicitly build-dep on python2.4-docutils to try to avoid bringing
+    in python 2.3 at all.  Sadly, python2.4-docutils Depends on
+    python-docutils, which brings in python2.3-docutils and python2.3 anyway.
+
+ -- Rob Weir <rweir@ertius.org>  Fri, 28 Oct 2005 22:03:24 +1000
+
+bzr (0.1.1-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Rob Weir <rweir@ertius.org>  Wed, 12 Oct 2005 21:30:27 +1000
+
+bzr (0.1-1) unstable; urgency=low
+
+  * New upstream version (Closes: #329950).
+    + It now installs testsweet.py, so "bzr selftest" works (Closes: #331330).
+    + This release uses a new weave-based tree format, and requires a "bzr
+      upgrade" to continue working on old trees.
+    + Incorporates patch so the man page can be built.
+  * Add NEWS.Debian file detailing the above format change.
+  * Run "./bzr selftest" as part of the package build, and bail if it fails.
+  * Add new some new lintian overrides for non-executable-but-hash-banged
+    .py files
+  * debian/control fiddling:
+    + Remove Recommends of urlgrabber, bzr doesn't use it anymore.
+    + Convert Recommends of python2.4-celementtree to Depends.
+    + Build-depend on python2.4-celementtree so it's used by the tests.
+    + Remove Depends on regular elementtree.
+  * Update debian/copyright with the FSF's new address.
+  * Thanks to Jeff Bailey again.
+
+ -- Rob Weir <rweir@ertius.org>  Tue, 11 Oct 2005 10:48:45 +1000
+
+bzr (0.0.7-2) unstable; urgency=low
+
+  * Add build-dep on python2.4 and python2.4-dev (Closes: #327160).  Thanks,
+    Matt Kraai!
+  * Update lintian override for the fact we're using python2.4.
+  * Add doc-base support.
+  * Clean up generated html documentation on 'clean'.
+  * Thanks again to Jeff Bailey.
+
+ -- Rob Weir <rweir@ertius.org>  Thu, 15 Sep 2005 17:20:04 +1000
+
+bzr (0.0.7-1) unstable; urgency=low
+
+  * Add myself to Uploaders, update packagin based on Debian Snapshot
+    and Ubuntu packaging.
+
+ -- Jeff Bailey <jbailey@raspberryginger.com>  Mon,  5 Sep 2005 14:56:49 -0400
+
+bzr (0.0.5-2.1) unstable; urgency=low
+
+  * Dont' depend on URL Grabber
+
+ -- Jeff Bailey <jbailey@raspberryginger.com>  Thu, 30 Jun 2005 08:31:21 -0400
+
+bzr (0.0.5-2) unstable; urgency=low
+
+  * New maintainer.
+  * Add build-dep on python2.3 (closes: #315152).
+
+  * Upload sponsored by Norbert Tretkowski <nobse@debian.org>.
+
+ -- Rob Weir <rweir@ertius.org>  Tue, 21 Jun 2005 16:59:00 +1000
+
+bzr (0.0.5-1) unstable; urgency=low
+
+  * New upstream release.
+  * First upload to unstable.
+
+ -- Norbert Tretkowski <nobse@debian.org>  Wed, 15 Jun 2005 11:44:22 +0200
+
+bzr (0.0.4+20050610-1) experimental; urgency=low
+
+  * Updated to latest tree.
+  * Used dh_python instead hardcoded postinst/prerm files, thanks to Jeff
+    Bailey for debugging (see #312661 for details).
+  * Removed patch added in 0.0.4+20050602-1, it was integrated upstream.
+  * Added recommendation on python2.3-urlgrabber.
+
+ -- Norbert Tretkowski <nobse@debian.org>  Sat, 11 Jun 2005 15:54:20 +0200
+
+bzr (0.0.4+20050606-1) experimental; urgency=low
+
+  * Updated to latest tree.
+  * Added bash completion file.
+
+ -- Norbert Tretkowski <nobse@debian.org>  Mon,  6 Jun 2005 12:52:55 +0200
+
+bzr (0.0.4+20050602-2) experimental; urgency=low
+
+  * Don't ship *.pyc and *.pyo files, instead compile them when installing
+    the package.
+
+ -- Norbert Tretkowski <nobse@debian.org>  Thu,  2 Jun 2005 11:41:48 +0200
+
+bzr (0.0.4+20050602-1) experimental; urgency=low
+
+  * Updated to latest tree.
+  * Added patch from Hans Ulrich Niedermann to create a manpage.
+
+ -- Norbert Tretkowski <nobse@debian.org>  Thu,  2 Jun 2005 01:18:54 +0200
+
+bzr (0.0.4+20050530-1) experimental; urgency=low
+
+  * Updated to latest tree.
+
+ -- Norbert Tretkowski <nobse@debian.org>  Mon, 30 May 2005 20:56:41 +0200
+
+bzr (0.0.4+20050526-1) experimental; urgency=low
+
+  * Updated to latest tree.
+
+ -- Norbert Tretkowski <nobse@debian.org>  Thu, 26 May 2005 22:17:58 +0200
+
+bzr (0.0.4+20050522-1) experimental; urgency=low
+
+  * Updated to latest tree.
+  * Added TODO file.
+  * Added lintian override for bzrlib/remotebranch.py.
+
+ -- Norbert Tretkowski <nobse@debian.org>  Sun, 22 May 2005 11:51:35 +0200
+
+bzr (0.0.4-2) experimental; urgency=low
+
+  * Mention 'bazaar-ng' in short and long descriptions.
+
+ -- Norbert Tretkowski <nobse@debian.org>  Tue, 26 Apr 2005 20:45:11 +0200
+
+bzr (0.0.4-1) experimental; urgency=low
+
+  * New upstream release.
+  * Added lintian override for bzrlib/revfile.py.
+
+ -- Norbert Tretkowski <nobse@debian.org>  Mon, 25 Apr 2005 08:00:17 +0200
+
+bzr (0.0.3-2) experimental; urgency=low
+
+  * Added copyright of debian/ subdir to copyright file.
+  * Changed section of bzr-doc from devel to doc.
+
+ -- Norbert Tretkowski <nobse@debian.org>  Mon, 18 Apr 2005 08:26:11 +0200
+
+bzr (0.0.3-1) experimental; urgency=low
+
+  * Initial release. (closes: #303724)
+
+ -- Norbert Tretkowski <nobse@debian.org>  Sat, 16 Apr 2005 16:48:35 +0200

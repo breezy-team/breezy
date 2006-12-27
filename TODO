@@ -1,0 +1,5 @@
+- preserve executable bits of those .py files that are runnable
+  (weave.py, patiencediff.py, bundle/common.py)
+
+- ask upstream to remove she-bang line from .py files that are not
+  runnable (bundle/commands.py, tests/test_weave.py)
