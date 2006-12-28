@@ -44,7 +44,8 @@ def md5_strings(strings):
 class RevisionBuildEditor(svn.delta.Editor):
     def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, svn_revprops, id_map, parent_branch, parent_id_map):
         self.branch_path = branch_path
-        self.inventory = prev_inventory
+        self.old_inventory = prev_inventory
+        self.inventory = copy(prev_inventory)
         self.revid = revid
         self.revnum = revnum
         self.id_map = id_map
@@ -120,7 +121,8 @@ class RevisionBuildEditor(svn.delta.Editor):
     def open_directory(self, path, parent_baton, base_revnum, pool):
         file_id, revision_id = self.id_map[path]
         assert base_revnum >= 0
-        base_file_id, base_revid = self.source.path_to_file_id(base_revnum, os.path.join(self.parent_branch, path))
+        base_file_id = self.old_inventory.path2id(path)
+        base_revid = self.old_inventory[base_file_id].revision
         if file_id == base_file_id:
             self.dir_baserev[file_id] = [base_revid]
             ie = self.inventory[file_id]
@@ -192,7 +194,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         return path
 
     def open_file(self, path, parent_id, base_revnum, pool):
-        base_file_id, base_revid = self.source.path_to_file_id(base_revnum, os.path.join(self.parent_branch, path))
+        base_file_id = self.old_inventory.path2id(path)
+        base_revid = self.old_inventory[base_file_id].revision
         file_id, revid = self.id_map[path]
         self.is_executable = None
         self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
