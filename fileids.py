@@ -15,11 +15,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.errors import RevisionNotPresent, NotBranchError
+from bzrlib.inventory import ROOT_ID
+from bzrlib.knit import KnitVersionedFile
 from bzrlib.progress import ProgressBar
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
-from bzrlib.knit import KnitVersionedFile
+import bzrlib.urlutils as urlutils
 from warnings import warn
 
 import os
@@ -46,7 +48,7 @@ def generate_file_id(revid, path):
     return generate_svn_file_id(uuid, revnum, branch, path)
 
 
-def get_local_changes(paths, scheme, uuid):
+def get_local_changes(paths, scheme, uuid, find_children=None):
     new_paths = {}
     names = paths.keys()
     names.sort()
@@ -54,14 +56,23 @@ def get_local_changes(paths, scheme, uuid):
         data = paths[p]
         new_p = scheme.unprefix(p)[1]
         if data[1] is not None:
-            (cbp, crp) = scheme.unprefix(data[1])
+            try:
+                (cbp, crp) = scheme.unprefix(data[1])
 
-            # Branch copy
-            if (crp == "" and new_p == ""):
-                data = ('M', None, None)
-            else:
-                data = (data[0], crp, generate_svn_revision_id(
-                    uuid, data[2], cbp))
+                # Branch copy
+                if (crp == "" and new_p == ""):
+                    data = ('M', None, None)
+                else:
+                    data = (data[0], crp, generate_svn_revision_id(
+                        uuid, data[2], cbp))
+            except NotBranchError:
+                # Copied from outside of a known branch
+                # Make it look like the files were added in this revision
+                assert find_children is not None
+                for c in find_children(data[1], data[2]):
+                    mutter('oops: %r child %r' % (data[1], c))
+                    new_paths[(new_p+"/"+c[len(data[1]):].strip("/")).strip("/")] = (data[0], None, -1)
+                data = (data[0], None, -1)
 
         new_paths[new_p] = data
     return new_paths
@@ -76,8 +87,8 @@ class FileIdMap(object):
 
     revnum -> branch -> path -> fileid
     """
-    def __init__(self, log, cache_db):
-        self._log = log
+    def __init__(self, repos, cache_db):
+        self.repos = repos
         self.cachedb = cache_db
         self.cachedb.executescript("""
         create table if not exists filemap (filename text, id integer, create_revid text, revid text);
@@ -107,13 +118,13 @@ class FileIdMap(object):
         :param branch: Branch path where changes happened
         :param global_changes: Dict with global changes that happened
         """
-        changes = get_local_changes(global_changes, self._log.scheme,
-                                        uuid)
+        changes = get_local_changes(global_changes, self.repos.scheme,
+                                        uuid, self.repos._log.find_children)
 
         def find_children(path, revid):
             (_, bp, revnum) = parse_svn_revision_id(revid)
-            for p in self._log.find_children(bp+"/"+path, revnum):
-                yield self._log.scheme.unprefix(p)[1]
+            for p in self.repos._log.find_children(bp+"/"+path, revnum):
+                yield self.repos.scheme.unprefix(p)[1]
 
         revid = generate_svn_revision_id(uuid, revnum, branch)
 
@@ -126,12 +137,11 @@ class FileIdMap(object):
         # First, find the last cached map
         todo = []
         next_parent_revs = []
-        
         if revnum == 0:
             return {}
 
         # No history -> empty map
-        for (bp, paths, rev) in self._log.follow_history(branch, revnum):
+        for (bp, paths, rev) in self.repos.follow_branch_history(branch, revnum):
             revid = generate_svn_revision_id(uuid, rev, bp)
             map = self.load(revid)
             if map != {}:
@@ -156,16 +166,16 @@ class FileIdMap(object):
 
         i = 0
         for (revid, global_changes) in todo:
-            changes = get_local_changes(global_changes, self._log.scheme,
-                                        uuid)
+            changes = get_local_changes(global_changes, self.repos.scheme,
+                                        uuid, self.repos._log.find_children)
             mutter('generating file id map for %r' % revid)
             if pb is not None:
                 pb.update('generating file id map', i, len(todo))
 
             def find_children(path, revid):
                 (_, bp, revnum) = parse_svn_revision_id(revid)
-                for p in self._log.find_children(bp+"/"+path, revnum):
-                    yield self._log.scheme.unprefix(p)[1]
+                for p in self.repos._log.find_children(bp+"/"+path, revnum):
+                    yield self.repos.scheme.unprefix(p)[1]
 
             parent_revs = next_parent_revs
             map = self._apply_changes(map, revid, changes, find_children, renames_cb(revid))
@@ -190,6 +200,7 @@ class SimpleFileIdMap(FileIdMap):
         sorted_paths.sort()
         for p in sorted_paths:
             data = changes[p]
+
             if data[0] in ('D', 'R'):
                 assert map.has_key(p), "No map entry %s to delete/replace" % p
                 del map[p]
@@ -201,13 +212,13 @@ class SimpleFileIdMap(FileIdMap):
             if data[0] in ('A', 'R'):
                 map[p] = new_file_id(p), revid
 
-                if not data[1] is None:
+                if data[1] is not None:
                     mutter('%r:%s copied from %r:%s' % (p, revid, data[1], data[2]))
-                    if find_children is None:
-                        warn('incomplete data for %r' % p)
-                    else:
-                        for c in find_children(data[1], data[2]):
-                            map[c.replace(data[1], p, 1)] = new_file_id(c), revid
+                    assert find_children is not None, 'incomplete data for %r' % p
+                    for c in find_children(data[1], data[2]):
+                        path = c.replace(data[1], p+"/", 1).replace("//", "/")
+                        map[path] = new_file_id(c), revid
+                        mutter('added mapping %r -> %r' % (path, map[path]))
 
             elif data[0] == 'M':
                 assert map.has_key(p), "Map has no item %s to modify" % p

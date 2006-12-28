@@ -20,7 +20,7 @@ from bzrlib.trace import mutter
 
 import os
 
-from svn.core import SubversionException
+from svn.core import SubversionException, Pool
 from transport import SvnRaTransport
 import svn.core
 
@@ -54,27 +54,16 @@ def _escape_commit_message(message):
     return message
 
 
-class NotSvnBranchPath(BzrError):
-    _fmt = """{%(branch_path)s}:%(revnum)s is not a valid Svn branch path"""
-
-    def __init__(self, branch_path, revnum=None):
-        BzrError.__init__(self)
-        self.branch_path = branch_path
-        self.revnum = revnum
-
-
 class LogWalker(object):
     """Easy way to access the history of a Subversion repository."""
-    def __init__(self, scheme, transport=None, cache_db=None, last_revnum=None, pb=None):
+    def __init__(self, transport=None, cache_db=None, last_revnum=None):
         """Create a new instance.
 
-        :param scheme:  Branching scheme to use.
         :param transport:   SvnRaTransport to use to access the repository.
         :param cache_db:    Optional sql database connection to use. Doesn't 
                             cache if not set.
         :param last_revnum: Last known revnum in the repository. Will be 
                             determined if not specified.
-        :param pb:          Progress bar to report progress to.
         """
         assert isinstance(transport, SvnRaTransport)
 
@@ -83,8 +72,7 @@ class LogWalker(object):
 
         self.last_revnum = last_revnum
 
-        self.transport = transport.clone()
-        self.scheme = scheme
+        self.transport = SvnRaTransport(transport.get_repos_root())
 
         if cache_db is None:
             self.db = sqlite3.connect(":memory:")
@@ -95,6 +83,7 @@ class LogWalker(object):
           create table if not exists revision(revno integer unique, author text, message text, date text);
           create unique index if not exists revision_revno on revision (revno);
           create table if not exists changed_path(rev integer, action text, path text, copyfrom_path text, copyfrom_rev integer);
+          create index if not exists path_rev on changed_path(rev);
           create index if not exists path_rev_path on changed_path(rev, path);
         """)
         self.db.commit()
@@ -138,11 +127,11 @@ class LogWalker(object):
         else:
             pb = ProgressBar()
 
+        pool = Pool()
         try:
             try:
-                mutter('getting log %r:%r' % (self.saved_revnum, to_revnum))
-                self.transport.get_log(["/"], self.saved_revnum, to_revnum, 
-                               0, True, True, rcvr)
+                self.transport.get_log("/", self.saved_revnum, to_revnum, 
+                               0, True, True, rcvr, pool)
             finally:
                 pb.clear()
         except SubversionException, (_, num):
@@ -151,100 +140,66 @@ class LogWalker(object):
                     revision="Revision number %d" % to_revnum)
             raise
         self.db.commit()
+        pool.destroy()
 
-    def follow_history(self, branch_path, revnum):
+    def follow_path(self, path, revnum):
         """Return iterator over all the revisions between revnum and 
-        0 that touch branch_path.
-        
-        :param branch_path:   Branch path to start reporting (in revnum)
+        0 named path or inside path.
+
+        :param path:   Branch path to start reporting (in revnum)
         :param revnum:        Start revision.
+
+        :return: An iterators that yields tuples with (path, paths, revnum)
+        where paths is a dictionary with all changes that happened in path 
+        in revnum.
         """
         assert revnum >= 0
 
-        if revnum == 0 and branch_path in (None, ""):
+        if revnum == 0 and path == "":
             return
 
-        if not branch_path is None and not self.scheme.is_branch(branch_path):
-            raise NotSvnBranchPath(branch_path, revnum)
+        path = path.strip("/")
 
-        if branch_path:
-            branch_path = branch_path.strip("/")
+        while revnum > 0:
+            revpaths = self.get_revision_paths(revnum, path)
 
-        if revnum > self.saved_revnum:
-            self.fetch_revisions(revnum)
+            if revpaths != {}:
+                yield (path, revpaths, revnum)
 
-        continue_revnum = None
-        for i in range(revnum+1):
-            i = revnum - i
+            if revpaths.has_key(path):
+                if revpaths[path][1] is None:
+                    if revpaths[path][0] in ('A', 'R'):
+                        # this path didn't exist before this revision
+                        return
+                else:
+                    # In this revision, this path was copied from 
+                    # somewhere else
+                    revnum = revpaths[path][2]
+                    path = revpaths[path][1]
+                    continue
+            revnum-=1
 
-            if i == 0:
-                continue
+    def get_revision_paths(self, revnum, path=None):
+        """Obtain dictionary with all the changes in a particular revision.
 
-            if not (continue_revnum is None or continue_revnum == i):
-                continue
-
-            continue_revnum = None
-
-            changed_paths = {}
-            revpaths = self._get_revision_paths(i)
-            for p in revpaths:
-                if (branch_path is None or 
-                    p == branch_path or
-                    branch_path == "" or
-                    p.startswith(branch_path+"/")):
-
-                    try:
-                        (bp, rp) = self.scheme.unprefix(p)
-                        if not changed_paths.has_key(bp):
-                            changed_paths[bp] = {}
-                        changed_paths[bp][p] = revpaths[p]
-                    except NotBranchError:
-                        pass
-
-            assert branch_path is None or len(changed_paths) <= 1
-
-            for bp in changed_paths:
-                yield (bp, changed_paths[bp], i)
-
-            if (not branch_path is None and 
-                branch_path in revpaths and 
-                not revpaths[branch_path][1] is None):
-                # In this revision, this branch was copied from 
-                # somewhere else
-                # FIXME: What if copyfrom_path is not a branch path?
-                continue_revnum = revpaths[branch_path][2]
-                branch_path = revpaths[branch_path][1]
-
-    def find_branches(self, revnum):
-        """Find all branches that were changed in the specified revision number.
-
-        :param revnum: Revision to search for branches.
+        :param revnum: Subversion revision number
+        :param path: optional path under which to return all entries
+        :returns: dictionary with paths as keys and 
+                  (action, copyfrom_path, copyfrom_rev) as values.
         """
-        created_branches = {}
 
+        if revnum == 0:
+            return {'': ('A', None, -1)}
+                
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
 
-        for i in range(revnum+1):
-            if i == 0:
-                paths = {'': ('A', None, None)}
-            else:
-                paths = self._get_revision_paths(i)
-            for p in paths:
-                if self.scheme.is_branch(p):
-                    if paths[p][0] in ('R', 'D'):
-                        del created_branches[p]
-                        yield (p, i, False)
+        query = "select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)
+        if path is not None and path != "":
+            query += " and (path='%s' or path like '%s/%%')" % (path, path)
 
-                    if paths[p][0] in ('A', 'R'): 
-                        created_branches[p] = i
-
-        for p in created_branches:
-            yield (p, i, True)
-
-    def _get_revision_paths(self, revnum):
         paths = {}
-        for p, act, cf, cr in self.db.execute("select path, action, copyfrom_path, copyfrom_rev from changed_path where rev="+str(revnum)):
+        for p, act, cf, cr in self.db.execute(query):
             paths[p] = (act, cf, cr)
         return paths
 
@@ -254,6 +209,7 @@ class LogWalker(object):
         :param revnum: Revision number.
         :returns: Tuple with author, log message and date of the revision.
         """
+        assert revnum >= 1
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum, pb)
         (author, message, date) = self.db.execute("select author, message, date from revision where revno="+ str(revnum)).fetchone()
@@ -261,7 +217,6 @@ class LogWalker(object):
             author = None
         return (author, _escape_commit_message(base64.b64decode(message)), date)
 
-    
     def find_latest_change(self, path, revnum):
         """Find latest revision that touched path.
 
@@ -276,7 +231,7 @@ class LogWalker(object):
         if row is None and path == "":
             return 0
 
-        assert row is not None, "now latest change for %r:%d" % (path, revnum)
+        assert row is not None, "no latest change for %r:%d" % (path, revnum)
 
         return row[0]
 
@@ -296,11 +251,10 @@ class LogWalker(object):
         """Find all children of path in revnum."""
         # TODO: Find children by walking history, or use 
         # cache?
-        mutter("svn ls -r %d '%r'" % (revnum, path))
 
         try:
             (dirents, _, _) = self.transport.get_dir(
-                "/" + path.encode('utf8'), revnum)
+                path.lstrip("/").encode('utf8'), revnum, kind=True)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
                 return
@@ -308,8 +262,13 @@ class LogWalker(object):
 
         for p in dirents:
             yield os.path.join(path, p)
-            for c in self.find_children(os.path.join(path, p), revnum):
-                yield c
+            # This needs to be != svn.core.svn_node_file because 
+            # some ra backends seem to return negative values for .kind.
+            # This if statement is just an optimization to make use of this 
+            # property when possible.
+            if dirents[p].kind != svn.core.svn_node_file:
+                for c in self.find_children(os.path.join(path, p), revnum):
+                    yield c
 
     def get_previous(self, path, revnum):
         """Return path,revnum pair specified pair was derived from.
@@ -317,6 +276,7 @@ class LogWalker(object):
         :param path:  Path to check
         :param revnum:  Revision to check
         """
+        assert revnum >= 0
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
         if revnum == 0:

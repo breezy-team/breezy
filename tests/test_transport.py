@@ -50,6 +50,17 @@ class SvnRaTest(TestCaseWithSubversionRepository):
         t = SvnRaTransport(repos_url)
         self.assertTrue(t.listable())
 
+    def test_get_dir_rev(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bar': 'Data'})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "MSG")
+        self.client_delete("dc/foo")
+        self.client_commit("dc", "MSG2")
+        t = SvnRaTransport(repos_url)
+        lists = t.get_dir("foo", 1, 0)
+        self.assertTrue("bar" in lists[0])
+
     def test_list_dir(self):
         repos_url = self.make_client('d', 'dc')
         t = SvnRaTransport(repos_url)

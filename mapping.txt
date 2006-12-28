@@ -101,6 +101,12 @@ Neither the original nor the target file id may occur more than once.
 The entries are sorted by revnum (highest revnum last). Within a specific 
 revnum, the order is not specified.
 
+File id mappings can only change if something about the metadata of a file changed: it 
+is in no way related to the contents of that file.
+
+If a file is being replaced by a copy of itself in an older revision it will 
+receive a new file id.
+
 NEXT VERSION: Special rules are applied to make sure that renames are tracked.
 
 == Properties ==

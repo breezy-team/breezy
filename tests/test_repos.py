@@ -16,21 +16,26 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchRevision
+from bzrlib.errors import NoSuchRevision, BzrError
 from bzrlib.inventory import Inventory
+import bzrlib.osutils as osutils
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase
+from bzrlib.trace import mutter
 from bzrlib.transport.local import LocalTransport
 
 import os
 
 import svn.fs
 
+from convert import load_dumpfile
+import errors
 import format
-from scheme import TrunkBranchingScheme
+from scheme import TrunkBranchingScheme, NoBranchingScheme
 from transport import SvnRaTransport
 from tests import TestCaseWithSubversionRepository
+import repository
 from repository import (parse_svn_revision_id, generate_svn_revision_id, 
                         svk_feature_to_revision_id, revision_id_to_svk_feature,
                         MAPPING_VERSION, escape_svn_path, unescape_svn_path)
@@ -45,6 +50,141 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         
         self.assertEqual(bzrdir._format.get_format_description(), \
                 "Subversion Local Checkout")
+
+    def test_get_branch_log(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+
+        repos = Repository.open(repos_url)
+
+        self.assertEqual(1, len(list(repos.follow_branch_history("", 1))))
+
+    def test_get_branch_invalid_revision(self):
+        repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
+        self.assertRaises(NoSuchRevision, list, 
+                          repos.follow_branch_history("/", 20))
+
+    def test_history_all(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/file': "data", "dc/foo/file":"data"})
+        self.client_add("dc/trunk")
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+
+        repos = Repository.open(repos_url)
+
+        self.assertEqual(1, len(list(repos.follow_history(1))))
+
+    def test_follow_history_follow(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/afile': "data", "dc/branches": None})
+        self.client_add("dc/trunk")
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+
+        self.client_copy("dc/trunk", "dc/branches/abranch")
+        self.client_commit("dc", "Create branch")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        items = list(repos.follow_history(2))
+        self.assertEqual([('branches/abranch', {'branches/abranch': ('A', 'trunk', 1)}, 2), 
+                          ('trunk', {'trunk/afile': ('A', None, -1), 
+                                     'trunk': (u'A', None, -1)}, 1)], items)
+
+    def test_branch_log_specific(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({
+            'dc/branches': None,
+            'dc/branches/brancha': None,
+            'dc/branches/branchab': None,
+            'dc/branches/brancha/data': "data", 
+            "dc/branches/branchab/data":"data"})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        self.assertEqual(1, len(list(repos.follow_branch_history("branches/brancha",
+            1))))
+
+    def test_branch_log_specific_ignore(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.build_tree({
+            'dc/branches/brancha': None,
+            'dc/branches/branchab': None,
+            'dc/branches/brancha/data': "data", 
+            "dc/branches/branchab/data":"data"})
+        self.client_add("dc/branches/brancha")
+        self.client_commit("dc", "My Message")
+
+        self.client_add("dc/branches/branchab")
+        self.client_commit("dc", "My Message2")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        self.assertEqual(1, len(list(repos.follow_branch_history("branches/brancha",
+            2))))
+
+    def test_find_branches_no(self):
+        repos_url = self.make_client("a", "dc")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(NoBranchingScheme())
+
+        self.assertEqual([("", 0, True)], list(repos.find_branches(0)))
+
+    def test_find_branches_no_later(self):
+        repos_url = self.make_client("a", "dc")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(NoBranchingScheme())
+
+        self.assertEqual([("", 0, True)], list(repos.find_branches(0)))
+
+    def test_find_branches_trunk_empty(self):
+        repos_url = self.make_client("a", "dc")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        self.assertEqual([], list(repos.find_branches(0)))
+
+    def test_find_branches_trunk_one(self):
+        repos_url = self.make_client("a", "dc")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        self.build_tree({'dc/trunk/foo': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+
+        self.assertEqual([("trunk", 1, True)], list(repos.find_branches(1)))
+
+    def test_find_branches_removed(self):
+        repos_url = self.make_client("a", "dc")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        self.build_tree({'dc/trunk/foo': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+
+        self.client_delete("dc/trunk")
+        self.client_commit("dc", "remove")
+
+        self.assertEqual([("trunk", 1, True)], list(repos.find_branches(1)))
+        self.assertEqual([("trunk", 2, False)], list(repos.find_branches(2)))
 
     def test_url(self):
         """ Test repository URL is kept """
@@ -430,6 +570,882 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 "svn-v%d:2@%s-" % (MAPPING_VERSION, oldrepos.uuid))
         self.assertNotEqual(inv1.path2id("bla"), inv2.path2id("bla"))
 
+    def test_fetch_replace_with_subreplace(self):
+        filename = os.path.join(self.test_dir, "dumpfile")
+        open(filename, 'w').write("""SVN-fs-dump-format-version: 2
+
+UUID: 606c7b1f-987c-4826-b37d-eb456ceb87e1
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-12-26T00:04:55.850520Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 103
+Content-length: 103
+
+K 7
+svn:log
+V 3
+add
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:15.504335Z
+PROPS-END
+
+Node-path: x
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+Node-path: x/t
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+Node-path: u
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+Revision-number: 2
+Prop-content-length: 105
+Content-length: 105
+
+K 7
+svn:log
+V 5
+readd
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:43.584249Z
+PROPS-END
+
+Node-path: x
+Node-action: delete
+
+Node-path: x
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 3
+Prop-content-length: 108
+Content-length: 108
+
+K 7
+svn:log
+V 8
+Replace
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:30:06.383777Z
+PROPS-END
+
+Node-path: x
+Node-action: delete
+
+Node-path: y
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: x
+
+Node-path: y/t
+Node-action: delete
+
+Node-path: y/t
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: u
+
+
+""")
+        os.mkdir("old")
+
+        load_dumpfile("dumpfile", "old")
+        oldrepos = Repository.open("old")
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision(
+            "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertTrue(newrepos.has_revision(
+            "svn-v%d:3@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        inv1 = newrepos.get_inventory(
+                "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid))
+        inv2 = newrepos.get_inventory(
+                "svn-v%d:3@%s-" % (MAPPING_VERSION, oldrepos.uuid))
+
+    def test_fetch_replace_self(self):
+        filename = os.path.join(self.test_dir, "dumpfile")
+        open(filename, 'w').write("""SVN-fs-dump-format-version: 2
+
+UUID: 6dcc86fc-ac21-4df7-a3a3-87616123c853
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-12-25T04:27:54.633666Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 108
+Content-length: 108
+
+K 7
+svn:log
+V 8
+Add dir
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:28:17.503039Z
+PROPS-END
+
+Node-path: bla
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 2
+Prop-content-length: 117
+Content-length: 117
+
+K 7
+svn:log
+V 16
+Add another dir
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:28:30.160663Z
+PROPS-END
+
+Node-path: blie
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 3
+Prop-content-length: 105
+Content-length: 105
+
+K 7
+svn:log
+V 5
+Copy
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:28:44.996894Z
+PROPS-END
+
+Node-path: bloe
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: bla
+
+
+Revision-number: 4
+Prop-content-length: 108
+Content-length: 108
+
+K 7
+svn:log
+V 8
+Replace
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:30:06.383777Z
+PROPS-END
+
+Node-path: bla
+Node-action: delete
+
+
+Node-path: bla
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 2
+Node-copyfrom-path: bla
+
+
+""")
+        os.mkdir("old")
+
+        load_dumpfile("dumpfile", "old")
+        oldrepos = Repository.open("old")
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision(
+            "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertTrue(newrepos.has_revision(
+            "svn-v%d:3@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        inv1 = newrepos.get_inventory(
+                "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid))
+        inv2 = newrepos.get_inventory(
+                "svn-v%d:3@%s-" % (MAPPING_VERSION, oldrepos.uuid))
+        self.assertEqual(inv1.path2id("bla"), inv2.path2id("bla"))
+
+    def test_fetch_replace_backup(self):
+        filename = os.path.join(self.test_dir, "dumpfile")
+        open(filename, 'w').write("""SVN-fs-dump-format-version: 2
+
+UUID: 6dcc86fc-ac21-4df7-a3a3-87616123c853
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-12-25T04:27:54.633666Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 108
+Content-length: 108
+
+K 7
+svn:log
+V 8
+Add dir
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:28:17.503039Z
+PROPS-END
+
+Node-path: bla
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 2
+Prop-content-length: 117
+Content-length: 117
+
+K 7
+svn:log
+V 16
+Add another dir
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:28:30.160663Z
+PROPS-END
+
+Node-path: blie
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 3
+Prop-content-length: 105
+Content-length: 105
+
+K 7
+svn:log
+V 5
+Copy
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:28:44.996894Z
+PROPS-END
+
+Node-path: bloe
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: bla
+
+
+Revision-number: 4
+Prop-content-length: 112
+Content-length: 112
+
+K 7
+svn:log
+V 11
+Change bla
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T23:51:09.678679Z
+PROPS-END
+
+Node-path: bla
+Node-kind: dir
+Node-action: change
+Prop-content-length: 28
+Content-length: 28
+
+K 3
+foo
+V 5
+bloe
+
+PROPS-END
+
+
+Revision-number: 5
+Prop-content-length: 108
+Content-length: 108
+
+K 7
+svn:log
+V 8
+Replace
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:30:06.383777Z
+PROPS-END
+
+Node-path: bla
+Node-action: delete
+
+
+Node-path: bla
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: bla
+
+
+""")
+        os.mkdir("old")
+
+        load_dumpfile("dumpfile", "old")
+        oldrepos = Repository.open("old")
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision(
+            "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertTrue(newrepos.has_revision(
+            "svn-v%d:3@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        inv1 = newrepos.get_inventory(
+                "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid))
+        inv2 = newrepos.get_inventory(
+                "svn-v%d:3@%s-" % (MAPPING_VERSION, oldrepos.uuid))
+        self.assertEqual(inv1.path2id("bla"), inv2.path2id("bla"))
+
+    def test_fetch_replace_unrelated(self):
+        filename = os.path.join(self.test_dir, "dumpfile")
+        open(filename, 'w').write("""SVN-fs-dump-format-version: 2
+
+UUID: 606c7b1f-987c-4826-b37d-eb456ceb87e1
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-12-26T00:04:55.850520Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 103
+Content-length: 103
+
+K 7
+svn:log
+V 3
+add
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:15.504335Z
+PROPS-END
+
+Node-path: x
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 2
+Prop-content-length: 102
+Content-length: 102
+
+K 7
+svn:log
+V 2
+rm
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:30.775369Z
+PROPS-END
+
+Node-path: x
+Node-action: delete
+
+
+Revision-number: 3
+Prop-content-length: 105
+Content-length: 105
+
+K 7
+svn:log
+V 5
+readd
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:43.584249Z
+PROPS-END
+
+Node-path: x
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 4
+Prop-content-length: 108
+Content-length: 108
+
+K 7
+svn:log
+V 8
+Replace
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:30:06.383777Z
+PROPS-END
+
+Node-path: x
+Node-action: delete
+
+
+Node-path: x
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: x
+
+                
+""")
+        os.mkdir("old")
+
+        load_dumpfile("dumpfile", "old")
+        oldrepos = Repository.open("old")
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision(
+            "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertTrue(newrepos.has_revision(
+            "svn-v%d:4@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        inv1 = newrepos.get_inventory(
+                "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid))
+        inv2 = newrepos.get_inventory(
+                "svn-v%d:4@%s-" % (MAPPING_VERSION, oldrepos.uuid))
+        self.assertNotEqual(inv1.path2id("x"), inv2.path2id("x"))
+
+    def test_fetch_replace_related(self):
+        filename = os.path.join(self.test_dir, "dumpfile")
+        open(filename, 'w').write("""SVN-fs-dump-format-version: 2
+
+UUID: 606c7b1f-987c-4826-b37d-eb456ceb87e1
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-12-26T00:04:55.850520Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 103
+Content-length: 103
+
+K 7
+svn:log
+V 3
+add
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:15.504335Z
+PROPS-END
+
+Node-path: x
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 2
+Prop-content-length: 102
+Content-length: 102
+
+K 7
+svn:log
+V 2
+rm
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:30.775369Z
+PROPS-END
+
+Node-path: x
+Node-action: delete
+
+
+Revision-number: 3
+Prop-content-length: 105
+Content-length: 105
+
+K 7
+svn:log
+V 5
+readd
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-26T00:05:43.584249Z
+PROPS-END
+
+Node-path: y
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: x
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 4
+Prop-content-length: 108
+Content-length: 108
+
+K 7
+svn:log
+V 8
+Replace
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:30:06.383777Z
+PROPS-END
+
+Node-path: y
+Node-action: delete
+
+
+Revision-number: 5
+Prop-content-length: 108
+Content-length: 108
+
+K 7
+svn:log
+V 8
+Replace
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-12-25T04:30:06.383777Z
+PROPS-END
+
+
+Node-path: y
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: x
+
+
+""")
+        os.mkdir("old")
+
+        load_dumpfile("dumpfile", "old")
+        oldrepos = Repository.open("old")
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision(
+            "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertTrue(newrepos.has_revision(
+            "svn-v%d:5@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        inv1 = newrepos.get_inventory(
+                "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid))
+        inv2 = newrepos.get_inventory(
+                "svn-v%d:5@%s-" % (MAPPING_VERSION, oldrepos.uuid))
+        self.assertNotEqual(inv1.path2id("y"), inv2.path2id("y"))
+
+    def test_fetch_dir_upgrade(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/trunk/lib/file': 'data'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "trunk data")
+
+        self.build_tree({'dc/branches': None})
+        self.client_add("dc/branches")
+        self.client_copy("dc/trunk/lib", "dc/branches/mybranch")
+        self.client_commit("dc", "split out lib")
+
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+        branch = Branch.open("%s/branches/mybranch" % repos_url)
+        self.assertEqual(['svn-v%d:2@%s-branches%%2fmybranch' % (MAPPING_VERSION, oldrepos.uuid)], 
+                         branch.revision_history())
+
+    def test_fetch_file_from_non_branch(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/old-trunk/lib/file': 'data'})
+        self.client_add("dc/old-trunk")
+        self.client_commit("dc", "trunk data")
+
+        self.build_tree({'dc/trunk/lib': None})
+        self.client_add("dc/trunk")
+        self.client_copy("dc/old-trunk/lib/file", "dc/trunk/lib/file")
+        self.client_commit("dc", "revive old trunk")
+
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+        branch = Branch.open("%s/trunk" % repos_url)
+        self.assertEqual(['svn-v%d:2@%s-trunk' % (MAPPING_VERSION, oldrepos.uuid)], 
+                         branch.revision_history())
+
+    def test_fetch_dir_from_non_branch(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/old-trunk/lib/file': 'data'})
+        self.client_add("dc/old-trunk")
+        self.client_commit("dc", "trunk data")
+
+        self.build_tree({'dc/trunk': None})
+        self.client_add("dc/trunk")
+        self.client_copy("dc/old-trunk/lib", "dc/trunk")
+        self.client_commit("dc", "revive old trunk")
+
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+        branch = Branch.open("%s/trunk" % repos_url)
+        self.assertEqual(['svn-v%d:2@%s-trunk' % (MAPPING_VERSION, oldrepos.uuid)], 
+                         branch.revision_history())
+
+    def test_fetch_from_non_branch(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/old-trunk/lib/file': 'data'})
+        self.client_add("dc/old-trunk")
+        self.client_commit("dc", "trunk data")
+
+        self.client_copy("dc/old-trunk", "dc/trunk")
+        self.client_commit("dc", "revive old trunk")
+
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+        branch = Branch.open("%s/trunk" % repos_url)
+        self.assertEqual(['svn-v%d:2@%s-trunk' % (MAPPING_VERSION, oldrepos.uuid)], 
+                         branch.revision_history())
+
+
+
+    def test_fetch_branch_downgrade(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/trunk/file': 'data'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "trunk data")
+
+        self.build_tree({'dc/branches/mybranch': None})
+        self.client_add("dc/branches")
+        self.client_copy("dc/trunk", "dc/branches/mybranch/lib")
+        self.client_commit("dc", "split out lib")
+
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
     # FIXME
     def notest_fetch_all(self):
         repos_url = self.make_client('d', 'dc')
@@ -606,6 +1622,11 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         rev = newrepos.get_revision(
                 "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid))
         self.assertEqual([], rev.parent_ids)
+
+    def test_set_branching_scheme(self):
+        repos_url = self.make_client('d', 'dc')
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(NoBranchingScheme())
 
     def test_fetch_crosscopy(self):
         repos_url = self.make_client('d', 'dc')

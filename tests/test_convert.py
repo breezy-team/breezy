@@ -120,6 +120,30 @@ PROPS-END
         convert_repository(dumpfile, branch_path, NoBranchingScheme())
         branch = Repository.open(branch_path)
         self.assertEqual([], branch.all_revision_ids())
+        Branch.open(branch_path)
+
+    def test_dumpfile_open_empty_trunk(self):
+        dumpfile = os.path.join(self.test_dir, "dumpfile")
+        open(dumpfile, 'w').write(
+"""SVN-fs-dump-format-version: 2
+
+UUID: 6987ef2d-cd6b-461f-9991-6f1abef3bd59
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-07-02T13:14:51.972532Z
+PROPS-END
+""")
+        branch_path = os.path.join(self.test_dir, "f")
+        convert_repository(dumpfile, branch_path, TrunkBranchingScheme())
+        repository = Repository.open(branch_path)
+        self.assertEqual([], repository.all_revision_ids())
+        self.assertRaises(NotBranchError, Branch.open, branch_path)
 
     def test_open_internal(self):
         filename = os.path.join(self.test_dir, "dumpfile")

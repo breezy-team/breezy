@@ -142,23 +142,28 @@ class SvnRaTransport(Transport):
 
     @need_lock
     def get_uuid(self):
+        mutter('svn get-uuid')
         return svn.ra.get_uuid(self._ra)
 
     @need_lock
     def get_repos_root(self):
+        mutter("svn get-repos-root")
         return svn.ra.get_repos_root(self._ra)
 
     @need_lock
     def get_latest_revnum(self):
+        mutter("svn get-latest-revnum")
         return svn.ra.get_latest_revnum(self._ra)
 
     @need_lock
-    def do_switch(self, *args, **kwargs):
-        return svn.ra.do_switch(self._ra, *args, **kwargs)
+    def do_switch(self, switch_rev, switch_target, recurse, switch_url, *args, **kwargs):
+        mutter('svn switch -r %d %r -> %r' % (switch_rev, switch_target, switch_url))
+        return svn.ra.do_switch(self._ra, switch_rev, switch_target, recurse, switch_url, *args, **kwargs)
 
     @need_lock
-    def get_log(self, *args, **kwargs):
-        return svn.ra.get_log(self._ra, *args, **kwargs)
+    def get_log(self, path, from_revnum, to_revnum, *args, **kwargs):
+        mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
+        return svn.ra.get_log(self._ra, [path], from_revnum, to_revnum, *args, **kwargs)
 
     @need_lock
     def reparent(self, url):
@@ -168,19 +173,33 @@ class SvnRaTransport(Transport):
         self.base = url
         self.svn_url = url
         if hasattr(svn.ra, 'reparent'):
-            svn.ra.reparent(self._ra, url)
+            mutter('svn reparent %r' % url)
+            svn.ra.reparent(self._ra, url, self.pool)
         else:
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
     @need_lock
-    def get_dir(self, *args, **kwargs):
-        return svn.ra.get_dir(self._ra, *args, **kwargs)
+    def get_dir(self, path, revnum, pool=None, kind=False):
+        mutter("svn ls -r %d '%r'" % (revnum, path))
+        path = path.rstrip("/")
+        # ra_dav backends fail with strange errors if the path starts with a 
+        # slash while other backends don't.
+        assert len(path) == 0 or path[0] != "/"
+        if hasattr(svn.ra, 'get_dir2'):
+            fields = 0
+            if kind:
+                fields += svn.core.SVN_DIRENT_KIND
+            return svn.ra.get_dir2(self._ra, path, revnum, fields)
+        else:
+            return svn.ra.get_dir(self._ra, path, revnum)
 
     def list_dir(self, relpath):
+        assert len(relpath) == 0 or relpath[0] != "/"
         if relpath == ".":
             relpath = ""
         try:
-            (dirents, _, _) = self.get_dir(relpath.rstrip("/"), self.get_latest_revnum())
+            (dirents, _, _) = self.get_dir(relpath.rstrip("/"), 
+                                           self.get_latest_revnum())
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
                 raise NoSuchFile(relpath)
@@ -188,8 +207,9 @@ class SvnRaTransport(Transport):
         return dirents.keys()
 
     @need_lock
-    def check_path(self, *args, **kwargs):
-        return svn.ra.check_path(self._ra, *args, **kwargs)
+    def check_path(self, path, revnum, *args, **kwargs):
+        mutter("svn check_path -r%d %s" % (revnum, path))
+        return svn.ra.check_path(self._ra, path, revnum, *args, **kwargs)
 
     @need_lock
     def mkdir(self, relpath, mode=None):
@@ -204,8 +224,9 @@ class SvnRaTransport(Transport):
             raise
 
     @need_lock
-    def do_update(self, *args, **kwargs):
-        return svn.ra.do_update(self._ra, *args, **kwargs)
+    def do_update(self, revnum, path, *args, **kwargs):
+        mutter('svn update -r %r %r' % (revnum, path))
+        return svn.ra.do_update(self._ra, revnum, path, *args, **kwargs)
 
     @need_lock
     def get_commit_editor(self, *args, **kwargs):

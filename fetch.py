@@ -45,7 +45,7 @@ class RevisionBuildEditor(svn.delta.Editor):
     def __init__(self, source, target, branch_path, revnum, prev_inventory, 
                  revid, svn_revprops, id_map, parent_branch, parent_id_map):
         self.branch_path = branch_path
-        self.inventory = copy(prev_inventory)
+        self.inventory = prev_inventory
         assert self.inventory.root is None or revnum > 0
         self.revid = revid
         self.revnum = revnum
@@ -63,6 +63,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         self._parent_ids = None
         self._revprops = {}
         self._svn_revprops = svn_revprops
+
+        self.pool = Pool()
 
     def _get_revision(self, revid):
         if self._parent_ids is None:
@@ -117,14 +119,6 @@ class RevisionBuildEditor(svn.delta.Editor):
     def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
         file_id, revision_id = self.id_map[path]
 
-        if copyfrom_path is not None:
-            base_file_id, base_revid = self.source.path_to_file_id(copyfrom_revnum, os.path.join(self.parent_branch, copyfrom_path))
-            if base_file_id == file_id: 
-                self.dir_baserev[file_id] = [base_revid]
-                ie = self.inventory[file_id]
-                ie.revision = revision_id
-                return file_id
-
         self.dir_baserev[file_id] = []
         ie = self.inventory.add_path(path, 'directory', file_id)
         ie.revision = revision_id
@@ -132,7 +126,25 @@ class RevisionBuildEditor(svn.delta.Editor):
         return file_id
 
     def open_directory(self, path, parent_baton, base_revnum, pool):
-        return self.add_directory(path, parent_baton, path, base_revnum, pool)
+        file_id, revision_id = self.id_map[path]
+        assert base_revnum >= 0
+        base_file_id, base_revid = self.source.path_to_file_id(base_revnum, os.path.join(self.parent_branch, path))
+        if file_id == base_file_id:
+            self.dir_baserev[file_id] = [base_revid]
+            ie = self.inventory[file_id]
+        else:
+            # Replace if original was inside this branch
+            # change id of base_file_id to file_id
+            ie = self.inventory[base_file_id]
+            for name in ie.children:
+                ie.children[name].parent_id = file_id
+            # FIXME: Don't touch inventory internals
+            del self.inventory._byid[base_file_id]
+            self.inventory._byid[file_id] = ie
+            ie.file_id = file_id
+            self.dir_baserev[file_id] = []
+        ie.revision = revision_id
+        return file_id
 
     def change_dir_prop(self, id, name, value, pool):
         if name == SVN_PROP_BZR_MERGE:
@@ -247,6 +259,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             bzrlib.xml5.serializer_v5.write_inventory_to_string(
                 self.inventory))
         self.target.add_revision(self.revid, rev, self.inventory)
+        self.pool.destroy()
 
     def abort_edit(self):
         pass
@@ -256,13 +269,13 @@ class RevisionBuildEditor(svn.delta.Editor):
         assert (base_checksum is None or base_checksum == actual_checksum,
             "base checksum mismatch: %r != %r" % (base_checksum, actual_checksum))
         self.file_stream = StringIO()
-        return apply_txdelta_handler(StringIO(self.file_data), self.file_stream)
+        return apply_txdelta_handler(StringIO(self.file_data), self.file_stream, self.pool)
 
 
 class InterSvnRepository(InterRepository):
     """Svn to any repository actions."""
 
-    _matching_repo_format = SvnRepositoryFormat
+    _matching_repo_format = SvnRepositoryFormat()
     """The format to test with."""
 
     @needs_write_lock
@@ -285,8 +298,11 @@ class InterSvnRepository(InterRepository):
         needed = []
         parents = {}
         prev_revid = None
-        for (branch, changes, revnum) in \
-            self.source._log.follow_history(path, until_revnum):
+        if path is None:
+            it = self.source.follow_history(until_revnum)
+        else:
+            it = self.source.follow_branch_history(path, until_revnum)
+        for (branch, changes, revnum) in it:
             revid = self.source.generate_revision_id(revnum, branch)
 
             if prev_revid is not None:
@@ -340,37 +356,34 @@ class InterSvnRepository(InterRepository):
                                      self.source._log.get_revision_info(revnum),
                                      id_map, parent_branch, parent_id_map)
 
-            edit, edit_baton = svn.delta.make_editor(editor)
+            pool = Pool()
+            edit, edit_baton = svn.delta.make_editor(editor, pool)
 
             if parent_branch is None:
                 transport.reparent(repos_root)
             else:
                 transport.reparent("%s/%s" % (repos_root, parent_branch))
-            pool = Pool()
             if parent_branch != branch:
-                mutter('svn switch %r:%r -> %r:%r' % 
-                               (parent_branch, parent_revnum, branch, revnum))
+                switch_url = "%s/%s" % (repos_root, branch)
                 reporter, reporter_baton = transport.do_switch(
                            revnum, "", True, 
-                           "%s/%s" % (repos_root, branch),
-                           edit, edit_baton, pool)
+                           switch_url, edit, edit_baton, pool)
             else:
-                mutter('svn update -r %r:%r %r' % 
-                               (parent_revnum, revnum, branch))
                 reporter, reporter_baton = transport.do_update(
-                           revnum, "", True, 
-                           edit, edit_baton, pool)
+                           revnum, "", True, edit, edit_baton, pool)
 
             # Report status of existing paths
             svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
-                "", parent_revnum, False, None)
+                "", parent_revnum, False, None, pool)
 
             transport.lock()
-            svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton)
+            svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
             transport.unlock()
 
             prev_inv = editor.inventory
             prev_revid = revid
+
+            pool.destroy()
 
         if pb is not None:
             pb.clear()

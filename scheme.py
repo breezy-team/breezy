@@ -51,6 +51,22 @@ class BranchingScheme:
                 return TrunkBranchingScheme(level=i)
 
         return NoBranchingScheme()
+
+    @staticmethod
+    def find_scheme(name):
+        if name == "trunk":
+            return TrunkBranchingScheme()
+
+        if name.startswith("trunk-"):
+            try:
+                return TrunkBranchingScheme(level=int(name[len("trunk-"):]))
+            except ValueError:
+                return None
+
+        if name == "none":
+            return NoBranchingScheme()
+
+        return None
                 
 
 class TrunkBranchingScheme:
