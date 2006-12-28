@@ -548,6 +548,22 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 "svn-v%d:2@%s-" % (MAPPING_VERSION, oldrepos.uuid))
         self.assertNotEqual(inv1.path2id("bla"), inv2.path2id("bla"))
 
+    def test_fetch_copy_subdir(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/mydir/a': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/branches/tmp': None})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "Second Message")
+        self.client_copy("dc/trunk/mydir", "dc/branches/tmp/abranch")
+        self.client_commit("dc", "Third Message")
+        oldrepos = Repository.open("svn+"+repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
     def test_fetch_replace_with_subreplace(self):
         filename = os.path.join(self.test_dir, "dumpfile")
         open(filename, 'w').write("""SVN-fs-dump-format-version: 2
