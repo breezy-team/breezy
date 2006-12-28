@@ -22,6 +22,7 @@ endif
 build/bzr:: debian/stamp-doc
 
 debian/stamp-doc:
+	python generate_docs.py -o doc/bzr_man.txt rstx
 	for f in doc/*.txt; do h=$$(echo $$f | sed 's/txt$$/htm/'); rst2html $$f > $$h; done
 	touch $@
 
