@@ -383,8 +383,9 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual(['trunk/data', 'trunk/data/bla', 'trunk/file'], 
-                list(walker.find_children("trunk", 1)))
+        self.assertEqual(
+                set(['trunk/data', 'trunk/data/bla', 'trunk/file']), 
+                set(walker.find_children("trunk", 1)))
 
     def test_find_children_later(self):
         repos_url = self.make_client("a", "dc")
@@ -397,7 +398,44 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
 
-        self.assertEqual(['trunk/data', 'trunk/data/bla'], 
-                list(walker.find_children("trunk", 1)))
-        self.assertEqual(['trunk/data', 'trunk/data/bla', 'trunk/file'], 
-                list(walker.find_children("trunk", 2)))
+        self.assertEqual(set(['trunk/data', 'trunk/data/bla']), 
+                set(walker.find_children("trunk", 1)))
+        self.assertEqual(set(['trunk/data', 'trunk/data/bla', 'trunk/file']), 
+                set(walker.find_children("trunk", 2)))
+
+    def test_find_children_copy(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/data/bla': 'foo',
+                         'dc/trunk/db/f1': 'bloe',
+                         'dc/trunk/db/f2': 'bla'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.client_copy("dc/trunk/db", "dc/trunk/data/fg")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(set(['trunk/data', 'trunk/data/bla', 
+                          'trunk/data/fg', 'trunk/data/fg/f1', 
+                          'trunk/data/fg/f2', 'trunk/db',
+                          'trunk/db/f1', 'trunk/db/f2']), 
+                set(walker.find_children("trunk", 2)))
+
+    def test_find_children_copy_del(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/data/bla': 'foo',
+                         'dc/trunk/db/f1': 'bloe',
+                         'dc/trunk/db/f2': 'bla'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        self.client_copy("dc/trunk/db", "dc/trunk/data/fg")
+        self.client_commit("dc", "My Message")
+        self.client_delete("dc/trunk/data/fg/f2")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
+
+        self.assertEqual(set(['trunk/data', 'trunk/data/bla', 
+                          'trunk/data/fg', 'trunk/data/fg/f1', 'trunk/db',
+                          'trunk/db/f1', 'trunk/db/f2']), 
+                set(walker.find_children("trunk", 3)))

@@ -1,1 +1,2 @@
 - get rid of use of `svn ls' in logwalker
+- more efficient implementation for applying txdeltas to weaves. perhaps convert svn deltas to bzr deltas?
