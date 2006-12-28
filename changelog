@@ -5,6 +5,7 @@ bzr (0.13-0.1) unstable; urgency=low
   [ Wouter van Heyst ]
   * New upstream release (Closes: #397852)
     + Supersedes listdir patch (Closes: #397535)
+  * The rst documentation generates *.htm files, not *.html (Closes: #389518)
 
  -- Wouter van Heyst <larstiq@larstiq.dyndns.org>  Wed, 27 Dec 2006 02:18:08 +0100
 

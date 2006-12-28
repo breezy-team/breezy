@@ -9,20 +9,20 @@ include /usr/share/cdbs/1/rules/patchsys-quilt.mk
 DEB_PYTHON_INSTALL_ARGS_ALL += --install-data=/usr/share
 
 clean::
-	-rm -rf build test*.tmp doc/*.html
+	-rm -rf build test*.tmp doc/*.htm
 	find . -name "*.pyc" -print0 | xargs -0 rm -f
 	rm -f bzr.1
 	rm -f debian/stamp-doc
 
 ifeq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
 common-post-build-indep::	
-	./bzr selftest --no-plugins
+	./bzr selftest --no-plugins --one
 endif
 
 build/bzr:: debian/stamp-doc
 
 debian/stamp-doc:
-	for f in doc/*.txt; do h=$$(echo $$f | sed 's/txt$$/html/'); rst2html $$f > $$h; done
+	for f in doc/*.txt; do h=$$(echo $$f | sed 's/txt$$/htm/'); rst2html $$f > $$h; done
 	touch $@
 
 install/bzr::
