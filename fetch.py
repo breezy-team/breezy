@@ -42,7 +42,7 @@ def md5_strings(strings):
     return s.hexdigest()
 
 class RevisionBuildEditor(svn.delta.Editor):
-    def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, svn_revprops, id_map, parent_branch, parent_id_map):
+    def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, svn_revprops, id_map, parent_branch):
         self.branch_path = branch_path
         self.old_inventory = prev_inventory
         self.inventory = copy(prev_inventory)
@@ -50,7 +50,6 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.revnum = revnum
         self.id_map = id_map
         self.parent_branch = parent_branch
-        self.parent_id_map = parent_id_map
         self.source = source
         self.target = target
         self.transact = target.get_transaction()
@@ -327,15 +326,12 @@ class InterSvnRepository(InterRepository):
                 parent_branch = None
 
             if parent_revid is None:
-                parent_id_map = {"": (ROOT_ID, None)}
                 id_map = self.source.get_fileid_map(revnum, branch)
                 parent_inv = Inventory(ROOT_ID)
             elif prev_revid != parent_revid:
-                parent_id_map = self.source.get_fileid_map(parent_revnum, parent_branch)
                 id_map = self.source.get_fileid_map(revnum, branch)
                 parent_inv = self.target.get_inventory(parent_revid)
             else:
-                parent_id_map = copy(id_map)
                 self.source.transform_fileid_map(self.source.uuid, 
                                         revnum, branch, 
                                         changes, id_map)
@@ -345,7 +341,7 @@ class InterSvnRepository(InterRepository):
             editor = RevisionBuildEditor(self.source, self.target, branch, 
                                          revnum, parent_inv, revid, 
                                      self.source._log.get_revision_info(revnum),
-                                     id_map, parent_branch, parent_id_map)
+                                     id_map, parent_branch)
 
             pool = Pool()
             edit, edit_baton = svn.delta.make_editor(editor, pool)
