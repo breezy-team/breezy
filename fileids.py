@@ -183,7 +183,6 @@ class SimpleFileIdMap(FileIdMap):
     @staticmethod
     def _apply_changes(map, revid, changes, find_children, renames):
         def new_file_id(path):
-            mutter('new file id for %r. renames: %r' % (path, renames))
             if renames.has_key(path):
                 return renames[path]
             return generate_file_id(revid, path)
