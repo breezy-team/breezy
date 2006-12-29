@@ -24,6 +24,7 @@ import bzrlib.urlutils as urlutils
 from warnings import warn
 
 import os
+import sha
 
 import logwalker
 from repository import (escape_svn_path, generate_svn_revision_id, 
@@ -35,12 +36,19 @@ def generate_svn_file_id(uuid, revnum, branch, path):
     :param uuid: UUID of the repository
     :param revnu: Revision number at which the file was introduced.
     :param branch: Branch path of the branch in which the file was introduced.
-    :param path: Original path of the file.
+    :param path: Original path of the file within the branch
     """
     if path == "":
         return ROOT_ID
     introduced_revision_id = generate_svn_revision_id(uuid, revnum, branch)
-    return "%s-%s" % (introduced_revision_id, escape_svn_path(path))
+    ret = "%s-%s" % (introduced_revision_id, escape_svn_path(path))
+    if len(ret) > 250:
+        basename = os.path.basename(path)
+        parent = path[:-len(basename)]
+        ret = "%s-%s-%s" % (introduced_revision_id, 
+                            sha.new(parent).hexdigest(),
+                            escape_svn_path(basename))
+    return ret
 
 
 def generate_file_id(revid, path):
