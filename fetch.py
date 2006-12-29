@@ -317,7 +317,7 @@ class InterSvnRepository(InterRepository):
             prev_revid = revid
 
             if not self.target.has_revision(revid):
-                needed.append((branch, revnum, revid, changes))
+                needed.append((branch, revnum, revid))
 
         parents[prev_revid] = None
 
@@ -325,7 +325,7 @@ class InterSvnRepository(InterRepository):
         needed.reverse()
         prev_revid = None
         transport = self.source.transport
-        for (branch, revnum, revid, changes) in needed:
+        for (branch, revnum, revid) in needed:
             if pb is not None:
                 pb.update('copying revision', num+1, len(needed)+1)
             num += 1
@@ -345,6 +345,7 @@ class InterSvnRepository(InterRepository):
             else:
                 parent_inv = prev_inv
 
+            changes = self.source._log.get_revision_paths(revnum, branch)
             id_map = self.source.transform_fileid_map(self.source.uuid, 
                                         revnum, branch, changes)
 

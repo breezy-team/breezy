@@ -257,7 +257,6 @@ class SvnRepository(Repository):
 
     def transform_fileid_map(self, uuid, revnum, branch, changes):
         return self.fileid_map.apply_changes(uuid, revnum, branch, changes)
-                #find_children=self._log.find_children)
 
     def path_to_file_id(self, revnum, path):
         """Generate a bzr file id from a Subversion file name. 
@@ -305,7 +304,7 @@ class SvnRepository(Repository):
                                     SVN_PROP_BZR_MERGE, "").splitlines():
             ancestry.extend(l.split("\n"))
 
-        for (branch, _, rev) in self.follow_branch_history(path, revnum - 1):
+        for (branch, rev) in self.follow_branch(path, revnum - 1):
             ancestry.append(self.generate_revision_id(rev, branch))
 
         ancestry.append(None)
@@ -350,7 +349,7 @@ class SvnRepository(Repository):
 
         parent_path = None
         parent_ids = []
-        for (branch, _, rev) in self.follow_branch_history(path, revnum):
+        for (branch, rev) in self.follow_branch(path, revnum):
             if rev < revnum:
                 parent_revnum = rev
                 parent_path = branch
@@ -515,6 +514,14 @@ class SvnRepository(Repository):
 
             revnum-=1
 
+    def follow_branch(self, branch_path, revnum):
+        assert branch_path is not None
+        assert isinstance(revnum, int) and revnum >= 0
+        if not self.scheme.is_branch(branch_path):
+            raise errors.NotSvnBranchPath(branch_path, revnum)
+        for (revnum, _, bp) in self.follow_branch_history(branch_path, revnum):
+            yield (revnum, bp)
+
     def follow_branch_history(self, branch_path, revnum):
         assert branch_path is not None
         if not self.scheme.is_branch(branch_path):
@@ -556,7 +563,7 @@ class SvnRepository(Repository):
         self._previous = revision_id
         self._ancestry = {}
         
-        for (branch, _, rev) in self.follow_branch_history(path, revnum - 1):
+        for (branch, rev) in self.follow_branch(path, revnum - 1):
             revid = self.generate_revision_id(rev, branch)
             self._ancestry[self._previous] = [revid]
             self._previous = revid

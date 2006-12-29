@@ -112,7 +112,7 @@ class SvnBranch(Branch):
        
     def _generate_revision_history(self, last_revnum):
         self._revision_history = []
-        for (branch, _, rev) in self.repository.follow_branch_history(
+        for (branch, rev) in self.repository.follow_branch(
                 self.branch_path, last_revnum):
             self._revision_history.append(
                     self.repository.generate_revision_id(rev, branch))
