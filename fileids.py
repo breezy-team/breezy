@@ -142,14 +142,14 @@ class FileIdMap(object):
                 # found the nearest cached map
                 next_parent_revs = [revid]
                 break
-            else:
-                todo.append((revid, paths))
-                continue
+            todo.append((revid, paths))
     
         # target revision was present
         if len(todo) == 0:
             return map
     
+        if len(map.keys()) == 0:
+            map = {"": (ROOT_ID, None)} # No history -> empty map
         todo.reverse()
 
         i = 0
@@ -166,7 +166,23 @@ class FileIdMap(object):
                     yield self.repos.scheme.unprefix(p)[1]
 
             parent_revs = next_parent_revs
-            map = self._apply_changes(revid, changes, find_children, map)
+            
+            revmap = self._apply_changes(revid, changes, find_children)
+            for p in changes:
+                if changes[p][0] == 'M':
+                    revmap[p] = map[p][0]
+
+            map.update(dict([(x, (revmap[x], revid)) for x in revmap]))
+            # Mark all parent paths as changed
+            for p in revmap:
+                parts = p.split("/")
+                for j in range(1, len(parts)):
+                    parent = "/".join(parts[0:len(parts)-j])
+                    assert map.has_key(parent), "Parent item %s of %s doesn't exist in map" % (parent, p)
+                    if map[parent][1] == revid:
+                        break
+                    map[parent] = map[parent][0], revid
+                    
             next_parent_revs = [revid]
             i = i + 1
 
@@ -179,35 +195,22 @@ class FileIdMap(object):
 
 class SimpleFileIdMap(FileIdMap):
     @staticmethod
-    def _apply_changes(revid, changes, find_children=None, map={}):
+    def _apply_changes(revid, changes, find_children=None):
+        map = {}
         sorted_paths = changes.keys()
         sorted_paths.sort()
         for p in sorted_paths:
             data = changes[p]
 
             if data[0] in ('A', 'R'):
-                map[p] = generate_file_id(revid, p), revid
+                map[p] = generate_file_id(revid, p)
 
                 if data[1] is not None:
                     mutter('%r:%s copied from %r:%s' % (p, revid, data[1], data[2]))
                     assert find_children is not None, 'incomplete data for %r' % p
                     for c in find_children(data[1], data[2]):
                         path = c.replace(data[1], p+"/", 1).replace("//", "/")
-                        map[path] = generate_file_id(revid, c), revid
+                        map[path] = generate_file_id(revid, c)
                         mutter('added mapping %r -> %r' % (path, map[path]))
 
-            elif data[0] == 'M':
-                if p == "":
-                    map[p] = (ROOT_ID, "")
-                assert map.has_key(p), "Map has no item %s to modify" % p
-                map[p] = map[p][0], revid
-            
-            # Mark all parent paths as changed
-            parts = p.split("/")
-            for i in range(1, len(parts)):
-                parent = "/".join(parts[0:len(parts)-i])
-                assert map.has_key(parent), "Parent item %s of %s doesn't exist in map" % (parent, p)
-                if map[parent][1] == revid:
-                    break
-                map[parent] = map[parent][0], revid
         return map

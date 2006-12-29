@@ -153,8 +153,8 @@ class TestFileMapping(TestCase):
         revids = mappings.keys()
         revids.sort()
         for r in revids:
-            map = SimpleFileIdMap._apply_changes(r, mappings[r], 
-                                                 find_children, map)
+            revmap = SimpleFileIdMap._apply_changes(r, mappings[r], find_children)
+            map.update(dict([(x,(revmap[x],r)) for x in revmap]))
         return map
 
     def test_simple(self):
@@ -195,4 +195,4 @@ class TestFileMapping(TestCase):
                  ("svn-v%d:2@uuid-" % MAPPING_VERSION): {
                                    "foo/bla": ('M', None, None)}
                 })
-        self.assertEqual("svn-v%d:2@uuid-" % MAPPING_VERSION, map["foo"][1])
+        self.assertEqual("svn-v%d:1@uuid-" % MAPPING_VERSION, map["foo"][1])
