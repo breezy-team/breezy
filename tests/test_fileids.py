@@ -22,7 +22,7 @@ from bzrlib.trace import mutter
 from bzrlib.tests import TestSkipped, TestCase
 
 import format
-from fileids import SimpleFileIdMap
+from fileids import SimpleFileIdMap, generate_file_id
 from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository, RENAMES
 
@@ -153,7 +153,7 @@ class TestFileMapping(TestCase):
         revids = mappings.keys()
         revids.sort()
         for r in revids:
-            revmap = SimpleFileIdMap._apply_changes(r, mappings[r], find_children)
+            revmap = SimpleFileIdMap._apply_changes(lambda x: generate_file_id(r, x), mappings[r], find_children)
             map.update(dict([(x,(revmap[x],r)) for x in revmap]))
         return map
 

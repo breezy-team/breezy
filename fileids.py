@@ -48,7 +48,7 @@ def generate_file_id(revid, path):
     return generate_svn_file_id(uuid, revnum, branch, path)
 
 
-def get_local_changes(paths, scheme, uuid, find_children=None):
+def get_local_changes(paths, scheme, uuid, get_children=None):
     new_paths = {}
     names = paths.keys()
     names.sort()
@@ -68,8 +68,8 @@ def get_local_changes(paths, scheme, uuid, find_children=None):
             except NotBranchError:
                 # Copied from outside of a known branch
                 # Make it look like the files were added in this revision
-                if find_children is not None:
-                    for c in find_children(data[1], data[2]):
+                if get_children is not None:
+                    for c in get_children(data[1], data[2]):
                         mutter('oops: %r child %r' % (data[1], c))
                         new_paths[(new_p+"/"+c[len(data[1]):].strip("/")).strip("/")] = (data[0], None, -1)
                 data = (data[0], None, -1)
@@ -130,7 +130,8 @@ class FileIdMap(object):
 
         revid = generate_svn_revision_id(uuid, revnum, branch)
 
-        return self._apply_changes(revid, changes, get_children)
+        return self._apply_changes(lambda x: generate_file_id(revid, x), 
+                                   changes, get_children)
 
     def get_map(self, uuid, revnum, branch, pb=None):
         """Make sure the map is up to date until revnum."""
@@ -170,7 +171,8 @@ class FileIdMap(object):
 
             parent_revs = next_parent_revs
             
-            revmap = self._apply_changes(revid, changes, find_children)
+            revmap = self._apply_changes(lambda x: generate_file_id(revid, x), 
+                                         changes, find_children)
             for p in changes:
                 if changes[p][0] == 'M':
                     revmap[p] = map[p][0]
@@ -198,7 +200,7 @@ class FileIdMap(object):
 
 class SimpleFileIdMap(FileIdMap):
     @staticmethod
-    def _apply_changes(revid, changes, find_children=None):
+    def _apply_changes(new_file_id, changes, find_children=None):
         map = {}
         sorted_paths = changes.keys()
         sorted_paths.sort()
@@ -206,14 +208,14 @@ class SimpleFileIdMap(FileIdMap):
             data = changes[p]
 
             if data[0] in ('A', 'R'):
-                map[p] = generate_file_id(revid, p)
+                map[p] = new_file_id(p)
 
                 if data[1] is not None:
-                    mutter('%r:%s copied from %r:%s' % (p, revid, data[1], data[2]))
+                    mutter('%r copied from %r:%s' % (p, data[1], data[2]))
                     if find_children is not None:
                         for c in find_children(data[1], data[2]):
                             path = c.replace(data[1], p+"/", 1).replace("//", "/")
-                            map[path] = generate_file_id(revid, c)
+                            map[path] = new_file_id(c)
                             mutter('added mapping %r -> %r' % (path, map[path]))
 
         return map
