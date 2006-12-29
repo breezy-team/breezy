@@ -109,7 +109,7 @@ class FileIdMap(object):
 
         return map
 
-    def apply_changes(self, uuid, revnum, branch, global_changes, map):
+    def apply_changes(self, uuid, revnum, branch, global_changes):
         """Change file id map to incorporate specified changes.
 
         :param uuid: UUID of repository changes happen in
@@ -127,7 +127,7 @@ class FileIdMap(object):
 
         revid = generate_svn_revision_id(uuid, revnum, branch)
 
-        return self._apply_changes(map, revid, changes, find_children)
+        return self._apply_changes(revid, changes, find_children)
 
     def get_map(self, uuid, revnum, branch, pb=None):
         """Make sure the map is up to date until revnum."""
@@ -166,7 +166,7 @@ class FileIdMap(object):
                     yield self.repos.scheme.unprefix(p)[1]
 
             parent_revs = next_parent_revs
-            map = self._apply_changes(map, revid, changes, find_children)
+            map = self._apply_changes(revid, changes, find_children, map)
             next_parent_revs = [revid]
             i = i + 1
 
@@ -179,9 +179,7 @@ class FileIdMap(object):
 
 class SimpleFileIdMap(FileIdMap):
     @staticmethod
-    def _apply_changes(map, revid, changes, find_children=None):
-        map[""] = (ROOT_ID, revid)
-
+    def _apply_changes(revid, changes, find_children=None, map={}):
         sorted_paths = changes.keys()
         sorted_paths.sort()
         for p in sorted_paths:

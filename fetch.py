@@ -63,6 +63,8 @@ class RevisionBuildEditor(svn.delta.Editor):
 
         self.pool = Pool()
 
+        mutter('q %r' % self.id_map)
+
     def _get_revision(self, revid):
         if self._parent_ids is None:
             self._parent_ids = ""
@@ -118,10 +120,14 @@ class RevisionBuildEditor(svn.delta.Editor):
         return file_id
 
     def open_directory(self, path, parent_baton, base_revnum, pool):
-        file_id, revision_id = self.id_map[path]
         assert base_revnum >= 0
         base_file_id = self.old_inventory.path2id(path)
         base_revid = self.old_inventory[base_file_id].revision
+        if self.id_map.has_key(path):
+            file_id, revision_id = self.id_map[path]
+        else:
+            file_id = base_file_id
+            revision_id = base_rev_id
         if file_id == base_file_id:
             self.dir_baserev[file_id] = [base_revid]
             ie = self.inventory[file_id]
@@ -195,7 +201,11 @@ class RevisionBuildEditor(svn.delta.Editor):
     def open_file(self, path, parent_id, base_revnum, pool):
         base_file_id = self.old_inventory.path2id(path)
         base_revid = self.old_inventory[base_file_id].revision
-        file_id, revid = self.id_map[path]
+        if self.id_map.has_key(path):
+            file_id, revid = self.id_map[path]
+        else:
+            file_id = base_file_id
+            revid = base_rev_id
         self.is_executable = None
         self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
         file_weave = self.weave_store.get_weave_or_empty(base_file_id, self.transact)
@@ -220,7 +230,11 @@ class RevisionBuildEditor(svn.delta.Editor):
         actual_checksum = md5_strings(lines)
         assert checksum is None or checksum == actual_checksum
 
-        file_id, revision_id = self.id_map[path]
+        if self.id_map.has_key(path):
+            file_id, revision_id = self.id_map[path]
+        else:
+            file_id = self.old_inventory.path2id(path)
+            revision_id = self.old_inventory[file_id].revision
         file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
         if not file_weave.has_version(revision_id):
             file_weave.add_lines(revision_id, self.file_parents, lines)
@@ -326,17 +340,14 @@ class InterSvnRepository(InterRepository):
                 parent_branch = None
 
             if parent_revid is None:
-                id_map = self.source.get_fileid_map(revnum, branch)
                 parent_inv = Inventory(ROOT_ID)
             elif prev_revid != parent_revid:
-                id_map = self.source.get_fileid_map(revnum, branch)
                 parent_inv = self.target.get_inventory(parent_revid)
             else:
-                self.source.transform_fileid_map(self.source.uuid, 
-                                        revnum, branch, 
-                                        changes, id_map)
                 parent_inv = prev_inv
 
+            id_map = self.source.transform_fileid_map(self.source.uuid, 
+                                        revnum, branch, changes)
 
             editor = RevisionBuildEditor(self.source, self.target, branch, 
                                          revnum, parent_inv, revid, 
