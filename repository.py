@@ -256,7 +256,8 @@ class SvnRepository(Repository):
         return self.fileid_map.get_map(self.uuid, revnum, path, pb)
 
     def transform_fileid_map(self, uuid, revnum, branch, changes):
-        return self.fileid_map.apply_changes(uuid, revnum, branch, changes)
+        return self.fileid_map.apply_changes(uuid, revnum, branch, changes,
+                find_children=self._log.find_children)
 
     def path_to_file_id(self, revnum, path):
         """Generate a bzr file id from a Subversion file name. 

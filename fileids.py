@@ -109,7 +109,8 @@ class FileIdMap(object):
 
         return map
 
-    def apply_changes(self, uuid, revnum, branch, global_changes):
+    def apply_changes(self, uuid, revnum, branch, global_changes, 
+                      find_children=None):
         """Change file id map to incorporate specified changes.
 
         :param uuid: UUID of repository changes happen in
@@ -118,16 +119,16 @@ class FileIdMap(object):
         :param global_changes: Dict with global changes that happened
         """
         changes = get_local_changes(global_changes, self.repos.scheme,
-                                        uuid, self.repos._log.find_children)
+                                        uuid, find_children)
 
-        def find_children(path, revid):
+        def get_children(path, revid):
             (_, bp, revnum) = parse_svn_revision_id(revid)
-            for p in self.repos._log.find_children(bp+"/"+path, revnum):
+            for p in find_children(bp+"/"+path, revnum):
                 yield self.repos.scheme.unprefix(p)[1]
 
         revid = generate_svn_revision_id(uuid, revnum, branch)
 
-        return self._apply_changes(revid, changes, find_children)
+        return self._apply_changes(revid, changes, get_children)
 
     def get_map(self, uuid, revnum, branch, pb=None):
         """Make sure the map is up to date until revnum."""
