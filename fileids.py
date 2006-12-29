@@ -68,10 +68,10 @@ def get_local_changes(paths, scheme, uuid, find_children=None):
             except NotBranchError:
                 # Copied from outside of a known branch
                 # Make it look like the files were added in this revision
-                assert find_children is not None
-                for c in find_children(data[1], data[2]):
-                    mutter('oops: %r child %r' % (data[1], c))
-                    new_paths[(new_p+"/"+c[len(data[1]):].strip("/")).strip("/")] = (data[0], None, -1)
+                if find_children is not None:
+                    for c in find_children(data[1], data[2]):
+                        mutter('oops: %r child %r' % (data[1], c))
+                        new_paths[(new_p+"/"+c[len(data[1]):].strip("/")).strip("/")] = (data[0], None, -1)
                 data = (data[0], None, -1)
 
         new_paths[new_p] = data
@@ -120,11 +120,13 @@ class FileIdMap(object):
         """
         changes = get_local_changes(global_changes, self.repos.scheme,
                                         uuid, find_children)
-
-        def get_children(path, revid):
-            (_, bp, revnum) = parse_svn_revision_id(revid)
-            for p in find_children(bp+"/"+path, revnum):
-                yield self.repos.scheme.unprefix(p)[1]
+        if find_children is not None:
+            def get_children(path, revid):
+                (_, bp, revnum) = parse_svn_revision_id(revid)
+                for p in find_children(bp+"/"+path, revnum):
+                    yield self.repos.scheme.unprefix(p)[1]
+        else:
+            get_children = None
 
         revid = generate_svn_revision_id(uuid, revnum, branch)
 
@@ -208,10 +210,10 @@ class SimpleFileIdMap(FileIdMap):
 
                 if data[1] is not None:
                     mutter('%r:%s copied from %r:%s' % (p, revid, data[1], data[2]))
-                    assert find_children is not None, 'incomplete data for %r' % p
-                    for c in find_children(data[1], data[2]):
-                        path = c.replace(data[1], p+"/", 1).replace("//", "/")
-                        map[path] = generate_file_id(revid, c)
-                        mutter('added mapping %r -> %r' % (path, map[path]))
+                    if find_children is not None:
+                        for c in find_children(data[1], data[2]):
+                            path = c.replace(data[1], p+"/", 1).replace("//", "/")
+                            map[path] = generate_file_id(revid, c)
+                            mutter('added mapping %r -> %r' % (path, map[path]))
 
         return map

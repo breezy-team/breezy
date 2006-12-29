@@ -31,6 +31,7 @@ import os
 from svn.core import SubversionException, Pool
 import svn.core, svn.ra
 
+from fileids import generate_file_id
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
                 SVN_PROP_BZR_REVPROP_PREFIX, SvnRepositoryFormat)
 from tree import apply_txdelta_handler
@@ -95,11 +96,22 @@ class RevisionBuildEditor(svn.delta.Editor):
     def relpath(self, path):
         return path.strip("/")
 
-    def _get_existing_id(self, parent_id, old_path):
+    def _get_existing_id(self, parent_id, path):
+        if self.id_map.has_key(path):
+            return self.id_map[path]
+
+        return self._get_old_id(parent_id, path)
+
+    def _get_old_id(self, parent_id, old_path):
         return self.old_inventory[parent_id].children[os.path.basename(old_path)].file_id
 
-    def delete_entry(self, path, revnum, parent_baton, pool):
-        del self.inventory[self._get_existing_id(parent_baton, path)]
+    def _get_new_id(self, parent_id, new_path):
+        if self.id_map.has_key(new_path):
+            return self.id_map[new_path]
+        return generate_file_id(self.revid, new_path)
+
+    def delete_entry(self, path, revnum, parent_id, pool):
+        del self.inventory[self._get_old_id(parent_id, path)]
 
     def close_directory(self, id):
         if id != ROOT_ID:
@@ -109,8 +121,8 @@ class RevisionBuildEditor(svn.delta.Editor):
             if not file_weave.has_version(self.revid):
                 file_weave.add_lines(self.revid, self.dir_baserev[id], [])
 
-    def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
-        file_id = self.id_map[path]
+    def add_directory(self, path, parent_id, copyfrom_path, copyfrom_revnum, pool):
+        file_id = self._get_new_id(parent_id, path)
 
         self.dir_baserev[file_id] = []
         ie = self.inventory.add_path(path, 'directory', file_id)
@@ -118,14 +130,11 @@ class RevisionBuildEditor(svn.delta.Editor):
 
         return file_id
 
-    def open_directory(self, path, parent_baton, base_revnum, pool):
+    def open_directory(self, path, parent_id, base_revnum, pool):
         assert base_revnum >= 0
-        base_file_id = self._get_existing_id(parent_baton, path)
+        base_file_id = self._get_old_id(parent_id, path)
         base_revid = self.old_inventory[base_file_id].revision
-        if self.id_map.has_key(path):
-            file_id = self.id_map[path]
-        else:
-            file_id = base_file_id
+        file_id = self._get_existing_id(parent_id, path)
         if file_id == base_file_id:
             self.dir_baserev[file_id] = [base_revid]
             ie = self.inventory[file_id]
@@ -194,16 +203,13 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.file_data = ""
         self.file_parents = []
         self.file_stream = None
-        self.file_id = self.id_map[path]
+        self.file_id = self._get_new_id(parent_id, path)
         return path
 
     def open_file(self, path, parent_id, base_revnum, pool):
-        base_file_id = self._get_existing_id(parent_id, path)
+        base_file_id = self._get_old_id(parent_id, path)
         base_revid = self.old_inventory[base_file_id].revision
-        if self.id_map.has_key(path):
-            self.file_id = self.id_map[path]
-        else:
-            self.file_id = base_file_id
+        self.file_id = self._get_existing_id(parent_id, path)
         self.is_executable = None
         self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
         file_weave = self.weave_store.get_weave_or_empty(base_file_id, self.transact)
