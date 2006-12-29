@@ -454,6 +454,21 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open("svn+%s" % repos_url)
         self.assertTrue(repository.is_shared())
 
+    def test_fetch_delete(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        oldrepos = Repository.open("dc")
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.client_delete("dc/foo/bla")
+        self.client_commit("dc", "Second Message")
+        newrepos = Repository.open("f")
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(oldrepos.has_revision("svn-v%d:2@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+
     def test_fetch_local(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})

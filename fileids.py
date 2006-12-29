@@ -185,14 +185,6 @@ class SimpleFileIdMap(FileIdMap):
         for p in sorted_paths:
             data = changes[p]
 
-            if data[0] in ('D', 'R'):
-                assert map.has_key(p), "No map entry %s to delete/replace" % p
-                del map[p]
-                # Delete all children of p as well
-                for c in map.keys():
-                    if c.startswith(p+"/"):
-                        del map[c]
-
             if data[0] in ('A', 'R'):
                 map[p] = generate_file_id(revid, p), revid
 

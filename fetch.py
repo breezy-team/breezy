@@ -63,8 +63,6 @@ class RevisionBuildEditor(svn.delta.Editor):
 
         self.pool = Pool()
 
-        mutter('q %r' % self.id_map)
-
     def _get_revision(self, revid):
         if self._parent_ids is None:
             self._parent_ids = ""
