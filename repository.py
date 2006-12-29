@@ -261,26 +261,17 @@ class SvnRepository(Repository):
     def path_to_file_id(self, revnum, path):
         """Generate a bzr file id from a Subversion file name. 
         
-        This implementation DOES NOT track renames.
-
         :param revnum: Revision number.
         :param path: Absolute path.
         :return: Tuple with file id and revision id.
         """
-        assert isinstance(revnum, int)
+        assert isinstance(revnum, int) and revnum >= 0
         assert isinstance(path, basestring)
-        assert revnum >= 0
-
-        path = path.strip("/")
 
         (bp, rp) = self.scheme.unprefix(path)
 
-        revid = self.generate_revision_id(revnum, bp)
-
-        map = self.get_fileid_map(revnum, bp)
-
         try:
-            return map[rp]
+            return self.get_fileid_map(revnum, bp)[rp]
         except KeyError:
             raise NoSuchFile(path=rp)
 
