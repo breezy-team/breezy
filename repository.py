@@ -323,13 +323,11 @@ class SvnRepository(Repository):
             return False
 
         try:
-            kind = self.transport.check_path(path.encode('utf8'), revnum)
+            return (svn.core.svn_node_none != self.transport.check_path(path.encode('utf8'), revnum))
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 return False
             raise
-
-        return (kind != svn.core.svn_node_none)
 
     def revision_trees(self, revids):
         for revid in revids:
@@ -495,7 +493,6 @@ class SvnRepository(Repository):
                         yielded_paths.append(bp)
                 except NotBranchError:
                     pass
-
             revnum-=1
 
     def follow_branch(self, branch_path, revnum):
@@ -503,8 +500,28 @@ class SvnRepository(Repository):
         assert isinstance(revnum, int) and revnum >= 0
         if not self.scheme.is_branch(branch_path):
             raise errors.NotSvnBranchPath(branch_path, revnum)
-        for (revnum, _, bp) in self.follow_branch_history(branch_path, revnum):
-            yield (revnum, bp)
+        branch_path = branch_path.strip("/")
+
+        while revnum > 0:
+            paths = self._log.get_revision_paths(revnum, branch_path)
+            if paths == {}:
+                revnum-=1
+                continue
+            yield (branch_path, revnum)
+            # FIXME: what if one of the parents of branch_path was moved?
+            if (paths.has_key(branch_path) and 
+                paths[branch_path][0] in ('R', 'A')):
+                if paths[branch_path][1] is None:
+                    return
+                if not self.scheme.is_branch(paths[branch_path][1]):
+                    # FIXME: if copyfrom_path is not a branch path, 
+                    # should simulate a reverse "split" of a branch
+                    # for now, just make it look like the branch ended here
+                    return
+                revnum = paths[branch_path][2]
+                branch_path = paths[branch_path][1]
+                continue
+            revnum-=1
 
     def follow_branch_history(self, branch_path, revnum):
         assert branch_path is not None
@@ -512,6 +529,7 @@ class SvnRepository(Repository):
             raise errors.NotSvnBranchPath(branch_path, revnum)
 
         for (bp, paths, revnum) in self._log.follow_path(branch_path, revnum):
+            # FIXME: what if one of the parents of branch_path was moved?
             if (paths.has_key(bp) and 
                 paths[bp][1] is not None and
                 not self.scheme.is_branch(paths[bp][1])):

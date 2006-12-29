@@ -103,8 +103,7 @@ class SvnBranch(Branch):
 
         return WorkingTree.open(to_location)
 
-    def create_checkout(self, to_location, revision_id=None,
-            lightweight=False):
+    def create_checkout(self, to_location, revision_id=None, lightweight=False):
         if lightweight:
             return self._create_lightweight_checkout(to_location, revision_id)
         else:
