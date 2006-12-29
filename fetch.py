@@ -95,8 +95,11 @@ class RevisionBuildEditor(svn.delta.Editor):
     def relpath(self, path):
         return path.strip("/")
 
+    def _get_existing_id(self, parent_id, old_path):
+        return self.old_inventory[parent_id].children[os.path.basename(old_path)].file_id
+
     def delete_entry(self, path, revnum, parent_baton, pool):
-        del self.inventory[self.inventory.path2id(path)]
+        del self.inventory[self._get_existing_id(parent_baton, path)]
 
     def close_directory(self, id):
         if id != ROOT_ID:
@@ -117,7 +120,7 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def open_directory(self, path, parent_baton, base_revnum, pool):
         assert base_revnum >= 0
-        base_file_id = self.old_inventory.path2id(path)
+        base_file_id = self._get_existing_id(parent_baton, path)
         base_revid = self.old_inventory[base_file_id].revision
         if self.id_map.has_key(path):
             file_id = self.id_map[path]
@@ -191,21 +194,22 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.file_data = ""
         self.file_parents = []
         self.file_stream = None
+        self.file_id = self.id_map[path]
         return path
 
     def open_file(self, path, parent_id, base_revnum, pool):
-        base_file_id = self.old_inventory.path2id(path)
+        base_file_id = self._get_existing_id(parent_id, path)
         base_revid = self.old_inventory[base_file_id].revision
         if self.id_map.has_key(path):
-            file_id = self.id_map[path]
+            self.file_id = self.id_map[path]
         else:
-            file_id = base_file_id
+            self.file_id = base_file_id
         self.is_executable = None
         self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
         file_weave = self.weave_store.get_weave_or_empty(base_file_id, self.transact)
         self.file_data = file_weave.get_text(base_revid)
         self.file_stream = None
-        if file_id == base_file_id:
+        if self.file_id == base_file_id:
             self.file_parents = [base_revid]
         else:
             # Replace
@@ -224,20 +228,16 @@ class RevisionBuildEditor(svn.delta.Editor):
         actual_checksum = md5_strings(lines)
         assert checksum is None or checksum == actual_checksum
 
-        if self.id_map.has_key(path):
-            file_id = self.id_map[path]
-        else:
-            file_id = self.old_inventory.path2id(path)
-        file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
+        file_weave = self.weave_store.get_weave_or_empty(self.file_id, self.transact)
         if not file_weave.has_version(self.revid):
             file_weave.add_lines(self.revid, self.file_parents, lines)
 
-        if file_id in self.inventory:
-            ie = self.inventory[file_id]
+        if self.file_id in self.inventory:
+            ie = self.inventory[self.file_id]
         elif self.is_symlink:
-            ie = self.inventory.add_path(path, 'symlink', file_id)
+            ie = self.inventory.add_path(path, 'symlink', self.file_id)
         else:
-            ie = self.inventory.add_path(path, 'file', file_id)
+            ie = self.inventory.add_path(path, 'file', self.file_id)
         ie.revision = self.revid
 
         if self.is_symlink:
