@@ -155,13 +155,19 @@ class TestFileMapping(TestCase):
         for r in revids:
             if not renames.has_key(r):
                 renames[r] = {}
-            map = SimpleFileIdMap._apply_changes(map, r, mappings[r], 
-                                                 find_children, renames=renames[r])
+            revmap = SimpleFileIdMap._apply_changes(r, mappings[r], find_children, renames=renames[r])
+            map.update(dict([(x,(revmap[x],r)) for x in revmap]))
         return map
 
     def test_simple(self):
         map = self.apply_mappings({"svn-v%d:1@uuid-" % MAPPING_VERSION: {"foo": ('A', None, None)}})
-        self.assertEqual({'': ('ROOT', "first-revision"),
+        self.assertEqual({ 'foo': ("svn-v%d:1@uuid--foo" % MAPPING_VERSION, 
+                                       "svn-v%d:1@uuid-" % MAPPING_VERSION)
+                         }, map)
+
+    def test_simple_add(self):
+        map = self.apply_mappings({"svn-v%d:1@uuid-" % MAPPING_VERSION: {"": ('A', None, None), "foo": ('A', None, None)}})
+        self.assertEqual({'': ('TREE_ROOT', "svn-v%d:1@uuid-" % MAPPING_VERSION), 
                                'foo': ("svn-v%d:1@uuid--foo" % MAPPING_VERSION, 
                                        "svn-v%d:1@uuid-" % MAPPING_VERSION)
                          }, map)
@@ -214,3 +220,4 @@ class TestFileMapping(TestCase):
                  }, 
                 renames={("svn-v%d:2@uuid-" % MAPPING_VERSION): {"foo": "myid"}})
         self.assertEqual("svn-v%d:1@uuid--foo" % MAPPING_VERSION, map["foo"][0])
+        self.assertEqual("svn-v%d:1@uuid-" % MAPPING_VERSION, map["foo"][1])

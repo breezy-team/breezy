@@ -264,11 +264,10 @@ class LogWalker(object):
             yield os.path.join(path, p)
             # This needs to be != svn.core.svn_node_file because 
             # some ra backends seem to return negative values for .kind.
-            # This if statement is just an optimization to make use of this 
-            # property when possible.
-            if dirents[p].kind != svn.core.svn_node_file:
-                for c in self.find_children(os.path.join(path, p), revnum):
-                    yield c
+            # however, dirents[p].node seems to contain semi-random 
+            # values.
+            for c in self.find_children(os.path.join(path, p), revnum):
+                yield c
 
     def get_previous(self, path, revnum):
         """Return path,revnum pair specified pair was derived from.

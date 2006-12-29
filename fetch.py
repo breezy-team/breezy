@@ -45,14 +45,14 @@ class RevisionBuildEditor(svn.delta.Editor):
     def __init__(self, source, target, branch_path, revnum, prev_inventory, 
                  revid, svn_revprops, id_map, parent_branch, parent_id_map):
         self.branch_path = branch_path
-        self.inventory = prev_inventory
+        self.old_inventory = prev_inventory
+        self.inventory = copy(prev_inventory)
         assert self.inventory.root is None or revnum > 0
         self.revid = revid
         self.revnum = revnum
         mutter('idmap for %r %r' % (revid, id_map))
         self.id_map = id_map
         self.parent_branch = parent_branch
-        self.parent_id_map = parent_id_map
         self.source = source
         self.target = target
         self.transact = target.get_transaction()
@@ -107,28 +107,29 @@ class RevisionBuildEditor(svn.delta.Editor):
         del self.inventory[self.inventory.path2id(path)]
 
     def close_directory(self, id):
-        revid = self.revid
+        self.inventory[id].revision = self.revid
 
-        if id != self.id_map[""][0]:
-            self.inventory[id].revision = revid
-
-            file_weave = self.weave_store.get_weave_or_empty(id, self.transact)
-            if not file_weave.has_version(revid):
-                file_weave.add_lines(revid, self.dir_baserev[id], [])
+        file_weave = self.weave_store.get_weave_or_empty(id, self.transact)
+        if not file_weave.has_version(self.revid):
+            file_weave.add_lines(self.revid, self.dir_baserev[id], [])
 
     def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
-        file_id, revision_id = self.id_map[path]
+        file_id = self.id_map[path]
 
         self.dir_baserev[file_id] = []
         ie = self.inventory.add_path(path, 'directory', file_id)
-        ie.revision = revision_id
+        ie.revision = self.revid
 
         return file_id
 
     def open_directory(self, path, parent_baton, base_revnum, pool):
-        file_id, revision_id = self.id_map[path]
         assert base_revnum >= 0
-        base_file_id, base_revid = self.source.path_to_file_id(base_revnum, os.path.join(self.parent_branch, path))
+        base_file_id = self.old_inventory.path2id(path)
+        base_revid = self.old_inventory[base_file_id].revision
+        if self.id_map.has_key(path):
+            file_id = self.id_map[path]
+        else:
+            file_id = base_file_id
         if file_id == base_file_id:
             self.dir_baserev[file_id] = [base_revid]
             ie = self.inventory[file_id]
@@ -143,7 +144,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             self.inventory._byid[file_id] = ie
             ie.file_id = file_id
             self.dir_baserev[file_id] = []
-        ie.revision = revision_id
+        ie.revision = self.revid
         return file_id
 
     def change_dir_prop(self, id, name, value, pool):
@@ -200,8 +201,12 @@ class RevisionBuildEditor(svn.delta.Editor):
         return path
 
     def open_file(self, path, parent_id, base_revnum, pool):
-        base_file_id, base_revid = self.source.path_to_file_id(base_revnum, os.path.join(self.parent_branch, path))
-        file_id, revid = self.id_map[path]
+        base_file_id = self.old_inventory.path2id(path)
+        base_revid = self.old_inventory[base_file_id].revision
+        if self.id_map.has_key(path):
+            file_id = self.id_map[path]
+        else:
+            file_id = base_file_id
         self.is_executable = None
         self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
         file_weave = self.weave_store.get_weave_or_empty(base_file_id, self.transact)
@@ -226,10 +231,13 @@ class RevisionBuildEditor(svn.delta.Editor):
         actual_checksum = md5_strings(lines)
         assert checksum is None or checksum == actual_checksum
 
-        file_id, revision_id = self.id_map[path]
+        if self.id_map.has_key(path):
+            file_id = self.id_map[path]
+        else:
+            file_id = self.old_inventory.path2id(path)
         file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
-        if not file_weave.has_version(revision_id):
-            file_weave.add_lines(revision_id, self.file_parents, lines)
+        if not file_weave.has_version(self.revid):
+            file_weave.add_lines(self.revid, self.file_parents, lines)
 
         if file_id in self.inventory:
             ie = self.inventory[file_id]
@@ -237,7 +245,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             ie = self.inventory.add_path(path, 'symlink', file_id)
         else:
             ie = self.inventory.add_path(path, 'file', file_id)
-        ie.revision = revision_id
+        ie.revision = self.revid
 
         if self.is_symlink:
             ie.symlink_target = lines[0][len("link "):]
@@ -333,28 +341,19 @@ class InterSvnRepository(InterRepository):
                 parent_branch = None
 
             if parent_revid is None:
-                # if there is no parent id, that means this is the 
-                # first revision on this branch
-                id_map = self.source.get_fileid_map(revnum, branch)
-                parent_id_map = None
                 parent_inv = Inventory(root_id=None)
             elif prev_revid != parent_revid:
-                parent_id_map = self.source.get_fileid_map(parent_revnum, parent_branch)
-                id_map = self.source.get_fileid_map(revnum, branch)
                 parent_inv = self.target.get_inventory(parent_revid)
             else:
-                parent_id_map = copy(id_map)
-                self.source.transform_fileid_map(self.source.uuid, 
-                                        revnum, branch, 
-                                        changes, id_map, 
-                                        # FIXME: use information received in editor
-                                        self.source.revision_fileid_renames(revid))
                 parent_inv = prev_inv
+
+            id_map = self.source.transform_fileid_map(self.source.uuid, 
+                                        revnum, branch, changes)
 
             editor = RevisionBuildEditor(self.source, self.target, branch, 
                                          revnum, parent_inv, revid, 
                                      self.source._log.get_revision_info(revnum),
-                                     id_map, parent_branch, parent_id_map)
+                                     id_map, parent_branch)
 
             pool = Pool()
             edit, edit_baton = svn.delta.make_editor(editor, pool)
