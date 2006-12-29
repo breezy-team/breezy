@@ -307,8 +307,8 @@ class InterSvnRepository(InterRepository):
         if path is None:
             it = self.source.follow_history(until_revnum)
         else:
-            it = self.source.follow_branch_history(path, until_revnum)
-        for (branch, changes, revnum) in it:
+            it = self.source.follow_branch(path, until_revnum)
+        for (branch, revnum) in it:
             revid = self.source.generate_revision_id(revnum, branch)
 
             if prev_revid is not None:

@@ -92,9 +92,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos.set_branching_scheme(TrunkBranchingScheme())
 
         items = list(repos.follow_history(2))
-        self.assertEqual([('branches/abranch', {'branches/abranch': ('A', 'trunk', 1)}, 2), 
-                          ('trunk', {'trunk/afile': ('A', None, -1), 
-                                     'trunk': (u'A', None, -1)}, 1)], items)
+        self.assertEqual([('branches/abranch', 2), 
+                          ('trunk', 1)], items)
 
     def test_branch_log_specific(self):
         repos_url = self.make_client("a", "dc")

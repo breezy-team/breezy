@@ -486,31 +486,15 @@ class SvnRepository(Repository):
 
     def follow_history(self, revnum):
         while revnum > 0:
-            paths = self._log.get_revision_paths(revnum)
-            changed_paths = {}
-            for p in paths:
+            yielded_paths = []
+            for p in self._log.get_revision_paths(revnum):
                 try:
-                    (bp, rp) = self.scheme.unprefix(p)
-                    if not changed_paths.has_key(bp):
-                        changed_paths[bp] = {}
-                    changed_paths[bp][p] = paths[p]
+                    (bp, _) = self.scheme.unprefix(p)
+                    if not bp in yielded_paths:
+                        yield (bp, revnum)
+                        yielded_paths.append(bp)
                 except NotBranchError:
                     pass
-
-            for bp in changed_paths:
-                if (changed_paths[bp].has_key(bp) and 
-                    changed_paths[bp][bp][1] is not None and
-                    not self.scheme.is_branch(changed_paths[bp][bp][1])):
-                    # FIXME: if copyfrom_path is not a branch path, 
-                    # should simulate a reverse "split" of a branch
-                    # For now, just make it look like the branch originated here.
-                    mutter('breaking off "split"')
-                    for c in self._log.find_children(changed_paths[bp][bp][1], changed_paths[bp][bp][2]):
-                        path = c.replace(changed_paths[bp][bp][1], bp+"/", 1).replace("//", "/")
-                        changed_paths[bp][path] = ('A', None, -1)
-                    changed_paths[bp][bp] = ('A', None, -1)
-
-                yield (bp, changed_paths[bp], revnum)
 
             revnum-=1
 
