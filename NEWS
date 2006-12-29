@@ -118,6 +118,9 @@ IN DEVELOPMENT
     * Mention the revisionspec topic for the revision option help.
       (Wouter van Heyst, #31663)
 
+    * Allow plugins import from zip archives.
+      (Alexander Belchenko, #68124)
+
 
 bzr 0.13  2006-12-05
     

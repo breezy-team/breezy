@@ -113,6 +113,7 @@ def load_plugins():
     dirs.insert(0, os.path.dirname(plugins.__file__))
 
     load_from_dirs(dirs)
+    load_from_zips(dirs)
 
 
 def load_from_dirs(dirs):
@@ -182,4 +183,82 @@ def load_from_dirs(dirs):
             except Exception, e:
                 ## import pdb; pdb.set_trace()
                 warning('Unable to load plugin %r from %r' % (name, d))
+                log_exception_quietly()
+
+
+def load_from_zips(zips):
+    """Load bzr plugins from zip archives with zipimport.
+    It's similar to load_from_dirs but plugins searched inside archives.
+    """
+    import zipfile
+    import zipimport
+
+    valid_suffixes = ('.py', '.pyc', '.pyo')    # only python modules/packages
+                                                # is allowed
+    for zip_name in zips:
+        if '.zip' not in zip_name:
+            continue
+        try:
+            ziobj = zipimport.zipimporter(zip_name)
+        except zipimport.ZipImportError:
+            # not a valid zip
+            continue
+        mutter('Looking for plugins in %r', zip_name)
+
+        # use zipfile to get list of files/dirs inside zip
+        z = zipfile.ZipFile(ziobj.archive)
+        namelist = z.namelist()
+        z.close()
+
+        if ziobj.prefix:
+            prefix = ziobj.prefix.replace('\\','/')
+            ix = len(prefix)
+            namelist = [name[ix:]
+                        for name in namelist
+                        if name.startswith(prefix)]
+
+        mutter('Names in archive: %r', namelist)
+
+        for name in namelist:
+            if not name or name.endswith('/'):
+                continue
+
+            head, tail = os.path.split(name)
+            if '/' in head:
+                # we don't need looking in subdirectories
+                continue
+
+            base, suffix = os.path.splitext(tail)
+            if suffix not in valid_suffixes:
+                continue
+
+            if base == '__init__':
+                # package
+                plugin_name = head
+            elif head == '':
+                # module
+                plugin_name = base
+            else:
+                continue
+
+            if not plugin_name:
+                continue
+            if getattr(plugins, plugin_name, None):
+                mutter('Plugin name %s already loaded', plugin_name)
+                continue
+
+            try:
+                plugin = ziobj.load_module(plugin_name)
+                setattr(plugins, plugin_name, plugin)
+                mutter('Load plugin %s from zip %r', plugin_name, zip_name)
+            except zipimport.ZipImportError, e:
+                mutter('Unable to load plugin %r from %r: %s',
+                       plugin_name, zip_name, str(e))
+                continue
+            except KeyboardInterrupt:
+                raise
+            except Exception, e:
+                ## import pdb; pdb.set_trace()
+                warning('Unable to load plugin %r from %r'
+                        % (name, zip_name))
                 log_exception_quietly()
