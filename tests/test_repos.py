@@ -78,6 +78,30 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         self.assertEqual(1, len(list(repos.follow_history(1))))
 
+    def test_all_revs_empty(self):
+        repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+        self.assertEqual([], list(repos.all_revision_ids()))
+
+    def test_all_revs(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/file': "data", "dc/foo/file":"data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "add trunk")
+        self.build_tree({'dc/branches/somebranch/somefile': 'data'})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "add a branch")
+        self.client_delete("dc/branches/somebranch")
+        self.client_commit("dc", "remove branch")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+        self.assertEqual([
+            "svn-v%d:2@%s-branches%%2fsomebranch" % (MAPPING_VERSION, repos.uuid),
+            "svn-v%d:1@%s-trunk" % (MAPPING_VERSION, repos.uuid)
+            ], list(repos.all_revision_ids()))
+
     def test_follow_history_follow(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/trunk/afile': "data", "dc/branches": None})

@@ -212,8 +212,6 @@ class SvnRepository(Repository):
         assert self.base
         assert self.uuid
 
-        mutter("Connected to repository with UUID %s" % self.uuid)
-
         cache_file = os.path.join(self.create_cache_dir(), 'cache-v1')
         if not cachedbs.has_key(cache_file):
             cachedbs[cache_file] = sqlite3.connect(cache_file)
@@ -275,7 +273,8 @@ class SvnRepository(Repository):
             raise NoSuchFile(path=rp)
 
     def all_revision_ids(self):
-        raise NotImplementedError(self.all_revision_ids)
+        for (bp, rev) in self.follow_history(self._latest_revnum):
+            yield self.generate_revision_id(rev, bp)
 
     def get_inventory_weave(self):
         raise NotImplementedError(self.get_inventory_weave)
@@ -484,11 +483,13 @@ class SvnRepository(Repository):
     def follow_history(self, revnum):
         while revnum > 0:
             yielded_paths = []
-            for p in self._log.get_revision_paths(revnum):
+            paths = self._log.get_revision_paths(revnum)
+            for p in paths:
                 try:
-                    (bp, _) = self.scheme.unprefix(p)
+                    bp = self.scheme.unprefix(p)[0]
                     if not bp in yielded_paths:
-                        yield (bp, revnum)
+                        if not paths.has_key(bp) or paths[bp][0] != 'D':
+                            yield (bp, revnum)
                         yielded_paths.append(bp)
                 except NotBranchError:
                     pass

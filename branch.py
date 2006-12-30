@@ -64,7 +64,6 @@ class SvnBranch(Branch):
         self.control_files = FakeControlFiles()
         self.base = base.rstrip("/")
         self._format = SvnBranchFormat()
-        mutter("Connected to branch at %r" % self.branch_path)
         self._generate_revision_history(self.repository._latest_revnum)
 
     def check(self):
