@@ -320,66 +320,67 @@ class InterSvnRepository(InterRepository):
         transport = self.source.transport
         pb = ui_factory.nested_progress_bar()
         num = 0
-        for (branch, revnum, revid) in needed:
-            pb.update('copying revision', num, len(needed))
+        try:
+            for (branch, revnum, revid) in needed:
+                pb.update('copying revision', num, len(needed))
 
-            parent_revid = parents[revid]
+                parent_revid = parents[revid]
 
-            if parent_revid is None:
-                parent_inv = Inventory(ROOT_ID)
-            elif prev_revid != parent_revid:
-                parent_inv = self.target.get_inventory(parent_revid)
-            else:
-                parent_inv = prev_inv
-
-            changes = self.source._log.get_revision_paths(revnum, branch)
-            id_map = self.source.transform_fileid_map(self.source.uuid, 
-                                        revnum, branch, changes)
-
-            editor = RevisionBuildEditor(self.source, self.target, branch, 
-                                         parent_inv, revid, 
-                                     self.source._log.get_revision_info(revnum),
-                                     id_map)
-
-            pool = Pool()
-            edit, edit_baton = svn.delta.make_editor(editor, pool)
-
-            if parent_revid is None:
-                transport.reparent("%s/%s" % (repos_root, branch))
-                reporter, reporter_baton = transport.do_update(
-                               revnum, "", True, edit, edit_baton, pool)
-
-                # Report status of existing paths
-                svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
-                    "", revnum, True, None, pool)
-            else:
-                (parent_branch, parent_revnum) = self.source.parse_revision_id(parent_revid)
-                transport.reparent("%s/%s" % (repos_root, parent_branch))
-
-                if parent_branch != branch:
-                    switch_url = "%s/%s" % (repos_root, branch)
-                    reporter, reporter_baton = transport.do_switch(
-                               revnum, "", True, 
-                               switch_url, edit, edit_baton, pool)
+                if parent_revid is None:
+                    parent_inv = Inventory(ROOT_ID)
+                elif prev_revid != parent_revid:
+                    parent_inv = self.target.get_inventory(parent_revid)
                 else:
+                    parent_inv = prev_inv
+
+                changes = self.source._log.get_revision_paths(revnum, branch)
+                id_map = self.source.transform_fileid_map(self.source.uuid, 
+                                            revnum, branch, changes)
+
+                editor = RevisionBuildEditor(self.source, self.target, branch, 
+                                             parent_inv, revid, 
+                                         self.source._log.get_revision_info(revnum),
+                                         id_map)
+
+                pool = Pool()
+                edit, edit_baton = svn.delta.make_editor(editor, pool)
+
+                if parent_revid is None:
+                    transport.reparent("%s/%s" % (repos_root, branch))
                     reporter, reporter_baton = transport.do_update(
-                               revnum, "", True, edit, edit_baton, pool)
+                                   revnum, "", True, edit, edit_baton, pool)
 
-                # Report status of existing paths
-                svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
-                    "", parent_revnum, False, None, pool)
+                    # Report status of existing paths
+                    svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
+                        "", revnum, True, None, pool)
+                else:
+                    (parent_branch, parent_revnum) = self.source.parse_revision_id(parent_revid)
+                    transport.reparent("%s/%s" % (repos_root, parent_branch))
 
-            transport.lock()
-            svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
-            transport.unlock()
+                    if parent_branch != branch:
+                        switch_url = "%s/%s" % (repos_root, branch)
+                        reporter, reporter_baton = transport.do_switch(
+                                   revnum, "", True, 
+                                   switch_url, edit, edit_baton, pool)
+                    else:
+                        reporter, reporter_baton = transport.do_update(
+                                   revnum, "", True, edit, edit_baton, pool)
 
-            prev_inv = editor.inventory
-            prev_revid = revid
-            pool.destroy()
-            num += 1
+                    # Report status of existing paths
+                    svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
+                        "", parent_revnum, False, None, pool)
 
+                transport.lock()
+                svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
+                transport.unlock()
+
+                prev_inv = editor.inventory
+                prev_revid = revid
+                pool.destroy()
+                num += 1
+        finally:
+            pb.finished()
         self.source.transport.reparent(repos_root)
-        pb.finished()
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
