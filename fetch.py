@@ -288,21 +288,15 @@ class InterSvnRepository(InterRepository):
         # (or youngest_revnum) and call self.target.add_revision() 
         # or self.target.add_inventory() each time
         if revision_id is None:
-            path = None
-            until_revnum = self.source._latest_revnum
+            history_iterator = self.source.follow_history(self.source._latest_revnum)
         else:
             (path, until_revnum) = self.source.parse_revision_id(revision_id)
+            history_iterator = self.source.follow_branch(path, until_revnum)
 
-        repos_root = self.source.transport.get_repos_root()
-        
         needed = []
         parents = {}
         prev_revid = None
-        if path is None:
-            it = self.source.follow_history(until_revnum)
-        else:
-            it = self.source.follow_branch(path, until_revnum)
-        for (branch, revnum) in it:
+        for (branch, revnum) in history_iterator:
             revid = self.source.generate_revision_id(revnum, branch)
 
             if prev_revid is not None:
@@ -313,7 +307,13 @@ class InterSvnRepository(InterRepository):
             if not self.target.has_revision(revid):
                 needed.append((branch, revnum, revid))
 
+        if len(needed) == 0:
+            # Nothing to fetch
+            return
+
         parents[prev_revid] = None
+
+        repos_root = self.source.transport.get_repos_root()
 
         needed.reverse()
         prev_revid = None
