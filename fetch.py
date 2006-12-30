@@ -18,10 +18,10 @@ import bzrlib
 from bzrlib.decorators import needs_write_lock
 from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.osutils as osutils
-from bzrlib.progress import ProgressBar
 from bzrlib.revision import Revision
 from bzrlib.repository import InterRepository
 from bzrlib.trace import mutter
+from bzrlib.ui import ui_factory
 
 from copy import copy
 from cStringIO import StringIO
@@ -43,25 +43,20 @@ def md5_strings(strings):
     return s.hexdigest()
 
 class RevisionBuildEditor(svn.delta.Editor):
-    def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, svn_revprops, id_map, parent_branch):
+    def __init__(self, source, target, branch_path, prev_inventory, revid, svn_revprops, id_map):
         self.branch_path = branch_path
         self.old_inventory = prev_inventory
         self.inventory = copy(prev_inventory)
         self.revid = revid
-        self.revnum = revnum
         self.id_map = id_map
-        self.parent_branch = parent_branch
         self.source = source
         self.target = target
         self.transact = target.get_transaction()
         self.weave_store = target.weave_store
-    
         self.dir_baserev = {}
-
         self._parent_ids = None
         self._revprops = {}
         self._svn_revprops = svn_revprops
-
         self.pool = Pool()
 
     def _get_revision(self, revid):
@@ -99,7 +94,6 @@ class RevisionBuildEditor(svn.delta.Editor):
     def _get_existing_id(self, parent_id, path):
         if self.id_map.has_key(path):
             return self.id_map[path]
-
         return self._get_old_id(parent_id, path)
 
     def _get_old_id(self, parent_id, old_path):
@@ -286,7 +280,7 @@ class InterSvnRepository(InterRepository):
     """The format to test with."""
 
     @needs_write_lock
-    def copy_content(self, revision_id=None, basis=None, pb=ProgressBar()):
+    def copy_content(self, revision_id=None, basis=None):
         """See InterRepository.copy_content."""
         # Dictionary with paths as keys, revnums as values
 
@@ -321,22 +315,15 @@ class InterSvnRepository(InterRepository):
 
         parents[prev_revid] = None
 
-        num = 0
         needed.reverse()
         prev_revid = None
         transport = self.source.transport
+        pb = ui_factory.nested_progress_bar()
+        num = 0
         for (branch, revnum, revid) in needed:
-            if pb is not None:
-                pb.update('copying revision', num+1, len(needed)+1)
-            num += 1
+            pb.update('copying revision', num, len(needed))
 
             parent_revid = parents[revid]
-
-            if parent_revid is not None:
-                (parent_branch, parent_revnum) = self.source.parse_revision_id(parent_revid)
-            else:
-                parent_revnum = 0
-                parent_branch = None
 
             if parent_revid is None:
                 parent_inv = Inventory(ROOT_ID)
@@ -350,14 +337,14 @@ class InterSvnRepository(InterRepository):
                                         revnum, branch, changes)
 
             editor = RevisionBuildEditor(self.source, self.target, branch, 
-                                         revnum, parent_inv, revid, 
+                                         parent_inv, revid, 
                                      self.source._log.get_revision_info(revnum),
-                                     id_map, parent_branch)
+                                     id_map)
 
             pool = Pool()
             edit, edit_baton = svn.delta.make_editor(editor, pool)
 
-            if parent_branch is None:
+            if parent_revid is None:
                 transport.reparent("%s/%s" % (repos_root, branch))
                 reporter, reporter_baton = transport.do_update(
                                revnum, "", True, edit, edit_baton, pool)
@@ -366,6 +353,7 @@ class InterSvnRepository(InterRepository):
                 svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
                     "", revnum, True, None, pool)
             else:
+                (parent_branch, parent_revnum) = self.source.parse_revision_id(parent_revid)
                 transport.reparent("%s/%s" % (repos_root, parent_branch))
 
                 if parent_branch != branch:
@@ -387,18 +375,16 @@ class InterSvnRepository(InterRepository):
 
             prev_inv = editor.inventory
             prev_revid = revid
-
             pool.destroy()
-
-        if pb is not None:
-            pb.clear()
+            num += 1
 
         self.source.transport.reparent(repos_root)
+        pb.finished()
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=ProgressBar()):
+    def fetch(self, revision_id=None, pb=None):
         """Fetch revisions. """
-        self.copy_content(revision_id=revision_id, pb=pb)
+        self.copy_content(revision_id=revision_id)
 
     @staticmethod
     def is_compatible(source, target):

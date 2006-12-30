@@ -17,9 +17,9 @@
 from bzrlib.errors import RevisionNotPresent, NotBranchError
 from bzrlib.inventory import ROOT_ID
 from bzrlib.knit import KnitVersionedFile
-from bzrlib.progress import ProgressBar
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
+from bzrlib.ui import ui_factory
 import bzrlib.urlutils as urlutils
 from warnings import warn
 
@@ -141,7 +141,7 @@ class FileIdMap(object):
         return self._apply_changes(lambda x: generate_file_id(revid, x), 
                                    changes, get_children)
 
-    def get_map(self, uuid, revnum, branch, pb=None):
+    def get_map(self, uuid, revnum, branch):
         """Make sure the map is up to date until revnum."""
         # First, find the last cached map
         todo = []
@@ -163,14 +163,14 @@ class FileIdMap(object):
         if len(map.keys()) == 0:
             map = {"": (ROOT_ID, None)} # No history -> empty map
         todo.reverse()
+        
+        pb = ui_factory.nested_progress_bar()
 
-        i = 0
+        i = 1
         for (revid, global_changes) in todo:
             changes = get_local_changes(global_changes, self.repos.scheme,
                                         uuid, self.repos._log.find_children)
-            mutter('generating file id map for %r' % revid)
-            if pb is not None:
-                pb.update('generating file id map', i, len(todo))
+            pb.update('generating file id map', i, len(todo))
 
             def find_children(path, revid):
                 (_, bp, revnum) = parse_svn_revision_id(revid)
@@ -197,11 +197,9 @@ class FileIdMap(object):
                     map[parent] = map[parent][0], revid
                     
             next_parent_revs = [revid]
-            i = i + 1
+            i += 1
 
-        if pb is not None:
-            pb.clear()
-
+        pb.finished()
         self.save(revid, parent_revs, map)
         return map
 

@@ -30,8 +30,10 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrError, NotBranchError
 import bzrlib.osutils as osutils
+from bzrlib.progress import DummyProgress
 from bzrlib.repository import Repository
 from bzrlib.trace import info, mutter
+from bzrlib.ui import ui_factory
 
 from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
@@ -52,17 +54,19 @@ def load_dumpfile(dumpfile, outputdir):
 
 
 def convert_repository(url, output_dir, scheme, create_shared_repo=True, working_trees=False):
-    tmp_repos = None
 
     if os.path.isfile(url):
         tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
         mutter('loading dumpfile %r to %r' % (url, tmp_repos))
-
         load_dumpfile(url, tmp_repos)
-            
         url = tmp_repos
+    else:
+        tmp_repos = None
 
     try:
+        source_repos = SvnRepository.open(url)
+        source_repos.set_branching_scheme(scheme)
+
         if create_shared_repo:
             try:
                 target_repos = Repository.open(output_dir)
@@ -74,34 +78,33 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True, working
                     BzrDir.create_repository(output_dir, shared=True)
                 target_repos = Repository.open(output_dir)
             target_repos.set_make_working_trees(working_trees)
-
-        source_repos = SvnRepository.open(url)
-
-        source_repos.set_branching_scheme(scheme)
+            # FIXME: Copy all revisions first, even the ones that aren't ancestors
+            # of currently existing branches? 
+            # source_repos.copy_content_into(target_repos)
 
         branches = list(source_repos.find_branches())
-
         mutter('branches: %r' % list(branches))
-                
         existing_branches = filter(lambda (bp, revnum, exists): exists, 
                                    branches)
-        info('Importing %d branches' % len(existing_branches))
+        pb = ui_factory.nested_progress_bar()
+                       
+        try:
+            i = 0
+            for (branch, revnum, exists) in existing_branches:
+                pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
+                source_branch = Branch.open("%s/%s" % (url, branch))
 
-        for (branch, revnum, exists) in existing_branches:
-            source_branch = Branch.open("%s/%s" % (url, branch))
-
-            target_dir = os.path.join(output_dir, branch)
-            try:
-                target_branch = Branch.open(target_dir)
-                target_branch.pull(source_branch)
-            except NotBranchError:
-                os.makedirs(target_dir)
-                source_branch.bzrdir.sprout(target_dir, source_branch.last_revision())
-            
-            info('Converted %s:%d' % (branch, revnum))
-
+                target_dir = os.path.join(output_dir, branch)
+                try:
+                    target_branch = Branch.open(target_dir)
+                    target_branch.pull(source_branch)
+                except NotBranchError:
+                    os.makedirs(target_dir)
+                    source_branch.bzrdir.sprout(target_dir, 
+                                                source_branch.last_revision())
+                i+=1
+        finally:
+            pb.finished()
     finally:
         if tmp_repos:
             osutils.rmtree(tmp_repos)
-
-

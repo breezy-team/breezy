@@ -17,7 +17,7 @@
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import NotBranchError, NotLocalUrl, NoRepositoryPresent
 from bzrlib.lockable_files import TransportLock
-from bzrlib.progress import ProgressBar
+from bzrlib.ui import ui_factory
 from bzrlib.transport.local import LocalTransport
 import bzrlib.urlutils as urlutils
 
@@ -74,8 +74,7 @@ class SvnRemoteAccess(BzrDir):
         else:
             try:
                 result_repo = result.find_repository()
-                result_repo.fetch(repo, revision_id=revision_id, 
-                                  pb=ProgressBar())
+                result_repo.fetch(repo, revision_id=revision_id)
             except NoRepositoryPresent:
                 result_repo = repo.clone(result, revision_id, basis)
 

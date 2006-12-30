@@ -24,7 +24,6 @@ from bzrlib.graph import Graph
 from bzrlib.inventory import Inventory, ROOT_ID
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
-from bzrlib.progress import ProgressBar
 from bzrlib.repository import Repository, RepositoryFormat
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
@@ -252,8 +251,8 @@ class SvnRepository(Repository):
         assert revision_id != None
         return self.revision_tree(revision_id).inventory
 
-    def get_fileid_map(self, revnum, path, pb=None):
-        return self.fileid_map.get_map(self.uuid, revnum, path, pb)
+    def get_fileid_map(self, revnum, path):
+        return self.fileid_map.get_map(self.uuid, revnum, path)
 
     def transform_fileid_map(self, uuid, revnum, branch, changes):
         return self.fileid_map.apply_changes(uuid, revnum, branch, changes)
