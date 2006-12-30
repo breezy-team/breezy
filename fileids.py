@@ -42,7 +42,7 @@ def generate_svn_file_id(uuid, revnum, branch, path):
         return ROOT_ID
     introduced_revision_id = generate_svn_revision_id(uuid, revnum, branch)
     ret = "%s-%s" % (introduced_revision_id, escape_svn_path(path))
-    if len(ret) > 250:
+    if len(ret) > 150:
         basename = os.path.basename(path)
         parent = path[:-len(basename)]
         ret = "%s-%s-%s" % (introduced_revision_id, 
