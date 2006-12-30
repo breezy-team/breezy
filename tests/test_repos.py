@@ -453,6 +453,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open("svn+%s" % repos_url)
         self.assertTrue(repository.is_shared())
 
+    def test_fetch_trunk1(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/proj1/trunk/file': "data"})
+        self.client_add("dc/proj1")
+        self.client_commit("dc", "My Message")
+        oldrepos = Repository.open("dc")
+        oldrepos.set_branching_scheme(TrunkBranchingScheme(1))
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
     def test_fetch_delete(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})

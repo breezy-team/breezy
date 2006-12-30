@@ -358,21 +358,28 @@ class InterSvnRepository(InterRepository):
             edit, edit_baton = svn.delta.make_editor(editor, pool)
 
             if parent_branch is None:
-                transport.reparent(repos_root)
+                transport.reparent("%s/%s" % (repos_root, branch))
+                reporter, reporter_baton = transport.do_update(
+                               revnum, "", True, edit, edit_baton, pool)
+
+                # Report status of existing paths
+                svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
+                    "", revnum, True, None, pool)
             else:
                 transport.reparent("%s/%s" % (repos_root, parent_branch))
-            if parent_branch != branch:
-                switch_url = "%s/%s" % (repos_root, branch)
-                reporter, reporter_baton = transport.do_switch(
-                           revnum, "", True, 
-                           switch_url, edit, edit_baton, pool)
-            else:
-                reporter, reporter_baton = transport.do_update(
-                           revnum, "", True, edit, edit_baton, pool)
 
-            # Report status of existing paths
-            svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
-                "", parent_revnum, False, None, pool)
+                if parent_branch != branch:
+                    switch_url = "%s/%s" % (repos_root, branch)
+                    reporter, reporter_baton = transport.do_switch(
+                               revnum, "", True, 
+                               switch_url, edit, edit_baton, pool)
+                else:
+                    reporter, reporter_baton = transport.do_update(
+                               revnum, "", True, edit, edit_baton, pool)
+
+                # Report status of existing paths
+                svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
+                    "", parent_revnum, False, None, pool)
 
             transport.lock()
             svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)

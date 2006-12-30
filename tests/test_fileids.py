@@ -21,6 +21,8 @@ from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 from bzrlib.tests import TestSkipped, TestCase
 
+import sha
+
 import format
 from fileids import SimpleFileIdMap, generate_file_id
 from repository import MAPPING_VERSION
@@ -146,6 +148,19 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.assertEqual(
                 "svn-v%d:1@%s-trunk" % (MAPPING_VERSION, repository.uuid), 
                 revid)
+
+def sha1(str):
+    return sha.new(str).hexdigest()
+
+class TestFileIdGenerator(TestCase):
+    def test_generate_file_id_path(self):
+        self.assertEqual("svn-v2:2@uuid-bp-mypath", 
+                         generate_file_id("svn-v2:2@uuid-bp", "mypath"))
+
+    def test_generate_file_id_long(self):
+        dir = "this/is/a" + ("/very"*40) + "/long/path/"
+        self.assertEqual("svn-v2:2@uuid-bp-" + sha1(dir) + "-filename", 
+                         generate_file_id("svn-v2:2@uuid-bp", dir+"filename"))
 
 class TestFileMapping(TestCase):
     def apply_mappings(self, mappings, find_children=None):
