@@ -340,24 +340,30 @@ class SvnRepository(Repository):
 
         return SvnRevisionTree(self, revision_id, inventory)
 
-    def revision_parents(self, revision_id, merged_data=None):
-        (path, revnum) = self.parse_revision_id(revision_id)
-
-        parent_path = None
-        parent_ids = []
+    def _mainline_revision_parent(self, path, revnum):
+        assert isinstance(path, basestring)
+        assert isinstance(revnum, int)
         for (branch, rev) in self.follow_branch(path, revnum):
             if rev < revnum:
-                parent_revnum = rev
-                parent_path = branch
-                parent_ids = [self.generate_revision_id(rev, branch)]
-                break
+                return self.generate_revision_id(rev, branch)
+        return None
+
+    def revision_parents(self, revision_id, merged_data=None):
+        parent_ids = []
+        (branch, revnum) = self.parse_revision_id(revision_id)
+        mainline_parent = self._mainline_revision_parent(branch, revnum)
+        if mainline_parent is not None:
+            parent_ids.append(mainline_parent)
+            (parent_path, parent_revnum) = self.parse_revision_id(mainline_parent)
+        else:
+            parent_path = None
 
         # if the branch didn't change, bzr:merge can't have changed
         if not self._log.touches_path(branch, revnum):
             return parent_ids
        
         if merged_data is None:
-            new_merge = self.branchprop_list.get_property(path, revnum, 
+            new_merge = self.branchprop_list.get_property(branch, revnum, 
                                            SVN_PROP_BZR_MERGE, "").splitlines()
 
             if len(new_merge) == 0 or parent_path is None:

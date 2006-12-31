@@ -116,12 +116,13 @@ class cmd_svn_import(Command):
     takes_args = ['from_location', 'to_location?']
     takes_options = [Option('trees', help='Create working trees'),
                      Option('shared', help='Create shared repository'),
+                     Option('all', help='Convert all revisions, even those not in current branch history (implies --shared)'),
                      Option('scheme', type=get_scheme,
                          help='Branching scheme (none, trunk, or trunk-INT)')]
 
     @display_command
     def run(self, from_location, to_location=None, trees=False, 
-            shared=False, scheme=None):
+            shared=False, scheme=None, all=False):
         from convert import convert_repository
         from scheme import TrunkBranchingScheme
 
@@ -131,7 +132,10 @@ class cmd_svn_import(Command):
         if to_location is None:
             to_location = os.path.basename(from_location.rstrip("/\\"))
 
-        convert_repository(from_location, to_location, scheme, shared, trees)
+        if all:
+            shared = True
+        convert_repository(from_location, to_location, scheme, shared, trees,
+                           all)
 
 
 register_command(cmd_svn_import)

@@ -287,31 +287,36 @@ class InterSvnRepository(InterRepository):
         # Loop over all the revnums until revision_id
         # (or youngest_revnum) and call self.target.add_revision() 
         # or self.target.add_inventory() each time
-        if revision_id is None:
-            history_iterator = self.source.follow_history(self.source._latest_revnum)
-        else:
-            (path, until_revnum) = self.source.parse_revision_id(revision_id)
-            history_iterator = self.source.follow_branch(path, until_revnum)
-
         needed = []
         parents = {}
-        prev_revid = None
-        for (branch, revnum) in history_iterator:
-            revid = self.source.generate_revision_id(revnum, branch)
+        if revision_id is None:
+            for (branch, revnum) in self.source.follow_history(self.source._latest_revnum):
+                revid = self.source.generate_revision_id(revnum, branch)
+                parents[revid] = self.source._mainline_revision_parent(branch, revnum)
 
-            if prev_revid is not None:
-                parents[prev_revid] = revid
+                if not self.target.has_revision(revid):
+                    needed.append(revid)
+        else:
+            (path, until_revnum) = self.source.parse_revision_id(revision_id)
 
-            prev_revid = revid
+            prev_revid = None
+            for (branch, revnum) in self.source.follow_branch(path, until_revnum):
+                revid = self.source.generate_revision_id(revnum, branch)
 
-            if not self.target.has_revision(revid):
-                needed.append((branch, revnum, revid))
+                if prev_revid is not None:
+                    parents[prev_revid] = revid
+
+                prev_revid = revid
+
+                if not self.target.has_revision(revid):
+                    needed.append(revid)
+
+
+            parents[prev_revid] = None
 
         if len(needed) == 0:
             # Nothing to fetch
             return
-
-        parents[prev_revid] = None
 
         repos_root = self.source.transport.get_repos_root()
 
@@ -321,7 +326,8 @@ class InterSvnRepository(InterRepository):
         pb = ui_factory.nested_progress_bar()
         num = 0
         try:
-            for (branch, revnum, revid) in needed:
+            for revid in needed:
+                (branch, revnum) = self.source.parse_revision_id(revid)
                 pb.update('copying revision', num, len(needed))
 
                 parent_revid = parents[revid]

@@ -53,7 +53,9 @@ def load_dumpfile(dumpfile, outputdir):
     return repos
 
 
-def convert_repository(url, output_dir, scheme, create_shared_repo=True, working_trees=False):
+def convert_repository(url, output_dir, scheme, create_shared_repo=True, 
+                       working_trees=False, all=False):
+    assert not all or create_shared_repo
 
     if os.path.isfile(url):
         tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
@@ -78,9 +80,8 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True, working
                     BzrDir.create_repository(output_dir, shared=True)
                 target_repos = Repository.open(output_dir)
             target_repos.set_make_working_trees(working_trees)
-            # FIXME: Copy all revisions first, even the ones that aren't ancestors
-            # of currently existing branches? 
-            # source_repos.copy_content_into(target_repos)
+            if all:
+                source_repos.copy_content_into(target_repos)
 
         branches = list(source_repos.find_branches())
         mutter('branches: %r' % list(branches))
