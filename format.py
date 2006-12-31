@@ -88,7 +88,7 @@ class SvnRemoteAccess(BzrDir):
         :return: instance of SvnRepository.
         """
         if self.branch_path == "":
-            return SvnRepository(self, SvnRaTransport(self.svn_root_url))
+            return SvnRepository(self, self.root_transport)
         raise NoRepositoryPresent(self)
 
     def find_repository(self):

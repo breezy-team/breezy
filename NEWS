@@ -27,6 +27,9 @@ IN DEVELOPMENT
 
    * Remove requirement for svn+ prefix. (#75751)
 
+   * Don't consider SvnRepositories for writing for regular Bazaar 
+     branches. (#77023)
+
   IMPROVEMENTS
 
    * Implemented SvnRepository.all_revision_ids().

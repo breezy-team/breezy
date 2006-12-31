@@ -16,7 +16,8 @@
 
 from binascii import hexlify
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
-from bzrlib.errors import NotBranchError, NoSuchFile, InvalidRevisionId
+from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
+                           NoRepositoryPresent)
 from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile,
                               ROOT_ID)
 from bzrlib.lockable_files import TransportLock, LockableFiles
@@ -500,7 +501,7 @@ class SvnCheckout(BzrDir):
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
         # FIXME: honor force_new_repo
         result = BzrDirFormat.get_default_format().initialize(url)
-        repo = self.open_repository()
+        repo = self.find_repository()
         result_repo = repo.clone(result, revision_id, basis)
         branch = self.open_branch()
         branch.sprout(result, revision_id)
@@ -508,11 +509,10 @@ class SvnCheckout(BzrDir):
         return result
 
     def open_repository(self):
-        repos = SvnRepository(self, self.svn_root_transport)
-        return repos
+        raise NoRepositoryPresent(self)
 
-    # Subversion has all-in-one, so a repository is always present
-    find_repository = open_repository
+    def find_repository(self):
+        return SvnRepository(self, self.svn_root_transport)
 
     def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree().
@@ -528,7 +528,7 @@ class SvnCheckout(BzrDir):
 
     def open_branch(self, unsupported=True):
         """See BzrDir.open_branch()."""
-        repos = self.open_repository()
+        repos = self.find_repository()
 
         try:
             branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
