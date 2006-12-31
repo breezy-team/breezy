@@ -1,0 +1,86 @@
+IN DEVELOPMENT
+
+  BUG FIXES
+
+   * Use checksums for the path in case the file id is too long. (#77453)
+
+   * Don't rely on listdir() kind results. Fixes imports of several 
+     repositories. (#56647)
+
+   * Fixed two problems with replaces that are nested.
+
+   * Branch downgrades and dir upgrades are now recognized properly (#67010).
+
+   * Supported branching schemes other that trunk-0.
+
+   * Properly recognize discontinued branches. (#76823)
+
+   * Switched to storing data in SQLite. (#74798)
+   
+   * Locks ra transports. (#76280)
+
+   * Use built-in ra callbacks from Subversion. (#64816)
+
+   * Implement SvnRaTransport.mkdir(). (#65138)
+
+   * Avoid raising SubversionException's for non-subversion directories. 
+
+   * Remove requirement for svn+ prefix. (#75751)
+
+  IMPROVEMENTS
+
+   * Implemented SvnRepository.all_revision_ids().
+
+   * Proper ProgressBars.
+
+   * Made `to_location' argument for svn-import optional.
+
+   * Removed unused code.
+
+   * Several attempts to reduce memory usage.
+
+   * The LogWalker class is now a lot dumber.
+
+   * Added --scheme option to svn-import.
+
+   * Implemented SvnRaTransport.list_dir().
+
+  PERFORMANCE IMPROVEMENTS
+
+   * More efficient implementation of follow_history().
+
+   * Split out follow_branch_history() of follow_branch().
+
+   * Reduced number of remote listdir calls.
+
+   * Only determine file ids for changed files. Reduces disk usage 
+     significantly.
+
+bzr-svn 0.2  2006-12-14
+
+  BUG FIXES
+
+    * Fixed "KeyError" problems (#64831)
+
+    * Fixed compatibility with Bazaar 0.13.
+
+    * Fixed "bzr checkout" and "bzr checkout --lightweight" for svn 
+      branches. (#65220)
+
+    * Don't fetch revision info until necessary. (#64850)
+
+    * Don't try to open remote checkouts. (#67281)
+
+    * Escape control codes in commit messages. (#54736)
+
+  IMPROVEMENTS
+
+    * Add repository format for Subversion repositories.
+   
+    * Plugin directory no longer needs to be named 'svn'
+
+    * Warn about incompatible Bazaar versions (#66993)
+
+bzr-svn 0.1
+ 
+ Initial release.
