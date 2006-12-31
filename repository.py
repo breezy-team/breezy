@@ -115,6 +115,7 @@ def generate_svn_revision_id(uuid, revnum, path):
         return NULL_REVISION
     return "%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, uuid, escape_svn_path(path.strip("/")))
 
+
 def parse_revision_id(self, revid):
     """Parse an existing Subversion-based revision id.
 
@@ -141,6 +142,7 @@ def svk_feature_to_revision_id(feature):
     """
     (uuid, branch, revnum) = feature.split(":")
     return generate_svn_revision_id(uuid, int(revnum), branch.strip("/"))
+
 
 def revision_id_to_svk_feature(revid):
     """Create a SVK feature identifier from a revision id.

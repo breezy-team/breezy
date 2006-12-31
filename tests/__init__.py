@@ -235,6 +235,7 @@ def test_suite():
             'test_convert',
             'test_fileids', 
             'test_logwalker',
+            'test_radir',
             'test_repos', 
             'test_scheme', 
             'test_transport',

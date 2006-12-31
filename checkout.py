@@ -482,7 +482,7 @@ class SvnCheckout(BzrDir):
             svn.wc.adm_close(wc)
 
         self.remote_transport = SvnRaTransport(svn_url)
-        self.svn_root_transport = self.remote_transport.get_root()
+        self.svn_root_transport = SvnRaTransport(self.remote_transport.get_repos_root())
         self.root_transport = self.transport = transport
 
         self.branch_path = svn_url[len(bzr_to_svn_url(self.svn_root_transport.base)):]

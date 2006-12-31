@@ -75,7 +75,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
 
         bzrdir = BzrDir.open("svn+%s" % repos_url)
-        repository = bzrdir.open_repository()
+        repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
                 "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
@@ -95,7 +95,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
 
         bzrdir = BzrDir.open("svn+%s" % repos_url)
-        repository = bzrdir.open_repository()
+        repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
                 "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
@@ -115,7 +115,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
 
         bzrdir = BzrDir.open("svn+"+repos_url)
-        repository = bzrdir.open_repository()
+        repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
                 "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
@@ -133,7 +133,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Copy branch")
 
         bzrdir = BzrDir.open("svn+"+repos_url + "/branches/mybranch")
-        repository = bzrdir.open_repository()
+        repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
                 "svn-v%d:1@%s-trunk" % (MAPPING_VERSION, repository.uuid))

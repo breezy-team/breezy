@@ -44,7 +44,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         
         bzrdir = BzrDir.open("svn+"+repos_url)
         branch = bzrdir.open_branch()
-        repos = bzrdir.open_repository()
+        repos = bzrdir.find_repository()
 
         self.assertEqual("svn-v%d:1@%s-" % (MAPPING_VERSION, repos.uuid), 
                 branch.last_revision())
@@ -410,7 +410,7 @@ foohosts""")
 
         newbranch = newdir.open_branch()
 
-        uuid = olddir.open_repository().uuid
+        uuid = olddir.find_repository().uuid
         tree = newbranch.repository.revision_tree(
                 "svn-v%d:6@%s-branches%%2ffoobranch" % (MAPPING_VERSION, uuid))
 
@@ -495,9 +495,9 @@ foohosts""")
         os.mkdir("dc")
         
         newdir = olddir.sprout('dc')
-        newdir.open_repository().get_revision(
+        newdir.find_repository().get_revision(
                 newdir.open_branch().last_revision())
-        newdir.open_repository().get_revision_inventory(
+        newdir.find_repository().get_revision_inventory(
                 newdir.open_branch().last_revision())
 
 class TestFakeControlFiles(TestCase):

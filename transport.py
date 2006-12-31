@@ -232,14 +232,6 @@ class SvnRaTransport(Transport):
     def get_commit_editor(self, *args, **kwargs):
         return svn.ra.get_commit_editor(self._ra, *args, **kwargs)
 
-    def get_root(self):
-        """Open a connection to the root of this repository.
-        
-        :return: A new instance of SvnRaTransport connected to the root.
-        """
-        root_url = self.get_repos_root()
-        return SvnRaTransport(root_url)
-
     def listable(self):
         """See Transport.listable().
         """
