@@ -42,6 +42,7 @@ def md5_strings(strings):
     map(s.update, strings)
     return s.hexdigest()
 
+
 class RevisionBuildEditor(svn.delta.Editor):
     def __init__(self, source, target, branch_path, prev_inventory, revid, svn_revprops, id_map):
         self.branch_path = branch_path
@@ -404,6 +405,4 @@ class InterSvnRepository(InterRepository):
         # FIXME: Also check target uses VersionedFile
         mutter('test %r' % source)
         return isinstance(source, SvnRepository)
-
-
 

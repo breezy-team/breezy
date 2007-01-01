@@ -49,6 +49,16 @@ class TestConversion(TestCaseWithSubversionRepository):
         newrepos = Repository.open("e")
         self.assertFalse(newrepos.has_revision("svn-v%d:2@%s-branches%%2fsomebranch" % (MAPPING_VERSION, oldrepos.uuid)))
 
+    def test_fetch_filebranch(self):
+        self.build_tree({'dc/branches/somebranch': 'data'})
+        self.client_add("dc/branches/somebranch")
+        self.client_commit("dc", "add a branch")
+        convert_repository(self.repos_url, "e", TrunkBranchingScheme())
+        oldrepos = Repository.open(self.repos_url)
+        newrepos = Repository.open("e")
+        self.assertFalse(newrepos.has_revision("svn-v%d:2@%s-branches%%2fsomebranch" % (MAPPING_VERSION, oldrepos.uuid)))
+
+
     def test_fetch_dead(self):
         self.build_tree({'dc/branches/somebranch/somefile': 'data'})
         self.client_add("dc/branches/somebranch")

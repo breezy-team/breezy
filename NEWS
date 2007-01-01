@@ -30,6 +30,8 @@ IN DEVELOPMENT
    * Don't consider SvnRepositories for writing for regular Bazaar 
      branches. (#77023)
 
+   * Don't try to import files as branches.
+
   IMPROVEMENTS
 
    * Implemented SvnRepository.all_revision_ids().

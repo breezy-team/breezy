@@ -462,11 +462,9 @@ class SvnWorkingTreeFormat(WorkingTreeFormat):
         return "Subversion Working Copy"
 
     def initialize(self, a_bzrdir, revision_id=None):
-        # FIXME
         raise NotImplementedError(self.initialize)
 
     def open(self, a_bzrdir):
-        # FIXME
         raise NotImplementedError(self.initialize)
 
 

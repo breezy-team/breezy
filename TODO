@@ -1,3 +1,4 @@
+- shouldn't consider files for branches
 - allow remote locations in svn-import
 - fix "bzr status" in checkouts
 - faster "bzr status" in checkouts

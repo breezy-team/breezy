@@ -39,6 +39,8 @@ from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
 from transport import SvnRaTransport
 
+import svn.core
+
 def load_dumpfile(dumpfile, outputdir):
     import svn
     from svn.core import SubversionException
@@ -96,6 +98,8 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True,
         try:
             i = 0
             for (branch, revnum, exists) in existing_branches:
+                if source_repos.transport.check_path("/"+branch, revnum) == svn.core.svn_node_file:
+                    continue
                 pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
                 revid = source_repos.generate_revision_id(revnum, branch)
 
@@ -108,7 +112,8 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True,
                 except NotBranchError:
                     source_branch = Branch.open("%s/%s" % (url, branch))
                     os.makedirs(target_dir)
-                    source_branch.bzrdir.sprout(target_dir)
+                    source_branch.bzrdir.sprout(target_dir, 
+                                                source_branch.last_revision())
                 i+=1
         finally:
             pb.finished()
