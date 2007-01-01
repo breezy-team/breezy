@@ -73,7 +73,7 @@ class LogWalker(object):
 
         self.last_revnum = last_revnum
 
-        self.transport = SvnRaTransport(transport.get_repos_root())
+        self.transport = SvnRaTransport(transport.base)
 
         if cache_db is None:
             self.db = sqlite3.connect(":memory:")
