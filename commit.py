@@ -352,7 +352,7 @@ def push_as_merged(target, source, revision_id):
             continue
 
         id = ie.file_id
-        while id != ROOT_ID:
+        while inv[id].parent_id is not None:
             if inv[id].revision is None:
                 break
             inv[id].revision = None

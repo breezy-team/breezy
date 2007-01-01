@@ -50,6 +50,7 @@ MAPPING_VERSION = 2
 REVISION_ID_PREFIX = "svn-v%d:" % MAPPING_VERSION
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_SVK_MERGE = 'svk:merge'
+SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 

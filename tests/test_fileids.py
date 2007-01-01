@@ -163,13 +163,17 @@ class TestFileIdGenerator(TestCase):
                          generate_file_id("svn-v2:2@uuid-bp", dir+"filename"))
 
 class TestFileMapping(TestCase):
-    def apply_mappings(self, mappings, find_children=None):
+    def apply_mappings(self, mappings, find_children=None, renames={}):
         map = {}
         revids = mappings.keys()
         revids.sort()
         for r in revids:
-            revmap = SimpleFileIdMap._apply_changes(lambda x: generate_file_id(r, x), mappings[r], find_children)
-            map.update(dict([(x,(revmap[x],r)) for x in revmap]))
+             def new_file_id(x):
+                 if renames.has_key(r) and renames[r].has_key(x):
+                     return renames[r][x]
+                 return generate_file_id(r, x)
+             revmap = SimpleFileIdMap._apply_changes(new_file_id, mappings[r], find_children)
+             map.update(dict([(x,(revmap[x],r)) for x in revmap]))
         return map
 
     def test_simple(self):
@@ -210,4 +214,27 @@ class TestFileMapping(TestCase):
                  ("svn-v%d:2@uuid-" % MAPPING_VERSION): {
                                    "foo/bla": ('M', None, None)}
                 })
+        self.assertEqual("svn-v%d:2@uuid-" % MAPPING_VERSION, map["foo"][1])
+
+    def test_usemap(self):
+        map = self.apply_mappings(
+                {("svn-v%d:1@uuid-" % MAPPING_VERSION): {
+                                   "foo": ('A', None, None), 
+                                   "foo/bla": ('A', None, None)},
+                 ("svn-v%d:2@uuid-" % MAPPING_VERSION): {
+                                   "foo/bla": ('M', None, None)}
+                 }, 
+                renames={("svn-v%d:1@uuid-" % MAPPING_VERSION): {"foo": "myid"}})
+        self.assertEqual("myid", map["foo"][0])
+
+    def test_usemap_later(self):
+        map = self.apply_mappings(
+                {("svn-v%d:1@uuid-" % MAPPING_VERSION): {
+                                   "foo": ('A', None, None), 
+                                   "foo/bla": ('A', None, None)},
+                 ("svn-v%d:2@uuid-" % MAPPING_VERSION): {
+                                   "foo/bla": ('M', None, None)}
+                 }, 
+                renames={("svn-v%d:2@uuid-" % MAPPING_VERSION): {"foo": "myid"}})
+        self.assertEqual("svn-v%d:1@uuid--foo" % MAPPING_VERSION, map["foo"][0])
         self.assertEqual("svn-v%d:1@uuid-" % MAPPING_VERSION, map["foo"][1])

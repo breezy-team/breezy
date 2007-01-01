@@ -339,7 +339,7 @@ class InterSvnRepository(InterRepository):
                 parent_revid = parents[revid]
 
                 if parent_revid is None:
-                    parent_inv = Inventory(ROOT_ID)
+                    parent_inv = Inventory()
                 elif prev_revid != parent_revid:
                     parent_inv = self.target.get_inventory(parent_revid)
                 else:
@@ -403,6 +403,5 @@ class InterSvnRepository(InterRepository):
     def is_compatible(source, target):
         """Be compatible with SvnRepository."""
         # FIXME: Also check target uses VersionedFile
-        mutter('test %r' % source)
         return isinstance(source, SvnRepository)
 

@@ -55,11 +55,9 @@ class SvnWorkingTree(WorkingTree):
         self.client_ctx.log_msg_baton2 = self.log_message_func
 
         self._set_inventory(self.read_working_inventory(), dirty=False)
-        mutter('working inv: %r' % self.read_working_inventory().entries())
 
         self.base_revid = branch.repository.generate_revision_id(
                     self.base_revnum, branch.branch_path)
-        mutter('basis inv: %r' % self.basis_tree().inventory.entries())
         self.controldir = os.path.join(self.basedir, svn.wc.get_adm_dir(), 'bzr')
         try:
             os.makedirs(self.controldir)
@@ -177,7 +175,7 @@ class SvnWorkingTree(WorkingTree):
             svn.wc.adm_close(to_wc)
 
     def read_working_inventory(self):
-        inv = Inventory(ROOT_ID)
+        inv = Inventory()
 
         def add_file_to_inv(relpath, id, revid, parent_id):
             """Add a file to the inventory."""
@@ -349,7 +347,8 @@ class SvnWorkingTree(WorkingTree):
 
         commit_info = svn.client.commit3(specific_files, True, False, self.client_ctx)
 
-        revid = self.branch.repository.generate_revision_id(commit_info.revision, self.branch.branch_path)
+        revid = self.branch.repository.generate_revision_id(
+                commit_info.revision, self.branch.branch_path)
 
         self.base_revid = revid
         #FIXME: Use public API:
