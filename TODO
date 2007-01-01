@@ -1,2 +1,7 @@
+- fix autorealm repository
+- handle parent directories of branches being moved correctly
+- fix "bzr status" in checkouts
+- faster "bzr status" in checkouts
+- avoid extra connect in logwalker?
 - get rid of use of `svn ls' in logwalker
 - more efficient implementation for applying txdeltas to weaves. perhaps convert svn deltas to bzr deltas?

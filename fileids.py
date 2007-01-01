@@ -17,14 +17,15 @@
 from bzrlib.errors import RevisionNotPresent, NotBranchError
 from bzrlib.inventory import ROOT_ID
 from bzrlib.knit import KnitVersionedFile
-from bzrlib.progress import ProgressBar
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
+from bzrlib.ui import ui_factory
 import bzrlib.urlutils as urlutils
 from warnings import warn
 
 import os
+import sha
 
 import logwalker
 from repository import (escape_svn_path, generate_svn_revision_id, 
@@ -36,11 +37,17 @@ def generate_svn_file_id(uuid, revnum, branch, path):
     :param uuid: UUID of the repository
     :param revnu: Revision number at which the file was introduced.
     :param branch: Branch path of the branch in which the file was introduced.
-    :param path: Original path of the file.
+    :param path: Original path of the file within the branch
     """
-    # FIXME: is the branch path required here?
-    return "svn-v%d:%d@%s-%s-%s" % (MAPPING_VERSION, revnum, 
-            uuid, escape_svn_path(branch), escape_svn_path(path))
+    introduced_revision_id = generate_svn_revision_id(uuid, revnum, branch)
+    ret = "%s-%s" % (introduced_revision_id, escape_svn_path(path))
+    if len(ret) > 150:
+        basename = os.path.basename(path)
+        parent = path[:-len(basename)]
+        ret = "%s-%s-%s" % (introduced_revision_id, 
+                            sha.new(parent).hexdigest(),
+                            escape_svn_path(basename))
+    return ret
 
 
 def generate_file_id(revid, path):
@@ -48,7 +55,7 @@ def generate_file_id(revid, path):
     return generate_svn_file_id(uuid, revnum, branch, path)
 
 
-def get_local_changes(paths, scheme, uuid, find_children=None):
+def get_local_changes(paths, scheme, uuid, get_children=None):
     new_paths = {}
     names = paths.keys()
     names.sort()
@@ -68,10 +75,10 @@ def get_local_changes(paths, scheme, uuid, find_children=None):
             except NotBranchError:
                 # Copied from outside of a known branch
                 # Make it look like the files were added in this revision
-                assert find_children is not None
-                for c in find_children(data[1], data[2]):
-                    mutter('oops: %r child %r' % (data[1], c))
-                    new_paths[(new_p+"/"+c[len(data[1]):].strip("/")).strip("/")] = (data[0], None, -1)
+                if get_children is not None:
+                    for c in get_children(data[1], data[2]):
+                        mutter('oops: %r child %r' % (data[1], c))
+                        new_paths[(new_p+"/"+c[len(data[1]):].strip("/")).strip("/")] = (data[0], None, -1)
                 data = (data[0], None, -1)
 
         new_paths[new_p] = data
@@ -109,7 +116,8 @@ class FileIdMap(object):
 
         return map
 
-    def apply_changes(self, uuid, revnum, branch, global_changes, renames):
+    def apply_changes(self, uuid, revnum, branch, global_changes, 
+                      renames, find_children=None):
         """Change file id map to incorporate specified changes.
 
         :param uuid: UUID of repository changes happen in
@@ -118,18 +126,21 @@ class FileIdMap(object):
         :param global_changes: Dict with global changes that happened
         """
         changes = get_local_changes(global_changes, self.repos.scheme,
-                                        uuid, self.repos._log.find_children)
-
-        def find_children(path, revid):
-            (_, bp, revnum) = parse_svn_revision_id(revid)
-            for p in self.repos._log.find_children(bp+"/"+path, revnum):
-                yield self.repos.scheme.unprefix(p)[1]
+                                        uuid, find_children)
+        if find_children is not None:
+            def get_children(path, revid):
+                (_, bp, revnum) = parse_svn_revision_id(revid)
+                for p in find_children(bp+"/"+path, revnum):
+                    yield self.repos.scheme.unprefix(p)[1]
+        else:
+            get_children = None
 
         revid = generate_svn_revision_id(uuid, revnum, branch)
 
-        return self._apply_changes(revid, changes, find_children, renames)
+        return self._apply_changes(lambda x: generate_file_id(revid, x), 
+                                   changes, renames, get_children)
 
-    def get_map(self, uuid, revnum, branch, pb=None, renames_cb=None):
+    def get_map(self, uuid, revnum, branch, renames_cb=None):
         """Make sure the map is up to date until revnum."""
         if renames_cb is None:
             renames_cb = lambda x: {}
@@ -160,14 +171,14 @@ class FileIdMap(object):
                 map = {}
 
         todo.reverse()
+        
+        pb = ui_factory.nested_progress_bar()
 
-        i = 0
+        i = 1
         for (revid, global_changes) in todo:
             changes = get_local_changes(global_changes, self.repos.scheme,
                                         uuid, self.repos._log.find_children)
-            mutter('generating file id map for %r' % revid)
-            if pb is not None:
-                pb.update('generating file id map', i, len(todo))
+            pb.update('generating file id map', i, len(todo))
 
             def find_children(path, revid):
                 (_, bp, revnum) = parse_svn_revision_id(revid)
@@ -175,8 +186,15 @@ class FileIdMap(object):
                     yield self.repos.scheme.unprefix(p)[1]
 
             parent_revs = next_parent_revs
+
+            renames = renames_cb(revid)
+
+            def new_file_id(x):
+                if renames.has_key(x):
+                    return renames[x]
+                return generate_file_id(revid, x)
             
-            revmap = self._apply_changes(revid, changes, find_children, renames)
+            revmap = self._apply_changes(new_file_id, changes, find_children)
             for p in changes:
                 if changes[p][0] == 'M':
                     revmap[p] = map[p][0]
@@ -193,22 +211,16 @@ class FileIdMap(object):
                     map[parent] = map[parent][0], revid
                     
             next_parent_revs = [revid]
-            i = i + 1
+            i += 1
 
-        if pb is not None:
-            pb.clear()
-
+        pb.finished()
         self.save(revid, parent_revs, map)
         return map
 
 
 class SimpleFileIdMap(FileIdMap):
     @staticmethod
-    def _apply_changes(revid, changes, find_children, renames):
-        def new_file_id(path):
-            if renames.has_key(path):
-                return renames[path]
-            return generate_file_id(revid, path)
+    def _apply_changes(new_file_id, changes, find_children=None):
         map = {}
         sorted_paths = changes.keys()
         sorted_paths.sort()
@@ -219,11 +231,11 @@ class SimpleFileIdMap(FileIdMap):
                 map[p] = new_file_id(p)
 
                 if data[1] is not None:
-                    mutter('%r:%s copied from %r:%s' % (p, revid, data[1], data[2]))
-                    assert find_children is not None, 'incomplete data for %r' % p
-                    for c in find_children(data[1], data[2]):
-                        path = c.replace(data[1], p+"/", 1).replace("//", "/")
-                        map[path] = new_file_id(c)
-                        mutter('added mapping %r -> %r' % (path, map[path]))
+                    mutter('%r copied from %r:%s' % (p, data[1], data[2]))
+                    if find_children is not None:
+                        for c in find_children(data[1], data[2]):
+                            path = c.replace(data[1], p+"/", 1).replace("//", "/")
+                            map[path] = new_file_id(c)
+                            mutter('added mapping %r -> %r' % (path, map[path]))
 
         return map

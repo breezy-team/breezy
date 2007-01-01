@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2005-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,10 +18,10 @@ import bzrlib
 from bzrlib.decorators import needs_write_lock
 from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
-from bzrlib.progress import ProgressBar
 from bzrlib.revision import Revision
 from bzrlib.repository import InterRepository
 from bzrlib.trace import mutter
+from bzrlib.ui import ui_factory
 
 from copy import copy
 from cStringIO import StringIO
@@ -31,6 +31,7 @@ import os
 from svn.core import SubversionException, Pool
 import svn.core, svn.ra
 
+from fileids import generate_file_id
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
                 SVN_PROP_BZR_REVPROP_PREFIX, SvnRepositoryFormat)
 from tree import apply_txdelta_handler
@@ -41,29 +42,24 @@ def md5_strings(strings):
     map(s.update, strings)
     return s.hexdigest()
 
+
 class RevisionBuildEditor(svn.delta.Editor):
-    def __init__(self, source, target, branch_path, revnum, prev_inventory, 
-                 revid, svn_revprops, id_map, parent_branch, parent_id_map):
+    def __init__(self, source, target, branch_path, prev_inventory, revid, 
+                 svn_revprops, id_map):
         self.branch_path = branch_path
         self.old_inventory = prev_inventory
         self.inventory = copy(prev_inventory)
         assert self.inventory.root is None or revnum > 0
         self.revid = revid
-        self.revnum = revnum
-        mutter('idmap for %r %r' % (revid, id_map))
         self.id_map = id_map
-        self.parent_branch = parent_branch
         self.source = source
         self.target = target
         self.transact = target.get_transaction()
         self.weave_store = target.weave_store
-    
         self.dir_baserev = {}
-
         self._parent_ids = None
         self._revprops = {}
         self._svn_revprops = svn_revprops
-
         self.pool = Pool()
 
     def _get_revision(self, revid):
@@ -103,8 +99,21 @@ class RevisionBuildEditor(svn.delta.Editor):
     def relpath(self, path):
         return path.strip("/")
 
-    def delete_entry(self, path, revnum, parent_baton, pool):
-        del self.inventory[self.inventory.path2id(path)]
+    def _get_existing_id(self, parent_id, path):
+        if self.id_map.has_key(path):
+            return self.id_map[path]
+        return self._get_old_id(parent_id, path)
+
+    def _get_old_id(self, parent_id, old_path):
+        return self.old_inventory[parent_id].children[os.path.basename(old_path)].file_id
+
+    def _get_new_id(self, parent_id, new_path):
+        if self.id_map.has_key(new_path):
+            return self.id_map[new_path]
+        return generate_file_id(self.revid, new_path)
+
+    def delete_entry(self, path, revnum, parent_id, pool):
+        del self.inventory[self._get_old_id(parent_id, path)]
 
     def close_directory(self, id):
         self.inventory[id].revision = self.revid
@@ -113,8 +122,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         if not file_weave.has_version(self.revid):
             file_weave.add_lines(self.revid, self.dir_baserev[id], [])
 
-    def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
-        file_id = self.id_map[path]
+    def add_directory(self, path, parent_id, copyfrom_path, copyfrom_revnum, pool):
+        file_id = self._get_new_id(parent_id, path)
 
         self.dir_baserev[file_id] = []
         ie = self.inventory.add_path(path, 'directory', file_id)
@@ -122,14 +131,11 @@ class RevisionBuildEditor(svn.delta.Editor):
 
         return file_id
 
-    def open_directory(self, path, parent_baton, base_revnum, pool):
+    def open_directory(self, path, parent_id, base_revnum, pool):
         assert base_revnum >= 0
-        base_file_id = self.old_inventory.path2id(path)
+        base_file_id = self._get_old_id(parent_id, path)
         base_revid = self.old_inventory[base_file_id].revision
-        if self.id_map.has_key(path):
-            file_id = self.id_map[path]
-        else:
-            file_id = base_file_id
+        file_id = self._get_existing_id(parent_id, path)
         if file_id == base_file_id:
             self.dir_baserev[file_id] = [base_revid]
             ie = self.inventory[file_id]
@@ -175,7 +181,10 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def change_file_prop(self, id, name, value, pool):
         if name == svn.core.SVN_PROP_EXECUTABLE: 
-            # Strange, you'd expect executable to match svn.core.SVN_PROP_EXECUTABLE_VALUE, but that's not how SVN behaves.
+            # You'd expect executable to match 
+            # svn.core.SVN_PROP_EXECUTABLE_VALUE, but that's not 
+            # how SVN behaves. It appears to consider the presence 
+            # of the property sufficient to mark it executable.
             self.is_executable = (value != None)
         elif (name == svn.core.SVN_PROP_SPECIAL):
             self.is_symlink = (value != None)
@@ -198,21 +207,19 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.file_data = ""
         self.file_parents = []
         self.file_stream = None
+        self.file_id = self._get_new_id(parent_id, path)
         return path
 
     def open_file(self, path, parent_id, base_revnum, pool):
-        base_file_id = self.old_inventory.path2id(path)
+        base_file_id = self._get_old_id(parent_id, path)
         base_revid = self.old_inventory[base_file_id].revision
-        if self.id_map.has_key(path):
-            file_id = self.id_map[path]
-        else:
-            file_id = base_file_id
+        self.file_id = self._get_existing_id(parent_id, path)
         self.is_executable = None
         self.is_symlink = (self.inventory[base_file_id].kind == 'symlink')
         file_weave = self.weave_store.get_weave_or_empty(base_file_id, self.transact)
         self.file_data = file_weave.get_text(base_revid)
         self.file_stream = None
-        if file_id == base_file_id:
+        if self.file_id == base_file_id:
             self.file_parents = [base_revid]
         else:
             # Replace
@@ -231,20 +238,16 @@ class RevisionBuildEditor(svn.delta.Editor):
         actual_checksum = md5_strings(lines)
         assert checksum is None or checksum == actual_checksum
 
-        if self.id_map.has_key(path):
-            file_id = self.id_map[path]
-        else:
-            file_id = self.old_inventory.path2id(path)
-        file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
+        file_weave = self.weave_store.get_weave_or_empty(self.file_id, self.transact)
         if not file_weave.has_version(self.revid):
             file_weave.add_lines(self.revid, self.file_parents, lines)
 
-        if file_id in self.inventory:
-            ie = self.inventory[file_id]
+        if self.file_id in self.inventory:
+            ie = self.inventory[self.file_id]
         elif self.is_symlink:
-            ie = self.inventory.add_path(path, 'symlink', file_id)
+            ie = self.inventory.add_path(path, 'symlink', self.file_id)
         else:
-            ie = self.inventory.add_path(path, 'file', file_id)
+            ie = self.inventory.add_path(path, 'file', self.file_id)
         ie.revision = self.revid
 
         if self.is_symlink:
@@ -287,118 +290,123 @@ class InterSvnRepository(InterRepository):
     """The format to test with."""
 
     @needs_write_lock
-    def copy_content(self, revision_id=None, basis=None, pb=ProgressBar()):
+    def copy_content(self, revision_id=None, basis=None):
         """See InterRepository.copy_content."""
         # Dictionary with paths as keys, revnums as values
 
         # Loop over all the revnums until revision_id
         # (or youngest_revnum) and call self.target.add_revision() 
         # or self.target.add_inventory() each time
+        needed = []
+        parents = {}
         if revision_id is None:
-            path = None
-            until_revnum = self.source._latest_revnum
+            for (branch, revnum) in self.source.follow_history(
+                                                    self.source._latest_revnum):
+                revid = self.source.generate_revision_id(revnum, branch)
+                parents[revid] = self.source._mainline_revision_parent(branch, revnum)
+
+                if not self.target.has_revision(revid):
+                    needed.append(revid)
         else:
             (path, until_revnum) = self.source.parse_revision_id(revision_id)
 
+            prev_revid = None
+            for (branch, revnum) in self.source.follow_branch(path, 
+                                                              until_revnum):
+                revid = self.source.generate_revision_id(revnum, branch)
+
+                if prev_revid is not None:
+                    parents[prev_revid] = revid
+
+                prev_revid = revid
+
+                if not self.target.has_revision(revid):
+                    needed.append(revid)
+
+
+            parents[prev_revid] = None
+
+        if len(needed) == 0:
+            # Nothing to fetch
+            return
+
         repos_root = self.source.transport.get_repos_root()
-        
-        # first, figure out what revisions need to be fetched
-        needed = []
-        parents = {}
-        prev_revid = None
-        if path is None:
-            it = self.source.follow_history(until_revnum)
-        else:
-            it = self.source.follow_branch_history(path, until_revnum)
-        for (branch, changes, revnum) in it:
-            revid = self.source.generate_revision_id(revnum, branch)
-
-            if prev_revid is not None:
-                parents[prev_revid] = revid
-
-            prev_revid = revid
-
-            if not self.target.has_revision(revid):
-                needed.append((branch, revnum, revid, changes))
-
-        parents[prev_revid] = None
-
-        num = 0
         needed.reverse()
         prev_revid = None
         transport = self.source.transport
-        for (branch, revnum, revid, changes) in needed:
-            if pb is not None:
-                pb.update('copying revision', num+1, len(needed)+1)
-            num += 1
+        pb = ui_factory.nested_progress_bar()
+        num = 0
+        try:
+            for revid in needed:
+                (branch, revnum) = self.source.parse_revision_id(revid)
+                pb.update('copying revision', num, len(needed))
 
-            parent_revid = parents[revid]
+                parent_revid = parents[revid]
 
-            if parent_revid is not None:
-                (parent_branch, parent_revnum) = self.source.parse_revision_id(parent_revid)
-            else:
-                parent_revnum = 0
-                parent_branch = None
+                if parent_revid is None:
+                    parent_inv = Inventory(ROOT_ID)
+                elif prev_revid != parent_revid:
+                    parent_inv = self.target.get_inventory(parent_revid)
+                else:
+                    parent_inv = prev_inv
 
-            if parent_revid is None:
-                parent_inv = Inventory(root_id=None)
-            elif prev_revid != parent_revid:
-                parent_inv = self.target.get_inventory(parent_revid)
-            else:
-                parent_inv = prev_inv
+                changes = self.source._log.get_revision_paths(revnum, branch)
+                id_map = self.source.transform_fileid_map(self.source.uuid, 
+                                            revnum, branch, changes)
 
-            id_map = self.source.transform_fileid_map(self.source.uuid, 
-                                        revnum, branch, changes)
+                editor = RevisionBuildEditor(self.source, self.target, branch, 
+                                             parent_inv, revid, 
+                                         self.source._log.get_revision_info(revnum),
+                                         id_map)
 
-            editor = RevisionBuildEditor(self.source, self.target, branch, 
-                                         revnum, parent_inv, revid, 
-                                     self.source._log.get_revision_info(revnum),
-                                     id_map, parent_branch)
+                pool = Pool()
+                edit, edit_baton = svn.delta.make_editor(editor, pool)
 
-            pool = Pool()
-            edit, edit_baton = svn.delta.make_editor(editor, pool)
+                if parent_revid is None:
+                    transport.reparent("%s/%s" % (repos_root, branch))
+                    reporter, reporter_baton = transport.do_update(
+                                   revnum, "", True, edit, edit_baton, pool)
 
-            if parent_branch is None:
-                transport.reparent(repos_root)
-            else:
-                transport.reparent("%s/%s" % (repos_root, parent_branch))
-            if parent_branch != branch:
-                switch_url = "%s/%s" % (repos_root, branch)
-                reporter, reporter_baton = transport.do_switch(
-                           revnum, "", True, 
-                           switch_url, edit, edit_baton, pool)
-            else:
-                reporter, reporter_baton = transport.do_update(
-                           revnum, "", True, edit, edit_baton, pool)
+                    # Report status of existing paths
+                    svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
+                        "", revnum, True, None, pool)
+                else:
+                    (parent_branch, parent_revnum) = self.source.parse_revision_id(parent_revid)
+                    transport.reparent("%s/%s" % (repos_root, parent_branch))
 
-            # Report status of existing paths
-            svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
-                "", parent_revnum, False, None, pool)
+                    if parent_branch != branch:
+                        switch_url = "%s/%s" % (repos_root, branch)
+                        reporter, reporter_baton = transport.do_switch(
+                                   revnum, "", True, 
+                                   switch_url, edit, edit_baton, pool)
+                    else:
+                        reporter, reporter_baton = transport.do_update(
+                                   revnum, "", True, edit, edit_baton, pool)
 
-            transport.lock()
-            svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
-            transport.unlock()
+                    # Report status of existing paths
+                    svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
+                        "", parent_revnum, False, None, pool)
 
-            prev_inv = editor.inventory
-            prev_revid = revid
+                transport.lock()
+                svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
+                transport.unlock()
 
-            pool.destroy()
-
-        if pb is not None:
-            pb.clear()
-
+                prev_inv = editor.inventory
+                prev_revid = revid
+                pool.destroy()
+                num += 1
+        finally:
+            pb.finished()
         self.source.transport.reparent(repos_root)
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=ProgressBar()):
+    def fetch(self, revision_id=None, pb=None):
         """Fetch revisions. """
-        self.copy_content(revision_id=revision_id, pb=pb)
+        self.copy_content(revision_id=revision_id)
 
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with SvnRepository."""
         # FIXME: Also check target uses VersionedFile
         return isinstance(source, SvnRepository)
-
-
 

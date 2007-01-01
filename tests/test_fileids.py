@@ -21,8 +21,10 @@ from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 from bzrlib.tests import TestSkipped, TestCase
 
+import sha
+
 import format
-from fileids import SimpleFileIdMap
+from fileids import SimpleFileIdMap, generate_file_id
 from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository, RENAMES
 
@@ -73,7 +75,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
 
         bzrdir = BzrDir.open("svn+%s" % repos_url)
-        repository = bzrdir.open_repository()
+        repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
                 "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
@@ -93,7 +95,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
 
         bzrdir = BzrDir.open("svn+%s" % repos_url)
-        repository = bzrdir.open_repository()
+        repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
                 "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
@@ -113,7 +115,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
 
         bzrdir = BzrDir.open("svn+"+repos_url)
-        repository = bzrdir.open_repository()
+        repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
                 "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
@@ -131,7 +133,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Copy branch")
 
         bzrdir = BzrDir.open("svn+"+repos_url + "/branches/mybranch")
-        repository = bzrdir.open_repository()
+        repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
                 "svn-v%d:1@%s-trunk" % (MAPPING_VERSION, repository.uuid))
@@ -147,15 +149,30 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
                 "svn-v%d:1@%s-trunk" % (MAPPING_VERSION, repository.uuid), 
                 revid)
 
+def sha1(str):
+    return sha.new(str).hexdigest()
+
+class TestFileIdGenerator(TestCase):
+    def test_generate_file_id_path(self):
+        self.assertEqual("svn-v2:2@uuid-bp-mypath", 
+                         generate_file_id("svn-v2:2@uuid-bp", "mypath"))
+
+    def test_generate_file_id_long(self):
+        dir = "this/is/a" + ("/very"*40) + "/long/path/"
+        self.assertEqual("svn-v2:2@uuid-bp-" + sha1(dir) + "-filename", 
+                         generate_file_id("svn-v2:2@uuid-bp", dir+"filename"))
+
 class TestFileMapping(TestCase):
     def apply_mappings(self, mappings, find_children=None, renames={}):
         map = {"": ("ROOT", "first-revision") }
         revids = mappings.keys()
         revids.sort()
         for r in revids:
-            if not renames.has_key(r):
-                renames[r] = {}
-            revmap = SimpleFileIdMap._apply_changes(r, mappings[r], find_children, renames=renames[r])
+            def new_file_id(x):
+                if renames.has_key(r) and renames[r].has_key(x):
+                    return renames[r][x]
+                return generate_file_id(r, x)
+            revmap = SimpleFileIdMap._apply_changes(new_file_id, mappings[r], find_children)
             map.update(dict([(x,(revmap[x],r)) for x in revmap]))
         return map
 

@@ -208,6 +208,7 @@ class SvnRaTransport(Transport):
 
     @need_lock
     def check_path(self, path, revnum, *args, **kwargs):
+        assert len(path) == 0 or path[0] != "/"
         mutter("svn check_path -r%d %s" % (revnum, path))
         return svn.ra.check_path(self._ra, path, revnum, *args, **kwargs)
 
@@ -231,14 +232,6 @@ class SvnRaTransport(Transport):
     @need_lock
     def get_commit_editor(self, *args, **kwargs):
         return svn.ra.get_commit_editor(self._ra, *args, **kwargs)
-
-    def get_root(self):
-        """Open a connection to the root of this repository.
-        
-        :return: A new instance of SvnRaTransport connected to the root.
-        """
-        root_url = self.get_repos_root()
-        return SvnRaTransport(root_url)
 
     def listable(self):
         """See Transport.listable().

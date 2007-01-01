@@ -117,21 +117,29 @@ class cmd_svn_import(Command):
     """Convert a Subversion repository to a Bazaar repository.
     
     """
-    takes_args = ['url', 'output_dir']
+    takes_args = ['from_location', 'to_location?']
     takes_options = [Option('trees', help='Create working trees'),
                      Option('shared', help='Create shared repository'),
+                     Option('all', help='Convert all revisions, even those not in current branch history (implies --shared)'),
                      Option('scheme', type=get_scheme,
                          help='Branching scheme (none, trunk, or trunk-INT)')]
 
     @display_command
-    def run(self, url, output_dir, trees=False, shared=False, scheme=None):
+    def run(self, from_location, to_location=None, trees=False, 
+            shared=False, scheme=None, all=False):
         from convert import convert_repository
         from scheme import TrunkBranchingScheme
 
         if scheme is None:
             scheme = TrunkBranchingScheme()
 
-        convert_repository(url, output_dir, scheme, shared, trees)
+        if to_location is None:
+            to_location = os.path.basename(from_location.rstrip("/\\"))
+
+        if all:
+            shared = True
+        convert_repository(from_location, to_location, scheme, shared, trees,
+                           all)
 
 
 register_command(cmd_svn_import)

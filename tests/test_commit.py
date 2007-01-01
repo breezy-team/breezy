@@ -241,7 +241,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.open_repository()
+        repos = self.olddir.find_repository()
         inv = repos.get_inventory("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid))
         self.assertEqual("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid), 
                          inv[inv.path2id('foo/bla')].revision)
@@ -260,7 +260,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.open_repository()
+        repos = self.olddir.find_repository()
         inv = repos.get_inventory("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid))
         self.assertTrue(inv.has_filename('file'))
         self.assertTrue(wt.branch.last_revision() in 
@@ -277,7 +277,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.open_repository()
+        repos = self.olddir.find_repository()
         inv = repos.get_inventory("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid))
         self.assertTrue(inv.has_filename('file'))
         self.assertTrue(wt.branch.last_revision() in 
@@ -298,7 +298,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.open_repository()
+        repos = self.olddir.find_repository()
         self.assertEqual("Commit from Bzr",
             repos.get_revision("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid)).message)
 
@@ -314,7 +314,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
-        repos = self.olddir.open_repository()
+        repos = self.olddir.find_repository()
 
         self.assertEqual("svn-v%d:3@%s-" % (MAPPING_VERSION, repos.uuid), 
                         self.olddir.open_branch().last_revision())

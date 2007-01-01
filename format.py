@@ -17,7 +17,7 @@
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import NotBranchError, NotLocalUrl, NoRepositoryPresent
 from bzrlib.lockable_files import TransportLock
-from bzrlib.progress import ProgressBar
+from bzrlib.ui import ui_factory
 from bzrlib.transport.local import LocalTransport
 import bzrlib.urlutils as urlutils
 
@@ -41,13 +41,11 @@ class SvnRemoteAccess(BzrDir):
         _transport = get_svn_ra_transport(_transport)
         super(SvnRemoteAccess, self).__init__(_transport, _format)
 
-        self.svn_root_transport = _transport.get_root()
-
         svn_url = bzr_to_svn_url(self.root_transport.base)
-        root_svn_url = bzr_to_svn_url(self.svn_root_transport.base)
+        self.svn_root_url = _transport.get_repos_root()
 
-        assert svn_url.startswith(root_svn_url)
-        self.branch_path = svn_url[len(root_svn_url):]
+        assert svn_url.startswith(self.svn_root_url)
+        self.branch_path = svn_url[len(self.svn_root_url):]
 
         if scheme is None:
             self.scheme = BranchingScheme.guess_scheme(self.branch_path)
@@ -68,14 +66,13 @@ class SvnRemoteAccess(BzrDir):
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
         """See BzrDir.sprout()."""
         result = BzrDirFormat.get_default_format().initialize(url)
-        repo = self.open_repository()
+        repo = self.find_repository()
         if force_new_repo:
             result_repo = repo.clone(result, revision_id, basis)
         else:
             try:
                 result_repo = result.find_repository()
-                result_repo.fetch(repo, revision_id=revision_id, 
-                                  pb=ProgressBar())
+                result_repo.fetch(repo, revision_id=revision_id)
             except NoRepositoryPresent:
                 result_repo = repo.clone(result, revision_id, basis)
 
@@ -90,12 +87,19 @@ class SvnRemoteAccess(BzrDir):
         
         :return: instance of SvnRepository.
         """
-        repos = SvnRepository(self, self.svn_root_transport)
-        return repos
+        if self.branch_path == "":
+            return SvnRepository(self, self.root_transport)
+        raise NoRepositoryPresent(self)
 
-    # Subversion has all-in-one, so a repository is always present,
-    # no need to look for it.
-    find_repository = open_repository
+    def find_repository(self):
+        """Open the repository associated with this BzrDir.
+        
+        :return: instance of SvnRepository.
+        """
+        transport = self.root_transport
+        if self.svn_root_url != transport.base:
+            transport = SvnRaTransport(self.svn_root_url)
+        return SvnRepository(self, transport)
 
     def open_workingtree(self):
         """See BzrDir.open_workingtree().
@@ -129,10 +133,8 @@ class SvnRemoteAccess(BzrDir):
         if not self.scheme.is_branch(self.branch_path):
             raise NotBranchError(path=self.root_transport.base)
 
-        repos = self.open_repository()
-
+        repos = self.find_repository()
         branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
- 
         branch.bzrdir = self
         return branch
 

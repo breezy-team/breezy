@@ -107,6 +107,13 @@ is in no way related to the contents of that file.
 If a file is being replaced by a copy of itself in an older revision it will 
 receive a new file id.
 
+If the file id generated is longer than 150 bytes, the following format will 
+be used:
+
+<REVID>-<SHA1>-<FILENAME>
+
+where <SHA1> is the sha1 of the path to the directory name.
+
 NEXT VERSION: Special rules are applied to make sure that renames are tracked.
 
 == Properties ==

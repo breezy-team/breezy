@@ -15,8 +15,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.errors import NoSuchRevision, BzrError, NotBranchError
-from bzrlib.progress import ProgressBar, DummyProgress
+from bzrlib.progress import DummyProgress
 from bzrlib.trace import mutter
+from bzrlib.ui import ui_factory
 
 import os
 
@@ -72,7 +73,7 @@ class LogWalker(object):
 
         self.last_revnum = last_revnum
 
-        self.transport = SvnRaTransport(transport.get_repos_root())
+        self.transport = SvnRaTransport(transport.base)
 
         if cache_db is None:
             self.db = sqlite3.connect(":memory:")
@@ -91,13 +92,16 @@ class LogWalker(object):
         if self.saved_revnum is None:
             self.saved_revnum = 0
 
-    def fetch_revisions(self, to_revnum, pb=None):
+    def fetch_revisions(self, to_revnum):
         """Fetch information about all revisions in the remote repository
         until to_revnum.
 
         :param to_revnum: End of range to fetch information for
-        :param pb: Optional progress bar to use
         """
+        to_revnum = max(self.last_revnum, to_revnum)
+
+        pb = ui_factory.nested_progress_bar()
+
         def rcvr(orig_paths, rev, author, date, message, pool):
             pb.update('fetching svn revision info', rev, to_revnum)
             paths = {}
@@ -118,14 +122,8 @@ class LogWalker(object):
             self.db.execute("replace into revision (revno, author, date, message) values (?,?,?,?)", (rev, author, date, message))
 
             self.saved_revnum = rev
-
-        to_revnum = max(self.last_revnum, to_revnum)
-
-        # Don't bother for only a few revisions
-        if abs(self.saved_revnum-to_revnum) < 10:
-            pb = DummyProgress()
-        else:
-            pb = ProgressBar()
+            if self.saved_revnum % 1000 == 0:
+                self.db.commit()
 
         pool = Pool()
         try:
@@ -133,7 +131,7 @@ class LogWalker(object):
                 self.transport.get_log("/", self.saved_revnum, to_revnum, 
                                0, True, True, rcvr, pool)
             finally:
-                pb.clear()
+                pb.finished()
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(branch=self, 
@@ -203,7 +201,7 @@ class LogWalker(object):
             paths[p] = (act, cf, cr)
         return paths
 
-    def get_revision_info(self, revnum, pb=None):
+    def get_revision_info(self, revnum):
         """Obtain basic information for a specific revision.
 
         :param revnum: Revision number.
@@ -211,13 +209,13 @@ class LogWalker(object):
         """
         assert revnum >= 1
         if revnum > self.saved_revnum:
-            self.fetch_revisions(revnum, pb)
+            self.fetch_revisions(revnum)
         (author, message, date) = self.db.execute("select author, message, date from revision where revno="+ str(revnum)).fetchone()
         if author is None:
             author = None
         return (author, _escape_commit_message(base64.b64decode(message)), date)
 
-    def find_latest_change(self, path, revnum):
+    def find_latest_change(self, path, revnum, recurse=False):
         """Find latest revision that touched path.
 
         :param path: Path to check for changes
@@ -226,8 +224,13 @@ class LogWalker(object):
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
 
-        row = self.db.execute(
-             "select rev from changed_path where path='%s' and rev <= %d order by rev desc limit 1" % (path.strip("/"), revnum)).fetchone()
+        if recurse:
+            extra = " or path like '%s/%%'" % path.strip("/")
+        else:
+            extra = ""
+        query = "select rev from changed_path where (path='%s'%s) and rev <= %d order by rev desc limit 1" % (path.strip("/"), extra, revnum)
+
+        row = self.db.execute(query).fetchone()
         if row is None and path == "":
             return 0
 

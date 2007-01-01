@@ -64,8 +64,7 @@ class SvnBranch(Branch):
         self.control_files = FakeControlFiles()
         self.base = base.rstrip("/")
         self._format = SvnBranchFormat()
-        mutter("Connected to branch at %r" % self.branch_path)
-        self._generate_revision_history(self.repository._latest_revnum)
+        self._revision_history = None
 
     def check(self):
         """See Branch.Check.
@@ -103,8 +102,7 @@ class SvnBranch(Branch):
 
         return WorkingTree.open(to_location)
 
-    def create_checkout(self, to_location, revision_id=None,
-            lightweight=False):
+    def create_checkout(self, to_location, revision_id=None, lightweight=False):
         if lightweight:
             return self._create_lightweight_checkout(to_location, revision_id)
         else:
@@ -112,7 +110,7 @@ class SvnBranch(Branch):
        
     def _generate_revision_history(self, last_revnum):
         self._revision_history = []
-        for (branch, _, rev) in self.repository.follow_branch_history(
+        for (branch, rev) in self.repository.follow_branch(
                 self.branch_path, last_revnum):
             self._revision_history.append(
                     self.repository.generate_revision_id(rev, branch))
@@ -143,7 +141,24 @@ class SvnBranch(Branch):
         return None
 
     def revision_history(self):
+        if self._revision_history is None:
+            self._generate_revision_history(self.repository._latest_revnum)
         return self._revision_history
+
+    def last_revision(self):
+        # Shortcut for finding the tip. This avoids expensive generation time
+        # on large branches.
+        if self._revision_history is None:
+            for (branch, rev) in self.repository.follow_branch(
+                self.branch_path, self.repository._latest_revnum):
+                return self.repository.generate_revision_id(rev, branch)
+            return None
+
+        ph = self.revision_history()
+        if ph:
+            return ph[-1]
+        else:
+            return none
 
     def pull(self, source, overwrite=False, stop_revision=None):
         source.lock_read()

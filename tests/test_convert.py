@@ -18,6 +18,7 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NotBranchError
 from bzrlib.repository import Repository
+from bzrlib.trace import mutter
 
 import os
 from convert import convert_repository
@@ -35,6 +36,41 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.client_commit("dc", "create repos")
         self.build_tree({'dc/trunk/file': 'otherdata'})
         self.client_commit("dc", "change")
+
+    def test_fetch_alive(self):
+        self.build_tree({'dc/branches/somebranch/somefile': 'data'})
+        self.client_add("dc/branches/somebranch")
+        self.client_commit("dc", "add a branch")
+        self.client_delete("dc/branches/somebranch")
+        self.client_commit("dc", "remove branch")
+        convert_repository(self.repos_url, "e", TrunkBranchingScheme(), 
+                           all=False, create_shared_repo=True)
+        oldrepos = Repository.open(self.repos_url)
+        newrepos = Repository.open("e")
+        self.assertFalse(newrepos.has_revision("svn-v%d:2@%s-branches%%2fsomebranch" % (MAPPING_VERSION, oldrepos.uuid)))
+
+    def test_fetch_filebranch(self):
+        self.build_tree({'dc/branches/somebranch': 'data'})
+        self.client_add("dc/branches/somebranch")
+        self.client_commit("dc", "add a branch")
+        convert_repository(self.repos_url, "e", TrunkBranchingScheme())
+        oldrepos = Repository.open(self.repos_url)
+        newrepos = Repository.open("e")
+        self.assertFalse(newrepos.has_revision("svn-v%d:2@%s-branches%%2fsomebranch" % (MAPPING_VERSION, oldrepos.uuid)))
+
+
+    def test_fetch_dead(self):
+        self.build_tree({'dc/branches/somebranch/somefile': 'data'})
+        self.client_add("dc/branches/somebranch")
+        self.client_commit("dc", "add a branch")
+        self.client_delete("dc/branches/somebranch")
+        self.client_commit("dc", "remove branch")
+        convert_repository(self.repos_url, "e", TrunkBranchingScheme(), 
+                           all=True, create_shared_repo=True)
+        oldrepos = Repository.open(self.repos_url)
+        newrepos = Repository.open("e")
+        mutter('q: %r' % newrepos.all_revision_ids())
+        self.assertTrue(newrepos.has_revision("svn-v%d:3@%s-branches%%2fsomebranch" % (MAPPING_VERSION, oldrepos.uuid)))
 
     def test_shared_import_continue(self):
         BzrDir.create_repository("e", shared=True)

@@ -44,7 +44,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         
         bzrdir = BzrDir.open("svn+"+repos_url)
         branch = bzrdir.open_branch()
-        repos = bzrdir.open_repository()
+        repos = bzrdir.find_repository()
 
         self.assertEqual("svn-v%d:1@%s-" % (MAPPING_VERSION, repos.uuid), 
                 branch.last_revision())
@@ -410,7 +410,7 @@ foohosts""")
 
         newbranch = newdir.open_branch()
 
-        uuid = olddir.open_repository().uuid
+        uuid = olddir.find_repository().uuid
         tree = newbranch.repository.revision_tree(
                 "svn-v%d:6@%s-branches%%2ffoobranch" % (MAPPING_VERSION, uuid))
 
@@ -431,8 +431,7 @@ foohosts""")
     def test_create_checkout(self):
         repos_url = self.make_client('d', 'dc')
 
-        self.build_tree({'dc/trunk': None, 
-                         'dc/trunk/hosts': 'hej1'})
+        self.build_tree({'dc/trunk': None, 'dc/trunk/hosts': 'hej1'})
         self.client_add("dc/trunk")
         self.client_commit("dc", "created trunk and added hosts") #1
 
@@ -440,8 +439,7 @@ foohosts""")
         oldbranch = Branch.open(url)
 
         newtree = oldbranch.create_checkout("e")
-        self.assertTrue(
-            newtree.branch.repository.has_revision(
+        self.assertTrue(newtree.branch.repository.has_revision(
            'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, oldbranch.repository.uuid)))
 
         self.assertTrue(os.path.exists("e/.bzr"))
@@ -541,9 +539,9 @@ foohosts""")
         os.mkdir("dc")
         
         newdir = olddir.sprout('dc')
-        newdir.open_repository().get_revision(
+        newdir.find_repository().get_revision(
                 newdir.open_branch().last_revision())
-        newdir.open_repository().get_revision_inventory(
+        newdir.find_repository().get_revision_inventory(
                 newdir.open_branch().last_revision())
 
 class TestFakeControlFiles(TestCase):

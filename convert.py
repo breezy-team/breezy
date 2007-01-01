@@ -28,14 +28,30 @@ load_plugins()
 
 from bzrlib.bzrdir import BzrDir
 from bzrlib.branch import Branch
-from bzrlib.errors import BzrError, NotBranchError
+from bzrlib.errors import BzrError, NotBranchError, NoSuchFile
 import bzrlib.osutils as osutils
+from bzrlib.progress import DummyProgress
 from bzrlib.repository import Repository
 from bzrlib.trace import info, mutter
+from bzrlib.transport import get_transport
+import bzrlib.urlutils as urlutils
+from bzrlib.ui import ui_factory
 
 from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
 from transport import SvnRaTransport
+
+import svn.core
+
+def transport_makedirs(transport, location_url):
+    needed = [(transport, transport.relpath(location_url))]
+    while needed:
+        try:
+            transport, relpath = needed[-1]
+            transport.mkdir(relpath)
+            needed.pop()
+        except NoSuchFile:
+            needed.append((transport, urlutils.dirname(relpath)))
 
 def load_dumpfile(dumpfile, outputdir):
     import svn
@@ -51,57 +67,69 @@ def load_dumpfile(dumpfile, outputdir):
     return repos
 
 
-def convert_repository(url, output_dir, scheme, create_shared_repo=True, working_trees=False):
-    tmp_repos = None
+def convert_repository(url, output_url, scheme, create_shared_repo=True, 
+                       working_trees=False, all=False):
+    assert not all or create_shared_repo
 
     if os.path.isfile(url):
         tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
         mutter('loading dumpfile %r to %r' % (url, tmp_repos))
-
         load_dumpfile(url, tmp_repos)
-            
         url = tmp_repos
+    else:
+        tmp_repos = None
 
     try:
+        source_repos = SvnRepository.open(url)
+        source_repos.set_branching_scheme(scheme)
+        to_transport = get_transport(output_url)
+
         if create_shared_repo:
             try:
-                target_repos = Repository.open(output_dir)
+                target_repos = Repository.open(output_url)
                 assert target_repos.is_shared()
             except NotBranchError:
                 if scheme.is_branch(""):
-                    BzrDir.create_branch_and_repo(output_dir)
+                    BzrDir.create_branch_and_repo(output_url)
                 else:
-                    BzrDir.create_repository(output_dir, shared=True)
-                target_repos = Repository.open(output_dir)
+                    BzrDir.create_repository(output_url, shared=True)
+                target_repos = Repository.open(output_url)
             target_repos.set_make_working_trees(working_trees)
+            if all:
+                source_repos.copy_content_into(target_repos)
 
-        source_repos = SvnRepository.open(url)
-
-        source_repos.set_branching_scheme(scheme)
-
-        branches = list(source_repos.find_branches())
-
-        mutter('branches: %r' % list(branches))
-                
-        existing_branches = filter(lambda (bp, revnum, exists): exists, 
+        pb = ui_factory.nested_progress_bar()
+        try:
+            branches = source_repos.find_branches(pb=pb)
+            existing_branches = filter(lambda (bp, revnum, exists): exists, 
                                    branches)
-        info('Importing %d branches' % len(existing_branches))
+        finally:
+            pb.finished()
 
-        for (branch, revnum, exists) in existing_branches:
-            source_branch = Branch.open("%s/%s" % (url, branch))
+        pb = ui_factory.nested_progress_bar()
+                       
+        try:
+            i = 0
+            for (branch, revnum, exists) in existing_branches:
+                if source_repos.transport.check_path(branch, revnum) == svn.core.svn_node_file:
+                    continue
+                pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
+                revid = source_repos.generate_revision_id(revnum, branch)
 
-            target_dir = os.path.join(output_dir, branch)
-            try:
-                target_branch = Branch.open(target_dir)
-                target_branch.pull(source_branch)
-            except NotBranchError:
-                os.makedirs(target_dir)
-                source_branch.bzrdir.sprout(target_dir, source_branch.last_revision())
-            
-            info('Converted %s:%d' % (branch, revnum))
-
+                target_url = urlutils.join(to_transport.base, branch)
+                try:
+                    target_branch = Branch.open(target_url)
+                    if not revid in target_branch.revision_history():
+                        source_branch = Branch.open("%s/%s" % (url, branch))
+                        target_branch.pull(source_branch)
+                except NotBranchError:
+                    source_branch = Branch.open("%s/%s" % (url, branch))
+                    transport_makedirs(to_transport, target_url)
+                    source_branch.bzrdir.sprout(target_url, 
+                                                source_branch.last_revision())
+                i+=1
+        finally:
+            pb.finished()
     finally:
         if tmp_repos:
             osutils.rmtree(tmp_repos)
-
-

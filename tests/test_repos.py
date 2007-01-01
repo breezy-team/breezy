@@ -78,6 +78,30 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         self.assertEqual(1, len(list(repos.follow_history(1))))
 
+    def test_all_revs_empty(self):
+        repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+        self.assertEqual([], list(repos.all_revision_ids()))
+
+    def test_all_revs(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/file': "data", "dc/foo/file":"data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "add trunk")
+        self.build_tree({'dc/branches/somebranch/somefile': 'data'})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "add a branch")
+        self.client_delete("dc/branches/somebranch")
+        self.client_commit("dc", "remove branch")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+        self.assertEqual([
+            "svn-v%d:2@%s-branches%%2fsomebranch" % (MAPPING_VERSION, repos.uuid),
+            "svn-v%d:1@%s-trunk" % (MAPPING_VERSION, repos.uuid)
+            ], list(repos.all_revision_ids()))
+
     def test_follow_history_follow(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/trunk/afile': "data", "dc/branches": None})
@@ -92,9 +116,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos.set_branching_scheme(TrunkBranchingScheme())
 
         items = list(repos.follow_history(2))
-        self.assertEqual([('branches/abranch', {'branches/abranch': ('A', 'trunk', 1)}, 2), 
-                          ('trunk', {'trunk/afile': ('A', None, -1), 
-                                     'trunk': (u'A', None, -1)}, 1)], items)
+        self.assertEqual([('branches/abranch', 2), 
+                          ('trunk', 1)], items)
 
     def test_branch_log_specific(self):
         repos_url = self.make_client("a", "dc")
@@ -195,13 +218,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         """ Test UUID is retrieved correctly """
         bzrdir = self.make_local_bzrdir('c', 'cc')
         self.assertTrue(isinstance(bzrdir, BzrDir))
-        repository = bzrdir.open_repository()
+        repository = bzrdir.find_repository()
         fs = self.open_fs('c')
         self.assertEqual(svn.fs.get_uuid(fs), repository.uuid)
 
     def test_has_revision(self):
         bzrdir = self.make_client_and_bzrdir('d', 'dc')
-        repository = bzrdir.open_repository()
+        repository = bzrdir.find_repository()
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
@@ -211,7 +234,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
     def test_has_revision_none(self):
         bzrdir = self.make_client_and_bzrdir('d', 'dc')
-        repository = bzrdir.open_repository()
+        repository = bzrdir.find_repository()
         self.assertTrue(repository.has_revision(None))
 
     def test_revision_parents(self):
@@ -476,12 +499,23 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         renames = repos.revision_fileid_renames("svn-v%d:1@%s-" % (MAPPING_VERSION, repos.uuid))
         self.assertEqual({"test": "bla"}, renames)
 
+    def test_fetch_trunk1(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/proj1/trunk/file': "data"})
+        self.client_add("dc/proj1")
+        self.client_commit("dc", "My Message")
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme(1))
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
     def test_fetch_delete(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
-        oldrepos = Repository.open("dc")
+        oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f")
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -500,7 +534,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/foo/blo")
         self.client_add("dc/bar")
         self.client_commit("dc", "Second Message")
-        oldrepos = Repository.open("dc")
+        oldrepos = Repository.open(repos_url)
         dir = BzrDir.create("f")
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -532,7 +566,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/branches")
         self.client_commit("dc", "foohosts") #4
 
-        oldrepos = Repository.open("svn+"+repos_url+"/trunk")
+        oldrepos = Repository.open("svn+"+repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
         dir = BzrDir.create("f")
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -1497,7 +1532,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "foohosts") #4
 
         oldrepos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat(), 
-                                   TrunkBranchingScheme()).open_repository()
+                                   TrunkBranchingScheme()).find_repository()
         dir = BzrDir.create("f")
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
@@ -1540,7 +1575,7 @@ Node-copyfrom-path: x
         self.client_commit("dc", "foohosts") #6
 
         repos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat(), 
-                                   TrunkBranchingScheme()).open_repository()
+                                   TrunkBranchingScheme()).find_repository()
 
         tree = repos.revision_tree(
              "svn-v%d:6@%s-branches%%2ffoobranch" % (MAPPING_VERSION, repos.uuid))
@@ -1683,7 +1718,8 @@ Node-copyfrom-path: x
         self.client_add("dc/branches/abranch/bdir/stationary/traveller")
         self.client_commit("dc", "Change dir")
 
-        oldrepos = Repository.open("svn+"+repos_url+"/trunk")
+        oldrepos = Repository.open("svn+"+repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
         dir = BzrDir.create("f")
         newrepos = dir.create_repository()
         copyrev = "svn-v%d:2@%s-branches%%2fabranch" % (MAPPING_VERSION, oldrepos.uuid)
@@ -1706,7 +1742,7 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
-        self.repos = Repository.open("dc")
+        self.repos = Repository.open(repos_url)
         self.inventory = self.repos.get_inventory(
                 "svn-v%d:1@%s-" % (MAPPING_VERSION, self.repos.uuid))
         self.tree = self.repos.revision_tree(

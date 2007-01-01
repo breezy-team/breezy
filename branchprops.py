@@ -35,8 +35,7 @@ class BranchPropertyList:
         path = path.lstrip("/")
 
         try:
-            (_, _, props) = self.log.transport.get_dir(
-                path.encode('utf8'), 
+            (_, _, props) = self.log.transport.get_dir(path.encode('utf8'), 
                 revnum, pool=self.pool)
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
