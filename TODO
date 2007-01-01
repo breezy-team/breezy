@@ -1,5 +1,4 @@
 - handle parent directories of branches being moved correctly
-- allow remote locations in svn-import
 - fix "bzr status" in checkouts
 - faster "bzr status" in checkouts
 - avoid extra connect in logwalker?
