@@ -54,6 +54,33 @@ form::
     check_signatures = require
 
 
+variable policies
+-----------------
+
+Variables defined in a section affect the named directory or URL plus
+any locations they contain.  Policies can be used to change how a
+variable value is interpreted for contained locations.  Currently
+there are three policies available:
+
+ none: the value is interpreted the same for contained locations.
+   This is the default behaviour.
+ norecurse: the value is only used for the exact location specified by
+   the section name.
+ appendpath: for contained locations, any additional path components
+   are appended to the value.
+
+Policies are specified by keys with names of the form "$var:policy".
+For example, to define the push location for a tree of branches, the
+following could be used:
+
+  [/top/location]
+  push_location = sftp://example.com/location
+  push_location:policy = appendpath
+
+With this configuration, the push location for /top/location/branch1
+would be sftp://example.com/location/branch1.
+
+
 The main configuration file, bazaar.conf
 ----------------------------------------
 
