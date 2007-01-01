@@ -46,9 +46,11 @@ IN DEVELOPMENT
 
    * The LogWalker class is now a lot dumber.
 
-   * Added --scheme and --all option to svn-import.
+   * Added --scheme and --all options to svn-import.
 
    * Implemented SvnRaTransport.list_dir().
+
+   * Conversion output can now be on a remote transport.
 
   PERFORMANCE IMPROVEMENTS
 

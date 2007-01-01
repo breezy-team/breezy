@@ -137,11 +137,13 @@ class SvnWorkingTree(WorkingTree):
         try:
             for file in files:
                 svn.wc.delete2(self.abspath(file), wc, None, None, None)
+                # FIXME: Make sure bzr:file-ids entry also gets deleted
         finally:
             svn.wc.adm_close(wc)
 
     def _get_wc(self, relpath="", write_lock=False):
-        return svn.wc.adm_open3(None, self.abspath(relpath).rstrip("/"), write_lock, 0, None)
+        return svn.wc.adm_open3(None, self.abspath(relpath).rstrip("/"), 
+                                write_lock, 0, None)
 
     def _get_rel_wc(self, relpath, write_lock=False):
         dir = os.path.dirname(relpath)
@@ -154,7 +156,9 @@ class SvnWorkingTree(WorkingTree):
         to_wc = self._get_wc(to_name, write_lock=True)
         try:
             for entry in from_paths:
-                svn.wc.copy(self.abspath(entry), to_wc, os.path.basename(entry), None, None)
+                svn.wc.copy(self.abspath(entry), to_wc, 
+                            os.path.basename(entry), None, None)
+                # FIXME: Make sure bzr:file-ids entry gets added
         finally:
             svn.wc.adm_close(to_wc)
 
@@ -168,6 +172,7 @@ class SvnWorkingTree(WorkingTree):
         try:
             svn.wc.copy(self.abspath(from_rel), to_wc, to_file, None, None)
             svn.wc.delete2(self.abspath(from_rel), to_wc, None, None, None)
+            # FIXME: Make sure bzr:file-ids entry gets renamed
         finally:
             svn.wc.adm_close(to_wc)
 
@@ -205,6 +210,7 @@ class SvnWorkingTree(WorkingTree):
             svn.wc.adm_close(wc)
 
         def find_ids(entry):
+            # FIXME: Check bzr:file-ids property as well
             relpath = entry.url[len(entry.repos):].strip("/")
             assert entry.schedule in (svn.wc.schedule_normal, 
                                       svn.wc.schedule_delete,
@@ -361,6 +367,7 @@ class SvnWorkingTree(WorkingTree):
                     svn.wc.add2(os.path.join(self.basedir, f), wc, None, 0, 
                             None, None, None)
                     if ids:
+                        # FIXME: set bzr:file-ids instead
                         svn.wc.prop_set2('bzr:fileid', ids.pop(), relpath, wc, 
                                 False)
                 except SubversionException, (_, num):
@@ -395,14 +402,16 @@ class SvnWorkingTree(WorkingTree):
         return fingerprint_file(open(self.abspath(path)))['sha1']
 
     def _get_bzr_merges(self):
-        return self.branch.repository.branchprop_list.get_property(self.branch.branch_path, 
-                                            self.base_revnum, 
-                                            SVN_PROP_BZR_MERGE, "")
+        return self.branch.repository.branchprop_list.get_property(
+                self.branch.branch_path, 
+                self.base_revnum, 
+                SVN_PROP_BZR_MERGE, "")
 
     def _get_svk_merges(self):
-        return self.branch.repository.branchprop_list.get_property(self.branch.branch_path, 
-                                            self.base_revnum, 
-                                            SVN_PROP_SVK_MERGE, "")
+        return self.branch.repository.branchprop_list.get_property(
+                self.branch.branch_path, 
+                self.base_revnum, 
+                SVN_PROP_SVK_MERGE, "")
 
     def set_pending_merges(self, merges):
         wc = self._get_wc(write_lock=True)

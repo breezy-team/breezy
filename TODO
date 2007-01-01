@@ -1,3 +1,4 @@
+- fix autorealm repository
 - handle parent directories of branches being moved correctly
 - fix "bzr status" in checkouts
 - faster "bzr status" in checkouts
