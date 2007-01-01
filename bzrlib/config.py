@@ -667,7 +667,7 @@ class BranchConfig(Config):
         value = self._get_explicit_nickname()
         if value is not None:
             return value
-        return self.branch.base.split('/')[-2]
+        return urlutils.unescape(self.branch.base.split('/')[-2])
 
     def has_explicit_nickname(self):
         """Return true if a nickname has been explicitly assigned."""

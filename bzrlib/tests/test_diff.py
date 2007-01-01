@@ -112,8 +112,10 @@ class TestDiff(TestCase):
 
     def test_external_diff_binary_lang_c(self):
         orig_lang = os.environ.get('LANG')
+        orig_lc_all = os.environ.get('LC_ALL')
         try:
             os.environ['LANG'] = 'C'
+            os.environ['LC_ALL'] = 'C'
             lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
             # Older versions of diffutils say "Binary files", newer
             # versions just say "Files".
@@ -121,10 +123,11 @@ class TestDiff(TestCase):
                                   '(Binary f|F)iles old and new differ\n')
             self.assertEquals(lines[1:], ['\n'])
         finally:
-            if orig_lang is None:
-                del os.environ['LANG']
-            else:
-                os.environ['LANG'] = orig_lang
+            for name, value in [('LANG', orig_lang), ('LC_ALL', orig_lc_all)]:
+                if value is None:
+                    del os.environ[name]
+                else:
+                    os.environ[name] = value
 
     def test_no_external_diff(self):
         """Check that NoDiff is raised when diff is not available"""

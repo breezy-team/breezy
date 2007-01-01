@@ -40,9 +40,9 @@ from bzrlib.osutils import getcwd
 import bzrlib.revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
-from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree

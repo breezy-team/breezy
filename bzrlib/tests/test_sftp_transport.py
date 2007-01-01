@@ -23,6 +23,7 @@ import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin, lexists, set_or_unset_env
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
+from bzrlib.tests.HttpServer import HttpServer
 import bzrlib.transport
 from bzrlib.transport import get_transport
 import bzrlib.transport.http
@@ -44,7 +45,7 @@ def set_test_transport_to_sftp(testcase):
         testcase.transport_server = SFTPAbsoluteServer
     else:
         testcase.transport_server = SFTPHomeDirServer
-    testcase.transport_readonly_server = bzrlib.transport.http.HttpServer
+    testcase.transport_readonly_server = HttpServer
 
 
 class TestCaseWithSFTPServer(TestCaseWithTransport):

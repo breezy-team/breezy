@@ -750,7 +750,8 @@ class NotAncestor(BzrError):
 class InstallFailed(BzrError):
 
     def __init__(self, revisions):
-        msg = "Could not install revisions:\n%s" % " ,".join(revisions)
+        revision_str = ", ".join(str(r) for r in revisions)
+        msg = "Could not install revisions:\n%s" % revision_str
         BzrError.__init__(self, msg)
         self.revisions = revisions
 
@@ -928,14 +929,17 @@ class KnitError(BzrError):
     
     _fmt = "Knit error"
 
+    internal_error = True
+
 
 class KnitHeaderError(KnitError):
 
-    _fmt = "Knit header error: %(badline)r unexpected"
+    _fmt = "Knit header error: %(badline)r unexpected for file %(filename)s"
 
-    def __init__(self, badline):
+    def __init__(self, badline, filename):
         KnitError.__init__(self)
         self.badline = badline
+        self.filename = filename
 
 
 class KnitCorrupt(KnitError):
@@ -946,6 +950,21 @@ class KnitCorrupt(KnitError):
         KnitError.__init__(self)
         self.filename = filename
         self.how = how
+
+
+class KnitIndexUnknownMethod(KnitError):
+    """Raised when we don't understand the storage method.
+
+    Currently only 'fulltext' and 'line-delta' are supported.
+    """
+    
+    _fmt = ("Knit index %(filename)s does not have a known method"
+            " in options: %(options)r")
+
+    def __init__(self, filename, options):
+        KnitError.__init__(self)
+        self.filename = filename
+        self.options = options
 
 
 class NoSuchExportFormat(BzrError):
@@ -1410,6 +1429,14 @@ class UnsupportedOperation(BzrError):
         self.method = method
         self.mname = method.__name__
         self.tname = type(method_self).__name__
+
+
+class CannotSetRevisionId(UnsupportedOperation):
+    """Raised when a commit is attempting to set a revision id but cant."""
+
+
+class NonAsciiRevisionId(UnsupportedOperation):
+    """Raised when a commit is attempting to set a non-ascii revision id but cant."""
 
 
 class BinaryFile(BzrError):

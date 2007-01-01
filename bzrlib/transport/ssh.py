@@ -39,7 +39,9 @@ import bzrlib.ui
 try:
     import paramiko
 except ImportError, e:
-    raise ParamikoNotPresent(e)
+    # If we have an ssh subprocess, we don't strictly need paramiko for all ssh
+    # access
+    paramiko = None
 else:
     from paramiko.sftp_client import SFTPClient
 
@@ -223,9 +225,11 @@ class ParamikoVendor(SSHVendor):
             our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
         else:
             warning('Adding %s host key for %s: %s' % (keytype, host, server_key_hex))
-            if host not in BZR_HOSTKEYS:
-                BZR_HOSTKEYS[host] = {}
-            BZR_HOSTKEYS[host][keytype] = server_key
+            add = getattr(BZR_HOSTKEYS, 'add', None)
+            if add is not None: # paramiko >= 1.X.X
+                BZR_HOSTKEYS.add(host, keytype, server_key)
+            else:
+                BZR_HOSTKEYS.setdefault(host, {})[keytype] = server_key
             our_server_key = server_key
             our_server_key_hex = paramiko.util.hexify(our_server_key.get_fingerprint())
             save_host_keys()
@@ -258,7 +262,8 @@ class ParamikoVendor(SSHVendor):
             self._raise_connection_error(host, port=port, orig_error=e,
                                          msg='Unable to invoke remote bzr')
 
-register_ssh_vendor('paramiko', ParamikoVendor())
+if paramiko is not None:
+    register_ssh_vendor('paramiko', ParamikoVendor())
 
 
 class SubprocessVendor(SSHVendor):

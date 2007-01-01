@@ -27,6 +27,7 @@ from bzrlib import (
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
                           TestCase,
+                          TestCaseInTempDir,
                           TestCaseWithMemoryTransport,
                           TestCaseWithTransport,
                           TestSkipped,
@@ -438,10 +439,10 @@ class TestBzrSubprocess(TestCaseWithTransport):
         self.make_branch_and_tree('one')
 
         process = self.start_bzr_subprocess(['root'], working_dir='one')
-        result = self.finish_bzr_subprocess(process)
+        result = self.finish_bzr_subprocess(process, universal_newlines=True)
         self.assertEndsWith(result[0], 'one\n')
         self.assertEqual('', result[1])
-        
+
 
 class TestRunBzrError(ExternalBase):
 
@@ -451,3 +452,40 @@ class TestRunBzrError(ExternalBase):
 
         out, err = self.run_bzr_error(["bzr: ERROR: foobarbaz is not versioned"],
                                       'file-id', 'foobarbaz')
+
+
+class TestSelftestCleanOutput(TestCaseInTempDir):
+
+    def test_clean_output(self):
+        # check that 'bzr selftest --clean-output' works correct
+        dirs = ('test0000.tmp', 'test0001.tmp', 'bzrlib', 'tests')
+        files = ('bzr', 'setup.py', 'test9999.tmp')
+        for i in dirs:
+            os.mkdir(i)
+        for i in files:
+            f = file(i, 'wb')
+            f.write('content of ')
+            f.write(i)
+            f.close()
+
+        root = os.getcwdu()
+        before = os.listdir(root)
+        before.sort()
+        self.assertEquals(['bzr','bzrlib','setup.py',
+                           'test0000.tmp','test0001.tmp',
+                           'test9999.tmp','tests'],
+                           before)
+
+        out,err = self.run_bzr_captured(['selftest','--clean-output'],
+                                        working_dir=root)
+
+        self.assertEquals(['delete directory: test0000.tmp',
+                          'delete directory: test0001.tmp'],
+                          sorted(out.splitlines()))
+        self.assertEquals('', err)
+
+        after = os.listdir(root)
+        after.sort()
+        self.assertEquals(['bzr','bzrlib','setup.py',
+                           'test9999.tmp','tests'],
+                           after)

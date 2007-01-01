@@ -38,14 +38,12 @@ WorkingTree.open(dir).
 
 from cStringIO import StringIO
 import os
-import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
 from copy import deepcopy
 import errno
-import fnmatch
 import stat
 from time import time
 import warnings
@@ -55,6 +53,9 @@ from bzrlib import (
     bzrdir,
     conflicts as _mod_conflicts,
     errors,
+    generate_ids,
+    globbing,
+    hashcache,
     ignores,
     merge,
     osutils,
@@ -102,7 +103,7 @@ from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
 import bzrlib.tree
 from bzrlib.progress import DummyProgress, ProgressPhase
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import NULL_REVISION, CURRENT_REVISION
 import bzrlib.revisiontree
 from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import (deprecated_passed,
@@ -111,61 +112,30 @@ from bzrlib.symbol_versioning import (deprecated_passed,
         DEPRECATED_PARAMETER,
         zero_eight,
         zero_eleven,
+        zero_thirteen,
         )
 
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
 CONFLICT_HEADER_1 = "BZR conflict list format 1"
 
-# the regex removes any weird characters; we don't escape them 
-# but rather just pull them out
-_gen_file_id_re = re.compile(r'[^\w.]')
-_gen_id_suffix = None
-_gen_id_serial = 0
 
-
-def _next_id_suffix():
-    """Create a new file id suffix that is reasonably unique.
-    
-    On the first call we combine the current time with 64 bits of randomness
-    to give a highly probably globally unique number. Then each call in the same
-    process adds 1 to a serial number we append to that unique value.
-    """
-    # XXX TODO: change bzrlib.add.smart_add to call workingtree.add() rather 
-    # than having to move the id randomness out of the inner loop like this.
-    # XXX TODO: for the global randomness this uses we should add the thread-id
-    # before the serial #.
-    global _gen_id_suffix, _gen_id_serial
-    if _gen_id_suffix is None:
-        _gen_id_suffix = "-%s-%s-" % (compact_date(time()), rand_chars(16))
-    _gen_id_serial += 1
-    return _gen_id_suffix + str(_gen_id_serial)
-
-
+@deprecated_function(zero_thirteen)
 def gen_file_id(name):
     """Return new file id for the basename 'name'.
 
-    The uniqueness is supplied from _next_id_suffix.
+    Use bzrlib.generate_ids.gen_file_id() instead
     """
-    # The real randomness is in the _next_id_suffix, the
-    # rest of the identifier is just to be nice.
-    # So we:
-    # 1) Remove non-ascii word characters to keep the ids portable
-    # 2) squash to lowercase, so the file id doesn't have to
-    #    be escaped (case insensitive filesystems would bork for ids
-    #    that only differred in case without escaping).
-    # 3) truncate the filename to 20 chars. Long filenames also bork on some
-    #    filesystems
-    # 4) Removing starting '.' characters to prevent the file ids from
-    #    being considered hidden.
-    ascii_word_only = _gen_file_id_re.sub('', name.lower())
-    short_no_dots = ascii_word_only.lstrip('.')[:20]
-    return short_no_dots + _next_id_suffix()
+    return generate_ids.gen_file_id(name)
 
 
+@deprecated_function(zero_thirteen)
 def gen_root_id():
-    """Return a new tree-root file id."""
-    return gen_file_id('tree_root')
+    """Return a new tree-root file id.
+
+    This has been deprecated in favor of bzrlib.generate_ids.gen_root_id()
+    """
+    return generate_ids.gen_root_id()
 
 
 class TreeEntry(object):
@@ -263,8 +233,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self._set_inventory(wt._inventory, dirty=False)
             self._format = wt._format
             self.bzrdir = wt.bzrdir
-        from bzrlib.hashcache import HashCache
-        from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
         basedir = safe_unicode(basedir)
@@ -298,7 +266,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # cache file, and have the parser take the most recent entry for a
         # given path only.
         cache_filename = self.bzrdir.get_workingtree_transport(None).local_abspath('stat-cache')
-        hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
+        self._hashcache = hashcache.HashCache(basedir, cache_filename,
+                                              self._control_files._file_mode)
+        hc = self._hashcache
         hc.read()
         # is this scan needed ? it makes things kinda slow.
         #hc.scan()
@@ -499,6 +469,37 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
+    def annotate_iter(self, file_id):
+        """See Tree.annotate_iter
+
+        This implementation will use the basis tree implementation if possible.
+        Lines not in the basis are attributed to CURRENT_REVISION
+
+        If there are pending merges, lines added by those merges will be
+        incorrectly attributed to CURRENT_REVISION (but after committing, the
+        attribution will be correct).
+        """
+        basis = self.basis_tree()
+        changes = self._iter_changes(basis, True, [file_id]).next()
+        changed_content, kind = changes[2], changes[6]
+        if not changed_content:
+            return basis.annotate_iter(file_id)
+        if kind[1] is None:
+            return None
+        import annotate
+        if kind[0] != 'file':
+            old_lines = []
+        else:
+            old_lines = list(basis.annotate_iter(file_id))
+        old = [old_lines]
+        for tree in self.branch.repository.revision_trees(
+            self.get_parent_ids()[1:]):
+            if file_id not in tree:
+                continue
+            old.append(list(tree.annotate_iter(file_id)))
+        return annotate.reannotate(old, self.get_file(file_id).readlines(),
+                                   CURRENT_REVISION)
+
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
         
@@ -585,10 +586,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return os.path.getsize(self.id2abspath(file_id))
 
     @needs_read_lock
-    def get_file_sha1(self, file_id, path=None):
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
         if not path:
             path = self._inventory.id2path(file_id)
-        return self._hashcache.get_sha1(path)
+        return self._hashcache.get_sha1(path, stat_value)
 
     def get_file_mtime(self, file_id, path=None):
         if not path:
@@ -850,7 +851,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def mkdir(self, path, file_id=None):
         """See MutableTree.mkdir()."""
         if file_id is None:
-            file_id = gen_file_id(os.path.basename(path))
+            file_id = generate_ids.gen_file_id(os.path.basename(path))
         os.mkdir(self.abspath(path))
         self.add(path, file_id, 'directory')
         return file_id
@@ -1253,60 +1254,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 subp = pathjoin(path, subf)
                 yield subp
 
-    def _translate_ignore_rule(self, rule):
-        """Translate a single ignore rule to a regex.
-
-        There are two types of ignore rules.  Those that do not contain a / are
-        matched against the tail of the filename (that is, they do not care
-        what directory the file is in.)  Rules which do contain a slash must
-        match the entire path.  As a special case, './' at the start of the
-        string counts as a slash in the string but is removed before matching
-        (e.g. ./foo.c, ./src/foo.c)
-
-        :return: The translated regex.
-        """
-        if rule[:2] in ('./', '.\\'):
-            # rootdir rule
-            result = fnmatch.translate(rule[2:])
-        elif '/' in rule or '\\' in rule:
-            # path prefix 
-            result = fnmatch.translate(rule)
-        else:
-            # default rule style.
-            result = "(?:.*/)?(?!.*/)" + fnmatch.translate(rule)
-        assert result[-1] == '$', "fnmatch.translate did not add the expected $"
-        return "(" + result + ")"
-
-    def _combine_ignore_rules(self, rules):
-        """Combine a list of ignore rules into a single regex object.
-
-        Each individual rule is combined with | to form a big regex, which then
-        has $ added to it to form something like ()|()|()$. The group index for
-        each subregex's outermost group is placed in a dictionary mapping back 
-        to the rule. This allows quick identification of the matching rule that
-        triggered a match.
-        :return: a list of the compiled regex and the matching-group index 
-        dictionaries. We return a list because python complains if you try to 
-        combine more than 100 regexes.
-        """
-        result = []
-        groups = {}
-        next_group = 0
-        translated_rules = []
-        for rule in rules:
-            translated_rule = self._translate_ignore_rule(rule)
-            compiled_rule = re.compile(translated_rule)
-            groups[next_group] = rule
-            next_group += compiled_rule.groups
-            translated_rules.append(translated_rule)
-            if next_group == 99:
-                result.append((re.compile("|".join(translated_rules)), groups))
-                groups = {}
-                next_group = 0
-                translated_rules = []
-        if len(translated_rules):
-            result.append((re.compile("|".join(translated_rules)), groups))
-        return result
 
     def ignored_files(self):
         """Yield list of PATH, IGNORE_PATTERN"""
@@ -1326,29 +1273,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         ignore_globs = set(bzrlib.DEFAULT_IGNORE)
         ignore_globs.update(ignores.get_runtime_ignores())
-
         ignore_globs.update(ignores.get_user_ignores())
-
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
             try:
                 ignore_globs.update(ignores.parse_ignore_file(f))
             finally:
                 f.close()
-
         self._ignoreset = ignore_globs
-        self._ignore_regex = self._combine_ignore_rules(ignore_globs)
         return ignore_globs
 
-    def _get_ignore_rules_as_regex(self):
-        """Return a regex of the ignore rules and a mapping dict.
-
-        :return: (ignore rules compiled regex, dictionary mapping rule group 
-        indices to original rule.)
-        """
-        if getattr(self, '_ignoreset', None) is None:
-            self.get_ignore_list()
-        return self._ignore_regex
+    def _flush_ignore_list_cache(self):
+        """Resets the cached ignore list to force a cache rebuild."""
+        self._ignoreset = None
+        self._ignoreglobster = None
 
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
@@ -1359,30 +1297,35 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         If the file is ignored, returns the pattern which caused it to
         be ignored, otherwise None.  So this can simply be used as a
         boolean if desired."""
-
-        # TODO: Use '**' to match directories, and other extended
-        # globbing stuff from cvs/rsync.
-
-        # XXX: fnmatch is actually not quite what we want: it's only
-        # approximately the same as real Unix fnmatch, and doesn't
-        # treat dotfiles correctly and allows * to match /.
-        # Eventually it should be replaced with something more
-        # accurate.
-    
-        rules = self._get_ignore_rules_as_regex()
-        for regex, mapping in rules:
-            match = regex.match(filename)
-            if match is not None:
-                # one or more of the groups in mapping will have a non-None
-                # group match.
-                groups = match.groups()
-                rules = [mapping[group] for group in 
-                    mapping if groups[group] is not None]
-                return rules[0]
-        return None
+        if getattr(self, '_ignoreglobster', None) is None:
+            self._ignoreglobster = globbing.Globster(self.get_ignore_list())
+        return self._ignoreglobster.match(filename)
 
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
+
+    def _comparison_data(self, entry, path):
+        abspath = self.abspath(path)
+        try:
+            stat_value = os.lstat(abspath)
+        except OSError, e:
+            if getattr(e, 'errno', None) == errno.ENOENT:
+                stat_value = None
+                kind = None
+                executable = False
+            else:
+                raise
+        else:
+            mode = stat_value.st_mode
+            kind = osutils.file_kind_from_stat_mode(mode)
+            if not supports_executable():
+                executable = entry.executable
+            else:
+                executable = bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+        return kind, executable, stat_value
+
+    def _file_size(self, entry, stat_value):
+        return stat_value.st_size
 
     def last_revision(self):
         """Return the last revision of the branch for this tree.
@@ -1756,6 +1699,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                   this_tree=self)
         return result
 
+    def _write_hashcache_if_dirty(self):
+        """Write out the hashcache if it is dirty."""
+        if self._hashcache.needs_write:
+            try:
+                self._hashcache.write()
+            except OSError, e:
+                if e.errno not in (errno.EPERM, errno.EACCES):
+                    raise
+                # TODO: jam 20061219 Should this be a warning? A single line
+                #       warning might be sufficient to let the user know what
+                #       is going on.
+                mutter('Could not write hashcache for %s\nError: %s',
+                       self._hashcache.cache_file_name(), e)
+
     @needs_tree_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
@@ -1822,8 +1779,8 @@ class WorkingTree2(WorkingTree):
             # _inventory_is_modified is always False during a read lock.
             if self._inventory_is_modified:
                 self.flush()
-            if self._hashcache.needs_write:
-                self._hashcache.write()
+            self._write_hashcache_if_dirty()
+                    
         # reverse order of locking.
         try:
             return self._control_files.unlock()
@@ -1891,8 +1848,7 @@ class WorkingTree3(WorkingTree):
             # _inventory_is_modified is always False during a read lock.
             if self._inventory_is_modified:
                 self.flush()
-            if self._hashcache.needs_write:
-                self._hashcache.write()
+            self._write_hashcache_if_dirty()
         # reverse order of locking.
         try:
             return self._control_files.unlock()

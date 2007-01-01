@@ -20,6 +20,7 @@ import sys
 
 from bzrlib import (
     errors,
+    generate_ids,
     tests,
     urlutils,
     )
@@ -36,7 +37,6 @@ from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name)
-from bzrlib.workingtree import gen_root_id
 
 
 class TestTreeTransform(TestCaseInTempDir):
@@ -605,7 +605,7 @@ def conflict_text(tree, merge):
 
 class TestTransformMerge(TestCaseInTempDir):
     def test_text_merge(self):
-        root_id = gen_root_id()
+        root_id = generate_ids.gen_root_id()
         base = TransformGroup("base", root_id)
         base.tt.new_file('a', base.root, 'a\nb\nc\nd\be\n', 'a')
         base.tt.new_file('b', base.root, 'b1', 'b')
@@ -684,7 +684,7 @@ class TestTransformMerge(TestCaseInTempDir):
     def test_file_merge(self):
         if not has_symlinks():
             raise TestSkipped('Symlinks are not supported on this platform')
-        root_id = gen_root_id()
+        root_id = generate_ids.gen_root_id()
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
         other = TransformGroup("OTHER", root_id)
@@ -725,7 +725,7 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertIs(os.path.lexists(this.wt.abspath('h.OTHER')), True)
 
     def test_filename_merge(self):
-        root_id = gen_root_id()
+        root_id = generate_ids.gen_root_id()
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
         other = TransformGroup("OTHER", root_id)
@@ -758,7 +758,7 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(this.wt.id2path('f'), pathjoin('b/f1'))
 
     def test_filename_merge_conflicts(self):
-        root_id = gen_root_id()
+        root_id = generate_ids.gen_root_id()
         base = TransformGroup("BASE", root_id)
         this = TransformGroup("THIS", root_id)
         other = TransformGroup("OTHER", root_id)

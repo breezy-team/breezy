@@ -421,6 +421,10 @@ class TestBranchConfig(TestCaseWithTransport):
         self.check_file_contents(locations,
             '[%s/branch]\npush_location = http://foobar\npush_location:policy = norecurse' % (local_path,))
 
+    def test_autonick_urlencoded(self):
+        b = self.make_branch('!repo')
+        self.assertEqual('!repo', b.get_config().get_nickname())
+
 
 class TestGlobalConfigItems(TestCase):
 

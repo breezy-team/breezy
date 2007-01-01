@@ -1454,4 +1454,5 @@ class BranchCheckResult(object):
 @deprecated_function(zero_eight)
 def is_control_file(*args, **kwargs):
     """See bzrlib.workingtree.is_control_file."""
-    return bzrlib.workingtree.is_control_file(*args, **kwargs)
+    from bzrlib import workingtree
+    return workingtree.is_control_file(*args, **kwargs)

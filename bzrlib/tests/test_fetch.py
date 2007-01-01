@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import re
 import sys
 
 from bzrlib import bzrdir, repository
@@ -236,13 +237,12 @@ class TestHttpFetch(TestCaseWithWebserver):
 
     def _count_log_matches(self, target, logs):
         """Count the number of times the target file pattern was fetched in an http log"""
-        log_pattern = '%s HTTP/1.1" 200 - "-" "bzr/%s' % \
-            (target, bzrlib.__version__)
+        get_succeeds_re = re.compile(
+            '.*"GET .*%s HTTP/1.1" 20[06] - "-" "bzr/%s' %
+            (     target,                    bzrlib.__version__))
         c = 0
         for line in logs:
-            # TODO: perhaps use a regexp instead so we can match more
-            # precisely?
-            if line.find(log_pattern) > -1:
+            if get_succeeds_re.match(line):
                 c += 1
         return c
 
@@ -257,7 +257,6 @@ class TestHttpFetch(TestCaseWithWebserver):
         target = BzrDir.create_branch_and_repo("target/")
         source = Branch.open(self.get_readonly_url("source/"))
         self.assertEqual(target.fetch(source), (2, []))
-        log_pattern = '%%s HTTP/1.1" 200 - "-" "bzr/%s' % bzrlib.__version__
         # this is the path to the literal file. As format changes 
         # occur it needs to be updated. FIXME: ask the store for the
         # path.

@@ -37,6 +37,27 @@ class TestErrors(TestCaseWithTransport):
             "read without data loss.",
             str(error))
 
+    def test_install_failed(self):
+        error = errors.InstallFailed(['rev-one'])
+        self.assertEqual("Could not install revisions:\nrev-one", str(error))
+        error = errors.InstallFailed(['rev-one', 'rev-two'])
+        self.assertEqual("Could not install revisions:\nrev-one, rev-two",
+                         str(error))
+        error = errors.InstallFailed([None])
+        self.assertEqual("Could not install revisions:\nNone", str(error))
+
+    def test_knit_header_error(self):
+        error = errors.KnitHeaderError('line foo\n', 'path/to/file')
+        self.assertEqual("Knit header error: 'line foo\\n' unexpected"
+                         " for file path/to/file", str(error))
+
+    def test_knit_index_unknown_method(self):
+        error = errors.KnitIndexUnknownMethod('http://host/foo.kndx',
+                                              ['bad', 'no-eol'])
+        self.assertEqual("Knit index http://host/foo.kndx does not have a"
+                         " known method in options: ['bad', 'no-eol']",
+                         str(error))
+
     def test_medium_not_connected(self):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
@@ -126,56 +147,6 @@ class TestErrors(TestCaseWithTransport):
             " no data may be read.",
             str(error))
 
-
-class PassThroughError(errors.BzrError):
-    
-    _fmt = """Pass through %(foo)s and %(bar)s"""
-
-    def __init__(self, foo, bar):
-        errors.BzrError.__init__(self, foo=foo, bar=bar)
-
-
-class ErrorWithBadFormat(errors.BzrError):
-
-    _fmt = """One format specifier: %(thing)s"""
-
-
-class ErrorWithNoFormat(errors.BzrError):
-    """This class has a docstring but no format string."""
-
-
-class TestErrorFormatting(TestCase):
-    
-    def test_always_str(self):
-        e = PassThroughError(u'\xb5', 'bar')
-        self.assertIsInstance(e.__str__(), str)
-        # In Python str(foo) *must* return a real byte string
-        # not a Unicode string. The following line would raise a
-        # Unicode error, because it tries to call str() on the string
-        # returned from e.__str__(), and it has non ascii characters
-        s = str(e)
-        self.assertEqual('Pass through \xc2\xb5 and bar', s)
-
-    def test_missing_format_string(self):
-        e = ErrorWithNoFormat(param='randomvalue')
-        s = self.callDeprecated(
-                ['ErrorWithNoFormat uses its docstring as a format, it should use _fmt instead'],
-                lambda x: str(x), e)
-        ## s = str(e)
-        self.assertEqual(s, 
-                "This class has a docstring but no format string.")
-
-    def test_mismatched_format_args(self):
-        # Even though ErrorWithBadFormat's format string does not match the
-        # arguments we constructing it with, we can still stringify an instance
-        # of this exception. The resulting string will say its unprintable.
-        e = ErrorWithBadFormat(not_thing='x')
-        self.assertStartsWith(
-            str(e), 'Unprintable exception ErrorWithBadFormat')
-
-
-class TestSpecificErrors(TestCase):
-    
     def test_transport_not_possible(self):
         e = errors.TransportNotPossible('readonly', 'original error')
         self.assertEqual('Transport operation not possible:'
@@ -224,4 +195,51 @@ class TestSpecificErrors(TestCase):
             host='ahost', port=444, msg='Unable to connect to ssh host',
             orig_error='my_error')
 
+
+
+class PassThroughError(errors.BzrError):
+    
+    _fmt = """Pass through %(foo)s and %(bar)s"""
+
+    def __init__(self, foo, bar):
+        errors.BzrError.__init__(self, foo=foo, bar=bar)
+
+
+class ErrorWithBadFormat(errors.BzrError):
+
+    _fmt = """One format specifier: %(thing)s"""
+
+
+class ErrorWithNoFormat(errors.BzrError):
+    """This class has a docstring but no format string."""
+
+
+class TestErrorFormatting(TestCase):
+    
+    def test_always_str(self):
+        e = PassThroughError(u'\xb5', 'bar')
+        self.assertIsInstance(e.__str__(), str)
+        # In Python str(foo) *must* return a real byte string
+        # not a Unicode string. The following line would raise a
+        # Unicode error, because it tries to call str() on the string
+        # returned from e.__str__(), and it has non ascii characters
+        s = str(e)
+        self.assertEqual('Pass through \xc2\xb5 and bar', s)
+
+    def test_missing_format_string(self):
+        e = ErrorWithNoFormat(param='randomvalue')
+        s = self.callDeprecated(
+                ['ErrorWithNoFormat uses its docstring as a format, it should use _fmt instead'],
+                lambda x: str(x), e)
+        ## s = str(e)
+        self.assertEqual(s, 
+                "This class has a docstring but no format string.")
+
+    def test_mismatched_format_args(self):
+        # Even though ErrorWithBadFormat's format string does not match the
+        # arguments we constructing it with, we can still stringify an instance
+        # of this exception. The resulting string will say its unprintable.
+        e = ErrorWithBadFormat(not_thing='x')
+        self.assertStartsWith(
+            str(e), 'Unprintable exception ErrorWithBadFormat')
 

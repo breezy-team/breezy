@@ -43,6 +43,7 @@ from bzrlib import (
     lockable_files,
     lockdir,
     revision as _mod_revision,
+    repository as _mod_repository,
     urlutils,
     xml4,
     xml5,
@@ -917,7 +918,7 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.destroy_workingtree."""
         wt = self.open_workingtree()
         repository = wt.branch.repository
-        empty = repository.revision_tree(bzrlib.revision.NULL_REVISION)
+        empty = repository.revision_tree(_mod_revision.NULL_REVISION)
         wt.revert([], old_tree=empty)
         self.destroy_workingtree_metadata()
 
@@ -1803,6 +1804,7 @@ class ConvertBzrDir6ToMeta(Converter):
 
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
+        from bzrlib.branch import BzrBranchFormat5
         self.bzrdir = to_convert
         self.pb = pb
         self.count = 0
@@ -1837,14 +1839,14 @@ class ConvertBzrDir6ToMeta(Converter):
         # we hard code the formats here because we are converting into
         # the meta format. The meta format upgrader can take this to a 
         # future format within each component.
-        self.put_format('repository', bzrlib.repository.RepositoryFormat7())
+        self.put_format('repository', _mod_repository.RepositoryFormat7())
         for entry in repository_names:
             self.move_entry('repository', entry)
 
         self.step('Upgrading branch      ')
         self.bzrdir.transport.mkdir('branch', mode=self.dir_mode)
         self.make_lock('branch')
-        self.put_format('branch', bzrlib.branch.BzrBranchFormat5())
+        self.put_format('branch', BzrBranchFormat5())
         branch_files = [('revision-history', True),
                         ('branch-name', True),
                         ('parent', False)]
@@ -1870,11 +1872,12 @@ class ConvertBzrDir6ToMeta(Converter):
                 if name in bzrcontents:
                     self.bzrdir.transport.delete(name)
         else:
+            from bzrlib.workingtree import WorkingTreeFormat3
             self.step('Upgrading working tree')
             self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
             self.put_format(
-                'checkout', bzrlib.workingtree.WorkingTreeFormat3())
+                'checkout', WorkingTreeFormat3())
             self.bzrdir.transport.delete_multi(
                 self.garbage_inventories, self.pb)
             for entry in checkout_files:

@@ -79,6 +79,7 @@ from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter, note
 from bzrlib.tests import TestUtil
+from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
@@ -191,15 +192,17 @@ class ExtendedTestResult(unittest._TextTestResult):
                 self._formatTime(self._benchmarkTime),
                 self._elapsedTestTimeString())
         else:
-            return "      %s" % self._elapsedTestTimeString()
+            return "           %s" % self._elapsedTestTimeString()
 
     def _formatTime(self, seconds):
         """Format seconds as milliseconds with leading spaces."""
-        return "%5dms" % (1000 * seconds)
+        # some benchmarks can take thousands of seconds to run, so we need 8
+        # places
+        return "%8dms" % (1000 * seconds)
 
     def _shortened_test_description(self, test):
         what = test.id()
-        what = re.sub(r'^bzrlib\.(tests|benchmark)\.', '', what)
+        what = re.sub(r'^bzrlib\.(tests|benchmarks)\.', '', what)
         return what
 
     def startTest(self, test):
@@ -323,17 +326,17 @@ class TextTestResult(ExtendedTestResult):
 
     def report_error(self, test, err):
         self.error_count += 1
-        self.pb.note('ERROR: %s\n    %s\n' % (
+        self.pb.note('ERROR: %s\n    %s\n', 
             self._shortened_test_description(test),
             err[1],
-            ))
+            )
 
     def report_failure(self, test, err):
         self.failure_count += 1
-        self.pb.note('FAIL: %s\n    %s\n' % (
+        self.pb.note('FAIL: %s\n    %s\n', 
             self._shortened_test_description(test),
             err[1],
-            ))
+            )
 
     def report_skip(self, test, skip_excinfo):
         self.skip_count += 1
@@ -343,13 +346,13 @@ class TextTestResult(ExtendedTestResult):
             # to see them.
             if False:
                 # show test and reason for skip
-                self.pb.note('SKIP: %s\n    %s\n' % (
+                self.pb.note('SKIP: %s\n    %s\n', 
                     self._shortened_test_description(test),
-                    skip_excinfo[1]))
+                    skip_excinfo[1])
             else:
                 # since the class name was left behind in the still-visible
                 # progress bar...
-                self.pb.note('SKIP: %s' % (skip_excinfo[1]))
+                self.pb.note('SKIP: %s', skip_excinfo[1])
 
     def report_cleaning_up(self):
         self.pb.update('cleaning up...')
@@ -375,7 +378,10 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        self.stream.write(self._ellipsize_to_right(name, 60))
+        # width needs space for 6 char status, plus 1 for slash, plus 2 10-char
+        # numbers, plus a trailing blank
+        self.stream.write(self._ellipsize_to_right(name,
+                            osutils.terminal_width()-30))
         self.stream.flush()
 
     def report_error(self, test, err):
@@ -385,7 +391,7 @@ class VerboseTestResult(ExtendedTestResult):
 
     def report_failure(self, test, err):
         self.failure_count += 1
-        self.stream.writeln('FAIL %s\n    %s'
+        self.stream.writeln(' FAIL %s\n    %s'
                 % (self._testTimeString(), err[1]))
 
     def report_success(self, test):
@@ -637,6 +643,24 @@ class TestCase(unittest.TestCase):
             raise AssertionError("value(s) %r not present in container %r" % 
                                  (missing, superlist))
 
+    def assertListRaises(self, excClass, func, *args, **kwargs):
+        """Fail unless excClass is raised when the iterator from func is used.
+        
+        Many functions can return generators this makes sure
+        to wrap them in a list() call to make sure the whole generator
+        is run, and that the proper exception is raised.
+        """
+        try:
+            list(func(*args, **kwargs))
+        except excClass:
+            return
+        else:
+            if getattr(excClass,'__name__', None) is not None:
+                excName = excClass.__name__
+            else:
+                excName = str(excClass)
+            raise self.failureException, "%s not raised" % excName
+
     def assertIs(self, left, right):
         if not (left is right):
             raise AssertionError("%r is not %r." % (left, right))
@@ -773,6 +797,20 @@ class TestCase(unittest.TestCase):
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
+            # Proxies
+            'http_proxy': None,
+            'HTTP_PROXY': None,
+            'https_proxy': None,
+            'HTTPS_PROXY': None,
+            'no_proxy': None,
+            'NO_PROXY': None,
+            'all_proxy': None,
+            'ALL_PROXY': None,
+            # Nobody cares about these ones AFAIK. So far at
+            # least. If you do (care), please update this comment
+            # -- vila 20061212
+            'ftp_proxy': None,
+            'FTP_PROXY': None,
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
@@ -1248,6 +1286,13 @@ class TestCaseWithMemoryTransport(TestCase):
         self.assertTrue(t.is_readonly())
         return t
 
+    def create_transport_readonly_server(self):
+        """Create a transport server from class defined at init.
+
+        This is mostly a hook for daughter classes.
+        """
+        return self.transport_readonly_server()
+
     def get_readonly_server(self):
         """Get the server instance for the readonly transport
 
@@ -1261,7 +1306,7 @@ class TestCaseWithMemoryTransport(TestCase):
                 self.__readonly_server = ReadonlyServer()
                 self.__readonly_server.setUp(self.__server)
             else:
-                self.__readonly_server = self.transport_readonly_server()
+                self.__readonly_server = self.create_transport_readonly_server()
                 self.__readonly_server.setUp()
             self.addCleanup(self.__readonly_server.tearDown)
         return self.__readonly_server
@@ -1453,7 +1498,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 os.chdir(self.test_dir)
                 break
 
-    def build_tree(self, shape, line_endings='native', transport=None):
+    def build_tree(self, shape, line_endings='binary', transport=None):
         """Build a test tree according to a pattern.
 
         shape is a sequence of file specifications.  If the final
@@ -1520,6 +1565,13 @@ class TestCaseWithTransport(TestCaseInTempDir):
     readwrite one must both define get_url() as resolving to os.getcwd().
     """
 
+    def create_transport_server(self):
+        """Create a transport server from class defined at init.
+
+        This is mostly a hook for daughter classes.
+        """
+        return self.transport_server()
+
     def get_server(self):
         """See TestCaseWithMemoryTransport.
 
@@ -1527,7 +1579,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         diagnostics.
         """
         if self.__server is None:
-            self.__server = self.transport_server()
+            self.__server = self.create_transport_server()
             self.__server.setUp()
             self.addCleanup(self.__server.tearDown)
         return self.__server
@@ -1598,8 +1650,8 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        if not self.transport_server == bzrlib.transport.memory.MemoryServer:
-            self.transport_readonly_server = bzrlib.transport.http.HttpServer
+        if not self.transport_server == MemoryServer:
+            self.transport_readonly_server = HttpServer
 
 
 def filter_suite_by_re(suite, pattern):
@@ -1671,6 +1723,7 @@ def test_suite():
     """
     testmod_names = [
                    'bzrlib.tests.test_ancestry',
+                   'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
@@ -1678,7 +1731,7 @@ def test_suite():
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
-                   'bzrlib.tests.test_command',
+                   'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
@@ -1690,6 +1743,8 @@ def test_suite():
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_ftp_transport',
+                   'bzrlib.tests.test_generate_ids',
+                   'bzrlib.tests.test_globbing',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
@@ -1756,6 +1811,7 @@ def test_suite():
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',
+                   'bzrlib.tests.test_wsgi',
                    'bzrlib.tests.test_xml',
                    ]
     test_transport_implementations = [
@@ -1788,3 +1844,23 @@ def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
     for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
         suite.addTests(adapter.adapt(test))
+
+
+def clean_selftest_output(root=None, quiet=False):
+    """Remove all selftest output directories from root directory.
+
+    :param  root:   root directory for clean
+                    (if ommitted or None then clean current directory).
+    :param  quiet:  suppress report about deleting directories
+    """
+    import re
+    import shutil
+
+    re_dir = re.compile(r'''test\d\d\d\d\.tmp''')
+    if root is None:
+        root = u'.'
+    for i in os.listdir(root):
+        if os.path.isdir(i) and re_dir.match(i):
+            if not quiet:
+                print 'delete directory:', i
+            shutil.rmtree(i)

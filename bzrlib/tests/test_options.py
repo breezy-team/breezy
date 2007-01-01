@@ -63,6 +63,12 @@ class OptionTests(TestCase):
         out, err = self.run_bzr_captured(['help', '-r'], retcode=3)
         self.assertContainsRe(err, r'no such option')
 
+    def test_get_short_name(self):
+        file_opt = option.Option.OPTIONS['file']
+        self.assertEquals(file_opt.short_name, 'F')
+        force_opt = option.Option.OPTIONS['force']
+        self.assertEquals(force_opt.short_name, None)
+
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
         self.assertEqual((['-'], {}), parse_args(cmd_commit(), ['-']))
