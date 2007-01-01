@@ -346,6 +346,8 @@ class SvnWorkingTree(WorkingTree):
         revid = self.branch.repository.generate_revision_id(commit_info.revision, self.branch.branch_path)
 
         self.base_revid = revid
+        #FIXME: Use public API:
+        self.branch.revision_history()
         self.branch._revision_history.append(revid)
 
         return revid

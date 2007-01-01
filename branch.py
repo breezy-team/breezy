@@ -64,7 +64,7 @@ class SvnBranch(Branch):
         self.control_files = FakeControlFiles()
         self.base = base.rstrip("/")
         self._format = SvnBranchFormat()
-        self._generate_revision_history(self.repository._latest_revnum)
+        self._revision_history = None
 
     def check(self):
         """See Branch.Check.
@@ -141,7 +141,24 @@ class SvnBranch(Branch):
         return None
 
     def revision_history(self):
+        if self._revision_history is None:
+            self._generate_revision_history(self.repository._latest_revnum)
         return self._revision_history
+
+    def last_revision(self):
+        # Shortcut for finding the tip. This avoids expensive generation time
+        # on large branches.
+        if self._revision_history is None:
+            for (branch, rev) in self.repository.follow_branch(
+                self.branch_path, self.repository._latest_revnum):
+                return self.repository.generate_revision_id(rev, branch)
+            return None
+
+        ph = self.revision_history()
+        if ph:
+            return ph[-1]
+        else:
+            return none
 
     def pull(self, source, overwrite=False, stop_revision=None):
         source.lock_read()

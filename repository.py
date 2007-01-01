@@ -221,8 +221,9 @@ class SvnRepository(Repository):
         self.cachedb = cachedbs[cache_file]
 
         self._latest_revnum = transport.get_latest_revnum()
-        self._log = logwalker.LogWalker(transport=transport, cache_db=self.cachedb, 
-                                       last_revnum=self._latest_revnum)
+        self._log = logwalker.LogWalker(transport=transport, 
+                                        cache_db=self.cachedb, 
+                                        last_revnum=self._latest_revnum)
 
         self.branchprop_list = BranchPropertyList(self._log, self.cachedb)
         self.fileid_map = SimpleFileIdMap(self, self.cachedb)

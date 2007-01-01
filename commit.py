@@ -319,6 +319,8 @@ class SvnCommitBuilder(CommitBuilder):
         revid = self.repository.generate_revision_id(self.revnum, 
                                                     self.branch.branch_path)
 
+        #FIXME: Use public API:
+        self.branch.revision_history()
         self.branch._revision_history.append(revid)
 
         mutter('commit finished. author: %r, date: %r' % 
