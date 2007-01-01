@@ -21,10 +21,11 @@ from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile,
                            NoSuchRevision, NotBranchError, 
                            UninitializableFormat)
 from bzrlib.graph import Graph
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
 from bzrlib.repository import Repository, RepositoryFormat
+from bzrlib.revisiontree import RevisionTree
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
 from bzrlib.trace import mutter
@@ -55,9 +56,9 @@ SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
 
-_unsafe = "%/-\t "
-def escape_svn_path(id):
-    r = [((c in _unsafe) and ('%%%02x' % ord(c)) or c)
+def escape_svn_path(id, unsafe="%/-\t \n"):
+    assert "%" in unsafe
+    r = [((c in unsafe) and ('%%%02x' % ord(c)) or c)
          for c in id]
     return ''.join(r)
 
@@ -255,10 +256,12 @@ class SvnRepository(Repository):
         return self.revision_tree(revision_id).inventory
 
     def get_fileid_map(self, revnum, path):
-        return self.fileid_map.get_map(self.uuid, revnum, path)
+        return self.fileid_map.get_map(self.uuid, revnum, path,
+                                       self.revision_fileid_renames)
 
-    def transform_fileid_map(self, uuid, revnum, branch, changes):
-        return self.fileid_map.apply_changes(uuid, revnum, branch, changes)
+    def transform_fileid_map(self, uuid, revnum, branch, changes, renames):
+        return self.fileid_map.apply_changes(uuid, revnum, branch, changes, 
+                                             renames)
 
     def path_to_file_id(self, revnum, path):
         """Generate a bzr file id from a Subversion file name. 
@@ -269,6 +272,10 @@ class SvnRepository(Repository):
         """
         assert isinstance(revnum, int) and revnum >= 0
         assert isinstance(path, basestring)
+
+        if revnum == 0:
+            from fileids import generate_svn_file_id
+            return (generate_svn_file_id(self.uuid, 0, "", ""), NULL_REVISION)
 
         (bp, rp) = self.scheme.unprefix(path)
 
@@ -341,9 +348,17 @@ class SvnRepository(Repository):
             revision_id = NULL_REVISION
 
         if revision_id == NULL_REVISION:
-            inventory = Inventory(ROOT_ID)
+            inventory = Inventory()
+            inventory.revision_id = revision_id
+            return RevisionTree(self, inventory, revision_id)
 
         return SvnRevisionTree(self, revision_id, inventory)
+
+    def revision_fileid_renames(self, revid):
+        (path, revnum) = self.parse_revision_id(revid)
+        items = self.branchprop_list.get_property_diff(path, revnum, 
+                                  SVN_PROP_BZR_FILEIDS).splitlines()
+        return dict(map(lambda x: x.split("\t"), items))
 
     def _mainline_revision_parent(self, path, revnum):
         assert isinstance(path, basestring)

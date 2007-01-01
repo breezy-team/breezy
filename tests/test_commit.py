@@ -159,7 +159,7 @@ class TestCommitFromBazaar(TestCaseWithSubversionRepository):
         self.build_tree({'dc/file': 'data'})
         wt.add('file')
         wt.commit(message="Commit from Bzr")
-        self.assertEqual("\t%s\nfile\t%s\n" % (wt.inventory.root.file_id, wt.inventory.path2id("file")), 
+        self.assertEqual("file\t%s\n" % wt.inventory.path2id("file"), 
                 self.client_get_prop(self.repos_url, "bzr:file-ids", 1))
 
     def test_commit_fileids_added(self):

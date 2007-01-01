@@ -118,7 +118,7 @@ class FileIdMap(object):
         return map
 
     def apply_changes(self, uuid, revnum, branch, global_changes, 
-                      find_children=None):
+                      renames, find_children=None):
         """Change file id map to incorporate specified changes.
 
         :param uuid: UUID of repository changes happen in
@@ -141,8 +141,10 @@ class FileIdMap(object):
         return self._apply_changes(lambda x: generate_file_id(revid, x), 
                                    changes, get_children)
 
-    def get_map(self, uuid, revnum, branch):
+    def get_map(self, uuid, revnum, branch, renames_cb=None):
         """Make sure the map is up to date until revnum."""
+        if renames_cb is None:
+            renames_cb = lambda x: {}
         # First, find the last cached map
         todo = []
         next_parent_revs = []
@@ -178,9 +180,15 @@ class FileIdMap(object):
                     yield self.repos.scheme.unprefix(p)[1]
 
             parent_revs = next_parent_revs
+
+            renames = renames_cb(revid)
+
+            def new_file_id(x):
+                if renames.has_key(x):
+                    return renames[x]
+                return generate_file_id(revid, x)
             
-            revmap = self._apply_changes(lambda x: generate_file_id(revid, x), 
-                                         changes, find_children)
+            revmap = self._apply_changes(new_file_id, changes, find_children)
             for p in changes:
                 if changes[p][0] == 'M':
                     revmap[p] = map[p][0]

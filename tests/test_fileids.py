@@ -214,7 +214,8 @@ class TestFileMapping(TestCase):
                  ("svn-v%d:2@uuid-" % MAPPING_VERSION): {
                                    "foo/bla": ('M', None, None)}
                 })
-        self.assertEqual("svn-v%d:2@uuid-" % MAPPING_VERSION, map["foo"][1])
+        self.assertEqual("svn-v%d:1@uuid-" % MAPPING_VERSION, map["foo"][1])
+        self.assertEqual("svn-v%d:1@uuid-" % MAPPING_VERSION, map["foo/bla"][1])
 
     def test_usemap(self):
         map = self.apply_mappings(

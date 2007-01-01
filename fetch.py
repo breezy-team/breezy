@@ -346,8 +346,9 @@ class InterSvnRepository(InterRepository):
                     parent_inv = prev_inv
 
                 changes = self.source._log.get_revision_paths(revnum, branch)
+                renames = self.source.revision_fileid_renames(revid)
                 id_map = self.source.transform_fileid_map(self.source.uuid, 
-                                            revnum, branch, changes)
+                                            revnum, branch, changes, renames)
 
                 editor = RevisionBuildEditor(self.source, self.target, branch, 
                                              parent_inv, revid, 

@@ -21,18 +21,17 @@ from bzrlib.errors import (UnsupportedOperation, BzrError, InvalidRevisionId,
                            DivergedBranches)
 from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.osutils as osutils
-from bzrlib.repository import CommitBuilder
+from bzrlib.repository import RootCommitBuilder
 from bzrlib.trace import mutter, warning
 
-from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE, 
-                       SVN_PROP_BZR_REVPROP_PREFIX, revision_id_to_svk_feature)
+from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
+                        SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVPROP_PREFIX, 
+                        revision_id_to_svk_feature, escape_svn_path)
 
 import os
 
-class SvnCommitBuilder(CommitBuilder):
+class SvnCommitBuilder(RootCommitBuilder):
     """Commit Builder implementation wrapped around svn_delta_editor. """
-
-    record_root_entry = True 
 
     def __init__(self, repository, branch, parents, config, revprops):
         """Instantiate a new SvnCommitBuilder.
@@ -331,6 +330,44 @@ class SvnCommitBuilder(CommitBuilder):
         self.repository._log.fetch_revisions(self.revnum)
 
         return revid
+
+    def record_entry_contents(self, ie, parent_invs, path, tree):
+        """Record the content of ie from tree into the commit if needed.
+
+        Side effect: sets ie.revision when unchanged
+
+        :param ie: An inventory entry present in the commit.
+        :param parent_invs: The inventories of the parent revisions of the
+            commit.
+        :param path: The path the entry is at in the tree.
+        :param tree: The tree which contains this entry and should be used to 
+        obtain content.
+        """
+        assert self.new_inventory.root is not None or ie.parent_id is None
+        self.new_inventory.add(ie)
+
+        # ie.revision is always None if the InventoryEntry is considered
+        # for committing. ie.snapshot will record the correct revision 
+        # which may be the sole parent if it is untouched.
+        mutter('recording %s' % ie.file_id)
+        if ie.revision is not None:
+            return
+
+        # Make sure that ie.file_id exists in the map
+        if not ie.file_id in self.old_inv:
+            if not self._svnprops.has_key(SVN_PROP_BZR_FILEIDS):
+                self._svnprops[SVN_PROP_BZR_FILEIDS] = ""
+            mutter('adding fileid mapping %s -> %s' % (path, ie.file_id))
+            self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (escape_svn_path(path, "%\t\n"), ie.file_id)
+
+        previous_entries = ie.find_previous_heads(
+            parent_invs,
+            self.repository.weave_store,
+            self.repository.get_transaction())
+
+        # we are creating a new revision for ie in the history store
+        # and inventory.
+        ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
 
 
 def push_as_merged(target, source, revision_id):
