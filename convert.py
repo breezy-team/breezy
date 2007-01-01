@@ -98,7 +98,7 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True,
         try:
             i = 0
             for (branch, revnum, exists) in existing_branches:
-                if source_repos.transport.check_path("/"+branch, revnum) == svn.core.svn_node_file:
+                if source_repos.transport.check_path(branch, revnum) == svn.core.svn_node_file:
                     continue
                 pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
                 revid = source_repos.generate_revision_id(revnum, branch)
