@@ -83,10 +83,14 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True,
             if all:
                 source_repos.copy_content_into(target_repos)
 
-        branches = list(source_repos.find_branches())
-        mutter('branches: %r' % list(branches))
-        existing_branches = filter(lambda (bp, revnum, exists): exists, 
+        pb = ui_factory.nested_progress_bar()
+        try:
+            branches = source_repos.find_branches(pb=pb)
+            existing_branches = filter(lambda (bp, revnum, exists): exists, 
                                    branches)
+        finally:
+            pb.finished()
+
         pb = ui_factory.nested_progress_bar()
                        
         try:

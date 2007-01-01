@@ -28,6 +28,7 @@ from bzrlib.repository import Repository, RepositoryFormat
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
 from bzrlib.trace import mutter
+from bzrlib.ui import ui_factory
 
 from svn.core import SubversionException, Pool
 import svn.core
@@ -582,7 +583,7 @@ class SvnRepository(Repository):
 
         return self._ancestry
 
-    def find_branches(self, revnum=None):
+    def find_branches(self, revnum=None, pb=None):
         """Find all branches that were changed in the specified revision number.
 
         :param revnum: Revision to search for branches.
@@ -593,6 +594,8 @@ class SvnRepository(Repository):
         created_branches = {}
 
         for i in range(revnum+1):
+            if pb is not None:
+                pb.update("finding branches", i, revnum+1)
             paths = self._log.get_revision_paths(i)
             for p in paths:
                 if self.scheme.is_branch(p):
