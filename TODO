@@ -1,6 +1,6 @@
-- don't generate revision history in branch until really necessary
-- custom implementation of last_revision() so that revision history doesn't
-  have to be generated?
+- allow remote locations in svn-import
+- fix "bzr status" in checkouts
+- faster "bzr status" in checkouts
 - avoid extra connect in logwalker?
 - get rid of use of `svn ls' in logwalker
 - more efficient implementation for applying txdeltas to weaves. perhaps convert svn deltas to bzr deltas?

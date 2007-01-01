@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2005-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -174,7 +174,10 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def change_file_prop(self, id, name, value, pool):
         if name == svn.core.SVN_PROP_EXECUTABLE: 
-            # Strange, you'd expect executable to match svn.core.SVN_PROP_EXECUTABLE_VALUE, but that's not how SVN behaves.
+            # You'd expect executable to match 
+            # svn.core.SVN_PROP_EXECUTABLE_VALUE, but that's not 
+            # how SVN behaves. It appears to consider the presence 
+            # of the property sufficient to mark it executable.
             self.is_executable = (value != None)
         elif (name == svn.core.SVN_PROP_SPECIAL):
             self.is_symlink = (value != None)
@@ -290,7 +293,8 @@ class InterSvnRepository(InterRepository):
         needed = []
         parents = {}
         if revision_id is None:
-            for (branch, revnum) in self.source.follow_history(self.source._latest_revnum):
+            for (branch, revnum) in self.source.follow_history(
+                                                    self.source._latest_revnum):
                 revid = self.source.generate_revision_id(revnum, branch)
                 parents[revid] = self.source._mainline_revision_parent(branch, revnum)
 
@@ -300,7 +304,8 @@ class InterSvnRepository(InterRepository):
             (path, until_revnum) = self.source.parse_revision_id(revision_id)
 
             prev_revid = None
-            for (branch, revnum) in self.source.follow_branch(path, until_revnum):
+            for (branch, revnum) in self.source.follow_branch(path, 
+                                                              until_revnum):
                 revid = self.source.generate_revision_id(revnum, branch)
 
                 if prev_revid is not None:
