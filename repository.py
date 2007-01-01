@@ -275,7 +275,7 @@ class SvnRepository(Repository):
             raise NoSuchFile(path=rp)
 
     def all_revision_ids(self):
-        for (bp, rev) in self.follow_history(self._latest_revnum):
+        for (bp, rev) in self.follow_history(self.transport.get_latest_revnum()):
             yield self.generate_revision_id(rev, bp)
 
     def get_inventory_weave(self):
@@ -588,7 +588,7 @@ class SvnRepository(Repository):
         :param revnum: Revision to search for branches.
         """
         if revnum is None:
-            revnum = self._latest_revnum
+            revnum = self.transport.get_latest_revnum()
 
         created_branches = {}
 
@@ -604,6 +604,7 @@ class SvnRepository(Repository):
                         created_branches[p] = i
 
         for p in created_branches:
+            i = self._log.find_latest_change(p, revnum, recurse=True)
             yield (p, i, True)
 
     def is_shared(self):
