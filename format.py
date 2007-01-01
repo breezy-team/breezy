@@ -96,7 +96,10 @@ class SvnRemoteAccess(BzrDir):
         
         :return: instance of SvnRepository.
         """
-        return SvnRepository(self, SvnRaTransport(self.svn_root_url))
+        transport = self.root_transport
+        if self.svn_root_url != transport.base:
+            transport = SvnRaTransport(self.svn_root_url)
+        return SvnRepository(self, transport)
 
     def open_workingtree(self):
         """See BzrDir.open_workingtree().

@@ -93,16 +93,23 @@ def convert_repository(url, output_dir, scheme, create_shared_repo=True,
             i = 0
             for (branch, revnum, exists) in existing_branches:
                 pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
-                source_branch = Branch.open("%s/%s" % (url, branch))
+                revid = source_repos.generate_revision_id(revnum, branch)
 
                 target_dir = os.path.join(output_dir, branch)
                 try:
                     target_branch = Branch.open(target_dir)
-                    target_branch.pull(source_branch)
+                    if not revid in target_branch.revision_history():
+                        source_branch = Branch.open("%s/%s" % (url, branch))
+                        target_branch.pull(source_branch)
                 except NotBranchError:
+                    source_branch = Branch.open("%s/%s" % (url, branch))
                     os.makedirs(target_dir)
-                    source_branch.bzrdir.sprout(target_dir, 
+                    try:
+                        source_branch.bzrdir.sprout(target_dir, 
                                                 source_branch.last_revision())
+                    except:
+                        os.rmdir(target_dir)
+                        raise
                 i+=1
         finally:
             pb.finished()
