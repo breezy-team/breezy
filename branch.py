@@ -48,6 +48,9 @@ class FakeControlFiles(object):
     def get(self, name):
         raise NoSuchFile(name)
 
+    def break_lock(self):
+        pass
+
 
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """

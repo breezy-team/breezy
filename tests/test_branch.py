@@ -69,6 +69,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         self.assertEqual(ROOT_ID, branch.get_root_id())
 
+    def test_break_lock(self):
+        repos_url = self.make_client('a', 'dc')
+        branch = Branch.open("svn+"+repos_url)
+        branch.control_files.break_lock()
+
     def test_set_push_location(self):
         repos_url = self.make_client('a', 'dc')
         branch = Branch.open("svn+"+repos_url)
