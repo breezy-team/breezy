@@ -457,9 +457,32 @@ foohosts""")
         oldbranch = Branch.open(url)
 
         newtree = oldbranch.create_checkout("e", lightweight=True)
-        self.assertTrue(
-            newtree.branch.repository.has_revision(
-           'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, oldbranch.repository.uuid)))
+        self.assertEqual(
+           'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, oldbranch.repository.uuid),
+           newtree.base_revid)
+        self.assertTrue(os.path.exists("e/.svn"))
+        self.assertFalse(os.path.exists("e/.bzr"))
+
+    def test_create_checkout_lightweight_stop_rev(self):
+        repos_url = self.make_client('d', 'dc')
+
+        self.build_tree({'dc/trunk': None, 
+                         'dc/trunk/hosts': 'hej1'})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "created trunk and added hosts") #1
+        
+        self.build_tree({'dc/trunk/hosts': 'bloe'})
+        self.client_commit("dc", "added another revision")
+
+        url = "svn+"+repos_url+"/trunk"
+        oldbranch = Branch.open(url)
+
+        newtree = oldbranch.create_checkout("e", revision_id=
+           'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, oldbranch.repository.uuid),
+                lightweight=True)
+        self.assertEqual(
+           'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, oldbranch.repository.uuid),
+           newtree.base_revid)
         self.assertTrue(os.path.exists("e/.svn"))
         self.assertFalse(os.path.exists("e/.bzr"))
 

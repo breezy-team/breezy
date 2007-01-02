@@ -91,10 +91,11 @@ class SvnBranch(Branch):
         if revision_id is None:
             rev.kind = svn.core.svn_opt_revision_head
         else:
+            assert revision_id in self.revision_history()
             (bp, revnum) = self.repository.parse_revision_id(revision_id)
-            assert bp == self.branch_path
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
+            mutter('hist: %r' % self.revision_history())
 
         client_ctx = svn.client.create_context()
         svn.client.checkout(bzr_to_svn_url(self.base), to_location, rev, 
