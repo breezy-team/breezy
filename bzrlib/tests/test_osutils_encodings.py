@@ -34,19 +34,25 @@ from bzrlib.tests import (
 
 
 class FakeCodec(object):
-    """Special singleton class that helps testing
-    over several non-existed encodings.
+    """Special class that helps testing over several non-existed encodings.
     
-    Clients could add new encoding names, but cannot remove it.
+    Clients can add new encoding names, but because of how codecs is
+    implemented they cannot be removed. Be careful with naming to avoid
+    collisions between tests.
     """
     _registered = False
     _enabled_encodings = set()
 
     def add(self, encoding_name):
+        """Adding encoding name to fake.
+
+        :type   encoding_name:  lowercase plain string
+        """
         if not self._registered:
             codecs.register(self)
             self._registered = True
-        self._enabled_encodings.add(encoding_name)
+        if encoding_name is not None:
+            self._enabled_encodings.add(encoding_name)
         
     def __call__(self, encoding_name):
         """Called indirectly by codecs module during lookup"""
@@ -85,14 +91,15 @@ class TestTerminalEncoding(TestCase):
                              enable_fake_encodings=True):
         sys.stdout = StringIOWrapper()
         sys.stdout.encoding = stdout_encoding
-        fake_codec.add(stdout_encoding)
         sys.stderr = StringIOWrapper()
         sys.stderr.encoding = stderr_encoding
-        fake_codec.add(stderr_encoding)
         sys.stdin = StringIOWrapper()
         sys.stdin.encoding = stdin_encoding
-        fake_codec.add(stdin_encoding)
         bzrlib.user_encoding = user_encoding
+        if enable_fake_encodings:
+            fake_codec.add(stdout_encoding)
+            fake_codec.add(stderr_encoding)
+            fake_codec.add(stdin_encoding)
 
     def _reset(self):
         sys.stdout = self._stdout
@@ -119,8 +126,8 @@ class TestTerminalEncoding(TestCase):
     def test_terminal_cp0(self):
         # test cp0 encoding (Windows returns cp0 when there is no encoding)
         self.make_wrapped_streams('cp0',
-                                  None,
-                                  None,
+                                  'cp0',
+                                  'cp0',
                                   user_encoding='latin-1',
                                   enable_fake_encodings=False)
 
@@ -130,19 +137,19 @@ class TestTerminalEncoding(TestCase):
         # check stderr
         self.assertEquals('', sys.stderr.getvalue())
 
-    def test_terminal_cpUNKNOWN(self):
+    def test_terminal_cp_unknown(self):
         # test against really unknown encoding
         # catch warning at stderr
-        self.make_wrapped_streams('cpUNKNOWN',
-                                  None,
-                                  None,
+        self.make_wrapped_streams('cp-unknown',
+                                  'cp-unknown',
+                                  'cp-unknown',
                                   user_encoding='latin-1',
                                   enable_fake_encodings=False)
         
         self.assertEqual('latin-1', osutils.get_terminal_encoding())
 
         # check stderr
-        self.assertEquals('bzr: warning: unknown encoding cpUNKNOWN.\n'
+        self.assertEquals('bzr: warning: unknown encoding cp-unknown.\n'
                           '  Using encoding latin-1 instead.\n', 
                           sys.stderr.getvalue())
 
@@ -162,11 +169,7 @@ class TestUserEncoding(TestCase):
         locale.getpreferredencoding = self._getpreferredencoding
         sys.stderr = self._stderr
         # restore $LANG
-        if self._LANG is not None:
-            os.environ['LANG'] = self._LANG
-        else:
-            if os.environ.get('LANG') is not None:
-                del os.environ['LANG']
+        osutils.set_or_unset_env('LANG', self._LANG)
 
     def test_get_user_encoding(self):
         def f():
@@ -185,13 +188,13 @@ class TestUserEncoding(TestCase):
         self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
         self.assertEquals('', sys.stderr.getvalue())
 
-    def test_user_cpUNKNOWN(self):
+    def test_user_cp_unknown(self):
         def f():
-            return 'cpUNKNOWN'
+            return 'cp-unknown'
 
         locale.getpreferredencoding = f
         self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
-        self.assertEquals('bzr: warning: unknown encoding cpUNKNOWN.'
+        self.assertEquals('bzr: warning: unknown encoding cp-unknown.'
                           ' Continuing with ascii encoding.\n',
                           sys.stderr.getvalue())
 
