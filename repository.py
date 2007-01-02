@@ -596,7 +596,9 @@ class SvnRepository(Repository):
             if pb is not None:
                 pb.update("finding branches", i, revnum+1)
             paths = self._log.get_revision_paths(i)
-            for p in paths:
+            names = paths.keys()
+            names.sort()
+            for p in names:
                 if self.scheme.is_branch(p):
                     if paths[p][0] in ('R', 'D'):
                         del created_branches[p]
