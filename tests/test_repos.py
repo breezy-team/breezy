@@ -532,6 +532,17 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
+    def test_fetch_special_char(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({u'dc/trunk/f\x2cle': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme(1))
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
     def test_fetch_delete(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
@@ -1813,20 +1824,30 @@ class RevisionIdMappingTest(TestCase):
     def test_generate_revid(self):
         self.assertEqual("svn-v%d:5@myuuid-branch" % MAPPING_VERSION, 
                          generate_svn_revision_id("myuuid", 5, "branch"))
+
+    def test_generate_revid_nested(self):
         self.assertEqual("svn-v%d:5@myuuid-branch%%2fpath" % MAPPING_VERSION, 
                          generate_svn_revision_id("myuuid", 5, "branch/path"))
 
-    def test_parse_revid(self):
+    def test_generate_revid_special_char(self):
+        self.assertEqual(u"svn-v%d:5@myuuid-branch\x2c" % MAPPING_VERSION, 
+                         generate_svn_revision_id("myuuid", 5, u"branch\x2c"))
+
+    def test_parse_revid_simple(self):
         self.assertEqual(("uuid", "", 4),
                          parse_svn_revision_id(
                              "svn-v%d:4@uuid-" % MAPPING_VERSION))
+
+    def test_parse_revid_nested(self):
         self.assertEqual(("uuid", "bp/data", 4),
                          parse_svn_revision_id(
                              "svn-v%d:4@uuid-bp%%2fdata" % MAPPING_VERSION))
 
-    def test_svk_revid_map(self):
+    def test_svk_revid_map_root(self):
         self.assertEqual("svn-v%d:6@auuid-" % MAPPING_VERSION,
                          svk_feature_to_revision_id("auuid:/:6"))
+
+    def test_svk_revid_map_nested(self):
         self.assertEqual("svn-v%d:6@auuid-bp" % MAPPING_VERSION,
                          svk_feature_to_revision_id("auuid:/bp:6"))
 

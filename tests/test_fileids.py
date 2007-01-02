@@ -162,6 +162,10 @@ class TestFileIdGenerator(TestCase):
         self.assertEqual("svn-v2:2@uuid-bp-" + sha1(dir) + "-filename", 
                          generate_file_id("svn-v2:2@uuid-bp", dir+"filename"))
 
+    def test_generate_file_id_special_char(self):
+        self.assertEqual(u"svn-v2:2@uuid-bp-mypath\x2c", 
+                         generate_file_id("svn-v2:2@uuid-bp", u"mypath\x2c"))
+
 class TestFileMapping(TestCase):
     def apply_mappings(self, mappings, find_children=None, renames={}):
         map = {}
