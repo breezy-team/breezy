@@ -169,9 +169,7 @@ class SFTPNonServerTest(TestCase):
 
         s = SFTPTransport('sftp://user@host.com/abs/path', clone_from=fake)
         self.assertEquals(s.relpath('sftp://user@host.com/abs/path/sub'), 'sub')
-        # Can't test this one, because we actually get an AssertionError
-        # TODO: Consider raising an exception rather than an assert
-        #self.assertRaises(PathNotChild, s.relpath, 'http://user@host.com/abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'http://user@host.com/abs/path/sub')
         self.assertRaises(PathNotChild, s.relpath, 'sftp://user2@host.com/abs/path/sub')
         self.assertRaises(PathNotChild, s.relpath, 'sftp://user@otherhost.com/abs/path/sub')
         self.assertRaises(PathNotChild, s.relpath, 'sftp://user@host.com:33/abs/path/sub')
