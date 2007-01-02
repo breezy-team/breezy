@@ -614,8 +614,15 @@ class SvnRepository(Repository):
                                 del created_branches[c] 
                                 yield (c, i, False)
                     if paths[p][0] in ('A', 'R'):
-                        for c in self.transport.get_dir(p, i)[0].keys():
-                            created_branches[p+"/"+c] = i
+                        parents = [p]
+                        while parents:
+                            p = parents.pop()
+                            for c in self.transport.get_dir(p, i)[0].keys():
+                                n = p+"/"+c
+                                if self.scheme.is_branch(n):
+                                    created_branches[n] = i
+                                elif self.scheme.is_branch_parent(n):
+                                    parents.append(n)
 
         for p in created_branches:
             j = self._log.find_latest_change(p, revnum, recurse=True)

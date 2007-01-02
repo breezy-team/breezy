@@ -191,6 +191,26 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                           ("tags/brancha", 2, True)], 
                 list(repos.find_branches(2)))
 
+    def test_find_branches_moved_nobranch(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({
+            'dc/tmp/nested/foobar': None,
+            'dc/tmp/nested/branches/brancha': None,
+            'dc/tmp/nested/branches/branchab': None,
+            'dc/tmp/nested/branches/brancha/data': "data", 
+            "dc/tmp/nested/branches/branchab/data":"data"})
+        self.client_add("dc/tmp")
+        self.client_commit("dc", "My Message")
+        self.client_copy("dc/tmp/nested", "dc/t2")
+        self.client_commit("dc", "My Message 2")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme(1))
+
+        self.assertEqual([("t2/branches/brancha", 2, True), 
+                          ("t2/branches/branchab", 2, True)], 
+                list(repos.find_branches(2)))
+
     def test_find_branches_no(self):
         repos_url = self.make_client("a", "dc")
 
