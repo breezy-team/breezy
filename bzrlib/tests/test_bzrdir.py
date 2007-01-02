@@ -19,8 +19,12 @@
 For interface contract tests, see tests/bzr_dir_implementations.
 """
 
+import os.path
 from StringIO import StringIO
 
+from bzrlib import (
+    urlutils,
+    )
 import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
@@ -391,6 +395,26 @@ class ChrootedTests(TestCaseWithTransport):
         branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
             get_transport(self.get_readonly_url('g/p/q')))
         self.assertEqual('g/p/q', relpath)
+
+    def test_open_containing_tree_or_branch(self):
+        def local_branch_path(branch):
+             return os.path.realpath(urlutils.local_path_from_url(branch.base))
+
+        self.make_branch_and_tree('topdir')
+        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
+            'topdir/foo')
+        self.assertEqual(os.path.realpath('topdir'), 
+                         os.path.realpath(tree.basedir))
+        self.assertEqual(os.path.realpath('topdir'), local_branch_path(branch))
+        self.assertIs(tree.bzrdir, branch.bzrdir)
+        self.assertEqual('foo', relpath)
+        self.make_branch('topdir/foo')
+        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
+            'topdir/foo')
+        self.assertIs(tree, None)
+        self.assertEqual(os.path.realpath('topdir/foo'), 
+                         local_branch_path(branch))
+        self.assertEqual('', relpath)
 
     def test_open_from_transport(self):
         # transport pointing at bzrdir should give a bzrdir with root transport
