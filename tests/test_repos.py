@@ -61,6 +61,21 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
         self.assertEqual(1, len(list(repos.follow_branch_history("", 1))))
 
+    def test_make_working_trees(self):
+        repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
+        self.assertFalse(repos.make_working_trees())
+
+    def test_repr(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+
+        repos = Repository.open(repos_url)
+
+        self.assertEqual("SvnRepository('file://%s/')" % os.path.join(self.test_dir, "a"), repos.__repr__())
+
     def test_get_branch_invalid_revision(self):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
@@ -444,6 +459,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual(("bloe", 0), 
             repository.parse_revision_id(
                 "svn-v%d:0@%s-bloe" % (MAPPING_VERSION, repository.uuid)))
+
+    def test_parse_revision_id_invalid_uuid(self):
+        repos_url = self.make_client('d', 'dc')
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertRaises(NoSuchRevision, 
+            repository.parse_revision_id, 
+                "svn-v%d:0@invaliduuid-bloe" % MAPPING_VERSION)
         
     def test_check(self):
         repos_url = self.make_client('d', 'dc')

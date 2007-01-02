@@ -57,6 +57,9 @@ class BranchingSchemeTest(TestCase):
 
 
 class NoScheme(TestCase):
+    def test_str(self):
+        self.assertEqual("null", NoBranchingScheme().__str__())
+
     def test_is_branch_empty(self):
         self.assertTrue(NoBranchingScheme().is_branch(""))
 
@@ -275,3 +278,8 @@ class TrunkScheme(TestCase):
         self.assertIsInstance(scheme, TrunkBranchingScheme)
         self.assertEqual(0, scheme.level)
 
+    def test_str0(self):
+        self.assertEqual("trunk0", TrunkBranchingScheme().__str__())
+
+    def test_str1(self):
+        self.assertEqual("trunk1", TrunkBranchingScheme(1).__str__())

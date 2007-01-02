@@ -17,6 +17,7 @@
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirTestProviderAdapter, BzrDirFormat
 from bzrlib.errors import NoSuchFile
+from bzrlib.inventory import ROOT_ID
 from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 
@@ -62,6 +63,11 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos_url = self.make_client('a', 'dc')
         branch = Branch.open("svn+"+repos_url)
         self.assertRaises(NotImplementedError, branch.set_revision_history, [])
+
+    def test_get_root_id(self):
+        repos_url = self.make_client('a', 'dc')
+        branch = Branch.open("svn+"+repos_url)
+        self.assertEqual(ROOT_ID, branch.get_root_id())
 
     def test_set_push_location(self):
         repos_url = self.make_client('a', 'dc')
@@ -120,6 +126,17 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
 
         self.assertIs(None, branch.nick)
+
+    def test_get_nick_path(self):
+        repos_url = self.make_client('a', 'dc')
+
+        self.build_tree({'dc/trunk': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+
+        branch = Branch.open("svn+"+repos_url+"/trunk")
+
+        self.assertEqual("trunk", branch.nick)
 
     def test_get_revprops(self):
         repos_url = self.make_client('a', 'dc')

@@ -89,9 +89,6 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.inventory.revision_id = self.revid
         return ROOT_ID
 
-    def relpath(self, path):
-        return path.strip("/")
-
     def _get_existing_id(self, parent_id, path):
         if self.id_map.has_key(path):
             return self.id_map[path]
@@ -281,7 +278,6 @@ class InterSvnRepository(InterRepository):
     """Svn to any repository actions."""
 
     _matching_repo_format = SvnRepositoryFormat()
-    """The format to test with."""
 
     @needs_write_lock
     def copy_content(self, revision_id=None, basis=None):

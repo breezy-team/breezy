@@ -97,12 +97,6 @@ class TreeBuildEditor(svn.delta.Editor):
     def open_root(self, revnum, baton):
         return ROOT_ID
 
-    def relpath(self, path):
-        bp, rp = self.tree._repository.scheme.unprefix(path)
-        if bp == self.tree.branch_path:
-            return rp
-        return None
-
     def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
         file_id, revision_id = self.tree.id_map[path]
         ie = self.tree._inventory.add_path(path, 'directory', file_id)

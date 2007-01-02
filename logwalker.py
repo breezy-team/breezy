@@ -211,8 +211,6 @@ class LogWalker(object):
         if revnum > self.saved_revnum:
             self.fetch_revisions(revnum)
         (author, message, date) = self.db.execute("select author, message, date from revision where revno="+ str(revnum)).fetchone()
-        if author is None:
-            author = None
         return (author, _escape_commit_message(base64.b64decode(message)), date)
 
     def find_latest_change(self, path, revnum, recurse=False):
