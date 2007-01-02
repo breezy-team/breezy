@@ -1560,14 +1560,17 @@ class cmd_ls(Command):
                                              ' and PATH')
             fs_path = path
             prefix = path
-        tree, relpath = WorkingTree.open_containing(fs_path)
+        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
+            fs_path)
         if from_root:
             relpath = u''
         elif relpath:
             relpath += '/'
         if revision is not None:
-            tree = tree.branch.repository.revision_tree(
-                revision[0].in_history(tree.branch).rev_id)
+            tree = branch.repository.revision_tree(
+                revision[0].in_history(branch).rev_id)
+        elif tree is None:
+            tree = branch.basis_tree()
 
         for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
             if fp.startswith(relpath):
