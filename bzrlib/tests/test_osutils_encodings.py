@@ -51,7 +51,7 @@ class FakeCodec(object):
         """Called indirectly by codecs module during lookup"""
         if encoding_name in self._enabled_encodings:
             return codecs.lookup('latin-1')
-#class FakeCodec
+
 
 fake_codec = FakeCodec()
 
@@ -116,7 +116,7 @@ class TestTerminalEncoding(TestCase):
         self.assertEqual('user_encoding', osutils.get_terminal_encoding())
 
     def test_terminal_cp0(self):
-        # test cp0 encoding (Windows tell cp0 when there is no encoding)
+        # test cp0 encoding (Windows returns cp0 when there is no encoding)
         self.make_wrapped_streams('cp0',
                                   None,
                                   None,
