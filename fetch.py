@@ -280,7 +280,7 @@ class InterSvnRepository(InterRepository):
     _matching_repo_format = SvnRepositoryFormat()
 
     @needs_write_lock
-    def copy_content(self, revision_id=None, basis=None):
+    def copy_content(self, revision_id=None, basis=None, pb=None):
         """See InterRepository.copy_content."""
         # Dictionary with paths as keys, revnums as values
 
@@ -325,7 +325,11 @@ class InterSvnRepository(InterRepository):
         needed.reverse()
         prev_revid = None
         transport = self.source.transport
-        pb = ui_factory.nested_progress_bar()
+        if pb is None:
+            pb = ui_factory.nested_progress_bar()
+            nested_pb = pb
+        else:
+            nested_pb = None
         num = 0
         try:
             for revid in needed:
@@ -388,13 +392,14 @@ class InterSvnRepository(InterRepository):
                 pool.destroy()
                 num += 1
         finally:
-            pb.finished()
+            if nested_pb is not None:
+                nested_pb.finished()
         self.source.transport.reparent(repos_root)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
         """Fetch revisions. """
-        self.copy_content(revision_id=revision_id)
+        self.copy_content(revision_id=revision_id, pb=pb)
 
     @staticmethod
     def is_compatible(source, target):

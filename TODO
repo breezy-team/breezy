@@ -1,7 +1,9 @@
+- better tests for get_fileid_map()
+- fix commits in checkouts somehow
 - fix autorealm repository
 - handle parent directories of branches being moved correctly
-- fix "bzr status" in checkouts
-- faster "bzr status" in checkouts
+- fix "bzr status" in lightweight checkouts
+- faster "bzr status" in lightweight checkouts
 - avoid extra connect in logwalker?
 - get rid of use of `svn ls' in logwalker
 - more efficient implementation for applying txdeltas to weaves. perhaps convert svn deltas to bzr deltas?
