@@ -677,3 +677,20 @@ class TestSetUnsetEnv(TestCase):
         self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'))
         self.failIf('BZR_TEST_ENV_VAR' in os.environ)
 
+
+class TestLocalTimeOffset(TestCase):
+
+    def test_local_time_offset(self):
+        """Test that local_time_offset() returns a sane value."""
+        offset = osutils.local_time_offset()
+        self.assertTrue(isinstance(offset, int))
+        # Test that the offset is no more than a day in either direction.
+        # Given that time zone handling is platform dependent, we can't
+        # do more than ensure the value is in the right ball park.
+        self.assertTrue(-86400 < offset < 86400)
+
+    def test_local_time_offset_with_timestamp(self):
+        """Test that local_time_offset() works with a timestamp."""
+        offset = osutils.local_time_offset(1000000000.1234567)
+        self.assertTrue(isinstance(offset, int))
+        self.assertTrue(-86400 < offset < 86400)
