@@ -232,7 +232,8 @@ class LogWalker(object):
         if row is None and path == "":
             return 0
 
-        assert row is not None, "no latest change for %r:%d" % (path, revnum)
+        if row is None:
+            return None
 
         return row[0]
 

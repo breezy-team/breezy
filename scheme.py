@@ -67,9 +67,12 @@ class BranchingScheme:
             return NoBranchingScheme()
 
         return None
+
+    def is_branch_parent(self, path):
+        raise NotImplementedError
                 
 
-class TrunkBranchingScheme:
+class TrunkBranchingScheme(BranchingScheme):
     def __init__(self, level=0):
         self.level = level
 
@@ -104,8 +107,10 @@ class TrunkBranchingScheme:
     def __str__(self):
         return "trunk%d" % self.level
 
+    def is_branch_parent(self, path):
+        return self.is_branch(path+"/trunk")
 
-class NoBranchingScheme:
+class NoBranchingScheme(BranchingScheme):
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
         return path.strip("/") == ""
@@ -117,8 +122,11 @@ class NoBranchingScheme:
     def __str__(self):
         return "null"
 
+    def is_branch_parent(self, path):
+        return False
 
-class ListBranchingScheme:
+
+class ListBranchingScheme(BranchingScheme):
     def __init__(self, branch_list):
         """Create new ListBranchingScheme instance.
 
@@ -140,3 +148,4 @@ class ListBranchingScheme:
                 return (i, path[len(i):].strip("/"))
 
         raise NotBranchError(path=path)
+

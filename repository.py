@@ -604,10 +604,22 @@ class SvnRepository(Repository):
 
                     if paths[p][0] in ('A', 'R'): 
                         created_branches[p] = i
+                elif self.scheme.is_branch_parent(p):
+                    if paths[p][0] in ('R', 'D'):
+                        k = created_branches.keys()
+                        for c in k:
+                            if c.startswith(p+"/"):
+                                del created_branches[c] 
+                                yield (c, i, False)
+                    if paths[p][0] in ('A', 'R'):
+                        for c in self.transport.get_dir(p, i)[0].keys():
+                            created_branches[p+"/"+c] = i
 
         for p in created_branches:
-            i = self._log.find_latest_change(p, revnum, recurse=True)
-            yield (p, i, True)
+            j = self._log.find_latest_change(p, revnum, recurse=True)
+            if j is None:
+                j = created_branches[p]
+            yield (p, j, True)
 
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""

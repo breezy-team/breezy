@@ -172,6 +172,25 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual(1, len(list(repos.follow_branch_history("branches/brancha",
             2))))
 
+    def test_find_branches_moved(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({
+            'dc/tmp/branches/brancha': None,
+            'dc/tmp/branches/branchab': None,
+            'dc/tmp/branches/brancha/data': "data", 
+            "dc/tmp/branches/branchab/data":"data"})
+        self.client_add("dc/tmp")
+        self.client_commit("dc", "My Message")
+        self.client_copy("dc/tmp/branches", "dc/tags")
+        self.client_commit("dc", "My Message 2")
+
+        repos = Repository.open(repos_url)
+        repos.set_branching_scheme(TrunkBranchingScheme())
+
+        self.assertEqual([("tags/branchab", 2, True), 
+                          ("tags/brancha", 2, True)], 
+                list(repos.find_branches(2)))
+
     def test_find_branches_no(self):
         repos_url = self.make_client("a", "dc")
 

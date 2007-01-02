@@ -90,6 +90,12 @@ class NoScheme(TestCase):
     def test_unprefix_slash_nested(self):
         self.assertEqual(NoBranchingScheme().unprefix("/foo/foo"), ("", "foo/foo"))
 
+    def test_is_branch_parent_root(self):
+        self.assertFalse(NoBranchingScheme().is_branch_parent(""))
+
+    def test_is_branch_parent_other(self):
+        self.assertFalse(NoBranchingScheme().is_branch_parent("trunk/foo"))
+
 class ListScheme(TestCase):
     def setUp(self):
         self.scheme = ListBranchingScheme(["foo", "bar/bloe"])
@@ -283,3 +289,18 @@ class TrunkScheme(TestCase):
 
     def test_str1(self):
         self.assertEqual("trunk1", TrunkBranchingScheme(1).__str__())
+        
+    def test_is_branch_parent_root(self):
+        self.assertTrue(TrunkBranchingScheme().is_branch_parent(""))
+
+    def test_is_branch_parent_branches(self):
+        self.assertTrue(TrunkBranchingScheme().is_branch_parent("branches"))
+
+    def test_is_branch_parent_trunk(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch_parent("trunk"))
+
+    def test_is_branch_parent_level(self):
+        self.assertTrue(TrunkBranchingScheme(1).is_branch_parent("anything"))
+
+    def test_is_branch_parent_other(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch_parent("trunk/foo"))

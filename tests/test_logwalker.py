@@ -122,6 +122,19 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         self.assertEqual(0, walker.find_latest_change("", 1))
 
+    def test_find_latest_notfound(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/branches/tmp': None})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+
+        self.client_copy("dc/branches", "dc/bla")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
+
+        self.assertIs(None, walker.find_latest_change("bla/tmp", 2))
+
     def test_find_latest_change(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/branches': None})
