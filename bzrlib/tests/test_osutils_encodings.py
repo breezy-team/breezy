@@ -18,6 +18,7 @@
 
 import codecs
 import locale   # XXX: Do I need a woodoo for MacOS?
+import os
 import sys
 
 import bzrlib
@@ -154,10 +155,18 @@ class TestUserEncoding(TestCase):
         self._getpreferredencoding = locale.getpreferredencoding
         self.addCleanup(self._reset)
         sys.stderr = StringIOWrapper()
+        # save $LANG
+        self._LANG = os.environ.get('LANG')
 
     def _reset(self):
         locale.getpreferredencoding = self._getpreferredencoding
         sys.stderr = self._stderr
+        # restore $LANG
+        if self._LANG is not None:
+            os.environ['LANG'] = self._LANG
+        else:
+            if os.environ.get('LANG') is not None:
+                del os.environ['LANG']
 
     def test_get_user_encoding(self):
         def f():
@@ -184,4 +193,18 @@ class TestUserEncoding(TestCase):
         self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
         self.assertEquals('bzr: warning: unknown encoding cpUNKNOWN.'
                           ' Continuing with ascii encoding.\n',
+                          sys.stderr.getvalue())
+
+    def test_user_locale_error(self):
+        def f():
+            raise locale.Error, 'unsupported locale'
+
+        locale.getpreferredencoding = f
+        os.environ['LANG'] = 'BOGUS'
+        self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
+        self.assertEquals('bzr: warning: unsupported locale\n'
+                          '  Could not determine what text encoding to use.\n'
+                          '  This error usually means your Python interpreter\n'
+                          '  doesn\'t support the locale set by $LANG (BOGUS)\n'
+                          '  Continuing with ascii encoding.\n',
                           sys.stderr.getvalue())

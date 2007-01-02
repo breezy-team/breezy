@@ -1105,6 +1105,7 @@ def get_user_encoding(use_cache=True):
                          '  doesn\'t support the locale set by $LANG (%s)\n'
                          "  Continuing with ascii encoding.\n"
                          % (e, os.environ.get('LANG')))
+        user_encoding = 'ascii'
 
     # Windows returns 'cp0' to indicate there is no code page. So we'll just
     # treat that as ASCII, and not support printing unicode characters to the
