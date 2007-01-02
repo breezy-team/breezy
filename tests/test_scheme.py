@@ -302,5 +302,17 @@ class TrunkScheme(TestCase):
     def test_is_branch_parent_level(self):
         self.assertTrue(TrunkBranchingScheme(1).is_branch_parent("anything"))
 
+    def test_is_branch_parent_level_root(self):
+        self.assertTrue(TrunkBranchingScheme(1).is_branch_parent(""))
+
+    def test_is_branch_parent_level_strange(self):
+        self.assertFalse(TrunkBranchingScheme(1).is_branch_parent("trunk/foo"))
+
+    def test_is_branch_parent_level_inside(self):
+        self.assertFalse(TrunkBranchingScheme(1).is_branch_parent("foo/trunk/foo"))
+
+    def test_is_branch_parent_level_branches(self):
+        self.assertTrue(TrunkBranchingScheme(1).is_branch_parent("anything/branches"))
+
     def test_is_branch_parent_other(self):
         self.assertFalse(TrunkBranchingScheme().is_branch_parent("trunk/foo"))

@@ -108,6 +108,9 @@ class TrunkBranchingScheme(BranchingScheme):
         return "trunk%d" % self.level
 
     def is_branch_parent(self, path):
+        parts = path.strip("/").split("/")
+        if len(parts) <= self.level:
+            return True
         return self.is_branch(path+"/trunk")
 
 class NoBranchingScheme(BranchingScheme):
