@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import bzrlib
-from bzrlib.decorators import needs_write_lock
 from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.osutils as osutils
 from bzrlib.revision import Revision
@@ -279,7 +278,39 @@ class InterSvnRepository(InterRepository):
 
     _matching_repo_format = SvnRepositoryFormat()
 
-    @needs_write_lock
+    def _find_all(self):
+        needed = []
+        parents = {}
+        for (branch, revnum) in self.source.follow_history(
+                                                self.source._latest_revnum):
+            revid = self.source.generate_revision_id(revnum, branch)
+            parents[revid] = self.source._mainline_revision_parent(branch, revnum)
+
+            if not self.target.has_revision(revid):
+                needed.append(revid)
+        return (needed, parents)
+
+    def _find_until(self, revision_id):
+        needed = []
+        parents = {}
+        (path, until_revnum) = self.source.parse_revision_id(revision_id)
+
+        prev_revid = None
+        for (branch, revnum) in self.source.follow_branch(path, 
+                                                          until_revnum):
+            revid = self.source.generate_revision_id(revnum, branch)
+
+            if prev_revid is not None:
+                parents[prev_revid] = revid
+
+            prev_revid = revid
+
+            if not self.target.has_revision(revid):
+                needed.append(revid)
+
+        parents[prev_revid] = None
+        return (needed, parents)
+
     def copy_content(self, revision_id=None, basis=None, pb=None):
         """See InterRepository.copy_content."""
         # Dictionary with paths as keys, revnums as values
@@ -289,32 +320,14 @@ class InterSvnRepository(InterRepository):
         # or self.target.add_inventory() each time
         needed = []
         parents = {}
-        if revision_id is None:
-            for (branch, revnum) in self.source.follow_history(
-                                                    self.source._latest_revnum):
-                revid = self.source.generate_revision_id(revnum, branch)
-                parents[revid] = self.source._mainline_revision_parent(branch, revnum)
-
-                if not self.target.has_revision(revid):
-                    needed.append(revid)
-        else:
-            (path, until_revnum) = self.source.parse_revision_id(revision_id)
-
-            prev_revid = None
-            for (branch, revnum) in self.source.follow_branch(path, 
-                                                              until_revnum):
-                revid = self.source.generate_revision_id(revnum, branch)
-
-                if prev_revid is not None:
-                    parents[prev_revid] = revid
-
-                prev_revid = revid
-
-                if not self.target.has_revision(revid):
-                    needed.append(revid)
-
-
-            parents[prev_revid] = None
+        self.target.lock_read()
+        try:
+            if revision_id is None:
+                (needed, parents) = self._find_all()
+            else:
+                (needed, parents) = self._find_until(revision_id)
+        finally:
+            self.target.unlock()
 
         if len(needed) == 0:
             # Nothing to fetch
@@ -325,6 +338,7 @@ class InterSvnRepository(InterRepository):
         needed.reverse()
         prev_revid = None
         transport = self.source.transport
+        self.target.lock_write()
         if pb is None:
             pb = ui_factory.nested_progress_bar()
             nested_pb = pb
@@ -392,11 +406,11 @@ class InterSvnRepository(InterRepository):
                 pool.destroy()
                 num += 1
         finally:
+            self.target.unlock()
             if nested_pb is not None:
                 nested_pb.finished()
         self.source.transport.reparent(repos_root)
 
-    @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
         """Fetch revisions. """
         self.copy_content(revision_id=revision_id, pb=pb)

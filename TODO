@@ -1,4 +1,5 @@
 - better tests for get_fileid_map()
+- make scheme name part of revision id
 - fix commits in checkouts somehow
 - fix autorealm repository
 - handle parent directories of branches being moved correctly
