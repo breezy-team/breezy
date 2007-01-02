@@ -1522,6 +1522,7 @@ class cmd_ls(Command):
     """List files in a tree.
     """
 
+    takes_args = ['path?']
     # TODO: Take a revision or remote path and list that tree instead.
     takes_options = ['verbose', 'revision',
                      Option('non-recursive',
@@ -1539,7 +1540,7 @@ class cmd_ls(Command):
     def run(self, revision=None, verbose=False, 
             non_recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
-            null=False, kind=None, show_ids=False):
+            null=False, kind=None, show_ids=False, path=None):
 
         if kind and kind not in ('file', 'directory', 'symlink'):
             raise errors.BzrCommandError('invalid kind specified')
@@ -1550,7 +1551,16 @@ class cmd_ls(Command):
 
         selection = {'I':ignored, '?':unknown, 'V':versioned}
 
-        tree, relpath = WorkingTree.open_containing(u'.')
+        if path is None:
+            fs_path = '.'
+            prefix = ''
+        else:
+            if from_root:
+                raise errors.BzrCommandError('cannot specify both --from-root'
+                                             ' and PATH')
+            fs_path = path
+            prefix = path
+        tree, relpath = WorkingTree.open_containing(fs_path)
         if from_root:
             relpath = u''
         elif relpath:
@@ -1561,7 +1571,7 @@ class cmd_ls(Command):
 
         for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
             if fp.startswith(relpath):
-                fp = fp[len(relpath):]
+                fp = osutils.pathjoin(prefix, fp[len(relpath):])
                 if non_recursive and '/' in fp:
                     continue
                 if not all and not selection[fc]:

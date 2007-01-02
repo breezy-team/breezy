@@ -134,6 +134,31 @@ class TestLS(TestCaseWithTransport):
                        'subdir\n'
                        , '--from-root', '--non-recursive')
 
+    def test_ls_path(self):
+        """If a path is specified, files are listed with that prefix"""
+        self.build_tree(['subdir/', 'subdir/b'])
+        self.wt.add(['subdir', 'subdir/b'])
+        self.ls_equals('subdir/b\n' ,
+                       'subdir')
+        os.chdir('subdir')
+        self.ls_equals('../.bzrignore\n'
+                       '../a\n'
+                       '../subdir\n'
+                       '../subdir/b\n' ,
+                       '..')
+        self.ls_equals('../.bzrignore\0'
+                       '../a\0'
+                       '../subdir\0'
+                       '../subdir/b\0' ,
+                       '..', '--null')
+        self.ls_equals('?        ../.bzrignore\n'
+                       '?        ../a\n'
+                       'V        ../subdir/\n'
+                       'V        ../subdir/b\n' ,
+                       '..', '--verbose')
+        self.run_bzr_error('cannot specify both --from-root and PATH', 'ls',
+                           '--from-root', '..')
+
     def test_ls_revision(self):
         self.wt.add(['a'])
         self.wt.commit('add')
