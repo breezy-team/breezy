@@ -1,5 +1,6 @@
-bzr-builddeb (0.11) unstable; urgency=low
+bzr-builddeb (0.11) experimental; urgency=low
 
   * Initial Release. (Closes: #380198)
+  * add myself to Uploaders
 
- -- James Westby <jw+debian@jameswestby.net>  Thu,  3 Aug 2006 19:16:22 +0100
+ -- Reinhard Tartler <siretart@tauware.de>  Wed,  3 Jan 2007 20:23:37 +0100

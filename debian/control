@@ -10,7 +10,7 @@ Standards-Version: 3.7.2
 
 Package: bzr-builddeb
 Architecture: all
-Depends: bzr (>= 0.11), python-debian (>= 0.1), ${python:Depends}
+Depends: bzr (>= 0.11), python-debian (>= 0.1), python-deb822, ${python:Depends}
 Provides: bzr-buildpackage
 XB-Python-Version: ${python:Versions}
 Description: bzr plugin for Debian package management
