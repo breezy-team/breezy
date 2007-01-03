@@ -128,12 +128,9 @@ class SvnBranch(Branch):
         return inv.root.file_id
 
     def _get_nick(self):
-        try:
-            if self.branch_path == "":
-                return None
-            return self.branch_path.strip("/")
-        except ValueError:
+        if self.branch_path == "":
             return None
+        return self.branch_path.strip("/")
 
     nick = property(_get_nick)
 
@@ -165,7 +162,7 @@ class SvnBranch(Branch):
         if ph:
             return ph[-1]
         else:
-            return none
+            return None
 
     def pull(self, source, overwrite=False, stop_revision=None):
         source.lock_read()
@@ -175,7 +172,7 @@ class SvnBranch(Branch):
                 self.update_revisions(source, stop_revision)
             except DivergedBranches:
                 if overwrite:
-                    raise BzrError('overwrite not supported for Subversion branches')
+                    raise NotImplementedError('overwrite not supported for Subversion branches')
                 raise
             new_count = len(self.revision_history())
             return new_count - old_count

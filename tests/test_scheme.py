@@ -21,6 +21,17 @@ from scheme import (ListBranchingScheme, NoBranchingScheme,
                     BranchingScheme, TrunkBranchingScheme)
 
 class BranchingSchemeTest(TestCase):
+    def test_is_branch(self):
+        self.assertRaises(NotImplementedError, BranchingScheme().is_branch, "")
+
+    def test_is_branch_parent(self):
+        self.assertRaises(NotImplementedError, 
+                BranchingScheme().is_branch_parent, "")
+
+    def test_unprefix(self):
+        self.assertRaises(NotImplementedError, 
+                BranchingScheme().unprefix, "")
+
     def test_guess_empty(self):
         self.assertIsInstance(BranchingScheme.guess_scheme(""), 
                               NoBranchingScheme)

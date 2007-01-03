@@ -317,6 +317,13 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         self.assertFalse(walker.touches_path("trunk", 2))
 
+    def test_get_previous_root(self):
+        repos_url = self.make_client("a", "dc")
+
+        walker = logwalker.LogWalker(transport=SvnRaTransport(repos_url))
+
+        self.assertEqual((None, -1), walker.get_previous("", 0))
+
     def test_get_previous_simple(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/trunk/afile': "data"})

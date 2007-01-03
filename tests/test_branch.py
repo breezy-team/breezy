@@ -26,13 +26,24 @@ from unittest import TestCase
 
 import svn.core, svn.client
 
-from branch import FakeControlFiles
+from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
 import format
 from repository import MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
+    def test_last_rev_rev_hist(self):
+        repos_url = self.make_client("a", "dc")
+        branch = Branch.open(repos_url)
+        branch.revision_history()
+        self.assertEqual(None, branch.last_revision())
+
+    def test_set_parent(self):
+        repos_url = self.make_client('a', 'dc')
+        branch = Branch.open(repos_url)
+        branch.set_parent("foobar")
+
     def test_num_revnums(self):
         repos_url = self.make_client('a', 'dc')
         bzrdir = BzrDir.open("svn+"+repos_url)
@@ -64,15 +75,33 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         self.assertRaises(NotImplementedError, branch.set_revision_history, [])
 
-    def test_get_root_id(self):
+    def test_get_root_id_empty(self):
         repos_url = self.make_client('a', 'dc')
         branch = Branch.open("svn+"+repos_url)
+        self.assertEqual(ROOT_ID, branch.get_root_id())
+
+    def test_get_root_id_trunk(self):
+        repos_url = self.make_client('a', 'dc')
+        self.build_tree({'dc/trunk': None})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "msg")
+        branch = Branch.open("svn+"+repos_url+"/trunk")
         self.assertEqual(ROOT_ID, branch.get_root_id())
 
     def test_break_lock(self):
         repos_url = self.make_client('a', 'dc')
         branch = Branch.open("svn+"+repos_url)
         branch.control_files.break_lock()
+
+    def test_repr(self):
+        repos_url = self.make_client('a', 'dc')
+        branch = Branch.open("svn+"+repos_url)
+        self.assertEqual("SvnBranch('svn+%s')" % repos_url, branch.__repr__())
+
+    def test_get_physical_lock_status(self):
+        repos_url = self.make_client('a', 'dc')
+        branch = Branch.open("svn+"+repos_url)
+        self.assertFalse(branch.get_physical_lock_status())
 
     def test_set_push_location(self):
         repos_url = self.make_client('a', 'dc')
@@ -555,3 +584,17 @@ class TestFakeControlFiles(TestCase):
         f = FakeControlFiles()
         self.assertRaises(NoSuchFile, f.get, "foobla")
 
+class BranchFormatTests(TestCase):
+    def setUp(self):
+        self.format = SvnBranchFormat()
+
+    def test_initialize(self):
+        self.assertRaises(NotImplementedError, self.format.initialize, None)
+
+    def test_get_format_string(self):
+        self.assertEqual("Subversion Smart Server", 
+                         self.format.get_format_string())
+
+    def test_get_format_description(self):
+        self.assertEqual("Subversion Smart Server", 
+                         self.format.get_format_description())

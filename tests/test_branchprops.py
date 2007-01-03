@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.errors import NoSuchRevision
+
 from tests import TestCaseWithSubversionRepository
 from branchprops import BranchPropertyList
 from logwalker import LogWalker
@@ -39,6 +41,16 @@ class TestBranchProps(TestCaseWithSubversionRepository):
 
         bp = BranchPropertyList(logwalk, self.db)
         self.assertEqual("data", bp.get_property("", 1, "myprop"))
+
+    def test_get_property_norev(self):
+        repos_url = self.make_client('d', 'dc')
+        self.client_set_prop("dc", "myprop", "data")
+        self.client_commit("dc", "My Message")
+
+        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
+
+        bp = BranchPropertyList(logwalk, self.db)
+        self.assertRaises(NoSuchRevision, bp.get_property, "", 10, "myprop")
 
     def test_get_old_property(self):
         repos_url = self.make_client('d', 'dc')
@@ -90,3 +102,15 @@ class TestBranchProps(TestCaseWithSubversionRepository):
 
         bp = BranchPropertyList(logwalk, self.db)
         self.assertEqual("data2\n", bp.get_property_diff("", 2, "myprop"))
+
+    def test_get_property_diff_ignore_origchange(self):
+        repos_url = self.make_client('d', 'dc')
+        self.client_set_prop("dc", "myprop", "foodata\n")
+        self.client_commit("dc", "My Message")
+        self.client_set_prop("dc", "myprop", "data\ndata2\n")
+        self.client_commit("dc", "My Message")
+
+        logwalk = LogWalker(transport=SvnRaTransport(repos_url))
+
+        bp = BranchPropertyList(logwalk, self.db)
+        self.assertEqual("", bp.get_property_diff("", 2, "myprop"))

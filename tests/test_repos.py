@@ -16,7 +16,7 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchRevision, BzrError
+from bzrlib.errors import NoSuchRevision, BzrError, UninitializableFormat
 from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.repository import Repository
@@ -38,7 +38,8 @@ from tests import TestCaseWithSubversionRepository
 import repository
 from repository import (parse_svn_revision_id, generate_svn_revision_id, 
                         svk_feature_to_revision_id, revision_id_to_svk_feature,
-                        MAPPING_VERSION, escape_svn_path, unescape_svn_path)
+                        MAPPING_VERSION, escape_svn_path, unescape_svn_path,
+                        SvnRepositoryFormat)
 
 
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
@@ -65,6 +66,23 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client("a", "dc")
         repos = Repository.open(repos_url)
         self.assertFalse(repos.make_working_trees())
+
+    def test_set_make_working_trees(self):
+        repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
+        repos.set_make_working_trees(True)
+        self.assertFalse(repos.make_working_trees())
+
+    def test_add_revision(self):
+        repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
+        self.assertRaises(NotImplementedError, repos.add_revision, "revid", 
+                None)
+
+    def test_has_signature_for_revision_id(self):
+        repos_url = self.make_client("a", "dc")
+        repos = Repository.open(repos_url)
+        self.assertFalse(repos.has_signature_for_revision_id("foo"))
 
     def test_repr(self):
         repos_url = self.make_client("a", "dc")
@@ -276,6 +294,11 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         fs = self.open_fs('c')
         self.assertEqual(svn.fs.get_uuid(fs), repository.uuid)
 
+    def test_get_inventory_weave(self):
+        bzrdir = self.make_client_and_bzrdir('d', 'dc')
+        repository = bzrdir.find_repository()
+        self.assertRaises(NotImplementedError, repository.get_inventory_weave)
+
     def test_has_revision(self):
         bzrdir = self.make_client_and_bzrdir('d', 'dc')
         repository = bzrdir.find_repository()
@@ -381,11 +404,20 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                     "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid)))
         self.assertEqual([None], repository.get_ancestry(None))
 
-    def test_get_revision_graph(self):
+    def test_get_revision_graph_empty(self):
+        repos_url = self.make_client('d', 'dc')
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertEqual({}, repository.get_revision_graph(NULL_REVISION))
+
+    def test_get_revision_graph_invalid(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
         self.assertRaises(NoSuchRevision, repository.get_revision_graph, 
                           "nonexisting")
+
+    def test_get_revision_graph(self):
+        repos_url = self.make_client('d', 'dc')
+        repository = Repository.open("svn+%s" % repos_url)
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
@@ -1919,3 +1951,14 @@ class EscapeTest(TestCase):
 
     def test_unescape_svn_path_percent(self):
         self.assertEqual("foobar%b", unescape_svn_path("foobar%25b"))
+
+class SvnRepositoryFormatTests(TestCase):
+    def setUp(self):
+        self.format = SvnRepositoryFormat()
+
+    def test_initialize(self):
+        self.assertRaises(UninitializableFormat, self.format.initialize, None)
+
+    def test_get_format_description(self):
+        self.assertEqual("Subversion Repository", 
+                         self.format.get_format_description())
