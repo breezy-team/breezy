@@ -223,12 +223,17 @@ def load_from_zips(zips):
             if not name or name.endswith('/'):
                 continue
 
-            head, tail = os.path.split(name)
+            # '/' is used to separate pathname components inside zip archives
+            ix = name.rfind('/')
+            if ix == -1:
+                head, tail = '', name
+            else:
+                head, tail = name.rsplit('/',1)
             if '/' in head:
                 # we don't need looking in subdirectories
                 continue
 
-            base, suffix = os.path.splitext(tail)
+            base, suffix = osutils.splitext(tail)
             if suffix not in valid_suffixes:
                 continue
 
