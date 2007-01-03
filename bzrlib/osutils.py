@@ -310,6 +310,8 @@ getcwd = os.getcwdu
 rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
+split = os.path.split
+splitext = os.path.splitext
 # These were already imported into local scope
 # mkdtemp = tempfile.mkdtemp
 # rmtree = shutil.rmtree
