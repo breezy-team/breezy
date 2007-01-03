@@ -592,6 +592,20 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         renames = repos.revision_fileid_renames("svn-v%d:1@%s-" % (MAPPING_VERSION, repos.uuid))
         self.assertEqual({"test": "bla"}, renames)
 
+    def test_fetch_fileid_renames(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/test': "data"})
+        self.client_add("dc/test")
+        self.client_set_prop("dc", "bzr:file-ids", "test\tbla\n")
+        self.client_commit("dc", "Msg")
+
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertEqual("bla", newrepos.get_inventory(
+            "svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)).path2id("test"))
+
     def test_fetch_trunk1(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/proj1/trunk/file': "data"})

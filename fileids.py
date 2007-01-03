@@ -130,7 +130,7 @@ class FileIdMap(object):
                                         uuid, find_children)
         if find_children is not None:
             def get_children(path, revid):
-                (_, bp, revnum) = parse_svn_revision_id(revid)
+                (bp, revnum) = self.repos.parse_revision_id(revid)
                 for p in find_children(bp+"/"+path, revnum):
                     yield self.repos.scheme.unprefix(p)[1]
         else:
@@ -138,8 +138,12 @@ class FileIdMap(object):
 
         revid = generate_svn_revision_id(uuid, revnum, branch)
 
-        return self._apply_changes(lambda x: generate_file_id(revid, x), 
-                                   changes, get_children)
+        def new_file_id(x):
+            if renames.has_key(x):
+                return renames[x]
+            return generate_file_id(revid, x)
+         
+        return self._apply_changes(new_file_id, changes, get_children)
 
     def get_map(self, uuid, revnum, branch, renames_cb):
         """Make sure the map is up to date until revnum."""
@@ -173,7 +177,7 @@ class FileIdMap(object):
             pb.update('generating file id map', i, len(todo))
 
             def find_children(path, revid):
-                (_, bp, revnum) = parse_svn_revision_id(revid)
+                (bp, revnum) = self.repos.parse_revision_id(revid)
                 for p in self.repos._log.find_children(bp+"/"+path, revnum):
                     yield self.repos.scheme.unprefix(p)[1]
 
@@ -192,6 +196,7 @@ class FileIdMap(object):
                     revmap[p] = map[p][0]
 
             map.update(dict([(x, (revmap[x], revid)) for x in revmap]))
+
             # Mark all parent paths as changed
             for p in revmap:
                 parts = p.split("/")
