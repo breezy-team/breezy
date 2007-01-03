@@ -197,7 +197,7 @@ class FileIdMap(object):
             # Mark all parent paths as changed
             for p in revmap:
                 parts = p.split("/")
-                for j in range(1, len(parts)):
+                for j in range(1, len(parts)+1):
                     parent = "/".join(parts[0:len(parts)-j])
                     assert map.has_key(parent), "Parent item %s of %s doesn't exist in map" % (parent, p)
                     if map[parent][1] == revid:
