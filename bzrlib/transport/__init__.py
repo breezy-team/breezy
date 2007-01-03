@@ -201,6 +201,7 @@ def register_lazy_transport(scheme, module, classname):
     def _loader(base):
         mod = __import__(module, globals(), locals(), [classname])
         klass = getattr(mod, classname)
+        # FIXME: Cache the patched transports ?
         _check_get_with_hints(klass)
         return klass(base)
     _loader.module = module

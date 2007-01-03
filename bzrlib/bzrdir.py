@@ -498,6 +498,8 @@ class BzrDir(object):
         t = get_transport(base)
         return BzrDir.open_from_transport(t, _unsupported=_unsupported)
 
+    MAX_REDIRECTIONS = 8
+
     @staticmethod
     def open_from_transport(transport, _unsupported=False):
         """Open a bzrdir within a particular directory.
@@ -507,7 +509,6 @@ class BzrDir(object):
         """
         # FIXME: Put that outside the static method once I
         # understand how to do it.
-        MAX_REDIRECTIONS = 8
 
         initial_base = transport.base
         redirected = True # to enter the loop
@@ -516,7 +517,7 @@ class BzrDir(object):
         # don't try to detect them, just getting out if too much
         # redirections occurs. The solution is outside: where the
         # loop is defined.
-        while redirected and redirections < MAX_REDIRECTIONS:
+        while redirected and redirections < BzrDir.MAX_REDIRECTIONS:
             try:
                 format = BzrDirFormat.find_format(transport)
                 redirected = False
