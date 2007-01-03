@@ -54,29 +54,21 @@ class SvnRevisionTree(RevisionTree):
         self._repository = repository
         self._revision_id = revision_id
         pool = Pool()
-        if revision_id == NULL_REVISION:
-            self._inventory = Inventory(ROOT_ID)
-            self._inventory.revision_id = NULL_REVISION
-        else:
-            (self.branch_path, self.revnum) = repository.parse_revision_id(revision_id)
-            self._inventory = Inventory(ROOT_ID)
-            self._inventory.revision_id = revision_id
-            self.id_map = repository.get_fileid_map(self.revnum, self.branch_path)
-            self.editor = TreeBuildEditor(self, pool)
-            self.file_data = {}
-
-            editor, baton = svn.delta.make_editor(self.editor, pool)
-
-            root_repos = repository.transport.get_repos_root()
-            reporter, reporter_baton = repository.transport.do_switch(
-                    self.revnum, "", True, 
-                    os.path.join(root_repos, self.branch_path), editor, baton, pool)
-
-            svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", 0, True, None, pool)
-
-            svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
-
-            pool.destroy()
+        (self.branch_path, self.revnum) = repository.parse_revision_id(revision_id)
+        self._inventory = Inventory(ROOT_ID)
+        self._inventory.revision_id = revision_id
+        self.id_map = repository.get_fileid_map(self.revnum, self.branch_path)
+        self.editor = TreeBuildEditor(self, pool)
+        self.file_data = {}
+        editor, baton = svn.delta.make_editor(self.editor, pool)
+        root_repos = repository.transport.get_repos_root()
+        reporter, reporter_baton = repository.transport.do_switch(
+                self.revnum, "", True, 
+                os.path.join(root_repos, self.branch_path), editor, baton, pool)
+        svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", 0, 
+                True, None, pool)
+        svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
+        pool.destroy()
 
      def get_file_lines(self, file_id):
         return osutils.split_lines(self.file_data[file_id])
@@ -100,7 +92,6 @@ class TreeBuildEditor(svn.delta.Editor):
     def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
         file_id, revision_id = self.tree.id_map[path]
         ie = self.tree._inventory.add_path(path, 'directory', file_id)
-
         ie.revision = revision_id
         return file_id
 
@@ -162,7 +153,6 @@ class TreeBuildEditor(svn.delta.Editor):
 
     def close_file(self, path, checksum):
         file_id, revision_id = self.tree.id_map[path]
-
         if self.is_symlink:
             ie = self.tree._inventory.add_path(path, 'symlink', file_id)
         else:
@@ -206,8 +196,7 @@ class TreeBuildEditor(svn.delta.Editor):
 class SvnBasisTree(SvnRevisionTree):
     """Optimized version of SvnRevisionTree."""
     def __init__(self, workingtree, revid):
-        super(SvnBasisTree, self).__init__(workingtree.branch.repository,
-                                           revid)
+        super(SvnBasisTree, self).__init__(workingtree.branch.repository, revid)
         self.workingtree = workingtree
 
     def get_file_lines(self, file_id):
