@@ -143,8 +143,8 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.assertEqual(inv1.path2id("dir"), inv2.path2id("dir"))
         self.assertEqual(inv1.path2id("dir/file"), inv2.path2id("dir/file"))
 
-        fileid, revid = repository.path_to_file_id(2, 
-                            "branches/mybranch/dir/file")
+        fileid, revid = repository.get_fileid_map(2, 
+                            "branches/mybranch")["dir/file"]
         self.assertEqual(fileid, inv1.path2id("dir/file"))
         self.assertEqual(
                 "svn-v%d:1@%s-trunk" % (MAPPING_VERSION, repository.uuid), 

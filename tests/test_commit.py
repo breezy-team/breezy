@@ -36,6 +36,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.assertEqual(
             "svn-v%d:1@%s-" % (MAPPING_VERSION, wt.branch.repository.uuid), 
                          wt.commit(message="data"))
+        self.client_update("dc")
         self.assertEqual(
             "svn-v%d:1@%s-" % (MAPPING_VERSION, wt.branch.repository.uuid), 
                          wt.branch.last_revision())

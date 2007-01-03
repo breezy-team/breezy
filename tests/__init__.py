@@ -240,6 +240,7 @@ def test_suite():
             'test_repos', 
             'test_scheme', 
             'test_transport',
+            'test_tree',
             'test_workingtree']
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i) for i in testmod_names]))
 

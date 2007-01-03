@@ -75,13 +75,13 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_get_ignore_list_empty(self):
         self.make_client('a', 'dc')
         tree = WorkingTree.open("dc")
-        self.assertEqual(svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" "), tree.get_ignore_list())
+        self.assertEqual([".svn"] + svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" "), tree.get_ignore_list())
 
     def test_get_ignore_list_onelevel(self):
         self.make_client('a', 'dc')
         self.client_set_prop("dc", "svn:ignore", "*.d\n*.c\n")
         tree = WorkingTree.open("dc")
-        self.assertEqual(svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" ") + ["./*.d", "./*.c"], tree.get_ignore_list())
+        self.assertEqual([".svn"] + svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" ") + ["./*.d", "./*.c"], tree.get_ignore_list())
 
     def test_get_ignore_list_morelevel(self):
         self.make_client('a', 'dc')
@@ -90,9 +90,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_add("dc/x")
         self.client_set_prop("dc/x", "svn:ignore", "*.e\n")
         tree = WorkingTree.open("dc")
-        self.assertEqual(svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" ") + ["./*.d", "./*.c", "./x/*.e"], tree.get_ignore_list())
-
-
+        self.assertEqual([".svn"] + svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" ") + ["./*.d", "./*.c", "./x/*.e"], tree.get_ignore_list())
 
     def test_add_reopen(self):
         self.make_client('a', 'dc')
@@ -165,6 +163,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.build_tree({"dc/bl": "data"})
         self.client_add("dc/bl")
         self.client_commit("dc", "Bla")
+        self.client_update("dc")
         tree = WorkingTree.open("dc")
         self.assertEqual(
             "svn-v%d:1@%s-" % (MAPPING_VERSION, tree.branch.repository.uuid),
@@ -287,6 +286,16 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree = WorkingTree.open("dc")
         inv = tree.read_working_inventory()
         self.assertTrue(inv[inv.path2id("bla")].executable)
+
+    def test_symlink(self):
+        self.make_client('a', 'dc')
+        import os
+        os.symlink("target", "dc/bla")
+        self.client_add("dc/bla")
+        tree = WorkingTree.open("dc")
+        inv = tree.read_working_inventory()
+        self.assertEqual('symlink', inv[inv.path2id("bla")].kind)
+        self.assertEqual("target", inv[inv.path2id("bla")].symlink_target)
 
     def test_pending_merges(self):
         self.make_client('a', 'dc')

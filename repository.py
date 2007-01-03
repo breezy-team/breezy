@@ -245,28 +245,6 @@ class SvnRepository(Repository):
         return self.fileid_map.apply_changes(uuid, revnum, branch, changes, 
                                              renames)
 
-    def path_to_file_id(self, revnum, path):
-        """Generate a bzr file id from a Subversion file name. 
-        
-        :param revnum: Revision number.
-        :param path: Absolute path.
-        :return: Tuple with file id and revision id.
-        """
-        assert isinstance(revnum, int) and revnum >= 0
-        assert isinstance(path, basestring)
-
-        if revnum == 0:
-            from fileids import generate_svn_file_id
-            return (generate_svn_file_id(self.uuid, 0, "", ""), NULL_REVISION)
-
-        (bp, rp) = self.scheme.unprefix(path)
-
-        map = self.get_fileid_map(revnum, bp)
-        try:
-            return map[rp]
-        except KeyError:
-            raise NoSuchFile(path=rp)
-
     def all_revision_ids(self):
         for (bp, rev) in self.follow_history(self.transport.get_latest_revnum()):
             yield self.generate_revision_id(rev, bp)
