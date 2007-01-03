@@ -79,6 +79,9 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * ``bzr missing --verbose`` was showing adds/removals in the wrong
+      direction. (John Arbash Meinel)
+
     * ``bzr annotate`` now defaults to showing dotted revnos for merged
       revisions. It cuts them off at a depth of 12 characters, but you can
       supply ``--long`` to see the full number. You can also use
@@ -111,6 +114,13 @@ IN DEVELOPMENT
 
     * ``bzr status`` in a readonly directory should work without giving
       lots of errors. (John Arbash Meinel, #76299)
+
+    * Mention the revisionspec topic for the revision option help.
+      (Wouter van Heyst, #31663)
+
+    * Allow plugins import from zip archives.
+      (Alexander Belchenko, #68124)
+
 
 bzr 0.13  2006-12-05
     
@@ -171,6 +181,10 @@ bzr 0.13rc1  2006-11-27
       Bennetts)
 
   BUG FIXES:
+
+    * Now _KnitIndex properly decode revision ids when loading index data.
+      And optimize the knit index parsing code.  (Dmitry Vasiliev, John
+      Arbash Meinel)
 
     * ``bzrlib/bzrdir.py`` was directly referencing ``bzrlib.workingtree``,
       without importing it. This prevented ``bzr upgrade`` from working

@@ -1203,7 +1203,7 @@ class cmd_diff(Command):
     #       deleted files.
 
     # TODO: This probably handles non-Unix newlines poorly.
-    
+
     takes_args = ['file*']
     takes_options = ['revision', 'diff-options',
         Option('prefix', type=str,
@@ -1226,11 +1226,15 @@ class cmd_diff(Command):
         elif prefix == '1':
             old_label = 'old/'
             new_label = 'new/'
-        else:
-            if not ':' in prefix:
-                 raise BzrCommandError(
-                     "--prefix expects two values separated by a colon")
+        elif ':' in prefix:
             old_label, new_label = prefix.split(":")
+        else:
+            raise BzrCommandError(
+                "--prefix expects two values separated by a colon")
+
+        if revision and len(revision) > 2:
+            raise errors.BzrCommandError('bzr diff --revision takes exactly'
+                                         ' one or two revision specifiers')
         
         try:
             tree1, file_list = internal_tree_files(file_list)
@@ -1256,29 +1260,23 @@ class cmd_diff(Command):
                 tree1, tree2 = None, None
             else:
                 raise
-        if revision is not None:
-            if tree2 is not None:
-                raise errors.BzrCommandError("Can't specify -r with two branches")
-            if (len(revision) == 1) or (revision[1].spec is None):
-                return diff_cmd_helper(tree1, file_list, diff_options,
-                                       revision[0], 
-                                       old_label=old_label, new_label=new_label)
-            elif len(revision) == 2:
-                return diff_cmd_helper(tree1, file_list, diff_options,
-                                       revision[0], revision[1],
-                                       old_label=old_label, new_label=new_label)
-            else:
-                raise errors.BzrCommandError('bzr diff --revision takes exactly'
-                                             ' one or two revision identifiers')
-        else:
-            if tree2 is not None:
-                return show_diff_trees(tree1, tree2, sys.stdout, 
-                                       specific_files=file_list,
-                                       external_diff_options=diff_options,
-                                       old_label=old_label, new_label=new_label)
-            else:
-                return diff_cmd_helper(tree1, file_list, diff_options,
-                                       old_label=old_label, new_label=new_label)
+
+        if tree2 is not None:
+            if revision is not None:
+                # FIXME: but there should be a clean way to diff between
+                # non-default versions of two trees, it's not hard to do
+                # internally...
+                raise errors.BzrCommandError(
+                        "Sorry, diffing arbitrary revisions across branches "
+                        "is not implemented yet")
+            return show_diff_trees(tree1, tree2, sys.stdout, 
+                                   specific_files=file_list,
+                                   external_diff_options=diff_options,
+                                   old_label=old_label, new_label=new_label)
+
+        return diff_cmd_helper(tree1, file_list, diff_options,
+                               revision_specs=revision,
+                               old_label=old_label, new_label=new_label)
 
 
 class cmd_deleted(Command):
@@ -1513,8 +1511,9 @@ class cmd_touching_revisions(Command):
 class cmd_ls(Command):
     """List files in a tree.
     """
+
+    takes_args = ['path?']
     # TODO: Take a revision or remote path and list that tree instead.
-    hidden = True
     takes_options = ['verbose', 'revision',
                      Option('non-recursive',
                             help='don\'t recurse into sub-directories'),
@@ -1525,12 +1524,16 @@ class cmd_ls(Command):
                      Option('ignored', help='Print ignored files'),
 
                      Option('null', help='Null separate the files'),
+                     'kind', 'show-ids'
                     ]
     @display_command
     def run(self, revision=None, verbose=False, 
             non_recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
-            null=False):
+            null=False, kind=None, show_ids=False, path=None):
+
+        if kind and kind not in ('file', 'directory', 'symlink'):
+            raise errors.BzrCommandError('invalid kind specified')
 
         if verbose and null:
             raise errors.BzrCommandError('Cannot set both --verbose and --null')
@@ -1538,7 +1541,16 @@ class cmd_ls(Command):
 
         selection = {'I':ignored, '?':unknown, 'V':versioned}
 
-        tree, relpath = WorkingTree.open_containing(u'.')
+        if path is None:
+            fs_path = '.'
+            prefix = ''
+        else:
+            if from_root:
+                raise errors.BzrCommandError('cannot specify both --from-root'
+                                             ' and PATH')
+            fs_path = path
+            prefix = path
+        tree, relpath = WorkingTree.open_containing(fs_path)
         if from_root:
             relpath = u''
         elif relpath:
@@ -1547,21 +1559,37 @@ class cmd_ls(Command):
             tree = tree.branch.repository.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
 
-        for fp, fc, kind, fid, entry in tree.list_files(include_root=False):
+        for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
             if fp.startswith(relpath):
-                fp = fp[len(relpath):]
+                fp = osutils.pathjoin(prefix, fp[len(relpath):])
                 if non_recursive and '/' in fp:
                     continue
                 if not all and not selection[fc]:
                     continue
+                if kind is not None and fkind != kind:
+                    continue
                 if verbose:
                     kindch = entry.kind_character()
-                    self.outf.write('%-8s %s%s\n' % (fc, fp, kindch))
+                    outstring = '%-8s %s%s' % (fc, fp, kindch)
+                    if show_ids and fid is not None:
+                        outstring = "%-50s %s" % (outstring, fid)
+                    self.outf.write(outstring + '\n')
                 elif null:
                     self.outf.write(fp + '\0')
+                    if show_ids:
+                        if fid is not None:
+                            self.outf.write(fid)
+                        self.outf.write('\0')
                     self.outf.flush()
                 else:
-                    self.outf.write(fp + '\n')
+                    if fid is not None:
+                        my_id = fid
+                    else:
+                        my_id = ''
+                    if show_ids:
+                        self.outf.write('%-50s %s\n' % (fp, my_id))
+                    else:
+                        self.outf.write(fp + '\n')
 
 
 class cmd_unknowns(Command):
@@ -2081,6 +2109,7 @@ class cmd_selftest(Command):
                             help='clean temporary tests directories'
                                  ' without running tests'),
                      ]
+    encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
