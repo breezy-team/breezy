@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2006-2007 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -170,47 +170,48 @@ class FileIdMap(object):
         
         pb = ui_factory.nested_progress_bar()
 
-        i = 1
-        for (revid, global_changes) in todo:
-            changes = get_local_changes(global_changes, self.repos.scheme,
-                                        uuid, self.repos._log.find_children)
-            pb.update('generating file id map', i, len(todo))
+        try:
+            i = 1
+            for (revid, global_changes) in todo:
+                changes = get_local_changes(global_changes, self.repos.scheme,
+                                            uuid, self.repos._log.find_children)
+                pb.update('generating file id map', i, len(todo))
 
-            def find_children(path, revid):
-                (bp, revnum) = self.repos.parse_revision_id(revid)
-                for p in self.repos._log.find_children(bp+"/"+path, revnum):
-                    yield self.repos.scheme.unprefix(p)[1]
+                def find_children(path, revid):
+                    (bp, revnum) = self.repos.parse_revision_id(revid)
+                    for p in self.repos._log.find_children(bp+"/"+path, revnum):
+                        yield self.repos.scheme.unprefix(p)[1]
 
-            parent_revs = next_parent_revs
+                parent_revs = next_parent_revs
 
-            renames = renames_cb(revid)
+                renames = renames_cb(revid)
 
-            def new_file_id(x):
-                if renames.has_key(x):
-                    return renames[x]
-                return generate_file_id(revid, x)
-            
-            revmap = self._apply_changes(new_file_id, changes, find_children)
-            for p in changes:
-                if changes[p][0] == 'M':
-                    revmap[p] = map[p][0]
+                def new_file_id(x):
+                    if renames.has_key(x):
+                        return renames[x]
+                    return generate_file_id(revid, x)
+                
+                revmap = self._apply_changes(new_file_id, changes, find_children)
+                for p in changes:
+                    if changes[p][0] == 'M' and not revmap.has_key(p):
+                        revmap[p] = map[p][0]
 
-            map.update(dict([(x, (revmap[x], revid)) for x in revmap]))
+                map.update(dict([(x, (revmap[x], revid)) for x in revmap]))
 
-            # Mark all parent paths as changed
-            for p in revmap:
-                parts = p.split("/")
-                for j in range(1, len(parts)+1):
-                    parent = "/".join(parts[0:len(parts)-j])
-                    assert map.has_key(parent), "Parent item %s of %s doesn't exist in map" % (parent, p)
-                    if map[parent][1] == revid:
-                        break
-                    map[parent] = map[parent][0], revid
-                    
-            next_parent_revs = [revid]
-            i += 1
-
-        pb.finished()
+                # Mark all parent paths as changed
+                for p in revmap:
+                    parts = p.split("/")
+                    for j in range(1, len(parts)+1):
+                        parent = "/".join(parts[0:len(parts)-j])
+                        assert map.has_key(parent), "Parent item %s of %s doesn't exist in map" % (parent, p)
+                        if map[parent][1] == revid:
+                            break
+                        map[parent] = map[parent][0], revid
+                        
+                next_parent_revs = [revid]
+                i += 1
+        finally:
+            pb.finished()
         self.save(revid, parent_revs, map)
         return map
 
@@ -232,7 +233,7 @@ class SimpleFileIdMap(FileIdMap):
                     if find_children is not None:
                         for c in find_children(data[1], data[2]):
                             path = c.replace(data[1], p+"/", 1).replace("//", "/")
-                            map[path] = new_file_id(c)
+                            map[path] = new_file_id(path)
                             mutter('added mapping %r -> %r' % (path, map[path]))
 
         return map

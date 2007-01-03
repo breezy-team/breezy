@@ -261,8 +261,9 @@ class SvnRepository(Repository):
 
         (bp, rp) = self.scheme.unprefix(path)
 
+        map = self.get_fileid_map(revnum, bp)
         try:
-            return self.get_fileid_map(revnum, bp)[rp]
+            return map[rp]
         except KeyError:
             raise NoSuchFile(path=rp)
 
