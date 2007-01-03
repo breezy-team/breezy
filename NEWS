@@ -56,6 +56,8 @@ IN DEVELOPMENT
     * ``bzr merge`` now has an option ``--pull`` to fall back to pull if
       local is fully merged into remote. (Jan Hudec)
 
+    * ``bzr help formats`` describes available directory formats. (Aaron Bentley)
+
   INTERNALS:
 
     * A few tweaks directly to ``fileids_affected_by_revision_ids`` to
@@ -76,6 +78,8 @@ IN DEVELOPMENT
 
     * Single-letter short options are no longer globally declared.  (Martin
       Pool)
+
+    * Formats for end-user selection are provided via a FormatRegistry (Aaron Bentley)
 
   BUG FIXES:
 
