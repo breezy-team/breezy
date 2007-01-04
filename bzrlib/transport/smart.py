@@ -1806,16 +1806,24 @@ class SmartHTTPTransport(SmartTransport):
         Also, the cloned smart transport will POST to the same .bzr/smart
         location as this transport (although obviously the relative paths in the
         smart requests may be different).  This is so that the server doesn't
-        have to handle .bzr/smart requests at arbitrarily places, just at the
-        initial URL the user uses.
+        have to handle .bzr/smart requests at arbitrary places inside .bzr
+        directories, just at the initial URL the user uses.
+
+        The exception is parent paths (i.e. relative_url of "..").
         """
         if relative_url:
             abs_url = self.abspath(relative_url)
         else:
             abs_url = self.base
-        # By sharing the underlying http_transport, we are able to share the
-        # connection.
-        return SmartHTTPTransport(abs_url, http_transport=self._http_transport)
+        # We either use the exact same http_transport (for child locations), or
+        # a clone of the underlying http_transport (for parent locations).  This
+        # means we share the connection.
+        normalized_rel_url = urlutils.relative_url(self.base, abs_url)
+        if normalized_rel_url == ".." or normalized_rel_url.startswith("../"):
+            http_transport = self._http_transport.clone(normalized_rel_url)
+        else:
+            http_transport = self._http_transport
+        return SmartHTTPTransport(abs_url, http_transport=http_transport)
 
 
 def get_test_permutations():
