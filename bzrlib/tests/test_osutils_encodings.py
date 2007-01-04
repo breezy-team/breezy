@@ -149,7 +149,7 @@ class TestTerminalEncoding(TestCase):
         self.assertEqual('latin-1', osutils.get_terminal_encoding())
 
         # check stderr
-        self.assertEquals('bzr: warning: unknown encoding cp-unknown.\n'
+        self.assertEquals('bzr: warning: unknown terminal encoding cp-unknown.\n'
                           '  Using encoding latin-1 instead.\n', 
                           sys.stderr.getvalue())
 

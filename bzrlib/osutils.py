@@ -26,6 +26,7 @@ import time
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
+from datetime import datetime
 import errno
 from ntpath import (abspath as _nt_abspath,
                     join as _nt_join,
@@ -311,6 +312,8 @@ getcwd = os.getcwdu
 rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
+split = os.path.split
+splitext = os.path.splitext
 # These were already imported into local scope
 # mkdtemp = tempfile.mkdtemp
 # rmtree = shutil.rmtree
@@ -564,14 +567,10 @@ def compare_files(a, b):
 
 def local_time_offset(t=None):
     """Return offset of local zone from GMT, either at present or at time t."""
-    # python2.3 localtime() can't take None
     if t is None:
         t = time.time()
-        
-    if time.localtime(t).tm_isdst and time.daylight:
-        return -time.altzone
-    else:
-        return -time.timezone
+    offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)
+    return offset.days * 86400 + offset.seconds
 
     
 def format_date(t, offset=0, timezone='original', date_fmt=None, 

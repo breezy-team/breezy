@@ -56,6 +56,8 @@ IN DEVELOPMENT
     * ``bzr merge`` now has an option ``--pull`` to fall back to pull if
       local is fully merged into remote. (Jan Hudec)
 
+    * ``bzr help formats`` describes available directory formats. (Aaron Bentley)
+
   INTERNALS:
 
     * A few tweaks directly to ``fileids_affected_by_revision_ids`` to
@@ -79,6 +81,8 @@ IN DEVELOPMENT
 
     * Before using detected user/terminal encoding bzr should check
       that Python has corresponding codec. (Alexander Belchenko)
+
+    * Formats for end-user selection are provided via a FormatRegistry (Aaron Bentley)
 
   BUG FIXES:
 
@@ -120,6 +124,9 @@ IN DEVELOPMENT
 
     * Mention the revisionspec topic for the revision option help.
       (Wouter van Heyst, #31663)
+
+    * Allow plugins import from zip archives.
+      (Alexander Belchenko, #68124)
 
 
 bzr 0.13  2006-12-05
