@@ -348,7 +348,7 @@ class NotADirectory(PathError):
 
 class NotInWorkingDirectory(PathError):
 
-    _fmt = "%(path)r is not a the working directory %(extra)s"
+    _fmt = "%(path)r is not in the working directory %(extra)s"
 
 
 class DirectoryNotEmpty(PathError):
@@ -1342,7 +1342,7 @@ class BzrMoveFailedError(BzrError):
     
     _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
 
-    def __init__(self, from_path, to_path, extra=None):
+    def __init__(self, from_path='', to_path='', extra=None):
         BzrError.__init__(self)
         if extra:
             self.extra = ': ' + str(extra)
