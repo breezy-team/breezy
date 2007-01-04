@@ -684,13 +684,17 @@ class TestLocalTimeOffset(TestCase):
         """Test that local_time_offset() returns a sane value."""
         offset = osutils.local_time_offset()
         self.assertTrue(isinstance(offset, int))
-        # Test that the offset is no more than a day in either direction.
-        # Given that time zone handling is platform dependent, we can't
-        # do more than ensure the value is in the right ball park.
-        self.assertTrue(-86400 < offset < 86400)
+        # Test that the offset is no more than a eighteen hours in
+        # either direction.
+        # Time zone handling is system specific, so it is difficult to
+        # do more specific tests, but a value outside of this range is
+        # probably wrong.
+        eighteen_hours = 18 * 3600
+        self.assertTrue(-eighteen_hours < offset < eighteen_hours)
 
     def test_local_time_offset_with_timestamp(self):
         """Test that local_time_offset() works with a timestamp."""
         offset = osutils.local_time_offset(1000000000.1234567)
         self.assertTrue(isinstance(offset, int))
-        self.assertTrue(-86400 < offset < 86400)
+        eighteen_hours = 18 * 3600
+        self.assertTrue(-eighteen_hours < offset < eighteen_hours)
