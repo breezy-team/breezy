@@ -17,7 +17,7 @@
 """Tests for the osutils wrapper."""
 
 import codecs
-import locale   # XXX: Do I need a woodoo for MacOS?
+import locale
 import os
 import sys
 

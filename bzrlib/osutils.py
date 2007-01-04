@@ -383,7 +383,7 @@ def get_terminal_encoding():
         codecs.lookup(output_encoding)
     except LookupError:
         sys.stderr.write('bzr: warning:'
-                         ' unknown encoding %s.\n'
+                         ' unknown terminal encoding %s.\n'
                          '  Using encoding %s instead.\n'
                          % (output_encoding, bzrlib.user_encoding)
                         )
