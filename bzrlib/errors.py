@@ -540,6 +540,7 @@ class ForbiddenControlFileError(BzrError):
 class LockError(BzrError):
 
     _fmt = "Lock error: %(message)s"
+
     internal_error = True
 
     # All exceptions from the lock/unlock functions should be from
@@ -612,6 +613,7 @@ class LockContention(LockError):
     _fmt = "Could not acquire lock %(lock)s"
     # TODO: show full url for lock, combining the transport and relative
     # bits?
+
     internal_error = False
     
     def __init__(self, lock):
@@ -621,6 +623,7 @@ class LockContention(LockError):
 class LockBroken(LockError):
 
     _fmt = "Lock was broken while still open: %(lock)s - check storage consistency!"
+
     internal_error = False
 
     def __init__(self, lock):
@@ -630,6 +633,7 @@ class LockBroken(LockError):
 class LockBreakMismatch(LockError):
 
     _fmt = "Lock was released and re-acquired before being broken: %(lock)s: held by %(holder)r, wanted to break %(target)r"
+
     internal_error = False
 
     def __init__(self, lock, holder, target):
@@ -641,6 +645,7 @@ class LockBreakMismatch(LockError):
 class LockNotHeld(LockError):
 
     _fmt = "Lock not held: %(lock)s"
+
     internal_error = False
 
     def __init__(self, lock):
