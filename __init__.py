@@ -32,21 +32,19 @@ from bdlogging import debug, info, set_verbose
 from properties import BuildProperties
 from util import goto_branch, find_changelog, is_clean
 
-dont_purge_opt = Option('dont-purge', 
+dont_purge_opt = Option('dont-purge',
     help="Don't purge the build directory after building")
-result_opt = Option('result', 
+result_opt = Option('result',
     help="Directory in which to place the resulting package files", type=str)
-builder_opt = Option('builder', 
+builder_opt = Option('builder',
     help="Command to build the package", type=str)
-merge_opt = Option('merge', 
+merge_opt = Option('merge',
     help='Merge the debian part of the source in to the upstream tarball')
-build_dir_opt = Option('build-dir', 
+build_dir_opt = Option('build-dir',
     help="The dir to use for building", type=str)
-orig_dir_opt = Option('orig-dir', 
+orig_dir_opt = Option('orig-dir',
     help="Directory containing the .orig.tar.gz files. For use when only"
        +"debian/ is versioned", type=str)
-
-
 
 
 class cmd_builddeb(Command):
