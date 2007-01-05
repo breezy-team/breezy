@@ -187,6 +187,45 @@ class Option(object):
         yield self.name, self.short_name, argname, self.help
 
 
+class RegistryOption(Option):
+    """Option based on a registry"""
+
+    def validate_value(self, value):
+        if value not in self.registry:
+            raise errors.BadOptionParam(self.name, value)
+        return self.convert(value)
+
+    def convert(self, name):
+        if self.converter is None:
+            return self.registry.get(name)
+        else:
+            return self.converter(name)
+
+    def __init__(self, registry, name, converter=None,
+        value_flags=False):
+        Option.__init__(self, name, type=self.validate_value)
+        self.registry = registry
+        self.name = name
+        self.converter = converter
+        self.value_switches = value_flags
+
+    def add_option(self, parser, short_name):
+        """Add this option to an Optparse parser"""
+        Option.add_option(self, parser, short_name)
+        if self.value_switches:
+            for key in self.registry.keys():
+                option_strings = ['--%s' % key]
+                parser.add_option(action='callback', 
+                              callback=self._optparse_value_callback(key), 
+                                  help='no help',
+                                  *option_strings)
+
+    def _optparse_value_callback(self, cb_value):
+        def cb(option, opt, value, parser):
+            setattr(parser.values, self.name, self.type(cb_value))
+        return cb
+
+
 class OptionParser(optparse.OptionParser):
     """OptionParser that raises exceptions instead of exiting"""
 

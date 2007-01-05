@@ -14,10 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib import (
+    builtins,
+    bzrdir,
+    errors,
+    option,
+    repository,
+    )
 from bzrlib.builtins import cmd_commit, cmd_log, cmd_status
 from bzrlib.commands import Command, parse_args
-from bzrlib import errors
-from bzrlib import option
 from bzrlib.tests import TestCase
 
 # TODO: might be nice to just parse them into a structured form and test
@@ -73,23 +78,57 @@ class OptionTests(TestCase):
         """Test that we can pass a plain '-' as an argument."""
         self.assertEqual((['-'], {}), parse_args(cmd_commit(), ['-']))
 
+    def parse(self, options, args):
+        parser = option.get_optparser(dict((o.name, o) for o in options))
+        return parser.parse_args(args)
+        
     def test_conversion(self):
-        def parse(options, args):
-            parser = option.get_optparser(dict((o.name, o) for o in options))
-            return parser.parse_args(args)
         options = [option.Option('hello')]
-        opts, args = parse(options, ['--no-hello', '--hello'])
+        opts, args = self.parse(options, ['--no-hello', '--hello'])
         self.assertEqual(True, opts.hello)
-        opts, args = parse(options, [])
+        opts, args = self.parse(options, [])
         self.assertEqual(option.OptionParser.DEFAULT_VALUE, opts.hello)
-        opts, args = parse(options, ['--hello', '--no-hello'])
+        opts, args = self.parse(options, ['--hello', '--no-hello'])
         self.assertEqual(False, opts.hello)
         options = [option.Option('number', type=int)]
-        opts, args = parse(options, ['--number', '6'])
+        opts, args = self.parse(options, ['--number', '6'])
         self.assertEqual(6, opts.number)
-        self.assertRaises(errors.BzrCommandError, parse, options, ['--number'])
-        self.assertRaises(errors.BzrCommandError, parse, options, 
+        self.assertRaises(errors.BzrCommandError, self.parse, options, 
+                          ['--number'])
+        self.assertRaises(errors.BzrCommandError, self.parse, options, 
                           ['--no-number'])
+
+    def test_registry_conversion(self):
+        registry = bzrdir.BzrDirFormatRegistry()
+        registry.register_metadir('one', 'RepositoryFormat7', 'one help')
+        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
+        registry.set_default('one')
+        options = [option.RegistryOption(registry, 'format', str)]
+        opts, args = self.parse(options, ['--format', 'one'])
+        self.assertEqual({'format':'one'}, opts)
+        opts, args = self.parse(options, ['--format', 'two'])
+        self.assertEqual({'format':'two'}, opts)
+        self.assertRaises(errors.BadOptionParam, self.parse, options, 
+                          ['--format', 'three'])
+        self.assertRaises(errors.BzrCommandError, self.parse, options, 
+                          ['--two'])
+        options = [option.RegistryOption(registry, 'format', str, 
+                   value_flags=True)]
+        opts, args = self.parse(options, ['--two'])
+        self.assertEqual({'format':'two'}, opts)
+        opts, args = self.parse(options, ['--two', '--one'])
+        self.assertEqual({'format':'one'}, opts)
+        opts, args = self.parse(options, ['--two', '--one', 
+                                          '--format', 'two'])
+        self.assertEqual({'format':'two'}, opts)
+
+
+    def test_registry_converter(self):
+        options = [option.RegistryOption(bzrdir.format_registry, 'format', 
+                   builtins.get_format_type)]
+        opts, args = self.parse(options, ['--format', 'knit'])
+        self.assertIsInstance(opts.format.repository_format,
+                              repository.RepositoryFormatKnit1)
 
     def test_iter_switches(self):
         opt = option.Option('hello', help='fg')

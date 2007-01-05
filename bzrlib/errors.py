@@ -288,6 +288,14 @@ class BzrOptionError(BzrCommandError):
 
     _fmt = "Error in command line options"
 
+
+class BadOptionParam(BzrError):
+
+    _fmt = """Bad parameter %(value)s for option %(name)s"""
+
+    def __init__(self, name, value):
+        BzrError.__init__(self, name=name, value=value)
+
     
 class StrictCommitFailed(BzrError):
 
