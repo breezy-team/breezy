@@ -2,6 +2,8 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Added support for Putty's SSH implementation. (Dmitry Vasiliev)
+
     * New connection: ``bzr+http://`` which supports tunnelling the smart
       protocol over an HTTP connection. If writing is enabled on the bzr
       server, then you can write over the http connection.
