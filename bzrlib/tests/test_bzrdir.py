@@ -114,6 +114,20 @@ class TestFormatRegistry(TestCase):
         self.assertContainsRe(deprecated, 
             '  lazy:\n    \(native\) Format registered lazily\n')
 
+    def test_set_default_repository(self):
+        default_factory = bzrdir.format_registry.get('default')
+        old_default = [k for k, v in bzrdir.format_registry.iteritems()
+                       if v == default_factory and k != 'default'][0]
+        bzrdir.format_registry.set_default_repository('metaweave')
+        try:
+            self.assertIs(bzrdir.format_registry.get('metaweave'),
+                          bzrdir.format_registry.get('default'))
+            self.assertIs(
+                repository.RepositoryFormat.get_default_format().__class__,
+                repository.RepositoryFormat7)
+        finally:
+            bzrdir.format_registry.set_default_repository(old_default)
+
 class SampleBranch(bzrlib.branch.Branch):
     """A dummy branch for guess what, dummy use."""
 

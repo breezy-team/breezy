@@ -1999,6 +1999,21 @@ class BzrDirFormatRegistry(registry.Registry):
         registry.Registry.register(self, 'default', self.get(key), 
             self.get_help(key), info=self.get_info(key))
 
+    def set_default_repository(self, key):
+        """Set the FormatRegistry default and Repository default.
+        
+        This is a transitional method while Repository.set_default_format
+        is deprecated.
+        """
+        if 'default' in self:
+            self.remove('default')
+        self.set_default(key)
+        format = self.get('default')()
+        assert isinstance(format, BzrDirMetaFormat1)
+        from bzrlib import repository
+        repository.RepositoryFormat._set_default_format(
+            format.repository_format)
+
     def make_bzrdir(self, key):
         return self.get(key)()
 

@@ -42,27 +42,17 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
 
         ui.ui_factory = TestUIFactory()
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
-        bzrlib.repository.RepositoryFormat.set_default_format(
-            bzrlib.repository.RepositoryFormat7())
-        # FIXME RBC 20060120 we should be able to do this via ui calls only.
         # setup a format 5 branch we can upgrade from.
-        t = get_transport(self.get_url())
-        t.mkdir('format_5_branch')
-        bzrdir.BzrDirFormat5().initialize(self.get_url('format_5_branch'))
-        bzrdir.BzrDir.create_standalone_workingtree('current_format_branch')
-        d = bzrdir.BzrDir.create('metadir_weave_branch')
-        d.create_repository()
-        d.create_branch()
-        d.create_workingtree()
-        self.run_bzr('checkout',
-                     '--lightweight',
-                     self.get_url('current_format_branch'),
-                     'current_format_checkout')
+        self.make_branch_and_tree('format_5_branch',
+                                  format=bzrdir.BzrDirFormat5())
+
+        current_tree = self.make_branch_and_tree('current_format_branch',
+                                                 format='default')
+        self.make_branch_and_tree('metadir_weave_branch', format='metaweave')
+        current_tree.branch.create_checkout(
+            self.get_url('current_format_checkout'), lightweight=True)
 
     def restoreDefaults(self):
-        bzrdir.BzrDirFormat.set_default_format(self.old_format)
-        bzrlib.repository.RepositoryFormat.set_default_format(
-            self.old_repo_format)
         ui.ui_factory = self.old_ui_factory
 
     def test_readonly_url_error(self):
