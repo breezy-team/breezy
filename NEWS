@@ -79,6 +79,9 @@ IN DEVELOPMENT
     * Single-letter short options are no longer globally declared.  (Martin
       Pool)
 
+    * Before using detected user/terminal encoding bzr should check
+      that Python has corresponding codec. (Alexander Belchenko)
+
     * Formats for end-user selection are provided via a FormatRegistry (Aaron Bentley)
 
   BUG FIXES:
