@@ -46,6 +46,7 @@ from bzrlib import (
     registry,
     revision as _mod_revision,
     repository as _mod_repository,
+    symbol_versioning,
     urlutils,
     xml4,
     xml5,
@@ -1208,6 +1209,7 @@ class BzrDirFormat(object):
         klass._control_formats.append(format)
 
     @classmethod
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_fourteen)
     def set_default_format(klass, format):
         klass._default_format = format
 
