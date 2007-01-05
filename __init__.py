@@ -88,11 +88,12 @@ class cmd_builddeb(Command):
   then changes do not need to be commited. 
 
   """
-  working_tree_opt = Option('working-tree', help="Use the working tree")
-  Option.SHORT_OPTIONS['w'] = working_tree_opt
-  export_only_opt = Option('export-only', help="Export only, don't build")
-  Option.SHORT_OPTIONS['e'] = export_only_opt
-  use_existing_opt = Option('use-existing', help="Use an existing build directory")
+  working_tree_opt = Option('working-tree', help="Use the working tree",
+                            short_name='w')
+  export_only_opt = Option('export-only', help="Export only, don't build",
+                           short_name='e')
+  use_existing_opt = Option('use-existing',
+                            help="Use an existing build directory")
   ignore_changes_opt = Option('ignore-changes',
       help="Ignore any changes that are in the working tree when building the"
          +" branch. You may also want --working to use these uncommited "
@@ -100,8 +101,13 @@ class cmd_builddeb(Command):
   ignore_unknowns_opt = Option('ignore-unknowns',
       help="Ignore any unknown files, but still fail if there are any changes"
          +", the default is to fail if there are unknowns as well.")
-  quick_opt = Option('quick', help="Quickly build the package, uses quick-builder, which defaults to \"fakeroot debian/rules binary\"")
-  reuse_opt = Option('reuse', help="Try to avoid expoting too much on each build. Only works in merge mode; it saves unpacking the upstream tarball each time. Implies --dont-purge and --use-existing")
+  quick_opt = Option('quick', help="Quickly build the package, uses "
+                     +"quick-builder, which defaults to \"fakeroot "
+                     +"debian/rules binary\"")
+  reuse_opt = Option('reuse', help="Try to avoid expoting too much on each "
+                     +"build. Only works in merge mode; it saves unpacking "
+                     +"the upstream tarball each time. Implies --dont-purge "
+                     +"and --use-existing")
   takes_args = ['branch?']
   aliases = ['bd']
   takes_options = ['verbose', working_tree_opt, export_only_opt,
