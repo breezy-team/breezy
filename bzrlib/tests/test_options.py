@@ -151,6 +151,22 @@ class OptionTests(TestCase):
         opt = option.Option('hello', help='fg', type=int, argname='gar')
         self.assertEqual(list(opt.iter_switches()),
                          [('hello', None, 'GAR', 'fg')])
+        registry = bzrdir.BzrDirFormatRegistry()
+        registry.register_metadir('one', 'RepositoryFormat7', 'one help')
+        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
+        registry.set_default('one')
+        opt = option.RegistryOption('format', 'format help', registry,
+                                    value_switches=False)
+        self.assertEqual(list(opt.iter_switches()),
+                         [('format', None, 'ARG', 'format help')])
+        opt = option.RegistryOption('format', 'format help', registry,
+                                    value_switches=True)
+        self.assertEqual(list(opt.iter_switches()),
+                         [('format', None, 'ARG', 'format help'),
+                          ('default', None, None, 'one help'), 
+                          ('one', None, None, 'one help'), 
+                          ('two', None, None, 'two help'), 
+                          ])
 
 #     >>> parse_args('log -r 500'.split())
 #     (['log'], {'revision': [<RevisionSpec_int 500>]})

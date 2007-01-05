@@ -239,6 +239,16 @@ class RegistryOption(Option):
             setattr(parser.values, self.name, self.type(cb_value))
         return cb
 
+    def iter_switches(self):
+        """Iterate through the list of switches provided by the option
+        
+        :return: an iterator of (name, short_name, argname, help)
+        """
+        for value in Option.iter_switches(self):
+            yield value
+        if self.value_switches:
+            for key in sorted(self.registry.keys()):
+                yield key, None, None, self.registry.get_help(key)
 
 class OptionParser(optparse.OptionParser):
     """OptionParser that raises exceptions instead of exiting"""
