@@ -195,19 +195,19 @@ class RegistryOption(Option):
             raise errors.BadOptionParam(self.name, value)
         return self.convert(value)
 
-    def convert(self, name):
+    def convert(self, value):
         if self.converter is None:
-            return self.registry.get(name)
+            return self.registry.get(value)
         else:
-            return self.converter(name)
+            return self.converter(value)
 
-    def __init__(self, registry, name, converter=None,
-        value_flags=False):
-        Option.__init__(self, name, type=self.validate_value)
+    def __init__(self, name, help, registry, converter=None,
+        value_switches=False):
+        Option.__init__(self, name, help, type=self.validate_value)
         self.registry = registry
         self.name = name
         self.converter = converter
-        self.value_switches = value_flags
+        self.value_switches = value_switches
 
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser"""
@@ -217,7 +217,7 @@ class RegistryOption(Option):
                 option_strings = ['--%s' % key]
                 parser.add_option(action='callback', 
                               callback=self._optparse_value_callback(key), 
-                                  help='no help',
+                                  help=self.registry.get_help(key),
                                   *option_strings)
 
     def _optparse_value_callback(self, cb_value):

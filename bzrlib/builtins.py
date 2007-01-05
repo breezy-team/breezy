@@ -51,7 +51,7 @@ from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.commands import Command, display_command
-from bzrlib.option import Option
+from bzrlib.option import Option, RegistryOption
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 
@@ -1084,12 +1084,14 @@ class cmd_init(Command):
     """
     takes_args = ['location?']
     takes_options = [
-                     Option('format', 
+                     RegistryOption('format', 
                             help='Specify a format for this branch. Current'
                                  ' formats are: default, knit, metaweave and'
                                  ' weave. Default is knit; metaweave and'
                                  ' weave are deprecated',
-                            type=get_format_type),
+                            registry=bzrdir.format_registry, 
+                            converter=get_format_type,
+                            value_switches=True),
                      ]
     def run(self, location=None, format=None):
         if format is None:

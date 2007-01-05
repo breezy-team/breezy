@@ -103,7 +103,7 @@ class OptionTests(TestCase):
         registry.register_metadir('one', 'RepositoryFormat7', 'one help')
         registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
         registry.set_default('one')
-        options = [option.RegistryOption(registry, 'format', str)]
+        options = [option.RegistryOption('format', '', registry, str)]
         opts, args = self.parse(options, ['--format', 'one'])
         self.assertEqual({'format':'one'}, opts)
         opts, args = self.parse(options, ['--format', 'two'])
@@ -112,8 +112,8 @@ class OptionTests(TestCase):
                           ['--format', 'three'])
         self.assertRaises(errors.BzrCommandError, self.parse, options, 
                           ['--two'])
-        options = [option.RegistryOption(registry, 'format', str, 
-                   value_flags=True)]
+        options = [option.RegistryOption('format', '', registry, str, 
+                   value_switches=True)]
         opts, args = self.parse(options, ['--two'])
         self.assertEqual({'format':'two'}, opts)
         opts, args = self.parse(options, ['--two', '--one'])
@@ -122,13 +122,24 @@ class OptionTests(TestCase):
                                           '--format', 'two'])
         self.assertEqual({'format':'two'}, opts)
 
-
     def test_registry_converter(self):
-        options = [option.RegistryOption(bzrdir.format_registry, 'format', 
-                   builtins.get_format_type)]
+        options = [option.RegistryOption('format', '', 
+                   bzrdir.format_registry, builtins.get_format_type)]
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertIsInstance(opts.format.repository_format,
                               repository.RepositoryFormatKnit1)
+
+    def test_help(self):
+        registry = bzrdir.BzrDirFormatRegistry()
+        registry.register_metadir('one', 'RepositoryFormat7', 'one help')
+        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
+        registry.set_default('one')
+        options = [option.RegistryOption('format', 'format help', registry,
+                   str, value_switches=True)]
+        parser = option.get_optparser(dict((o.name, o) for o in options))
+        value = parser.format_option_help()
+        self.assertContainsRe(value, 'format.*format help')
+        self.assertContainsRe(value, 'one.*one help')
 
     def test_iter_switches(self):
         opt = option.Option('hello', help='fg')

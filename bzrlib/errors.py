@@ -291,7 +291,7 @@ class BzrOptionError(BzrCommandError):
 
 class BadOptionParam(BzrError):
 
-    _fmt = """Bad parameter %(value)s for option %(name)s"""
+    _fmt = """Bad parameter "%(value)s" for option "%(name)s"."""
 
     def __init__(self, name, value):
         BzrError.__init__(self, name=name, value=value)
