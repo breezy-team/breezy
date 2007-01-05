@@ -191,11 +191,13 @@ class RegistryOption(Option):
     """Option based on a registry"""
 
     def validate_value(self, value):
+        """Validate a value name"""
         if value not in self.registry:
             raise errors.BadOptionParam(self.name, value)
-        return self.convert(value)
 
     def convert(self, value):
+        """Convert a value name into an output type"""
+        self.validate_value(value)
         if self.converter is None:
             return self.registry.get(value)
         else:
@@ -203,7 +205,19 @@ class RegistryOption(Option):
 
     def __init__(self, name, help, registry, converter=None,
         value_switches=False):
-        Option.__init__(self, name, help, type=self.validate_value)
+        """
+        Constructor.
+
+        :param name: The option name.
+        :param help: Help for the option.
+        :param registry: A Registry containing the values
+        :param converter: Callable to invoke with the value name to produce
+            the value.  If not supplied, registry.get is used.
+        :param value_switches: If true, each possible value is assigned its
+            own switch.  For example, instead of '--format metaweave', 
+            '--metaweave' can be used interchangeably.
+        """
+        Option.__init__(self, name, help, type=self.convert)
         self.registry = registry
         self.name = name
         self.converter = converter
