@@ -1556,6 +1556,11 @@ class UnknownSSH(BzrError):
         self.vendor = vendor
 
 
+class SSHVendorNotFound(BzrError):
+
+    _fmt = "Don't know how to handle SSH connections. Please set BZR_SSH environment variable."
+
+
 class GhostRevisionUnusableHere(BzrError):
 
     _fmt = "Ghost revision {%(revision_id)s} cannot be used here."

@@ -1,5 +1,5 @@
 # Copyright (C) 2005 Robey Pointer <robey@lag.net>
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1067,10 +1067,10 @@ class SFTPServer(Server):
         event = threading.Event()
         ssh_server.start_server(event, server)
         event.wait(5.0)
-    
+
     def setUp(self):
-        self._original_vendor = ssh._ssh_vendor
-        ssh._ssh_vendor = self._vendor
+        self._original_vendor = ssh._ssh_vendor_manager.ssh_vendor
+        ssh._ssh_vendor_manager.ssh_vendor = self._vendor
         if sys.platform == 'win32':
             # Win32 needs to use the UNICODE api
             self._homedir = getcwd()
@@ -1089,7 +1089,7 @@ class SFTPServer(Server):
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
         self._listener.stop()
-        ssh._ssh_vendor = self._original_vendor
+        ssh._ssh_vendor_manager.ssh_vendor = self._original_vendor
 
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
