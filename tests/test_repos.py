@@ -1630,8 +1630,7 @@ Node-copyfrom-path: x
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
 
-    # FIXME
-    def notest_fetch_all(self):
+    def test_fetch_all(self):
         repos_url = self.make_client('d', 'dc')
 
         self.build_tree({'dc/trunk': None, 
@@ -1649,8 +1648,8 @@ Node-copyfrom-path: x
         self.client_add("dc/branches")
         self.client_commit("dc", "foohosts") #4
 
-        oldrepos = format.SvnRemoteAccess(SvnRaTransport("svn+"+repos_url), format.SvnFormat(), 
-                                   TrunkBranchingScheme()).find_repository()
+        oldrepos = Repository.open(repos_url)
+        oldrepos.set_branching_scheme(TrunkBranchingScheme())
         dir = BzrDir.create("f")
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
