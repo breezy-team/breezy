@@ -102,75 +102,81 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
     new_parents = {}
     rename_map = {}
 
-    # Find revisions that need to be upgraded, create
-    # dictionary with revision ids in key, new parents in value
-    graph = repository.get_revision_graph(revision_id)
-    def find_children(revid):
-        for x in graph:
-            if revid in graph[x]:
-                yield x
-    pb = ui_factory.nested_progress_bar()
-    i = 0
     try:
-        for revid in graph:
-            pb.update('gather revision information', i, len(graph))
-            i+=1
-            try:
-                (uuid, bp, rev, version) = parse_legacy_revision_id(revid)
-                newrevid = generate_svn_revision_id(uuid, rev, bp)
-                if svn_repository.has_revision(newrevid):
-                    rename_map[revid] = newrevid
-                    continue
-            except InvalidRevisionId:
-                pass
-            new_parents[revid] = []
-            for parent in graph[revid]:
+        repository.lock_write()
+        svn_repository.lock_read()
+        # Find revisions that need to be upgraded, create
+        # dictionary with revision ids in key, new parents in value
+        graph = repository.get_revision_graph(revision_id)
+        def find_children(revid):
+            for x in graph:
+                if revid in graph[x]:
+                    yield x
+        pb = ui_factory.nested_progress_bar()
+        i = 0
+        try:
+            for revid in graph:
+                pb.update('gather revision information', i, len(graph))
+                i+=1
                 try:
-                    (uuid, bp, rev, version) = parse_legacy_revision_id(parent)
-                    new_parent = generate_svn_revision_id(uuid, rev, bp)
-                    if new_parent != parent:
-                        needed_revs.append(new_parent)
-                        needs_upgrading.append(revid)
-                    new_parents[revid].append(new_parent)
+                    (uuid, bp, rev, version) = parse_legacy_revision_id(revid)
+                    newrevid = generate_svn_revision_id(uuid, rev, bp)
+                    if svn_repository.has_revision(newrevid):
+                        rename_map[revid] = newrevid
+                        continue
                 except InvalidRevisionId:
-                    new_parents[revid].append(parent)
-    finally:
-        pb.finished()
+                    pass
+                new_parents[revid] = []
+                for parent in graph[revid]:
+                    try:
+                        (uuid, bp, rev, version) = parse_legacy_revision_id(parent)
+                        new_parent = generate_svn_revision_id(uuid, rev, bp)
+                        if new_parent != parent:
+                            needed_revs.append(new_parent)
+                            needs_upgrading.append(revid)
+                        new_parents[revid].append(new_parent)
+                    except InvalidRevisionId:
+                        new_parents[revid].append(parent)
+        finally:
+            pb.finished()
 
-    # Make sure all the required current version revisions are present
-    pb = ui_factory.nested_progress_bar()
-    i = 0
-    try:
-        for revid in needed_revs:
-            pb.update('fetching new revisions', i, len(needed_revs))
-            repository.fetch(svn_repository, revid)
-            i+=1
-    finally:
-        pb.finished()
+        # Make sure all the required current version revisions are present
+        pb = ui_factory.nested_progress_bar()
+        i = 0
+        try:
+            for revid in needed_revs:
+                pb.update('fetching new revisions', i, len(needed_revs))
+                repository.fetch(svn_repository, revid)
+                i+=1
+        finally:
+            pb.finished()
 
-    pb = ui_factory.nested_progress_bar()
-    i = 0
-    try:
-        while len(needs_upgrading) > 0:
-            revid = needs_upgrading.pop()
-            pb.update('upgrading revisions', i, len(needs_upgrading))
-            i+=1
-            newrevid = create_upgraded_revid(revid)
-            rename_map[revid] = newrevid
-            if repository.has_revision(newrevid):
-                continue
-            change_revision_parent(repository, revid, newrevid, new_parents[revid])
-            for childrev in find_children(revid):
-                if not new_parents.has_key(childrev):
-                    new_parents = repository.revision_parents(childrev)
-                def replace_parent(x):
-                    if x == revid:
-                        return newrevid
-                    return x
-                if (revid in new_parents[childrev] and 
-                    not childrev in needs_upgrading):
-                    new_parents[childrev] = map(replace_parent, new_parents[childrev])
-                    needs_upgrading.append(childrev)
+        pb = ui_factory.nested_progress_bar()
+        i = 0
+        try:
+            while len(needs_upgrading) > 0:
+                revid = needs_upgrading.pop()
+                pb.update('upgrading revisions', i, len(needs_upgrading))
+                i+=1
+                newrevid = create_upgraded_revid(revid)
+                rename_map[revid] = newrevid
+                if repository.has_revision(newrevid):
+                    continue
+                change_revision_parent(repository, revid, newrevid, new_parents[revid])
+                for childrev in find_children(revid):
+                    if not new_parents.has_key(childrev):
+                        new_parents = repository.revision_parents(childrev)
+                    def replace_parent(x):
+                        if x == revid:
+                            return newrevid
+                        return x
+                    if (revid in new_parents[childrev] and 
+                        not childrev in needs_upgrading):
+                        new_parents[childrev] = map(replace_parent, new_parents[childrev])
+                        needs_upgrading.append(childrev)
+        finally:
+            pb.finished()
+        return rename_map
     finally:
-        pb.finished()
-    return rename_map
+        repository.unlock()
+        svn_repository.unlock()
