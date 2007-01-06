@@ -22,7 +22,7 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 import repository
 from repository import SvnRepository, MAPPING_VERSION, REVISION_ID_PREFIX
 from tests import TestCaseWithSubversionRepository
-from upgrade import (change_revision_parent, upgrade_repository, 
+from upgrade import (change_revision_parent, upgrade_repository, upgrade_branch,
                      UpgradeChangesContent, parse_legacy_revision_id,
                      create_upgraded_revid)
 
@@ -117,7 +117,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         file("f/a", "w").write("b")
         wt.add("a")
         wt.commit(message="data", rev_id="svn-v1:1@%s-" % oldrepos.uuid)
-        file("dc/a", 'w').write("moredata")
+        file("f/a", 'w').write("moredata")
         wt.commit(message='fix moredata', rev_id="customrev")
 
         upgrade_repository(newrepos, oldrepos)
@@ -126,3 +126,85 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
         self.assertTrue(["svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)],
                         newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
+
+    def test_more_custom(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/a': 'b'})
+        self.client_add("dc/a")
+        self.client_commit("dc", "data")
+
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        dir.create_branch()
+        wt = dir.create_workingtree()
+        file("f/a", "w").write("b")
+        wt.add("a")
+        wt.commit(message="data", rev_id="svn-v1:1@%s-" % oldrepos.uuid)
+        file("f/a", 'w').write("moredata")
+        wt.commit(message='fix moredata', rev_id="customrev")
+        file("f/a", 'w').write("blackfield")
+        wt.commit(message='fix it again', rev_id="anotherrev")
+
+        renames = upgrade_repository(newrepos, oldrepos)
+        self.assertEqual({
+            "svn-v1:1@%s-" % oldrepos.uuid:"svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid),
+            "customrev": "customrev-svn%d-upgrade" % MAPPING_VERSION,
+            "anotherrev": "anotherrev-svn%d-upgrade" % MAPPING_VERSION},
+            renames)
+
+        self.assertTrue(newrepos.has_revision("svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
+        self.assertTrue(newrepos.has_revision("anotherrev-svn%d-upgrade" % MAPPING_VERSION))
+        self.assertTrue(["svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)],
+                        newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
+        self.assertTrue(["customrev-svn%d-upgrade" % MAPPING_VERSION],
+                        newrepos.revision_parents("anotherrev-svn%d-upgrade" % MAPPING_VERSION))
+
+    def test_more_custom_branch(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/a': 'b'})
+        self.client_add("dc/a")
+        self.client_commit("dc", "data")
+
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        b = dir.create_branch()
+        wt = dir.create_workingtree()
+        file("f/a", "w").write("b")
+        wt.add("a")
+        wt.commit(message="data", rev_id="svn-v1:1@%s-" % oldrepos.uuid)
+        file("f/a", 'w').write("moredata")
+        wt.commit(message='fix moredata', rev_id="customrev")
+        file("f/a", 'w').write("blackfield")
+        wt.commit(message='fix it again', rev_id="anotherrev")
+
+        upgrade_branch(b, oldrepos)
+        self.assertEqual(["svn-v2:1@%s-" % oldrepos.uuid,
+                          "customrev-svn%d-upgrade" % MAPPING_VERSION,
+                          "anotherrev-svn%d-upgrade" % MAPPING_VERSION
+                          ], b.revision_history())
+
+    def test_branch_none(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/a': 'b'})
+        self.client_add("dc/a")
+        self.client_commit("dc", "data")
+
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        b = dir.create_branch()
+        wt = dir.create_workingtree()
+        file("f/a", "w").write("b")
+        wt.add("a")
+        wt.commit(message="data", rev_id="blarev")
+        file("f/a", 'w').write("moredata")
+        wt.commit(message='fix moredata', rev_id="customrev")
+        file("f/a", 'w').write("blackfield")
+        wt.commit(message='fix it again', rev_id="anotherrev")
+
+        upgrade_branch(b, oldrepos)
+        self.assertEqual(["blarev", "customrev", "anotherrev"],
+                b.revision_history())

@@ -21,7 +21,8 @@ from bzrlib.config import Config
 from bzrlib.errors import BzrError, InvalidRevisionId
 from bzrlib.ui import ui_factory
 
-from repository import MAPPING_VERSION, parse_svn_revision_id, unescape_svn_path
+from repository import (MAPPING_VERSION, parse_svn_revision_id, 
+                        unescape_svn_path, generate_svn_revision_id)
 
 # Takes an existing Bazaar branch and replaces all old-version mapped revisions 
 # with new-style revisions mappings. 
@@ -87,10 +88,15 @@ def create_upgraded_revid(revid):
     else:
         return revid + suffix
 
+def upgrade_branch(branch, svn_repository, allow_change=False):
+    renames = upgrade_repository(branch.repository, svn_repository, 
+              branch.last_revision(), allow_change)
+    if len(renames) > 0:
+        branch.generate_revision_history(renames[branch.last_revision()])
+
 
 def upgrade_repository(repository, svn_repository, revision_id=None, 
                        allow_change=False):
-
     needed_revs = []
     needs_upgrading = []
     new_parents = {}
@@ -98,44 +104,73 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
 
     # Find revisions that need to be upgraded, create
     # dictionary with revision ids in key, new parents in value
-    graph = repository.get_revision_graph()
-    for revid in graph:
-        try:
-            uuid = parse_legacy_revision_id(revid)[0]
-            if uuid == svn_repository.uuid:
-                continue
-        except InvalidRevisionId:
-            pass
-        new_parents[revid] = []
-        for parent in graph[revid]:
+    graph = repository.get_revision_graph(revision_id)
+    def find_children(revid):
+        for x in graph:
+            if revid in graph[x]:
+                yield x
+    pb = ui_factory.nested_progress_bar()
+    i = 0
+    try:
+        for revid in graph:
+            pb.update('gather revision information', i, len(graph))
+            i+=1
             try:
-                (uuid, bp, rev, version) = parse_legacy_revision_id(parent)
-                new_parent = svn_repository.generate_revision_id(rev, bp)
-                if new_parent != parent:
-                    needed_revs.append(new_parent)
-                    needs_upgrading.append(revid)
-                new_parents[revid].append(new_parent)
+                (uuid, bp, rev, version) = parse_legacy_revision_id(revid)
+                newrevid = generate_svn_revision_id(uuid, rev, bp)
+                if svn_repository.has_revision(newrevid):
+                    rename_map[revid] = newrevid
+                    continue
             except InvalidRevisionId:
-                new_parents[revid].append(parent)
+                pass
+            new_parents[revid] = []
+            for parent in graph[revid]:
+                try:
+                    (uuid, bp, rev, version) = parse_legacy_revision_id(parent)
+                    new_parent = generate_svn_revision_id(uuid, rev, bp)
+                    if new_parent != parent:
+                        needed_revs.append(new_parent)
+                        needs_upgrading.append(revid)
+                    new_parents[revid].append(new_parent)
+                except InvalidRevisionId:
+                    new_parents[revid].append(parent)
+    finally:
+        pb.finished()
 
     # Make sure all the required current version revisions are present
     pb = ui_factory.nested_progress_bar()
     i = 0
-    for revid in needed_revs:
-        pb.update('fetching new revisions', i, len(needed_revs))
-        repository.fetch(svn_repository, revid)
-        i+=1
-    pb.finished()
+    try:
+        for revid in needed_revs:
+            pb.update('fetching new revisions', i, len(needed_revs))
+            repository.fetch(svn_repository, revid)
+            i+=1
+    finally:
+        pb.finished()
 
     pb = ui_factory.nested_progress_bar()
     i = 0
-    while len(needs_upgrading) > 0:
-        revid = needs_upgrading.pop()
-        pb.update('upgrading revisions', i, len(needs_upgrading))
-        i+=1
-        newrevid = create_upgraded_revid(revid)
-        if repository.has_revision(newrevid):
-            continue
-        change_revision_parent(repository, revid, newrevid, new_parents[revid])
-        # FIXME: also upgrade children of newrevid
-    pb.finished()
+    try:
+        while len(needs_upgrading) > 0:
+            revid = needs_upgrading.pop()
+            pb.update('upgrading revisions', i, len(needs_upgrading))
+            i+=1
+            newrevid = create_upgraded_revid(revid)
+            rename_map[revid] = newrevid
+            if repository.has_revision(newrevid):
+                continue
+            change_revision_parent(repository, revid, newrevid, new_parents[revid])
+            for childrev in find_children(revid):
+                if not new_parents.has_key(childrev):
+                    new_parents = repository.revision_parents(childrev)
+                def replace_parent(x):
+                    if x == revid:
+                        return newrevid
+                    return x
+                if (revid in new_parents[childrev] and 
+                    not childrev in needs_upgrading):
+                    new_parents[childrev] = map(replace_parent, new_parents[childrev])
+                    needs_upgrading.append(childrev)
+    finally:
+        pb.finished()
+    return rename_map
