@@ -15,18 +15,45 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoRepositoryPresent
+from bzrlib.errors import NoRepositoryPresent, InvalidRevisionId
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
-from repository import SvnRepository
+from repository import SvnRepository, MAPPING_VERSION
 from tests import TestCaseWithSubversionRepository
-from upgrade import (change_revision_parent, upgrade_branch, 
-                     UpgradeChangesContent)
+from upgrade import (change_revision_parent, upgrade_repository, 
+                     UpgradeChangesContent, parse_legacy_revision_id,
+                     create_upgraded_revid)
 
 class TestUpgradeChangesContent(TestCase):
     def test_init(self):
         x = UpgradeChangesContent("revisionx")
         self.assertEqual("revisionx", x.revid)
+
+
+class ParserTests(TestCase):
+    def test_current(self):
+        self.assertEqual(("uuid", "trunk", 1, 2), 
+                         parse_legacy_revision_id("svn-v2:1@uuid-trunk"))
+
+    def test_legacy(self):
+        self.assertEqual(("uuid", "trunk", 1, 1), 
+                         parse_legacy_revision_id("svn-v1:1@uuid-trunk"))
+
+    def test_except(self):
+        self.assertRaises(InvalidRevisionId, 
+                         parse_legacy_revision_id, "svn-v0:1@uuid-trunk")
+
+    def test_except_nonsvn(self):
+        self.assertRaises(InvalidRevisionId, 
+                         parse_legacy_revision_id, "blah")
+
+    def test_create_upgraded_revid_new(self):
+        self.assertEqual("bla-svn%d-upgrade" % MAPPING_VERSION,
+                         create_upgraded_revid("bla"))
+
+    def test_create_upgraded_revid_upgrade(self):
+        self.assertEqual("bla-svn%d-upgrade" % MAPPING_VERSION,
+                         create_upgraded_revid("bla-svn1-upgrade"))
 
 
 class ConversionTests(TestCaseWithTransport):
@@ -43,9 +70,9 @@ class ConversionTests(TestCaseWithTransport):
         file('hello', 'w').write('world')
         wt.commit(message='change hello', rev_id="bla2")
         
-        newrev = change_revision_parent(wt.branch.repository, "bla2", ["bloe"])
-        self.assertNotEqual(None, newrev)
-        self.assertNotEqual(newrev, "bla2")
+        newrev = change_revision_parent(wt.branch.repository, "bla2", "bla4", 
+                                        ["bloe"])
+        self.assertEqual("bla4", newrev)
         self.assertTrue(wt.branch.repository.has_revision(newrev))
         self.assertEqual(["bloe"], wt.branch.repository.revision_parents(newrev))
 
