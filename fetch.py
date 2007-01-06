@@ -43,7 +43,8 @@ def md5_strings(strings):
 
 
 class RevisionBuildEditor(svn.delta.Editor):
-    def __init__(self, source, target, branch_path, prev_inventory, revid, svn_revprops, id_map):
+    def __init__(self, source, target, branch_path, prev_inventory, revid, 
+                 svn_revprops, id_map):
         self.branch_path = branch_path
         self.old_inventory = prev_inventory
         self.inventory = copy(prev_inventory)

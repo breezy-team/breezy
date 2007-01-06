@@ -237,7 +237,6 @@ class SvnWorkingTree(WorkingTree):
             if entry.schedule == svn.wc.schedule_normal:
                 assert entry.revision >= 0
                 # Keep old id
-                mutter('stay: %r' % relpath)
                 return self.path_to_file_id(entry.cmt_rev, entry.revision, 
                         relpath)
             elif entry.schedule == svn.wc.schedule_delete:
@@ -246,7 +245,6 @@ class SvnWorkingTree(WorkingTree):
                   entry.schedule == svn.wc.schedule_replace):
                 # See if the file this file was copied from disappeared
                 # and has no other copies -> in that case, take id of other file
-                mutter('copies(%r): %r' % (relpath, list(find_copies(entry.copyfrom_url))))
                 if entry.copyfrom_url and list(find_copies(entry.copyfrom_url)) == [relpath]:
                     return self.path_to_file_id(entry.copyfrom_rev, entry.revision,
                             entry.copyfrom_url[len(entry.repos):])
