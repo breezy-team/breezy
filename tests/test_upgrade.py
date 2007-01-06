@@ -16,9 +16,11 @@
 
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoRepositoryPresent, InvalidRevisionId
+from bzrlib.repository import Repository
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
-from repository import SvnRepository, MAPPING_VERSION
+import repository
+from repository import SvnRepository, MAPPING_VERSION, REVISION_ID_PREFIX
 from tests import TestCaseWithSubversionRepository
 from upgrade import (change_revision_parent, upgrade_repository, 
                      UpgradeChangesContent, parse_legacy_revision_id,
@@ -77,5 +79,50 @@ class ConversionTests(TestCaseWithTransport):
         self.assertEqual(["bloe"], wt.branch.repository.revision_parents(newrev))
 
 
-class UpgradeTests(TestCase):
-    pass
+class UpgradeTests(TestCaseWithSubversionRepository):
+    def test_no_custom(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/a': 'b'})
+        self.client_add("dc/a")
+        self.client_commit("dc", "data")
+
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        dir.create_branch()
+        wt = dir.create_workingtree()
+        file("f/a","w").write("b")
+        wt.add("a")
+        wt.commit(message="data", rev_id="svn-v1:1@%s-" % oldrepos.uuid)
+
+        self.assertTrue(newrepos.has_revision("svn-v1:1@%s-" % oldrepos.uuid))
+
+        upgrade_repository(newrepos, oldrepos)
+
+        self.assertTrue(newrepos.has_revision("svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+
+    def test_single_custom(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/a': 'b'})
+        self.client_add("dc/a")
+        self.client_commit("dc", "data")
+
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        dir.create_branch()
+        wt = dir.create_workingtree()
+        file("f/a", "w").write("b")
+        wt.add("a")
+        wt.commit(message="data", rev_id="svn-v1:1@%s-" % oldrepos.uuid)
+        file("dc/a", 'w').write("moredata")
+        wt.commit(message='fix moredata', rev_id="customrev")
+
+        upgrade_repository(newrepos, oldrepos)
+
+        self.assertTrue(newrepos.has_revision("svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
+        self.assertTrue(["svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)],
+                        newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))

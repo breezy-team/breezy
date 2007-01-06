@@ -92,7 +92,7 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                        allow_change=False):
 
     needed_revs = []
-    needs_upgrading = set()
+    needs_upgrading = []
     new_parents = {}
     rename_map = {}
 
@@ -100,6 +100,12 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
     # dictionary with revision ids in key, new parents in value
     graph = repository.get_revision_graph()
     for revid in graph:
+        try:
+            uuid = parse_legacy_revision_id(revid)[0]
+            if uuid == svn_repository.uuid:
+                continue
+        except InvalidRevisionId:
+            pass
         new_parents[revid] = []
         for parent in graph[revid]:
             try:
@@ -123,11 +129,13 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
 
     pb = ui_factory.nested_progress_bar()
     i = 0
-    for revid in needs_upgrading:
-        pb.update('upgrading revisions', i, len(needed_revs))
-        newrevid = create_upgraded_revid(revid)
-        change_revision_parent(repository, revid, newrevid, 
-                                          new_parents[revid])
-        # FIXME: also upgrade children of newrevid
+    while len(needs_upgrading) > 0:
+        revid = needs_upgrading.pop()
+        pb.update('upgrading revisions', i, len(needs_upgrading))
         i+=1
+        newrevid = create_upgraded_revid(revid)
+        if repository.has_revision(newrevid):
+            continue
+        change_revision_parent(repository, revid, newrevid, new_parents[revid])
+        # FIXME: also upgrade children of newrevid
     pb.finished()
