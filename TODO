@@ -1,7 +1,14 @@
+- make scheme name part of revision id
+- fix commits in heavyweight checkouts somehow
 - fix autorealm repository
 - handle parent directories of branches being moved correctly
-- fix "bzr status" in checkouts
-- faster "bzr status" in checkouts
+- fix "bzr status" in lightweight checkouts
+- faster "bzr status" in lightweight checkouts
 - avoid extra connect in logwalker?
 - get rid of use of `svn ls' in logwalker
+- make sure data didn't actually change in upgrade!
+- rewrite TrunkBranchingScheme() and ListBranchingScheme() as subclasses of 
+  ListBranchingScheme()
+- support multiple branching schemes per repository
 - more efficient implementation for applying txdeltas to weaves. perhaps convert svn deltas to bzr deltas?
+- free memory!

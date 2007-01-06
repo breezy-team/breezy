@@ -21,6 +21,17 @@ from scheme import (ListBranchingScheme, NoBranchingScheme,
                     BranchingScheme, TrunkBranchingScheme)
 
 class BranchingSchemeTest(TestCase):
+    def test_is_branch(self):
+        self.assertRaises(NotImplementedError, BranchingScheme().is_branch, "")
+
+    def test_is_branch_parent(self):
+        self.assertRaises(NotImplementedError, 
+                BranchingScheme().is_branch_parent, "")
+
+    def test_unprefix(self):
+        self.assertRaises(NotImplementedError, 
+                BranchingScheme().unprefix, "")
+
     def test_guess_empty(self):
         self.assertIsInstance(BranchingScheme.guess_scheme(""), 
                               NoBranchingScheme)
@@ -57,6 +68,9 @@ class BranchingSchemeTest(TestCase):
 
 
 class NoScheme(TestCase):
+    def test_str(self):
+        self.assertEqual("null", NoBranchingScheme().__str__())
+
     def test_is_branch_empty(self):
         self.assertTrue(NoBranchingScheme().is_branch(""))
 
@@ -86,6 +100,12 @@ class NoScheme(TestCase):
 
     def test_unprefix_slash_nested(self):
         self.assertEqual(NoBranchingScheme().unprefix("/foo/foo"), ("", "foo/foo"))
+
+    def test_is_branch_parent_root(self):
+        self.assertFalse(NoBranchingScheme().is_branch_parent(""))
+
+    def test_is_branch_parent_other(self):
+        self.assertFalse(NoBranchingScheme().is_branch_parent("trunk/foo"))
 
 class ListScheme(TestCase):
     def setUp(self):
@@ -275,3 +295,35 @@ class TrunkScheme(TestCase):
         self.assertIsInstance(scheme, TrunkBranchingScheme)
         self.assertEqual(0, scheme.level)
 
+    def test_str0(self):
+        self.assertEqual("trunk0", TrunkBranchingScheme().__str__())
+
+    def test_str1(self):
+        self.assertEqual("trunk1", TrunkBranchingScheme(1).__str__())
+        
+    def test_is_branch_parent_root(self):
+        self.assertTrue(TrunkBranchingScheme().is_branch_parent(""))
+
+    def test_is_branch_parent_branches(self):
+        self.assertTrue(TrunkBranchingScheme().is_branch_parent("branches"))
+
+    def test_is_branch_parent_trunk(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch_parent("trunk"))
+
+    def test_is_branch_parent_level(self):
+        self.assertTrue(TrunkBranchingScheme(1).is_branch_parent("anything"))
+
+    def test_is_branch_parent_level_root(self):
+        self.assertTrue(TrunkBranchingScheme(1).is_branch_parent(""))
+
+    def test_is_branch_parent_level_strange(self):
+        self.assertFalse(TrunkBranchingScheme(1).is_branch_parent("trunk/foo"))
+
+    def test_is_branch_parent_level_inside(self):
+        self.assertFalse(TrunkBranchingScheme(1).is_branch_parent("foo/trunk/foo"))
+
+    def test_is_branch_parent_level_branches(self):
+        self.assertTrue(TrunkBranchingScheme(1).is_branch_parent("anything/branches"))
+
+    def test_is_branch_parent_other(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch_parent("trunk/foo"))

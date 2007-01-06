@@ -52,8 +52,10 @@ REVISION_ID_PREFIX = "svn-v%d:" % MAPPING_VERSION
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_SVK_MERGE = 'svk:merge'
+SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
+
 
 def escape_svn_path(id, unsafe="%/-\t \n"):
     assert "%" in unsafe
@@ -116,24 +118,6 @@ def generate_svn_revision_id(uuid, revnum, path):
     if revnum == 0:
         return NULL_REVISION
     return "%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, uuid, escape_svn_path(path.strip("/")))
-
-
-def parse_revision_id(self, revid):
-    """Parse an existing Subversion-based revision id.
-
-    :param revid: The revision id.
-    :raises: NoSuchRevision
-    :return: Tuple with branch path and revision number.
-    """
-    try:
-        (uuid, branch_path, revnum) = parse_svn_revision_id(revid)
-    except InvalidRevisionId:
-        raise NoSuchRevision(self, revid)
-
-    if uuid != self.uuid:
-        raise NoSuchRevision(self, revid)
-
-    return (branch_path, revnum)
 
 
 def svk_feature_to_revision_id(feature):
@@ -258,29 +242,9 @@ class SvnRepository(Repository):
         return self.fileid_map.get_map(self.uuid, revnum, path,
                                        self.revision_fileid_renames)
 
-    def transform_fileid_map(self, uuid, revnum, branch, changes, map, renames):
-        return self.fileid_map.apply_changes(uuid, revnum, branch, changes, renames)
-
-    def path_to_file_id(self, revnum, path):
-        """Generate a bzr file id from a Subversion file name. 
-        
-        :param revnum: Revision number.
-        :param path: Absolute path.
-        :return: Tuple with file id and revision id.
-        """
-        assert isinstance(revnum, int) and revnum >= 0
-        assert isinstance(path, basestring)
-
-        if revnum == 0:
-            from fileids import generate_svn_file_id
-            return (generate_svn_file_id(self.uuid, 0, "", ""), NULL_REVISION)
-
-        (bp, rp) = self.scheme.unprefix(path)
-
-        try:
-            return self.get_fileid_map(revnum, bp)[rp]
-        except KeyError:
-            raise NoSuchFile(path=rp)
+    def transform_fileid_map(self, uuid, revnum, branch, changes, renames):
+        return self.fileid_map.apply_changes(uuid, revnum, branch, changes, 
+                                             renames)
 
     def all_revision_ids(self):
         for (bp, rev) in self.follow_history(self.transport.get_latest_revnum()):
@@ -612,7 +576,9 @@ class SvnRepository(Repository):
             if pb is not None:
                 pb.update("finding branches", i, revnum+1)
             paths = self._log.get_revision_paths(i)
-            for p in paths:
+            names = paths.keys()
+            names.sort()
+            for p in names:
                 if self.scheme.is_branch(p):
                     if paths[p][0] in ('R', 'D'):
                         del created_branches[p]
@@ -620,10 +586,29 @@ class SvnRepository(Repository):
 
                     if paths[p][0] in ('A', 'R'): 
                         created_branches[p] = i
+                elif self.scheme.is_branch_parent(p):
+                    if paths[p][0] in ('R', 'D'):
+                        k = created_branches.keys()
+                        for c in k:
+                            if c.startswith(p+"/"):
+                                del created_branches[c] 
+                                yield (c, i, False)
+                    if paths[p][0] in ('A', 'R'):
+                        parents = [p]
+                        while parents:
+                            p = parents.pop()
+                            for c in self.transport.get_dir(p, i)[0].keys():
+                                n = p+"/"+c
+                                if self.scheme.is_branch(n):
+                                    created_branches[n] = i
+                                elif self.scheme.is_branch_parent(n):
+                                    parents.append(n)
 
         for p in created_branches:
-            i = self._log.find_latest_change(p, revnum, recurse=True)
-            yield (p, i, True)
+            j = self._log.find_latest_change(p, revnum, recurse=True)
+            if j is None:
+                j = created_branches[p]
+            yield (p, j, True)
 
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""

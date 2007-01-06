@@ -18,9 +18,26 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoRepositoryPresent
 from bzrlib.tests import TestCase
 
+from checkout import SvnWorkingTreeFormat
 from format import SvnRemoteAccess
 from repository import SvnRepository
 from tests import TestCaseWithSubversionRepository
+
+class TestWorkingTreeFormat(TestCase):
+    def setUp(self):
+        super(TestWorkingTreeFormat, self).setUp()
+        self.format = SvnWorkingTreeFormat()
+
+    def test_get_format_desc(self):
+        self.assertEqual("Subversion Working Copy", 
+                         self.format.get_format_description())
+
+    def test_initialize(self):
+        self.assertRaises(NotImplementedError, self.format.initialize, None)
+
+    def test_open(self):
+        self.assertRaises(NotImplementedError, self.format.open, None)
+
 
 class TestCheckout(TestCaseWithSubversionRepository):
     def test_not_for_writing(self):

@@ -48,6 +48,9 @@ class FakeControlFiles(object):
     def get(self, name):
         raise NoSuchFile(name)
 
+    def break_lock(self):
+        pass
+
 
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """
@@ -91,10 +94,11 @@ class SvnBranch(Branch):
         if revision_id is None:
             rev.kind = svn.core.svn_opt_revision_head
         else:
+            assert revision_id in self.revision_history()
             (bp, revnum) = self.repository.parse_revision_id(revision_id)
-            assert bp == self.branch_path
             rev.kind = svn.core.svn_opt_revision_number
             rev.value.number = revnum
+            mutter('hist: %r' % self.revision_history())
 
         client_ctx = svn.client.create_context()
         svn.client.checkout(bzr_to_svn_url(self.base), to_location, rev, 
@@ -117,16 +121,16 @@ class SvnBranch(Branch):
         self._revision_history.reverse()
 
     def get_root_id(self):
-        inv = self.repository.get_inventory(self.last_revision())
+        if self.last_revision() is None:
+            inv = Inventory()
+        else:
+            inv = self.repository.get_inventory(self.last_revision())
         return inv.root.file_id
 
     def _get_nick(self):
-        try:
-            if self.branch_path == "":
-                return None
-            return self.branch_path
-        except ValueError:
+        if self.branch_path == "":
             return None
+        return self.branch_path.strip("/")
 
     nick = property(_get_nick)
 
@@ -158,7 +162,7 @@ class SvnBranch(Branch):
         if ph:
             return ph[-1]
         else:
-            return none
+            return None
 
     def pull(self, source, overwrite=False, stop_revision=None):
         source.lock_read()
@@ -168,7 +172,7 @@ class SvnBranch(Branch):
                 self.update_revisions(source, stop_revision)
             except DivergedBranches:
                 if overwrite:
-                    raise BzrError('overwrite not supported for Subversion branches')
+                    raise NotImplementedError('overwrite not supported for Subversion branches')
                 raise
             new_count = len(self.revision_history())
             return new_count - old_count

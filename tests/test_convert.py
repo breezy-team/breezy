@@ -18,13 +18,46 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NotBranchError
 from bzrlib.repository import Repository
+from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.trace import mutter
 
 import os
-from convert import convert_repository
+from convert import convert_repository, NotDumpFile, load_dumpfile
 from repository import MAPPING_VERSION
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
+
+import svn.repos
+
+class TestLoadDumpfile(TestCaseInTempDir):
+    def test_loaddumpfile(self):
+        dumpfile = os.path.join(self.test_dir, "dumpfile")
+        open(dumpfile, 'w').write(
+"""SVN-fs-dump-format-version: 2
+
+UUID: 6987ef2d-cd6b-461f-9991-6f1abef3bd59
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-07-02T13:14:51.972532Z
+PROPS-END
+""")
+        load_dumpfile(dumpfile, "d")
+        repos = svn.repos.open("d")
+        fs = svn.repos.fs(repos)
+        self.assertEqual("6987ef2d-cd6b-461f-9991-6f1abef3bd59", 
+                svn.fs.get_uuid(fs))
+
+    def test_loaddumpfile_invalid(self):
+        dumpfile = os.path.join(self.test_dir, "dumpfile")
+        open(dumpfile, 'w').write("""FooBar""")
+        self.assertRaises(NotDumpFile, load_dumpfile, dumpfile, "d")
+
 
 class TestConversion(TestCaseWithSubversionRepository):
     def setUp(self):

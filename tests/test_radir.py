@@ -15,14 +15,40 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoRepositoryPresent
+from bzrlib.errors import NoRepositoryPresent, NotBranchError, NotLocalUrl
 from bzrlib.tests import TestCase
+from bzrlib.transport import get_transport
 
 from format import SvnRemoteAccess
 from repository import SvnRepository
 from tests import TestCaseWithSubversionRepository
 
 class TestRemoteAccess(TestCaseWithSubversionRepository):
+    def test_clone(self):
+        repos_url = self.make_client("d", "dc")
+        self.build_tree({"dc/foo": None})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "msg")
+        x = BzrDir.open("dc")
+        self.assertRaises(NotImplementedError, x.clone, "dir")
+
+    def test_open_workingtree(self):
+        repos_url = self.make_client("d", "dc")
+        x = BzrDir.open(repos_url)
+        self.assertRaises(NotLocalUrl, x.open_workingtree)
+
+    def test_create_workingtree(self):
+        repos_url = self.make_client("d", "dc")
+        x = BzrDir.open(repos_url)
+        self.assertRaises(NotLocalUrl, x.create_workingtree)
+
+    def test_bad_dir(self):
+        repos_url = self.make_client("d", "dc")
+        self.build_tree({"dc/foo": None})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "msg")
+        self.assertRaises(NotBranchError, BzrDir.open, repos_url+"/foo")
+
     def test_create(self):
         repos_url = self.make_client("d", "dc")
         x = BzrDir.open(repos_url)

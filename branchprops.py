@@ -47,6 +47,7 @@ class BranchPropertyList:
     def get_properties(self, path, revnum):
         proplist = {}
         revnum = self.log.find_latest_change(path, revnum)
+        assert revnum is not None
 
         proplist = {}
         for (name, value) in self.cachedb.execute("select name, value from branchprop where revnum=%d and branchpath='%s'" % (revnum, path)):

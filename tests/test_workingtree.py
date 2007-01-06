@@ -22,7 +22,11 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
+import svn.core
+import svn.wc
+
 import os
+
 import format
 import checkout
 from repository import MAPPING_VERSION
@@ -52,6 +56,41 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertIsInstance(inv, Inventory)
         self.assertTrue(inv.has_filename("bl"))
         self.assertFalse(inv.has_filename("aa"))
+
+    def test_lock_write(self):
+        self.make_client('a', 'dc')
+        tree = WorkingTree.open("dc")
+        tree.lock_write()
+
+    def test_lock_read(self):
+        self.make_client('a', 'dc')
+        tree = WorkingTree.open("dc")
+        tree.lock_read()
+
+    def test_unlock(self):
+        self.make_client('a', 'dc')
+        tree = WorkingTree.open("dc")
+        tree.unlock()
+
+    def test_get_ignore_list_empty(self):
+        self.make_client('a', 'dc')
+        tree = WorkingTree.open("dc")
+        self.assertEqual([".svn"] + svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" "), tree.get_ignore_list())
+
+    def test_get_ignore_list_onelevel(self):
+        self.make_client('a', 'dc')
+        self.client_set_prop("dc", "svn:ignore", "*.d\n*.c\n")
+        tree = WorkingTree.open("dc")
+        self.assertEqual([".svn"] + svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" ") + ["./*.d", "./*.c"], tree.get_ignore_list())
+
+    def test_get_ignore_list_morelevel(self):
+        self.make_client('a', 'dc')
+        self.client_set_prop("dc", "svn:ignore", "*.d\n*.c\n")
+        self.build_tree({'dc/x': None})
+        self.client_add("dc/x")
+        self.client_set_prop("dc/x", "svn:ignore", "*.e\n")
+        tree = WorkingTree.open("dc")
+        self.assertEqual([".svn"] + svn.core.SVN_CONFIG_DEFAULT_GLOBAL_IGNORES.split(" ") + ["./*.d", "./*.c", "./x/*.e"], tree.get_ignore_list())
 
     def test_add_reopen(self):
         self.make_client('a', 'dc')
@@ -124,6 +163,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.build_tree({"dc/bl": "data"})
         self.client_add("dc/bl")
         self.client_commit("dc", "Bla")
+        self.client_update("dc")
         tree = WorkingTree.open("dc")
         self.assertEqual(
             "svn-v%d:1@%s-" % (MAPPING_VERSION, tree.branch.repository.uuid),
@@ -200,9 +240,9 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
 
         tree = WorkingTree.open("dc")
         ignorelist = tree.get_ignore_list()
-        self.assertTrue("bl/test.*" in ignorelist)
-        self.assertTrue("foo" in ignorelist)
-        self.assertTrue("bar" in ignorelist)
+        self.assertTrue("./bl/test.*" in ignorelist)
+        self.assertTrue("./foo" in ignorelist)
+        self.assertTrue("./bar" in ignorelist)
 
     def test_is_ignored(self):
         self.make_client('a', 'dc')
@@ -246,6 +286,16 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree = WorkingTree.open("dc")
         inv = tree.read_working_inventory()
         self.assertTrue(inv[inv.path2id("bla")].executable)
+
+    def test_symlink(self):
+        self.make_client('a', 'dc')
+        import os
+        os.symlink("target", "dc/bla")
+        self.client_add("dc/bla")
+        tree = WorkingTree.open("dc")
+        inv = tree.read_working_inventory()
+        self.assertEqual('symlink', inv[inv.path2id("bla")].kind)
+        self.assertEqual("target", inv[inv.path2id("bla")].symlink_target)
 
     def test_pending_merges(self):
         self.make_client('a', 'dc')

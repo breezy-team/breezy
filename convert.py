@@ -53,6 +53,13 @@ def transport_makedirs(transport, location_url):
         except NoSuchFile:
             needed.append((transport, urlutils.dirname(relpath)))
 
+
+class NotDumpFile(BzrError):
+    _fmt = """%(dumpfile)s is not a dump file."""
+    def __init__(self, dumpfile):
+        self.dumpfile = dumpfile
+
+
 def load_dumpfile(dumpfile, outputdir):
     import svn
     from svn.core import SubversionException
@@ -62,8 +69,8 @@ def load_dumpfile(dumpfile, outputdir):
         file = open(dumpfile)
         svn.repos.load_fs2(repos, file, StringIO(), 
                 svn.repos.load_uuid_default, '', 0, 0, None)
-    except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):            
-        raise BzrError("%s is not a dump file" % dumpfile)
+    except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):
+        raise NotDumpFile(dumpfile)
     return repos
 
 

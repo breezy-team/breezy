@@ -18,7 +18,8 @@ from binascii import hexlify
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
                            NoRepositoryPresent)
-from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile)
+from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile, 
+                              InventoryLink)
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import rand_bytes, fingerprint_file
@@ -53,10 +54,23 @@ class SvnWorkingTree(WorkingTree):
         self.client_ctx.log_msg_func2 = svn.client.svn_swig_py_get_commit_log_func
         self.client_ctx.log_msg_baton2 = self.log_message_func
 
-        self._set_inventory(self.read_working_inventory(), dirty=False)
+        wc = self._get_wc()
+        try:
+            self.base_revnum = svn.wc.get_ancestry(self.basedir, wc)[1]
+        finally:
+            svn.wc.adm_close(wc)
 
         self.base_revid = branch.repository.generate_revision_id(
                     self.base_revnum, branch.branch_path)
+
+        if self.base_revid != NULL_REVISION:
+            (bp, rev) = self.branch.repository.parse_revision_id(self.base_revid)
+            self.base_fileids = self.branch.repository.get_fileid_map(rev, bp)
+        else:
+            self.base_fileids = {"": (ROOT_ID, NULL_REVISION)}
+
+        self._set_inventory(self.read_working_inventory(), dirty=False)
+
         self.controldir = os.path.join(self.basedir, svn.wc.get_adm_dir(), 'bzr')
         try:
             os.makedirs(self.controldir)
@@ -76,12 +90,13 @@ class SvnWorkingTree(WorkingTree):
         pass
 
     def get_ignore_list(self):
-        ignores = []
+        ignores = [svn.wc.get_adm_dir()] + svn.wc.get_default_ignores(svn_config)
 
         def dir_add(wc, prefix):
-            ignores.append(os.path.join(prefix, svn.wc.get_adm_dir()))
-            for pat in svn.wc.get_ignores(svn_config, wc):
-                ignores.append(os.path.join(prefix, pat))
+            ignorestr = svn.wc.prop_get(svn.core.SVN_PROP_IGNORE, self.abspath(prefix).rstrip("/"), wc)
+            if ignorestr is not None:
+                for pat in ignorestr.splitlines():
+                    ignores.append("./"+os.path.join(prefix, pat))
 
             entries = svn.wc.entries_read(wc, False)
             for entry in entries:
@@ -109,22 +124,6 @@ class SvnWorkingTree(WorkingTree):
 
     def _write_inventory(self, inv):
         pass
-
-    def is_ignored(self, filename):
-        if svn.wc.is_adm_dir(os.path.basename(filename)):
-            return True
-
-        (wc, name) = self._get_rel_wc(filename)
-        assert wc
-        try:
-            ignores = svn.wc.get_ignores(svn_config, wc)
-            from fnmatch import fnmatch
-            for pattern in ignores:
-                if fnmatch(name, pattern):
-                    return True
-            return False
-        finally:
-            svn.wc.adm_close(wc)
 
     def is_control_filename(self, path):
         return svn.wc.is_adm_dir(path)
@@ -173,22 +172,44 @@ class SvnWorkingTree(WorkingTree):
         finally:
             svn.wc.adm_close(to_wc)
 
+    def path_to_file_id(self, revnum, current_revnum, path):
+        """Generate a bzr file id from a Subversion file name. 
+        
+        :param revnum: Revision number.
+        :param path: Absolute path.
+        :return: Tuple with file id and revision id.
+        """
+        assert isinstance(revnum, int) and revnum >= 0
+        assert isinstance(path, basestring)
+
+        (bp, rp) = self.branch.repository.scheme.unprefix(path)
+        return self.base_fileids[rp]
+
     def read_working_inventory(self):
         inv = Inventory()
 
         def add_file_to_inv(relpath, id, revid, parent_id):
             """Add a file to the inventory."""
-            file = InventoryFile(id, os.path.basename(relpath), parent_id)
-            file.revision = revid
-            try:
-                data = fingerprint_file(open(self.abspath(relpath)))
-                file.text_sha1 = data['sha1']
-                file.text_size = data['size']
-                file.executable = self.is_executable(id, relpath)
+            if os.path.islink(self.abspath(relpath)):
+                file = InventoryLink(id, os.path.basename(relpath), parent_id)
+                file.revision = revid
+                file.symlink_target = os.readlink(self.abspath(relpath))
+                file.text_sha1 = None
+                file.text_size = None
+                file.executable = False
                 inv.add(file)
-            except IOError:
-                # Ignore non-existing files
-                pass
+            else:
+                file = InventoryFile(id, os.path.basename(relpath), parent_id)
+                file.revision = revid
+                try:
+                    data = fingerprint_file(open(self.abspath(relpath)))
+                    file.text_sha1 = data['sha1']
+                    file.text_size = data['size']
+                    file.executable = self.is_executable(id, relpath)
+                    inv.add(file)
+                except IOError:
+                    # Ignore non-existing files
+                    pass
 
         def find_copies(url, relpath=""):
             wc = self._get_wc(relpath)
@@ -216,8 +237,7 @@ class SvnWorkingTree(WorkingTree):
             if entry.schedule == svn.wc.schedule_normal:
                 assert entry.revision >= 0
                 # Keep old id
-                mutter('stay: %r' % relpath)
-                return self.branch.repository.path_to_file_id(entry.revision, 
+                return self.path_to_file_id(entry.cmt_rev, entry.revision, 
                         relpath)
             elif entry.schedule == svn.wc.schedule_delete:
                 return (None, None)
@@ -225,23 +245,18 @@ class SvnWorkingTree(WorkingTree):
                   entry.schedule == svn.wc.schedule_replace):
                 # See if the file this file was copied from disappeared
                 # and has no other copies -> in that case, take id of other file
-                mutter('copies(%r): %r' % (relpath, list(find_copies(entry.copyfrom_url))))
                 if entry.copyfrom_url and list(find_copies(entry.copyfrom_url)) == [relpath]:
-                    return self.branch.repository.path_to_file_id(entry.copyfrom_rev,
-                        entry.copyfrom_url[len(entry.repos):])
+                    return self.path_to_file_id(entry.copyfrom_rev, entry.revision,
+                            entry.copyfrom_url[len(entry.repos):])
                 return ("NEW-" + escape_svn_path(entry.url[len(entry.repos):].strip("/")), None)
 
         def add_dir_to_inv(relpath, wc, parent_id):
             entries = svn.wc.entries_read(wc, False)
-
             entry = entries[""]
-            
             (id, revid) = find_ids(entry)
-
             if id is None:
+                mutter('no id for %r' % entry.url)
                 return
-
-            self.base_revnum = max(self.base_revnum, entry.revision)
 
             # First handle directory itself
             inv.add_path(relpath, 'directory', id, parent_id).revision = revid
@@ -265,7 +280,7 @@ class SvnWorkingTree(WorkingTree):
                 else:
                     (subid, subrevid) = find_ids(entry)
                     if subid:
-                        self.base_revnum = max(self.base_revnum, entry.revision)
+                        mutter('no id for %r' % entry.url)
                         add_file_to_inv(subrelpath, subid, subrevid, id)
 
         wc = self._get_wc() 
@@ -280,8 +295,11 @@ class SvnWorkingTree(WorkingTree):
         mutter('setting last revision to %r' % revid)
         if revid is None or revid == NULL_REVISION:
             self.base_revid = revid
+            self.base_fileids = self.branch.repository.get_fileid_map(0, "")
             return
 
+        (bp, rev) = self.branch.repository.parse_revision_id(revid)
+        self.base_fileids = self.branch.repository.get_fileid_map(rev, bp)
         # TODO: Implement more efficient version
         newrev = self.branch.repository.get_revision(revid)
         newrevtree = self.branch.repository.revision_tree(revid)
@@ -319,7 +337,6 @@ class SvnWorkingTree(WorkingTree):
             svn.wc.adm_close(wc)
         self.base_revid = revid
 
-
     def log_message_func(self, items, pool):
         """ Simple log message provider for unit tests. """
         return self._message
@@ -344,6 +361,8 @@ class SvnWorkingTree(WorkingTree):
                 commit_info.revision, self.branch.branch_path)
 
         self.base_revid = revid
+        self.base_fileids = self.branch.repository.get_fileid_map(
+                commit_info.revision, self.branch.branch_path)
         #FIXME: Use public API:
         self.branch.revision_history()
         self.branch._revision_history.append(revid)
@@ -375,7 +394,7 @@ class SvnWorkingTree(WorkingTree):
         if self.base_revid is None or self.base_revid == NULL_REVISION:
             return self.branch.repository.revision_tree(self.base_revid)
 
-        return SvnBasisTree(self, self.base_revid)
+        return SvnBasisTree(self)
 
     def pull(self, source, overwrite=False, stop_revision=None):
         if stop_revision is None:
@@ -390,7 +409,6 @@ class SvnWorkingTree(WorkingTree):
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         if not path:
             path = self._inventory.id2path(file_id)
-
         return fingerprint_file(open(self.abspath(path)))['sha1']
 
     def _get_bzr_merges(self):

@@ -99,13 +99,16 @@ BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
 
 InterRepository.register_optimiser(InterSvnRepository)
 
+from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command, display_command, Option
+from bzrlib.errors import BzrCommandError
+from bzrlib.repository import Repository
+import bzrlib.urlutils as urlutils
 
 
 def get_scheme(schemename):
     """Parse scheme identifier and return a branching scheme."""
     from scheme import BranchingScheme
-    from bzrlib.errors import BzrCommandError
     
     ret = BranchingScheme.find_scheme(schemename)
     if ret is None:
@@ -143,6 +146,38 @@ class cmd_svn_import(Command):
 
 
 register_command(cmd_svn_import)
+
+class cmd_svn_upgrade(Command):
+    """Upgrade the revisions mapped from Subversion in a Bazaar branch.
+    
+    This will change the revision ids of revisions whose parents 
+    were mapped from svn revisions.
+    """
+    takes_args = ['svn_repository?']
+    takes_options = [Option('allow-changes', help='Allow content changes')]
+
+    @display_command
+    def run(self, svn_repository=None, allow_changes=False):
+        from upgrade import upgrade_branch
+        
+        branch_to = Branch.open(".")
+
+        stored_loc = branch_to.get_parent()
+        if svn_repository is None:
+            if stored_loc is None:
+                raise BzrCommandError("No pull location known or"
+                                             " specified.")
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                svn_repository = stored_loc
+
+        upgrade_branch(branch_to, Repository.open(svn_repository), 
+                       allow_changes)
+
+register_command(cmd_svn_upgrade)
+
 
 def test_suite():
     from unittest import TestSuite, TestLoader

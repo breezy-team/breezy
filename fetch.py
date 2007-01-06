@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import bzrlib
-from bzrlib.decorators import needs_write_lock
 from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.revision import Revision
@@ -95,9 +94,6 @@ class RevisionBuildEditor(svn.delta.Editor):
         if ie is not None:
             ie.revision = revision_id
         return file_id
-
-    def relpath(self, path):
-        return path.strip("/")
 
     def _get_existing_id(self, parent_id, path):
         if self.id_map.has_key(path):
@@ -287,10 +283,41 @@ class InterSvnRepository(InterRepository):
     """Svn to any repository actions."""
 
     _matching_repo_format = SvnRepositoryFormat()
-    """The format to test with."""
 
-    @needs_write_lock
-    def copy_content(self, revision_id=None, basis=None):
+    def _find_all(self):
+        needed = []
+        parents = {}
+        for (branch, revnum) in self.source.follow_history(
+                                                self.source._latest_revnum):
+            revid = self.source.generate_revision_id(revnum, branch)
+            parents[revid] = self.source._mainline_revision_parent(branch, revnum)
+
+            if not self.target.has_revision(revid):
+                needed.append(revid)
+        return (needed, parents)
+
+    def _find_until(self, revision_id):
+        needed = []
+        parents = {}
+        (path, until_revnum) = self.source.parse_revision_id(revision_id)
+
+        prev_revid = None
+        for (branch, revnum) in self.source.follow_branch(path, 
+                                                          until_revnum):
+            revid = self.source.generate_revision_id(revnum, branch)
+
+            if prev_revid is not None:
+                parents[prev_revid] = revid
+
+            prev_revid = revid
+
+            if not self.target.has_revision(revid):
+                needed.append(revid)
+
+        parents[prev_revid] = None
+        return (needed, parents)
+
+    def copy_content(self, revision_id=None, basis=None, pb=None):
         """See InterRepository.copy_content."""
         # Dictionary with paths as keys, revnums as values
 
@@ -299,32 +326,14 @@ class InterSvnRepository(InterRepository):
         # or self.target.add_inventory() each time
         needed = []
         parents = {}
-        if revision_id is None:
-            for (branch, revnum) in self.source.follow_history(
-                                                    self.source._latest_revnum):
-                revid = self.source.generate_revision_id(revnum, branch)
-                parents[revid] = self.source._mainline_revision_parent(branch, revnum)
-
-                if not self.target.has_revision(revid):
-                    needed.append(revid)
-        else:
-            (path, until_revnum) = self.source.parse_revision_id(revision_id)
-
-            prev_revid = None
-            for (branch, revnum) in self.source.follow_branch(path, 
-                                                              until_revnum):
-                revid = self.source.generate_revision_id(revnum, branch)
-
-                if prev_revid is not None:
-                    parents[prev_revid] = revid
-
-                prev_revid = revid
-
-                if not self.target.has_revision(revid):
-                    needed.append(revid)
-
-
-            parents[prev_revid] = None
+        self.target.lock_read()
+        try:
+            if revision_id is None:
+                (needed, parents) = self._find_all()
+            else:
+                (needed, parents) = self._find_until(revision_id)
+        finally:
+            self.target.unlock()
 
         if len(needed) == 0:
             # Nothing to fetch
@@ -334,7 +343,12 @@ class InterSvnRepository(InterRepository):
         needed.reverse()
         prev_revid = None
         transport = self.source.transport
-        pb = ui_factory.nested_progress_bar()
+        self.target.lock_write()
+        if pb is None:
+            pb = ui_factory.nested_progress_bar()
+            nested_pb = pb
+        else:
+            nested_pb = None
         num = 0
         try:
             for revid in needed:
@@ -344,15 +358,16 @@ class InterSvnRepository(InterRepository):
                 parent_revid = parents[revid]
 
                 if parent_revid is None:
-                    parent_inv = Inventory(ROOT_ID)
+                    parent_inv = Inventory()
                 elif prev_revid != parent_revid:
                     parent_inv = self.target.get_inventory(parent_revid)
                 else:
                     parent_inv = prev_inv
 
                 changes = self.source._log.get_revision_paths(revnum, branch)
+                renames = self.source.revision_fileid_renames(revid)
                 id_map = self.source.transform_fileid_map(self.source.uuid, 
-                                            revnum, branch, changes)
+                                            revnum, branch, changes, renames)
 
                 editor = RevisionBuildEditor(self.source, self.target, branch, 
                                              parent_inv, revid, 
@@ -396,13 +411,14 @@ class InterSvnRepository(InterRepository):
                 pool.destroy()
                 num += 1
         finally:
-            pb.finished()
+            self.target.unlock()
+            if nested_pb is not None:
+                nested_pb.finished()
         self.source.transport.reparent(repos_root)
 
-    @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
         """Fetch revisions. """
-        self.copy_content(revision_id=revision_id)
+        self.copy_content(revision_id=revision_id, pb=pb)
 
     @staticmethod
     def is_compatible(source, target):
