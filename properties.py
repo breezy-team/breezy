@@ -29,16 +29,16 @@ class BuildProperties(object):
     self._larstiq = larstiq
   
   def package(self):
-    return self._changelog.package()
+    return self._changelog.package
 
   def upstream_version(self):
-    return self._changelog.upstream_version()
+    return self._changelog.upstream_version
 
   def debian_version(self):
-    return self._changelog.debian_version()
+    return self._changelog.debian_version
 
   def full_version(self):
-    return self._changelog.full_version()
+    return self._changelog.full_version
 
   def build_dir(self):
     return self._build_dir
