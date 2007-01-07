@@ -19,6 +19,7 @@
 
 from bzrlib.config import Config
 from bzrlib.errors import BzrError, InvalidRevisionId
+from bzrlib.trace import mutter
 from bzrlib.ui import ui_factory
 
 from repository import (MAPPING_VERSION, parse_svn_revision_id, 
@@ -91,8 +92,20 @@ def create_upgraded_revid(revid):
 def upgrade_branch(branch, svn_repository, allow_change=False):
     renames = upgrade_repository(branch.repository, svn_repository, 
               branch.last_revision(), allow_change)
+    mutter('renames %r' % renames)
     if len(renames) > 0:
         branch.generate_revision_history(renames[branch.last_revision()])
+
+
+def revision_changed(oldrev, newrev):
+    if (newrev.inventory_sha1 != oldrev.inventory_sha1 or
+        newrev.timestamp != oldrev.timestamp or
+        newrev.message != oldrev.message or
+        newrev.timezone != oldrev.timezone or
+        newrev.committer != oldrev.committer or
+        newrev.properties != oldrev.properties):
+        return True
+    return False
 
 
 def upgrade_repository(repository, svn_repository, revision_id=None, 
@@ -123,6 +136,13 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                     newrevid = generate_svn_revision_id(uuid, rev, bp)
                     if svn_repository.has_revision(newrevid):
                         rename_map[revid] = newrevid
+                        if not repository.has_revision(newrevid):
+                            if not allow_change:
+                                oldrev = repository.get_revision(revid)
+                                newrev = svn_repository.get_revision(newrevid)
+                                if revision_changed(oldrev, newrev):
+                                    raise UpgradeChangesContent(revid)
+                            needed_revs.append(newrevid)
                         continue
                 except InvalidRevisionId:
                     pass
@@ -132,8 +152,15 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                         (uuid, bp, rev, version) = parse_legacy_revision_id(parent)
                         new_parent = generate_svn_revision_id(uuid, rev, bp)
                         if new_parent != parent:
-                            needed_revs.append(new_parent)
+                            if not repository.has_revision(revid):
+                                needed_revs.append(new_parent)
                             needs_upgrading.append(revid)
+
+                            if not allow_change:
+                                oldrev = repository.get_revision(parent)
+                                newrev = svn_repository.get_revision(new_parent)
+                                if revision_changed(oldrev, newrev):
+                                    raise UpgradeChangesContent(parent)
                         new_parents[revid].append(new_parent)
                     except InvalidRevisionId:
                         new_parents[revid].append(parent)

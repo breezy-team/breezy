@@ -464,9 +464,6 @@ class SvnRepository(Repository):
         return bzrlib.xml5.serializer_v5.write_revision_to_string(
             self.get_revision(revision_id))
 
-    def get_revision_sha1(self, revision_id):
-        return osutils.sha_string(self.get_revision_xml(revision_id))
-
     def follow_history(self, revnum):
         while revnum > 0:
             yielded_paths = []

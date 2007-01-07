@@ -18,6 +18,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoRepositoryPresent, InvalidRevisionId
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.trace import mutter
 
 import repository
 from repository import SvnRepository, MAPPING_VERSION, REVISION_ID_PREFIX
@@ -98,7 +99,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         self.assertTrue(newrepos.has_revision("svn-v1:1@%s-" % oldrepos.uuid))
 
-        upgrade_repository(newrepos, oldrepos)
+        upgrade_repository(newrepos, oldrepos, allow_change=True)
 
         self.assertTrue(newrepos.has_revision("svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
 
@@ -120,7 +121,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         file("f/a", 'w').write("moredata")
         wt.commit(message='fix moredata', rev_id="customrev")
 
-        upgrade_repository(newrepos, oldrepos)
+        upgrade_repository(newrepos, oldrepos, allow_change=True)
 
         self.assertTrue(newrepos.has_revision("svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
@@ -146,7 +147,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         file("f/a", 'w').write("blackfield")
         wt.commit(message='fix it again', rev_id="anotherrev")
 
-        renames = upgrade_repository(newrepos, oldrepos)
+        renames = upgrade_repository(newrepos, oldrepos, allow_change=True)
         self.assertEqual({
             "svn-v1:1@%s-" % oldrepos.uuid:"svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid),
             "customrev": "customrev-svn%d-upgrade" % MAPPING_VERSION,
@@ -180,7 +181,7 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         file("f/a", 'w').write("blackfield")
         wt.commit(message='fix it again', rev_id="anotherrev")
 
-        upgrade_branch(b, oldrepos)
+        upgrade_branch(b, oldrepos, allow_change=True)
         self.assertEqual(["svn-v2:1@%s-" % oldrepos.uuid,
                           "customrev-svn%d-upgrade" % MAPPING_VERSION,
                           "anotherrev-svn%d-upgrade" % MAPPING_VERSION
@@ -208,3 +209,20 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         upgrade_branch(b, oldrepos)
         self.assertEqual(["blarev", "customrev", "anotherrev"],
                 b.revision_history())
+
+    def test_raise_incompat(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/d': 'e'})
+        self.client_add("dc/d")
+        self.client_commit("dc", "data")
+
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        b = dir.create_branch()
+        wt = dir.create_workingtree()
+        file("f/a", "w").write("c")
+        wt.add("a")
+        wt.commit(message="data", rev_id="svn-v1:1@%s-" % oldrepos.uuid)
+
+        self.assertRaises(UpgradeChangesContent, upgrade_branch, b, oldrepos)

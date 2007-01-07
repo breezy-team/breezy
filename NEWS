@@ -54,6 +54,9 @@ IN DEVELOPMENT
 
    * Conversion output can now be on a remote transport.
 
+   * Upgrade command can be used to upgrade branches created with 
+     older versions of the plugin.
+
   PERFORMANCE IMPROVEMENTS
 
    * More efficient implementation of follow_history().
