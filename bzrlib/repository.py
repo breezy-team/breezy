@@ -33,6 +33,7 @@ from bzrlib import (
     gpg,
     graph,
     knit,
+    lazy_regex,
     lockable_files,
     lockdir,
     osutils,
@@ -81,6 +82,11 @@ class Repository(object):
     describe the disk data format and the way of accessing the (possibly 
     remote) disk.
     """
+
+    _file_ids_altered_regex = lazy_regex.lazy_compile(
+        r'file_id="(?P<file_id>[^"]+)"'
+        r'.*revision="(?P<revision_id>[^"]+)"'
+        )
 
     @needs_write_lock
     def add_inventory(self, revid, inv, parents):
@@ -436,23 +442,52 @@ class Repository(object):
         # revisions. We don't need to see all lines in the inventory because
         # only those added in an inventory in rev X can contain a revision=X
         # line.
+        unescape_revid_cache = {}
+        unescape_fileid_cache = {}
+
+        # jam 20061218 In a big fetch, this handles hundreds of thousands
+        # of lines, so it has had a lot of inlining and optimizing done.
+        # Sorry that it is a little bit messy.
+        # Move several functions to be local variables, since this is a long
+        # running loop.
+        search = self._file_ids_altered_regex.search
+        unescape = _unescape_xml
+        setdefault = result.setdefault
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for line in w.iter_lines_added_or_present_in_versions(
-                selected_revision_ids, pb=pb):
-                start = line.find('file_id="')+9
-                if start < 9: continue
-                end = line.find('"', start)
-                assert end>= 0
-                file_id = _unescape_xml(line[start:end])
+                                        selected_revision_ids, pb=pb):
+                match = search(line)
+                if match is None:
+                    continue
+                # One call to match.group() returning multiple items is quite a
+                # bit faster than 2 calls to match.group() each returning 1
+                file_id, revision_id = match.group('file_id', 'revision_id')
 
-                start = line.find('revision="')+10
-                if start < 10: continue
-                end = line.find('"', start)
-                assert end>= 0
-                revision_id = _unescape_xml(line[start:end])
+                # Inlining the cache lookups helps a lot when you make 170,000
+                # lines and 350k ids, versus 8.4 unique ids.
+                # Using a cache helps in 2 ways:
+                #   1) Avoids unnecessary decoding calls
+                #   2) Re-uses cached strings, which helps in future set and
+                #      equality checks.
+                # (2) is enough that removing encoding entirely along with
+                # the cache (so we are using plain strings) results in no
+                # performance improvement.
+                try:
+                    revision_id = unescape_revid_cache[revision_id]
+                except KeyError:
+                    unescaped = unescape(revision_id)
+                    unescape_revid_cache[revision_id] = unescaped
+                    revision_id = unescaped
+
                 if revision_id in selected_revision_ids:
-                    result.setdefault(file_id, set()).add(revision_id)
+                    try:
+                        file_id = unescape_fileid_cache[file_id]
+                    except KeyError:
+                        unescaped = unescape(file_id)
+                        unescape_fileid_cache[file_id] = unescaped
+                        file_id = unescaped
+                    setdefault(file_id, set()).add(revision_id)
         finally:
             pb.finished()
         return result
@@ -729,6 +764,17 @@ class Repository(object):
     def supports_rich_root(self):
         return self._format.rich_root_data
 
+    def _check_ascii_revisionid(self, revision_id, method):
+        """Private helper for ascii-only repositories."""
+        # weave repositories refuse to store revisionids that are non-ascii.
+        if revision_id is not None:
+            # weaves require ascii revision ids.
+            if isinstance(revision_id, unicode):
+                try:
+                    revision_id.encode('ascii')
+                except UnicodeEncodeError:
+                    raise errors.NonAsciiRevisionId(method, self)
+
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
@@ -762,6 +808,13 @@ class AllInOneRepository(Repository):
             self.inventory_store = get_store('inventory-store')
             text_store = get_store('text-store')
         super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
+
+    def get_commit_builder(self, branch, parents, config, timestamp=None,
+                           timezone=None, committer=None, revprops=None,
+                           revision_id=None):
+        self._check_ascii_revisionid(revision_id, self.get_commit_builder)
+        return Repository.get_commit_builder(self, branch, parents, config,
+            timestamp, timezone, committer, revprops, revision_id)
 
     @needs_read_lock
     def is_shared(self):
@@ -872,6 +925,17 @@ class MetaDirRepository(Repository):
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return not self.control_files._transport.has('no-working-trees')
+
+
+class WeaveMetaDirRepository(MetaDirRepository):
+    """A subclass of MetaDirRepository to set weave specific policy."""
+
+    def get_commit_builder(self, branch, parents, config, timestamp=None,
+                           timezone=None, committer=None, revprops=None,
+                           revision_id=None):
+        self._check_ascii_revisionid(revision_id, self.get_commit_builder)
+        return MetaDirRepository.get_commit_builder(self, branch, parents,
+            config, timestamp, timezone, committer, revprops, revision_id)
 
 
 class KnitRepository(MetaDirRepository):
@@ -1530,12 +1594,12 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
         _revision_store = self._get_revision_store(repo_transport, control_files)
-        return MetaDirRepository(_format=self,
-                                 a_bzrdir=a_bzrdir,
-                                 control_files=control_files,
-                                 _revision_store=_revision_store,
-                                 control_store=control_store,
-                                 text_store=text_store)
+        return WeaveMetaDirRepository(_format=self,
+            a_bzrdir=a_bzrdir,
+            control_files=control_files,
+            _revision_store=_revision_store,
+            control_store=control_store,
+            text_store=text_store)
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
@@ -1613,6 +1677,8 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         # trigger a write of the inventory store.
         control_store.get_weave_or_empty('inventory', transaction)
         _revision_store = self._get_revision_store(repo_transport, control_files)
+        # the revision id here is irrelevant: it will not be stored, and cannot
+        # already exist.
         _revision_store.has_revision_id('A', transaction)
         _revision_store.get_signature_file(transaction)
         return self.open(a_bzrdir=a_bzrdir, _found=True)
@@ -1734,6 +1800,7 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 RepositoryFormat.register_format(RepositoryFormat7())
+# KEEP in sync with bzrdir.format_registry default
 _default_format = RepositoryFormatKnit1()
 RepositoryFormat.register_format(_default_format)
 RepositoryFormat.register_format(RepositoryFormatKnit2())
@@ -2365,10 +2432,10 @@ class CommitBuilder(object):
         """Create a revision id if None was supplied.
         
         If the repository can not support user-specified revision ids
-        they should override this function and raise UnsupportedOperation
+        they should override this function and raise CannotSetRevisionId
         if _new_revision_id is not None.
 
-        :raises: UnsupportedOperation
+        :raises: CannotSetRevisionId
         """
         if self._new_revision_id is None:
             self._new_revision_id = self._gen_revision_id()

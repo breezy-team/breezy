@@ -253,7 +253,15 @@ class PyCurlTransport(HttpTransportBase):
                         _pycurl_errors.CURLE_COULDNT_RESOLVE_PROXY):
                 raise ConnectionError('curl connection error (%s)\non %s'
                               % (e[1], url))
-            # jam 20060713 The code didn't use to re-raise the exception here
+            elif e[0] == _pycurl_errors.CURLE_PARTIAL_FILE:
+                # Pycurl itself has detected a short read.  We do
+                # not have all the information for the
+                # ShortReadvError, but that should be enough
+                raise errors.ShortReadvError(url,
+                                             offset='unknown', length='unknown',
+                                             actual='unknown',
+                                             extra='Server aborted the request')
+            # jam 20060713 The code didn't use to re-raise the exception here,
             # but that seemed bogus
             raise
 

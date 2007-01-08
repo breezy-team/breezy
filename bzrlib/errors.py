@@ -541,6 +541,8 @@ class LockError(BzrError):
 
     _fmt = "Lock error: %(message)s"
 
+    internal_error = True
+
     # All exceptions from the lock/unlock functions should be from
     # this exception class.  They will be translated as necessary. The
     # original exception is available as e.original_error
@@ -583,8 +585,6 @@ class ObjectNotLocked(LockError):
 
     _fmt = "%(obj)r is not locked"
 
-    internal_error = True
-
     # this can indicate that any particular object is not locked; see also
     # LockNotHeld which means that a particular *lock* object is not held by
     # the caller -- perhaps they should be unified.
@@ -611,7 +611,10 @@ class UnlockableTransport(LockError):
 class LockContention(LockError):
 
     _fmt = "Could not acquire lock %(lock)s"
-    # TODO: show full url for lock, combining the transport and relative bits?
+    # TODO: show full url for lock, combining the transport and relative
+    # bits?
+
+    internal_error = False
     
     def __init__(self, lock):
         self.lock = lock
@@ -621,6 +624,8 @@ class LockBroken(LockError):
 
     _fmt = "Lock was broken while still open: %(lock)s - check storage consistency!"
 
+    internal_error = False
+
     def __init__(self, lock):
         self.lock = lock
 
@@ -628,6 +633,8 @@ class LockBroken(LockError):
 class LockBreakMismatch(LockError):
 
     _fmt = "Lock was released and re-acquired before being broken: %(lock)s: held by %(holder)r, wanted to break %(target)r"
+
+    internal_error = False
 
     def __init__(self, lock, holder, target):
         self.lock = lock
@@ -638,6 +645,8 @@ class LockBreakMismatch(LockError):
 class LockNotHeld(LockError):
 
     _fmt = "Lock not held: %(lock)s"
+
+    internal_error = False
 
     def __init__(self, lock):
         self.lock = lock
@@ -929,14 +938,17 @@ class KnitError(BzrError):
     
     _fmt = "Knit error"
 
+    internal_error = True
+
 
 class KnitHeaderError(KnitError):
 
-    _fmt = "Knit header error: %(badline)r unexpected"
+    _fmt = "Knit header error: %(badline)r unexpected for file %(filename)s"
 
-    def __init__(self, badline):
+    def __init__(self, badline, filename):
         KnitError.__init__(self)
         self.badline = badline
+        self.filename = filename
 
 
 class KnitCorrupt(KnitError):
@@ -947,6 +959,21 @@ class KnitCorrupt(KnitError):
         KnitError.__init__(self)
         self.filename = filename
         self.how = how
+
+
+class KnitIndexUnknownMethod(KnitError):
+    """Raised when we don't understand the storage method.
+
+    Currently only 'fulltext' and 'line-delta' are supported.
+    """
+    
+    _fmt = ("Knit index %(filename)s does not have a known method"
+            " in options: %(options)r")
+
+    def __init__(self, filename, options):
+        KnitError.__init__(self)
+        self.filename = filename
+        self.options = options
 
 
 class NoSuchExportFormat(BzrError):
@@ -1426,6 +1453,14 @@ class UnsupportedOperation(BzrError):
         self.method = method
         self.mname = method.__name__
         self.tname = type(method_self).__name__
+
+
+class CannotSetRevisionId(UnsupportedOperation):
+    """Raised when a commit is attempting to set a revision id but cant."""
+
+
+class NonAsciiRevisionId(UnsupportedOperation):
+    """Raised when a commit is attempting to set a non-ascii revision id but cant."""
 
 
 class BinaryFile(BzrError):

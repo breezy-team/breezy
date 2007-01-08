@@ -45,7 +45,7 @@ class HttpTransport_urllib(HttpTransportBase):
 
     def __init__(self, base, from_transport=None):
         """Set the base path where files will be stored."""
-        super(HttpTransport_urllib, self).__init__(base)
+        super(HttpTransport_urllib, self).__init__(base, from_transport)
         if from_transport is not None:
             self._connection = from_transport._connection
             self._user = from_transport._user

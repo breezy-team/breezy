@@ -24,6 +24,7 @@ import mimetools
 import re
 import urlparse
 import urllib
+import sys
 
 from bzrlib import errors, ui
 from bzrlib.trace import mutter
@@ -256,6 +257,35 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         """
         return self
 
+    def _retry_get(self, relpath, ranges, exc_info):
+        """A GET request have failed, let's retry with a simpler request."""
+
+        try_again = False
+        # The server does not gives us enough data or
+        # bogus-looking result, let's try again with
+        # a simpler request if possible.
+        if self._range_hint == 'multi':
+            self._range_hint = 'single'
+            mutter('Retry %s with single range request' % relpath)
+            try_again = True
+        elif self._range_hint == 'single':
+            self._range_hint = None
+            mutter('Retry %s without ranges' % relpath)
+            try_again = True
+        if try_again:
+            # Note that since the offsets and the ranges may not
+            # be in the same order, we don't try to calculate a
+            # restricted single range encompassing unprocessed
+            # offsets.
+            code, f = self._get(relpath, ranges)
+            return try_again, code, f
+        else:
+            # We tried all the tricks, but nothing worked. We
+            # re-raise original exception; the 'mutter' calls
+            # above will indicate that further tries were
+            # unsuccessful
+            raise exc_info[0], exc_info[1], exc_info[2]
+
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
@@ -265,7 +295,16 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         ranges = self.offsets_to_ranges(offsets)
         mutter('http readv of %s collapsed %s offsets => %s',
                 relpath, len(offsets), ranges)
-        code, f = self._get(relpath, ranges)
+
+        try_again = True
+        while try_again:
+            try_again = False
+            try:
+                code, f = self._get(relpath, ranges)
+            except (errors.InvalidRange, errors.ShortReadvError), e:
+                try_again, code, f = self._retry_get(relpath, ranges,
+                                                     sys.exc_info())
+
         for start, size in offsets:
             try_again = True
             while try_again:
@@ -277,31 +316,13 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
                     if len(data) != size:
                         raise errors.ShortReadvError(relpath, start, size,
                                                      actual=len(data))
-                except (errors.InvalidRange, errors.ShortReadvError):
-                    # The server does not gives us enough data or
-                    # bogus-looking result, let's try again with
-                    # a simpler request if possible.
-                    if self._range_hint == 'multi':
-                        self._range_hint = 'single'
-                        mutter('Retry %s with single range request' % relpath)
-                        try_again = True
-                    elif self._range_hint == 'single':
-                        self._range_hint = None
-                        mutter('Retry %s without ranges' % relpath)
-                        try_again = True
-                    if try_again:
-                        # Note that since the offsets and the
-                        # ranges may not be in the same order we
-                        # dont't try to calculate a restricted
-                        # single range encompassing unprocessed
-                        # offsets. Note that we replace 'f' here
-                        # and that it may need cleaning one day
-                        # before being thrown that way.
-                        code, f = self._get(relpath, ranges)
-                    else:
-                        # We tried all the tricks, nothing worked
-                        raise
-
+                except (errors.InvalidRange, errors.ShortReadvError), e:
+                    # Note that we replace 'f' here and that it
+                    # may need cleaning one day before being
+                    # thrown that way.
+                    try_again, code, f = self._retry_get(relpath, ranges,
+                                                         sys.exc_info())
+            # After one or more tries, we get the data.
             yield start, data
 
     @staticmethod

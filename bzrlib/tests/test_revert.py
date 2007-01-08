@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib import merge, tests
+from bzrlib import merge, tests, transform, workingtree
 
 
 class TestRevert(tests.TestCaseWithTransport):
@@ -77,3 +77,34 @@ class TestRevert(tests.TestCaseWithTransport):
         self.build_tree_contents([('merge_target/new_file', 'new_contents')])
         merge_target.revert([])
         self.failUnlessExists('merge_target/new_file')
+
+    def tree_with_executable(self):
+        tree = self.make_branch_and_tree('tree')
+        tt = transform.TreeTransform(tree)
+        tt.new_file('newfile', tt.root, 'helooo!', 'newfile-id', True)
+        tt.apply()
+        self.assertTrue(tree.is_executable('newfile-id'))
+        tree.commit('added newfile')
+        return tree
+
+    def test_preserve_execute(self):
+        tree = self.tree_with_executable()
+        tt = transform.TreeTransform(tree)
+        newfile = tt.trans_id_tree_file_id('newfile-id')
+        tt.delete_contents(newfile)
+        tt.create_file('Woooorld!', newfile)
+        tt.apply()
+        tree = workingtree.WorkingTree.open('tree')
+        self.assertTrue(tree.is_executable('newfile-id'))
+        transform.revert(tree, tree.basis_tree(), [], backups=True)
+        self.assertEqual('helooo!', tree.get_file('newfile-id').read())
+        self.assertTrue(tree.is_executable('newfile-id'))
+
+    def test_revert_executable(self):
+        tree = self.tree_with_executable()
+        tt = transform.TreeTransform(tree)
+        newfile = tt.trans_id_tree_file_id('newfile-id')
+        tt.set_executability(False, newfile)
+        tt.apply()
+        transform.revert(tree, tree.basis_tree(), [])
+        self.assertTrue(tree.is_executable('newfile-id'))

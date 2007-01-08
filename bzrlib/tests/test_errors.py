@@ -46,6 +46,18 @@ class TestErrors(TestCaseWithTransport):
         error = errors.InstallFailed([None])
         self.assertEqual("Could not install revisions:\nNone", str(error))
 
+    def test_knit_header_error(self):
+        error = errors.KnitHeaderError('line foo\n', 'path/to/file')
+        self.assertEqual("Knit header error: 'line foo\\n' unexpected"
+                         " for file path/to/file", str(error))
+
+    def test_knit_index_unknown_method(self):
+        error = errors.KnitIndexUnknownMethod('http://host/foo.kndx',
+                                              ['bad', 'no-eol'])
+        self.assertEqual("Knit index http://host/foo.kndx does not have a"
+                         " known method in options: ['bad', 'no-eol']",
+                         str(error))
+
     def test_medium_not_connected(self):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
