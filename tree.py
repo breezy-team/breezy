@@ -173,6 +173,7 @@ class TreeBuildEditor(svn.delta.Editor):
             ie.text_sha1 = None
             ie.text_size = None
             ie.text_id = None
+            ie.executable = False
         else:
             ie.text_sha1 = osutils.sha_string(file_data)
             ie.text_size = len(file_data)
@@ -203,28 +204,21 @@ class SvnBasisTree(RevisionTree):
         self._inventory = Inventory()
         self._repository = workingtree.branch.repository
 
-        def _get_props(relpath):
-            path = self.workingtree.abspath(relpath)
-            wc = workingtree._get_wc()
-            try:
-                return svn.wc.get_prop_diffs(path, wc)
-            finally:
-                svn.wc.adm_close(wc)
-
-        def add_file_to_inv(relpath, id, revid):
-            props = _get_props(relpath)
+        def add_file_to_inv(relpath, id, revid, wc):
+            props = svn.wc.get_prop_diffs(self.workingtree.abspath(relpath), wc)
             if props.has_key(svn.core.SVN_PROP_SPECIAL):
                 ie = self._inventory.add_path(relpath, 'symlink', id)
                 ie.symlink_target = open(self._abspath(relpath)).read()[len("link "):]
                 ie.text_sha1 = None
                 ie.text_size = None
                 ie.text_id = None
+                ie.executable = False
             else:
                 ie = self._inventory.add_path(relpath, 'file', id)
                 data = osutils.fingerprint_file(open(self._abspath(relpath)))
                 ie.text_sha1 = data['sha1']
                 ie.text_size = data['size']
-            ie.executable = props.has_key(svn.core.SVN_PROP_EXECUTABLE)
+                ie.executable = props.has_key(svn.core.SVN_PROP_EXECUTABLE)
             ie.revision = revid
             return ie
 
@@ -267,7 +261,7 @@ class SvnBasisTree(RevisionTree):
                 else:
                     (subid, subrevid) = find_ids(entry)
                     if subid is not None:
-                        add_file_to_inv(subrelpath, subid, subrevid)
+                        add_file_to_inv(subrelpath, subid, subrevid, wc)
 
         wc = workingtree._get_wc() 
         try:

@@ -296,8 +296,9 @@ class SvnWorkingTree(WorkingTree):
                 else:
                     (subid, subrevid) = find_ids(entry)
                     if subid:
-                        mutter('no id for %r' % entry.url)
                         add_file_to_inv(subrelpath, subid, subrevid, id)
+                    else:
+                        mutter('no id for %r' % entry.url)
 
         wc = self._get_wc() 
         try:
