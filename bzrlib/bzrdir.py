@@ -1104,7 +1104,7 @@ class BzrDirFormat(object):
         """Return the .bzrdir style transport present at URL."""
         try:
             format_file = transport.get(".bzr/branch-format",
-                                        hints={'follow_redirections':False})
+                                        follow_redirections=False)
             format_string = format_file.read()
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)

@@ -81,107 +81,78 @@ def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
         warnings.warn("register_transport(override) is deprecated")
     _protocol_handlers.setdefault(prefix, []).insert(0, klass)
 
-def _get_prototype_infos(func):
-    """Acquire prototype informations about a function by introspection.
-
-    :param func: the function we want to examine
-
-    :return: (name, params, default_of) A tuple with the name,
-             the parameters and the parameters default
-             values. The later is a dict for ease of use.
-    """
-    # Only the first local variables are the parameters of the
-    # function
-    code = func.func_code
-    local_variables = code.co_varnames
-    nb_params = code.co_argcount
-    func_params = local_variables[:nb_params]
-    defaults = func.func_defaults
-    default_of = {}
-    if defaults:
-        # Only the last params can have a default value
-        for name, value in map(None, func_params[nb_params-len(defaults):],
-                               defaults):
-            default_of[name] = value
-
-    return func.__name__, func_params, default_of
-
-def _build_arglist(args, default_of={}, build_default=None):
-    arglist = ''
-    for arg in args:
-        if arglist: arglist += ', ' # comma separated if more than one
-        arglist += arg
-        if default_of.has_key(arg):
-            arglist += '='
-            if build_default:
-                arglist += build_default(default_of, arg)
-            else:
-                arglist += '%r' % default_of[arg]
-    return arglist
-
-def _inject_get_with_hints(klass, get_params, default_of):
+def _inject_get_with_hints(klass, kget, args, defaults):
     """Provide a new get method with an hints parameter.
 
     :param klass: the klass ignorant of hints
-    :param get_params: the actual parameters of the get method
-    :param default_of: the optional default values of the above parameters
+    :param kget: the actual get method
+    :param args: the actual parameters of the get method
+    :param defaults: the optional default values of the above parameters
     """
-    # First we prepare the new prototype (building the old one
-    # partially in parallel)
-    old_params = _build_arglist(get_params[1:]) # Avoid self
+    import inspect # Costly, hence done only if necessary
+    # Prepare the call to the old version (without self and
+    # default values)
+    old_params = inspect.formatargspec(args[1:])
 
     # We want to evaluate this prototype later, in a context
     # where we can access the default values, whatever they are
     # (i.e. we could have embedded constants directly but a
     # default value can be an object, so we really need to access
     # its value, not its stringified representation).  To achieve
-    # that, we need to differ the evalation of the default value
-    # and we use an hopefully hard to conflict with dictionary
-    # name (four trailing '_', now try to conflict with *that* !)
-    new_params = _build_arglist(get_params, default_of,
-                                lambda default_of, arg: \
-                                "default_of____['%s']" % arg)
+    # that, we need to differ the evaluation of the default value
+    # and we use an hopefully hard to conflict with name (four
+    # trailing '_', now try to conflict with *that* !)
+    values_for_eval____ = []
+    def format_value_for_evaluation(value):
+        values_for_eval____.append(value)
+        return "=values_for_eval____[%d]" % (len(values_for_eval____) - 1)
 
-    # Add the new hints parameter with its default value
-    new_params += ', hints={}'
+    # Add the new hints parameter
+    new_params = inspect.formatargspec(args, varkw='hints', defaults=defaults,
+                                       formatvalue=format_value_for_evaluation)
+
     # Prepare the injection
     kmodule = klass.__module__
     kname = klass.__name__
     code = """
 from %(kmodule)s import %(kname)s
 
-def get(%(new_params)s):
-    return self.get_without_hints(%(old_params)s)
+def get%(new_params)s:
+    return self._get_without_hints%(old_params)s
 
-%(kname)s.get_without_hints = %(kname)s.get
+%(kname)s._get_without_hints = %(kname)s.get
 %(kname)s.get = get
 """
-    default_of____ = default_of # Don't forget that one
     code = code % locals() # So we can access our just cooked strings
 
-    # Compilation and evaluation are necessary to achieve the
-    # desired effect: declare a new sub and evaluate its
-    # default values in the right context.
+    # Compilation *and* evaluation are necessary to achieve the
+    # desired effect: declare a new sub and evaluate its default
+    # values in the right context.
     mutter('Will inject: %s' % code)
     eval(compile(code, '<compatibility kitchen>', 'exec'))
 
 def _check_get_with_hints(klass):
-    kget = klass.get
-    kgetwh = getattr(klass,'get_without_hints',None)
+    import inspect # Costly, hence done only if necessary
+    args, varargs, varkw, defaults = inspect.getargspec(klass.get)
+    kgetwh = getattr(klass,'_get_without_hints',None)
 
     if kgetwh is None: # Don't try to inject twice
-        name, params, default_of = _get_prototype_infos(kget)
-        if 'self' == params[0] and not 'hints' in params:
+        # We are searching for a get method without varargs (we
+        # don't handle them as part of our compatibility process)
+        # lacking a 'hints' arg.
+        # FIXME: if varkw is not None, issue a warning
+        if not 'hints' in args and varkw is None:
             # Looks like we have a candidate here
-            warning("%r do not specify 'hints'" \
-                    "in the %s(%s) method prototype" \
-                    % (klass, name, _build_arglist(params, default_of)))
-
-            _inject_get_with_hints(klass, params, default_of)
-
-            name, params, default_of = _get_prototype_infos(klass.get)
-            mutter('in %r, proto is now: %s(%s)',
-                   klass, name, _build_arglist(params, default_of))
+            mutter('in %(klass)r, original proto is: %(name)s%(joined)s' % \
+                   dict(klass=klass, name='get',
+                        joined=inspect.formatargspec(args, varargs, varkw,
+                                                     defaults,)))
+            _inject_get_with_hints(klass, klass.get, args, defaults)
+            args, varargs, varkw, defaults = inspect.getargspec(klass.get)
+            mutter('in %(klass)r, proto is now: %(name)s%(joined)s' % \
+                   dict(klass=klass, name='get',
+                        joined=inspect.formatargspec(args, varargs, varkw,
+                                                     defaults,)))
 
 def register_lazy_transport(scheme, module, classname):
     """Register lazy-loaded transport class.
@@ -204,7 +175,6 @@ def register_lazy_transport(scheme, module, classname):
         # FIXME: Cache the patched transports ?
         _check_get_with_hints(klass)
         return klass(base)
-    _loader.module = module
     register_transport(scheme, _loader)
 
 
@@ -535,7 +505,7 @@ class Transport(object):
                                           "(but must claim to be listable "
                                           "to trigger this error).")
 
-    def get(self, relpath, hints={}):
+    def get(self, relpath, **hints):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
@@ -1251,12 +1221,12 @@ class TransportLogger(object):
         self._adapted = adapted
         self._calls = []
 
-    def get(self, name, hints={}):
+    def get(self, name, **hints):
         # There is only one test using the information collected
         # below and it asks for the name only. So we do not
         # record the hints parameter.
         self._calls.append((name,))
-        return self._adapted.get(name, hints=hints)
+        return self._adapted.get(name, **hints)
 
     def __getattr__(self, name):
         """Thunk all undefined access through to self._adapted."""

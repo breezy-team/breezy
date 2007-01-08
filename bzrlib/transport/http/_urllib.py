@@ -123,7 +123,7 @@ class HttpTransport_urllib(HttpTransportBase):
 
         return response
 
-    def _get(self, relpath, ranges, tail_amount=0, hints={}):
+    def _get(self, relpath, ranges, tail_amount=0, **hints):
         """See HttpTransport._get"""
 
         abspath = self._real_abspath(relpath)

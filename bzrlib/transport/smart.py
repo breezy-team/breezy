@@ -1038,8 +1038,7 @@ class SmartTransport(transport.Transport):
         else:
             self._translate_error(resp)
 
-    # FIXME: 'hints' is lost ?
-    def get(self, relpath, hints={}):
+    def get(self, relpath, **hints):
         """Return file-like object reading the contents of a remote file.
         
         :see: Transport.get_bytes()/get_file()

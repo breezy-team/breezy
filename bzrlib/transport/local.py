@@ -127,7 +127,7 @@ class LocalTransport(Transport):
         return os.access(self._abspath(relpath), os.F_OK)
 
     # FIXME: the 'hints' parameter is commented out
-    def get(self, relpath):#, hints={}):
+    def get(self, relpath):#, **hints):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file

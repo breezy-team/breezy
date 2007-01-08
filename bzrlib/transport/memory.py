@@ -117,7 +117,7 @@ class MemoryTransport(Transport):
             raise NoSuchFile(relpath)
         del self._files[_abspath]
 
-    def get(self, relpath, hints={}):
+    def get(self, relpath, **hints):
         """See Transport.get()."""
         _abspath = self._abspath(relpath)
         if not _abspath in self._files:

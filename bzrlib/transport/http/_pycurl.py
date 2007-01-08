@@ -116,12 +116,14 @@ class PyCurlTransport(HttpTransportBase):
         else:
             self._raise_curl_http_error(curl)
 
-    def _get(self, relpath, ranges, tail_amount=0, hints={}):
+    def _get(self, relpath, ranges, tail_amount=0, **hints):
+        # FIXME: some hints may have to be forwarded to
+        # _get_ranged and/or _get_full
         # This just switches based on the type of request
         if ranges is not None or tail_amount not in (0, None):
             return self._get_ranged(relpath, ranges, tail_amount=tail_amount)
         else:
-            return self._get_full(relpath, hints=hints)
+            return self._get_full(relpath)
 
     def _setup_get_request(self, curl, relpath):
         # Make sure we do a GET request. versions > 7.14.1 also set the
@@ -152,7 +154,7 @@ class PyCurlTransport(HttpTransportBase):
 
         return abspath, data, header
 
-    def _get_full(self, relpath, hints={}):
+    def _get_full(self, relpath):
         """Make a request for the entire file"""
         curl = self._curl
         abspath, data, header = self._setup_get_request(curl, relpath)
