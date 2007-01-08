@@ -22,7 +22,7 @@ import sys
 import unittest
 import bzrlib
 
-__version__ = '0.2.0'
+__version__ = '0.3.0'
 required_bzr_version = (0,14)
 
 def check_bzrlib_version(desired):
@@ -54,7 +54,19 @@ def check_bzrlib_version(desired):
         if bzrlib_version != desired_plus:
             raise Exception, 'Version mismatch'
 
+def check_subversion_version():
+    """Check that Subversion is compatible.
+
+    """
+    from bzrlib.trace import warning
+    try:
+        from svn.delta import svn_delta_invoke_txdelta_window_handler
+    except:
+        warning('Installed Subversion version does not have updated Python bindings. See the bzr-svn README for details.')
+        raise BzrError("incompatible python subversion bindings")
+
 check_bzrlib_version(required_bzr_version)
+check_subversion_version()
 
 import branch
 import convert

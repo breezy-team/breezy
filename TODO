@@ -3,6 +3,9 @@
 - fix autorealm repository
 - handle parent directories of branches being moved correctly
 - faster "bzr status" in lightweight checkouts
+- when committing specific files in a lightweight checkout, make sure to 
+  commit the right file id changes for "."
+- custom implementation of WorkingTree.revert()
 - don't update to the same revnum when opening working tree
 - avoid extra connect in logwalker?
 - get rid of use of `svn ls' in logwalker

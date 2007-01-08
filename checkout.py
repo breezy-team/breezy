@@ -403,6 +403,7 @@ class SvnWorkingTree(WorkingTree):
 
         self.client_ctx.log_msg_baton2 = log_message_func
         commit_info = svn.client.commit3(specific_files, True, False, self.client_ctx)
+        self.client_ctx.log_msg_baton2 = None
 
         revid = self.branch.repository.generate_revision_id(
                 commit_info.revision, self.branch.branch_path)

@@ -57,6 +57,8 @@ IN DEVELOPMENT
    * Upgrade command can be used to upgrade branches created with 
      older versions of the plugin.
 
+   * Fail early when unpatched python Subversion bindings are installed.
+
   PERFORMANCE IMPROVEMENTS
 
    * More efficient implementation of follow_history().
