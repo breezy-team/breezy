@@ -175,6 +175,8 @@ def register_lazy_transport(scheme, module, classname):
         # FIXME: Cache the patched transports ?
         _check_get_with_hints(klass)
         return klass(base)
+    _loader.module = module
+    _loader.classname = classname
     register_transport(scheme, _loader)
 
 
@@ -1225,6 +1227,7 @@ class TransportLogger(object):
         # There is only one test using the information collected
         # below and it asks for the name only. So we do not
         # record the hints parameter.
+        # FIXME: Fix the test instead, and record the hints !
         self._calls.append((name,))
         return self._adapted.get(name, **hints)
 
