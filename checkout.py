@@ -64,7 +64,6 @@ class SvnWorkingTree(WorkingTree):
         self.client_ctx = svn.client.create_context()
         self.pool = Pool()
         self.client_ctx.log_msg_func2 = svn.client.svn_swig_py_get_commit_log_func
-        self.client_ctx.log_msg_baton2 = self.log_message_func
         self.client_ctx.auth_baton = _create_auth_baton(self.pool)
 
         wc = self._get_wc()
@@ -380,12 +379,9 @@ class SvnWorkingTree(WorkingTree):
             svn.wc.adm_close(wc)
         self.base_revid = revid
 
-    def log_message_func(self, items, pool):
-        """ Simple log message provider for unit tests. """
-        return self._message
-
-    def commit(self, message=None, revprops=None, timestamp=None, timezone=None, committer=None, rev_id=None, allow_pointless=True, 
-            strict=False, verbose=False, local=False, reporter=None, config=None, specific_files=None):
+    def commit(self, message=None, message_callback=None, revprops=None, timestamp=None, timezone=None, committer=None, 
+               rev_id=None, allow_pointless=True, strict=False, verbose=False, local=False, reporter=None, config=None, 
+               specific_files=None):
         assert timestamp is None
         assert timezone is None
         assert rev_id is None
@@ -395,9 +391,17 @@ class SvnWorkingTree(WorkingTree):
         else:
             specific_files = [self.basedir.encode('utf8')]
 
-        assert isinstance(message, basestring)
-        self._message = message
+        if message_callback is not None:
+            def log_message_func(items, pool):
+                """ Simple log message provider for unit tests. """
+                return message_callback(self)
+        else:
+            assert isinstance(message, basestring)
+            def log_message_func(items, pool):
+                """ Simple log message provider for unit tests. """
+                return message
 
+        self.client_ctx.log_msg_baton2 = log_message_func
         commit_info = svn.client.commit3(specific_files, True, False, self.client_ctx)
 
         revid = self.branch.repository.generate_revision_id(

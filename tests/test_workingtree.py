@@ -330,6 +330,14 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertEqual("a-uuid-foo:/branch/path:1\n", 
                          self.client_get_prop("dc", "svk:merge"))
 
+    def test_commit_callback(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl": "data"})
+        self.client_add("dc/bl")
+        tree = WorkingTree.open("dc")
+        orig_tree = tree.basis_tree()
+        tree.commit(message_callback=lambda x: "data")
+
     def test_update_after_commit(self):
         self.make_client('a', 'dc')
         self.build_tree({"dc/bl": "data"})
