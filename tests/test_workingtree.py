@@ -362,3 +362,66 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(os.path.exists("dc/.svn"))
         self.assertTrue(not os.path.exists("dc/.bzr"))
         bzrdir.open_workingtree()
+
+    def test_file_id_consistent(self):
+        self.make_client('a', 'dc')
+        self.build_tree({'dc/file': 'data'})
+        tree = WorkingTree.open("dc")
+        tree.add(["file"])
+        oldid = tree.inventory.path2id("file")
+        tree = WorkingTree.open("dc")
+        newid = tree.inventory.path2id("file")
+        self.assertEqual(oldid, newid)
+
+    def test_file_id_kept(self):
+        self.make_client('a', 'dc')
+        self.build_tree({'dc/file': 'data'})
+        tree = WorkingTree.open("dc")
+        tree.add(["file"], ["fooid"])
+        self.assertEqual("fooid", tree.inventory.path2id("file"))
+        tree = WorkingTree.open("dc")
+        self.assertEqual("fooid", tree.inventory.path2id("file"))
+
+    def test_file_rename_id(self):
+        self.make_client('a', 'dc')
+        self.build_tree({'dc/file': 'data'})
+        tree = WorkingTree.open("dc")
+        tree.add(["file"], ["fooid"])
+        tree.commit("msg")
+        tree.rename_one("file", "file2")
+        self.assertEqual(None, tree.inventory.path2id("file"))
+        self.assertEqual("fooid", tree.inventory.path2id("file2"))
+        tree = WorkingTree.open("dc")
+        self.assertEqual("fooid", tree.inventory.path2id("file2"))
+
+    def test_file_id_kept_2(self):
+        self.make_client('a', 'dc')
+        self.build_tree({'dc/file': 'data', 'dc/other': 'blaid'})
+        tree = WorkingTree.open("dc")
+        tree.add(["file", "other"], ["fooid", "blaid"])
+        self.assertEqual("fooid", tree.inventory.path2id("file"))
+        self.assertEqual("blaid", tree.inventory.path2id("other"))
+
+    def test_file_remove_id(self):
+        self.make_client('a', 'dc')
+        self.build_tree({'dc/file': 'data'})
+        tree = WorkingTree.open("dc")
+        tree.add(["file"], ["fooid"])
+        tree.commit("msg")
+        tree.remove(["file"])
+        self.assertEqual(None, tree.inventory.path2id("file"))
+        tree = WorkingTree.open("dc")
+        self.assertEqual(None, tree.inventory.path2id("file"))
+
+    def test_file_move_id(self):
+        self.make_client('a', 'dc')
+        self.build_tree({'dc/file': 'data', 'dc/dir': None})
+        tree = WorkingTree.open("dc")
+        tree.add(["file", "dir"], ["fooid", "blaid"])
+        tree.commit("msg")
+        tree.move(["file"], "dir")
+        self.assertEqual(None, tree.inventory.path2id("file"))
+        self.assertEqual("fooid", tree.inventory.path2id("dir/file"))
+        tree = WorkingTree.open("dc")
+        self.assertEqual(None, tree.inventory.path2id("file"))
+        self.assertEqual("fooid", tree.inventory.path2id("dir/file"))
