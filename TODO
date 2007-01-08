@@ -2,8 +2,8 @@
 - fix commits in heavyweight checkouts somehow
 - fix autorealm repository
 - handle parent directories of branches being moved correctly
-- fix "bzr status" in lightweight checkouts
- - faster "bzr status" in lightweight checkouts
+- faster "bzr status" in lightweight checkouts
+- don't update to the same revnum when opening working tree
 - avoid extra connect in logwalker?
 - get rid of use of `svn ls' in logwalker
 - make ListBranchingScheme() support wildcards

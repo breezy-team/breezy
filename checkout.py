@@ -17,7 +17,7 @@
 from binascii import hexlify
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
-                           NoRepositoryPresent)
+                           NoRepositoryPresent, BzrError)
 from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile,
                               InventoryLink, ROOT_ID)
 from bzrlib.lockable_files import TransportLock, LockableFiles
@@ -39,7 +39,15 @@ from tree import SvnBasisTree
 import os
 
 import svn.core, svn.wc
-from svn.core import SubversionException
+from svn.core import SubversionException, Pool
+
+class WorkingTreeInconsistent(BzrError):
+    _fmt = """Working copy is in inconsistent state (%(min_revnum)d:%(max_revnum)d)"""
+
+    def __init__(self, min_revnum, max_revnum):
+        self.min_revnum = min_revnum
+        self.max_revnum = max_revnum
+
 
 class SvnWorkingTree(WorkingTree):
     """Implementation of WorkingTree that uses a Subversion 
@@ -55,19 +63,19 @@ class SvnWorkingTree(WorkingTree):
         self.client_ctx.log_msg_baton2 = self.log_message_func
 
         wc = self._get_wc()
-        try:
-            self.base_revnum = svn.wc.get_ancestry(self.basedir, wc)[1]
-        finally:
-            svn.wc.adm_close(wc)
+        status = svn.wc.revision_status(self.basedir, None, True, None, None)
+        if status.min_rev != status.max_rev:
+            #raise WorkingTreeInconsistent(status.min_rev, status.max_rev)
+            rev = svn.core.svn_opt_revision_t()
+            rev.kind = svn.core.svn_opt_revision_number
+            rev.value.number = status.max_rev
+            assert status.max_rev == svn.client.update(self.basedir, rev,
+                                     True, self.client_ctx, Pool())
 
+        self.base_revnum = status.max_rev
+        self.base_tree = SvnBasisTree(self)
         self.base_revid = branch.repository.generate_revision_id(
                     self.base_revnum, branch.branch_path)
-
-        if self.base_revid != NULL_REVISION:
-            (bp, rev) = self.branch.repository.parse_revision_id(self.base_revid)
-            self.base_fileids = self.branch.repository.get_fileid_map(rev, bp)
-        else:
-            self.base_fileids = {"": (ROOT_ID, NULL_REVISION)}
 
         self._set_inventory(self.read_working_inventory(), dirty=False)
 
@@ -183,7 +191,9 @@ class SvnWorkingTree(WorkingTree):
         assert isinstance(path, basestring)
 
         (bp, rp) = self.branch.repository.scheme.unprefix(path)
-        return self.base_fileids[rp]
+        entry = self.base_tree.id_map[rp]
+        assert entry[0] is not None
+        return entry
 
     def read_working_inventory(self):
         inv = Inventory()
@@ -301,11 +311,15 @@ class SvnWorkingTree(WorkingTree):
         mutter('setting last revision to %r' % revid)
         if revid is None or revid == NULL_REVISION:
             self.base_revid = revid
-            self.base_fileids = self.branch.repository.get_fileid_map(0, "")
+            self.base_tree = FIXME
             return
 
         (bp, rev) = self.branch.repository.parse_revision_id(revid)
-        self.base_fileids = self.branch.repository.get_fileid_map(rev, bp)
+        assert bp == self.branch.branch_path
+        self.base_revnum = rev
+        self.base_revid = revid
+        self.base_tree = SvnBasisTree(self)
+
         # TODO: Implement more efficient version
         newrev = self.branch.repository.get_revision(revid)
         newrevtree = self.branch.repository.revision_tree(revid)
@@ -367,8 +381,9 @@ class SvnWorkingTree(WorkingTree):
                 commit_info.revision, self.branch.branch_path)
 
         self.base_revid = revid
-        self.base_fileids = self.branch.repository.get_fileid_map(
-                commit_info.revision, self.branch.branch_path)
+        self.base_revnum = commit_info.revision
+        self.base_tree = SvnBasisTree(self)
+
         #FIXME: Use public API:
         self.branch.revision_history()
         self.branch._revision_history.append(revid)
@@ -400,7 +415,7 @@ class SvnWorkingTree(WorkingTree):
         if self.base_revid is None or self.base_revid == NULL_REVISION:
             return self.branch.repository.revision_tree(self.base_revid)
 
-        return SvnBasisTree(self)
+        return self.base_tree
 
     def pull(self, source, overwrite=False, stop_revision=None):
         if stop_revision is None:

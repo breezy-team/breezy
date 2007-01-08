@@ -234,11 +234,14 @@ class SvnBasisTree(RevisionTree):
                                   svn.wc.schedule_delete, 
                                   svn.wc.schedule_replace):
                 return self.id_map[workingtree.branch.repository.scheme.unprefix(relpath)[1]]
+            return (None, None)
 
         def add_dir_to_inv(relpath, wc, parent_id):
             entries = svn.wc.entries_read(wc, False)
             entry = entries[""]
             (id, revid) = find_ids(entry)
+            if id == None:
+                return
 
             # First handle directory itself
             ie = self._inventory.add_path(relpath, 'directory', id)
@@ -263,7 +266,8 @@ class SvnBasisTree(RevisionTree):
                         svn.wc.adm_close(subwc)
                 else:
                     (subid, subrevid) = find_ids(entry)
-                    add_file_to_inv(subrelpath, subid, subrevid)
+                    if subid is not None:
+                        add_file_to_inv(subrelpath, subid, subrevid)
 
         wc = workingtree._get_wc() 
         try:
