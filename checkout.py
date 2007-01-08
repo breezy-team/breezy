@@ -33,7 +33,8 @@ from branch import SvnBranch
 from repository import (SvnRepository, escape_svn_path, SVN_PROP_BZR_MERGE,
                         SVN_PROP_SVK_MERGE, revision_id_to_svk_feature) 
 from scheme import BranchingScheme
-from transport import (SvnRaTransport, svn_config, bzr_to_svn_url) 
+from transport import (SvnRaTransport, svn_config, bzr_to_svn_url, 
+                       _create_auth_baton) 
 from tree import SvnBasisTree
 
 import os
@@ -59,8 +60,10 @@ class SvnWorkingTree(WorkingTree):
         self._branch = branch
         self.base_revnum = 0
         self.client_ctx = svn.client.create_context()
+        self.pool = Pool()
         self.client_ctx.log_msg_func2 = svn.client.svn_swig_py_get_commit_log_func
         self.client_ctx.log_msg_baton2 = self.log_message_func
+        self.client_ctx.auth_baton = _create_auth_baton(self.pool)
 
         wc = self._get_wc()
         status = svn.wc.revision_status(self.basedir, None, True, None, None)
