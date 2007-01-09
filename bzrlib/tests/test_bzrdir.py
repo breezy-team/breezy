@@ -398,14 +398,16 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_open_containing_tree_or_branch(self):
         def local_branch_path(branch):
-             return os.path.realpath(urlutils.local_path_from_url(branch.base))
+             return os.path.realpath(
+                urlutils.local_path_from_url(branch.base))
 
         self.make_branch_and_tree('topdir')
         tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
             'topdir/foo')
         self.assertEqual(os.path.realpath('topdir'), 
                          os.path.realpath(tree.basedir))
-        self.assertEqual(os.path.realpath('topdir'), local_branch_path(branch))
+        self.assertEqual(os.path.realpath('topdir'), 
+                         local_branch_path(branch))
         self.assertIs(tree.bzrdir, branch.bzrdir)
         self.assertEqual('foo', relpath)
         self.make_branch('topdir/foo')
