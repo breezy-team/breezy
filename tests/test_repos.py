@@ -1917,6 +1917,10 @@ class RevisionIdMappingTest(TestCase):
         self.assertEqual(u"svn-v%d:5@myuuid-branch\x2c" % MAPPING_VERSION, 
                          generate_svn_revision_id("myuuid", 5, u"branch\x2c"))
 
+    def test_generate_revid_special_char_ascii(self):
+        self.assertEqual("svn-v%d:5@myuuid-branch\x2c" % MAPPING_VERSION, 
+                         generate_svn_revision_id("myuuid", 5, "branch\x2c"))
+
     def test_parse_revid_simple(self):
         self.assertEqual(("uuid", "", 4),
                          parse_svn_revision_id(
@@ -1955,6 +1959,9 @@ class EscapeTest(TestCase):
 
     def test_escape_svn_path_slash(self):
         self.assertEqual("foobar%2f", escape_svn_path("foobar/"))
+
+    def test_escape_svn_path_special_char(self):
+        self.assertEqual(u"foobar%8a", escape_svn_path("foobar\x8a"))
 
     def test_unescape_svn_path_slash(self):
         self.assertEqual("foobar/", unescape_svn_path("foobar%2f"))

@@ -58,22 +58,14 @@ SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
 def escape_svn_path(id, unsafe="%/-\t \n"):
     assert "%" in unsafe
-    r = [((c in unsafe) and ('%%%02x' % ord(c)) or c)
+    r = [((c in unsafe) and (u'%%%02x' % ord(c)) or c)
          for c in id]
-    return ''.join(r)
+    return unicode(''.join(r))
 
 
-def unescape_svn_path(id):
-    ret = ""
-    i = 0
-    while i < len(id): 
-        if id[i] == '%':
-            ret += chr(int(id[i+1:i+3], 16))
-            i+=3
-        else:
-            ret += str(id[i])
-            i+=1
-    return ret
+import urllib
+
+unescape_svn_path = urllib.unquote
 
 
 def parse_svn_revision_id(revid):
@@ -116,7 +108,7 @@ def generate_svn_revision_id(uuid, revnum, path):
     assert revnum >= 0
     if revnum == 0:
         return NULL_REVISION
-    return "%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, uuid, escape_svn_path(path.strip("/")))
+    return unicode("%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, uuid, escape_svn_path(path.strip("/"))))
 
 
 def svk_feature_to_revision_id(feature):
