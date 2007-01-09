@@ -52,9 +52,9 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         repository = Repository.open("svn+"+repos_url)
 
         inv1 = repository.get_inventory(
-                "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
+                repository.generate_revision_id(1, ""))
         inv2 = repository.get_inventory(
-                "svn-v%d:2@%s-" % (MAPPING_VERSION, repository.uuid))
+                repository.generate_revision_id(2, ""))
         mutter('inv1: %r' % inv1.entries())
         mutter('inv2: %r' % inv2.entries())
         if RENAMES:
@@ -79,9 +79,9 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
-                "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
+                repository.generate_revision_id(1, ""))
         inv2 = repository.get_inventory(
-                "svn-v%d:2@%s-" % (MAPPING_VERSION, repository.uuid))
+                repository.generate_revision_id(2, ""))
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("bar"))
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("blie"))
         self.assertIs(None, inv1.path2id("bar"))
@@ -99,9 +99,9 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
-                "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
+                repository.generate_revision_id(1, ""))
         inv2 = repository.get_inventory(
-                "svn-v%d:2@%s-" % (MAPPING_VERSION, repository.uuid))
+                repository.generate_revision_id(2, ""))
         self.assertNotEqual(None, inv1.path2id("foo"))
         self.assertIs(None, inv2.path2id("foo"))
 
@@ -119,9 +119,9 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
-                "svn-v%d:1@%s-" % (MAPPING_VERSION, repository.uuid))
+                repository.generate_revision_id(1, ""))
         inv2 = repository.get_inventory(
-                "svn-v%d:2@%s-" % (MAPPING_VERSION, repository.uuid))
+                repository.generate_revision_id(2, ""))
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("foo"))
 
     def test_copy_branch(self):
@@ -137,18 +137,16 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         repository = bzrdir.find_repository()
 
         inv1 = repository.get_inventory(
-                "svn-v%d:1@%s-trunk" % (MAPPING_VERSION, repository.uuid))
+                repository.generate_revision_id(1, "trunk"))
         inv2 = repository.get_inventory(
-                "svn-v%d:2@%s-branches%%2fmybranch" % (MAPPING_VERSION, repository.uuid))
+                repository.generate_revision_id(2, "branches/mybranch"))
         self.assertEqual(inv1.path2id("dir"), inv2.path2id("dir"))
         self.assertEqual(inv1.path2id("dir/file"), inv2.path2id("dir/file"))
 
         fileid, revid = repository.get_fileid_map(2, 
                             "branches/mybranch")["dir/file"]
         self.assertEqual(fileid, inv1.path2id("dir/file"))
-        self.assertEqual(
-                "svn-v%d:1@%s-trunk" % (MAPPING_VERSION, repository.uuid), 
-                revid)
+        self.assertEqual(repository.generate_revision_id(1, "trunk"), revid)
 
 def sha1(str):
     return sha.new(str).hexdigest()
