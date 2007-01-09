@@ -1,8 +1,9 @@
 This document specifies mapping between Subversion and Bazaar semantics.
 
-Revision: 2
+Revision: 3
 Jelmer Vernooij <jelmer@samba.org>, June 2006.
 Updated October 2006.
+Updated January 2007.
 
 == Branch paths ==
 
@@ -45,7 +46,7 @@ including the branch path (trunk, branches/SAMBA_4_0, etc) in the
 revision-id. Example revision id:
 
 {{{
-svn-v2:14323@0c0555d6-39d7-0310-84fc-f1cc0bd64818-trunk
+svn-v3-trunk:0c0555d6-39d7-0310-84fc-f1cc0bd64818:trunk:14323
 }}}
 
 The version number is used to distinguish between versions of the mapping 
@@ -57,12 +58,11 @@ Once branching schemes can be manually specified, also needs to contain
 branching scheme as it might influence the parents of the current revision (if 
 a parent path is a branch according but not according to another).
 
-Since '/' and whitespaces are forbidden in revision ids, the '/', '-', '%' 
-and whitespace characters are all urlencoded. Example revision id for 
-branches/foobranch:
+Since '/' and whitespace are forbidden in revision ids, the branch paths
+are all urlencoded. Example revision id for branches/foobranch:
 
 {{{
-svn-v2:14323@0c0555d6-39d7-0310-84fc-f1cc0bd64818-branches%2ffoobranch
+svn-v3-trunk-1:0c0555d6-39d7-0310-84fc-f1cc0bd64818:branches%2Ffoobranch:14323
 }}}
 
 == File ids ==
@@ -73,7 +73,7 @@ the revisions between X and Y.
 
 File ids use the following syntax:
 
-svn-v<MAPPING_VERSION>:<REVNO>@<UUID>-<BRANCHPATH>-<PATH>
+<REVNO>@<UUID>-<BRANCHPATH>-<PATH>
 
 Since / is forbidden in file ids, the '/', '-', '%' and all whitespace
 characters are urlencoded.
@@ -106,7 +106,7 @@ receive a new file id.
 If the file id generated is longer than 150 bytes, the following format will 
 be used:
 
-<REVID>-<SHA1>-<FILENAME>
+<REVNO>@<UUID>-<SHA1>-<FILENAME>
 
 where <SHA1> is the sha1 of the path to the directory name.
 
@@ -171,3 +171,7 @@ Revision 1 was the original version of this document.
 
 Revision 2 enforces UTF-8-valid characters for everything except file 
 contents.
+
+Revision 3 changed the file id format, changed the urlencoding to be 
+uppercased, changed the separator between uuids and branch paths in the 
+revision id from "-" to ":" and added the branching scheme to the revision id.
