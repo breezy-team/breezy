@@ -479,6 +479,11 @@ foohosts""")
         result = branch.check()
         self.assertEqual(branch, result.branch) 
  
+    def test_generate_revision_id(self):
+        repos_url = self.make_client('d', 'dc')
+        branch = Branch.open('d')
+        self.assertEqual("svn-v%d:1@%s-" % (MAPPING_VERSION, branch.repository.uuid),  branch.generate_revision_id(1))
+
     def test_create_checkout(self):
         repos_url = self.make_client('d', 'dc')
 
