@@ -209,6 +209,9 @@ words: "filename", "revno".
 
 Consider naming classes as nouns and functions/methods as verbs.
 
+Try to avoid using abbreviations in names, because there can be
+inconsistency if other people use the full name.
+
 
 Standard names
 --------------
