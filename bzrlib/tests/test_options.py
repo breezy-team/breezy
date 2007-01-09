@@ -108,7 +108,7 @@ class OptionTests(TestCase):
         self.assertEqual({'format':'one'}, opts)
         opts, args = self.parse(options, ['--format', 'two'])
         self.assertEqual({'format':'two'}, opts)
-        self.assertRaises(errors.BadOptionParam, self.parse, options, 
+        self.assertRaises(errors.BadOptionValue, self.parse, options, 
                           ['--format', 'three'])
         self.assertRaises(errors.BzrCommandError, self.parse, options, 
                           ['--two'])

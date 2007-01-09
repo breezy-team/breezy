@@ -188,12 +188,17 @@ class Option(object):
 
 
 class RegistryOption(Option):
-    """Option based on a registry"""
+    """Option based on a registry
+    
+    The values for the options correspond to entries in the registry.  Input
+    must be a registry key.  After validation, it is converted into an object
+    using Registry.get or a caller-provided converter.
+    """
 
     def validate_value(self, value):
         """Validate a value name"""
         if value not in self.registry:
-            raise errors.BadOptionParam(self.name, value)
+            raise errors.BadOptionValue(self.name, value)
 
     def convert(self, value):
         """Convert a value name into an output type"""
@@ -212,7 +217,7 @@ class RegistryOption(Option):
         :param help: Help for the option.
         :param registry: A Registry containing the values
         :param converter: Callable to invoke with the value name to produce
-            the value.  If not supplied, registry.get is used.
+            the value.  If not supplied, self.registry.get is used.
         :param value_switches: If true, each possible value is assigned its
             own switch.  For example, instead of '--format metaweave', 
             '--metaweave' can be used interchangeably.
@@ -249,6 +254,7 @@ class RegistryOption(Option):
         if self.value_switches:
             for key in sorted(self.registry.keys()):
                 yield key, None, None, self.registry.get_help(key)
+
 
 class OptionParser(optparse.OptionParser):
     """OptionParser that raises exceptions instead of exiting"""
