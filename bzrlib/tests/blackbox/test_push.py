@@ -20,6 +20,9 @@
 
 import os
 
+from bzrlib import (
+    errors,
+    )
 import bzrlib
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirMetaFormat1
@@ -160,3 +163,73 @@ class TestPush(ExternalBase):
         t.add('filename', 'funky-chars<>%&;"\'')
         t.commit('commit filename')
         self.run_bzr('push', '../new-tree')
+
+    def create_simple_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a'])
+        tree.add(['a'], ['a-id'])
+        tree.commit('one', rev_id='r1')
+        return tree
+
+    def test_push_create_prefix(self):
+        """'bzr push --create-prefix' will create leading directories."""
+        tree = self.create_simple_tree()
+
+        self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
+                           'push', '../new/tree',
+                           working_dir='tree')
+        self.run_bzr('push', '../new/tree', '--create-prefix',
+                     working_dir='tree')
+        new_tree = WorkingTree.open('new/tree')
+        self.assertEqual(tree.last_revision(), new_tree.last_revision())
+        self.failUnlessExists('new/tree/a')
+
+    def test_push_use_existing(self):
+        """'bzr push --use-existing' can push into a dir that already exists.
+
+        By default, 'bzr push' will not use an existing, non-versioned dir.
+        """
+        tree = self.create_simple_tree()
+        self.build_tree(['target/'])
+
+        self.run_bzr_error(['Target directory ../target already exists',
+                            'Supply --use-existing',
+                           ], 'push', '../target',
+                           working_dir='tree')
+        
+        self.run_bzr('push', '--use-existing', '../target',
+                     working_dir='tree')
+
+        new_tree = WorkingTree.open('target')
+        self.assertEqual(tree.last_revision(), new_tree.last_revision())
+        # The push should have created target/a
+        self.failUnlessExists('target/a')
+
+    def test_push_onto_repo(self):
+        """We should be able to 'bzr push' into an existing bzrdir."""
+        tree = self.create_simple_tree()
+        repo = self.make_repository('repo', shared=True)
+
+        self.run_bzr('push', '../repo',
+                     working_dir='tree')
+
+        # Pushing onto an existing bzrdir will create a repository and
+        # branch as needed, but will only create a working tree if there was
+        # no BzrDir before.
+        self.assertRaises(errors.NoWorkingTree, WorkingTree.open, 'repo')
+        new_branch = Branch.open('repo')
+        self.assertEqual(tree.last_revision(), new_branch.last_revision())
+
+    def test_push_onto_just_bzrdir(self):
+        """We don't handle when the target is just a bzrdir.
+
+        Because you shouldn't be able to create *just* a bzrdir in the wild.
+        """
+        # TODO: jam 20070109 Maybe it would be better to create the repository
+        #       if at this point
+        tree = self.create_simple_tree()
+        a_bzrdir = self.make_bzrdir('dir')
+
+        self.run_bzr_error(['At ../dir you have a valid .bzr control'],
+                'push', '../dir',
+                working_dir='tree')

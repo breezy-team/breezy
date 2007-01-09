@@ -592,14 +592,20 @@ class cmd_push(Command):
     """
 
     takes_options = ['remember', 'overwrite', 'verbose',
-                     Option('create-prefix', 
+                     Option('create-prefix',
                             help='Create the path leading up to the branch '
-                                 'if it does not already exist')]
+                                 'if it does not already exist'),
+                     Option('use-existing',
+                            help='By default push will fail if the target'
+                                 ' directory exists, but does not already'
+                                 ' have a control directory. This flag will'
+                                 ' allow push to proceed.'),
+                     ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
-            create_prefix=False, verbose=False):
+            create_prefix=False, verbose=False, use_existing=False):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
         
@@ -618,35 +624,75 @@ class cmd_push(Command):
         location_url = to_transport.base
 
         old_rh = []
+        count = 0
+
+        br_to = repository_to = dir_to = None
         try:
-            dir_to = bzrdir.BzrDir.open(location_url)
-            br_to = dir_to.open_branch()
+            dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
         except errors.NotBranchError:
-            # create a branch.
-            to_transport = to_transport.clone('..')
-            if not create_prefix:
+            pass # Didn't find anything
+        else:
+            # If we can open a branch, use its direct repository, otherwise see
+            # if there is a repository without a branch.
+            try:
+                br_to = dir_to.open_branch()
+            except errors.NotBranchError:
+                # Didn't find a branch, can we find a repository?
                 try:
-                    relurl = to_transport.relpath(location_url)
-                    mutter('creating directory %s => %s', location_url, relurl)
-                    to_transport.mkdir(relurl)
-                except errors.NoSuchFile:
-                    raise errors.BzrCommandError("Parent directory of %s "
-                                                 "does not exist." % location)
+                    repository_to = dir_to.find_repository()
+                except errors.NoRepositoryPresent:
+                    pass
             else:
-                current = to_transport.base
-                needed = [(to_transport, to_transport.relpath(location_url))]
-                while needed:
+                # Found a branch, so we must have found a repository
+                repository_to = br_to.repository
+
+        old_rh = []
+        if dir_to is None:
+            # XXX: Refactor the create_prefix/no_create_prefix code into a
+            #      common helper function
+            try:
+                to_transport.mkdir('.')
+            except errors.FileExists:
+                if not use_existing:
+                    raise errors.BzrCommandError("Target directory %s"
+                                                 " already exists, but does not"
+                                                 " have a valid .bzr directory."
+                                                 " Supply --use-existing to"
+                                                 " push there anyway."
+                                                 % location)
+            except errors.NoSuchFile:
+                if not create_prefix:
+                    raise errors.BzrCommandError("Parent directory of %s"
+                        " does not exist."
+                        "\nYou may supply --create-prefix to create all"
+                        " leading parent directories."
+                        % location)
+
+                cur_transport = to_transport
+                needed = [cur_transport]
+                # Recurse upwards until we can create a directory successfully
+                while True:
+                    new_transport = cur_transport.clone('..')
+                    if new_transport.base == cur_transport.base:
+                        raise errors.BzrCommandError("Failed to create path"
+                                                     " prefix for %s."
+                                                     % location)
                     try:
-                        to_transport, relpath = needed[-1]
-                        to_transport.mkdir(relpath)
-                        needed.pop()
+                        new_transport.mkdir('.')
                     except errors.NoSuchFile:
-                        new_transport = to_transport.clone('..')
-                        needed.append((new_transport,
-                                       new_transport.relpath(to_transport.base)))
-                        if new_transport.base == to_transport.base:
-                            raise errors.BzrCommandError("Could not create "
-                                                         "path prefix.")
+                        needed.append(new_transport)
+                        cur_transport = new_transport
+                    else:
+                        break
+
+                # Now we only need to create child directories
+                while needed:
+                    cur_transport = needed.pop()
+                    cur_transport.mkdir('.')
+            
+            # Now the target directory exists, but doesn't have a .bzr
+            # directory. So we need to create it, along with any work to create
+            # all of the dependent branches, etc.
             dir_to = br_from.bzrdir.clone(location_url,
                 revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
@@ -654,7 +700,26 @@ class cmd_push(Command):
             # We successfully created the target, remember it
             if br_from.get_push_location() is None or remember:
                 br_from.set_push_location(br_to.base)
-        else:
+        elif repository_to is None:
+            # we have a bzrdir but no branch or repository
+            # XXX: Figure out what to do other than complain.
+            raise errors.BzrCommandError("At %s you have a valid .bzr control"
+                " directory. But we could not find a valid repository or"
+                " branch associated with it. This is an unsupported"
+                " configuration. Please move the target directory out of the"
+                " way and try again."
+                % location)
+        elif br_to is None:
+            # We have a repository but no branch, copy the revisions, and then
+            # create a branch.
+            last_revision_id = br_from.last_revision()
+            repository_to.fetch(br_from.repository,
+                                revision_id=last_revision_id)
+            br_to = br_from.clone(dir_to, revision_id=last_revision_id)
+            count = len(br_to.revision_history())
+            if br_from.get_push_location() is None or remember:
+                br_from.set_push_location(br_to.base)
+        else: # We have a valid to branch
             # We were able to connect to the remote location, so remember it
             # we don't need to successfully push because of possible divergence.
             if br_from.get_push_location() is None or remember:
