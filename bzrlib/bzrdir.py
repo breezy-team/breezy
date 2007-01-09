@@ -46,6 +46,7 @@ from bzrlib import (
     registry,
     revision as _mod_revision,
     repository as _mod_repository,
+    symbol_versioning,
     urlutils,
     xml4,
     xml5,
@@ -204,18 +205,18 @@ class BzrDir(object):
 
     # TODO: Should take a Transport
     @classmethod
-    def create(cls, base):
+    def create(cls, base, format=None):
         """Create a new BzrDir at the url 'base'.
         
         This will call the current default formats initialize with base
         as the only parameter.
 
-        If you need a specific format, consider creating an instance
-        of that and calling initialize().
+        :param format: If supplied, the format of branch to create.  If not
+            supplied, the default is used.
         """
         if cls is not BzrDir:
-            raise AssertionError("BzrDir.create always creates the default format, "
-                    "not one of %r" % cls)
+            raise AssertionError("BzrDir.create always creates the default"
+                " format, not one of %r" % cls)
         head, tail = urlutils.split(base)
         if tail and tail != '.':
             t = get_transport(head)
@@ -223,7 +224,9 @@ class BzrDir(object):
                 t.mkdir(tail)
             except errors.FileExists:
                 pass
-        return BzrDirFormat.get_default_format().initialize(safe_unicode(base))
+        if format is None:
+            format = BzrDirFormat.get_default_format()
+        return format.initialize(safe_unicode(base))
 
     def create_branch(self):
         """Create a branch in this BzrDir.
@@ -234,7 +237,7 @@ class BzrDir(object):
         raise NotImplementedError(self.create_branch)
 
     @staticmethod
-    def create_branch_and_repo(base, force_new_repo=False):
+    def create_branch_and_repo(base, force_new_repo=False, format=None):
         """Create a new BzrDir, Branch and Repository at the url 'base'.
 
         This will use the current default BzrDirFormat, and use whatever 
@@ -247,7 +250,7 @@ class BzrDir(object):
         :param base: The URL to create the branch at.
         :param force_new_repo: If True a new repository is always created.
         """
-        bzrdir = BzrDir.create(base)
+        bzrdir = BzrDir.create(base, format)
         bzrdir._find_or_create_repository(force_new_repo)
         return bzrdir.create_branch()
 
@@ -291,10 +294,7 @@ class BzrDir(object):
             t = get_transport(safe_unicode(base))
             if not isinstance(t, LocalTransport):
                 raise errors.NotLocalUrl(base)
-        if format is None:
-            bzrdir = BzrDir.create(base)
-        else:
-            bzrdir = format.initialize(base)
+        bzrdir = BzrDir.create(base, format)
         repo = bzrdir._find_or_create_repository(force_new_repo)
         result = bzrdir.create_branch()
         if force_new_tree or (repo.make_working_trees() and 
@@ -306,11 +306,12 @@ class BzrDir(object):
         return result
         
     @staticmethod
-    def create_repository(base, shared=False):
+    def create_repository(base, shared=False, format=None):
         """Create a new BzrDir and Repository at the url 'base'.
 
-        This will use the current default BzrDirFormat, and use whatever 
-        repository format that that uses for bzrdirformat.create_repository.
+        If no format is supplied, this will default to the current default
+        BzrDirFormat by default, and use whatever repository format that that
+        uses for bzrdirformat.create_repository.
 
         :param shared: Create a shared repository rather than a standalone
                        repository.
@@ -320,11 +321,11 @@ class BzrDir(object):
         it should take no parameters and construct whatever repository format
         that child class desires.
         """
-        bzrdir = BzrDir.create(base)
+        bzrdir = BzrDir.create(base, format)
         return bzrdir.create_repository(shared)
 
     @staticmethod
-    def create_standalone_workingtree(base):
+    def create_standalone_workingtree(base, format=None):
         """Create a new BzrDir, WorkingTree, Branch and Repository at 'base'.
 
         'base' must be a local path or a file:// url.
@@ -339,7 +340,8 @@ class BzrDir(object):
         if not isinstance(t, LocalTransport):
             raise errors.NotLocalUrl(base)
         bzrdir = BzrDir.create_branch_and_repo(safe_unicode(base),
-                                               force_new_repo=True).bzrdir
+                                               force_new_repo=True,
+                                               format=format).bzrdir
         return bzrdir.create_workingtree()
 
     def create_workingtree(self, revision_id=None):
@@ -1208,7 +1210,13 @@ class BzrDirFormat(object):
         klass._control_formats.append(format)
 
     @classmethod
+    @symbol_versioning.deprecated_method(symbol_versioning.zero_fourteen)
     def set_default_format(klass, format):
+        klass._default_format = format
+
+    @classmethod
+    def _set_default_format(klass, format):
+        """Set default format (for testing behavior of defaults only)"""
         klass._default_format = format
 
     def __str__(self):
@@ -1452,7 +1460,7 @@ BzrDirFormat.register_format(BzrDirFormat5())
 BzrDirFormat.register_format(BzrDirFormat6())
 __default_format = BzrDirMetaFormat1()
 BzrDirFormat.register_format(__default_format)
-BzrDirFormat.set_default_format(__default_format)
+BzrDirFormat._default_format = __default_format
 
 
 class BzrDirTestProviderAdapter(object):
@@ -1998,6 +2006,21 @@ class BzrDirFormatRegistry(registry.Registry):
         """
         registry.Registry.register(self, 'default', self.get(key), 
             self.get_help(key), info=self.get_info(key))
+
+    def set_default_repository(self, key):
+        """Set the FormatRegistry default and Repository default.
+        
+        This is a transitional method while Repository.set_default_format
+        is deprecated.
+        """
+        if 'default' in self:
+            self.remove('default')
+        self.set_default(key)
+        format = self.get('default')()
+        assert isinstance(format, BzrDirMetaFormat1)
+        from bzrlib import repository
+        repository.RepositoryFormat._set_default_format(
+            format.repository_format)
 
     def make_bzrdir(self, key):
         return self.get(key)()
