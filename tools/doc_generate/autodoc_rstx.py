@@ -115,7 +115,7 @@ def format_command (params, cmd, name):
             l = '        --' + option_name
             if option.type is not None:
                 l += ' ' + option.argname.upper()
-            short_name = option.short_name()
+            short_name = option.short_name
             if short_name:
                 assert len(short_name) == 1
                 l += ', -' + short_name
@@ -194,7 +194,7 @@ Environment
                 E-Mail address of the user. Overrides default user config.
 
 **EMAIL**
-                E-Mail address of the user. Overriddes default user config.
+                E-Mail address of the user. Overrides default user config.
 
 **BZR_EDITOR**
                 Editor for editing commit messages

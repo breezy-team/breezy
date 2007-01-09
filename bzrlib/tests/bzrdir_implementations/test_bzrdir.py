@@ -1261,7 +1261,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('.')
         if dir.can_convert_format():
             # if its default updatable there must be an updater 
-            # (we force the lastest known format as downgrades may not be
+            # (we force the latest known format as downgrades may not be
             # available
             self.assertTrue(isinstance(dir._format.get_converter(
                 format=dir._format), bzrdir.Converter))
@@ -1276,7 +1276,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.createWorkingTreeOrSkip(dir)
         if dir.can_convert_format():
             # if its default updatable there must be an updater 
-            # (we force the lastest known format as downgrades may not be
+            # (we force the latest known format as downgrades may not be
             # available
             pb = ui.ui_factory.nested_progress_bar()
             try:
