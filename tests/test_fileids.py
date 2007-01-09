@@ -288,7 +288,7 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Msg")
         self.build_tree({"dc/trunk/file": 'otherdata'})
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (ROOT_ID, "svn-v%d:3@%s-trunk" % (MAPPING_VERSION, self.repos.uuid)), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), "svn-v%d:3@%s-trunk" % (MAPPING_VERSION, self.repos.uuid))}, self.repos.get_fileid_map(3, "trunk"))
+        self.assertEqual({"": (ROOT_ID, self.repos.generate_revision_id(3, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(3, "trunk"))}, self.repos.get_fileid_map(3, "trunk"))
 
     def test_sibling_unrelated(self):
         self.repos.set_branching_scheme(TrunkBranchingScheme())
@@ -301,7 +301,7 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Msg")
         self.build_tree({"dc/trunk/file": 'otherdata'})
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (ROOT_ID, "svn-v%d:3@%s-trunk" % (MAPPING_VERSION, self.repos.uuid)), "bar": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "bar"), "svn-v%d:2@%s-trunk" % (MAPPING_VERSION, self.repos.uuid)), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), "svn-v%d:3@%s-trunk" % (MAPPING_VERSION, self.repos.uuid))}, self.repos.get_fileid_map(3, "trunk"))
+        self.assertEqual({"": (ROOT_ID, self.repos.generate_revision_id(3, "trunk")), "bar": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "bar"), "svn-v%d:2@%s-trunk" % (MAPPING_VERSION, self.repos.uuid)), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(3, "trunk"))}, self.repos.get_fileid_map(3, "trunk"))
 
     def test_copy(self):
         self.repos.set_branching_scheme(TrunkBranchingScheme())
@@ -313,7 +313,9 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Msg")
         self.client_copy("dc/trunk/file", "dc/trunk/bar")
         self.client_commit("dc", "Msg")
-        self.assertEqual({"": (ROOT_ID, "svn-v%d:3@%s-trunk" % (MAPPING_VERSION, self.repos.uuid)), "bar": (generate_svn_file_id(self.repos.uuid, 3, "trunk", "bar"), "svn-v%d:3@%s-trunk" % (MAPPING_VERSION, self.repos.uuid)), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), "svn-v%d:2@%s-trunk" % (MAPPING_VERSION, self.repos.uuid))}, self.repos.get_fileid_map(3, "trunk"))
+        self.assertEqual({
+            "": (ROOT_ID, self.repos.generate_revision_id(3, "trunk")), 
+            "bar": (generate_svn_file_id(self.repos.uuid, 3, "trunk", "bar"), self.repos.generate_revision_id(3, "trunk")), "file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "file"), self.repos.generate_revision_id(2, "trunk"))}, self.repos.get_fileid_map(3, "trunk"))
 
     def test_copy_nested_modified(self):
         self.repos.set_branching_scheme(TrunkBranchingScheme())
@@ -328,13 +330,13 @@ class GetMapTests(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Msg")
         self.assertEqual({
           "": (ROOT_ID, 
-            "svn-v%d:3@%s-trunk" % (MAPPING_VERSION, self.repos.uuid)), 
+            self.repos.generate_revision_id(3, "trunk")), 
           "dir": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "dir"), 
-               "svn-v%d:2@%s-trunk" % (MAPPING_VERSION, self.repos.uuid)), 
+                self.repos.generate_revision_id(2, "trunk")),
           "dir/file": (generate_svn_file_id(self.repos.uuid, 2, "trunk", "dir/file"), 
-            "svn-v%d:2@%s-trunk" % (MAPPING_VERSION, self.repos.uuid)), 
+              self.repos.generate_revision_id(2, "trunk")),
           "bar": (generate_svn_file_id(self.repos.uuid, 3, "trunk", "bar"), 
-               "svn-v%d:3@%s-trunk" % (MAPPING_VERSION, self.repos.uuid)), 
+              self.repos.generate_revision_id(3, "trunk")),
           "bar/file": (generate_svn_file_id(self.repos.uuid, 3, "trunk", "bar/file"), 
-               "svn-v%d:3@%s-trunk" % (MAPPING_VERSION, self.repos.uuid))}, 
+              self.repos.generate_revision_id(3, "trunk"))},
             self.repos.get_fileid_map(3, "trunk"))

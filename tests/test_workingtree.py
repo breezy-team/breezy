@@ -166,7 +166,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_update("dc")
         tree = WorkingTree.open("dc")
         self.assertEqual(
-            "svn-v%d:1@%s-" % (MAPPING_VERSION, tree.branch.repository.uuid),
+            tree.branch.generate_revision_id(1),
             tree.basis_tree().get_revision_id())
 
     def test_move(self):
@@ -346,14 +346,14 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         orig_tree = tree.basis_tree()
         tree.commit(message="data")
         self.assertEqual(
-                "svn-v%d:1@%s-" % (MAPPING_VERSION, tree.branch.repository.uuid), 
+                tree.branch.generate_revision_id(1),
                 tree.basis_tree().get_revision_id())
         delta = tree.basis_tree().changes_from(orig_tree)
         self.assertTrue(delta.has_changed())
         tree = WorkingTree.open("dc")
         delta = tree.basis_tree().changes_from(tree)
         self.assertEqual(
-             "svn-v%d:1@%s-" % (MAPPING_VERSION, tree.branch.repository.uuid), 
+             tree.branch.generate_revision_id(1),
              tree.basis_tree().get_revision_id())
         self.assertFalse(delta.has_changed())
 
