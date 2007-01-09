@@ -1413,7 +1413,9 @@ class TestCaseWithMemoryTransport(TestCase):
                     t.mkdir('.')
                 except errors.FileExists:
                     pass
-            if format is None:
+            if isinstance(format, basestring):
+                format = bzrdir.format_registry.make_bzrdir(format)
+            elif format is None:
                 format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
             return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
