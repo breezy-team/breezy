@@ -1212,7 +1212,7 @@ class BzrDirFormat(object):
     @classmethod
     @symbol_versioning.deprecated_method(symbol_versioning.zero_fourteen)
     def set_default_format(klass, format):
-        klass._default_format = format
+        klass._set_default_format(format)
 
     @classmethod
     def _set_default_format(klass, format):
