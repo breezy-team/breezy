@@ -29,6 +29,7 @@ it.
 from cStringIO import StringIO
 import re
 import sys
+import textwrap
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -114,15 +115,15 @@ def _inject_get_with_hints(klass, kget, args, defaults):
     # Prepare the injection
     kmodule = klass.__module__
     kname = klass.__name__
-    code = """
-from %(kmodule)s import %(kname)s
+    code = textwrap.dedent("""\
+    from %(kmodule)s import %(kname)s
 
-def get%(new_params)s:
-    return self._get_without_hints%(old_params)s
+    def get%(new_params)s:
+        return self._get_without_hints%(old_params)s
 
-%(kname)s._get_without_hints = %(kname)s.get
-%(kname)s.get = get
-"""
+    %(kname)s._get_without_hints = %(kname)s.get
+    %(kname)s.get = get
+    """)
     code = code % locals() # So we can access our just cooked strings
 
     # Compilation *and* evaluation are necessary to achieve the
@@ -147,6 +148,7 @@ def _check_get_with_hints(klass):
                    dict(klass=klass, name='get',
                         joined=inspect.formatargspec(args, varargs, varkw,
                                                      defaults,)))
+            # A poor implementation of the python 2.5 functools.partial
             _inject_get_with_hints(klass, klass.get, args, defaults)
             args, varargs, varkw, defaults = inspect.getargspec(klass.get)
             mutter('in %(klass)r, proto is now: %(name)s%(joined)s' % \
@@ -267,6 +269,57 @@ class _CoalescedOffset(object):
                    (other.start, other.length, other.ranges))
 
 
+class TransportHints(dict):
+    """A specialization of dict targeted to hints handling.
+
+    This class is only a helper for daughter classes and serve no
+    purpose by itself: its main purpose is to simplify the
+    writing of the daughter classes respecting some simple rules.
+    """
+
+    _deprecated_hints = {'deprecated_hint_example': 'use shiny_hint instead'}
+    """Hint name associated with the explanation presented as a note"""
+
+    _valid_hints = {}
+    """Hint name with its default value"""
+
+    def __init__(self, **hints):
+        """Init object from daughter classes definitions"""
+        for (name, value) in hints.iteritems():
+            status, value = self.check_hint(name, value)
+            if status is 'valid':
+                self[name] = value
+            elif status is 'deprecated':
+                symbol_versioning.warn('hint %s is deprecated: %s' % (name,
+                                                                      value),
+                                       DeprecationWarning)
+            else:
+                raise errors.UnknownHint(name)
+
+        # Add default values
+        for name, value in self._valid_hints.iteritems():
+            if not self.has_key(name):
+                self[name] = value
+
+    def check_hint(self, name, value):
+        if self._valid_hints.has_key(name):
+            return 'valid', value
+        elif self._deprecated_hints.has_key(name):
+            return 'deprecated', self._deprecated_hints[name]
+        else:
+            return 'unknown', None
+
+
+class TransportGetHints(TransportHints):
+    """Hints for transport get method"""
+
+    _valid_hints = TransportHints._valid_hints
+
+    # When a transport is queried for a file, it will silently
+    # follow redirections (if any) except if told otherwise.
+    _valid_hints['follow_redirections'] = True
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -295,6 +348,11 @@ class Transport(object):
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
+
+    @classmethod
+    def create_get_hints(cls, **hints):
+        """Create a hints object to be used with the get method"""
+        return TransportGetHints(**hints)
 
     def _translate_error(self, e, path, raise_generic=True):
         """Translate an IOError or OSError into an appropriate bzr error.
@@ -1245,6 +1303,7 @@ class TransportLogger(object):
 register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
+# Decorated http transport
 register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
@@ -1253,6 +1312,7 @@ register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
+# Default http transports (last declared wins (if it can be imported))
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',

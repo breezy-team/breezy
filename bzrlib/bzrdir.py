@@ -509,9 +509,6 @@ class BzrDir(object):
         :param transport: Transport containing the bzrdir.
         :param _unsupported: private.
         """
-        # FIXME: Put that outside the static method once I
-        # understand how to do it.
-
         initial_base = transport.base
         redirected = True # to enter the loop
         redirections = 0
@@ -1103,8 +1100,8 @@ class BzrDirFormat(object):
     def probe_transport(klass, transport):
         """Return the .bzrdir style transport present at URL."""
         try:
-            format_file = transport.get(".bzr/branch-format",
-                                        follow_redirections=False)
+            hints = transport.create_get_hints(follow_redirections=False)
+            format_file = transport.get(".bzr/branch-format",**hints)
             format_string = format_file.read()
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)

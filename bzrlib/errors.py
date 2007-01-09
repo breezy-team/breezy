@@ -1106,7 +1106,15 @@ class RedirectRequested(TransportError):
         else:
             self.permanently = ''
         self.is_permament = is_permament
-        TransportError.__init__(self, source)
+        TransportError.__init__(self)
+
+
+class UnknownHint(TransportError):
+
+    _fmt = '%(hint) is not known'
+
+    def __init_(self, source, hint):
+        self.hint = hint
 
 
 class ConflictsInTree(BzrError):

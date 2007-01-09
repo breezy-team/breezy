@@ -1800,6 +1800,7 @@ def test_suite():
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
+                   'bzrlib.tests.test_transport_hints',
                    'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_treebuilder',
                    'bzrlib.tests.test_tsort',

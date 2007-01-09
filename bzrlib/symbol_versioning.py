@@ -139,6 +139,8 @@ def deprecated_passed(parameter_value):
     # def __init__(self, bad, other)
     # def __init__(self, **kwargs)
     # RBC 20060116
+    # You mean something along the lines of python 2.5 functools.partial ?
+    # vila 20070109
     return not parameter_value is DEPRECATED_PARAMETER
 
 
