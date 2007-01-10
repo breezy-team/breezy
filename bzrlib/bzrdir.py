@@ -1102,8 +1102,7 @@ class BzrDirFormat(object):
     def probe_transport(klass, transport):
         """Return the .bzrdir style transport present at URL."""
         try:
-            hints = transport.create_get_hints(follow_redirections=False)
-            format_file = transport.get(".bzr/branch-format",**hints)
+            format_file = transport.get(".bzr/branch-format")
             format_string = format_file.read()
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
@@ -1489,6 +1488,24 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def __set_repository_format(self, value):
         """Allow changint the repository format for metadir formats."""
         self._repository_format = value
+
+    @classmethod
+    def probe_transport(klass, transport):
+        """Return the .bzrdir style transport present at URL.
+
+        Redirections are not followed.
+        """
+        try:
+            hints = transport.create_get_hints(follow_redirections=False)
+            format_file = transport.get(".bzr/branch-format",**hints)
+            format_string = format_file.read()
+        except errors.NoSuchFile:
+            raise errors.NotBranchError(path=transport.base)
+
+        try:
+            return klass._formats[format_string]
+        except KeyError:
+            raise errors.UnknownFormatError(format=format_string)
 
     repository_format = property(__return_repository_format, __set_repository_format)
 

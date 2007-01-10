@@ -82,79 +82,33 @@ def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
         warnings.warn("register_transport(override) is deprecated")
     _protocol_handlers.setdefault(prefix, []).insert(0, klass)
 
-def _inject_get_with_hints(klass, kget, args, defaults):
-    """Provide a new get method with an hints parameter.
-
-    :param klass: the klass ignorant of hints
-    :param kget: the actual get method
-    :param args: the actual parameters of the get method
-    :param defaults: the optional default values of the above parameters
-    """
-    import inspect # Costly, hence done only if necessary
-    # Prepare the call to the old version (without self and
-    # default values)
-    old_params = inspect.formatargspec(args[1:])
-
-    # We want to evaluate this prototype later, in a context
-    # where we can access the default values, whatever they are
-    # (i.e. we could have embedded constants directly but a
-    # default value can be an object, so we really need to access
-    # its value, not its stringified representation).  To achieve
-    # that, we need to differ the evaluation of the default value
-    # and we use an hopefully hard to conflict with name (four
-    # trailing '_', now try to conflict with *that* !)
-    values_for_eval____ = []
-    def format_value_for_evaluation(value):
-        values_for_eval____.append(value)
-        return "=values_for_eval____[%d]" % (len(values_for_eval____) - 1)
-
-    # Add the new hints parameter
-    new_params = inspect.formatargspec(args, varkw='hints', defaults=defaults,
-                                       formatvalue=format_value_for_evaluation)
-
-    # Prepare the injection
-    kmodule = klass.__module__
-    kname = klass.__name__
-    code = textwrap.dedent("""\
-    from %(kmodule)s import %(kname)s
-
-    def get%(new_params)s:
-        return self._get_without_hints%(old_params)s
-
-    %(kname)s._get_without_hints = %(kname)s.get
-    %(kname)s.get = get
-    """)
-    code = code % locals() # So we can access our just cooked strings
-
-    # Compilation *and* evaluation are necessary to achieve the
-    # desired effect: declare a new sub and evaluate its default
-    # values in the right context.
-    mutter('Will inject: %s' % code)
-    eval(compile(code, '<compatibility kitchen>', 'exec'))
-
-def _check_get_with_hints(klass):
-    import inspect # Costly, hence done only if necessary
-    args, varargs, varkw, defaults = inspect.getargspec(klass.get)
-    kgetwh = getattr(klass,'_get_without_hints',None)
-
-    if kgetwh is None: # Don't try to inject twice
-        # We are searching for a get method without varargs (we
-        # don't handle them as part of our compatibility process)
-        # lacking a 'hints' arg.
-        # FIXME: if varkw is not None, issue a warning
-        if not 'hints' in args and varkw is None:
+def _add_hints_to_get(klass):
+    if getattr(klass,'_get_without_hints',None) is None:
+        # Importing inspect is costly (see
+        # bzrlib.inspect_for_copy). But, on the other hand, it
+        # provides us the service we want in an official way, so
+        # better use it instead of rewriting our own version.
+        import inspect
+        args, varargs, varkw, defaults = inspect.getargspec(klass.get)
+        if varkw is None:
             # Looks like we have a candidate here
             mutter('in %(klass)r, original proto is: %(name)s%(joined)s' % \
                    dict(klass=klass, name='get',
                         joined=inspect.formatargspec(args, varargs, varkw,
                                                      defaults,)))
-            # A poor implementation of the python 2.5 functools.partial
-            _inject_get_with_hints(klass, klass.get, args, defaults)
+            klass._get_without_hints = klass.get
+            def get(self, *gvarargs, **hints):
+                return self._get_without_hints(*gvarargs)
+
+            klass.get = get
+            # Inform user
             args, varargs, varkw, defaults = inspect.getargspec(klass.get)
             mutter('in %(klass)r, proto is now: %(name)s%(joined)s' % \
                    dict(klass=klass, name='get',
                         joined=inspect.formatargspec(args, varargs, varkw,
                                                      defaults,)))
+            return True
+    return False
 
 def register_lazy_transport(scheme, module, classname):
     """Register lazy-loaded transport class.
@@ -175,7 +129,10 @@ def register_lazy_transport(scheme, module, classname):
         mod = __import__(module, globals(), locals(), [classname])
         klass = getattr(mod, classname)
         # FIXME: Cache the patched transports ?
-        _check_get_with_hints(klass)
+        if _add_hints_to_get(klass):
+            symbol_versioning.warn('Transport %s should declare a **hints'
+                                   ' parameter for its get method'
+                                   % classname, DeprecationWarning)
         return klass(base)
     _loader.module = module
     _loader.classname = classname
@@ -350,7 +307,7 @@ class Transport(object):
         self.base = base
 
     @classmethod
-    def create_get_hints(cls, **hints):
+    def create_get_hints(klass, **hints):
         """Create a hints object to be used with the get method"""
         return TransportGetHints(**hints)
 
