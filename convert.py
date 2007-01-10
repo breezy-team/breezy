@@ -26,9 +26,9 @@ import tempfile
 from bzrlib.plugin import load_plugins
 load_plugins()
 
-from bzrlib.bzrdir import BzrDir
+from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.branch import Branch
-from bzrlib.errors import BzrError, NotBranchError, NoSuchFile
+from bzrlib.errors import BzrError, NotBranchError, NoSuchFile, NoRepositoryPresent
 import bzrlib.osutils as osutils
 from bzrlib.progress import DummyProgress
 from bzrlib.repository import Repository
@@ -78,6 +78,7 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
                        working_trees=False, all=False):
     assert not all or create_shared_repo
 
+
     if os.path.isfile(url):
         tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
         mutter('loading dumpfile %r to %r' % (url, tmp_repos))
@@ -86,21 +87,29 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
     else:
         tmp_repos = None
 
+    dirs = {}
+    to_transport = get_transport(output_url)
+    def get_dir(path):
+        if dirs.has_key(path):
+            return dirs[path]
+        nt = to_transport.clone(path)
+        try:
+            dirs[path] = BzrDir.open_from_transport(nt)
+        except NotBranchError:
+            transport_makedirs(to_transport, urlutils.join(to_transport.base, path))
+            dirs[path] = BzrDirFormat.get_default_format().initialize_on_transport(nt)
+        return dirs[path]
+
     try:
         source_repos = SvnRepository.open(url)
         source_repos.set_branching_scheme(scheme)
-        to_transport = get_transport(output_url)
 
         if create_shared_repo:
             try:
-                target_repos = Repository.open(output_url)
-                assert target_repos.is_shared()
-            except NotBranchError:
-                if scheme.is_branch(""):
-                    BzrDir.create_branch_and_repo(output_url)
-                else:
-                    BzrDir.create_repository(output_url, shared=True)
-                target_repos = Repository.open(output_url)
+                target_repos = get_dir("").open_repository()
+                assert scheme.is_branch("") or target_repos.is_shared()
+            except NoRepositoryPresent:
+                target_repos = get_dir("").create_repository(shared=True)
             target_repos.set_make_working_trees(working_trees)
             if all:
                 source_repos.copy_content_into(target_repos)
@@ -123,17 +132,21 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
                 pb.update("%s:%d" % (branch, revnum), i, len(existing_branches))
                 revid = source_repos.generate_revision_id(revnum, branch)
 
-                target_url = urlutils.join(to_transport.base, branch)
+                target_dir = get_dir(branch)
+                if not create_shared_repo:
+                    try:
+                        target_dir.open_repository()
+                    except NoRepositoryPresent:
+                        target_dir.create_repository()
                 try:
-                    target_branch = Branch.open(target_url)
-                    if not revid in target_branch.revision_history():
-                        source_branch = Branch.open("%s/%s" % (url, branch))
-                        target_branch.pull(source_branch)
+                    target_branch = target_dir.open_branch()
                 except NotBranchError:
-                    source_branch = Branch.open("%s/%s" % (url, branch))
-                    transport_makedirs(to_transport, target_url)
-                    source_branch.bzrdir.sprout(target_url, 
-                                                source_branch.last_revision())
+                    target_branch = target_dir.create_branch()
+                if not revid in target_branch.revision_history():
+                    source_branch = Branch.open(urlutils.join(url, branch))
+                    target_branch.pull(source_branch)
+                if working_trees and not target_dir.has_workingtree():
+                    target_dir.create_workingtree()
                 i+=1
         finally:
             pb.finished()

@@ -91,7 +91,6 @@ class TestConversion(TestCaseWithSubversionRepository):
         newrepos = Repository.open("e")
         self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch")))
 
-
     def test_fetch_dead(self):
         self.build_tree({'dc/branches/somebranch/somefile': 'data'})
         self.client_add("dc/branches/somebranch")
@@ -112,6 +111,18 @@ class TestConversion(TestCaseWithSubversionRepository):
                 TrunkBranchingScheme(), True)
 
         self.assertTrue(Repository.open("e").is_shared())
+
+    def test_shared_import_continue_with_wt(self):
+        convert_repository("svn+"+self.repos_url, "e", 
+                TrunkBranchingScheme(), working_trees=True)
+        convert_repository("svn+"+self.repos_url, "e", 
+                TrunkBranchingScheme(), working_trees=True)
+
+    def test_shared_import_nonescheme_empty(self):
+        BzrDir.create_repository("e", shared=True)
+
+        convert_repository("svn+"+self.repos_url, "e", 
+                NoBranchingScheme(), True)
 
     def test_shared_import_with_wt(self):
         BzrDir.create_repository("e", shared=True)
