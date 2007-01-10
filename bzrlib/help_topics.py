@@ -105,7 +105,6 @@ _basic_help= \
 http://bazaar-vcs.org/
 
 Basic commands:
-
   bzr init           makes this directory a versioned branch
   bzr branch         make a copy of another branch
 
