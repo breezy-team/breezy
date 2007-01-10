@@ -65,9 +65,9 @@ class OptionTests(TestCase):
 
     def test_get_short_name(self):
         file_opt = option.Option.OPTIONS['file']
-        self.assertEquals(file_opt.short_name, 'F')
+        self.assertEquals(file_opt.short_name(), 'F')
         force_opt = option.Option.OPTIONS['force']
-        self.assertEquals(force_opt.short_name, None)
+        self.assertEquals(force_opt.short_name(), None)
 
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
