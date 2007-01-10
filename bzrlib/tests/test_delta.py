@@ -30,7 +30,9 @@ class InstrumentedReporter(object):
         self.calls.append((file_id, path, versioned, renamed, modified,
                            exe_change, kind))
 
+
 class TestReportChanges(tests.TestCase):
+    """Test the new change reporting infrastructure"""
 
     def assertReport(self, expected, file_id='fid', path='path',
                      versioned_change='unchanged', renamed=False,
