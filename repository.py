@@ -47,24 +47,17 @@ import errors
 import logwalker
 from tree import SvnRevisionTree
 
-MAPPING_VERSION = 2
-REVISION_ID_PREFIX = "svn-v%d:" % MAPPING_VERSION
+MAPPING_VERSION = 3
+REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
-
-def escape_svn_path(id, unsafe="%/-\t \n"):
-    assert "%" in unsafe
-    r = [((c in unsafe) and (u'%%%02x' % ord(c)) or c)
-         for c in id]
-    return unicode(''.join(r))
-
-
 import urllib
 
+escape_svn_path = urllib.quote
 unescape_svn_path = urllib.unquote
 
 
@@ -82,16 +75,14 @@ def parse_svn_revision_id(revid):
     if not revid.startswith(REVISION_ID_PREFIX):
         raise InvalidRevisionId(revid, "")
 
+    try:
+        (version, uuid, branch_path, srevnum)= revid.split(":")
+    except ValueError:
+        raise InvalidRevisionId(revid, "")
+
     revid = revid[len(REVISION_ID_PREFIX):]
 
-    at = revid.index("@")
-    fash = revid.rindex("-")
-    uuid = revid[at+1:fash]
-
-    branch_path = unescape_svn_path(revid[fash+1:])
-    revnum = int(revid[0:at])
-    assert revnum >= 0
-    return (uuid, branch_path, revnum)
+    return (uuid, unescape_svn_path(branch_path), int(srevnum))
 
 
 def generate_svn_revision_id(uuid, revnum, path):
@@ -108,7 +99,8 @@ def generate_svn_revision_id(uuid, revnum, path):
     assert revnum >= 0
     if revnum == 0:
         return NULL_REVISION
-    return unicode("%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, uuid, escape_svn_path(path.strip("/"))))
+    return unicode("%s-undefined:%s:%s:%d" % (REVISION_ID_PREFIX, uuid, \
+                   escape_svn_path(path.strip("/")), revnum))
 
 
 def svk_feature_to_revision_id(feature):
