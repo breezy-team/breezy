@@ -30,6 +30,7 @@ from bzrlib import (
     branch,
     bundle,
     bzrdir,
+    delta,
     config,
     errors,
     ignores,
@@ -2511,7 +2512,7 @@ class cmd_revert(Command):
         try:
             tree.revert(file_list, 
                         tree.branch.repository.revision_tree(rev_id),
-                        not no_backup, pb)
+                        not no_backup, pb, report_changes=True)
         finally:
             pb.finished()
 
