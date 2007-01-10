@@ -358,7 +358,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             if not self._svnprops.has_key(SVN_PROP_BZR_FILEIDS):
                 self._svnprops[SVN_PROP_BZR_FILEIDS] = ""
             mutter('adding fileid mapping %s -> %s' % (path, ie.file_id))
-            self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (escape_svn_path(path, "%\t\n"), ie.file_id)
+            self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (escape_svn_path(path), ie.file_id)
 
         previous_entries = ie.find_previous_heads(
             parent_invs,

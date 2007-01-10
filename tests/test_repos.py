@@ -512,7 +512,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual(
-            "svn-v%d:1@%s-bla%%2fbloe" % (MAPPING_VERSION, repository.uuid), 
+               u"svn-v%d-undefined:%s:bla%%2Fbloe:1" % (MAPPING_VERSION, repository.uuid), 
             repository.generate_revision_id(1, "bla/bloe"))
 
     def test_generate_revision_id_none(self):
@@ -1899,42 +1899,42 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
 
 class RevisionIdMappingTest(TestCase):
     def test_generate_revid(self):
-        self.assertEqual("svn-v%d:5@myuuid-branch" % MAPPING_VERSION, 
+        self.assertEqual("svn-v%d-undefined:myuuid:branch:5" % MAPPING_VERSION, 
                          generate_svn_revision_id("myuuid", 5, "branch"))
 
     def test_generate_revid_nested(self):
-        self.assertEqual("svn-v%d:5@myuuid-branch%%2fpath" % MAPPING_VERSION, 
+        self.assertEqual("svn-v%d-undefined:myuuid:branch%%2Fpath:5" % MAPPING_VERSION, 
                          generate_svn_revision_id("myuuid", 5, "branch/path"))
 
     def test_generate_revid_special_char(self):
-        self.assertEqual(u"svn-v%d:5@myuuid-branch\x2c" % MAPPING_VERSION, 
+        self.assertEqual(u"svn-v%d-undefined:myuuid:branch%%2C:5" % MAPPING_VERSION, 
                          generate_svn_revision_id("myuuid", 5, u"branch\x2c"))
 
     def test_generate_revid_special_char_ascii(self):
-        self.assertEqual("svn-v%d:5@myuuid-branch\x2c" % MAPPING_VERSION, 
+        self.assertEqual("svn-v%d-undefined:myuuid:branch%%2C:5" % MAPPING_VERSION, 
                          generate_svn_revision_id("myuuid", 5, "branch\x2c"))
 
     def test_parse_revid_simple(self):
         self.assertEqual(("uuid", "", 4),
                          parse_svn_revision_id(
-                             "svn-v%d:4@uuid-" % MAPPING_VERSION))
+                             "svn-v%d-undefined:uuid::4" % MAPPING_VERSION))
 
     def test_parse_revid_nested(self):
         self.assertEqual(("uuid", "bp/data", 4),
                          parse_svn_revision_id(
-                             "svn-v%d:4@uuid-bp%%2fdata" % MAPPING_VERSION))
+                             "svn-v%d-undefined:uuid:bp%%2Fdata:4" % MAPPING_VERSION))
 
     def test_svk_revid_map_root(self):
-        self.assertEqual("svn-v%d:6@auuid-" % MAPPING_VERSION,
+        self.assertEqual("svn-v%d-undefined:auuid::6" % MAPPING_VERSION,
                          svk_feature_to_revision_id("auuid:/:6"))
 
     def test_svk_revid_map_nested(self):
-        self.assertEqual("svn-v%d:6@auuid-bp" % MAPPING_VERSION,
+        self.assertEqual("svn-v%d-undefined:auuid:bp:6" % MAPPING_VERSION,
                          svk_feature_to_revision_id("auuid:/bp:6"))
 
     def test_revid_svk_map(self):
         self.assertEqual("auuid:/:6", 
-              revision_id_to_svk_feature("svn-v%d:6@auuid-" % MAPPING_VERSION))
+              revision_id_to_svk_feature("svn-v%d-undefined:auuid:;6" % MAPPING_VERSION))
 
 
 class EscapeTest(TestCase):
@@ -1951,13 +1951,13 @@ class EscapeTest(TestCase):
         self.assertEqual("foobar%20", escape_svn_path("foobar "))
 
     def test_escape_svn_path_slash(self):
-        self.assertEqual("foobar%2f", escape_svn_path("foobar/"))
+        self.assertEqual("foobar%2F", escape_svn_path("foobar/"))
 
     def test_escape_svn_path_special_char(self):
-        self.assertEqual(u"foobar%8a", escape_svn_path("foobar\x8a"))
+        self.assertEqual("foobar%8A", escape_svn_path("foobar\x8a"))
 
     def test_unescape_svn_path_slash(self):
-        self.assertEqual("foobar/", unescape_svn_path("foobar%2f"))
+        self.assertEqual("foobar/", unescape_svn_path("foobar%2F"))
 
     def test_unescape_svn_path_none(self):
         self.assertEqual("foobar", unescape_svn_path("foobar"))
