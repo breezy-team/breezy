@@ -328,7 +328,7 @@ class TestRunBzrSubprocess(TestCaseWithTransport):
         out, err = self.run_bzr_subprocess('rocks',
                         env_changes={'NON_EXISTANT_ENV_VAR':None},
                         universal_newlines=True)
-        self.assertEqual('it sure does!\n', out)
+        self.assertEqual('It sure does!\n', out)
         self.assertEqual('', err)
 
     def test_run_bzr_subprocess_working_dir(self):
@@ -448,7 +448,7 @@ class TestRunBzrError(ExternalBase):
 
     def test_run_bzr_error(self):
         out, err = self.run_bzr_error(['^$'], 'rocks', retcode=0)
-        self.assertEqual(out, 'it sure does!\n')
+        self.assertEqual(out, 'It sure does!\n')
 
         out, err = self.run_bzr_error(["bzr: ERROR: foobarbaz is not versioned"],
                                       'file-id', 'foobarbaz')

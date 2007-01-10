@@ -2174,7 +2174,7 @@ class cmd_rocks(Command):
 
     @display_command
     def run(self):
-        print "it sure does!"
+        print "It sure does!"
 
 
 class cmd_find_merge_base(Command):
