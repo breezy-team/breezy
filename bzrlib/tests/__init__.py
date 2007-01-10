@@ -1262,14 +1262,20 @@ class TestCaseWithMemoryTransport(TestCase):
         self.transport_server = default_transport
         self.transport_readonly_server = None
 
-    def failUnlessExists(self, path):
-        """Fail unless path, which may be abs or relative, exists."""
+    def failUnlessExistsOnDisk(self, path):
+        """Fail unless path, which may be abs or relative, exists.
+
+        This method is used mainly to detect leaks.
+        """
         self.failUnless(osutils.lexists(path))
 
-    def failIfExists(self, path):
-        """Fail if path, which may be abs or relative, exists."""
+    def failIfExistsOnDisk(self, path):
+        """Fail if path, which may be abs or relative, exists..
+
+        This method is used mainly to detect leaks.
+        """
         self.failIf(osutils.lexists(path))
-        
+
     def get_transport(self):
         """Return a writeable transport for the test scratch space"""
         t = get_transport(self.get_url())
@@ -1541,6 +1547,10 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 #   put:    4.5-7.5s (averaging 6s)
                 #   append: 2.9-4.5s
                 #   put_non_atomic: 2.9-4.5s
+
+                # ^ jam, is that comment still valid ? I think we
+                # can safely use put_bytes_non_atomic instead of
+                # put_file, given that put is deprecated -- vila 20070110
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     def build_tree_contents(self, shape):
@@ -1548,9 +1558,17 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
-        self.failUnless(osutils.lexists(path))
+        self.failUnlessExists(path)
         # TODO: jam 20060427 Shouldn't this be 'rb'?
         self.assertEqualDiff(content, open(path, 'r').read())
+
+    def failUnlessExists(self, path):
+        """Fail unless path, which may be abs or relative, exists."""
+        self.failUnless(osutils.lexists(path))
+
+    def failIfExists(self, path):
+        """Fail if path, which may be abs or relative, exists."""
+        self.failIf(osutils.lexists(path))
 
 
 class TestCaseWithTransport(TestCaseInTempDir):

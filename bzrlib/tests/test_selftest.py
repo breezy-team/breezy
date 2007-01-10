@@ -467,7 +467,7 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         a branch and checking no directory was created at its relpath.
         """
         tree = self.make_branch_and_memory_tree('dir')
-        self.failIfExists('dir')
+        self.failIfExistsOnDisk('dir')
         self.assertIsInstance(tree, memorytree.MemoryTree)
 
     def test_make_branch_and_memory_tree_with_format(self):
@@ -475,7 +475,7 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = repository.RepositoryFormat7()
         tree = self.make_branch_and_memory_tree('dir', format=format)
-        self.failIfExists('dir')
+        self.failIfExistsOnDisk('dir')
         self.assertIsInstance(tree, memorytree.MemoryTree)
         self.assertEqual(format.repository_format.__class__,
             tree.branch.repository._format.__class__)
