@@ -23,7 +23,7 @@ from bzrlib.trace import mutter
 
 import os
 from convert import convert_repository, NotDumpFile, load_dumpfile
-from repository import MAPPING_VERSION
+from repository import generate_svn_revision_id
 from scheme import TrunkBranchingScheme, NoBranchingScheme
 from tests import TestCaseWithSubversionRepository
 
@@ -80,7 +80,7 @@ class TestConversion(TestCaseWithSubversionRepository):
                            all=False, create_shared_repo=True)
         oldrepos = Repository.open(self.repos_url)
         newrepos = Repository.open("e")
-        self.assertFalse(newrepos.has_revision("svn-v%d:2@%s-branches%%2fsomebranch" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch")))
 
     def test_fetch_filebranch(self):
         self.build_tree({'dc/branches/somebranch': 'data'})
@@ -89,7 +89,7 @@ class TestConversion(TestCaseWithSubversionRepository):
         convert_repository(self.repos_url, "e", TrunkBranchingScheme())
         oldrepos = Repository.open(self.repos_url)
         newrepos = Repository.open("e")
-        self.assertFalse(newrepos.has_revision("svn-v%d:2@%s-branches%%2fsomebranch" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertFalse(newrepos.has_revision(oldrepos.generate_revision_id(2, "branches/somebranch")))
 
 
     def test_fetch_dead(self):
@@ -103,7 +103,7 @@ class TestConversion(TestCaseWithSubversionRepository):
         oldrepos = Repository.open(self.repos_url)
         newrepos = Repository.open("e")
         mutter('q: %r' % newrepos.all_revision_ids())
-        self.assertTrue(newrepos.has_revision("svn-v%d:3@%s-branches%%2fsomebranch" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(3, "branches/somebranch")))
 
     def test_shared_import_continue(self):
         BzrDir.create_repository("e", shared=True)
@@ -138,15 +138,12 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.build_tree({'dc/trunk/file': 'foodata'})
         self.client_commit("dc", "msg")
 
-        self.assertEqual("svn-v%d:2@%s-trunk" % 
-                        (MAPPING_VERSION, Repository.open(self.repos_url).uuid),
-                        Branch.open("e/trunk").last_revision())
+        self.assertEqual(Repository.open(self.repos_url).generate_revision_id(2, "trunk"), Branch.open("e/trunk").last_revision())
 
         convert_repository("svn+"+self.repos_url, "e", 
                 TrunkBranchingScheme(), True)
 
-        self.assertEqual("svn-v%d:3@%s-trunk" % 
-                        (MAPPING_VERSION, Repository.open(self.repos_url).uuid),
+        self.assertEqual(Repository.open(self.repos_url).generate_revision_id(3, "trunk"), 
                         Branch.open("e/trunk").last_revision())
 
  
@@ -275,4 +272,4 @@ data
                            TrunkBranchingScheme())
         branch = Branch.open(os.path.join(self.test_dir, "e", "trunk"))
         self.assertEqual("file://%s/e/trunk" % self.test_dir, branch.base.rstrip("/"))
-        self.assertEqual("svn-v%d:1@6987ef2d-cd6b-461f-9991-6f1abef3bd59-trunk" % MAPPING_VERSION, branch.last_revision())
+        self.assertEqual(generate_svn_revision_id("6987ef2d-cd6b-461f-9991-6f1abef3bd59", 1, 'trunk'), branch.last_revision())

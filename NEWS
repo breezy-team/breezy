@@ -34,6 +34,8 @@ IN DEVELOPMENT
 
    * Store file id map when committing to Subversion. (#54738)
 
+   * Support spaces in filenames in working trees.
+
   IMPROVEMENTS
 
    * Implemented SvnRepository.all_revision_ids().

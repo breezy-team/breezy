@@ -30,6 +30,7 @@ from bzrlib.revisiontree import RevisionTree
 import os
 import md5
 from cStringIO import StringIO
+import urllib
 
 import svn.core, svn.wc, svn.delta, svn.ra
 from svn.core import SubversionException, Pool
@@ -223,7 +224,7 @@ class SvnBasisTree(RevisionTree):
             return ie
 
         def find_ids(entry):
-            relpath = entry.url[len(entry.repos):].strip("/")
+            relpath = urllib.unquote(entry.url[len(entry.repos):].strip("/"))
             if entry.schedule in (svn.wc.schedule_normal, 
                                   svn.wc.schedule_delete, 
                                   svn.wc.schedule_replace):

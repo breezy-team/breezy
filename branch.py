@@ -111,6 +111,9 @@ class SvnBranch(Branch):
             return self._create_lightweight_checkout(to_location, revision_id)
         else:
             return self._create_heavyweight_checkout(to_location, revision_id)
+
+    def generate_revision_id(self, revnum):
+        return self.repository.generate_revision_id(revnum, self.branch_path)
        
     def _generate_revision_history(self, last_revnum):
         self._revision_history = []

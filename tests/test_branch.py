@@ -29,7 +29,7 @@ import svn.core, svn.client
 from branch import FakeControlFiles, SvnBranchFormat
 from convert import load_dumpfile
 import format
-from repository import MAPPING_VERSION
+from repository import MAPPING_VERSION, generate_svn_revision_id
 from tests import TestCaseWithSubversionRepository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
@@ -58,7 +58,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = bzrdir.open_branch()
         repos = bzrdir.find_repository()
 
-        self.assertEqual("svn-v%d:1@%s-" % (MAPPING_VERSION, repos.uuid), 
+        self.assertEqual(repos.generate_revision_id(1, ""), 
                 branch.last_revision())
 
         self.build_tree({'dc/foo': "data2"})
@@ -67,7 +67,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
-        self.assertEqual("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid), 
+        self.assertEqual(repos.generate_revision_id(2, ""),
                 branch.last_revision())
 
     def test_set_revision_history(self):
@@ -136,7 +136,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
-        self.assertEqual(["svn-v%d:1@%s-" % (MAPPING_VERSION, repos.uuid)], 
+        self.assertEqual([repos.generate_revision_id(1, "")], 
                 branch.revision_history())
 
         self.build_tree({'dc/foo': "data34"})
@@ -146,8 +146,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos = Repository.open("svn+"+repos_url)
 
         self.assertEqual([
-            "svn-v%d:1@%s-" % (MAPPING_VERSION, repos.uuid), 
-            "svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid)],
+            repos.generate_revision_id(1, ""),
+            repos.generate_revision_id(2, "")],
             branch.revision_history())
 
     def test_get_nick_none(self):
@@ -418,12 +418,12 @@ foohosts""")
 
         uuid = "6f95bc5c-e18d-4021-aca8-49ed51dbcb75"
         tree = newbranch.repository.revision_tree(
-                "svn-v%d:7@%s-branches%%2ffoobranch" % (MAPPING_VERSION, uuid))
+                generate_svn_revision_id(uuid, 7, "branches/foobranch"))
 
         weave = tree.get_weave(tree.inventory.path2id("hosts"))
         self.assertEqual([
-            'svn-v%d:6@%s-branches%%2ffoobranch' % (MAPPING_VERSION, uuid), 
-            'svn-v%d:7@%s-branches%%2ffoobranch' % (MAPPING_VERSION, uuid)],
+            generate_svn_revision_id(uuid, 6, "branches/foobranch"),
+            generate_svn_revision_id(uuid, 7, "branches/foobranch")],
                           weave.versions())
  
 
@@ -463,14 +463,14 @@ foohosts""")
 
         uuid = olddir.find_repository().uuid
         tree = newbranch.repository.revision_tree(
-                "svn-v%d:6@%s-branches%%2ffoobranch" % (MAPPING_VERSION, uuid))
+                generate_svn_revision_id(uuid, 6, "branches/foobranch"))
 
         weave = tree.get_weave(tree.inventory.path2id("hosts"))
         self.assertEqual([
-            'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, uuid), 
-            'svn-v%d:2@%s-trunk' % (MAPPING_VERSION, uuid), 
-            'svn-v%d:3@%s-trunk' % (MAPPING_VERSION, uuid), 
-            'svn-v%d:6@%s-branches%%2ffoobranch' % (MAPPING_VERSION, uuid)],
+            generate_svn_revision_id(uuid, 1, "trunk"),
+            generate_svn_revision_id(uuid, 2, "trunk"),
+            generate_svn_revision_id(uuid, 3, "trunk"),
+            generate_svn_revision_id(uuid, 6, "branches/foobranch")],
                           weave.versions())
 
     def test_check(self):
@@ -479,6 +479,11 @@ foohosts""")
         result = branch.check()
         self.assertEqual(branch, result.branch) 
  
+    def test_generate_revision_id(self):
+        repos_url = self.make_client('d', 'dc')
+        branch = Branch.open('d')
+        self.assertEqual("svn-v%d:1@%s-" % (MAPPING_VERSION, branch.repository.uuid),  branch.generate_revision_id(1))
+
     def test_create_checkout(self):
         repos_url = self.make_client('d', 'dc')
 
@@ -491,7 +496,7 @@ foohosts""")
 
         newtree = oldbranch.create_checkout("e")
         self.assertTrue(newtree.branch.repository.has_revision(
-           'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, oldbranch.repository.uuid)))
+           oldbranch.generate_revision_id(1)))
 
         self.assertTrue(os.path.exists("e/.bzr"))
         self.assertFalse(os.path.exists("e/.svn"))
@@ -508,9 +513,7 @@ foohosts""")
         oldbranch = Branch.open(url)
 
         newtree = oldbranch.create_checkout("e", lightweight=True)
-        self.assertEqual(
-           'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, oldbranch.repository.uuid),
-           newtree.base_revid)
+        self.assertEqual(oldbranch.generate_revision_id(1), newtree.base_revid)
         self.assertTrue(os.path.exists("e/.svn"))
         self.assertFalse(os.path.exists("e/.bzr"))
 
@@ -529,10 +532,8 @@ foohosts""")
         oldbranch = Branch.open(url)
 
         newtree = oldbranch.create_checkout("e", revision_id=
-           'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, oldbranch.repository.uuid),
-                lightweight=True)
-        self.assertEqual(
-           'svn-v%d:1@%s-trunk' % (MAPPING_VERSION, oldbranch.repository.uuid),
+           oldbranch.generate_revision_id(1), lightweight=True)
+        self.assertEqual(oldbranch.generate_revision_id(1),
            newtree.base_revid)
         self.assertTrue(os.path.exists("e/.svn"))
         self.assertFalse(os.path.exists("e/.bzr"))

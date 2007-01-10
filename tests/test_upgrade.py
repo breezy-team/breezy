@@ -123,9 +123,9 @@ class UpgradeTests(TestCaseWithSubversionRepository):
 
         upgrade_repository(newrepos, oldrepos, allow_change=True)
 
-        self.assertTrue(newrepos.has_revision("svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
-        self.assertTrue(["svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)],
+        self.assertTrue([oldrepos.generate_revision_id(1, "")],
                         newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
 
     def test_more_custom(self):
@@ -154,10 +154,10 @@ class UpgradeTests(TestCaseWithSubversionRepository):
             "anotherrev": "anotherrev-svn%d-upgrade" % MAPPING_VERSION},
             renames)
 
-        self.assertTrue(newrepos.has_revision("svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)))
+        self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "")))
         self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
         self.assertTrue(newrepos.has_revision("anotherrev-svn%d-upgrade" % MAPPING_VERSION))
-        self.assertTrue(["svn-v%d:1@%s-" % (MAPPING_VERSION, oldrepos.uuid)],
+        self.assertTrue([oldrepos.generate_revision_id(1, "")],
                         newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
         self.assertTrue(["customrev-svn%d-upgrade" % MAPPING_VERSION],
                         newrepos.revision_parents("anotherrev-svn%d-upgrade" % MAPPING_VERSION))

@@ -40,6 +40,7 @@ from tree import SvnBasisTree
 
 from copy import copy
 import os
+import urllib
 
 import svn.core, svn.wc
 from svn.core import SubversionException, Pool
@@ -255,7 +256,7 @@ class SvnWorkingTree(WorkingTree):
             svn.wc.adm_close(wc)
 
         def find_ids(entry, rootwc):
-            relpath = entry.url[len(entry.repos):].strip("/")
+            relpath = urllib.unquote(entry.url[len(entry.repos):].strip("/"))
             assert entry.schedule in (svn.wc.schedule_normal, 
                                       svn.wc.schedule_delete,
                                       svn.wc.schedule_add,
