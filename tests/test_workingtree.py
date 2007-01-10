@@ -433,3 +433,13 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree = WorkingTree.open("dc")
         self.assertEqual(None, tree.inventory.path2id("file"))
         self.assertEqual("fooid", tree.inventory.path2id("dir/file"))
+
+    def test_escaped_char_filename(self):
+        self.make_client('a', 'dc')
+        self.build_tree({'dc/file with spaces': 'data'})
+        tree = WorkingTree.open("dc")
+        tree.add(["file with spaces"], ["fooid"])
+        tree.commit("msg")
+        self.assertEqual("fooid", tree.inventory.path2id("file with spaces"))
+
+
