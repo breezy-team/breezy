@@ -23,8 +23,8 @@ from bzrlib import bzrdir, repository, tests, workingtree
 class TestJoin(tests.TestCaseWithTransport):
 
     def make_trees(self):
-        format = bzrdir.get_knit3_format()
-        base_tree = self.make_branch_and_tree('tree', format=format)
+        base_tree = self.make_branch_and_tree('tree',
+                                              format='experimental-knit3')
         base_tree.commit('empty commit')
         self.build_tree(['tree/subtree/', 'tree/subtree/file1'])
         sub_tree = self.make_branch_and_tree('tree/subtree')

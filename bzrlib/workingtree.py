@@ -895,7 +895,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         sub_path = self.id2path(file_id)
         branch_transport = mkdirs(sub_path)
         if format is None:
-            format = bzrdir.get_knit2_format()
+            format = bzrdir.format_registry.make_bzrdir('experimental-knit2')
         try:
             branch_transport.mkdir('.')
         except errors.FileExists:
@@ -2293,7 +2293,7 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
         WorkingTreeFormat3.__init__(self)
         
     def __get_matchingbzrdir(self):
-        return bzrdir.get_knit3_format()
+        return bzrdir.format_registry.make_bzrdir('experimental-knit3')
 
     _matchingbzrdir = property(__get_matchingbzrdir)
 

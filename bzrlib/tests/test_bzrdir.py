@@ -70,6 +70,10 @@ class TestFormatRegistry(TestCase):
             'BzrDirFormat6', 'Format registered lazily', deprecated=True)
         my_format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
             'Format using knits')
+        my_format_registry.register_metadir('experimental-knit3', 
+                                            'RepositoryFormatKnit2',
+                                            'Format using knits', 
+                                            tree='WorkingTreeFormat4')
         my_format_registry.set_default('knit')
         my_format_registry.register_metadir('metaweave', 'RepositoryFormat7',
             'Transitional format in 0.8.  Slower than knit.', deprecated=True)
@@ -93,6 +97,13 @@ class TestFormatRegistry(TestCase):
         my_bzrdir = my_format_registry.make_bzrdir('metaweave')
         self.assertIsInstance(my_bzrdir.repository_format, 
             repository.RepositoryFormat7)
+        self.assertIsInstance(my_bzrdir.workingtree_format, 
+            workingtree.WorkingTreeFormat3)
+        my_bzrdir = my_format_registry.make_bzrdir('experimental-knit3')
+        self.assertIsInstance(my_bzrdir.repository_format, 
+            repository.RepositoryFormatKnit2)
+        self.assertIsInstance(my_bzrdir.workingtree_format, 
+            workingtree.WorkingTreeFormat4)
 
     def test_get_help(self):
         my_format_registry = self.make_format_registry()

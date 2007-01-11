@@ -1977,27 +1977,6 @@ class ConvertMetaToMeta(Converter):
         return to_convert
 
 
-def get_knit1_format():
-    from bzrlib import repository
-    format = BzrDirMetaFormat1()
-    format.repository_format = repository.RepositoryFormatKnit1()
-    return format
-
-
-def get_knit2_format():
-    from bzrlib import repository
-    format = BzrDirMetaFormat1()
-    format.repository_format = repository.RepositoryFormatKnit2()
-    return format
-
-def get_knit3_format():
-    from bzrlib import repository, workingtree
-    format = BzrDirMetaFormat1()
-    format.repository_format = repository.RepositoryFormatKnit2()
-    format.workingtree_format = workingtree.WorkingTreeFormat4()
-    return format
-
-
 class BzrDirFormatInfo(object):
 
     def __init__(self, native, deprecated):
@@ -2012,7 +1991,8 @@ class BzrDirFormatRegistry(registry.Registry):
     e.g. BzrDirMeta1 with weave repository.  Also, it's more user-oriented.
     """
 
-    def register_metadir(self, key, repo, help, native=True, deprecated=False):
+    def register_metadir(self, key, repo, help, native=True, deprecated=False,
+                         tree='WorkingTreeFormat3'):
         """Register a metadir subformat.
         
         repo is the repository format name as a string.
@@ -2021,9 +2001,12 @@ class BzrDirFormatRegistry(registry.Registry):
         # formats, once BzrDirMetaFormat1 supports that.
         def helper():
             import bzrlib.repository
+            import bzrlib.workingtree
             repo_format = getattr(bzrlib.repository, repo)
+            tree_format = getattr(bzrlib.workingtree, tree)
             bd = BzrDirMetaFormat1()
             bd.repository_format = repo_format()
+            bd.workingtree_format = tree_format()
             return bd
         self.register(key, helper, help, native, deprecated)
 
@@ -2126,3 +2109,6 @@ format_registry.register_metadir('metaweave', 'RepositoryFormat7',
     deprecated=True)
 format_registry.register_metadir('experimental-knit2', 'RepositoryFormatKnit2',
     'Experimental successor to knit.  Use at your own risk.')
+format_registry.register_metadir('experimental-knit3', 'RepositoryFormatKnit2',
+    'Experimental successor to knit2.  Use at your own risk.', 
+    tree='WorkingTreeFormat4')

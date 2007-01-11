@@ -21,9 +21,9 @@ class TestWorkingTree(tests.TestCaseWithTransport):
 
     def make_branch_and_tree(self, relpath, format=None):
         if format is None:
-            format = bzrdir.get_knit3_format()
+            format = 'experimental-knit3'
         return tests.TestCaseWithTransport.make_branch_and_tree(self, relpath, 
-                                                          format)
+                                                                format)
 
     def make_trees(self, format=None, same_root=False):
         self.build_tree(['tree/', 
@@ -34,7 +34,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         base_tree.add('file', 'file-id')
         base_tree.commit('first commit', rev_id='tree-1')
         sub_tree = self.make_branch_and_tree('tree/subtree', 
-                                             format=bzrdir.get_knit3_format())
+                                             format='experimental-knit3')
         if same_root is True:
             sub_tree.set_root_id(base_tree.get_root_id())
         sub_tree.add('file2', 'file2-id')
@@ -47,13 +47,13 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         SubsumeTargetNeedsUpgrade must not be raised, because upgrading the
         target won't help.
         """
-        base_tree, sub_tree = self.make_trees(format=bzrdir.get_knit1_format(),
+        base_tree, sub_tree = self.make_trees(format='knit',
                                               same_root=True)
         self.assertRaises(errors.BadSubsumeSource, base_tree.subsume, 
                           sub_tree)
 
     def test_knit1_failure(self):
-        base_tree, sub_tree = self.make_trees(format=bzrdir.get_knit1_format())
+        base_tree, sub_tree = self.make_trees(format='knit')
         self.assertRaises(errors.SubsumeTargetNeedsUpgrade, base_tree.subsume, 
                           sub_tree)
 

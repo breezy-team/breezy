@@ -224,7 +224,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
     """Tests specific to WorkingTreeFormat3."""
 
     def test_disk_layout(self):
-        tree = self.make_branch_and_tree('.', format=bzrdir.get_knit3_format())
+        tree = self.make_branch_and_tree('.', format='experimental-knit3')
         control = tree.bzrdir
         # we want:
         # format 'Bazaar-NG Working Tree format 4'
@@ -254,13 +254,13 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             '</inventory>\n')
     
     def test_incompatible_repo(self):
-        control = bzrdir.get_knit1_format()
+        control = bzrdir.format_registry.make_bzrdir('knit')
         control.workingtree_format = workingtree.WorkingTreeFormat4()
         tree = self.make_branch_and_tree('.', format=control)
         self.assertRaises(errors.RootNotRich, tree.commit)
 
     def test_compatible_repo(self):
-        tree = self.make_branch_and_tree('.', format=bzrdir.get_knit3_format())
+        tree = self.make_branch_and_tree('.', format='experimental-knit3')
         tree.set_root_id('my-root-id')
         tree.commit('test', rev_id='revision-1')
         tree.commit('test', rev_id='revision-2')

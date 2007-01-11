@@ -31,8 +31,7 @@ class TestSplit(tests.TestCaseWithTransport):
         self.run_bzr_error(('.* is not versioned',), 'split', 'q')
 
     def test_split_repo_failure(self):
-        repo = self.make_repository('branch', shared=True, 
-                                    format=bzrdir.get_knit1_format())
+        repo = self.make_repository('branch', shared=True, format='knit')
         a_branch = repo.bzrdir.create_branch()
         self.build_tree(['a/', 'a/b/', 'a/b/c/', 'a/b/c/d'])
         wt = a_branch.create_checkout('a', lightweight=True)
