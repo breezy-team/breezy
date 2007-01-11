@@ -28,6 +28,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         tree.add('file1', 'file1-id')
         sub_tree = self.make_branch_and_tree('tree/sub-tree')
         sub_tree.set_root_id('sub-tree-root-id')
+        sub_tree.commit('commit', rev_id='sub_1')
         return tree, sub_tree
 
     def test_add_reference(self):
@@ -42,7 +43,10 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         self.assertEqual(tree.path2id('sub-tree'), 'sub-tree-root-id')
         self.assertEqual(tree.inventory['sub-tree-root-id'].kind, 
                          'tree-reference')
-        tree.commit('commit references')
+        tree.commit('commit reference')
+        entry = tree.basis_tree().inventory['sub-tree-root-id']
+        self.assertEqual(sub_tree.last_revision(), entry.reference_revision)
+        
 
     def test_add_reference_same_root(self):
         tree = self.make_branch_and_tree('tree')

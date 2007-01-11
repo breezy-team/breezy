@@ -837,6 +837,16 @@ class TreeReference(InventoryEntry):
     def _snapshot_text(self, file_parents, work_tree, commit_builder):
         commit_builder.modified_reference(self.file_id, file_parents)
 
+    def _read_tree_state(self, path, work_tree):
+        """Populate fields in the inventory entry from the given tree.
+        """
+        subtree = workingtree.WorkingTree.open(work_tree.abspath(path))
+        self.reference_revision = subtree.last_revision()
+
+    def _forget_tree_state(self):
+        self.reference_revision = None 
+
+
 class Inventory(object):
     """Inventory of versioned files in a tree.
 
