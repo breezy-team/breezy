@@ -665,6 +665,16 @@ class TestCase(unittest.TestCase):
         if not (left is right):
             raise AssertionError("%r is not %r." % (left, right))
 
+    def assertNone(self, obj, msg):
+        """Fail if obj is not None"""
+        if (obj is not None):
+            raise AssertionError(msg)
+
+    def assertNotNone(self, obj, msg):
+        """Fail if obj is None"""
+        if (obj is None):
+            raise AssertionError(msg)
+
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
         
@@ -1264,11 +1274,11 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(osutils.lexists(path))
+        self.failUnless(osutils.lexists(path),path+" does not exist")
 
     def failIfExists(self, path):
         """Fail if path, which may be abs or relative, exists."""
-        self.failIf(osutils.lexists(path))
+        self.failIf(osutils.lexists(path),path+" exists")
         
     def get_transport(self):
         """Return a writeable transport for the test scratch space"""
