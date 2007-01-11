@@ -20,6 +20,9 @@
 import os
 
 import bzrlib
+from bzrlib import (
+    bzrdir,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import (BzrDir,
                            BzrDirFormat,
@@ -34,12 +37,9 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
 
     def create_branches(self):
         self.build_tree(['base/', 'base/a', 'base/b'])
-        old_format = BzrDirFormat.get_default_format()
-        BzrDirFormat.set_default_format(BzrDirMetaFormat1())
-        try:
-            wt_base = BzrDir.create_standalone_workingtree('base')
-        finally:
-            BzrDirFormat.set_default_format(old_format)
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        wt_base = BzrDir.create_standalone_workingtree('base',
+            format=format)
     
         b_base = wt_base.branch
 
@@ -72,12 +72,8 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
         # manually make a branch we can bind, because the default format
         # may not be bindable-from, and we want to test the side effects etc
         # of bondage.
-        old_format = BzrDirFormat.get_default_format()
-        BzrDirFormat.set_default_format(BzrDirMetaFormat1())
-        try:
-            b_child = BzrDir.create_branch_convenience('child')
-        finally:
-            BzrDirFormat.set_default_format(old_format)
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        b_child = BzrDir.create_branch_convenience('child', format=format)
         self.assertEqual(None, b_child.get_bound_location())
         self.assertEqual(None, b_child.get_master_branch())
 

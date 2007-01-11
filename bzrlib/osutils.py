@@ -25,6 +25,8 @@ import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import codecs
+from datetime import datetime
 import errno
 from ntpath import (abspath as _nt_abspath,
                     join as _nt_join,
@@ -379,6 +381,17 @@ def get_terminal_encoding():
         output_encoding = bzrlib.user_encoding
         mutter('cp0 is invalid encoding.'
                ' encoding stdout as bzrlib.user_encoding %r', output_encoding)
+    # check encoding
+    try:
+        codecs.lookup(output_encoding)
+    except LookupError:
+        sys.stderr.write('bzr: warning:'
+                         ' unknown terminal encoding %s.\n'
+                         '  Using encoding %s instead.\n'
+                         % (output_encoding, bzrlib.user_encoding)
+                        )
+        output_encoding = bzrlib.user_encoding
+
     return output_encoding
 
 
@@ -554,14 +567,10 @@ def compare_files(a, b):
 
 def local_time_offset(t=None):
     """Return offset of local zone from GMT, either at present or at time t."""
-    # python2.3 localtime() can't take None
     if t is None:
         t = time.time()
-        
-    if time.localtime(t).tm_isdst and time.daylight:
-        return -time.altzone
-    else:
-        return -time.timezone
+    offset = datetime.fromtimestamp(t) - datetime.utcfromtimestamp(t)
+    return offset.days * 86400 + offset.seconds
 
     
 def format_date(t, offset=0, timezone='original', date_fmt=None, 
@@ -1059,17 +1068,21 @@ def compare_paths_prefix_order(path_a, path_b):
 _cached_user_encoding = None
 
 
-def get_user_encoding():
+def get_user_encoding(use_cache=True):
     """Find out what the preferred user encoding is.
 
     This is generally the encoding that is used for command line parameters
     and file contents. This may be different from the terminal encoding
     or the filesystem encoding.
 
+    :param  use_cache:  Enable cache for detected encoding.
+                        (This parameter is turned on by default,
+                        and required only for selftesting)
+
     :return: A string defining the preferred user encoding
     """
     global _cached_user_encoding
-    if _cached_user_encoding is not None:
+    if _cached_user_encoding is not None and use_cache:
         return _cached_user_encoding
 
     if sys.platform == 'darwin':
@@ -1083,7 +1096,7 @@ def get_user_encoding():
         import locale
 
     try:
-        _cached_user_encoding = locale.getpreferredencoding()
+        user_encoding = locale.getpreferredencoding()
     except locale.Error, e:
         sys.stderr.write('bzr: warning: %s\n'
                          '  Could not determine what text encoding to use.\n'
@@ -1091,13 +1104,29 @@ def get_user_encoding():
                          '  doesn\'t support the locale set by $LANG (%s)\n'
                          "  Continuing with ascii encoding.\n"
                          % (e, os.environ.get('LANG')))
+        user_encoding = 'ascii'
 
     # Windows returns 'cp0' to indicate there is no code page. So we'll just
     # treat that as ASCII, and not support printing unicode characters to the
     # console.
-    if _cached_user_encoding in (None, 'cp0'):
-        _cached_user_encoding = 'ascii'
-    return _cached_user_encoding
+    if user_encoding in (None, 'cp0'):
+        user_encoding = 'ascii'
+    else:
+        # check encoding
+        try:
+            codecs.lookup(user_encoding)
+        except LookupError:
+            sys.stderr.write('bzr: warning:'
+                             ' unknown encoding %s.'
+                             ' Continuing with ascii encoding.\n'
+                             % user_encoding
+                            )
+            user_encoding = 'ascii'
+
+    if use_cache:
+        _cached_user_encoding = user_encoding
+
+    return user_encoding
 
 
 def recv_all(socket, bytes):

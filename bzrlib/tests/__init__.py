@@ -1272,14 +1272,6 @@ class TestCaseWithMemoryTransport(TestCase):
         self.transport_server = default_transport
         self.transport_readonly_server = None
 
-    def failUnlessExists(self, path):
-        """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(osutils.lexists(path),path+" does not exist")
-
-    def failIfExists(self, path):
-        """Fail if path, which may be abs or relative, exists."""
-        self.failIf(osutils.lexists(path),path+" exists")
-        
     def get_transport(self):
         """Return a writeable transport for the test scratch space"""
         t = get_transport(self.get_url())
@@ -1423,7 +1415,9 @@ class TestCaseWithMemoryTransport(TestCase):
                     t.mkdir('.')
                 except errors.FileExists:
                     pass
-            if format is None:
+            if isinstance(format, basestring):
+                format = bzrdir.format_registry.make_bzrdir(format)
+            elif format is None:
                 format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
             return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
@@ -1539,16 +1533,9 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 elif line_endings == 'native':
                     end = os.linesep
                 else:
-                    raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
+                    raise errors.BzrError(
+                        'Invalid line ending request %r' % line_endings)
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
-                # Technically 'put()' is the right command. However, put
-                # uses an AtomicFile, which requires an extra rename into place
-                # As long as the files didn't exist in the past, append() will
-                # do the same thing as put()
-                # On jam's machine, make_kernel_like_tree is:
-                #   put:    4.5-7.5s (averaging 6s)
-                #   append: 2.9-4.5s
-                #   put_non_atomic: 2.9-4.5s
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     def build_tree_contents(self, shape):
@@ -1556,9 +1543,17 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
-        self.failUnless(osutils.lexists(path))
+        self.failUnlessExists(path)
         # TODO: jam 20060427 Shouldn't this be 'rb'?
         self.assertEqualDiff(content, open(path, 'r').read())
+
+    def failUnlessExists(self, path):
+        """Fail unless path, which may be abs or relative, exists."""
+        self.failUnless(osutils.lexists(path),path+" does not exist")
+
+    def failIfExists(self, path):
+        """Fail if path, which may be abs or relative, exists."""
+        self.failIf(osutils.lexists(path),path+" exists")
 
 
 class TestCaseWithTransport(TestCaseInTempDir):
@@ -1753,6 +1748,7 @@ def test_suite():
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_ftp_transport',
+                   'bzrlib.tests.test_generate_docs',
                    'bzrlib.tests.test_generate_ids',
                    'bzrlib.tests.test_globbing',
                    'bzrlib.tests.test_gpg',
@@ -1778,6 +1774,7 @@ def test_suite():
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
+                   'bzrlib.tests.test_osutils_encodings',
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',
