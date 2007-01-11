@@ -84,6 +84,10 @@ IN DEVELOPMENT
 
     * Formats for end-user selection are provided via a FormatRegistry (Aaron Bentley)
 
+    * Reserved ids (any revision-id ending in a colon) are rejected by
+      versionedfiles, repositories, branches, and working trees
+      (Aaron Bentley)
+
   BUG FIXES:
 
     * ``bzr missing --verbose`` was showing adds/removals in the wrong

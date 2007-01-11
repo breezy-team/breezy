@@ -455,5 +455,10 @@ def get_intervening_revisions(ancestor_id, rev_id, rev_source,
     path.reverse()
     return path
 
+
 def reserved_id(revision_id):
-    return revision_id.endswith(':')
+    """Determine whether a revision id is reserved
+
+    :return: True if the revision is is reserved, False otherwise
+    """
+    return isinstance(revision_id, basestring) and revision_id.endswith(':')
