@@ -247,6 +247,8 @@ class Weave(VersionedFile):
 
     def _lookup(self, name):
         """Convert symbolic version name to index."""
+        if self.reserved_id(name):
+            raise errors.ReservedId(name)
         try:
             return self._name_map[name]
         except KeyError:
@@ -1120,6 +1122,8 @@ class WeaveFile(Weave):
 
     def _add_lines(self, version_id, parents, lines, parent_texts):
         """Add a version and save the weave."""
+        if self.reserved_id(version_id):
+            raise errors.ReservedId(version_id)
         result = super(WeaveFile, self)._add_lines(version_id, parents, lines,
                                                    parent_texts)
         self._save()

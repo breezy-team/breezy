@@ -516,6 +516,13 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.assertEqual({}, graph.get_ancestors())
         self.assertEqual({}, graph.get_descendants())
 
+    def test_reserved_id(self):
+        repo = self.make_repository('repository')
+        self.assertRaises(errors.ReservedId, repo.add_inventory, 'reserved:',
+                          None, None)
+        self.assertRaises(errors.ReservedId, repo.add_revision, 'reserved:',
+                          None)
+ 
 
 class TestCaseWithCorruptRepository(TestCaseWithRepository):
 

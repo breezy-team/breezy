@@ -140,6 +140,21 @@ class VersionedFileTestMixIn(object):
         except NotImplementedError:
             pass
 
+    def test_add_reserved(self):
+        vf = self.get_file()
+        self.assertRaises(errors.ReservedId,
+            vf.add_lines, 'a:', [], ['a\n', 'b\n', 'c\n'])
+
+        self.assertRaises(errors.ReservedId,
+            vf.add_delta, 'a:', [], None, 'sha1', False, ((0, 0, 0, []),))
+
+    def test_get_reserved(self):
+        vf = self.get_file()
+        self.assertRaises(errors.ReservedId, vf.get_delta, 'b:')
+        self.assertRaises(errors.ReservedId, vf.get_texts, ['b:'])
+        self.assertRaises(errors.ReservedId, vf.get_lines, 'b:')
+        self.assertRaises(errors.ReservedId, vf.get_text, 'b:')
+
     def test_get_delta(self):
         f = self.get_file()
         sha1s = self._setup_for_deltas(f)

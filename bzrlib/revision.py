@@ -454,3 +454,6 @@ def get_intervening_revisions(ancestor_id, rev_id, rev_source,
         next = best_ancestor(next)
     path.reverse()
     return path
+
+def reserved_id(revision_id):
+    return revision_id.endswith(':')

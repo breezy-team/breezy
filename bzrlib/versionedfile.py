@@ -27,6 +27,7 @@ import unittest
 from bzrlib import (
     errors,
     tsort,
+    revision,
     ui,
     )
 from bzrlib.transport.memory import MemoryTransport
@@ -57,6 +58,10 @@ class VersionedFile(object):
     def __init__(self, access_mode):
         self.finished = False
         self._access_mode = access_mode
+
+    @staticmethod
+    def reserved_id(version_id):
+        return revision.reserved_id(version_id)
 
     def copy_to(self, name, transport):
         """Copy this versioned file to name on transport."""
