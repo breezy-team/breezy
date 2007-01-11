@@ -109,6 +109,7 @@ def get_merge_type(typestring):
             (typestring, type_list)
         raise errors.BzrCommandError(msg)
 
+
 class Option(object):
     """Description of a command line option
     

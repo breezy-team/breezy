@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,6 +29,14 @@ def deprecated_function():
 
 a_deprecated_list = symbol_versioning.deprecated_list(symbol_versioning.zero_nine,
     'a_deprecated_list', ['one'], extra="Don't use me")
+
+
+a_deprecated_dict = symbol_versioning.DeprecatedDict(
+    symbol_versioning.zero_fourteen,
+    'a_deprecated_dict',
+    dict(a=42),
+    advice='Pull the other one!',
+    )
 
 
 class TestDeprecationWarnings(TestCase):
@@ -81,8 +89,6 @@ class TestDeprecationWarnings(TestCase):
         expected_warning = (
             "Modifying a_deprecated_list was deprecated in version 0.9."
             " Don't use me", DeprecationWarning, 3)
-        expected_doctstring = ('appending to a_deprecated_list is deprecated')
-
         old_warning_method = symbol_versioning.warn
         try:
             symbol_versioning.set_warning_method(self.capture_warning)
@@ -116,6 +122,26 @@ class TestDeprecationWarnings(TestCase):
             self.assertEqual(['one', 'bar'], a_deprecated_list)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
+
+    def test_deprecated_dict(self):
+        expected_warning = (
+            "access to a_deprecated_dict was deprecated in version 0.14."
+            " Pull the other one!", DeprecationWarning, 2)
+        old_warning_method = symbol_versioning.warn
+        try:
+            symbol_versioning.set_warning_method(self.capture_warning)
+            self.assertEqual(len(a_deprecated_dict), 1)
+            self.assertEqual([expected_warning], self._warnings)
+
+            a_deprecated_dict['b'] = 42
+            self.assertEqual(a_deprecated_dict['b'], 42)
+            self.assertTrue('b' in a_deprecated_dict)
+            del a_deprecated_dict['b']
+            self.assertFalse('b' in a_deprecated_dict)
+            self.assertEqual([expected_warning] * 6, self._warnings)
+        finally:
+            symbol_versioning.set_warning_method(old_warning_method)
+
 
     def check_deprecated_callable(self, expected_warning, expected_docstring,
                                   expected_name, expected_module,
