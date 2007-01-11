@@ -1262,20 +1262,6 @@ class TestCaseWithMemoryTransport(TestCase):
         self.transport_server = default_transport
         self.transport_readonly_server = None
 
-    def failUnlessExistsOnDisk(self, path):
-        """Fail unless path, which may be abs or relative, exists.
-
-        This method is used mainly to detect leaks.
-        """
-        self.failUnless(osutils.lexists(path))
-
-    def failIfExistsOnDisk(self, path):
-        """Fail if path, which may be abs or relative, exists..
-
-        This method is used mainly to detect leaks.
-        """
-        self.failIf(osutils.lexists(path))
-
     def get_transport(self):
         """Return a writeable transport for the test scratch space"""
         t = get_transport(self.get_url())
@@ -1537,20 +1523,9 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 elif line_endings == 'native':
                     end = os.linesep
                 else:
-                    raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
+                    raise errors.BzrError(
+                        'Invalid line ending request %r' % line_endings)
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
-                # Technically 'put()' is the right command. However, put
-                # uses an AtomicFile, which requires an extra rename into place
-                # As long as the files didn't exist in the past, append() will
-                # do the same thing as put()
-                # On jam's machine, make_kernel_like_tree is:
-                #   put:    4.5-7.5s (averaging 6s)
-                #   append: 2.9-4.5s
-                #   put_non_atomic: 2.9-4.5s
-
-                # ^ jam, is that comment still valid ? I think we
-                # can safely use put_bytes_non_atomic instead of
-                # put_file, given that put is deprecated -- vila 20070110
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
     def build_tree_contents(self, shape):
