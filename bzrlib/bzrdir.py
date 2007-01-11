@@ -2109,6 +2109,6 @@ format_registry.register_metadir('metaweave', 'RepositoryFormat7',
     deprecated=True)
 format_registry.register_metadir('experimental-knit2', 'RepositoryFormatKnit2',
     'Experimental successor to knit.  Use at your own risk.')
-format_registry.register_metadir('experimental-knit3', 'RepositoryFormatKnit2',
+format_registry.register_metadir('experimental-knit3', 'RepositoryFormatKnit3',
     'Experimental successor to knit2.  Use at your own risk.', 
     tree='WorkingTreeFormat4')

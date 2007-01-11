@@ -830,6 +830,12 @@ class TreeReference(InventoryEntry):
         self.revision = revision
         self.reference_revision = reference_revision
 
+    def copy(self):
+        return TreeReference(self.file_id, self.name, self.parent_id,
+                             self.revision, self.reference_revision)
+
+    def _snapshot_text(self, file_parents, work_tree, commit_builder):
+        commit_builder.modified_reference(self.file_id, file_parents)
 
 class Inventory(object):
     """Inventory of versioned files in a tree.

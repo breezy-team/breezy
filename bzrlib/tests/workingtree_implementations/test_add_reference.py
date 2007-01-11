@@ -42,6 +42,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         self.assertEqual(tree.path2id('sub-tree'), 'sub-tree-root-id')
         self.assertEqual(tree.inventory['sub-tree-root-id'].kind, 
                          'tree-reference')
+        tree.commit('commit references')
 
     def test_add_reference_same_root(self):
         tree = self.make_branch_and_tree('tree')

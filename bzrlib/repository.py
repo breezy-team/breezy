@@ -45,6 +45,7 @@ from bzrlib import (
     weavefile,
     xml5,
     xml6,
+    xml7,
     )
 from bzrlib.osutils import (
     rand_bytes,
@@ -1133,6 +1134,15 @@ class KnitRepository2(KnitRepository):
                                  committer, revprops, revision_id)
 
 
+class KnitRepository3(KnitRepository2):
+
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store,
+                 control_store, text_store):
+        KnitRepository2.__init__(self, _format, a_bzrdir, control_files,
+                                 _revision_store, control_store, text_store)
+        self._serializer = xml7.serializer_v7
+
+
 class RepositoryFormat(object):
     """A repository format.
 
@@ -1760,6 +1770,7 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
     """
     
     rich_root_data = True
+    repository_class = KnitRepository2
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -1793,14 +1804,40 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
         _revision_store = self._get_revision_store(repo_transport, control_files)
-        return KnitRepository2(_format=self,
-                               a_bzrdir=a_bzrdir,
-                               control_files=control_files,
-                               _revision_store=_revision_store,
-                               control_store=control_store,
-                               text_store=text_store)
+        return self.repository_class(_format=self,
+                                     a_bzrdir=a_bzrdir,
+                                     control_files=control_files,
+                                     _revision_store=_revision_store,
+                                     control_store=control_store,
+                                     text_store=text_store)
 
 
+class RepositoryFormatKnit3(RepositoryFormatKnit2):
+    """Bzr repository knit format 2.
+
+    THIS FORMAT IS EXPERIMENTAL
+    This repository format has:
+     - knits for file texts and inventory
+     - hash subdirectory based stores.
+     - knits for revisions and signatures
+     - TextStores for revisions and signatures.
+     - a format marker of its own
+     - an optional 'shared-storage' flag
+     - an optional 'no-working-trees' flag
+     - a LockDir lock
+     - support for recording full info about the tree root
+     - support for recording tree-references
+    """
+
+    repository_class = KnitRepository3
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar Knit Repository Format 3\n"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Knit repository format 3"
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
@@ -1809,6 +1846,7 @@ RepositoryFormat.register_format(RepositoryFormat7())
 _default_format = RepositoryFormatKnit1()
 RepositoryFormat.register_format(_default_format)
 RepositoryFormat.register_format(RepositoryFormatKnit2())
+RepositoryFormat.register_format(RepositoryFormatKnit3())
 RepositoryFormat._set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
@@ -2487,6 +2525,14 @@ class CommitBuilder(object):
 
     def modified_directory(self, file_id, file_parents):
         """Record the presence of a symbolic link.
+
+        :param file_id: The file_id of the link to record.
+        :param file_parents: The per-file parent revision ids.
+        """
+        self._add_text_to_weave(file_id, [], file_parents.keys())
+
+    def modified_reference(self, file_id, file_parents):
+        """Record the modification of a reference.
 
         :param file_id: The file_id of the link to record.
         :param file_parents: The per-file parent revision ids.
