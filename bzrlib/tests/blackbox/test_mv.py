@@ -292,7 +292,7 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a']) #touch a
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename a => b: Files exist: a b:"
-             " \(Use option '--after' to force rename\)$"],
+             " \(Use --after to update the Bazaar id\)$"],
             'mv', 'a', 'b')
         self.failUnlessExists('a')
         self.failUnlessExists('b')
@@ -343,7 +343,7 @@ class TestMove(TestCaseWithTransport):
 
         self.run_bzr_error(
             ["^bzr: ERROR: Could not rename a1 => a1: Files exist: a1 .*a1:"
-             " \(Use option '--after' to force rename\)$"],
+             " \(Use --after to update the Bazaar id\)$"],
             'mv', 'a1', 'a2', 'sub')
         self.failUnlessExists('a1')
         self.failUnlessExists('a2')

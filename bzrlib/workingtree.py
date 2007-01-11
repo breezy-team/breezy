@@ -256,8 +256,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # if needed, or, when the cache sees a change, append it to the hash
         # cache file, and have the parser take the most recent entry for a
         # given path only.
-        cache_filename = self.bzrdir.get_workingtree_transport(None) \
-            .local_abspath('stat-cache')
+        wt_trans = self.bzrdir.get_workingtree_transport(None)
+        cache_filename = wt_trans.local_abspath('stat-cache')
         self._hashcache = hashcache.HashCache(basedir, cache_filename,
                                               self._control_files._file_mode)
         hc = self._hashcache
@@ -1000,7 +1000,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         The first mode moves the file in the filesystem and updates the 
         inventory. The second mode only updates the inventory without 
         touching the file on the filesystem. This is the new mode introduced 
-        in version 0.13.
+        in version 0.15.
         
         move uses the second mode if 'after == True' and the target is not
         versioned but present in the working tree.
@@ -1016,7 +1016,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         Everything else results in an error.
 
         This returns a list of (from_path, to_path) pairs for each
-        entry, that is moved.
+        entry that is moved.
         """
         rename_entries = []
         rename_tuples = []
@@ -1074,10 +1074,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # determine which move mode to use. checks also for movability
         rename_entries = self._determine_mv_mode(rename_entries, after)
 
-        # move pairs.
         original_modified = self._inventory_is_modified
         try:
-            if len(from_paths): 
+            if len(from_paths):
                 self._inventory_is_modified = True
             self._move(rename_entries)
         except:
@@ -1133,7 +1132,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 else:
                     raise errors.BzrRenameFailedError(from_rel,to_rel,
                         errors.FilesExist(paths=(str(from_rel), str(to_rel)),
-                        extra="(Use option '--after' to force rename)"))
+                        extra="(Use --after to update the Bazaar id)"))
             rename_entry.only_change_inv = only_change_inv                       
         return rename_entries
 
