@@ -35,35 +35,23 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
     def setUp(self):
         super(TestWithUpgradableBranches, self).setUp()
         self.old_format = bzrdir.BzrDirFormat.get_default_format()
-        self.old_repo_format = \
-            bzrlib.repository.RepositoryFormat.get_default_format()
         self.old_ui_factory = ui.ui_factory
         self.addCleanup(self.restoreDefaults)
 
         ui.ui_factory = TestUIFactory()
-        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
-        bzrlib.repository.RepositoryFormat.set_default_format(
-            bzrlib.repository.RepositoryFormat7())
-        # FIXME RBC 20060120 we should be able to do this via ui calls only.
         # setup a format 5 branch we can upgrade from.
-        t = get_transport(self.get_url())
-        t.mkdir('format_5_branch')
-        bzrdir.BzrDirFormat5().initialize(self.get_url('format_5_branch'))
-        bzrdir.BzrDir.create_standalone_workingtree('current_format_branch')
-        d = bzrdir.BzrDir.create('metadir_weave_branch')
-        d.create_repository()
-        d.create_branch()
-        d.create_workingtree()
-        self.run_bzr('checkout',
-                     '--lightweight',
-                     self.get_url('current_format_branch'),
-                     'current_format_checkout')
+        self.make_branch_and_tree('format_5_branch',
+                                  format=bzrdir.BzrDirFormat5())
+
+        current_tree = self.make_branch_and_tree('current_format_branch',
+                                                 format='default')
+        self.make_branch_and_tree('metadir_weave_branch', format='metaweave')
+        current_tree.branch.create_checkout(
+            self.get_url('current_format_checkout'), lightweight=True)
 
     def restoreDefaults(self):
-        bzrdir.BzrDirFormat.set_default_format(self.old_format)
-        bzrlib.repository.RepositoryFormat.set_default_format(
-            self.old_repo_format)
         ui.ui_factory = self.old_ui_factory
+        bzrdir.BzrDirFormat._set_default_format(self.old_format)
 
     def test_readonly_url_error(self):
         (out, err) = self.run_bzr_captured(
@@ -111,7 +99,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         # users can force an upgrade to metadir format.
         url = get_transport(self.get_url('format_5_branch')).base
         # check --format takes effect
-        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
+        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         (out, err) = self.run_bzr_captured(
             ['upgrade', '--format=metaweave', url])
         self.assertEqualDiff("""starting upgrade of %s
@@ -135,7 +123,7 @@ finished
         # branch
         url = get_transport(self.get_url('metadir_weave_branch')).base
         # check --format takes effect
-        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
+        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         (out, err) = self.run_bzr_captured(
             ['upgrade', '--format=knit', url])
         self.assertEqualDiff("""starting upgrade of %s

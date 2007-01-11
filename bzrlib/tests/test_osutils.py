@@ -580,42 +580,8 @@ class TestCopyTree(TestCaseInTempDir):
             self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
 
 
-class TestTerminalEncoding(TestCase):
-    """Test the auto-detection of proper terminal encoding."""
-
-    def setUp(self):
-        self._stdout = sys.stdout
-        self._stderr = sys.stderr
-        self._stdin = sys.stdin
-        self._user_encoding = bzrlib.user_encoding
-
-        self.addCleanup(self._reset)
-
-        sys.stdout = StringIOWrapper()
-        sys.stdout.encoding = 'stdout_encoding'
-        sys.stderr = StringIOWrapper()
-        sys.stderr.encoding = 'stderr_encoding'
-        sys.stdin = StringIOWrapper()
-        sys.stdin.encoding = 'stdin_encoding'
-        bzrlib.user_encoding = 'user_encoding'
-
-    def _reset(self):
-        sys.stdout = self._stdout
-        sys.stderr = self._stderr
-        sys.stdin = self._stdin
-        bzrlib.user_encoding = self._user_encoding
-
-    def test_get_terminal_encoding(self):
-        # first preference is stdout encoding
-        self.assertEqual('stdout_encoding', osutils.get_terminal_encoding())
-
-        sys.stdout.encoding = None
-        # if sys.stdout is None, fall back to sys.stdin
-        self.assertEqual('stdin_encoding', osutils.get_terminal_encoding())
-
-        sys.stdin.encoding = None
-        # and in the worst case, use bzrlib.user_encoding
-        self.assertEqual('user_encoding', osutils.get_terminal_encoding())
+#class TestTerminalEncoding has been moved to test_osutils_encodings.py
+# [bialix] 2006/12/26
 
 
 class TestSetUnsetEnv(TestCase):
@@ -677,3 +643,24 @@ class TestSetUnsetEnv(TestCase):
         self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'))
         self.failIf('BZR_TEST_ENV_VAR' in os.environ)
 
+
+class TestLocalTimeOffset(TestCase):
+
+    def test_local_time_offset(self):
+        """Test that local_time_offset() returns a sane value."""
+        offset = osutils.local_time_offset()
+        self.assertTrue(isinstance(offset, int))
+        # Test that the offset is no more than a eighteen hours in
+        # either direction.
+        # Time zone handling is system specific, so it is difficult to
+        # do more specific tests, but a value outside of this range is
+        # probably wrong.
+        eighteen_hours = 18 * 3600
+        self.assertTrue(-eighteen_hours < offset < eighteen_hours)
+
+    def test_local_time_offset_with_timestamp(self):
+        """Test that local_time_offset() works with a timestamp."""
+        offset = osutils.local_time_offset(1000000000.1234567)
+        self.assertTrue(isinstance(offset, int))
+        eighteen_hours = 18 * 3600
+        self.assertTrue(-eighteen_hours < offset < eighteen_hours)

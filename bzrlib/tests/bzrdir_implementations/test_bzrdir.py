@@ -1261,15 +1261,10 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('.')
         if dir.can_convert_format():
             # if its default updatable there must be an updater 
-            # (we change the default to match the lastest known format
-            # as downgrades may not be available
-            old_format = bzrdir.BzrDirFormat.get_default_format()
-            bzrdir.BzrDirFormat.set_default_format(dir._format)
-            try:
-                self.assertTrue(isinstance(dir._format.get_converter(),
-                                           bzrdir.Converter))
-            finally:
-                bzrdir.BzrDirFormat.set_default_format(old_format)
+            # (we force the latest known format as downgrades may not be
+            # available
+            self.assertTrue(isinstance(dir._format.get_converter(
+                format=dir._format), bzrdir.Converter))
         dir.needs_format_conversion(None)
 
     def test_upgrade_new_instance(self):
@@ -1281,15 +1276,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.createWorkingTreeOrSkip(dir)
         if dir.can_convert_format():
             # if its default updatable there must be an updater 
-            # (we change the default to match the lastest known format
-            # as downgrades may not be available
-            old_format = bzrdir.BzrDirFormat.get_default_format()
-            bzrdir.BzrDirFormat.set_default_format(dir._format)
+            # (we force the latest known format as downgrades may not be
+            # available
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                dir._format.get_converter(None).convert(dir, pb)
+                dir._format.get_converter(format=dir._format).convert(dir, pb)
             finally:
-                bzrdir.BzrDirFormat.set_default_format(old_format)
                 pb.finished()
             # and it should pass 'check' now.
             check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)

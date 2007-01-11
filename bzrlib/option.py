@@ -112,7 +112,7 @@ def get_merge_type(typestring):
 class Option(object):
     """Description of a command line option
     
-    :ivar short_name: If this option has a single-letter name, this is it.
+    :ivar _short_name: If this option has a single-letter name, this is it.
     Otherwise None.
     """
 
@@ -138,12 +138,15 @@ class Option(object):
         self.name = name
         self.help = help
         self.type = type
-        self.short_name = short_name
+        self._short_name = short_name
         if type is None:
             assert argname is None
         elif argname is None:
             argname = 'ARG'
         self.argname = argname
+
+    def short_name(self):
+        return self._short_name
 
     def get_negation_name(self):
         if self.name.startswith('no-'):
@@ -184,7 +187,7 @@ class Option(object):
         argname =  self.argname
         if argname is not None:
             argname = argname.upper()
-        yield self.name, self.short_name, argname, self.help
+        yield self.name, self.short_name(), argname, self.help
 
 
 class OptionParser(optparse.OptionParser):
@@ -202,7 +205,7 @@ def get_optparser(options):
     parser = OptionParser()
     parser.remove_option('--help')
     for option in options.itervalues():
-        option.add_option(parser, option.short_name)
+        option.add_option(parser, option.short_name())
     return parser
 
 
