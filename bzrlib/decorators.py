@@ -32,12 +32,18 @@ def needs_read_lock(unbound):
         def branch_method(self, ...):
             stuff
     """
-    def read_locked(self, *args, **kwargs):
-        self.lock_read()
-        try:
-            return unbound(self, *args, **kwargs)
-        finally:
-            self.unlock()
+    template = """\
+def %(name)s_read_locked(self, *args, **kwargs):
+    self.lock_read()
+    try:
+        return unbound(self, *args, **kwargs)
+    finally:
+        self.unlock()
+read_locked = %(name)s_read_locked
+"""
+    func_def = template % {'name':unbound.__name__}
+    exec func_def in locals()
+
     read_locked.__doc__ = unbound.__doc__
     read_locked.__name__ = unbound.__name__
     return read_locked
@@ -45,12 +51,18 @@ def needs_read_lock(unbound):
 
 def needs_write_lock(unbound):
     """Decorate unbound to take out and release a write lock."""
-    def write_locked(self, *args, **kwargs):
-        self.lock_write()
-        try:
-            return unbound(self, *args, **kwargs)
-        finally:
-            self.unlock()
+    template = """\
+def %(name)s_write_locked(self, *args, **kwargs):
+    self.lock_write()
+    try:
+        return unbound(self, *args, **kwargs)
+    finally:
+        self.unlock()
+write_locked = %(name)s_write_locked
+"""
+    func_def = template % {'name':unbound.__name__}
+    exec func_def in locals()
+
     write_locked.__doc__ = unbound.__doc__
     write_locked.__name__ = unbound.__name__
     return write_locked
