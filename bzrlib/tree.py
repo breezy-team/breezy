@@ -480,7 +480,8 @@ class InterTree(InterObject):
         from_entries_by_dir = list(from_tree.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
         from_data = dict((e.file_id, (p, e)) for p, e in from_entries_by_dir)
-        to_entries_by_dir = list(to_tree.inventory.iter_entries_by_dir(specific_file_ids=specific_file_ids))
+        to_entries_by_dir = list(to_tree.inventory.iter_entries_by_dir(
+            specific_file_ids=specific_file_ids))
         num_entries = len(from_entries_by_dir) + len(to_entries_by_dir)
         entry_count = 0
         for to_path, to_entry in to_entries_by_dir:
@@ -532,16 +533,22 @@ class InterTree(InterObject):
                 yield (file_id, to_path, changed_content, versioned, parent,
                        name, kind, executable)
 
+        def get_to_path(from_entry):
+            if from_entry.parent_id is None:
+                to_path = ''
+            else:
+                if from_entry.parent_id not in to_paths:
+                    get_to_path(from_tree.inventory[from_entry.parent_id])
+                to_path = osutils.pathjoin(to_paths[from_entry.parent_id],
+                                           from_entry.name)
+            to_paths[from_entry.file_id] = to_path
+            return to_path
+
         for path, from_entry in from_entries_by_dir:
             file_id = from_entry.file_id
             if file_id in to_paths:
                 continue
-            if from_entry.parent_id is None:
-                to_path = ''
-            else:
-                to_path = osutils.pathjoin(to_paths[from_entry.parent_id],
-                                           from_entry.name)
-            to_paths[file_id] = to_path
+            to_path = get_to_path(from_entry)
             entry_count += 1
             if pb is not None:
                 pb.update('comparing files', entry_count, num_entries)
