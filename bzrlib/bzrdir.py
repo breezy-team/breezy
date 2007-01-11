@@ -567,7 +567,7 @@ class BzrDir(object):
         bzrdir, relpath = klass.open_containing(location)
         try:
             tree = bzrdir.open_workingtree()
-        except errors.NoWorkingTree:
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
             tree = None
             branch = bzrdir.open_branch()
         else:

@@ -33,7 +33,7 @@ from bzrlib.errors import (NotBranchError,
                            UnsupportedFormatError,
                            )
 import bzrlib.repository as repository
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport, test_sftp_transport
 from bzrlib.tests.HttpServer import HttpServer
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
@@ -650,3 +650,9 @@ class NonLocalTests(TestCaseWithTransport):
         result.open_branch()
         result.open_repository()
 
+
+class TestRemoteSFTP(test_sftp_transport.TestCaseWithSFTPServer):
+
+    def test_open_containing_tree_or_branch(self):
+        tree = self.make_branch_and_tree('tree')
+        bzrdir.BzrDir.open_containing_tree_or_branch(self.get_url('tree'))
