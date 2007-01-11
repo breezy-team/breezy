@@ -18,7 +18,7 @@
 """
 
 
-from bzrlib import (symbol_versioning, 
+from bzrlib import (symbol_versioning,
                     osutils,)
 from bzrlib.patches import (PatchSyntax, 
                             PatchConflict, 
@@ -322,7 +322,7 @@ class FileExists(PathError):
 
 class FilesExist(PathError):
     """Used when reporting that files do exist"""
-    
+
     _fmt = "File%(plural)s exist: %(paths_as_string)s%(extra)s"
 
     def __init__(self, paths, extra=None):
@@ -525,13 +525,13 @@ class IncompatibleRevision(BzrError):
 
 class AlreadyVersionedError(BzrError):
     """Used when a path is expected not to be versioned, but it is."""
-    
+
     _fmt = "%(context_info)s%(path)s is already versioned"
 
     def __init__(self, path, context_info=None):
         """Construct a new NotVersionedError.
 
-        :param path: This is the path which is versioned, 
+        :param path: This is the path which is versioned,
         which should be in a user friendly form.
         :param context_info: If given, this is information about the context,
         which could explain why this is expected to not be versioned.
@@ -546,13 +546,13 @@ class AlreadyVersionedError(BzrError):
 
 class NotVersionedError(BzrError):
     """Used when a path is expected to be versioned, but it is not."""
-    
+
     _fmt = "%(context_info)s%(path)s is not versioned"
 
     def __init__(self, path, context_info=None):
         """Construct a new NotVersionedError.
 
-        :param path: This is the path which is not versioned, 
+        :param path: This is the path which is not versioned,
         which should be in a user friendly form.
         :param context_info: If given, this is information about the context,
         which could explain why this is expected to be versioned.
@@ -1348,7 +1348,7 @@ class CantMoveRoot(BzrError):
 
 
 class BzrMoveFailedError(BzrError):
-    
+
     _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
 
     def __init__(self, from_path='', to_path='', extra=None):
@@ -1357,14 +1357,14 @@ class BzrMoveFailedError(BzrError):
             self.extra = ': ' + str(extra)
         else:
             self.extra = ''
-            
+
         has_from = len(from_path) > 0
         has_to = len(to_path) > 0
         if has_from:
             self.from_path = osutils.splitpath(from_path)[-1]
         else:
             self.from_path = ''
-            
+
         if has_to:
             self.to_path = osutils.splitpath(to_path)[-1]
         else:
@@ -1373,7 +1373,7 @@ class BzrMoveFailedError(BzrError):
         self.operator = ""
         if has_from and has_to:
             self.operator = " =>"
-        elif has_from:            
+        elif has_from:
             self.from_path = "from " + from_path
         elif has_to:
             self.operator = "to"
@@ -1382,9 +1382,9 @@ class BzrMoveFailedError(BzrError):
 
 
 class BzrRenameFailedError(BzrMoveFailedError):
-    
+
     _fmt = "Could not rename %(from_path)s%(operator)s %(to_path)s%(extra)s"
-    
+
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
 

@@ -691,7 +691,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add(['a1', 'sub1'])
         tree.commit('initial commit')
         tree.move(['a1'], to_dir='sub1', after=False)
-        
+
     def test_move_deprecated_correct_call_unnamed(self):
         """tree.move has the deprecated parameter 'to_name'.
         It has been replaced by 'to_dir' for consistency.
@@ -701,7 +701,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add(['a1', 'sub1'])
         tree.commit('initial commit')
         tree.move(['a1'], 'sub1', after=False)
-        
+
     def test_move_deprecated_wrong_call(self):
         """tree.move has the deprecated parameter 'to_name'.
         It has been replaced by 'to_dir' for consistency.
@@ -710,7 +710,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         tree.add(['a1', 'sub1'])
         tree.commit('initial commit')
-        self.assertRaises(TypeError, tree.move, ['a1'], 
+        self.assertRaises(TypeError, tree.move, ['a1'],
                           to_this_parameter_does_not_exist='sub1',
                           after=False)
 

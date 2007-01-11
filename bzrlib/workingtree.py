@@ -72,7 +72,7 @@ import bzrlib.ui
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-                           
+
 from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
@@ -83,8 +83,8 @@ from bzrlib.osutils import (
     file_kind,
     isdir,
     normpath,
-    pathjoin,    
-    rand_chars,    
+    pathjoin,
+    rand_chars,
     realpath,
     safe_unicode,
     splitpath,
@@ -639,7 +639,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
         parents = self.get_parent_ids() + [revision_id]
-        self.set_parent_ids(parents, allow_leftmost_as_ghost=len(parents) > 1 
+        self.set_parent_ids(parents, allow_leftmost_as_ghost=len(parents) > 1
             or allow_leftmost_as_ghost)
 
     @needs_tree_write_lock
@@ -780,8 +780,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """Merge from a branch into this working tree.
 
         :param branch: The branch to merge from.
-        :param to_revision: If non-None, the merge will merge to to_revision, 
-            but not beyond it. to_revision does not need to be in the history 
+        :param to_revision: If non-None, the merge will merge to to_revision,
+            but not beyond it. to_revision does not need to be in the history
             of the branch when it is supplied. If None, to_revision defaults to
             branch.last_revision().
         """
@@ -975,7 +975,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 new_children.sort()
                 new_children = collections.deque(new_children)
                 stack.append((f_ie.file_id, fp, fap, new_children))
-                # Break out of inner loop, 
+                # Break out of inner loop,
                 # so that we start outer loop with child
                 break
             else:
@@ -994,23 +994,23 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         Note that to_dir is only the last component of the new name;
         this doesn't change the directory.
 
-        For each entry in from_paths the move mode will be determined 
+        For each entry in from_paths the move mode will be determined
         independently.
 
-        The first mode moves the file in the filesystem and updates the 
-        inventory. The second mode only updates the inventory without 
-        touching the file on the filesystem. This is the new mode introduced 
+        The first mode moves the file in the filesystem and updates the
+        inventory. The second mode only updates the inventory without
+        touching the file on the filesystem. This is the new mode introduced
         in version 0.15.
-        
+
         move uses the second mode if 'after == True' and the target is not
         versioned but present in the working tree.
 
-        move uses the second mode if 'after == False' and the source is 
-        versioned but no longer in the working tree, and the target is not 
+        move uses the second mode if 'after == False' and the source is
+        versioned but no longer in the working tree, and the target is not
         versioned but present in the working tree.
 
-        move uses the first mode if 'after == False' and the source is 
-        versioned and present in the working tree, and the target is not 
+        move uses the first mode if 'after == False' and the source is
+        versioned and present in the working tree, and the target is not
         versioned and not present in the working tree.
 
         Everything else results in an error.
@@ -1036,7 +1036,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         inv = self.inventory
         to_abs = self.abspath(to_dir)
         if not isdir(to_abs):
-            raise errors.BzrMoveFailedError('',to_dir, 
+            raise errors.BzrMoveFailedError('',to_dir,
                 errors.NotADirectory(to_abs))
         if not self.has_filename(to_dir):
             raise errors.BzrMoveFailedError('',to_dir,
@@ -1045,7 +1045,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if to_dir_id is None:
             raise errors.BzrMoveFailedError('',to_dir,
                 errors.NotVersionedError(path=str(to_dir)))
-            
+
         to_dir_ie = inv[to_dir_id]
         if to_dir_ie.kind != 'directory':
             raise errors.BzrMoveFailedError('',to_dir,
@@ -1062,7 +1062,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             from_entry = inv[from_id]
             from_parent_id = from_entry.parent_id
             to_rel = pathjoin(to_dir, from_tail)
-            rename_entry = WorkingTree._RenameEntry(from_rel=from_rel, 
+            rename_entry = WorkingTree._RenameEntry(from_rel=from_rel,
                                          from_id=from_id,
                                          from_tail=from_tail,
                                          from_parent_id=from_parent_id,
@@ -1110,7 +1110,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 raise errors.BzrMoveFailedError(from_rel,to_rel,
                     errors.AlreadyVersionedError(path=str(to_rel)))
 
-            # try to determine the mode for rename (only change inv or change 
+            # try to determine the mode for rename (only change inv or change
             # inv and file system)
             if after:
                 if not self.has_filename(to_rel):
@@ -1127,13 +1127,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 if not self.has_filename(from_rel) and \
                    not self.has_filename(to_rel):
                     raise errors.BzrRenameFailedError(from_rel,to_rel,
-                        errors.PathsDoNotExist(paths=(str(from_rel), 
+                        errors.PathsDoNotExist(paths=(str(from_rel),
                         str(to_rel))))
                 else:
                     raise errors.BzrRenameFailedError(from_rel,to_rel,
                         errors.FilesExist(paths=(str(from_rel), str(to_rel)),
                         extra="(Use --after to update the Bazaar id)"))
-            rename_entry.only_change_inv = only_change_inv                       
+            rename_entry.only_change_inv = only_change_inv
         return rename_entries
 
     def _move(self, rename_entries):
@@ -1158,7 +1158,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             moved.append(entry)
 
     def _rollback_move(self, moved):
-        """Try to rollback a previous move in case of an error in the 
+        """Try to rollback a previous move in case of an error in the
         filesystem.
         """
         inv = self.inventory
@@ -1166,7 +1166,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             try:
                 self._move_entry(entry, inverse=True)
             except OSError, e:
-                raise errors.BzrMoveFailedError( '', '', 
+                raise errors.BzrMoveFailedError( '', '',
                     errors.BzrError("Rollback failed."
                         " The working tree is in an inconsistent state."
                         " Please consider doing a 'bzr revert'."
@@ -1180,7 +1180,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if from_rel_abs == to_rel_abs:
             raise errors.BzrMoveFailedError(from_rel, to_rel,
                 "Source and target are identical.")
-                           
+
         if inverse:
             if not entry.only_change_inv:
                 osutils.rename(to_rel_abs, from_rel_abs)
@@ -1196,20 +1196,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         This can change the directory or the filename or both.
 
-        rename_one has several 'modes' to work. First, it can rename a physical 
-        file and change the file_id. That is the normal mode. Second, it can 
-        only change the file_id without touching any physical file. This is 
-        the new mode introduced in version 0.13.
-        
+        rename_one has several 'modes' to work. First, it can rename a physical
+        file and change the file_id. That is the normal mode. Second, it can
+        only change the file_id without touching any physical file. This is
+        the new mode introduced in version 0.15.
+
         rename_one uses the second mode if 'after == True' and 'to_rel' is not
         versioned but present in the working tree.
 
-        rename_one uses the second mode if 'after == False' and 'from_rel' is 
-        versioned but no longer in the working tree, and 'to_rel' is not 
+        rename_one uses the second mode if 'after == False' and 'from_rel' is
+        versioned but no longer in the working tree, and 'to_rel' is not
         versioned but present in the working tree.
 
-        rename_one uses the first mode if 'after == False' and 'from_rel' is 
-        versioned and present in the working tree, and 'to_rel' is not 
+        rename_one uses the first mode if 'after == False' and 'from_rel' is
+        versioned and present in the working tree, and 'to_rel' is not
         versioned and not present in the working tree.
 
         Everything else results in an error.
@@ -1227,7 +1227,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         from_parent_id = from_entry.parent_id
         to_dir, to_tail = os.path.split(to_rel)
         to_dir_id = inv.path2id(to_dir)
-        rename_entry = WorkingTree._RenameEntry(from_rel=from_rel, 
+        rename_entry = WorkingTree._RenameEntry(from_rel=from_rel,
                                      from_id=from_id,
                                      from_tail=from_tail,
                                      from_parent_id=from_parent_id,
@@ -1243,7 +1243,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if to_dir_id is None:
             raise errors.BzrMoveFailedError(from_rel,to_rel,
                 errors.NotVersionedError(path=str(to_dir)))
-        
+
         # all checks done. now we can continue with our actual work
         mutter('rename_one:\n'
                '  from_id   {%s}\n'
