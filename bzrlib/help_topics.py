@@ -105,7 +105,6 @@ _basic_help= \
 http://bazaar-vcs.org/
 
 Basic commands:
-
   bzr init           makes this directory a versioned branch
   bzr branch         make a copy of another branch
 
@@ -132,3 +131,7 @@ topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
 topic_registry.register('basic', _basic_help, "Basic commands")
 topic_registry.register('topics', _help_on_topics, "Topics list")
+def get_format_topic(topic):
+    from bzrlib import bzrdir
+    return bzrdir.format_registry.help_topic(topic)
+topic_registry.register('formats', get_format_topic, 'Directory formats')

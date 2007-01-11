@@ -1413,7 +1413,9 @@ class TestCaseWithMemoryTransport(TestCase):
                     t.mkdir('.')
                 except errors.FileExists:
                     pass
-            if format is None:
+            if isinstance(format, basestring):
+                format = bzrdir.format_registry.make_bzrdir(format)
+            elif format is None:
                 format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
             return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
@@ -1743,6 +1745,7 @@ def test_suite():
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_ftp_transport',
+                   'bzrlib.tests.test_generate_docs',
                    'bzrlib.tests.test_generate_ids',
                    'bzrlib.tests.test_globbing',
                    'bzrlib.tests.test_gpg',
@@ -1768,6 +1771,7 @@ def test_suite():
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
+                   'bzrlib.tests.test_osutils_encodings',
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',

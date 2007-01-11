@@ -20,6 +20,9 @@
 import os
 from cStringIO import StringIO
 
+from bzrlib import (
+    bzrdir,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import (BzrDir, BzrDirFormat, BzrDirMetaFormat1)
 from bzrlib.osutils import getcwd
@@ -100,13 +103,8 @@ class TestBoundBranches(TestCaseWithTransport):
         self.run_bzr('unbind', retcode=3)
 
     def init_meta_branch(self, path):
-        old_format = BzrDirFormat.get_default_format()
-        BzrDirFormat.set_default_format(BzrDirMetaFormat1())
-        try:
-            return BzrDir.create_branch_convenience(
-                path, BzrDirMetaFormat1())
-        finally:
-            BzrDirFormat.set_default_format(old_format)
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        return BzrDir.create_branch_convenience(path, format=format)
 
     def test_bound_commit(self):
         bzr = self.run_bzr

@@ -95,25 +95,15 @@ def internal_tree_files(file_list, default_branch=u'.'):
 
 def get_format_type(typestring):
     """Parse and return a format specifier."""
-    if typestring == "weave":
-        return bzrdir.BzrDirFormat6()
+    # Have to use BzrDirMetaFormat1 directly, so that
+    # RepositoryFormat.set_default_format works
     if typestring == "default":
         return bzrdir.BzrDirMetaFormat1()
-    if typestring == "metaweave":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormat7()
-        return format
-    if typestring == "knit":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit1()
-        return format
-    if typestring == "experimental-knit2":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
-        return format
-    msg = "Unknown bzr format %s. Current formats are: default, knit,\n" \
-          "metaweave and weave" % typestring
-    raise errors.BzrCommandError(msg)
+    try:
+        return bzrdir.format_registry.make_bzrdir(typestring)
+    except KeyError:
+        msg = 'Unknown bzr format "%s". See "bzr help formats".' % typestring
+        raise errors.BzrCommandError(msg)
 
 
 # TODO: Make sure no commands unconditionally use the working directory as a
@@ -844,12 +834,7 @@ class cmd_checkout(Command):
                                              % to_location)
             else:
                 raise
-        old_format = bzrdir.BzrDirFormat.get_default_format()
-        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
-        try:
-            source.create_checkout(to_location, revision_id, lightweight)
-        finally:
-            bzrdir.BzrDirFormat.set_default_format(old_format)
+        source.create_checkout(to_location, revision_id, lightweight)
 
 
 class cmd_renames(Command):
@@ -1522,6 +1507,7 @@ class cmd_ls(Command):
     """List files in a tree.
     """
 
+    takes_args = ['path?']
     # TODO: Take a revision or remote path and list that tree instead.
     takes_options = ['verbose', 'revision',
                      Option('non-recursive',
@@ -1539,7 +1525,7 @@ class cmd_ls(Command):
     def run(self, revision=None, verbose=False, 
             non_recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
-            null=False, kind=None, show_ids=False):
+            null=False, kind=None, show_ids=False, path=None):
 
         if kind and kind not in ('file', 'directory', 'symlink'):
             raise errors.BzrCommandError('invalid kind specified')
@@ -1550,7 +1536,16 @@ class cmd_ls(Command):
 
         selection = {'I':ignored, '?':unknown, 'V':versioned}
 
-        tree, relpath = WorkingTree.open_containing(u'.')
+        if path is None:
+            fs_path = '.'
+            prefix = ''
+        else:
+            if from_root:
+                raise errors.BzrCommandError('cannot specify both --from-root'
+                                             ' and PATH')
+            fs_path = path
+            prefix = path
+        tree, relpath = WorkingTree.open_containing(fs_path)
         if from_root:
             relpath = u''
         elif relpath:
@@ -1561,7 +1556,7 @@ class cmd_ls(Command):
 
         for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
             if fp.startswith(relpath):
-                fp = fp[len(relpath):]
+                fp = osutils.pathjoin(prefix, fp[len(relpath):])
                 if non_recursive and '/' in fp:
                     continue
                 if not all and not selection[fc]:
@@ -2109,6 +2104,7 @@ class cmd_selftest(Command):
                             help='clean temporary tests directories'
                                  ' without running tests'),
                      ]
+    encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
