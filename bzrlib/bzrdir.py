@@ -906,8 +906,7 @@ class BzrDirMeta1(BzrDir):
 
     def create_branch(self):
         """See BzrDir.create_branch."""
-        from bzrlib.branch import BranchFormat
-        return BranchFormat.get_default_format().initialize(self)
+        return self._format.branch_format.initialize(self)
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
@@ -1419,6 +1418,20 @@ class BzrDirMetaFormat1(BzrDirFormat):
     """
 
     _lock_class = lockdir.LockDir
+
+    def __init__(self):
+        self._branch_format = None
+
+    def _get_branch_format(self):
+        if self._branch_format is None:
+            from bzrlib.branch import BranchFormat
+            self._branch_format = BranchFormat.get_default_format()
+        return self._branch_format
+
+    def _set_branch_format(self, format):
+        self._branch_format = format
+
+    branch_format = property(_get_branch_format, _set_branch_format)
 
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
@@ -1967,7 +1980,8 @@ class BzrDirFormatRegistry(registry.Registry):
     e.g. BzrDirMeta1 with weave repository.  Also, it's more user-oriented.
     """
 
-    def register_metadir(self, key, repo, help, native=True, deprecated=False):
+    def register_metadir(self, key, repo, help, native=True, deprecated=False,
+                         branch_format=None):
         """Register a metadir subformat.
         
         repo is the repository format name as a string.
@@ -1976,9 +1990,12 @@ class BzrDirFormatRegistry(registry.Registry):
         # formats, once BzrDirMetaFormat1 supports that.
         def helper():
             import bzrlib.repository
+            import bzrlib.branch
             repo_format = getattr(bzrlib.repository, repo)
             bd = BzrDirMetaFormat1()
             bd.repository_format = repo_format()
+            if branch_format is not None:
+                bd.branch_format =  getattr(bzrlib.branch, branch_format)()
             return bd
         self.register(key, helper, help, native, deprecated)
 
@@ -2081,3 +2098,7 @@ format_registry.register_metadir('metaweave', 'RepositoryFormat7',
     deprecated=True)
 format_registry.register_metadir('experimental-knit2', 'RepositoryFormatKnit2',
     'Experimental successor to knit.  Use at your own risk.')
+format_registry.register_metadir('experimental-branch6', 
+    'RepositoryFormatKnit2',
+    'Experimental successor to knit.  Use at your own risk.', 
+    branch_format='BzrBranchFormat6')

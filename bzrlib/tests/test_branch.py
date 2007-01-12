@@ -24,6 +24,7 @@ also see this file.
 
 from StringIO import StringIO
 
+from bzrlib import branch as _mod_branch
 import bzrlib.branch
 from bzrlib.branch import (BzrBranch5, 
                            BzrBranchFormat5)
@@ -144,6 +145,26 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         self.assertEqual(format.open(dir), bzrdir.BzrDir.open(self.get_url()).open_branch(unsupported=True))
         # unregister the format
         bzrlib.branch.BranchFormat.unregister_format(format)
+
+
+class TestBranch6(TestCaseWithTransport):
+
+    def test_creation(self):
+        format = BzrDirMetaFormat1()
+        format.branch_format = _mod_branch.BzrBranchFormat6()
+        branch = self.make_branch('a', format=format)
+        self.assertIsInstance(branch, _mod_branch.BzrBranch6)
+        branch = self.make_branch('b', format='experimental-branch6')
+        self.assertIsInstance(branch, _mod_branch.BzrBranch6)
+        branch = _mod_branch.Branch.open('a')
+        self.assertIsInstance(branch, _mod_branch.BzrBranch6)
+
+    def test_layout(self):
+        branch = self.make_branch('a', format='experimental-branch6')
+        self.failUnlessExists('a/.bzr/branch/last-revision')
+        self.failIfExists('a/.bzr/branch/revision-history')
+
+
 
 
 class TestBranchReference(TestCaseWithTransport):

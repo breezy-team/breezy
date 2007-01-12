@@ -833,6 +833,59 @@ class BzrBranchFormat5(BranchFormat):
         return "Bazaar-NG Metadir branch format 5"
 
 
+class BzrBranchFormat6(BzrBranchFormat5):
+    """Branch format with last-revision
+    
+    Unlike previous formats, this has no explicit revision history, instead
+    the left-parent revision history is used.
+    """
+
+    def get_format_string(self):
+        """See BranchFormat.get_format_string()."""
+        return "Bazaar-NG branch format 6\n"
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Branch format 6"
+
+    def initialize(self, a_bzrdir):
+        """Create a branch of this format in a_bzrdir."""
+        mutter('creating branch %r in %s', self, a_bzrdir.transport.base)
+        branch_transport = a_bzrdir.get_branch_transport(self)
+        utf8_files = [('last-revision', ''),
+                      ('branch-name', ''),
+                      ('branch.conf', '')
+                      ]
+        control_files = lockable_files.LockableFiles(branch_transport, 'lock',
+                                                     lockdir.LockDir)
+        control_files.create_lock()
+        control_files.lock_write()
+        control_files.put_utf8('format', self.get_format_string())
+        try:
+            for file, content in utf8_files:
+                control_files.put_utf8(file, content)
+        finally:
+            control_files.unlock()
+        return self.open(a_bzrdir, _found=True, )
+
+    def open(self, a_bzrdir, _found=False):
+        """Return the branch object for a_bzrdir
+
+        _found is a private parameter, do not use it. It is used to indicate
+               if format probing has already be done.
+        """
+        if not _found:
+            format = BranchFormat.find_format(a_bzrdir)
+            assert format.__class__ == self.__class__
+        transport = a_bzrdir.get_branch_transport(None)
+        control_files = lockable_files.LockableFiles(transport, 'lock',
+                                                     lockdir.LockDir)
+        return BzrBranch6(_format=self,
+                          _control_files=control_files,
+                          a_bzrdir=a_bzrdir,
+                          _repository=a_bzrdir.find_repository())
+
+
 class BranchReferenceFormat(BranchFormat):
     """Bzr branch reference format.
 
@@ -908,6 +961,7 @@ class BranchReferenceFormat(BranchFormat):
 __default_format = BzrBranchFormat5()
 BranchFormat.register_format(__default_format)
 BranchFormat.register_format(BranchReferenceFormat())
+BranchFormat.register_format(BzrBranchFormat6())
 BranchFormat.set_default_format(__default_format)
 _legacy_formats = [BzrBranchFormat4(),
                    ]
@@ -1395,6 +1449,10 @@ class BzrBranch5(BzrBranch):
                 return None
             return old_tip
         return None
+
+
+class BzrBranch6(BzrBranch5):
+    pass
 
 
 class BranchTestProviderAdapter(object):

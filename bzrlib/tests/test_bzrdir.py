@@ -76,6 +76,10 @@ class TestFormatRegistry(TestCase):
         my_format_registry.register_metadir('experimental-knit2', 
                                             'RepositoryFormatKnit2',
             'Experimental successor to knit.  Use at your own risk.')
+        my_format_registry.register_metadir('branch6', 
+                                            'RepositoryFormatKnit2',
+            'Experimental successor to knit.  Use at your own risk.',
+            branch_format='BzrBranchFormat6')
         return my_format_registry
 
     def test_format_registry(self):
@@ -93,6 +97,9 @@ class TestFormatRegistry(TestCase):
         my_bzrdir = my_format_registry.make_bzrdir('metaweave')
         self.assertIsInstance(my_bzrdir.repository_format, 
             repository.RepositoryFormat7)
+        my_bzrdir = my_format_registry.make_bzrdir('branch6')
+        self.assertIsInstance(my_bzrdir.branch_format, 
+                              bzrlib.branch.BzrBranchFormat6)
 
     def test_get_help(self):
         my_format_registry = self.make_format_registry()
