@@ -593,20 +593,9 @@ class TestBranchPushLocations(TestCaseWithBranch):
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
-        from bzrlib.config import (locations_config_filename,
-                                   ensure_config_dir_exists)
-        ensure_config_dir_exists()
-        fn = locations_config_filename()
         branch = self.get_branch()
         branch.set_push_location('foo')
-        local_path = urlutils.local_path_from_url(branch.base[:-1])
-        self.assertFileEqual("[%s]\n"
-                             "push_location = foo\n"
-                             "push_location:policy = norecurse" % local_path,
-                             fn)
-
-    # TODO RBC 20051029 test getting a push location from a branch in a 
-    # recursive section - that is, it appends the branch name.
+        self.assertEqual('foo', branch.get_push_location())
 
 
 class TestFormat(TestCaseWithBranch):

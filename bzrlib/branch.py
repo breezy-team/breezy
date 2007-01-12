@@ -1486,6 +1486,37 @@ class BzrBranch6(BzrBranch5):
             assert history == self._lefthand_history(history[-1])
             self.set_last_revision(history[-1])
 
+    @needs_write_lock
+    def set_parent(self, url):
+        """Set the parent branch"""
+        if isinstance(url, unicode):
+            try: 
+                url = url.encode('ascii')
+            except UnicodeEncodeError:
+                raise bzrlib.errors.InvalidURL(url,
+                    "Urls must be 7-bit ascii, "
+                    "use bzrlib.urlutils.escape")
+                
+        url = urlutils.relative_url(self.base, url)
+        self.get_config().set_user_option('parent_location', url)
+
+    @needs_read_lock
+    def get_parent(self):
+        """Set the parent branch"""
+        return self.get_config().get_user_option('parent_location')
+
+    def set_push_location(self, location):
+        """See Branch.set_push_location."""
+        self.get_config().set_user_option('push_location', location)
+
+    def set_bound_location(self, location):
+        """See Branch.set_push_location."""
+        self.get_config().set_user_option('bound_location', location)
+
+    def get_bound_location(self):
+        """See Branch.set_push_location."""
+        return self.get_config().get_user_option('bound_location')
+
 
 class BranchTestProviderAdapter(object):
     """A tool to generate a suite testing multiple branch formats at once.

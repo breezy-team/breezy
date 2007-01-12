@@ -24,7 +24,10 @@ also see this file.
 
 from StringIO import StringIO
 
-from bzrlib import branch as _mod_branch
+from bzrlib import (
+    branch as _mod_branch,
+    urlutils,
+    )
 import bzrlib.branch
 from bzrlib.branch import (BzrBranch5, 
                            BzrBranchFormat5)
@@ -76,6 +79,22 @@ class TestBranchFormat5(TestCaseWithTransport):
             self.assertIsDirectory('.bzr/branch/lock/held', t)
         finally:
             branch.unlock()
+
+    def test_set_push_location(self):
+        from bzrlib.config import (locations_config_filename,
+                                   ensure_config_dir_exists)
+        ensure_config_dir_exists()
+        fn = locations_config_filename()
+        branch = self.make_branch('.', format='knit')
+        branch.set_push_location('foo')
+        local_path = urlutils.local_path_from_url(branch.base[:-1])
+        self.assertFileEqual("[%s]\n"
+                             "push_location = foo\n"
+                             "push_location:policy = norecurse" % local_path,
+                             fn)
+
+    # TODO RBC 20051029 test getting a push location from a branch in a 
+    # recursive section - that is, it appends the branch name.
 
 
 class SampleBranchFormat(bzrlib.branch.BranchFormat):
@@ -163,6 +182,20 @@ class TestBranch6(TestCaseWithTransport):
         branch = self.make_branch('a', format='experimental-branch6')
         self.failUnlessExists('a/.bzr/branch/last-revision')
         self.failIfExists('a/.bzr/branch/revision-history')
+
+    def test_config(self):
+        """Ensure that all configuration data is stored in the branch"""
+        branch = self.make_branch('a', format='experimental-branch6')
+        branch.set_parent('http://bazaar-vcs.org')
+        self.failIfExists('a/.bzr/branch/parent')
+        self.assertEqual('http://bazaar-vcs.org', branch.get_parent())
+        branch.set_push_location('sftp://bazaar-vcs.org')
+        config = branch.get_config()._get_branch_data_config()
+        self.assertEqual('sftp://bazaar-vcs.org', 
+                         config.get_user_option('push_location'))
+        branch.set_bound_location('ftp://bazaar-vcs.org')
+        self.failIfExists('a/.bzr/branch/bound')
+        self.assertEqual('ftp://bazaar-vcs.org', branch.get_bound_location())
 
 
 class TestBranchReference(TestCaseWithTransport):
