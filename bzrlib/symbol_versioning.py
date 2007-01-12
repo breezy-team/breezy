@@ -1,5 +1,5 @@
-# Copyright (C) 2006 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com>
+# Copyright (C) 2006, 2007 Canonical Ltd
+#   Authors: Robert Collins <robert.collins@canonical.com> and others
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -176,7 +176,7 @@ def _populate_decorated(callable, deprecation_version, label,
     decorated_callable.is_deprecated = True
 
 
-def _dict_deprecation_wrapper(func):
+def _dict_deprecation_wrapper(wrapped_method):
     """Returns a closure that emits a warning and calls the superclass"""
     def cb(dep_dict, *args, **kwargs):
         msg = 'access to %s' % (dep_dict._variable_name, )
@@ -184,7 +184,7 @@ def _dict_deprecation_wrapper(func):
         if dep_dict._advice:
             msg += ' ' + dep_dict._advice
         warn(msg, DeprecationWarning, stacklevel=2)
-        return func(dep_dict, *args, **kwargs)
+        return wrapped_method(dep_dict, *args, **kwargs)
     return cb
 
 
