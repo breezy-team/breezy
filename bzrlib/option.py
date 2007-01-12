@@ -158,6 +158,9 @@ class Option(object):
                 if v == self:
                     return k
 
+    def set_short_name(self, short_name):
+        self._short_name = short_name
+
     def get_negation_name(self):
         if self.name.startswith('no-'):
             return self.name[3:]

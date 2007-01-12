@@ -23,8 +23,9 @@ from bzrlib import (
         )
 from bzrlib.tests import TestCase
 
-# TODO: might be nice to just parse them into a structured form and test
-# against that, rather than running the whole command.
+def parse(options, args):
+    parser = option.get_optparser(dict((o.name, o) for o in options))
+    return parser.parse_args(args)
 
 class OptionTests(TestCase):
     """Command-line option tests"""
@@ -72,6 +73,11 @@ class OptionTests(TestCase):
         force_opt = option.Option.OPTIONS['force']
         self.assertEquals(force_opt.short_name(), None)
 
+    def test_set_short_name(self):
+        o = option.Option('wiggle')
+        o.set_short_name('w')
+        self.assertEqual(o.short_name(), 'w')
+
     def test_old_short_names(self):
         # test the deprecated method for getting and setting short option
         # names
@@ -88,10 +94,15 @@ class OptionTests(TestCase):
             # the old interface - make a new option and then give it a short
             # name.
             symbol_versioning.set_warning_method(capture_warning)
-            working_tree_opt = option.Option('working tree', help='example option')
-            option.Option.SHORT_OPTIONS['w'] = working_tree_opt
-            self.assertEqual(working_tree_opt.short_name(), 'w')
+            example_opt = option.Option('example', help='example option')
+            option.Option.SHORT_OPTIONS['w'] = example_opt
+            self.assertEqual(example_opt.short_name(), 'w')
             self.assertEqual([expected_warning], _warnings)
+            # now check that it can actually be parsed with the registered
+            # value
+            opts, args = parse([example_opt], ['-w', 'foo'])
+            self.assertEqual(opts.example, True)
+            self.assertEqual(args, ['foo'])
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
 
@@ -100,9 +111,6 @@ class OptionTests(TestCase):
         self.assertEqual((['-'], {}), parse_args(cmd_commit(), ['-']))
 
     def test_conversion(self):
-        def parse(options, args):
-            parser = option.get_optparser(dict((o.name, o) for o in options))
-            return parser.parse_args(args)
         options = [option.Option('hello')]
         opts, args = parse(options, ['--no-hello', '--hello'])
         self.assertEqual(True, opts.hello)
