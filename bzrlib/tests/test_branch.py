@@ -165,8 +165,6 @@ class TestBranch6(TestCaseWithTransport):
         self.failIfExists('a/.bzr/branch/revision-history')
 
 
-
-
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
 

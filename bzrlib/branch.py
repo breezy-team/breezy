@@ -852,7 +852,7 @@ class BzrBranchFormat6(BzrBranchFormat5):
         """Create a branch of this format in a_bzrdir."""
         mutter('creating branch %r in %s', self, a_bzrdir.transport.base)
         branch_transport = a_bzrdir.get_branch_transport(self)
-        utf8_files = [('last-revision', ''),
+        utf8_files = [('last-revision', 'null:\n'),
                       ('branch-name', ''),
                       ('branch.conf', '')
                       ]
@@ -1172,17 +1172,8 @@ class BzrBranch(Branch):
         # transaction.register_clean(history, precious=True)
         return list(history)
 
-    @needs_write_lock
-    def generate_revision_history(self, revision_id, last_rev=None, 
-        other_branch=None):
-        """Create a new revision history that will finish with revision_id.
-        
-        :param revision_id: the new tip to use.
-        :param last_rev: The previous last_revision. If not None, then this
-            must be a ancestory of revision_id, or DivergedBranches is raised.
-        :param other_branch: The other branch that DivergedBranches should
-            raise with respect to.
-        """
+    def _lefthand_history(self, revision_id, last_rev=None,
+                          other_branch=None):
         # stop_revision must be a descendant of last_revision
         stop_graph = self.repository.get_revision_graph(revision_id)
         if last_rev is not None and last_rev not in stop_graph:
@@ -1199,7 +1190,21 @@ class BzrBranch(Branch):
             except IndexError:
                 current_rev_id = None
         new_history.reverse()
-        self.set_revision_history(new_history)
+        return new_history
+
+    @needs_write_lock
+    def generate_revision_history(self, revision_id, last_rev=None, 
+        other_branch=None):
+        """Create a new revision history that will finish with revision_id.
+        
+        :param revision_id: the new tip to use.
+        :param last_rev: The previous last_revision. If not None, then this
+            must be a ancestory of revision_id, or DivergedBranches is raised.
+        :param other_branch: The other branch that DivergedBranches should
+            raise with respect to.
+        """
+        self.set_revision_history(self._lefthand_history(revision_id,
+            last_rev, other_branch))
 
     @needs_write_lock
     def update_revisions(self, other, stop_revision=None):
@@ -1452,7 +1457,34 @@ class BzrBranch5(BzrBranch):
 
 
 class BzrBranch6(BzrBranch5):
-    pass
+
+    @needs_read_lock
+    def last_revision(self):
+        """Return last revision id, or None"""
+        revision_id = self.control_files.get_utf8('last-revision').read()
+        revision_id = revision_id.rstrip('\n')
+        if revision_id == _mod_revision.NULL_REVISION:
+            revision_id = None
+        return revision_id
+
+    @needs_write_lock
+    def set_last_revision(self, revision_id):
+        self.control_files.put_utf8('last-revision', revision_id + '\n')
+
+    @needs_read_lock
+    def revision_history(self):
+        """Generate the revision history from last revision
+        """
+        return self._lefthand_history(self.last_revision())
+
+    @needs_write_lock
+    def set_revision_history(self, history):
+        """Set the last_revision, not revision history"""
+        if len(history) == 0:
+            self.set_last_revision('null:')
+        else:
+            assert history == self._lefthand_history(history[-1])
+            self.set_last_revision(history[-1])
 
 
 class BranchTestProviderAdapter(object):

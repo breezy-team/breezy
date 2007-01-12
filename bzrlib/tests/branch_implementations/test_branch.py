@@ -82,7 +82,13 @@ class TestBranch(TestCaseWithBranch):
 
     def test_append_revisions(self):
         """Test appending more than one revision"""
+        wt = self.make_branch_and_tree('tree')
+        wt.commit('f', rev_id='rev1')
+        wt.commit('f', rev_id='rev2')
+        wt.commit('f', rev_id='rev3')
+
         br = self.get_branch()
+        br.fetch(wt.branch)
         br.append_revision("rev1")
         self.assertEquals(br.revision_history(), ["rev1",])
         br.append_revision("rev2", "rev3")
