@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,8 +16,11 @@
 
 from bzrlib.builtins import cmd_commit, cmd_log, cmd_status
 from bzrlib.commands import Command, parse_args
-from bzrlib import errors
-from bzrlib import option
+from bzrlib import (
+        errors,
+        option,
+        symbol_versioning,
+        )
 from bzrlib.tests import TestCase
 
 # TODO: might be nice to just parse them into a structured form and test
@@ -68,6 +71,29 @@ class OptionTests(TestCase):
         self.assertEquals(file_opt.short_name(), 'F')
         force_opt = option.Option.OPTIONS['force']
         self.assertEquals(force_opt.short_name(), None)
+
+    def test_old_short_names(self):
+        # test the deprecated method for getting and setting short option
+        # names
+        expected_warning = (
+            "access to SHORT_OPTIONS was deprecated in version 0.14."
+            " Set the short option name when constructing the Option.",
+            DeprecationWarning, 2)
+        _warnings = []
+        def capture_warning(message, category, stacklevel=None):
+            _warnings.append((message, category, stacklevel))
+        old_warning_method = symbol_versioning.warn
+        try:
+            # an example of the kind of thing plugins might want to do through
+            # the old interface - make a new option and then give it a short
+            # name.
+            symbol_versioning.set_warning_method(capture_warning)
+            working_tree_opt = option.Option('working tree', help='example option')
+            option.Option.SHORT_OPTIONS['w'] = working_tree_opt
+            self.assertEqual(working_tree_opt.short_name(), 'w')
+            self.assertEqual([expected_warning], _warnings)
+        finally:
+            symbol_versioning.set_warning_method(old_warning_method)
 
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
