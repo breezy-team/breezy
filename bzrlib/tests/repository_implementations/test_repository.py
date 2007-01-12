@@ -184,13 +184,17 @@ class TestRepository(TestCaseWithRepository):
                    pb=bzrlib.progress.DummyProgress())
 
     def test_fetch_knit2(self):
-        tree_a = self.make_branch_and_tree('a')
+        tree_a = self.make_branch_and_tree('a', '')
         self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
         # fetch with a default limit (grab everything)
-        f = bzrdir.BzrDirMetaFormat1()
-        f._repository_format = repository.RepositoryFormatKnit2()
+        f = bzrdir.format_registry.make_bzrdir('experimental-knit2')
+        try:
+            format = tree_a.branch.repository._format
+            format.check_conversion_target(f.repository_format)
+        except errors.BadConversionTarget, e:
+            raise TestSkipped(str(e))
         os.mkdir('b')
         b_bzrdir = f.initialize(self.get_url('b'))
         repo = b_bzrdir.create_repository()

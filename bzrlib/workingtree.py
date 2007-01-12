@@ -312,6 +312,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def requires_rich_root(self):
         return self._format.requires_rich_root
 
+    def supports_tree_reference(self):
+        return getattr(self._format, 'supports_tree_reference', False)
+
     def _set_inventory(self, inv, dirty):
         """Set the internal cached inventory.
 
@@ -1968,6 +1971,19 @@ class WorkingTree3(WorkingTree):
 
 class WorkingTree4(WorkingTree3):
 
+    def _serialize(self, inventory, out_file):
+        xml7.serializer_v7.write_inventory(self._inventory, out_file)
+
+    def _deserialize(selt, in_file):
+        return xml7.serializer_v7.read_inventory(in_file)
+
+    def _comparison_data(self, entry, path):
+        kind, executable, stat_value = \
+            WorkingTree3._comparison_data(self, entry, path)
+        if kind == 'directory' and entry.kind == 'tree-reference':
+            kind = 'tree-reference'
+        return kind, executable, stat_value
+
     def add_reference(self, sub_tree):
         try:
             sub_tree_path = self.relpath(sub_tree.basedir)
@@ -1988,11 +2004,10 @@ class WorkingTree4(WorkingTree3):
         self.inventory.add(entry)
         self._write_inventory(self.inventory)
 
-    def _serialize(self, inventory, out_file):
-        xml7.serializer_v7.write_inventory(self._inventory, out_file)
-
-    def _deserialize(selt, in_file):
-        return xml7.serializer_v7.read_inventory(in_file)
+    def get_reference_revision(self, entry, path=None):
+        if path is None:
+            path = self.id2path(entry.file_id)
+        return WorkingTree.open(self.abspath(path)).last_revision()
 
 
 def get_conflicted_stem(path):
@@ -2288,6 +2303,8 @@ class WorkingTreeFormat4(WorkingTreeFormat3):
     _tree_class = WorkingTree4
 
     requires_rich_root = True
+
+    supports_tree_reference = True
 
     def __init__(self):
         WorkingTreeFormat3.__init__(self)

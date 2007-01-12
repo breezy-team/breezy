@@ -1830,6 +1830,14 @@ class RepositoryFormatKnit3(RepositoryFormatKnit2):
     """
 
     repository_class = KnitRepository3
+    support_tree_reference = True
+
+    def check_conversion_target(self, target_format):
+        RepositoryFormatKnit2.check_conversion_target(self, target_format)
+        if not getattr(target_format, 'support_tree_reference', False):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format)
+            
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -1925,10 +1933,12 @@ class InterSameDataRepository(InterRepository):
             return False
         if not isinstance(target, Repository):
             return False
-        if source._format.rich_root_data == target._format.rich_root_data:
-            return True
-        else:
+        if source._format.rich_root_data != target._format.rich_root_data:
             return False
+        if source._serializer != target._serializer:
+            return False
+        else:
+            return True 
 
     @needs_write_lock
     def copy_content(self, revision_id=None, basis=None):

@@ -840,8 +840,7 @@ class TreeReference(InventoryEntry):
     def _read_tree_state(self, path, work_tree):
         """Populate fields in the inventory entry from the given tree.
         """
-        subtree = workingtree.WorkingTree.open(work_tree.abspath(path))
-        self.reference_revision = subtree.last_revision()
+        self.reference_revision = work_tree.get_reference_revision(self, path)
 
     def _forget_tree_state(self):
         self.reference_revision = None 

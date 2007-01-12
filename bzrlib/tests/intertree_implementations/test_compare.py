@@ -391,3 +391,28 @@ class TestIterChanges(TestCaseWithTwoTrees):
                           (False, False)), unchanged('c-id')],
                          list(tree2._iter_changes(tree1, 
                                                  include_unchanged=True)))
+
+    def test_compare_subtrees(self):
+        """want_unchanged should generate a list of unchanged entries."""
+        tree1 = self.make_branch_and_tree('1')
+        tree1.set_root_id('root-id')
+        subtree1 = self.make_branch_and_tree('1/sub')
+        subtree1.set_root_id('subtree-id')
+        tree1.add_reference(subtree1)
+
+        tree2 = self.make_to_branch_and_tree('2')
+        tree2.set_root_id('root-id')
+        subtree2 = self.make_to_branch_and_tree('2/sub')
+        subtree2.set_root_id('subtree-id')
+        tree2.add_reference(subtree2)
+        self.assertEqual([], list(tree2._iter_changes(tree1)))
+        subtree1.commit('commit', rev_id='commit-a')
+        self.assertEqual([('subtree-id',
+                           'sub',
+                           True,
+                           (True, True),
+                           ('root-id', 'root-id'),
+                           ('sub', 'sub'),
+                           ('tree-reference', 'tree-reference'),
+                           (False, False))], 
+                         list(tree2._iter_changes(tree1)))
