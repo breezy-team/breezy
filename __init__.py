@@ -25,7 +25,7 @@ from bzrlib.commands import Command, register_command
 from bzrlib.option import Option
 from bzrlib.workingtree import WorkingTree
 
-from builder import DebBuild, DebMergeBuild
+from builder import DebBuild, DebMergeBuild, DebNativeBuild
 from config import DebBuildConfig
 from errors import NotInBaseError, ChangedError, DebianError
 from bdlogging import debug, info, set_verbose
@@ -45,6 +45,8 @@ build_dir_opt = Option('build-dir',
 orig_dir_opt = Option('orig-dir',
     help="Directory containing the .orig.tar.gz files. For use when only"
        +"debian/ is versioned", type=str)
+native_opt = Option('native',
+    help="Build a native package")
 
 
 class cmd_builddeb(Command):
@@ -113,13 +115,13 @@ class cmd_builddeb(Command):
   takes_options = ['verbose', working_tree_opt, export_only_opt,
       dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
       build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
-      quick_opt, reuse_opt]
+      quick_opt, reuse_opt, native_opt]
 
   def run(self, branch=None, verbose=False, working_tree=False,
           export_only=False, dont_purge=False, use_existing=False,
           result=None, builder=None, merge=False, build_dir=None,
           orig_dir=None, ignore_changes=False, ignore_unknowns=False,
-          quick=False, reuse=False):
+          quick=False, reuse=False, native=False):
     retcode = 0
 
     set_verbose(verbose)
@@ -140,6 +142,12 @@ class cmd_builddeb(Command):
 
     if merge:
       info("Running in merge mode")
+
+    if not native:
+      native = config.native()
+
+    if native:
+      info("Running in native mode")
 
     if not ignore_unknowns:
       ignore_unknowns = config.ignore_unknowns()
@@ -190,6 +198,8 @@ class cmd_builddeb(Command):
 
     if merge:
       build = DebMergeBuild(properties, t)
+    elif native:
+      build = DebNativeBuild(properties, t)
     else:
       build = DebBuild(properties, t)
 

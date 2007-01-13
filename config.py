@@ -111,6 +111,9 @@ class DebBuildConfig(object):
   def ignore_unknowns(self):
     return self._get_best_bool('ignore-unknowns', False)
 
+  def native(self):
+    return self._get_best_bool('native', False)
+
 def _test():
   import doctest
   doctest.testmod()

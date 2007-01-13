@@ -3,8 +3,13 @@ bzr-builddeb (0.14) unstable; urgency=low
   * Compatible with bzr 0.14.
   * Drop the silly restriction on only invoking the command from the root
     of a branch.
+  * Add support for non-native full source packages. To do this, just
+    have orig-dir pointing to the dir containing the upstream tarballs.
+    This involves a change in behaviour I am afraid. Native packages are
+    now not the default, so if you have one echo 'native = True' to
+    global.conf.
 
- -- James Westby <jw+debian@jameswestby.net>  Sat, 13 Jan 2007 20:59:53 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Sat, 13 Jan 2007 21:55:04 +0000
 
 bzr-builddeb (0.13) unstable; urgency=low
 
