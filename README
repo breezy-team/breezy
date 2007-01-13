@@ -80,14 +80,22 @@ Then can have the configuration options:
   * ``merge = True``
 
     Turns on merge mode. This is where only the ``debian/`` directory is 
-    versioned. It uses and orig.tar.gz for the upstream and combines the two 
-    before building. It works with both the ``debian/`` directory in the 
+    versioned. It uses and ``orig.tar.gz`` for the upstream and combines the
+    two before building. It works with both the ``debian/`` directory in the 
     branch, or the contents of ``debian/`` (e.g. ``rules``, ``control``) 
     directly in the top level directory of the branch. (Defaults to ``False``).
 
+  * ``native = True``
+
+    If you want to build a native package from a branch then turn on this
+    option. It will stop the plugin from looking for an ``orig.tar.gz`` and
+    build a native package instead. This has no effect if merge mode is on,
+    as I don't think it makes any sense to version the ``debian/`` separately
+    for a native package. If you disagree let me know.
+
   * ``orig-dir = path``
 
-    The directory to search for the ``.orig.tar.gz`` when in merge mode. 
+    The directory to search for the ``.orig.tar.gz`` when not in native mode. 
     (Defaults to ``../tarballs`` relative to the branch).
 
   * ``builder = command``
@@ -206,6 +214,19 @@ Now add all the project files to the branch, and add the to bzr::
   $ cd project
   $ bzr add
   $ bzr ci
+
+There are two options when you want to build a Debian package, whether
+it is a native package or not. Most packages are non-native so I will desribe
+that first.
+
+To create a non-native package you need an upstream tarball to build against.
+Set the ``orig-dir`` variable to the directory containing the tarball that
+you want to use and the plugin will pick it up and you will have a non-native
+package.
+
+If you want to have a native package you don't need to worry about
+``orig-dir``, but instead set ``native = True`` in the ``default.conf``
+file (make sure it starts with ``[BUILDDEB]`` if you create it).
 
 Now you are ready to build using the plugin.
 
