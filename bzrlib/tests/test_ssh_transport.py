@@ -40,22 +40,25 @@ class SSHVendorManagerTests(TestCase):
     def test_register_vendor(self):
         manager = TestSSHVendorManager()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
-        manager.register_vendor("vendor", "VENDOR")
-        self.assertEqual(manager.get_vendor({"BZR_SSH": "vendor"}), "VENDOR")
+        vendor = object()
+        manager.register_vendor("vendor", vendor)
+        self.assertIs(manager.get_vendor({"BZR_SSH": "vendor"}), vendor)
 
     def test_default_vendor(self):
         manager = TestSSHVendorManager()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
-        manager.register_default_vendor("VENDOR")
-        self.assertEqual(manager.get_vendor({}), "VENDOR")
+        vendor = object()
+        manager.register_default_vendor(vendor)
+        self.assertIs(manager.get_vendor({}), vendor)
 
     def test_get_vendor_by_environment(self):
         manager = TestSSHVendorManager()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
         self.assertRaises(UnknownSSH,
             manager.get_vendor, {"BZR_SSH": "vendor"})
-        manager.register_vendor("vendor", "VENDOR")
-        self.assertEqual(manager.get_vendor({"BZR_SSH": "vendor"}), "VENDOR")
+        vendor = object()
+        manager.register_vendor("vendor", vendor)
+        self.assertIs(manager.get_vendor({"BZR_SSH": "vendor"}), vendor)
 
     def test_get_vendor_by_inspection_openssh(self):
         manager = TestSSHVendorManager()
@@ -78,27 +81,30 @@ class SSHVendorManagerTests(TestCase):
     def test_cached_vendor(self):
         manager = TestSSHVendorManager()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
-        manager.register_vendor("vendor", "VENDOR")
+        vendor = object()
+        manager.register_vendor("vendor", vendor)
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
-        self.assertEqual(manager.get_vendor({"BZR_SSH": "vendor"}), "VENDOR")
-        self.assertEqual(manager.get_vendor({}), "VENDOR")
+        self.assertIs(manager.get_vendor({"BZR_SSH": "vendor"}), vendor)
+        self.assertIs(manager.get_vendor({}), vendor)
 
     def test_vendor_getting_methods_precedence(self):
         manager = TestSSHVendorManager()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
 
-        manager.register_default_vendor("DEFAULT")
-        self.assertEqual(manager.get_vendor({}), "DEFAULT")
+        default_vendor = object()
+        manager.register_default_vendor(default_vendor)
+        self.assertIs(manager.get_vendor({}), default_vendor)
 
         manager.ssh_vendor = None
         manager.set_ssh_version_string("OpenSSH")
         self.assertIsInstance(manager.get_vendor({}), OpenSSHSubprocessVendor)
 
         manager.ssh_vendor = None
-        manager.register_vendor("vendor", "VENDOR")
-        self.assertEqual(manager.get_vendor({"BZR_SSH": "vendor"}), "VENDOR")
+        vendor = object()
+        manager.register_vendor("vendor", vendor)
+        self.assertIs(manager.get_vendor({"BZR_SSH": "vendor"}), vendor)
 
-        self.assertEqual(manager.get_vendor({}), "VENDOR")
+        self.assertIs(manager.get_vendor({}), vendor)
 
 
 class SubprocessVendorsTests(TestCase):
