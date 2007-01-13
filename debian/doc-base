@@ -1,0 +1,14 @@
+Document: bzr-builddeb
+Title: bzr-builddeb Manual
+Author: James Westby
+Abstract: This manual describes how to use bzr-builddeb to build Debian
+ packages from Bazaar branches.
+Section: Apps/Programming
+
+Format: text
+Files: /usr/share/doc/bzr-builddeb/README.gz
+
+Format: HTML
+Index: /usr/share/doc/bzr-builddeb/html/README.html
+Files: /usr/share/doc/bzr-builddeb/html/README.html
+ 
