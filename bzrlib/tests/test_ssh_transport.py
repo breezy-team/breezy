@@ -46,7 +46,7 @@ class SSHVendorManagerTests(TestCase):
     def test_default_vendor(self):
         manager = TestSSHVendorManager()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
-        manager.register_vendor("default", "VENDOR")
+        manager.register_default_vendor("VENDOR")
         self.assertEqual(manager.get_vendor({}), "VENDOR")
 
     def test_get_vendor_by_environment(self):
@@ -87,7 +87,7 @@ class SSHVendorManagerTests(TestCase):
         manager = TestSSHVendorManager()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
 
-        manager.register_vendor("default", "DEFAULT")
+        manager.register_default_vendor("DEFAULT")
         self.assertEqual(manager.get_vendor({}), "DEFAULT")
 
         manager.ssh_vendor = None

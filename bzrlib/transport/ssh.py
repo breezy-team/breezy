@@ -66,9 +66,14 @@ class SSHVendorManager(object):
     def __init__(self):
         self._ssh_vendors = {}
         self.ssh_vendor = None
+        self._default_ssh_vendor = None
+
+    def register_default_vendor(self, vendor):
+        """Register default SSH vendor."""
+        self._default_ssh_vendor = vendor
 
     def register_vendor(self, name, vendor):
-        """Register new SSH vendor."""
+        """Register new SSH vendor by name."""
         self._ssh_vendors[name] = vendor
 
     def _get_vendor_by_environment(self, environment=None):
@@ -123,7 +128,7 @@ class SSHVendorManager(object):
                 vendor = self._get_vendor_by_inspection()
                 if vendor is None:
                     mutter('falling back to default implementation')
-                    vendor = self._ssh_vendors.get('default', None)
+                    vendor = self._default_ssh_vendor
                     if vendor is None:
                         raise SSHVendorNotFound()
             self.ssh_vendor = vendor
@@ -131,6 +136,7 @@ class SSHVendorManager(object):
 
 _ssh_vendor_manager = SSHVendorManager()
 _get_ssh_vendor = _ssh_vendor_manager.get_vendor
+register_default_ssh_vendor = _ssh_vendor_manager.register_default_vendor
 register_ssh_vendor = _ssh_vendor_manager.register_vendor
 
 
@@ -290,7 +296,7 @@ if paramiko is not None:
     vendor = ParamikoVendor()
     register_ssh_vendor('paramiko', vendor)
     register_ssh_vendor('none', vendor)
-    register_ssh_vendor('default', vendor)
+    register_default_ssh_vendor(vendor)
     del vendor
 
 
