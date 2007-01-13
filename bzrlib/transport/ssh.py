@@ -147,7 +147,7 @@ class LoopbackSFTP(object):
 
     def __init__(self, sock):
         self.__socket = sock
- 
+
     def send(self, data):
         return self.__socket.send(data)
 
@@ -163,10 +163,10 @@ class LoopbackSFTP(object):
 
 class SSHVendor(object):
     """Abstract base class for SSH vendor implementations."""
-    
+
     def connect_sftp(self, username, password, host, port):
         """Make an SSH connection, and return an SFTPClient.
-        
+
         :param username: an ascii string
         :param password: an ascii string
         :param host: a host name as an ascii string
@@ -181,12 +181,12 @@ class SSHVendor(object):
 
     def connect_ssh(self, username, password, host, port, command):
         """Make an SSH connection.
-        
+
         :returns: something with a `close` method, and a `get_filelike_channels`
             method that returns a pair of (read, write) filelike objects.
         """
         raise NotImplementedError(self.connect_ssh)
-        
+
     def _raise_connection_error(self, host, port=None, orig_error=None,
                                 msg='Unable to connect to SSH host'):
         """Raise a SocketConnectionError with properly formatted host.
@@ -200,7 +200,7 @@ class SSHVendor(object):
 
 class LoopbackVendor(SSHVendor):
     """SSH "vendor" that connects over a plain TCP socket, not SSH."""
-    
+
     def connect_sftp(self, username, password, host, port):
         sock = socket.socket()
         try:
@@ -228,7 +228,7 @@ class ParamikoVendor(SSHVendor):
 
     def _connect(self, username, password, host, port):
         global SYSTEM_HOSTKEYS, BZR_HOSTKEYS
-        
+
         load_host_keys()
 
         try:
@@ -237,7 +237,7 @@ class ParamikoVendor(SSHVendor):
             t.start_client()
         except (paramiko.SSHException, socket.error), e:
             self._raise_connection_error(host, port=port, orig_error=e)
-            
+
         server_key = t.get_remote_server_key()
         server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
         keytype = server_key.get_name()
@@ -266,7 +266,7 @@ class ParamikoVendor(SSHVendor):
 
         _paramiko_auth(username, password, host, t)
         return t
-        
+
     def connect_sftp(self, username, password, host, port):
         t = self._connect(username, password, host, port)
         try:
@@ -296,7 +296,7 @@ if paramiko is not None:
 
 class SubprocessVendor(SSHVendor):
     """Abstract base class for vendors that use pipes to a subprocess."""
-    
+
     def _connect(self, argv):
         proc = subprocess.Popen(argv,
                                 stdin=subprocess.PIPE,
@@ -338,7 +338,7 @@ class SubprocessVendor(SSHVendor):
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
         """Returns the argument list to run the subprocess with.
-        
+
         Exactly one of 'subsystem' and 'command' must be specified.
         """
         raise NotImplementedError(self._get_vendor_specific_argv)
@@ -346,7 +346,7 @@ class SubprocessVendor(SSHVendor):
 
 class OpenSSHSubprocessVendor(SubprocessVendor):
     """SSH vendor that uses the 'ssh' executable from OpenSSH."""
-    
+
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
         assert subsystem is not None or command is not None, (
@@ -437,7 +437,7 @@ def _paramiko_auth(username, password, host, paramiko_transport):
                 return
             except paramiko.SSHException, e:
                 pass
-    
+
     # okay, try finding id_rsa or id_dss?  (posix only)
     if _try_pkey_auth(paramiko_transport, paramiko.RSAKey, username, 'id_rsa'):
         return
@@ -574,4 +574,3 @@ class SSHSubprocess(object):
 
     def get_filelike_channels(self):
         return (self.proc.stdout, self.proc.stdin)
-
