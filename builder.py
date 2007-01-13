@@ -65,7 +65,34 @@ class DebBuild(object):
       if keep_source_dir:
         raise NoSourceDirError;
 
-  def export(self, reuse_existing=False):
+  def _find_tarball(self):
+    tarballdir = self._properties.tarball_dir()
+    tarball = os.path.join(tarballdir,self._tarball_name())
+    info("Looking for %s to use as upstream source", tarball)
+    if not os.path.exists(tarballdir):
+      raise DebianError('Could not find dir with upstream tarballs: '
+          +tarballdir)
+    if not os.path.exists(tarball):
+      raise DebianError('Could not find upstrean tarball at '+tarball)
+    return tarball
+
+  def _tarball_name(self):
+    package = self._properties.package()
+    upstream = self._properties.upstream_version()
+    return package+"_"+upstream+".orig.tar.gz"
+
+  def export(self, use_existing=False):
+    # It's not documented the use_existing will use the same 
+    # tarball, and it doesn't save much here, but we will
+    # do it anyway.
+    # TODO: should we still copy the tarball across if the target doesn't
+    # exists when use_existing is True. It would save having to remember
+    # state, but kind of goes against the name.
+    if not use_existing:
+      # Just copy the tarball across, no need to unpack it.
+      tarball = self._find_tarball()
+      build_dir = self._properties.build_dir()
+      shutil.copyfile(tarball, os.path.join(build_dir, self._tarball_name()))
     source_dir = self._properties.source_dir()
     info("Exporting to %s", source_dir)
     export(self._tree,source_dir,None,None)
@@ -115,18 +142,10 @@ class DebMergeBuild(DebBuild):
     package = self._properties.package()
     upstream = self._properties.upstream_version()
     build_dir = self._properties.build_dir()
-    tarballdir = self._properties.tarball_dir()
-    tarball = os.path.join(tarballdir,package+"_"+upstream+".orig.tar.gz")
     source_dir = self._properties.source_dir()
     info("Exporting to %s in merge mode", source_dir)
     if not use_existing:
-      info("Looking for %s to use as upstream source", tarball)
-      if not os.path.exists(tarballdir):
-        raise DebianError('Could not find dir with upstream tarballs: '
-            +tarballdir)
-      if not os.path.exists(tarball):
-        raise DebianError('Could not find upstrean tarball at '+tarball)
-
+      tarball = self._find_tarball()
       debug("Extracting %s to %s", tarball, source_dir)
       tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
       os.system('tar xzf '+tarball+' -C '+tempdir)
@@ -152,5 +171,14 @@ class DebMergeBuild(DebBuild):
     shutil.rmtree(basetempdir)
     remove_bzrbuilddeb_dir(os.path.join(source_dir, "debian"))
 
+class DebNativeBuild(DebBuild):
+  """A subclass of DebBuild that builds native packages."""
 
+  def export(self, use_existing=False):
+    # Just copy the tree across. use_existing makes no sense here
+    # as there is no tarball.
+    source_dir = self._properties.source_dir()
+    info("Exporting to %s", source_dir)
+    export(self._tree,source_dir,None,None)
+    remove_bzrbuilddeb_dir(source_dir)
 
