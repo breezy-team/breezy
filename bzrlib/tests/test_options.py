@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,12 +16,16 @@
 
 from bzrlib.builtins import cmd_commit, cmd_log, cmd_status
 from bzrlib.commands import Command, parse_args
-from bzrlib import errors
-from bzrlib import option
+from bzrlib import (
+        errors,
+        option,
+        symbol_versioning,
+        )
 from bzrlib.tests import TestCase
 
-# TODO: might be nice to just parse them into a structured form and test
-# against that, rather than running the whole command.
+def parse(options, args):
+    parser = option.get_optparser(dict((o.name, o) for o in options))
+    return parser.parse_args(args)
 
 class OptionTests(TestCase):
     """Command-line option tests"""
@@ -69,14 +73,44 @@ class OptionTests(TestCase):
         force_opt = option.Option.OPTIONS['force']
         self.assertEquals(force_opt.short_name(), None)
 
+    def test_set_short_name(self):
+        o = option.Option('wiggle')
+        o.set_short_name('w')
+        self.assertEqual(o.short_name(), 'w')
+
+    def test_old_short_names(self):
+        # test the deprecated method for getting and setting short option
+        # names
+        expected_warning = (
+            "access to SHORT_OPTIONS was deprecated in version 0.14."
+            " Set the short option name when constructing the Option.",
+            DeprecationWarning, 2)
+        _warnings = []
+        def capture_warning(message, category, stacklevel=None):
+            _warnings.append((message, category, stacklevel))
+        old_warning_method = symbol_versioning.warn
+        try:
+            # an example of the kind of thing plugins might want to do through
+            # the old interface - make a new option and then give it a short
+            # name.
+            symbol_versioning.set_warning_method(capture_warning)
+            example_opt = option.Option('example', help='example option')
+            option.Option.SHORT_OPTIONS['w'] = example_opt
+            self.assertEqual(example_opt.short_name(), 'w')
+            self.assertEqual([expected_warning], _warnings)
+            # now check that it can actually be parsed with the registered
+            # value
+            opts, args = parse([example_opt], ['-w', 'foo'])
+            self.assertEqual(opts.example, True)
+            self.assertEqual(args, ['foo'])
+        finally:
+            symbol_versioning.set_warning_method(old_warning_method)
+
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
         self.assertEqual((['-'], {}), parse_args(cmd_commit(), ['-']))
 
     def test_conversion(self):
-        def parse(options, args):
-            parser = option.get_optparser(dict((o.name, o) for o in options))
-            return parser.parse_args(args)
         options = [option.Option('hello')]
         opts, args = parse(options, ['--no-hello', '--hello'])
         self.assertEqual(True, opts.hello)
