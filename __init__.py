@@ -127,9 +127,6 @@ class cmd_builddeb(Command):
     goto_branch(branch)
 
     tree, relpath = WorkingTree.open_containing('.')
-
-    if relpath != '':
-      raise NotInBaseError()
     
     config = DebBuildConfig()
 
