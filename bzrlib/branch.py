@@ -1503,7 +1503,13 @@ class BzrBranch6(BzrBranch5):
     @needs_read_lock
     def get_parent(self):
         """Set the parent branch"""
-        return self.get_config().get_user_option('parent_location')
+        parent = self.get_config().get_user_option('parent_location')
+        if parent is None:
+            return parent
+        try:
+            return urlutils.join(self.base[:-1], parent)
+        except errors.InvalidURLJoin, e:
+            raise errors.InaccessibleParent(parent, self.base)
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
