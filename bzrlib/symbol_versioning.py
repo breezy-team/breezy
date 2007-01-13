@@ -1,5 +1,5 @@
-# Copyright (C) 2006 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com>
+# Copyright (C) 2006, 2007 Canonical Ltd
+#   Authors: Robert Collins <robert.collins@canonical.com> and others
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -174,6 +174,52 @@ def _populate_decorated(callable, deprecation_version, label,
     decorated_callable.__module__ = callable.__module__
     decorated_callable.__name__ = callable.__name__
     decorated_callable.is_deprecated = True
+
+
+def _dict_deprecation_wrapper(wrapped_method):
+    """Returns a closure that emits a warning and calls the superclass"""
+    def cb(dep_dict, *args, **kwargs):
+        msg = 'access to %s' % (dep_dict._variable_name, )
+        msg = dep_dict._deprecation_version % (msg,)
+        if dep_dict._advice:
+            msg += ' ' + dep_dict._advice
+        warn(msg, DeprecationWarning, stacklevel=2)
+        return wrapped_method(dep_dict, *args, **kwargs)
+    return cb
+
+
+class DeprecatedDict(dict):
+    """A dictionary that complains when read or written."""
+
+    is_deprecated = True
+
+    def __init__(self,
+        deprecation_version,
+        variable_name,
+        initial_value,
+        advice,
+        ):
+        """Create a dict that warns when read or modified.
+
+        :param deprecation_version: something like zero_nine
+        :param initial_value: The contents of the dict
+        :param variable_name: This allows better warnings to be printed
+        :param advice: String of advice on what callers should do instead 
+            of using this variable.
+        """
+        self._deprecation_version = deprecation_version
+        self._variable_name = variable_name
+        self._advice = advice
+        dict.__init__(self, initial_value)
+
+    # This isn't every possible method but it should trap anyone using the
+    # dict -- add more if desired
+    __len__ = _dict_deprecation_wrapper(dict.__len__)
+    __getitem__ = _dict_deprecation_wrapper(dict.__getitem__)
+    __setitem__ = _dict_deprecation_wrapper(dict.__setitem__)
+    __delitem__ = _dict_deprecation_wrapper(dict.__delitem__)
+    keys = _dict_deprecation_wrapper(dict.keys)
+    __contains__ = _dict_deprecation_wrapper(dict.__contains__)
 
 
 def deprecated_list(deprecation_version, variable_name,
