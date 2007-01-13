@@ -103,7 +103,7 @@ class SSHVendorManagerTests(TestCase):
 
 class SubprocessVendorsTests(TestCase):
 
-    def test_openssh_arguments(self):
+    def test_openssh_command_arguments(self):
         vendor = OpenSSHSubprocessVendor()
         self.assertEqual(
             vendor._get_vendor_specific_argv(
@@ -116,7 +116,20 @@ class SubprocessVendorsTests(TestCase):
                 "host", "bzr"]
             )
 
-    def test_sshcorp_arguments(self):
+    def test_openssh_subsystem_arguments(self):
+        vendor = OpenSSHSubprocessVendor()
+        self.assertEqual(
+            vendor._get_vendor_specific_argv(
+                "user", "host", 100, subsystem="sftp"),
+            ["ssh", "-oForwardX11=no", "-oForwardAgent=no",
+                "-oClearAllForwardings=yes", "-oProtocol=2",
+                "-oNoHostAuthenticationForLocalhost=yes",
+                "-p", "100",
+                "-l", "user",
+                "-s", "host", "sftp"]
+            )
+
+    def test_sshcorp_command_arguments(self):
         vendor = SSHCorpSubprocessVendor()
         self.assertEqual(
             vendor._get_vendor_specific_argv(
@@ -127,7 +140,18 @@ class SubprocessVendorsTests(TestCase):
                 "host", "bzr"]
             )
 
-    def test_plink_arguments(self):
+    def test_sshcorp_subsystem_arguments(self):
+        vendor = SSHCorpSubprocessVendor()
+        self.assertEqual(
+            vendor._get_vendor_specific_argv(
+                "user", "host", 100, subsystem="sftp"),
+            ["ssh", "-x",
+                "-p", "100",
+                "-l", "user",
+                "-s", "sftp", "host"]
+            )
+
+    def test_plink_command_arguments(self):
         vendor = PLinkSubprocessVendor()
         self.assertEqual(
             vendor._get_vendor_specific_argv(
@@ -136,4 +160,15 @@ class SubprocessVendorsTests(TestCase):
                 "-P", "100",
                 "-l", "user",
                 "host", "bzr"]
+            )
+
+    def test_plink_subsystem_arguments(self):
+        vendor = PLinkSubprocessVendor()
+        self.assertEqual(
+            vendor._get_vendor_specific_argv(
+                "user", "host", 100, subsystem="sftp"),
+            ["plink", "-x", "-a", "-ssh", "-2",
+                "-P", "100",
+                "-l", "user",
+                "-s", "host", "sftp"]
             )

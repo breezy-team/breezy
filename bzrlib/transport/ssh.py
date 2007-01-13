@@ -411,7 +411,7 @@ class PLinkSubprocessVendor(SubprocessVendor):
         if username is not None:
             args.extend(['-l', username])
         if subsystem is not None:
-            args.extend(['-s', subsystem, host])
+            args.extend(['-s', host, subsystem])
         else:
             args.extend([host] + command)
         return args
