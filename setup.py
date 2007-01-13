@@ -192,8 +192,14 @@ elif 'py2exe' in sys.argv:
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
                                     )
+
+    additional_packages =  []
+    if sys.version.startswith('2.4'):
+        # adding elementtree package
+        additional_packages.append('elementtree')
+
     options_list = {"py2exe": {"packages": BZRLIB['packages'] +
-                                           ['elementtree'],
+                                           additional_packages,
                                "excludes": ["Tkinter", "medusa"],
                                "dist_dir": "win32_bzr.exe",
                               },
