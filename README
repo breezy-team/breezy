@@ -40,7 +40,7 @@ that provides access to the tool as well. It is just a wrapper script that
 calls ``bzr builddeb`` with the arguments you provide, so the rest of the
 documentation applies equally well to using this script. Probably the only
 difference is that help will be got with ``bzr-buildpackage ---help`` 
-(as ``bze builddeb --help`` also works and does the same as
+(as ``bzr builddeb --help`` also works and does the same as
 ``bzr help builddeb``). The script is provided for two reasons, the first
 is similarity to the other ``-buildpackage`` systems, and the second is so
 that the Debian package can provide the ``bzr-buildpackage`` package, and
@@ -204,7 +204,7 @@ Then copy the ``.orig.tar.gz`` file for the current version in to this
 directory.
 
 If upstream holds their code in a bzr branch then you don't need to create the
-tarballs youself, you can instead have the plugin export the upstream code and
+tarballs yourself, you can instead have the plugin export the upstream code and
 create the tarball itself using the ``export-upstream`` option. You need to be
 careful with this, as if you do not change the upstream version in the
 ``debian/changelog`` and upstream makes some commits then the ``.orig.tar.gz``
@@ -314,7 +314,7 @@ To do this run::
 once to create a build-dir to use. (``-e`` is the short option for this). Then 
 on the next builds you can use the ``--reuse`` and ``--dont-purge`` options to
 keep using this build directory. **N.B. This may cause build problems, 
-especially is files are removed**, it is advisable to run a build without 
+especially if files are removed**, it is advisable to run a build without 
 ``--purge`` after removing any files.
 
 
@@ -333,7 +333,7 @@ Copyright
 ---------
 
 This README is Copyright (C) 2006 James Westby <jw+debian@jameswestby.net> and
-is distribted under the following terms.
+is distributed under the following terms.
 
 ..
 
