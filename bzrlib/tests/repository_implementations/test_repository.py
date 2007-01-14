@@ -43,9 +43,6 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCaseWithRepository(TestCaseWithBzrDir):
 
-    def setUp(self):
-        super(TestCaseWithRepository, self).setUp()
-
     def make_branch(self, relpath, format=None):
         repo = self.make_repository(relpath, format=None)
         return repo.bzrdir.create_branch()

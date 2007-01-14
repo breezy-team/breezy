@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1088,7 +1088,8 @@ class KnitRepository(MetaDirRepository):
 
 
 class KnitRepository2(KnitRepository):
-    """"""
+    """Experimental enhanced knit format"""
+
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
                  control_store, text_store):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
@@ -1131,6 +1132,9 @@ class KnitRepository2(KnitRepository):
         """
         return RootCommitBuilder(self, parents, config, timestamp, timezone,
                                  committer, revprops, revision_id)
+
+    def get_tags(self):
+        return None
 
 
 class RepositoryFormat(object):
@@ -1285,6 +1289,10 @@ class RepositoryFormat(object):
     def unregister_format(klass, format):
         assert klass._formats[format.get_format_string()] is format
         del klass._formats[format.get_format_string()]
+
+    def supports_tags(self):
+        """True if this format supports tags stored in the repository"""
+        return False  # by default
 
 
 class PreSplitOutRepositoryFormat(RepositoryFormat):
@@ -1751,7 +1759,7 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
      - an optional 'no-working-trees' flag
      - a LockDir lock
      - Support for recording full info about the tree root
-
+     - A tag dictionary stored in the repository, pointing to revisions
     """
     
     rich_root_data = True
@@ -1794,6 +1802,9 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
                                _revision_store=_revision_store,
                                control_store=control_store,
                                text_store=text_store)
+
+    def supports_tags(self):
+        return True
 
 
 

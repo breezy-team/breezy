@@ -46,6 +46,7 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_reconcile',
         'bzrlib.tests.repository_implementations.test_repository',
         'bzrlib.tests.repository_implementations.test_revision',
+        'bzrlib.tests.repository_implementations.test_tags',
         ]
     adapter = RepositoryTestProviderAdapter(
         default_transport,
