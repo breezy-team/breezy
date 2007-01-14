@@ -289,7 +289,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.date = date
             self.author = author
             mutter('committed %r, author: %r, date: %r' % (revision, author, date))
-
+        
         mutter('obtaining commit editor')
         self.editor, editor_baton = self.repository.transport.get_commit_editor(
             message, done, None, False)

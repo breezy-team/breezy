@@ -62,8 +62,9 @@ class SvnWorkingTree(WorkingTree):
         self.bzrdir = bzrdir
         self._branch = branch
         self.base_revnum = 0
-        self.client_ctx = svn.client.create_context()
         self.pool = Pool()
+        self.client_ctx = svn.client.create_context()
+        self.client_ctx.config = svn_config
         self.client_ctx.log_msg_func2 = svn.client.svn_swig_py_get_commit_log_func
         self.client_ctx.auth_baton = _create_auth_baton(self.pool)
 

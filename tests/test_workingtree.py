@@ -338,6 +338,17 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         orig_tree = tree.basis_tree()
         tree.commit(message_callback=lambda x: "data")
 
+    def test_commit_nested(self):
+        repos_url = self.make_client('a', 'dc')
+        self.build_tree({"dc/branches/foobranch/file": "data"})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "initial changes")
+        self.make_checkout(repos_url + "/branches/foobranch", "de")
+        tree = WorkingTree.open("de")
+        self.build_tree({'de/file': "foo"})
+        orig_tree = tree.basis_tree()
+        tree.commit(message="data")
+
     def test_update_after_commit(self):
         self.make_client('a', 'dc')
         self.build_tree({"dc/bl": "data"})
