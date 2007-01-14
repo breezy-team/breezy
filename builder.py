@@ -23,6 +23,7 @@ import shutil
 import tempfile
 import os
 
+from bzrlib.branch import Branch
 from bzrlib.export import export
 
 from changes import DebianChanges
@@ -146,6 +147,9 @@ class DebBuild(object):
 class DebMergeBuild(DebBuild):
   """A subclass of DebBuild that uses the merge method."""
 
+  def _export_upstream_branch(self):
+    return False
+
   def export(self, use_existing=False):
     package = self._properties.package()
     upstream = self._properties.upstream_version()
@@ -153,6 +157,7 @@ class DebMergeBuild(DebBuild):
     source_dir = self._properties.source_dir()
     info("Exporting to %s in merge mode", source_dir)
     if not use_existing:
+      upstream = self._export_upstream_branch()
       tarball = self._find_tarball()
       debug("Extracting %s to %s", tarball, source_dir)
       tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
@@ -163,7 +168,8 @@ class DebMergeBuild(DebBuild):
       for file in files:
         shutil.move(file, source_dir)
       shutil.rmtree(tempdir)
-      shutil.copy(tarball, build_dir)
+      if not upstream:
+        shutil.copy(tarball, build_dir)
     else:
       info("Reusing existing build dir as requested")
 
@@ -214,4 +220,46 @@ class DebSplitBuild(DebBuild):
     info("Exporting to %s", source_dir)
     export(self._tree,source_dir,None,None)
     remove_bzrbuilddeb_dir(source_dir)
+
+class DebMergeExportUpstreamBuild(DebMergeBuild):
+  """Subclass of DebMergeBuild that will export an upstream branch to
+     .orig.tar.gz before building."""
+
+  def __init__(self, properties, tree, export_upstream, export_revision):
+    DebMergeBuild.__init__(self, properties, tree)
+    self._export_upstream = export_upstream
+    self._export_revision = export_revision
+
+  def _export_upstream_branch(self):
+    build_dir = self._properties.build_dir()
+    source_dir_rel = self._properties.source_dir(False)
+    # Export from the branch that we got earlier to the
+    # appropriately named tarball.
+    export_upstream = self._export_upstream
+    if export_upstream is None:
+      raise DebianError('No branch given for export-upstream')
+    else:
+      b = Branch.open(export_upstream)
+
+    export_revision = self._export_revision
+    if export_revision is None:
+      rev_id = b.last_revision()
+    else:
+      if len(export_revision) != 1:
+        raise DebianError("export-upstream-revision can only handle one"
+                          +"revision")
+      rev_id = export_revision[0].in_history(b).rev_id
+
+    info('Exporting upstream source from %s, revision %s', export_upstream,
+         rev_id)
+
+    t = b.repository.revision_tree(rev_id)
+    dest = os.path.join(build_dir, self._tarball_name())
+    info(source_dir_rel)
+    export(t, dest, 'tgz', source_dir_rel)
+    return True
+
+  def _find_tarball(self):
+    build_dir = self._properties.build_dir()
+    return os.path.join(build_dir, self._tarball_name())
 

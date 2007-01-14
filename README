@@ -104,6 +104,21 @@ Then can have the configuration options:
     the second for when you don't need an ``orig.tar.gz`` so they make no sense
     to be used together.
 
+  * ``export-upstream = path``
+
+    This option takes a path (remote or local) to a bzr branch that contains
+    the upstream code. If this is set then the plugin will export the code
+    from that branch to create the ``.orig.tar.gz``. This option only has any
+    effect if ``merge`` is set, and causes any ``orig-dir`` setting to be
+    ignored.
+
+  * ``export-upstream-revision = revision``
+
+    This sets the revision that the upstream code will be branched at. It takes
+    the same revision spec as the normal --revision parameter. Use it to
+    associate an upstream version number with a particular revision of the
+    upstream code. This has no effect if ``export-upstream`` is not set.
+
   * ``orig-dir = path``
 
     The directory to search for the ``.orig.tar.gz`` when not in native mode. 
@@ -187,6 +202,17 @@ the ``.orig.tar.gz`` files::
 
 Then copy the ``.orig.tar.gz`` file for the current version in to this 
 directory.
+
+If upstream holds their code in a bzr branch then you don't need to create the
+tarballs youself, you can instead have the plugin export the upstream code and
+create the tarball itself using the ``export-upstream`` option. You need to be
+careful with this, as if you do not change the upstream version in the
+``debian/changelog`` and upstream makes some commits then the ``.orig.tar.gz``
+will change without being reflected in the version number. This can be
+disastorous if it happens across uploads of the package. Use
+``export-upstream-revision`` to avoid this.  You might be especially interested
+in the ``use-existing`` flag to the plugin to save having to branch the
+upstream code every build. You might also want to make a local mirror.
 
 Now create the branch for the ``debian/`` directory::
 

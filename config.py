@@ -117,6 +117,9 @@ class DebBuildConfig(object):
   def split(self):
     return self._get_best_bool('split', False)
 
+  def export_upstream(self):
+    return self._get_best_opt('export-upstream')
+
 def _test():
   import doctest
   doctest.testmod()
