@@ -45,9 +45,7 @@ class BranchingScheme:
         """
         parts = relpath.strip("/").split("/")
         for i in range(0,len(parts)):
-            if parts[i] == "trunk" or \
-               parts[i] == "branches" or \
-               parts[i] == "tags":
+            if parts[i] in ("trunk", "branches", "tags"):
                 return TrunkBranchingScheme(level=i)
 
         return NoBranchingScheme()
@@ -73,6 +71,9 @@ class BranchingScheme:
                 
 
 class TrunkBranchingScheme(BranchingScheme):
+    """Standard Subversion repository layout. Each project contains three 
+    directories `trunk', `tags' and `branches'. 
+    """
     def __init__(self, level=0):
         self.level = level
 
@@ -114,6 +115,8 @@ class TrunkBranchingScheme(BranchingScheme):
         return self.is_branch(path+"/trunk")
 
 class NoBranchingScheme(BranchingScheme):
+    """Describes a scheme where there is just one branch, the 
+    root of the repository."""
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
         return path.strip("/") == ""

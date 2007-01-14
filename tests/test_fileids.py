@@ -164,10 +164,6 @@ class TestFileIdGenerator(TestCase):
         self.assertEqual("2@uuid:bp;" + sha1(dir+"filename"), 
                 generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), dir+"filename"))
 
-    def test_generate_file_id_special_char(self):
-        self.assertEqual(u"2@uuid:bp:mypath%2C%8A", 
-                generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), u"mypath\x2c\x8a"))
-
     def test_generate_revid_special_char_ascii(self):
         self.assertEqual("2@uuid:bp:mypath%2C%8A", 
                 generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), "mypath\x2c\x8a"))

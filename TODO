@@ -1,3 +1,4 @@
+- simplify find_branches by using Transport.list_dir() ?
 - make scheme name part of revision id
 - fix commits in heavyweight checkouts somehow
 - fix autorealm repository
