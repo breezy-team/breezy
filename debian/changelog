@@ -13,8 +13,13 @@ bzr-builddeb (0.14) unstable; urgency=low
     It simply blows away debian/ from the tarball and names it appropriately
     in the build dir to get a non-native package where all of and only
     debian/ are in the .diff.gz.
+  * Add support for exporting the upstream code from a bzr branch when in
+    merge mode. Just use export-upstream with a URI of a bzr branch and that
+    code will be the .orig.tar.gz of the source package. Please make sure
+    that you don't grab a different upstream code for the same upstream
+    version, that could break things horribly.
 
- -- James Westby <jw+debian@jameswestby.net>  Sun, 14 Jan 2007 01:12:08 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Sun, 14 Jan 2007 02:51:04 +0000
 
 bzr-builddeb (0.13) unstable; urgency=low
 
