@@ -22,7 +22,7 @@ import os
 import commands
 
 from bzrlib.commands import Command, register_command
-from bzrlib.option import Option
+from bzrlib.option import Option, _parse_revision_str
 from bzrlib.workingtree import WorkingTree
 
 from builder import (DebBuild,
@@ -57,6 +57,9 @@ split_opt = Option('split',
 export_upstream_opt = Option('export-upstream',
     help="Create the .orig.tar.gz from a bzr branch before building",
     type=unicode)
+export_upstream_revision_opt = Option('export-upstream-revision',
+    help="Select the upstream revision that will be exported",
+    type=_parse_revision_str)
 
 
 class cmd_builddeb(Command):
@@ -125,14 +128,15 @@ class cmd_builddeb(Command):
   takes_options = ['verbose', working_tree_opt, export_only_opt,
       dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
       build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
-      quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt]
+      quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt,
+      export_upstream_revision_opt]
 
   def run(self, branch=None, verbose=False, working_tree=False,
           export_only=False, dont_purge=False, use_existing=False,
           result=None, builder=None, merge=False, build_dir=None,
           orig_dir=None, ignore_changes=False, ignore_unknowns=False,
           quick=False, reuse=False, native=False, split=False,
-          export_upstream=None):
+          export_upstream=None, export_upstream_revision=None):
 
     retcode = 0
 
@@ -220,7 +224,8 @@ class cmd_builddeb(Command):
       if export_upstream is None:
         build = DebMergeBuild(properties, t)
       else:
-        build = DebMergeExportUpstreamBuild(properties, t, export_upstream)
+        build = DebMergeExportUpstreamBuild(properties, t, export_upstream,
+                                            export_upstream_revision)
     elif native:
       build = DebNativeBuild(properties, t)
     elif split:

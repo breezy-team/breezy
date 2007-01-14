@@ -225,9 +225,10 @@ class DebMergeExportUpstreamBuild(DebMergeBuild):
   """Subclass of DebMergeBuild that will export an upstream branch to
      .orig.tar.gz before building."""
 
-  def __init__(self, properties, tree, export_upstream):
+  def __init__(self, properties, tree, export_upstream, export_revision):
     DebMergeBuild.__init__(self, properties, tree)
     self._export_upstream = export_upstream
+    self._export_revision = export_revision
 
   def _export_upstream_branch(self):
     build_dir = self._properties.build_dir()
@@ -240,10 +241,18 @@ class DebMergeExportUpstreamBuild(DebMergeBuild):
     else:
       b = Branch.open(export_upstream)
 
-    info('Exporting upstream source from %s', export_upstream)
+    export_revision = self._export_revision
+    if export_revision is None:
+      rev_id = b.last_revision()
+    else:
+      if len(export_revision) != 1:
+        raise DebianError("export-upstream-revision can only handle one"
+                          +"revision")
+      rev_id = export_revision[0].in_history(b).rev_id
 
-    # TODO: implement revision selection
-    rev_id = b.last_revision()
+    info('Exporting upstream source from %s, revision %s', export_upstream,
+         rev_id)
+
     t = b.repository.revision_tree(rev_id)
     dest = os.path.join(build_dir, self._tarball_name())
     info(source_dir_rel)
