@@ -19,7 +19,6 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 import os
-import commands
 
 from bzrlib.commands import Command, register_command
 from bzrlib.option import Option, _parse_revision_str
@@ -32,7 +31,7 @@ from builder import (DebBuild,
                      DebMergeExportUpstreamBuild,
                      )
 from config import DebBuildConfig
-from errors import NotInBaseError, ChangedError, DebianError
+from errors import ChangedError
 from bdlogging import debug, info, set_verbose
 from properties import BuildProperties
 from util import goto_branch, find_changelog, is_clean

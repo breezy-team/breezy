@@ -44,11 +44,6 @@ class NoSourceDirError(DebianError):
   def __init__(self):
     DebianError.__init__(self, None)
 
-class NotInBaseError(BzrError):
-  _fmt = """Must be invoked from the base of a branch."""
-  def __init__(self):
-    BzrError.__init__(self)
-
 class BuildFailedError(DebianError):
   _fmt = """The build failed."""
   def __init__(self):
