@@ -114,6 +114,9 @@ class DebBuildConfig(object):
   def native(self):
     return self._get_best_bool('native', False)
 
+  def split(self):
+    return self._get_best_bool('split', False)
+
 def _test():
   import doctest
   doctest.testmod()

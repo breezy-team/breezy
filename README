@@ -93,6 +93,17 @@ Then can have the configuration options:
     as I don't think it makes any sense to version the ``debian/`` separately
     for a native package. If you disagree let me know.
 
+  * ``split = True``
+
+    This takes a package from a branch that includes both the upstream source
+    and the ``debian/`` dir and creates a non-native package from it by
+    creating an ``orig.tar.gz`` from the code outside of ``debian/``. This
+    is probably most useful if you are bot upstream and Debian maintainer
+    of a non-native package. This has no effect if ``merge`` or ``native``
+    are true, the former is for use when you don't version the full source,
+    the second for when you don't need an ``orig.tar.gz`` so they make no sense
+    to be used together.
+
   * ``orig-dir = path``
 
     The directory to search for the ``.orig.tar.gz`` when not in native mode. 
@@ -223,6 +234,13 @@ To create a non-native package you need an upstream tarball to build against.
 Set the ``orig-dir`` variable to the directory containing the tarball that
 you want to use and the plugin will pick it up and you will have a non-native
 package.
+
+However sometimes you might be upstream of a package as well as Debian
+maintainer, but it is not a native package. In that case you may version
+the whole source including ``debian/``, but not want to have to manually
+make a tarball without the ``debian/`` directory. In that case see the
+``split`` variable. If you set that then the plugin will create you an
+appropriately named orig.tar.gz of everything outside of ``debian/``.
 
 If you want to have a native package you don't need to worry about
 ``orig-dir``, but instead set ``native = True`` in the ``default.conf``

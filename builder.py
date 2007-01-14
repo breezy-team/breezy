@@ -32,15 +32,23 @@ from errors import (DebianError,
 from bdlogging import info, debug
 from util import recursive_copy
 
+def remove_dir(base, dir):
+  """Removes a directory from within a base."""
+  
+  remove_dir = os.path.join(base, dir)
+  if os.path.isdir(remove_dir) and not os.path.islink(remove_dir):
+    shutil.rmtree(remove_dir)
 
 def remove_bzrbuilddeb_dir(dir):
   """Removes the .bzr-builddeb dir from the specfied directory."""
 
-  #Is this what we want??
-  bzr_builddeb_dir = os.path.join(dir, ".bzr-builddeb")
-  if os.path.exists(bzr_builddeb_dir) and os.path.isdir(bzr_builddeb_dir):
-    shutil.rmtree(bzr_builddeb_dir)
+  #XXX: Is this what we want??
+  remove_dir(dir, ".bzr-builddeb")
 
+def remove_debian_dir(dir):
+  """Remove the debian/ dir from the specified directory."""
+
+  remove_dir(dir, "debian")
 
 class DebBuild(object):
   """The object that does the building work."""
@@ -148,7 +156,7 @@ class DebMergeBuild(DebBuild):
       tarball = self._find_tarball()
       debug("Extracting %s to %s", tarball, source_dir)
       tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
-      os.system('tar xzf '+tarball+' -C '+tempdir)
+      os.system('tar xzf "'+tarball+'" -C "'+tempdir+'"')
       files = glob.glob(tempdir+'/*')
       os.makedirs(source_dir)
       for file in files:
@@ -178,6 +186,28 @@ class DebNativeBuild(DebBuild):
     # Just copy the tree across. use_existing makes no sense here
     # as there is no tarball.
     source_dir = self._properties.source_dir()
+    info("Exporting to %s", source_dir)
+    export(self._tree,source_dir,None,None)
+    remove_bzrbuilddeb_dir(source_dir)
+
+class DebSplitBuild(DebBuild):
+  """A subclass of DebBuild that splits the branch to create the 
+     .orig.tar.gz."""
+
+  def export(self, use_existing=False):
+    # To acheive this we export delete debian/ and tar the result,
+    # then we blow that away and export the whole thing again.
+    source_dir = self._properties.source_dir()
+    tarball = self._tarball_name()
+    build_dir = self._properties.build_dir()
+    export(self._tree,source_dir,None,None)
+    info("Creating .orig.tar.gz: %s", os.path.join(build_dir, tarball))
+    remove_bzrbuilddeb_dir(source_dir)
+    remove_debian_dir(source_dir)
+    source_dir_rel = self._properties.source_dir(False)
+    os.system('cd "'+build_dir+'" && tar czf "'+tarball+'" "'
+              +source_dir_rel+'"')
+    shutil.rmtree(source_dir)
     info("Exporting to %s", source_dir)
     export(self._tree,source_dir,None,None)
     remove_bzrbuilddeb_dir(source_dir)
