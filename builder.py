@@ -156,7 +156,8 @@ class DebMergeBuild(DebBuild):
       tarball = self._find_tarball()
       debug("Extracting %s to %s", tarball, source_dir)
       tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
-      os.system('tar xzf "'+tarball+'" -C "'+tempdir+'"')
+      if os.system('tar xzf "'+tarball+'" -C "'+tempdir+'"') > 0:
+        raise BuildFailedError
       files = glob.glob(tempdir+'/*')
       os.makedirs(source_dir)
       for file in files:
@@ -205,8 +206,10 @@ class DebSplitBuild(DebBuild):
     remove_bzrbuilddeb_dir(source_dir)
     remove_debian_dir(source_dir)
     source_dir_rel = self._properties.source_dir(False)
-    os.system('cd "'+build_dir+'" && tar czf "'+tarball+'" "'
+    result = os.system('cd "'+build_dir+'" && tar czf "'+tarball+'" "'
               +source_dir_rel+'"')
+    if result > 0:
+      raise BuildFailedError
     shutil.rmtree(source_dir)
     info("Exporting to %s", source_dir)
     export(self._tree,source_dir,None,None)
