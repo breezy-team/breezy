@@ -25,7 +25,7 @@ from bzrlib.commands import Command, register_command
 from bzrlib.option import Option
 from bzrlib.workingtree import WorkingTree
 
-from builder import DebBuild, DebMergeBuild, DebNativeBuild
+from builder import DebBuild, DebMergeBuild, DebNativeBuild, DebSplitBuild
 from config import DebBuildConfig
 from errors import NotInBaseError, ChangedError, DebianError
 from bdlogging import debug, info, set_verbose
@@ -47,6 +47,8 @@ orig_dir_opt = Option('orig-dir',
        +"debian/ is versioned", type=str)
 native_opt = Option('native',
     help="Build a native package")
+split_opt = Option('split',
+    help="Automatically create an .orig.tar.gz from a full source branch")
 
 
 class cmd_builddeb(Command):
@@ -115,13 +117,13 @@ class cmd_builddeb(Command):
   takes_options = ['verbose', working_tree_opt, export_only_opt,
       dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
       build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
-      quick_opt, reuse_opt, native_opt]
+      quick_opt, reuse_opt, native_opt, split_opt]
 
   def run(self, branch=None, verbose=False, working_tree=False,
           export_only=False, dont_purge=False, use_existing=False,
           result=None, builder=None, merge=False, build_dir=None,
           orig_dir=None, ignore_changes=False, ignore_unknowns=False,
-          quick=False, reuse=False, native=False):
+          quick=False, reuse=False, native=False, split=False):
     retcode = 0
 
     set_verbose(verbose)
@@ -142,12 +144,18 @@ class cmd_builddeb(Command):
 
     if merge:
       info("Running in merge mode")
+    else:
+      if not native:
+        native = config.native()
 
-    if not native:
-      native = config.native()
+      if native:
+        info("Running in native mode")
+      else:
+        if not split:
+          split = config.split()
 
-    if native:
-      info("Running in native mode")
+        if split:
+          info("Running in split mode")
 
     if not ignore_unknowns:
       ignore_unknowns = config.ignore_unknowns()
@@ -200,6 +208,8 @@ class cmd_builddeb(Command):
       build = DebMergeBuild(properties, t)
     elif native:
       build = DebNativeBuild(properties, t)
+    elif split:
+      build = DebSplitBuild(properties, t)
     else:
       build = DebBuild(properties, t)
 
@@ -212,7 +222,6 @@ class cmd_builddeb(Command):
         build.clean()
       if result is not None:
         build.move_result(result)
-
 
     return retcode
 

@@ -8,8 +8,13 @@ bzr-builddeb (0.14) unstable; urgency=low
     This involves a change in behaviour I am afraid. Native packages are
     now not the default, so if you have one echo 'native = True' to
     global.conf.
+  * Add support for creating non-native packages from full source branches
+    by creating the tarball from the branch, rather than the user creating it.
+    It simply blows away debian/ from the tarball and names it appropriately
+    in the build dir to get a non-native package where all of and only
+    debian/ are in the .diff.gz.
 
- -- James Westby <jw+debian@jameswestby.net>  Sat, 13 Jan 2007 21:55:04 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Sun, 14 Jan 2007 01:12:08 +0000
 
 bzr-builddeb (0.13) unstable; urgency=low
 

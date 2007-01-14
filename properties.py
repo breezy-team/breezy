@@ -43,9 +43,12 @@ class BuildProperties(object):
   def build_dir(self):
     return self._build_dir
 
-  def source_dir(self):
-    return os.path.join(self.build_dir(), 
+  def source_dir(self, relative=True):
+    if relative:
+      return os.path.join(self.build_dir(),
                         self.package()+"-"+self.full_version())
+    else:
+      return self.package()+"-"+self.full_version()
 
   def tarball_dir(self):
     return self._tarball_dir
