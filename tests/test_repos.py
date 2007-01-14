@@ -339,7 +339,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = Repository.open("svn+%s" % repos_url)
         tree = repository.revision_tree(Branch.open(repos_url).last_revision())
         self.assertEqual("someid", tree.inventory.path2id("foo"))
-        self.assertFalse("svn-v2:1@%s--foo" % repository.uuid in tree.inventory)
+        self.assertFalse("1@%s::foo" % repository.uuid in tree.inventory)
 
     def test_revision_ghost_parents(self):
         repos_url = self.make_client('d', 'dc')
@@ -1934,7 +1934,7 @@ class RevisionIdMappingTest(TestCase):
 
     def test_revid_svk_map(self):
         self.assertEqual("auuid:/:6", 
-              revision_id_to_svk_feature("svn-v%d-undefined:auuid:;6" % MAPPING_VERSION))
+              revision_id_to_svk_feature("svn-v%d-undefined:auuid::6" % MAPPING_VERSION))
 
 
 class EscapeTest(TestCase):

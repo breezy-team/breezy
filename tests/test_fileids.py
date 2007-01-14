@@ -25,7 +25,7 @@ import sha
 
 import format
 from fileids import SimpleFileIdMap, generate_file_id, generate_svn_file_id
-from repository import MAPPING_VERSION, generate_svn_revision_id
+from repository import generate_svn_revision_id
 from scheme import TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository, RENAMES
 
@@ -153,24 +153,24 @@ def sha1(str):
 
 class TestFileIdGenerator(TestCase):
     def test_generate_file_id_root(self):
-        self.assertEqual(ROOT_ID, generate_file_id("svn-v2:2@uuid-bp", ""))
+        self.assertEqual(ROOT_ID, generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), ""))
 
     def test_generate_file_id_path(self):
-        self.assertEqual("svn-v2:2@uuid-bp-mypath", 
-                         generate_file_id("svn-v2:2@uuid-bp", "mypath"))
+        self.assertEqual("2@uuid:bp:mypath", 
+                generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), "mypath"))
 
     def test_generate_file_id_long(self):
         dir = "this/is/a" + ("/very"*40) + "/long/path/"
-        self.assertEqual("svn-v2:2@uuid-bp-" + sha1(dir) + "-filename", 
-                         generate_file_id("svn-v2:2@uuid-bp", dir+"filename"))
+        self.assertEqual("2@uuid:bp;" + sha1(dir+"filename"), 
+                generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), dir+"filename"))
 
     def test_generate_file_id_special_char(self):
-        self.assertEqual(u"svn-v2:2@uuid-bp-mypath\x2c\x8a", 
-                         generate_file_id("svn-v2:2@uuid-bp", u"mypath\x2c\x8a"))
+        self.assertEqual(u"2@uuid:bp:mypath%2C%8A", 
+                generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), u"mypath\x2c\x8a"))
 
     def test_generate_revid_special_char_ascii(self):
-        self.assertEqual("svn-v2:2@uuid-bp-mypath\x2c\x8a", 
-                         generate_file_id(u"svn-v2:2@uuid-bp", "mypath\x2c\x8a"))
+        self.assertEqual("2@uuid:bp:mypath%2C%8A", 
+                generate_file_id(generate_svn_revision_id("uuid", 2, "bp"), "mypath\x2c\x8a"))
 
 class TestFileMapping(TestCase):
     def apply_mappings(self, mappings, find_children=None, renames={}):
@@ -188,14 +188,14 @@ class TestFileMapping(TestCase):
 
     def test_simple(self):
         map = self.apply_mappings({generate_svn_revision_id("uuid", 1, ""): {"foo": ('A', None, None)}})
-        self.assertEqual({ 'foo': ("svn-v%d:1@uuid--foo" % MAPPING_VERSION, 
+        self.assertEqual({ 'foo': ("1@uuid::foo",
                                        generate_svn_revision_id("uuid", 1, ""))
                          }, map)
 
     def test_simple_add(self):
         map = self.apply_mappings({generate_svn_revision_id("uuid", 1, ""): {"": ('A', None, None), "foo": ('A', None, None)}})
         self.assertEqual({'': ('TREE_ROOT', generate_svn_revision_id("uuid", 1, "")),
-                               'foo': ("svn-v%d:1@uuid--foo" % MAPPING_VERSION, 
+            'foo': ("1@uuid::foo", 
                                        generate_svn_revision_id("uuid", 1, ""))
                          }, map)
 
@@ -247,7 +247,7 @@ class TestFileMapping(TestCase):
                                    "foo/bla": ('M', None, None)}
                  }, 
                 renames={generate_svn_revision_id("uuid", 2, ""): {"foo": "myid"}})
-        self.assertEqual("svn-v%d:1@uuid--foo" % MAPPING_VERSION, map["foo"][0])
+        self.assertEqual("1@uuid::foo", map["foo"][0])
         self.assertEqual(generate_svn_revision_id("uuid", 1, ""), map["foo"][1])
 
 class GetMapTests(TestCaseWithSubversionRepository):

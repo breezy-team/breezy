@@ -33,7 +33,7 @@ relative to the repository root:
 
  * Assume NoBranchingScheme
 
-NEXT VERSION: Allow specifying the branching scheme in ~/.bazaar/locations.conf.
+Branching scheme names can not contain colons.
 
 == Revision ids ==
 
@@ -73,10 +73,9 @@ the revisions between X and Y.
 
 File ids use the following syntax:
 
-<REVNO>@<UUID>-<BRANCHPATH>-<PATH>
+<REVNO>@<UUID>:<BRANCHPATH>:<PATH>
 
-Since / is forbidden in file ids, the '/', '-', '%' and all whitespace
-characters are urlencoded.
+Since / is forbidden in file ids, all characters are urlencoded.
 
 Alternatively, these file ids can be mapped to more specific file ids. Such 
 a map should be stored in the `bzr:file-ids' property that is set on the 
@@ -106,9 +105,9 @@ receive a new file id.
 If the file id generated is longer than 150 bytes, the following format will 
 be used:
 
-<REVNO>@<UUID>-<SHA1>-<FILENAME>
+<REVNO>@<UUID>:<BRANCH>;<SHA1>
 
-where <SHA1> is the sha1 of the path to the directory name.
+where <SHA1> is the sha1 of the file's path.
 
 NEXT VERSION: Special rules are applied to make sure that renames are tracked.
 

@@ -66,6 +66,8 @@ class TestBasisTree(TestCaseWithSubversionRepository):
         self.client_commit("dc", "symlink")
         self.build_tree({"dc/bla": "p"})
         self.client_commit("dc", "change")
+        self.assertFalse(True)
+        return
         self.client_update("dc")
         tree = SvnBasisTree(WorkingTree.open("dc"))
         self.assertEqual('symlink', 

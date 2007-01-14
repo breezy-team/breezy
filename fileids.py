@@ -40,14 +40,11 @@ def generate_svn_file_id(uuid, revnum, branch, path):
     """
     if path == "":
         return ROOT_ID
-    introduced_revision_id = generate_svn_revision_id(uuid, revnum, branch)
-    ret = "%s-%s" % (introduced_revision_id, escape_svn_path(path))
+    ret = "%d@%s:%s:%s" % (revnum, uuid, escape_svn_path(branch), escape_svn_path(path))
     if len(ret) > 150:
-        basename = os.path.basename(path)
-        parent = path[:-len(basename)]
-        ret = "%s-%s-%s" % (introduced_revision_id, 
-                            sha.new(parent).hexdigest(),
-                            escape_svn_path(basename))
+        ret = "%d@%s:%s;%s" % (revnum, uuid, 
+                            escape_svn_path(branch),
+                            sha.new(path).hexdigest())
     return ret
 
 
