@@ -1663,9 +1663,22 @@ def filter_suite_by_re(suite, pattern):
     return result
 
 
+def sort_suite_by_re(suite, pattern):
+    first = []
+    second = []
+    filter_re = re.compile(pattern)
+    for test in iter_suite_tests(suite):
+        if filter_re.search(test.id()):
+            first.append(test)
+        else:
+            second.append(test)
+    return TestUtil.TestSuite(first + second)
+
+
 def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
-              transport=None, lsprof_timed=None, bench_history=None):
+              transport=None, lsprof_timed=None, bench_history=None,
+              matching_tests_first=None):
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
         verbosity = 2
@@ -1678,7 +1691,10 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             bench_history=bench_history)
     runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
-        suite = filter_suite_by_re(suite, pattern)
+        if matching_tests_first:
+            suite = sort_suite_by_re(suite, pattern)
+        else:
+            suite = filter_suite_by_re(suite, pattern)
     result = runner.run(suite)
     return result.wasSuccessful()
 
@@ -1688,7 +1704,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              transport=None,
              test_suite_factory=None,
              lsprof_timed=None,
-             bench_history=None):
+             bench_history=None,
+             matching_tests_first=None):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
     # Disable warning about old formats because we don't want it to disturb
@@ -1710,7 +1727,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      stop_on_failure=stop_on_failure, keep_output=keep_output,
                      transport=transport,
                      lsprof_timed=lsprof_timed,
-                     bench_history=bench_history)
+                     bench_history=bench_history,
+                     matching_tests_first=matching_tests_first)
     finally:
         default_transport = old_transport
 
