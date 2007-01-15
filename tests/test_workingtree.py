@@ -57,6 +57,26 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv.has_filename("bl"))
         self.assertFalse(inv.has_filename("aa"))
 
+    def test_add_not_recursive(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl/file": "data"})
+        tree = WorkingTree.open("dc")
+        tree.add(["bl"])
+
+        tree = WorkingTree.open("dc")
+        self.assertTrue(tree.inventory.has_filename("bl"))
+        self.assertFalse(tree.inventory.has_filename("bl/file"))
+
+    def test_add_nested(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl/file": "data"})
+        tree = WorkingTree.open("dc")
+        tree.add(["bl", "bl/file"])
+
+        tree = WorkingTree.open("dc")
+        self.assertTrue(tree.inventory.has_filename("bl"))
+        self.assertTrue(tree.inventory.has_filename("bl/file"))
+
     def test_lock_write(self):
         self.make_client('a', 'dc')
         tree = WorkingTree.open("dc")
@@ -271,6 +291,13 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree = WorkingTree.open("dc")
         self.assertEqual(['bl'], list(tree.unknowns()))
 
+    def test_unknown_not_added(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl": None})
+
+        tree = WorkingTree.open("dc")
+        self.assertFalse(tree.inventory.has_filename("bl"))
+
     def test_extras(self):
         self.make_client('a', 'dc')
         self.build_tree({"dc/bl": None})
@@ -337,6 +364,22 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree = WorkingTree.open("dc")
         orig_tree = tree.basis_tree()
         tree.commit(message_callback=lambda x: "data")
+
+    def test_commit_callback_unicode(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl": "data"})
+        self.client_add("dc/bl")
+        tree = WorkingTree.open("dc")
+        orig_tree = tree.basis_tree()
+        tree.commit(message_callback=lambda x: u"data")
+
+    def test_commit_message_unicode(self):
+        self.make_client('a', 'dc')
+        self.build_tree({"dc/bl": "data"})
+        self.client_add("dc/bl")
+        tree = WorkingTree.open("dc")
+        orig_tree = tree.basis_tree()
+        tree.commit(message=u"data")
 
     def test_commit_nested(self):
         repos_url = self.make_client('a', 'dc')
