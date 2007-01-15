@@ -128,6 +128,41 @@ class UpgradeTests(TestCaseWithSubversionRepository):
         self.assertTrue([oldrepos.generate_revision_id(1, "")],
                         newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
 
+    def test_single_custom_continue(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/a': 'b', 'dc/b': 'c'})
+        self.client_add("dc/a")
+        self.client_add("dc/b")
+        self.client_commit("dc", "data")
+
+        oldrepos = Repository.open(repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        dir.create_branch()
+        wt = dir.create_workingtree()
+        file("f/a", "w").write("b")
+        file("f/b", "w").write("c")
+        wt.add("a")
+        wt.add("b")
+        wt.commit(message="data", rev_id="svn-v1:1@%s-" % oldrepos.uuid)
+        file("f/a", 'w').write("moredata")
+        file("f/b", 'w').write("moredata")
+        wt.commit(message='fix moredata', rev_id="customrev")
+
+        tree = newrepos.revision_tree("svn-v1:1@%s-" % oldrepos.uuid)
+
+        vf = newrepos.weave_store.get_weave_or_empty(tree.inventory.path2id("a"), newrepos.get_transaction())
+        vf.clone_text("customrev-svn%d-upgrade" % MAPPING_VERSION,
+                "svn-v1:1@%s-" % oldrepos.uuid, ["svn-v1:1@%s-" % oldrepos.uuid])
+
+        upgrade_repository(newrepos, oldrepos, allow_change=True)
+
+        self.assertTrue(newrepos.has_revision(oldrepos.generate_revision_id(1, "")))
+        self.assertTrue(newrepos.has_revision("customrev-svn%d-upgrade" % MAPPING_VERSION))
+        self.assertTrue([oldrepos.generate_revision_id(1, "")],
+                        newrepos.revision_parents("customrev-svn%d-upgrade" % MAPPING_VERSION))
+
     def test_more_custom(self):
         repos_url = self.make_client("a", "dc")
         self.build_tree({'dc/a': 'b'})

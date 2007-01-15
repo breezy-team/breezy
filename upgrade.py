@@ -43,6 +43,7 @@ class UpgradeChangesContent(BzrError):
 # Change the parent of a revision
 def change_revision_parent(repository, oldrevid, newrevid, new_parents):
     assert isinstance(new_parents, list)
+    mutter('creating copy %r of %r with new parents %r' % (newrevid, oldrevid, new_parents))
     oldrev = repository.get_revision(oldrevid)
 
     builder = repository.get_commit_builder(branch=None, parents=new_parents, 
@@ -57,9 +58,12 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
         new_ie = ie.copy()
         if new_ie.revision == oldrevid:
             new_ie.revision = None
-        builder.record_entry_contents(new_ie, 
-               map(repository.get_revision_inventory, new_parents), 
-               path, repository.revision_tree(oldrevid))
+        versionedfile = repository.weave_store.get_weave_or_empty(new_ie.file_id, 
+                repository.get_transaction())
+        if not versionedfile.has_version(newrevid):
+            builder.record_entry_contents(new_ie, 
+                   map(repository.get_revision_inventory, new_parents), 
+                   path, repository.revision_tree(oldrevid))
 
     builder.finish_inventory()
     return builder.commit(oldrev.message)
@@ -180,10 +184,11 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
 
         pb = ui_factory.nested_progress_bar()
         i = 0
+        total = len(needs_upgrading)
         try:
             while len(needs_upgrading) > 0:
                 revid = needs_upgrading.pop()
-                pb.update('upgrading revisions', i, len(needs_upgrading))
+                pb.update('upgrading revisions', i, total)
                 i+=1
                 newrevid = create_upgraded_revid(revid)
                 rename_map[revid] = newrevid
