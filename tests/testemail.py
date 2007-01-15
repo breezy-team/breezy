@@ -101,6 +101,19 @@ class TestGetTo(TestCaseInTempDir):
         sender = self.get_sender(with_url_config)
         self.assertEqual(sender.url(), 'http://some.fake/url/')
 
+    def test_public_url_set(self):
+        config=("[DEFAULT]\n"
+                "public_branch=http://the.publication/location/\n")
+        sender = self.get_sender(config)
+        self.assertEqual(sender.url(), 'http://the.publication/location/')
+
+    def test_url_precedence(self):
+        config=("[DEFAULT]\n"
+                "post_commit_url=http://some.fake/url/\n"
+                "public_branch=http://the.publication/location/\n")
+        sender = self.get_sender(config)
+        self.assertEqual(sender.url(), 'http://some.fake/url/')
+
     def test_url_unset(self):
         sender = self.get_sender()
         self.assertEqual(sender.url(), sender.branch.base)
