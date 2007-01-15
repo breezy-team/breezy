@@ -18,7 +18,11 @@ import os
 import errno
 from stat import S_ISREG
 
-from bzrlib import bzrdir, errors
+from bzrlib import (
+    bzrdir,
+    errors,
+    inventory
+    )
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath)
@@ -99,6 +103,7 @@ class TreeTransform(object):
         self._new_contents = {}
         self._removed_contents = set()
         self._new_executability = {}
+        self._new_reference_revision = {}
         self._new_id = {}
         self._non_present_ids = {}
         self._r_new_id = {}
@@ -349,6 +354,10 @@ class TreeTransform(object):
             del self._new_executability[trans_id]
         else:
             unique_add(self._new_executability, trans_id, executability)
+
+    def set_tree_reference(self, revision_id, trans_id):
+        """Set the reference associated with a directory"""
+        unique_add(self._new_reference_revision, trans_id, revision_id)
 
     def version_file(self, file_id, trans_id):
         """Schedule a file to become versioned."""
@@ -815,7 +824,14 @@ class TreeTransform(object):
                 if trans_id in self._new_id:
                     if kind is None:
                         kind = file_kind(self._tree.abspath(path))
-                    inv.add_path(path, kind, self._new_id[trans_id])
+                    if trans_id in self._new_reference_revision:
+                        entry = inventory.TreeReference(self._new_id[trans_id], 
+                            self._new_name[trans_id], 
+                            self.final_file_id(self._new_parent[trans_id]),
+                            None, self._new_reference_revision[trans_id])
+                        inv.add(entry)
+                    else:
+                        inv.add_path(path, kind, self._new_id[trans_id])
                 elif trans_id in self._new_name or trans_id in\
                     self._new_parent:
                     entry = limbo_inv.get(trans_id)
@@ -1086,11 +1102,16 @@ def new_by_entry(tt, entry, parent_id, tree):
         executable = tree.is_executable(entry.file_id)
         return tt.new_file(name, parent_id, contents, entry.file_id, 
                            executable)
-    elif kind == 'directory':
-        return tt.new_directory(name, parent_id, entry.file_id)
+    elif kind in ('directory', 'tree-reference'):
+        trans_id = tt.new_directory(name, parent_id, entry.file_id)
+        if kind == 'tree-reference':
+            tt.set_tree_reference(entry.reference_revision, trans_id)
+        return trans_id 
     elif kind == 'symlink':
         target = tree.get_symlink_target(entry.file_id)
         return tt.new_symlink(name, parent_id, target, entry.file_id)
+    else:
+        raise errors.BadFileKindError(name, kind)
 
 def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
     """Create new file contents according to an inventory entry."""

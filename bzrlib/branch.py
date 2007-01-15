@@ -596,7 +596,7 @@ class Branch(object):
             format = bzrdir.BzrDirMetaFormat1()
             format.repository_format = repository.RepositoryFormat7()
         else:
-            format = self.repository.bzrdir.cloning_metadir()
+            format = self.repository.bzrdir.checkout_metadir()
         return format
 
     def create_checkout(self, to_location, revision_id=None, 
@@ -626,7 +626,14 @@ class Branch(object):
             # pull up to the specified revision_id to set the initial 
             # branch tip correctly, and seed it with history.
             checkout_branch.pull(self, stop_revision=revision_id)
-        return checkout.create_workingtree(revision_id)
+        tree = checkout.create_workingtree(revision_id)
+        for path, entry in tree.inventory.iter_entries_by_dir():
+            if entry.kind == 'tree-reference':
+                path = id2abspath(entry.file_id)
+                reference_parent = self.reference_parent(entry.file_id)
+                reference_parent.create_checkout(path, entry.reference_revision,
+                                                 lightweight)
+        return tree
 
 
 class BranchFormat(object):

@@ -1832,6 +1832,14 @@ class RepositoryFormatKnit3(RepositoryFormatKnit2):
     repository_class = KnitRepository3
     support_tree_reference = True
 
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('experimental-knit3')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
     def check_conversion_target(self, target_format):
         RepositoryFormatKnit2.check_conversion_target(self, target_format)
         if not getattr(target_format, 'support_tree_reference', False):

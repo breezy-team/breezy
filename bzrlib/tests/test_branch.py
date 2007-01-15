@@ -145,6 +145,19 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         # unregister the format
         bzrlib.branch.BranchFormat.unregister_format(format)
 
+    def test_checkout_with_references(self):
+        tree = self.make_branch_and_tree('source', format='experimental-knit3')
+        subtree = self.make_branch_and_tree('source/subtree', 
+                                            format='experimental-knit3')
+        self.build_tree(['source/subtree/file'])
+        subtree.add('file')
+        tree.add_reference(subtree)
+        tree.commit('a revision')
+        tree.branch.create_checkout('target')
+        self.failUnlessExists('target')
+        self.failUnlessExists('target/subtree')
+        self.failUnlessExists('target/subtree/file')
+
 
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""

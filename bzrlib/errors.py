@@ -529,7 +529,10 @@ class PathsDoNotExist(BzrError):
 
 class BadFileKindError(BzrError):
 
-    _fmt = "Cannot operate on %(filename)s of unsupported kind %(kind)s"
+    _fmt = 'Cannot operate on "%(filename)s" of unsupported kind "%(kind)s"'
+
+    def __init__(self, filename, kind):
+        BzrError.__init__(self, filename=filename, kind=kind)
 
 
 class ForbiddenControlFileError(BzrError):

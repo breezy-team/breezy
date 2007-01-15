@@ -606,8 +606,7 @@ class BzrDir(object):
         except errors.NoWorkingTree:
             return False
 
-    def cloning_metadir(self, basis=None):
-        """Produce a metadir suitable for cloning with"""
+    def _cloning_metadir(self, basis=None):
         def related_repository(bzrdir):
             try:
                 branch = bzrdir.open_branch()
@@ -626,7 +625,23 @@ class BzrDir(object):
             result_format.repository_format = source_repository._format
         except errors.NoRepositoryPresent:
             pass
+        return result_format, source_repository
+
+    def cloning_metadir(self, basis=None):
+        """Produce a metadir suitable for cloning with"""
+        result_format, repository = _cloning_metadir(self, basis)
         return result_format
+
+    def checkout_metadir(self):
+        format, repository = self._cloning_metadir()
+        try:
+            tree = self.open_workingtree()
+        except errors.NoWorkingTree:
+            tree_format = repository._format._matchingbzrdir.workingtree_format
+        else:
+            tree_format =  tree._format
+        format.workingtree_format = tree_format.__class__()
+        return format
 
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
         """Create a copy of this bzrdir prepared for use as a new line of

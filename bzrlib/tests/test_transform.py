@@ -39,11 +39,11 @@ from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
                               find_interesting, build_tree, get_backup_name)
 
 
-class TestTreeTransform(TestCaseInTempDir):
+class TestTreeTransform(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestTreeTransform, self).setUp()
-        self.wt = BzrDir.create_standalone_workingtree('.')
+        self.wt = self.make_branch_and_tree('.', format='experimental-knit3')
         os.chdir('..')
 
     def get_transform(self):
@@ -129,6 +129,15 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertEqual('toto-contents', 
                          self.wt.get_file_byname('oz/dorothy/toto').read())
         self.assertIs(self.wt.is_executable('toto-id'), False)
+
+    def test_tree_reference(self):
+        transform, root = self.get_transform()
+        tree = transform._tree
+        trans_id = transform.new_directory('reference', root, 'subtree-id')
+        transform.set_tree_reference('subtree-revision', trans_id)
+        transform.apply()
+        self.assertEqual('subtree-revision', 
+                         tree.inventory['subtree-id'].reference_revision)
 
     def test_conflicts(self):
         transform, root = self.get_transform()
@@ -806,6 +815,16 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertIs(os.path.isdir('b/foo'), True)
         self.assertEqual(file('b/foo/bar', 'rb').read(), "contents")
         self.assertEqual(os.readlink('b/foo/baz'), 'a/foo/bar')
+
+    def test_build_with_references(self):
+        tree = self.make_branch_and_tree('source', format='experimental-knit3')
+        subtree = self.make_branch_and_tree('source/subtree', 
+                                            format='experimental-knit3')
+        tree.add_reference(subtree)
+        tree.commit('a revision')
+        tree.branch.create_checkout('target')
+        self.failUnlessExists('target')
+        self.failUnlessExists('target/subtree')
 
     def test_file_conflict_handling(self):
         """Ensure that when building trees, conflict handling is done"""

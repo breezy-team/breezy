@@ -46,4 +46,3 @@ class TestReference(TestCaseWithTree):
         entry = tree.inventory['sub-root']
         path = tree.id2path('sub-root')
         self.assertEqual('sub-1', tree.get_reference_revision(entry, path))
-        self.assertEqual('sub-1', tree.get_reference_revision(entry))

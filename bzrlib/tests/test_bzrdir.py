@@ -656,3 +656,17 @@ class NonLocalTests(TestCaseWithTransport):
         result.open_branch()
         result.open_repository()
 
+    def test_checkout_metadir(self):
+        # checkout_metadir has reasonable working tree format even when no
+        # working tree is present
+        self.make_branch('branch-knit3', format='experimental-knit3')
+        my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit3'))
+        checkout_format = my_bzrdir.checkout_metadir()
+        self.assertIsInstance(checkout_format.workingtree_format,
+                              workingtree.WorkingTreeFormat4)
+
+        self.make_branch('branch-knit2', format='experimental-knit2')
+        my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit2'))
+        checkout_format = my_bzrdir.checkout_metadir()
+        self.assertIsInstance(checkout_format.workingtree_format,
+                              workingtree.WorkingTreeFormat3)
