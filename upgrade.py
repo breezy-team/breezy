@@ -54,23 +54,65 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
                                   revprops=oldrev.properties,
                                   revision_id=newrevid)
 
+    # Check what new_ie.file_id should be
+    # use old and new parent inventories to generate new_id map
+    old_parents = oldrev.parent_ids
+    new_id = {}
+    for (oldp, newp) in zip(old_parents, new_parents):
+        oldinv = repository.get_revision_inventory(oldp)
+        newinv = repository.get_revision_inventory(newp)
+        for path, ie in oldinv.iter_entries():
+            if newinv.has_filename(path):
+                new_id[ie.file_id] = newinv.path2id(path)
+
+    mutter('new id %r' % new_id)
     i = 0
-    inv = repository.get_revision_inventory(oldrevid)
-    total = len(inv)
+    class MapTree:
+        def __init__(self, oldtree, map):
+            self.oldtree = oldtree
+            self.map = map
+
+        def old_id(self, file_id):
+            for x in self.map:
+                if self.map[x] == file_id:
+                    return x
+            return file_id
+
+        def get_file_sha1(self, file_id, path=None):
+            return self.oldtree.get_file_sha1(file_id=self.old_id(file_id), 
+                                              path=path)
+
+        def get_file(self, file_id):
+            return self.oldtree.get_file(self.old_id(file_id=file_id))
+
+        def is_executable(self, file_id, path=None):
+            return self.oldtree.is_executable(self.old_id(file_id=file_id), 
+                                              path=path)
+
+    oldtree = MapTree(repository.revision_tree(oldrevid), new_id)
+    oldinv = repository.get_revision_inventory(oldrevid)
+    total = len(oldinv)
     pb = ui_factory.nested_progress_bar()
     try:
-        for path, ie in inv.iter_entries():
+        for path, ie in oldinv.iter_entries():
             pb.update('upgrading revision', i, total)
             i+=1
             new_ie = ie.copy()
             if new_ie.revision == oldrevid:
                 new_ie.revision = None
+            def lookup(file_id):
+                if new_id.has_key(file_id):
+                    return new_id[file_id]
+                return file_id
+
+            new_ie.file_id = lookup(new_ie.file_id)
+            new_ie.parent_id = lookup(new_ie.parent_id)
             versionedfile = repository.weave_store.get_weave_or_empty(new_ie.file_id, 
                     repository.get_transaction())
             if not versionedfile.has_version(newrevid):
                 builder.record_entry_contents(new_ie, 
                        map(repository.get_revision_inventory, new_parents), 
-                       path, repository.revision_tree(oldrevid))
+                       path, oldtree)
     finally:
         pb.finished()
 
