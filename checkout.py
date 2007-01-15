@@ -62,8 +62,9 @@ class SvnWorkingTree(WorkingTree):
         self.bzrdir = bzrdir
         self._branch = branch
         self.base_revnum = 0
-        self.client_ctx = svn.client.create_context()
         self.pool = Pool()
+        self.client_ctx = svn.client.create_context()
+        self.client_ctx.config = svn_config
         self.client_ctx.log_msg_func2 = svn.client.svn_swig_py_get_commit_log_func
         self.client_ctx.auth_baton = _create_auth_baton(self.pool)
 
@@ -395,12 +396,12 @@ class SvnWorkingTree(WorkingTree):
         if message_callback is not None:
             def log_message_func(items, pool):
                 """ Simple log message provider for unit tests. """
-                return message_callback(self)
+                return str(message_callback(self))
         else:
             assert isinstance(message, basestring)
             def log_message_func(items, pool):
                 """ Simple log message provider for unit tests. """
-                return message
+                return str(message)
 
         self.client_ctx.log_msg_baton2 = log_message_func
         commit_info = svn.client.commit3(specific_files, True, False, self.client_ctx)
@@ -420,13 +421,15 @@ class SvnWorkingTree(WorkingTree):
         return revid
 
     def add(self, files, ids=None):
+        import pdb
+        pdb.set_trace()
         if ids:
             ids = copy(ids)
             ids.reverse()
         assert isinstance(files, list)
-        wc = self._get_wc(write_lock=True)
-        try:
-            for f in files:
+        for f in files:
+            try:
+                wc = self._get_wc(os.path.dirname(f), write_lock=True)
                 try:
                     svn.wc.add2(os.path.join(self.basedir, f), wc, None, 0, 
                             None, None, None)
@@ -438,8 +441,8 @@ class SvnWorkingTree(WorkingTree):
                     elif num == svn.core.SVN_ERR_WC_PATH_NOT_FOUND:
                         raise NoSuchFile(path=f)
                     raise
-        finally:
-            svn.wc.adm_close(wc)
+            finally:
+                svn.wc.adm_close(wc)
         self.read_working_inventory()
 
     def basis_tree(self):

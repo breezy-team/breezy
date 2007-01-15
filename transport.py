@@ -104,6 +104,7 @@ class SvnRaTransport(Transport):
 
         self._client = svn.client.create_context(self.pool)
         self._client.auth_baton = _create_auth_baton(self.pool)
+        self._client.config = svn_config
 
         try:
             mutter('opening SVN RA connection to %r' % self.svn_url)
