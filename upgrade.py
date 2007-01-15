@@ -54,16 +54,25 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
                                   revprops=oldrev.properties,
                                   revision_id=newrevid)
 
-    for path, ie in repository.get_revision_inventory(oldrevid).iter_entries():
-        new_ie = ie.copy()
-        if new_ie.revision == oldrevid:
-            new_ie.revision = None
-        versionedfile = repository.weave_store.get_weave_or_empty(new_ie.file_id, 
-                repository.get_transaction())
-        if not versionedfile.has_version(newrevid):
-            builder.record_entry_contents(new_ie, 
-                   map(repository.get_revision_inventory, new_parents), 
-                   path, repository.revision_tree(oldrevid))
+    i = 0
+    inv = repository.get_revision_inventory(oldrevid)
+    total = len(inv)
+    pb = ui_factory.nested_progress_bar()
+    try:
+        for path, ie in inv.iter_entries():
+            pb.update('upgrading revision', i, total)
+            i+=1
+            new_ie = ie.copy()
+            if new_ie.revision == oldrevid:
+                new_ie.revision = None
+            versionedfile = repository.weave_store.get_weave_or_empty(new_ie.file_id, 
+                    repository.get_transaction())
+            if not versionedfile.has_version(newrevid):
+                builder.record_entry_contents(new_ie, 
+                       map(repository.get_revision_inventory, new_parents), 
+                       path, repository.revision_tree(oldrevid))
+    finally:
+        pb.finished()
 
     builder.finish_inventory()
     return builder.commit(oldrev.message)
