@@ -1,3 +1,10 @@
+bzr (0.14~rc1-1) experimental; urgency=low
+
+  * New upstream release candidate.
+  * Add myself as a co-maintainer.
+
+ -- Wouter van Heyst <larstiq@larstiq.dyndns.org>  Wed, 17 Jan 2007 00:53:33 +0100
+
 bzr (0.13-0.1) experimental; urgency=low
 
   * Non-maintainer upload.
