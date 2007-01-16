@@ -223,8 +223,10 @@ class cmd_builddeb(Command):
       if export_upstream is None:
         build = DebMergeBuild(properties, t)
       else:
+        prepull_upstream = config.prepull_upstream
         build = DebMergeExportUpstreamBuild(properties, t, export_upstream,
-                                            export_upstream_revision)
+                                            export_upstream_revision,
+                                            prepull_upstream)
     elif native:
       build = DebNativeBuild(properties, t)
     elif split:

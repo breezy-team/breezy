@@ -120,6 +120,12 @@ class DebBuildConfig(object):
   def export_upstream(self):
     return self._get_best_opt('export-upstream')
 
+  prepull_upstream = property(lambda self:
+                                 self._get_best_bool(
+                                      'export-upstream-prepull', False),
+                              None, None,
+                              """Whether to prepull the upstream.""")
+
 def _test():
   import doctest
   doctest.testmod()
