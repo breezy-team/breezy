@@ -129,8 +129,10 @@ descriptions.
     local branch before exporting it. It is your responsibility to setup
     the default pull location for the branch. It probably doesn't make too
     much sense to use this option with the ``export-upstream-revision`` one
-    as this will change the tip, but then wont use it. [Not a command line
-    option.]
+    as this will change the tip, but then wont use it. However this is allowed.
+    This option only has an effect if ``export-upstream`` is set. Also note
+    that this option cannot be used when ``export-upstream`` is set to a 
+    remote branch. [Not a command line option.]
 
   * ``orig-dir = path``
 
