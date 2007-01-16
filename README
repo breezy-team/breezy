@@ -65,7 +65,10 @@ These files must start with::
 Configuration Options
 ~~~~~~~~~~~~~~~~~~~~~
 
-Then can have the configuration options:
+The following options are read from the configuration files. They can also be
+used as command line arguments by prepending ``--`` to the names and not using
+the ``\=`` symbol. There are a few exceptions to this that are noted in the
+descriptions.
 
   * ``build-dir = path``
 
@@ -118,6 +121,26 @@ Then can have the configuration options:
     the same revision spec as the normal --revision parameter. Use it to
     associate an upstream version number with a particular revision of the
     upstream code. This has no effect if ``export-upstream`` is not set.
+
+  * ``export-upstream-prepull = True``
+
+    This allows for the case where you want to use a local mirror of the
+    upstream source, but want to build automatically. It does a pull in the
+    local branch before exporting it. It is your responsibility to setup
+    the default pull location for the branch. It probably doesn't make too
+    much sense to use this option with the ``export-upstream-revision`` one
+    as this will change the tip, but then wont use it. However this is allowed.
+    This option only has an effect if ``export-upstream`` is set. Also note
+    that this option cannot be used when ``export-upstream`` is set to a 
+    remote branch. [Not a command line option.]
+
+  * ``export-upstream-stop-on-trivial-pull = True``
+
+    This allows you to stop the build if the upstream pull doesn't pull any
+    revisions. It is designed for automated builds where you don't want
+    to bother building if there have been no changes. It has no effect unless
+    the ``export-upstream-prepull`` option is true. [Not a command line
+    option.]
 
   * ``orig-dir = path``
 

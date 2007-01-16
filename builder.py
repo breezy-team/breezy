@@ -24,13 +24,17 @@ import tempfile
 import os
 
 from bzrlib.branch import Branch
+from bzrlib.errors import NoWorkingTree
 from bzrlib.export import export
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.workingtree import WorkingTree
 
 from changes import DebianChanges
 from errors import (DebianError,
                     NoSourceDirError,
-                    BuildFailedError)
+                    BuildFailedError,
+                    StopBuild,
+                    )
 from bdlogging import info, debug
 from util import recursive_copy
 
@@ -226,10 +230,13 @@ class DebMergeExportUpstreamBuild(DebMergeBuild):
   """Subclass of DebMergeBuild that will export an upstream branch to
      .orig.tar.gz before building."""
 
-  def __init__(self, properties, tree, export_upstream, export_revision):
+  def __init__(self, properties, tree, export_upstream, export_revision,
+               export_prepull, stop_on_no_change):
     DebMergeBuild.__init__(self, properties, tree)
     self._export_upstream = export_upstream
     self._export_revision = export_revision
+    self._export_prepull = export_prepull
+    self._stop_on_no_change = stop_on_no_change
 
   def _export_upstream_branch(self):
     build_dir = self._properties.build_dir()
@@ -237,8 +244,32 @@ class DebMergeExportUpstreamBuild(DebMergeBuild):
     # Export from the branch that we got earlier to the
     # appropriately named tarball.
     export_upstream = self._export_upstream
+    export_prepull = self._export_prepull
     if export_upstream is None:
       raise DebianError('No branch given for export-upstream')
+
+    if export_prepull:
+      try:
+        tree_to = WorkingTree.open(export_upstream)
+        branch_to = tree_to.branch
+      except NoWorkingTree:
+        tree_to = None
+        branch_to = Branch.open(export_upstream)
+      location = branch_to.get_parent()
+      if location is None:
+        raise DebianError('No default pull location for %s, run "bzr '
+                          +'pull location" in that branch to set one up',
+                          export_upstream)
+      branch_from = Branch.open(location)
+      info('Pulling the upstream branch.')
+      if tree_to is not None:
+        count = tree_to.pull(branch_from)
+      else:
+        count = branch_to.pull(branch_from)
+      info('Pulled %d revision(s).', count)
+      if self._stop_on_no_change:
+        raise StopBuild('No changes to upstream branch')
+      b = branch_to
     else:
       b = Branch.open(export_upstream)
 
