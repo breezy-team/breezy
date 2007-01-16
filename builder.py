@@ -25,6 +25,7 @@ import os
 
 from bzrlib.branch import Branch
 from bzrlib.export import export
+from bzrlib.revisionspec import RevisionSpec
 
 from changes import DebianChanges
 from errors import (DebianError,
@@ -245,10 +246,8 @@ class DebMergeExportUpstreamBuild(DebMergeBuild):
     if export_revision is None:
       rev_id = b.last_revision()
     else:
-      if len(export_revision) != 1:
-        raise DebianError("export-upstream-revision can only handle one"
-                          +"revision")
-      rev_id = export_revision[0].in_history(b).rev_id
+      rev_spec = RevisionSpec.from_string(export_revision)
+      rev_id = rev_spec.in_history(b).rev_id
 
     info('Exporting upstream source from %s, revision %s', export_upstream,
          rev_id)

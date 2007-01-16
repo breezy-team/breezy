@@ -21,7 +21,7 @@
 import os
 
 from bzrlib.commands import Command, register_command
-from bzrlib.option import Option, _parse_revision_str
+from bzrlib.option import Option
 from bzrlib.workingtree import WorkingTree
 
 from builder import (DebBuild,
@@ -58,7 +58,7 @@ export_upstream_opt = Option('export-upstream',
     type=unicode)
 export_upstream_revision_opt = Option('export-upstream-revision',
     help="Select the upstream revision that will be exported",
-    type=_parse_revision_str)
+    type=str)
 
 
 class cmd_builddeb(Command):
