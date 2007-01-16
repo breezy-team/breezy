@@ -287,6 +287,16 @@ changes::
 If you used the default options this should build the package and leave the
 resulting files in ``../build-area``. 
 
+Note that all of the options can be used as parameters to this command as well
+by prefixing their name with ``--``. So you can do for example::
+
+  $ bzr bd --builder pdebuild
+
+to change from what is in the configuration files. Note that there is currently
+no way to set the binary options to false if they are set to true in the
+configuration files. It would be possible to allow this, but it would bloat
+the code and the help listings quite a lot, so I will only it if asked to.
+
 Tips
 ----
 
