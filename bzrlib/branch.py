@@ -1262,25 +1262,30 @@ class BzrBranch(Branch):
         finally:
             source.unlock()
 
+    def _get_parent_location(self):
+        _locs = ['parent', 'pull', 'x-pull']
+        for l in _locs:
+            try:
+                return self.control_files.get(l).read().strip('\n')
+            except NoSuchFile:
+                pass
+        return None
+
     def get_parent(self):
         """See Branch.get_parent."""
 
-        _locs = ['parent', 'pull', 'x-pull']
         assert self.base[-1] == '/'
-        for l in _locs:
-            try:
-                parent = self.control_files.get(l).read().strip('\n')
-            except NoSuchFile:
-                continue
-            # This is an old-format absolute path to a local branch
-            # turn it into a url
-            if parent.startswith('/'):
-                parent = urlutils.local_path_to_url(parent.decode('utf8'))
-            try:
-                return urlutils.join(self.base[:-1], parent)
-            except errors.InvalidURLJoin, e:
-                raise errors.InaccessibleParent(parent, self.base)
-        return None
+        parent = self._get_parent_location()
+        if parent is None:
+            return parent
+        # This is an old-format absolute path to a local branch
+        # turn it into a url
+        if parent.startswith('/'):
+            parent = urlutils.local_path_to_url(parent.decode('utf8'))
+        try:
+            return urlutils.join(self.base[:-1], parent)
+        except errors.InvalidURLJoin, e:
+            raise errors.InaccessibleParent(parent, self.base)
 
     def get_push_location(self):
         """See Branch.get_push_location."""
@@ -1301,9 +1306,7 @@ class BzrBranch(Branch):
         # FIXUP this and get_parent in a future branch format bump:
         # read and rewrite the file, and have the new format code read
         # using .get not .get_utf8. RBC 20060125
-        if url is None:
-            self.control_files._transport.delete('parent')
-        else:
+        if url is not None:
             if isinstance(url, unicode):
                 try: 
                     url = url.encode('ascii')
@@ -1313,6 +1316,13 @@ class BzrBranch(Branch):
                         "use bzrlib.urlutils.escape")
                     
             url = urlutils.relative_url(self.base, url)
+        self._set_parent_location(url)
+
+    def _set_parent_location(self, url):
+        if url is None:
+            self.control_files._transport.delete('parent')
+        else:
+            assert isinstance(url, str)
             self.control_files.put('parent', StringIO(url + '\n'))
 
     @deprecated_function(zero_nine)
@@ -1488,29 +1498,20 @@ class BzrBranch6(BzrBranch5):
             self.set_last_revision(history[-1])
 
     @needs_write_lock
-    def set_parent(self, url):
+    def _set_parent_location(self, url):
         """Set the parent branch"""
-        if isinstance(url, unicode):
-            try: 
-                url = url.encode('ascii')
-            except UnicodeEncodeError:
-                raise bzrlib.errors.InvalidURL(url,
-                    "Urls must be 7-bit ascii, "
-                    "use bzrlib.urlutils.escape")
-                
+        if url is None:
+            url = ''
         url = urlutils.relative_url(self.base, url)
         self.get_config().set_user_option('parent_location', url)
 
     @needs_read_lock
-    def get_parent(self):
+    def _get_parent_location(self):
         """Set the parent branch"""
         parent = self.get_config().get_user_option('parent_location')
-        if parent is None:
-            return parent
-        try:
-            return urlutils.join(self.base[:-1], parent)
-        except errors.InvalidURLJoin, e:
-            raise errors.InaccessibleParent(parent, self.base)
+        if parent == '':
+            parent = None
+        return parent
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
