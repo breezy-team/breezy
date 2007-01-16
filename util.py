@@ -23,12 +23,12 @@ import os
 
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.ignores import parse_ignore_file
+from bzrlib.trace import info, mutter
 from bzrlib.workingtree import WorkingTree
 
 from debian_bundle.changelog import Changelog
 
 from errors import DebianError
-from bdlogging import info, debug
 
 def add_ignore(file):
   """Adds file to .bzrignore if it exists and not already in the file."""
@@ -55,9 +55,9 @@ def add_ignore(file):
 
     inv = tree.inventory
     if inv.path2id('.bzrignore'):
-      debug('.bzrignore is already versioned')
+      mutter('.bzrignore is already versioned')
     else:
-      debug('need to make new .bzrignore file versioned')
+      mutter('need to make new .bzrignore file versioned')
       tree.add(['.bzrignore'])
 
 
@@ -65,7 +65,7 @@ def recursive_copy(fromdir, todir):
   """Copy the contents of fromdir to todir. Like shutil.copytree, but the 
   destination directory must already exist with this method, rather than 
   not exists for shutil."""
-  debug("Copying %s to %s", fromdir, todir)
+  mutter("Copying %s to %s", fromdir, todir)
   for entry in os.listdir(fromdir):
     path = os.path.join(fromdir, entry)
     if os.path.isdir(path):
@@ -107,7 +107,7 @@ def find_changelog(t, merge):
           raise DebianError("Could not open debian/changelog or changelog")
       else:
         raise DebianError("Could not open debian/changelog")
-    debug("Using '%s' to get package information", changelog_file)
+    mutter("Using '%s' to get package information", changelog_file)
     changelog_id = t.inventory.path2id(changelog_file)
     contents = t.get_file_text(changelog_id)
     changelog = Changelog(contents)

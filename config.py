@@ -21,8 +21,8 @@
 import os
 
 from bzrlib.config import ConfigObj
+from bzrlib.trace import mutter
 
-from bdlogging import debug
 from util import add_ignore
 
 
@@ -36,15 +36,15 @@ class DebBuildConfig(object):
                add_to_ignores=False):
     """ 
     >>> c = DebBuildConfig('local.conf','user.conf','default.conf',False)
-    >>> print c.orig_dir()
+    >>> print c.orig_dir
     None
-    >>> print c.merge()
+    >>> print c.merge
     True
-    >>> print c.builder()
+    >>> print c.builder
     localbuilder
-    >>> print c.build_dir()
+    >>> print c.build_dir
     defaultbuild
-    >>> print c.result_dir()
+    >>> print c.result_dir
     userresult
     """
     if globalfile is None:
@@ -72,7 +72,7 @@ class DebBuildConfig(object):
     for file in self._config_files:
       value = self._get_opt(file, key)
       if value is not None:
-        debug("Using %s for %s, taken from %s", value, key, file.filename)
+        mutter("Using %s for %s, taken from %s", value, key, file.filename)
         return value
     return None
 
@@ -86,54 +86,47 @@ class DebBuildConfig(object):
     for file in self._config_files:
       (found, value) = self._get_bool(file, key)
       if found:
-        debug("Using %s for %s, taken from %s", value, key, file.filename)
+        mutter("Using %s for %s, taken from %s", value, key, file.filename)
         return value
     return default
 
-  def build_dir(self):
-    return self._get_best_opt('build-dir')
+  def _opt_property(name, help=None):
+    return property(lambda self: self._get_best_opt(name), None, None, help)
 
-  def orig_dir(self):
-    return self._get_best_opt('orig-dir')
+  def _bool_property(name, help=None, default=False):
+    return property(lambda self: self._get_best_bool(name, default),
+                    None, None, help)
 
-  def builder(self):
-    return self._get_best_opt('builder')
+  build_dir = _opt_property('build-dir', "The dir to build in")
 
-  def result_dir(self):
-    return self._get_best_opt('result-dir')
+  orig_dir = _opt_property('orig-dir', "The dir to get upstream tarballs from")
 
-  def merge(self):
-    return self._get_best_bool('merge', False)
+  builder = _opt_property('builder', "The command to build with")
 
-  def quick_builder(self):
-    return self._get_best_opt('quick-builder')
+  result_dir = _opt_property('result-dir', "The dir to put the results in")
 
-  source_builder = property(lambda self: self._get_best_opt('source-builder'),
-                            None, None, """Builder to get source packages""")
+  merge = _bool_property('merge', "Run in merge mode")
 
-  def ignore_unknowns(self):
-    return self._get_best_bool('ignore-unknowns', False)
+  builder = _opt_property('quick-builder', "A quick command to build with")
 
-  def native(self):
-    return self._get_best_bool('native', False)
+  builder = _opt_property('source-builder',
+                          "The command to build source packages with")
 
-  def split(self):
-    return self._get_best_bool('split', False)
+  merge = _bool_property('ignore-unknowns',
+                         "Build even when the tree has unknowns")
 
-  def export_upstream(self):
-    return self._get_best_opt('export-upstream')
+  native = _bool_property('native', "Build a native package")
 
-  prepull_upstream = property(lambda self:
-                                 self._get_best_bool(
-                                      'export-upstream-prepull', False),
-                              None, None,
-                              """Whether to prepull the upstream.""")
-  prepull_upstream_stop = property(lambda self:
-                                   self._get_best_bool(
-                                      'export-upstream-stop-on-trivial-pull',
-                                      False),
-                                   None, None,
-                                   """Whether to stop when nothing changes.""")
+  split = _bool_property('split', "Split a full source package")
+
+  export_upstream = _opt_property('export-upstream',
+                         "Get the upstream source from another branch")
+
+  prepull_upstream = _bool_property('export-upstream-prepull',
+                         "Pull the upstream branch before exporting it.")
+
+  prepull_upstream_stop = _bool_property('export-upstream-stop-on-trivial-pull',
+                         "Stop the build if the upstream pull does nothing.")
 
 def _test():
   import doctest

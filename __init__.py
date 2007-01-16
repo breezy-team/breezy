@@ -21,6 +21,7 @@
 import os
 
 from bzrlib.commands import Command, register_command
+from bzrlib.trace import info, warning
 from bzrlib.option import Option
 from bzrlib.workingtree import WorkingTree
 
@@ -34,7 +35,6 @@ from config import DebBuildConfig
 from errors import (ChangedError,
                     StopBuild,
                     )
-from bdlogging import debug, info, warning, set_verbose
 from properties import BuildProperties
 from util import goto_branch, find_changelog, is_clean
 
@@ -135,7 +135,7 @@ class cmd_builddeb(Command):
                       +"-rfakeroot -uc -us -S\"", short_name='S')
   takes_args = ['branch?']
   aliases = ['bd']
-  takes_options = ['verbose', working_tree_opt, export_only_opt,
+  takes_options = [working_tree_opt, export_only_opt,
       dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
       build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
       quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt,
@@ -151,8 +151,6 @@ class cmd_builddeb(Command):
 
     retcode = 0
 
-    set_verbose(verbose)
-
     goto_branch(branch)
 
     tree, relpath = WorkingTree.open_containing('.')
@@ -165,40 +163,40 @@ class cmd_builddeb(Command):
       use_existing = True
 
     if not merge:
-      merge = config.merge()
+      merge = config.merge
 
     if merge:
       info("Running in merge mode")
       if export_upstream is None:
-        export_upstream = config.export_upstream()
+        export_upstream = config.export_upstream
     else:
       if not native:
-        native = config.native()
+        native = config.native
 
       if native:
         info("Running in native mode")
       else:
         if not split:
-          split = config.split()
+          split = config.split
 
         if split:
           info("Running in split mode")
 
     if not ignore_unknowns:
-      ignore_unknowns = config.ignore_unknowns()
+      ignore_unknowns = config.ignore_unknowns
 
     if ignore_unknowns:
       info("Not stopping the build if there are any unknown files. If you "
           +"have just created a file, make sure you have added it.")
 
     if result is None:
-      result = config.result_dir()
+      result = config.result_dir
     if result is not None:
       result = os.path.realpath(result)
 
     if builder is None:
       if quick:
-        builder = config.quick_builder()
+        builder = config.quick_builder
         if builder is None:
           builder = "fakeroot debian/rules binary"
       else:
@@ -207,14 +205,14 @@ class cmd_builddeb(Command):
           if builder is None:
             builder = "dpkg-buildpackage -rfakeroot -uc -us -S"
         else:
-          builder = config.builder()
+          builder = config.builder
           if builder is None:
             builder = "dpkg-buildpackage -uc -us -rfakeroot"
 
     if not working_tree:
       b = tree.branch
       rev_id = b.last_revision()
-      debug("Building branch from revision %s", rev_id)
+      info("Building branch from revision %s", rev_id)
       t = b.repository.revision_tree(rev_id)
       if not ignore_changes and not is_clean(t, tree, ignore_unknowns):
         raise ChangedError
@@ -225,12 +223,12 @@ class cmd_builddeb(Command):
     (changelog, larstiq) = find_changelog(t, merge)
 
     if build_dir is None:
-      build_dir = config.build_dir()
+      build_dir = config.build_dir
       if build_dir is None:
         build_dir = '../build-area'
 
     if orig_dir is None:
-      orig_dir = config.orig_dir()
+      orig_dir = config.orig_dir
       if orig_dir is None:
         orig_dir = '../tarballs'
     

@@ -27,6 +27,7 @@ from bzrlib.branch import Branch
 from bzrlib.errors import NoWorkingTree
 from bzrlib.export import export
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.trace import info, mutter
 from bzrlib.workingtree import WorkingTree
 
 from changes import DebianChanges
@@ -35,7 +36,6 @@ from errors import (DebianError,
                     BuildFailedError,
                     StopBuild,
                     )
-from bdlogging import info, debug
 from util import recursive_copy
 
 def remove_dir(base, dir):
@@ -135,11 +135,11 @@ class DebBuild(object):
     files = changes.files()
     if not os.path.exists(result):
       os.makedirs(result)
-    debug("Moving %s to %s", changes.filename(), result)
+    mutter("Moving %s to %s", changes.filename(), result)
     shutil.move(changes.filename(), result)
-    debug("Moving all files given in %s", changes.filename())
+    mutter("Moving all files given in %s", changes.filename())
     for file in files:
-      debug("Moving %s to %s", file['name'], result)
+      mutter("Moving %s to %s", file['name'], result)
       shutil.move(os.path.join(self._properties.build_dir(), file['name']), 
                   result)
 
@@ -164,7 +164,7 @@ class DebMergeBuild(DebBuild):
     if not use_existing:
       upstream = self._export_upstream_branch()
       tarball = self._find_tarball()
-      debug("Extracting %s to %s", tarball, source_dir)
+      mutter("Extracting %s to %s", tarball, source_dir)
       tempdir = tempfile.mkdtemp(prefix='builddeb-', dir=build_dir)
       if os.system('tar xzf "'+tarball+'" -C "'+tempdir+'"') > 0:
         raise BuildFailedError

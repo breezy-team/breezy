@@ -23,7 +23,8 @@ import os
 
 import deb822
 
-from bdlogging import debug
+from bzrlib.trace import mutter
+
 from errors import DebianError
 
 class DebianChanges(deb822.Changes):
@@ -54,7 +55,7 @@ class DebianChanges(deb822.Changes):
     changes = str(package)+"_"+str(version)+"_"+str(arch)+".changes"
     if dir is not None:
       changes = os.path.join(dir,changes)
-    debug("Looking for %s", changes)    
+    mutter("Looking for %s", changes)    
     if not os.path.exists(changes):
       raise DebianError("Could not find "+package)
     fp = open(changes)
