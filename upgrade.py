@@ -131,8 +131,17 @@ def parse_legacy_revision_id(revid):
         assert revnum >= 0
         return (uuid, branch_path, revnum, 1)
     elif revid.startswith("svn-v2:"):
+        revid = revid[len("svn-v2:"):]
+        at = revid.index("@")
+        fash = revid.rindex("-")
+        uuid = revid[at+1:fash]
+        branch_path = unescape_svn_path(revid[fash+1:])
+        revnum = int(revid[0:at])
+        assert revnum >= 0
+        return (uuid, branch_path, revnum, 2)
+    elif revid.startswith("svn-v3-"):
         (uuid, bp, rev) = parse_svn_revision_id(revid)
-        return (uuid, bp, rev, 2)
+        return (uuid, bp, rev, 3)
 
     raise InvalidRevisionId(revid, None)
 
@@ -143,6 +152,7 @@ def create_upgraded_revid(revid):
         return revid[0:revid.rfind("-svn")] + suffix
     else:
         return revid + suffix
+
 
 def upgrade_branch(branch, svn_repository, allow_change=False):
     renames = upgrade_repository(branch.repository, svn_repository, 
