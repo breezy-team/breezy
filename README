@@ -134,6 +134,14 @@ descriptions.
     that this option cannot be used when ``export-upstream`` is set to a 
     remote branch. [Not a command line option.]
 
+  * ``export-upstream-stop-on-trivial-pull = True``
+
+    This allows you to stop the build if the upstream pull doesn't pull any
+    revisions. It is designed for automated builds where you don't want
+    to bother building if there have been no changes. It has no effect unless
+    the ``export-upstream-prepull`` option is true. [Not a command line
+    option.]
+
   * ``orig-dir = path``
 
     The directory to search for the ``.orig.tar.gz`` when not in native mode. 
