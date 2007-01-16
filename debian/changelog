@@ -25,8 +25,10 @@ bzr-builddeb (0.14) unstable; urgency=low
   * Add an option to stop the build if the above mentioned pull did nothing.
   * Add a --short/-S parameter to build source packages and a source-builder
     option to configure what it does.
+  * Change to use the new version of the python-debian API, so that 0.1.1 is
+    now required.
 
- -- James Westby <jw+debian@jameswestby.net>  Tue, 16 Jan 2007 21:25:33 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Tue, 16 Jan 2007 22:41:35 +0000
 
 bzr-builddeb (0.13) unstable; urgency=low
 
