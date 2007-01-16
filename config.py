@@ -107,12 +107,13 @@ class DebBuildConfig(object):
 
   merge = _bool_property('merge', "Run in merge mode")
 
-  builder = _opt_property('quick-builder', "A quick command to build with")
+  quick_builder = _opt_property('quick-builder',
+                          "A quick command to build with")
 
-  builder = _opt_property('source-builder',
+  source_builder = _opt_property('source-builder',
                           "The command to build source packages with")
 
-  merge = _bool_property('ignore-unknowns',
+  ignore_unknows = _bool_property('ignore-unknowns',
                          "Build even when the tree has unknowns")
 
   native = _bool_property('native', "Build a native package")
