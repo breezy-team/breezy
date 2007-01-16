@@ -103,6 +103,12 @@ class cmd_builddeb(Command):
   and --reuse allows for fast rebuilds. If --working-tree is used as well 
   then changes do not need to be commited. 
 
+  --source allows you to build a source package without having to
+  specify a builder to do so with --builder. It uses the source-builder
+  option from your configuration files, and defaults to 'dpkg-buildpackage 
+  -rfakeroot -uc -us -S'. It is overriden if either --builder or --quick are
+  used.
+
   """
   working_tree_opt = Option('working-tree', help="Use the working tree",
                             short_name='w')
@@ -124,20 +130,24 @@ class cmd_builddeb(Command):
                      +"build. Only works in merge mode; it saves unpacking "
                      +"the upstream tarball each time. Implies --dont-purge "
                      +"and --use-existing")
+  source_opt = Option('source', help="Build a source package, uses "
+                      +"source-builder, which defaults to \"dpkg-buildpackage "
+                      +"-rfakeroot -uc -us -S\"", short_name='S')
   takes_args = ['branch?']
   aliases = ['bd']
   takes_options = ['verbose', working_tree_opt, export_only_opt,
       dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
       build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
       quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt,
-      export_upstream_revision_opt]
+      export_upstream_revision_opt, source_opt]
 
   def run(self, branch=None, verbose=False, working_tree=False,
           export_only=False, dont_purge=False, use_existing=False,
           result=None, builder=None, merge=False, build_dir=None,
           orig_dir=None, ignore_changes=False, ignore_unknowns=False,
           quick=False, reuse=False, native=False, split=False,
-          export_upstream=None, export_upstream_revision=None):
+          export_upstream=None, export_upstream_revision=None,
+          source=False):
 
     retcode = 0
 
@@ -192,9 +202,14 @@ class cmd_builddeb(Command):
         if builder is None:
           builder = "fakeroot debian/rules binary"
       else:
-        builder = config.builder()
-        if builder is None:
-          builder = "dpkg-buildpackage -uc -us -rfakeroot"
+        if source:
+          builder = config.source_builder
+          if builder is None:
+            builder = "dpkg-buildpackage -rfakeroot -uc -us -S"
+        else:
+          builder = config.builder()
+          if builder is None:
+            builder = "dpkg-buildpackage -uc -us -rfakeroot"
 
     if not working_tree:
       b = tree.branch

@@ -108,6 +108,9 @@ class DebBuildConfig(object):
   def quick_builder(self):
     return self._get_best_opt('quick-builder')
 
+  source_builder = property(lambda self: self._get_best_opt('source-builder'),
+                            None, None, """Builder to get source packages""")
+
   def ignore_unknowns(self):
     return self._get_best_bool('ignore-unknowns', False)
 

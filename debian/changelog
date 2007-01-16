@@ -23,8 +23,10 @@ bzr-builddeb (0.14) unstable; urgency=low
     you can build the lastest version. The 'export-upstream-prepull' option
     is only availble as a config file option.
   * Add an option to stop the build if the above mentioned pull did nothing.
+  * Add a --short/-S parameter to build source packages and a source-builder
+    option to configure what it does.
 
- -- James Westby <jw+debian@jameswestby.net>  Sun, 14 Jan 2007 02:51:04 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Tue, 16 Jan 2007 21:25:33 +0000
 
 bzr-builddeb (0.13) unstable; urgency=low
 
