@@ -21,8 +21,8 @@
 import os
 
 from bzrlib.config import ConfigObj
+from bzrlib.trace import mutter
 
-from bdlogging import debug
 from util import add_ignore
 
 
@@ -72,7 +72,7 @@ class DebBuildConfig(object):
     for file in self._config_files:
       value = self._get_opt(file, key)
       if value is not None:
-        debug("Using %s for %s, taken from %s", value, key, file.filename)
+        mutter("Using %s for %s, taken from %s", value, key, file.filename)
         return value
     return None
 
@@ -86,7 +86,7 @@ class DebBuildConfig(object):
     for file in self._config_files:
       (found, value) = self._get_bool(file, key)
       if found:
-        debug("Using %s for %s, taken from %s", value, key, file.filename)
+        mutter("Using %s for %s, taken from %s", value, key, file.filename)
         return value
     return default
 

@@ -21,6 +21,7 @@
 import os
 
 from bzrlib.commands import Command, register_command
+from bzrlib.trace import info, warning
 from bzrlib.option import Option
 from bzrlib.workingtree import WorkingTree
 
@@ -34,7 +35,6 @@ from config import DebBuildConfig
 from errors import (ChangedError,
                     StopBuild,
                     )
-from bdlogging import debug, info, warning, set_verbose
 from properties import BuildProperties
 from util import goto_branch, find_changelog, is_clean
 
@@ -135,7 +135,7 @@ class cmd_builddeb(Command):
                       +"-rfakeroot -uc -us -S\"", short_name='S')
   takes_args = ['branch?']
   aliases = ['bd']
-  takes_options = ['verbose', working_tree_opt, export_only_opt,
+  takes_options = [working_tree_opt, export_only_opt,
       dont_purge_opt, use_existing_opt, result_opt, builder_opt, merge_opt,
       build_dir_opt, orig_dir_opt, ignore_changes_opt, ignore_unknowns_opt,
       quick_opt, reuse_opt, native_opt, split_opt, export_upstream_opt,
@@ -150,8 +150,6 @@ class cmd_builddeb(Command):
           source=False):
 
     retcode = 0
-
-    set_verbose(verbose)
 
     goto_branch(branch)
 
@@ -214,7 +212,7 @@ class cmd_builddeb(Command):
     if not working_tree:
       b = tree.branch
       rev_id = b.last_revision()
-      debug("Building branch from revision %s", rev_id)
+      info("Building branch from revision %s", rev_id)
       t = b.repository.revision_tree(rev_id)
       if not ignore_changes and not is_clean(t, tree, ignore_unknowns):
         raise ChangedError
