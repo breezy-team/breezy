@@ -125,6 +125,12 @@ class DebBuildConfig(object):
                                       'export-upstream-prepull', False),
                               None, None,
                               """Whether to prepull the upstream.""")
+  prepull_upstream_stop = property(lambda self:
+                                   self._get_best_bool(
+                                      'export-upstream-stop-on-trivial-pull',
+                                      False),
+                                   None, None,
+                                   """Whether to stop when nothing changes.""")
 
 def _test():
   import doctest

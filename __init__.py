@@ -31,8 +31,10 @@ from builder import (DebBuild,
                      DebMergeExportUpstreamBuild,
                      )
 from config import DebBuildConfig
-from errors import ChangedError
-from bdlogging import debug, info, set_verbose
+from errors import (ChangedError,
+                    StopBuild,
+                    )
+from bdlogging import debug, info, warning, set_verbose
 from properties import BuildProperties
 from util import goto_branch, find_changelog, is_clean
 
@@ -224,9 +226,11 @@ class cmd_builddeb(Command):
         build = DebMergeBuild(properties, t)
       else:
         prepull_upstream = config.prepull_upstream
+        stop_on_no_change = config.prepull_upstream_stop
         build = DebMergeExportUpstreamBuild(properties, t, export_upstream,
                                             export_upstream_revision,
-                                            prepull_upstream)
+                                            prepull_upstream,
+                                            stop_on_no_change)
     elif native:
       build = DebNativeBuild(properties, t)
     elif split:
@@ -235,7 +239,12 @@ class cmd_builddeb(Command):
       build = DebBuild(properties, t)
 
     build.prepare(use_existing)
-    build.export(use_existing)
+
+    try:
+      build.export(use_existing)
+    except StopBuild, e:
+      warning('Stopping the build: %s.', e.reason)
+      return retcode
 
     if not export_only:
       build.build(builder)

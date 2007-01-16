@@ -49,3 +49,10 @@ class BuildFailedError(DebianError):
   def __init__(self):
     DebianError.__init__(self, None)
 
+class StopBuild(DebianError):
+  _fmt = """Stopping the build: %(reason)s."""
+
+  def __init__(self, reason):
+    BzrError.__init__(self)
+    self.reason = reason
+

@@ -18,7 +18,10 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.trace import info as bzrinfo, mutter as bzrmutter
+from bzrlib.trace import (info as bzrinfo,
+                          mutter as bzrmutter,
+                          warning as bzrwarning,
+                          )
 
 verbose = False
 
@@ -34,6 +37,9 @@ def debug(fmt, *args):
 
 def info(fmt, *args):
   bzrinfo(fmt, *args)
+
+def warning(fmt, *args):
+  bzrwarning(fmt, *args)
 
 def _test():
   import doctest
