@@ -635,4 +635,15 @@ class TestFormat(TestCaseWithBranch):
         self.assertEqual(self.branch_format,
                          branch.BranchFormat.find_format(opened_control))
 
+class TestBound(TestCaseWithBranch):
+
+    def test_bind_unbind(self):
+        branch = self.make_branch('1')
+        branch2 = self.make_branch('2')
+        try:
+            branch.bind(branch2)
+        except errors.UpgradeRequired:
+            raise TestSkipped('Format does not support binding')
+        branch.unbind()
+        self.assertIs(None, branch.get_bound_location())
 

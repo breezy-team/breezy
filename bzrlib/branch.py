@@ -957,7 +957,7 @@ __default_format = BzrBranchFormat5()
 BranchFormat.register_format(__default_format)
 BranchFormat.register_format(BranchReferenceFormat())
 BranchFormat.register_format(BzrBranchFormat6())
-BranchFormat.set_default_format(__default_format)
+BranchFormat.set_default_format(BzrBranchFormat6())
 _legacy_formats = [BzrBranchFormat4(),
                    ]
 
@@ -1518,11 +1518,16 @@ class BzrBranch6(BzrBranch5):
 
     def set_bound_location(self, location):
         """See Branch.set_push_location."""
+        if location is None:
+            location = ''
         self.get_config().set_user_option('bound_location', location)
 
     def get_bound_location(self):
         """See Branch.set_push_location."""
-        return self.get_config().get_user_option('bound_location')
+        location = self.get_config().get_user_option('bound_location')
+        if location == '':
+            location = None
+        return location
 
 
 class BranchTestProviderAdapter(object):
