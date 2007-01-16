@@ -321,10 +321,10 @@ class Commit(object):
                 # now the master has the revision data
                 # 'commit' to the master first so a timeout here causes the local
                 # branch to be out of date
-                self.master_branch.append_revision(self.rev_id)
+                self.master_branch.set_last_revision(self.rev_id)
 
             # and now do the commit locally.
-            self.branch.append_revision(self.rev_id)
+            self.branch.set_last_revision(self.rev_id)
 
             rev_tree = self.builder.revision_tree()
             self.work_tree.set_parent_trees([(self.rev_id, rev_tree)])

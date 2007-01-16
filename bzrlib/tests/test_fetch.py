@@ -92,13 +92,15 @@ def fetch_steps(self, br_a, br_b, writable_a):
     self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
     # InstallFailed should be raised if the branch is missing a revision
     # from its own revision history
-    br_a2.append_revision('a-b-c')
+    br_a2.set_last_revision('a-b-c')
     self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2)
 
-    # TODO: jam 20051218 Branch should no longer allow append_revision for revisions
-    #       which don't exist. So this test needs to be rewritten
-    #       RBC 20060403 the way to do this is to uncommit the revision from the
-    #           repository after the commit
+    # TODO: ADHB 20070116 Perhaps set_last_revision shouldn't accept
+    #       revisions which are not present?  In that case, this test
+    #       must be rewritten.
+    #        
+    #       RBC 20060403 the way to do this is to uncommit the revision from
+    #       the repository after the commit
 
     #TODO: test that fetch correctly does reweaving when needed. RBC 20051008
     # Note that this means - updating the weave when ghosts are filled in to 

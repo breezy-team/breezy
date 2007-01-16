@@ -223,11 +223,8 @@ class Branch(object):
         try:
             if last_revision is None:
                 pb.update('get source history')
-                from_history = from_branch.revision_history()
-                if from_history:
-                    last_revision = from_history[-1]
-                else:
-                    # no history in the source branch
+                last_revision = from_branch.last_revision()
+                if last_revision is None:
                     last_revision = _mod_revision.NULL_REVISION
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
@@ -1496,6 +1493,19 @@ class BzrBranch6(BzrBranch5):
         else:
             assert history == self._lefthand_history(history[-1])
             self.set_last_revision(history[-1])
+
+    @needs_write_lock
+    def append_revision(self, *revision_ids):
+        if len(revision_ids) == 0:
+            return
+        prev_revision = self.last_revision()
+        for revision in self.repository.get_revisions(revision_ids):
+            if prev_revision is None:
+                assert revision.parent_ids == []
+            else:
+                assert revision.parent_ids[0] == prev_revision
+            prev_revision = revision.revision_id
+        self.set_last_revision(revision_ids[-1])
 
     @needs_write_lock
     def _set_parent_location(self, url):
