@@ -1953,9 +1953,6 @@ class EscapeTest(TestCase):
     def test_escape_svn_path_slash(self):
         self.assertEqual("foobar%2f", escape_svn_path("foobar/"))
 
-    def test_escape_svn_path_special_char(self):
-        self.assertEqual(u"foobar%8a", escape_svn_path("foobar\x8a"))
-
     def test_unescape_svn_path_slash(self):
         self.assertEqual("foobar/", unescape_svn_path("foobar%2f"))
 
