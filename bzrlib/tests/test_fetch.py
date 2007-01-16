@@ -289,6 +289,8 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertEqual(1, self._count_log_matches('branch-format', http_logs))
         self.assertEqual(1, self._count_log_matches('branch/format', http_logs))
         self.assertEqual(1, self._count_log_matches('repository/format', http_logs))
-        self.assertTrue(1 >= self._count_log_matches('revision-history', http_logs))
-        self.assertTrue(1 >= self._count_log_matches('last-revision', http_logs))
+        self.assertTrue(1 >= self._count_log_matches('revision-history',
+                                                     http_logs))
+        self.assertTrue(1 >= self._count_log_matches('last-revision',
+                                                     http_logs))
         self.assertEqual(4, len(http_logs))
