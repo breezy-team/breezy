@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2992,6 +2992,27 @@ class cmd_serve(Command):
         else:
             raise errors.BzrCommandError("bzr serve requires one of --inet or --port")
         server.serve()
+
+
+class cmd_tag(Command):
+    """Create a tag naming a revision"""
+
+    takes_args = ['tag_name']
+    takes_options = [
+        Option('directory',
+            help='branch or repository to tag',
+            short_name='d',
+            type=unicode,
+            ),
+        ]
+
+    def run(self, tag_name, directory='.'):
+        branch, relpath = Branch.open_containing(directory)
+        revision_id = branch.last_revision()
+        branch.repository.make_tag(tag_name, revision_id)
+        self.outf.write('created tag %s' % tag_name)
+
+
 
 
 # command-line interpretation helper for merge-related commands

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -321,7 +321,6 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
 
-
 class InterString(repository.InterRepository):
     """An inter-repository optimised code path for strings.
 
@@ -458,3 +457,15 @@ class TestRepositoryFormatKnit2(TestCaseWithTransport):
         tree.commit("Another dull commit", rev_id='dull2')
         revision_tree = tree.branch.repository.revision_tree('dull2')
         self.assertEqual('dull', revision_tree.inventory.root.revision)
+
+    def test_tag_serialization(self):
+        """Test the precise representation of tag dicts."""
+        # Don't change this after we commit to this format, as it checks 
+        # that the format is stable and compatible across releases
+        format = repository.RepositoryFormatKnit2()
+        td = dict(stable='stable-revid', boring='boring-revid')
+        packed = format._serialize_tag_dict(td)
+        expected = 'boring\tboring-revid\nstable\tstable-revid\n'
+        self.assertEqualDiff(packed, expected)
+        self.assertEqual(format._deserialize_tag_dict(packed), td)
+

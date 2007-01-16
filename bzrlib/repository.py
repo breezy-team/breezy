@@ -1090,10 +1090,15 @@ class KnitRepository(MetaDirRepository):
 class KnitRepository2(KnitRepository):
     """Experimental enhanced knit format"""
 
+    # corresponds to RepositoryFormatKnit2
+    
+    # TODO: within a lock scope, we could keep the tags in memory...
+
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
                  control_store, text_store):
         KnitRepository.__init__(self, _format, a_bzrdir, control_files,
                               _revision_store, control_store, text_store)
+        self._transport = control_files._transport
         self._serializer = xml6.serializer_v6
 
     def deserialise_inventory(self, revision_id, xml):
@@ -1133,8 +1138,37 @@ class KnitRepository2(KnitRepository):
         return RootCommitBuilder(self, parents, config, timestamp, timezone,
                                  committer, revprops, revision_id)
 
-    def get_tags(self):
-        return None
+    @needs_read_lock
+    def get_tag_dict(self):
+        tag_content = self.control_files.get_utf8('tags').read()
+        return self._format._deserialize_tag_dict(tag_content)
+
+    @needs_write_lock
+    def _set_tag_dict(self, new_dict):
+        """Replace all tag definitions
+
+        :param new_dict: Dictionary from tag name to target.
+        """
+        self.control_files.put_utf8('tags', self._format._serialize_tag_dict(new_dict))
+
+    @needs_write_lock
+    def make_tag(self, tag_name, tag_target):
+        """Add a tag definition to the repository.
+
+        Behaviour if the tag is already present is not defined (yet).
+        """
+        # all done with a write lock held, so this looks atomic
+        td = self.get_tag_dict()
+        td[tag_name] = tag_target
+        self._set_tag_dict(td)
+
+    def lookup_tag(self, tag_name):
+        """Return the referent string of a tag"""
+        td = self.get_tag_dict()
+        try:
+            return td[tag_name]
+        except KeyError:
+            raise errors.NoSuchTag(tag_name)
 
 
 class RepositoryFormat(object):
@@ -1222,7 +1256,7 @@ class RepositoryFormat(object):
         from bzrlib.store.revision.text import TextRevisionStore
         dir_mode = control_files._dir_mode
         file_mode = control_files._file_mode
-        text_store =TextStore(transport.clone(name),
+        text_store = TextStore(transport.clone(name),
                               prefixed=prefixed,
                               compressed=compressed,
                               dir_mode=dir_mode,
@@ -1801,10 +1835,30 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
                                control_files=control_files,
                                _revision_store=_revision_store,
                                control_store=control_store,
-                               text_store=text_store)
+                                text_store=text_store)
+
+    def initialize(self, a_bzrdir, shared=False):
+        repo = super(RepositoryFormatKnit2, self).initialize(a_bzrdir, shared)
+        repo._transport.put_bytes_non_atomic('tags', '')
+        return repo
 
     def supports_tags(self):
         return True
+
+    def _serialize_tag_dict(self, tag_dict):
+        s = []
+        for tag, target in sorted(tag_dict.items()):
+            # TODO: check that tag names and targets are acceptable
+            s.append(tag + '\t' + target + '\n')
+        return ''.join(s)
+
+    def _deserialize_tag_dict(self, tag_content):
+        """Convert the tag file into a dictionary of tags"""
+        d = {}
+        for l in tag_content.splitlines():
+            tag, target = l.split('\t', 1)
+            d[tag] = target
+        return d
 
 
 
