@@ -421,8 +421,6 @@ class SvnWorkingTree(WorkingTree):
         return revid
 
     def add(self, files, ids=None):
-        import pdb
-        pdb.set_trace()
         if ids:
             ids = copy(ids)
             ids.reverse()
