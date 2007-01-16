@@ -1518,9 +1518,14 @@ class BzrBranch6(BzrBranch5):
 
     def set_bound_location(self, location):
         """See Branch.set_push_location."""
+        result = None
         if location is None:
+            if self.get_bound_location() is None:
+                return False
             location = ''
+            result = True
         self.get_config().set_user_option('bound_location', location)
+        return result
 
     def get_bound_location(self):
         """See Branch.set_push_location."""
