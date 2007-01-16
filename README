@@ -160,7 +160,8 @@ descriptions.
   * ``source-builder = command``
 
     The command used to build a source package if the ``--short`` or ``-S``
-    options are used. (Defaults to ``dpkg-buildpackage -rfakeroot -uc -us 
+    options are used. Overriden if ``--builder`` or ``--quick`` are given on
+    the command line. (Defaults to ``dpkg-buildpackage -rfakeroot -uc -us 
     -S``.)
 
   * ``ignore-unknowns = True``
