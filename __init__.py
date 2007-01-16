@@ -165,40 +165,40 @@ class cmd_builddeb(Command):
       use_existing = True
 
     if not merge:
-      merge = config.merge()
+      merge = config.merge
 
     if merge:
       info("Running in merge mode")
       if export_upstream is None:
-        export_upstream = config.export_upstream()
+        export_upstream = config.export_upstream
     else:
       if not native:
-        native = config.native()
+        native = config.native
 
       if native:
         info("Running in native mode")
       else:
         if not split:
-          split = config.split()
+          split = config.split
 
         if split:
           info("Running in split mode")
 
     if not ignore_unknowns:
-      ignore_unknowns = config.ignore_unknowns()
+      ignore_unknowns = config.ignore_unknowns
 
     if ignore_unknowns:
       info("Not stopping the build if there are any unknown files. If you "
           +"have just created a file, make sure you have added it.")
 
     if result is None:
-      result = config.result_dir()
+      result = config.result_dir
     if result is not None:
       result = os.path.realpath(result)
 
     if builder is None:
       if quick:
-        builder = config.quick_builder()
+        builder = config.quick_builder
         if builder is None:
           builder = "fakeroot debian/rules binary"
       else:
@@ -207,7 +207,7 @@ class cmd_builddeb(Command):
           if builder is None:
             builder = "dpkg-buildpackage -rfakeroot -uc -us -S"
         else:
-          builder = config.builder()
+          builder = config.builder
           if builder is None:
             builder = "dpkg-buildpackage -uc -us -rfakeroot"
 
@@ -225,12 +225,12 @@ class cmd_builddeb(Command):
     (changelog, larstiq) = find_changelog(t, merge)
 
     if build_dir is None:
-      build_dir = config.build_dir()
+      build_dir = config.build_dir
       if build_dir is None:
         build_dir = '../build-area'
 
     if orig_dir is None:
-      orig_dir = config.orig_dir()
+      orig_dir = config.orig_dir
       if orig_dir is None:
         orig_dir = '../tarballs'
     
