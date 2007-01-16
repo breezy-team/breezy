@@ -157,6 +157,12 @@ descriptions.
     The command used to build the package if the ``--quick`` option is used. 
     (Defaults to ``fakeroot debian/rules binary``).
 
+  * ``source-builder = command``
+
+    The command used to build a source package if the ``--short`` or ``-S``
+    options are used. (Defaults to ``dpkg-buildpackage -rfakeroot -uc -us 
+    -S``.)
+
   * ``ignore-unknowns = True``
 
     Don't count unknown files in the tree as changes, and so allow the build
