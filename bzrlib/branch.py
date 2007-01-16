@@ -541,14 +541,9 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        new_history = self.revision_history()
-        if revision_id is not None:
-            try:
-                new_history = new_history[:new_history.index(revision_id) + 1]
-            except ValueError:
-                rev = self.repository.get_revision(revision_id)
-                new_history = rev.get_history(self.repository)[1:]
-        destination.set_revision_history(new_history)
+        if revision_id is None:
+            revision_id = self.last_revision()
+        destination.set_last_revision(revision_id)
         try:
             parent = self.get_parent()
         except errors.InaccessibleParent, e:
@@ -1155,6 +1150,10 @@ class BzrBranch(Branch):
             # not really an object yet, and the transaction is for objects.
             # transaction.register_clean(history)
 
+    @needs_write_lock
+    def set_last_revision(self, revision_id):
+        self.set_revision_history(self._lefthand_history(revision_id))
+
     @needs_read_lock
     def revision_history(self):
         """See Branch.revision_history."""
@@ -1469,6 +1468,8 @@ class BzrBranch6(BzrBranch5):
 
     @needs_write_lock
     def set_last_revision(self, revision_id):
+        if revision_id is None:
+            revision_id = 'null:'
         self.control_files.put_utf8('last-revision', revision_id + '\n')
 
     @needs_read_lock
