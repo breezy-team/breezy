@@ -95,25 +95,15 @@ def internal_tree_files(file_list, default_branch=u'.'):
 
 def get_format_type(typestring):
     """Parse and return a format specifier."""
-    if typestring == "weave":
-        return bzrdir.BzrDirFormat6()
+    # Have to use BzrDirMetaFormat1 directly, so that
+    # RepositoryFormat.set_default_format works
     if typestring == "default":
         return bzrdir.BzrDirMetaFormat1()
-    if typestring == "metaweave":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormat7()
-        return format
-    if typestring == "knit":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit1()
-        return format
-    if typestring == "experimental-knit2":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
-        return format
-    msg = "Unknown bzr format %s. Current formats are: default, knit,\n" \
-          "metaweave and weave" % typestring
-    raise errors.BzrCommandError(msg)
+    try:
+        return bzrdir.format_registry.make_bzrdir(typestring)
+    except KeyError:
+        msg = 'Unknown bzr format "%s". See "bzr help formats".' % typestring
+        raise errors.BzrCommandError(msg)
 
 
 # TODO: Make sure no commands unconditionally use the working directory as a
@@ -844,12 +834,7 @@ class cmd_checkout(Command):
                                              % to_location)
             else:
                 raise
-        old_format = bzrdir.BzrDirFormat.get_default_format()
-        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
-        try:
-            source.create_checkout(to_location, revision_id, lightweight)
-        finally:
-            bzrdir.BzrDirFormat.set_default_format(old_format)
+        source.create_checkout(to_location, revision_id, lightweight)
 
 
 class cmd_renames(Command):
@@ -2065,22 +2050,29 @@ class cmd_nick(Command):
 class cmd_selftest(Command):
     """Run internal test suite.
     
-    This creates temporary test directories in the working directory,
-    but not existing data is affected.  These directories are deleted
-    if the tests pass, or left behind to help in debugging if they
-    fail and --keep-output is specified.
+    This creates temporary test directories in the working directory, but not
+    existing data is affected.  These directories are deleted if the tests
+    pass, or left behind to help in debugging if they fail and --keep-output
+    is specified.
     
-    If arguments are given, they are regular expressions that say
-    which tests should run.
+    If arguments are given, they are regular expressions that say which tests
+    should run.  Tests matching any expression are run, and other tests are
+    not run.
+
+    Alternatively if --first is given, matching tests are run first and then
+    all other tests are run.  This is useful if you have been working in a
+    particular area, but want to make sure nothing else was broken.
 
     If the global option '--no-plugins' is given, plugins are not loaded
     before running the selftests.  This has two effects: features provided or
     modified by plugins will not be tested, and tests provided by plugins will
     not be run.
 
-    examples:
+    examples::
         bzr selftest ignore
+            run only tests relating to 'ignore'
         bzr --no-plugins selftest -v
+            disable plugins and list tests as they're run
     """
     # TODO: --list should give a list of all available tests
 
@@ -2121,12 +2113,16 @@ class cmd_selftest(Command):
                      Option('clean-output',
                             help='clean temporary tests directories'
                                  ' without running tests'),
+                     Option('first',
+                            help='run all tests, but run specified tests first',
+                            )
                      ]
     encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
-            lsprof_timed=None, cache_dir=None, clean_output=False):
+            lsprof_timed=None, cache_dir=None, clean_output=False,
+            first=False):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2165,7 +2161,9 @@ class cmd_selftest(Command):
                               transport=transport,
                               test_suite_factory=test_suite_factory,
                               lsprof_timed=lsprof_timed,
-                              bench_history=benchfile)
+                              bench_history=benchfile,
+                              matching_tests_first=first,
+                              )
         finally:
             if benchfile is not None:
                 benchfile.close()

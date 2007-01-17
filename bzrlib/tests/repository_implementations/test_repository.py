@@ -273,11 +273,8 @@ class TestRepository(TestCaseWithRepository):
             old_format = bzrdir.BzrDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
             # it would be nice to have a 'latest' vs 'default' concept.
-            bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
-            try:
-                upgrade(wt.basedir)
-            finally:
-                bzrdir.BzrDirFormat.set_default_format(old_format)
+            format = bzrdir.format_registry.make_bzrdir('experimental-knit2')
+            upgrade(wt.basedir, format=format)
         except errors.UpToDateFormat:
             # this is in the most current format already.
             return

@@ -26,6 +26,7 @@ import optparse
 from bzrlib import (
     errors,
     revisionspec,
+    symbol_versioning,
     )
 """)
 from bzrlib.trace import warning
@@ -109,10 +110,11 @@ def get_merge_type(typestring):
             (typestring, type_list)
         raise errors.BzrCommandError(msg)
 
+
 class Option(object):
     """Description of a command line option
     
-    :ivar short_name: If this option has a single-letter name, this is it.
+    :ivar _short_name: If this option has a single-letter name, this is it.
     Otherwise None.
     """
 
@@ -138,12 +140,26 @@ class Option(object):
         self.name = name
         self.help = help
         self.type = type
-        self.short_name = short_name
+        self._short_name = short_name
         if type is None:
             assert argname is None
         elif argname is None:
             argname = 'ARG'
         self.argname = argname
+
+    def short_name(self):
+        if self._short_name:
+            return self._short_name
+        else:
+            # remove this when SHORT_OPTIONS is removed
+            # XXX: This is accessing a DeprecatedDict, so we call the super 
+            # method to avoid warnings
+            for (k, v) in dict.iteritems(Option.SHORT_OPTIONS):
+                if v == self:
+                    return k
+
+    def set_short_name(self, short_name):
+        self._short_name = short_name
 
     def get_negation_name(self):
         if self.name.startswith('no-'):
@@ -184,7 +200,7 @@ class Option(object):
         argname =  self.argname
         if argname is not None:
             argname = argname.upper()
-        yield self.name, self.short_name, argname, self.help
+        yield self.name, self.short_name(), argname, self.help
 
 
 class OptionParser(optparse.OptionParser):
@@ -202,7 +218,7 @@ def get_optparser(options):
     parser = OptionParser()
     parser.remove_option('--help')
     for option in options.itervalues():
-        option.add_option(parser, option.short_name)
+        option.add_option(parser, option.short_name())
     return parser
 
 
@@ -262,3 +278,21 @@ _global_option('kind', type=str)
 _global_option('dry-run',
                help="show what would be done, but don't actually do anything")
 _global_option('name-from-revision', help='The path name in the old tree.')
+
+
+# prior to 0.14 these were always globally registered; the old dict is
+# available for plugins that use it but it should not be used.
+Option.SHORT_OPTIONS = symbol_versioning.DeprecatedDict(
+    symbol_versioning.zero_fourteen,
+    'SHORT_OPTIONS',
+    {
+        'F': Option.OPTIONS['file'],
+        'h': Option.OPTIONS['help'],
+        'm': Option.OPTIONS['message'],
+        'r': Option.OPTIONS['revision'],
+        'v': Option.OPTIONS['verbose'],
+        'l': Option.OPTIONS['long'],
+        'q': Option.OPTIONS['quiet'],
+    },
+    'Set the short option name when constructing the Option.',
+    )
