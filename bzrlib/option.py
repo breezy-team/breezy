@@ -203,6 +203,75 @@ class Option(object):
         yield self.name, self.short_name(), argname, self.help
 
 
+class RegistryOption(Option):
+    """Option based on a registry
+
+    The values for the options correspond to entries in the registry.  Input
+    must be a registry key.  After validation, it is converted into an object
+    using Registry.get or a caller-provided converter.
+    """
+
+    def validate_value(self, value):
+        """Validate a value name"""
+        if value not in self.registry:
+            raise errors.BadOptionValue(self.name, value)
+
+    def convert(self, value):
+        """Convert a value name into an output type"""
+        self.validate_value(value)
+        if self.converter is None:
+            return self.registry.get(value)
+        else:
+            return self.converter(value)
+
+    def __init__(self, name, help, registry, converter=None,
+        value_switches=False):
+        """
+        Constructor.
+
+        :param name: The option name.
+        :param help: Help for the option.
+        :param registry: A Registry containing the values
+        :param converter: Callable to invoke with the value name to produce
+            the value.  If not supplied, self.registry.get is used.
+        :param value_switches: If true, each possible value is assigned its
+            own switch.  For example, instead of '--format metaweave',
+            '--metaweave' can be used interchangeably.
+        """
+        Option.__init__(self, name, help, type=self.convert)
+        self.registry = registry
+        self.name = name
+        self.converter = converter
+        self.value_switches = value_switches
+
+    def add_option(self, parser, short_name):
+        """Add this option to an Optparse parser"""
+        Option.add_option(self, parser, short_name)
+        if self.value_switches:
+            for key in self.registry.keys():
+                option_strings = ['--%s' % key]
+                parser.add_option(action='callback',
+                              callback=self._optparse_value_callback(key),
+                                  help=self.registry.get_help(key),
+                                  *option_strings)
+
+    def _optparse_value_callback(self, cb_value):
+        def cb(option, opt, value, parser):
+            setattr(parser.values, self.name, self.type(cb_value))
+        return cb
+
+    def iter_switches(self):
+        """Iterate through the list of switches provided by the option
+
+        :return: an iterator of (name, short_name, argname, help)
+        """
+        for value in Option.iter_switches(self):
+            yield value
+        if self.value_switches:
+            for key in sorted(self.registry.keys()):
+                yield key, None, None, self.registry.get_help(key)
+
+
 class OptionParser(optparse.OptionParser):
     """OptionParser that raises exceptions instead of exiting"""
 

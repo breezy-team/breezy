@@ -51,7 +51,7 @@ from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.commands import Command, display_command
-from bzrlib.option import Option
+from bzrlib.option import Option, RegistryOption
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
 
@@ -1079,12 +1079,14 @@ class cmd_init(Command):
     """
     takes_args = ['location?']
     takes_options = [
-                     Option('format', 
+                     RegistryOption('format',
                             help='Specify a format for this branch. Current'
                                  ' formats are: default, knit, metaweave and'
                                  ' weave. Default is knit; metaweave and'
                                  ' weave are deprecated',
-                            type=get_format_type),
+                            registry=bzrdir.format_registry,
+                            converter=get_format_type,
+                            value_switches=True),
                      ]
     def run(self, location=None, format=None):
         if format is None:
@@ -1137,12 +1139,14 @@ class cmd_init_repository(Command):
         (add files here)
     """
     takes_args = ["location"] 
-    takes_options = [Option('format', 
+    takes_options = [RegistryOption('format',
                             help='Specify a format for this repository.'
                                  ' Current formats are: default, knit,'
                                  ' metaweave and weave. Default is knit;'
                                  ' metaweave and weave are deprecated',
-                            type=get_format_type),
+                            registry=bzrdir.format_registry,
+                            converter=get_format_type,
+                            value_switches=True),
                      Option('trees',
                              help='Allows branches in repository to have'
                              ' a working tree')]
@@ -1967,12 +1971,14 @@ class cmd_upgrade(Command):
     """
     takes_args = ['url?']
     takes_options = [
-                     Option('format', 
-                            help='Upgrade to a specific format. Current formats'
-                                 ' are: default, knit, metaweave and weave.'
-                                 ' Default is knit; metaweave and weave are'
-                                 ' deprecated',
-                            type=get_format_type),
+                    RegistryOption('format',
+                        help='Upgrade to a specific format. Current formats'
+                             ' are: default, knit, metaweave and weave.'
+                             ' Default is knit; metaweave and weave are'
+                             ' deprecated',
+                        registry=bzrdir.format_registry,
+                        converter=get_format_type,
+                        value_switches=True),
                     ]
 
 
