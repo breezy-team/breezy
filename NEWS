@@ -2,6 +2,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr help global-options`` describes the global options.
+      (Aaron Bentley)
+
   INTERNALS:
 
   BUGFIXES:
@@ -70,7 +73,6 @@ bzr 0.14rc1  2007-01-16
       local is fully merged into remote. (Jan Hudec)
 
     * ``bzr help formats`` describes available directory formats. (Aaron Bentley)
-    * ``bzr help global-options`` describes the global options. (Aaron Bentley)
 
   INTERNALS:
 

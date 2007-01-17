@@ -160,5 +160,5 @@ def get_format_topic(topic):
     from bzrlib import bzrdir
     return bzrdir.format_registry.help_topic(topic)
 topic_registry.register('formats', get_format_topic, 'Directory formats')
-topic_registry.register('global-options', _global_options, 
+topic_registry.register('global-options', _global_options,
                         'Options that can be used with any command')
