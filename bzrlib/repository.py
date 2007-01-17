@@ -1278,7 +1278,12 @@ class RepositoryFormat(object):
         klass._formats[format.get_format_string()] = format
 
     @classmethod
+    @deprecated_method(symbol_versioning.zero_fourteen)
     def set_default_format(klass, format):
+        klass._set_default_format(format)
+
+    @classmethod
+    def _set_default_format(klass, format):
         klass._default_format = format
 
     @classmethod
@@ -1804,7 +1809,7 @@ RepositoryFormat.register_format(RepositoryFormat7())
 _default_format = RepositoryFormatKnit1()
 RepositoryFormat.register_format(_default_format)
 RepositoryFormat.register_format(RepositoryFormatKnit2())
-RepositoryFormat.set_default_format(_default_format)
+RepositoryFormat._set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
                    RepositoryFormat6()]
