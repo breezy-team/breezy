@@ -94,7 +94,7 @@ class SvnRaTransport(Transport):
     """Fake transport for Subversion-related namespaces.
     
     This implements just as much of Transport as is necessary 
-    to fool Bazaar-NG. """
+    to fool Bazaar. """
     def __init__(self, url=""):
         self.pool = Pool()
         self.is_locked = False
