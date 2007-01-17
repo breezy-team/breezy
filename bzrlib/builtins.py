@@ -1079,12 +1079,12 @@ class cmd_init(Command):
     """
     takes_args = ['location?']
     takes_options = [
-                     RegistryOption('format', 
+                     RegistryOption('format',
                             help='Specify a format for this branch. Current'
                                  ' formats are: default, knit, metaweave and'
                                  ' weave. Default is knit; metaweave and'
                                  ' weave are deprecated',
-                            registry=bzrdir.format_registry, 
+                            registry=bzrdir.format_registry,
                             converter=get_format_type,
                             value_switches=True),
                      ]
@@ -1139,12 +1139,12 @@ class cmd_init_repository(Command):
         (add files here)
     """
     takes_args = ["location"] 
-    takes_options = [RegistryOption('format', 
+    takes_options = [RegistryOption('format',
                             help='Specify a format for this repository.'
                                  ' Current formats are: default, knit,'
                                  ' metaweave and weave. Default is knit;'
                                  ' metaweave and weave are deprecated',
-                            registry=bzrdir.format_registry, 
+                            registry=bzrdir.format_registry,
                             converter=get_format_type,
                             value_switches=True),
                      Option('trees',
@@ -1968,12 +1968,12 @@ class cmd_upgrade(Command):
     """
     takes_args = ['url?']
     takes_options = [
-                    RegistryOption('format', 
+                    RegistryOption('format',
                         help='Upgrade to a specific format. Current formats'
                              ' are: default, knit, metaweave and weave.'
                              ' Default is knit; metaweave and weave are'
                              ' deprecated',
-                        registry=bzrdir.format_registry, 
+                        registry=bzrdir.format_registry,
                         converter=get_format_type,
                         value_switches=True),
                     ]

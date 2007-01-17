@@ -205,7 +205,7 @@ class Option(object):
 
 class RegistryOption(Option):
     """Option based on a registry
-    
+
     The values for the options correspond to entries in the registry.  Input
     must be a registry key.  After validation, it is converted into an object
     using Registry.get or a caller-provided converter.
@@ -235,7 +235,7 @@ class RegistryOption(Option):
         :param converter: Callable to invoke with the value name to produce
             the value.  If not supplied, self.registry.get is used.
         :param value_switches: If true, each possible value is assigned its
-            own switch.  For example, instead of '--format metaweave', 
+            own switch.  For example, instead of '--format metaweave',
             '--metaweave' can be used interchangeably.
         """
         Option.__init__(self, name, help, type=self.convert)
@@ -250,8 +250,8 @@ class RegistryOption(Option):
         if self.value_switches:
             for key in self.registry.keys():
                 option_strings = ['--%s' % key]
-                parser.add_option(action='callback', 
-                              callback=self._optparse_value_callback(key), 
+                parser.add_option(action='callback',
+                              callback=self._optparse_value_callback(key),
                                   help=self.registry.get_help(key),
                                   *option_strings)
 
@@ -262,7 +262,7 @@ class RegistryOption(Option):
 
     def iter_switches(self):
         """Iterate through the list of switches provided by the option
-        
+
         :return: an iterator of (name, short_name, argname, help)
         """
         for value in Option.iter_switches(self):

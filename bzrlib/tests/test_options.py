@@ -116,7 +116,7 @@ class OptionTests(TestCase):
     def parse(self, options, args):
         parser = option.get_optparser(dict((o.name, o) for o in options))
         return parser.parse_args(args)
-        
+
     def test_conversion(self):
         options = [option.Option('hello')]
         opts, args = self.parse(options, ['--no-hello', '--hello'])
@@ -128,9 +128,9 @@ class OptionTests(TestCase):
         options = [option.Option('number', type=int)]
         opts, args = self.parse(options, ['--number', '6'])
         self.assertEqual(6, opts.number)
-        self.assertRaises(errors.BzrCommandError, self.parse, options, 
+        self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--number'])
-        self.assertRaises(errors.BzrCommandError, self.parse, options, 
+        self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--no-number'])
 
     def test_registry_conversion(self):
@@ -143,22 +143,22 @@ class OptionTests(TestCase):
         self.assertEqual({'format':'one'}, opts)
         opts, args = self.parse(options, ['--format', 'two'])
         self.assertEqual({'format':'two'}, opts)
-        self.assertRaises(errors.BadOptionValue, self.parse, options, 
+        self.assertRaises(errors.BadOptionValue, self.parse, options,
                           ['--format', 'three'])
-        self.assertRaises(errors.BzrCommandError, self.parse, options, 
+        self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--two'])
-        options = [option.RegistryOption('format', '', registry, str, 
+        options = [option.RegistryOption('format', '', registry, str,
                    value_switches=True)]
         opts, args = self.parse(options, ['--two'])
         self.assertEqual({'format':'two'}, opts)
         opts, args = self.parse(options, ['--two', '--one'])
         self.assertEqual({'format':'one'}, opts)
-        opts, args = self.parse(options, ['--two', '--one', 
+        opts, args = self.parse(options, ['--two', '--one',
                                           '--format', 'two'])
         self.assertEqual({'format':'two'}, opts)
 
     def test_registry_converter(self):
-        options = [option.RegistryOption('format', '', 
+        options = [option.RegistryOption('format', '',
                    bzrdir.format_registry, builtins.get_format_type)]
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertIsInstance(opts.format.repository_format,
@@ -198,9 +198,9 @@ class OptionTests(TestCase):
                                     value_switches=True)
         self.assertEqual(list(opt.iter_switches()),
                          [('format', None, 'ARG', 'format help'),
-                          ('default', None, None, 'one help'), 
-                          ('one', None, None, 'one help'), 
-                          ('two', None, None, 'two help'), 
+                          ('default', None, None, 'one help'),
+                          ('one', None, None, 'one help'),
+                          ('two', None, None, 'two help'),
                           ])
 
 #     >>> parse_args('log -r 500'.split())
