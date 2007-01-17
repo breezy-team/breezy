@@ -10,6 +10,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Reserved ids (any revision-id ending in a colon) are rejected by
+      versionedfiles, repositories, branches, and working trees
+      (Aaron Bentley)
+
   BUGFIXES:
 
   TESTING:
@@ -102,10 +106,6 @@ bzr 0.14rc1  2007-01-16
       that Python has corresponding codec. (Alexander Belchenko)
 
     * Formats for end-user selection are provided via a FormatRegistry (Aaron Bentley)
-
-    * Reserved ids (any revision-id ending in a colon) are rejected by
-      versionedfiles, repositories, branches, and working trees
-      (Aaron Bentley)
 
   BUG FIXES:
 
