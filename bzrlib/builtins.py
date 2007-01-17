@@ -1371,12 +1371,10 @@ class cmd_log(Command):
                              help='show files changed in each revision'),
                      'show-ids', 'revision',
                      'log-format',
-                     'line', 'long', 
                      Option('message',
                             short_name='m',
                             help='show revisions whose message matches this regexp',
                             type=str),
-                     'short',
                      ]
     encoding_type = 'replace'
 
@@ -1387,11 +1385,8 @@ class cmd_log(Command):
             forward=False,
             revision=None,
             log_format=None,
-            message=None,
-            long=False,
-            short=False,
-            line=False):
-        from bzrlib.log import log_formatter, show_log
+            message=None):
+        from bzrlib.log import show_log
         assert message is None or isinstance(message, basestring), \
             "invalid message argument %r" % message
         direction = (forward and 'forward') or 'reverse'
@@ -1458,14 +1453,11 @@ class cmd_log(Command):
         if rev1 > rev2:
             (rev2, rev1) = (rev1, rev2)
 
-        if (log_format is None):
-            default = b.get_config().log_format()
-            log_format = get_log_format(long=long, short=short, line=line, 
-                                        default=default)
-        lf = log_formatter(log_format,
-                           show_ids=show_ids,
-                           to_file=self.outf,
-                           show_timezone=timezone)
+        if log_format is None:
+            log_format = log.log_formatter_registry.get_default(b)
+
+        lf = log_format(show_ids=show_ids, to_file=self.outf,
+                        show_timezone=timezone)
 
         show_log(b,
                  lf,
@@ -2598,9 +2590,6 @@ class cmd_missing(Command):
                      Option('theirs-only', 
                             'Display changes in the remote branch only'), 
                      'log-format',
-                     'line',
-                     'long', 
-                     'short',
                      'show-ids',
                      'verbose'
                      ]
@@ -2628,13 +2617,11 @@ class cmd_missing(Command):
             try:
                 local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
                 if (log_format is None):
-                    default = local_branch.get_config().log_format()
-                    log_format = get_log_format(long=long, short=short, 
-                                                line=line, default=default)
-                lf = log_formatter(log_format,
-                                   to_file=self.outf,
-                                   show_ids=show_ids,
-                                   show_timezone='original')
+                    log_format = log.log_formatter_registry.get_default(
+                        local_branch)
+                lf = log_format(to_file=self.outf,
+                                show_ids=show_ids,
+                                show_timezone='original')
                 if reverse is False:
                     local_extra.reverse()
                     remote_extra.reverse()

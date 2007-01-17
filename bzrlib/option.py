@@ -25,6 +25,7 @@ import optparse
 
 from bzrlib import (
     errors,
+    log,
     revisionspec,
     symbol_versioning,
     )
@@ -295,6 +296,11 @@ def _global_option(name, **kwargs):
     """Register o as a global option."""
     Option.OPTIONS[name] = Option(name, **kwargs)
 
+
+def _global_registry_option(name, help, registry, **kwargs):
+    Option.OPTIONS[name] = RegistryOption(name, help, registry, **kwargs)
+
+
 _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally')
@@ -329,7 +335,8 @@ _global_option('verbose',
 _global_option('version')
 _global_option('email')
 _global_option('update')
-_global_option('log-format', type=str, help="Use this log format")
+_global_registry_option('log-format', "Use this log format",
+                        log.log_formatter_registry, value_switches=True)
 _global_option('long', help='Use detailed log format. Same as --log-format long',
                short_name='l')
 _global_option('short', help='Use moderately short log format. Same as --log-format short')

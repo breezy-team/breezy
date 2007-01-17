@@ -54,7 +54,10 @@ all the changes since the previous revision that touched hello.c.
 from itertools import izip
 import re
 
-from bzrlib import symbol_versioning
+from bzrlib import(
+    registry,
+    symbol_versioning,
+    )
 import bzrlib.errors as errors
 from bzrlib.symbol_versioning import deprecated_method, zero_eleven
 from bzrlib.trace import mutter
@@ -461,14 +464,36 @@ def line_log(rev, max_chars):
     lf = LineLogFormatter(None)
     return lf.log_string(None, rev, max_chars)
 
-FORMATTERS = {
-              'long': LongLogFormatter,
-              'short': ShortLogFormatter,
-              'line': LineLogFormatter,
-              }
+
+class LogFormatterRegistry(registry.Registry):
+    """Registry for log formatters"""
+
+    def make_formatter(self, name, *args, **kwargs):
+        """Construct a formatter from arguments.
+
+        :param name: Name of the formatter to construct.  'short', 'long' and
+            'line' are built-in.
+        """
+        return self.get(name)(*args, **kwargs)
+
+    def get_default(self, branch):
+        return self.get(branch.get_config().log_format())
+
+
+log_formatter_registry = LogFormatterRegistry()
+
+
+log_formatter_registry.register('short', ShortLogFormatter,
+                                'Moderately short log format')
+log_formatter_registry.register('long', LongLogFormatter,
+                                'Detailed log format')
+log_formatter_registry.register('line', LineLogFormatter,
+                                'Log format with one line per revision')
+
 
 def register_formatter(name, formatter):
-    FORMATTERS[name] = formatter
+    log_formatter_registry.register(name, formatter)
+
 
 def log_formatter(name, *args, **kwargs):
     """Construct a formatter from arguments.
@@ -478,9 +503,10 @@ def log_formatter(name, *args, **kwargs):
     """
     from bzrlib.errors import BzrCommandError
     try:
-        return FORMATTERS[name](*args, **kwargs)
+        return log_formatter_registry.make_formatter(name, *args, **kwargs)
     except KeyError:
         raise BzrCommandError("unknown log formatter: %r" % name)
+
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
     # deprecated; for compatibility
