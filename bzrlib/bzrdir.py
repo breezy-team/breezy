@@ -2098,7 +2098,7 @@ format_registry.register_metadir('metaweave', 'RepositoryFormat7',
     deprecated=True)
 format_registry.register_metadir('experimental-knit2', 'RepositoryFormatKnit2',
     'Experimental successor to knit.  Use at your own risk.')
-format_registry.register_metadir('experimental-branch6', 
+format_registry.register_metadir('experimental-branch6',
     'RepositoryFormatKnit2',
-    'Experimental successor to knit.  Use at your own risk.', 
+    'Experimental successor to knit.  Use at your own risk.',
     branch_format='BzrBranchFormat6')

@@ -827,7 +827,7 @@ class BzrBranchFormat5(BranchFormat):
 
 class BzrBranchFormat6(BzrBranchFormat5):
     """Branch format with last-revision
-    
+
     Unlike previous formats, this has no explicit revision history, instead
     the left-parent revision history is used.
     """
@@ -1189,10 +1189,10 @@ class BzrBranch(Branch):
         return new_history
 
     @needs_write_lock
-    def generate_revision_history(self, revision_id, last_rev=None, 
+    def generate_revision_history(self, revision_id, last_rev=None,
         other_branch=None):
         """Create a new revision history that will finish with revision_id.
-        
+
         :param revision_id: the new tip to use.
         :param last_rev: The previous last_revision. If not None, then this
             must be a ancestory of revision_id, or DivergedBranches is raised.

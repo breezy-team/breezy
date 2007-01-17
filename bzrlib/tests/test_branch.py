@@ -93,7 +93,7 @@ class TestBranchFormat5(TestCaseWithTransport):
                              "push_location:policy = norecurse" % local_path,
                              fn)
 
-    # TODO RBC 20051029 test getting a push location from a branch in a 
+    # TODO RBC 20051029 test getting a push location from a branch in a
     # recursive section - that is, it appends the branch name.
 
 
@@ -191,7 +191,7 @@ class TestBranch6(TestCaseWithTransport):
         self.assertEqual('http://bazaar-vcs.org', branch.get_parent())
         branch.set_push_location('sftp://bazaar-vcs.org')
         config = branch.get_config()._get_branch_data_config()
-        self.assertEqual('sftp://bazaar-vcs.org', 
+        self.assertEqual('sftp://bazaar-vcs.org',
                          config.get_user_option('push_location'))
         branch.set_bound_location('ftp://bazaar-vcs.org')
         self.failIfExists('a/.bzr/branch/bound')

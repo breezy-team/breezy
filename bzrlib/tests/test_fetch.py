@@ -98,7 +98,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
     # TODO: ADHB 20070116 Perhaps set_last_revision shouldn't accept
     #       revisions which are not present?  In that case, this test
     #       must be rewritten.
-    #        
+    #
     #       RBC 20060403 the way to do this is to uncommit the revision from
     #       the repository after the commit
 
