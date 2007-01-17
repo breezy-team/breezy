@@ -32,29 +32,51 @@ class DebBuildConfig(object):
   ~/.bazaar/builddeb.conf, finally .bzr-builddeb/default.conf. The value is 
   taken from the first file in which it is specified."""
 
-  def __init__(self, localfile=None, globalfile=None, defaultfile=None,
-               add_to_ignores=False):
+  def __init__(self, files):
     """ 
-    >>> c = DebBuildConfig('local.conf','user.conf','default.conf',False)
+    Creates a config to read from config files in a hierarchy.
+
+    Pass it a list of tuples (file, secure, add) where file is the location of
+    a config file (that doesn't have to exist, and trusted is True or false,
+    and states whether the file can be trusted for sensitive values. Add
+    indicates whether the file should be added to .bzrignore if it is not
+    already.
+
+    The value will be returned from the first in the list that has it,
+    unless that key is marked as needing a trusted file and the file isn't
+    trusted.
+
+    If the list is empty then it will be set up the default way for builddeb.
+
+    >>> c = DebBuildConfig([('local.conf', False, False),
+    ... ('user.conf', True, False), ('default.conf', False, False)])
     >>> print c.orig_dir
     None
     >>> print c.merge
     True
-    >>> print c.builder
-    localbuilder
+    >>> print c.export_upstream
+    localexport
     >>> print c.build_dir
     defaultbuild
     >>> print c.result_dir
     userresult
+    >>> print c.builder
+    userbuild
     """
-    if globalfile is None:
+    self._config_files = []
+    if files is not None:
+      assert(len(files) > 0)
+      for input in files:
+        if input[2]:
+          add_ignore(input[0])
+        self._config_files.append((ConfigObj(input[0]), input[1]))
+    else:
       globalfile = os.path.expanduser('~/.bazaar/builddeb.conf')
-    if localfile is None:
       localfile = ('.bzr-builddeb/local.conf')
-    if defaultfile is None:
       defaultfile = ('.bzr-builddeb/default.conf')
-    self._config_files = [ConfigObj(localfile), ConfigObj(globalfile), ConfigObj(defaultfile)]
-    if add_to_ignores:
+      self._config_files = [(ConfigObj(localfile), False),
+                            (ConfigObj(globalfile), True),
+                            (ConfigObj(defaultfile), False)]
       add_ignore(localfile)
 
   def _get_opt(self, config, key):
@@ -65,15 +87,23 @@ class DebBuildConfig(object):
     except KeyError:
       return None
 
-  def _get_best_opt(self, key):
-    """Returns the value for key from the first file in which it is defined,
-    or None if none of the files define it."""
-
-    for file in self._config_files:
-      value = self._get_opt(file, key)
-      if value is not None:
-        mutter("Using %s for %s, taken from %s", value, key, file.filename)
-        return value
+  def _get_best_opt(self, key, trusted=False):
+    """Returns the value for key, obeying precedence.
+    
+    Returns the value for the key from the first file in which it is defined,
+    or None if none of the files define it.
+    
+    If trusted is True then the the value will only be taken from a file
+    marked as trusted.
+    
+    """
+    for config_file in self._config_files:
+      if not trusted or config_file[1]:
+        value = self._get_opt(config_file[0], key)
+        if value is not None:
+          mutter("Using %s for %s, taken from %s", value, key,
+                 config_file[0].filename)
+          return value
     return None
 
   def _get_bool(self, config, key):
@@ -82,37 +112,50 @@ class DebBuildConfig(object):
     except KeyError:
       return False, False
 
-  def _get_best_bool(self, key, default=False):
-    for file in self._config_files:
-      (found, value) = self._get_bool(file, key)
-      if found:
-        mutter("Using %s for %s, taken from %s", value, key, file.filename)
-        return value
+  def _get_best_bool(self, key, trusted=False, default=False):
+    """Returns the value of key, obeying precedence.
+
+    Returns the value for the key from the first file in which it is defined,
+    or default if none of the files define it.
+    
+    If trusted is True then the the value will only be taken from a file
+    marked as trusted.
+    
+    """
+    for config_file in self._config_files:
+      if not trusted or config_file[1]:
+        (found, value) = self._get_bool(config_file[0], key)
+        if found:
+          mutter("Using %s for %s, taken from %s", value, key,
+                 config_file[0].filename)
+          return value
     return default
 
-  def _opt_property(name, help=None):
-    return property(lambda self: self._get_best_opt(name), None, None, help)
+  def _opt_property(name, help=None, trusted=False):
+    return property(lambda self: self._get_best_opt(name, trusted), None,
+                    None, help)
 
-  def _bool_property(name, help=None, default=False):
-    return property(lambda self: self._get_best_bool(name, default),
+  def _bool_property(name, help=None, trusted=False, default=False):
+    return property(lambda self: self._get_best_bool(name, trusted, default),
                     None, None, help)
 
   build_dir = _opt_property('build-dir', "The dir to build in")
 
   orig_dir = _opt_property('orig-dir', "The dir to get upstream tarballs from")
 
-  builder = _opt_property('builder', "The command to build with")
+  builder = _opt_property('builder', "The command to build with", True)
 
   result_dir = _opt_property('result-dir', "The dir to put the results in")
 
   merge = _bool_property('merge', "Run in merge mode")
 
-  builder = _opt_property('quick-builder', "A quick command to build with")
+  quick_builder = _opt_property('quick-builder',
+                          "A quick command to build with", True)
 
-  builder = _opt_property('source-builder',
-                          "The command to build source packages with")
+  source_builder = _opt_property('source-builder',
+                          "The command to build source packages with", True)
 
-  merge = _bool_property('ignore-unknowns',
+  ignore_unknowns = _bool_property('ignore-unknowns',
                          "Build even when the tree has unknowns")
 
   native = _bool_property('native', "Build a native package")
