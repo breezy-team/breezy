@@ -16,14 +16,14 @@ General Format
 An ini file has three types of contructs: section headers, section
 variables and comments.
 
-comment
--------
+Comments
+--------
 A comment is any line that starts with a "#" (sometimes called a "hash
 mark", "pound sign" or "number sign"). Comment lines are ignored by
 Bazaar when parsing ini files.
 
-section header
---------------
+Section Headers
+---------------
 A section header is a word enclosed in brackets that starts at the begining
 of a line, typical section headers look like this::
 
@@ -43,7 +43,7 @@ header. Some examples include::
 
 
 
-section variables
+Section Variables
 -----------------
 
 A section variable resides within a section. A section variable contains a
@@ -52,6 +52,36 @@ form::
 
     email            = John Doe <jdoe@isp.com>
     check_signatures = require
+
+
+Variable Policies
+-----------------
+
+Variables defined in a section affect the named directory or URL plus
+any locations they contain.  Policies can be used to change how a
+variable value is interpreted for contained locations.  Currently
+there are three policies available:
+
+ none:
+   the value is interpreted the same for contained locations.  This is
+   the default behaviour.
+ norecurse:
+   the value is only used for the exact location specified by the
+   section name.
+ appendpath:
+   for contained locations, any additional path components are
+   appended to the value.
+
+Policies are specified by keys with names of the form "$var:policy".
+For example, to define the push location for a tree of branches, the
+following could be used::
+
+  [/top/location]
+  push_location = sftp://example.com/location
+  push_location:policy = appendpath
+
+With this configuration, the push location for ``/top/location/branch1``
+would be ``sftp://example.com/location/branch1``.
 
 
 The main configuration file, bazaar.conf

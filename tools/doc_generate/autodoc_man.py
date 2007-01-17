@@ -184,7 +184,7 @@ is to look for external command.
 E-Mail address of the user. Overrides default user config.
 .TP
 .I "EMAIL"
-E-Mail address of the user. Overriddes default user config.
+E-Mail address of the user. Overrides default user config.
 .TP
 .I "BZR_EDITOR"
 Editor for editing commit messages

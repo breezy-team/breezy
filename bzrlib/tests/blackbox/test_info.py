@@ -21,7 +21,10 @@
 import sys
 
 import bzrlib
-from bzrlib import repository
+from bzrlib import (
+    bzrdir,
+    repository,
+    )
 from bzrlib.osutils import format_date
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
@@ -42,10 +45,7 @@ class TestInfo(ExternalBase):
         transport = self.get_transport()
 
         # Create initial standalone branch
-        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirFormat6())
-        tree1 = self.make_branch_and_tree('standalone')
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
+        tree1 = self.make_branch_and_tree('standalone', 'weave')
         self.build_tree(['standalone/a'])
         tree1.add('a')
         branch1 = tree1.branch
@@ -134,8 +134,7 @@ Revision store:
         # Branch and bind to standalone, needs upgrade to metadir
         # (creates backup as unknown)
         branch1.bzrdir.sprout('bound')
-        knit1_format = bzrlib.bzrdir.BzrDirMetaFormat1()
-        knit1_format.repository_format = repository.RepositoryFormatKnit1()
+        knit1_format = bzrdir.format_registry.make_bzrdir('knit')
         bzrlib.upgrade.upgrade('bound', knit1_format)
         branch3 = bzrlib.bzrdir.BzrDir.open('bound').open_branch()
         branch3.bind(branch1)
@@ -188,10 +187,8 @@ Revision store:
         self.assertEqual('', err)
 
         # Checkout standalone (same as above, but does not have parent set)
-        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(knit1_format)
-        branch4 = bzrlib.bzrdir.BzrDir.create_branch_convenience('checkout')
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
+        branch4 = bzrlib.bzrdir.BzrDir.create_branch_convenience('checkout',
+            format=knit1_format)
         branch4.bind(branch1)
         branch4.bzrdir.open_workingtree().update()
         out, err = self.runbzr('info checkout --verbose')
@@ -238,14 +235,7 @@ Revision store:
         self.assertEqual('', err)
 
         # Lightweight checkout (same as above, different branch and repository)
-        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirMetaFormat1())
-        transport.mkdir('lightcheckout')
-        dir5 = bzrlib.bzrdir.BzrDirMetaFormat1().initialize('lightcheckout')
-        bzrlib.branch.BranchReferenceFormat().initialize(dir5, branch1)
-        dir5.create_workingtree()
-        tree5 = dir5.open_workingtree()
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
+        tree5 = branch1.create_checkout('lightcheckout', lightweight=True)
         branch5 = tree5.branch
         out, err = self.runbzr('info lightcheckout')
         self.assertEqualDiff(
@@ -470,6 +460,7 @@ Revision store:
 
     def test_info_standalone_no_tree(self):
         # create standalone branch without a working tree
+        format = bzrdir.format_registry.make_bzrdir('default')
         branch = self.make_branch('branch')
         repo = branch.repository
         out, err = self.runbzr('info branch')
@@ -489,17 +480,16 @@ Revision store:
          0 revisions
          0 KiB
 """ % (branch.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
     def test_info_shared_repository(self):
-        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirMetaFormat1())
+        format = bzrdir.format_registry.make_bzrdir('metaweave')
         transport = self.get_transport()
 
         # Create shared repository
-        repo = self.make_repository('repo', shared=True)
+        repo = self.make_repository('repo', shared=True, format=format)
         repo.set_make_working_trees(False)
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
@@ -514,13 +504,14 @@ Revision store:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
         # Create branch inside shared repository
         repo.bzrdir.root_transport.mkdir('branch')
-        branch1 = repo.bzrdir.create_branch_convenience('repo/branch')
+        branch1 = repo.bzrdir.create_branch_convenience('repo/branch',
+            format=format)
         out, err = self.runbzr('info repo/branch')
         self.assertEqualDiff(
 """Location:
@@ -539,19 +530,18 @@ Revision store:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
         # Create lightweight checkout
         transport.mkdir('tree')
         transport.mkdir('tree/lightcheckout')
-        dir2 = bzrlib.bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
-        bzrlib.branch.BranchReferenceFormat().initialize(dir2, branch1)
-        dir2.create_workingtree()
-        tree2 = dir2.open_workingtree()
+        tree2 = branch1.create_checkout('tree/lightcheckout', 
+            lightweight=True)
         branch2 = tree2.branch
-        self.assertCheckoutStatusOutput('tree/lightcheckout', tree2, shared_repo=repo)
+        self.assertCheckoutStatusOutput('tree/lightcheckout', tree2, 
+                   shared_repo=repo)
 
         # Create normal checkout
         tree3 = branch1.create_checkout('tree/checkout')
@@ -599,7 +589,7 @@ Revision store:
          %d KiB
 """ % (tree2.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -640,7 +630,7 @@ Revision store:
          0 KiB
 """ % (tree3.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
@@ -681,7 +671,7 @@ Revision store:
          1 revision
          %d KiB
 """ % (tree3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -730,7 +720,7 @@ Revision store:
          %d KiB
 """ % (tree2.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        datestring_first, datestring_last,
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -761,7 +751,7 @@ Revision store:
          2 revisions
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        datestring_first, datestring_last,
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -783,22 +773,19 @@ Revision store:
          2 revisions
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
        repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
-
     def test_info_shared_repository_with_trees(self):
-        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirMetaFormat1())
+        format = bzrdir.format_registry.make_bzrdir('metaweave')
         transport = self.get_transport()
 
         # Create shared repository with working trees
-        repo = self.make_repository('repo', shared=True)
+        repo = self.make_repository('repo', shared=True, format=format)
         repo.set_make_working_trees(True)
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
@@ -815,13 +802,14 @@ Revision store:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
         # Create two branches
         repo.bzrdir.root_transport.mkdir('branch1')
-        branch1 = repo.bzrdir.create_branch_convenience('repo/branch1')
+        branch1 = repo.bzrdir.create_branch_convenience('repo/branch1',
+            format=format)
         branch2 = branch1.bzrdir.sprout('repo/branch2').open_branch()
 
         # Empty first branch
@@ -855,7 +843,7 @@ Revision store:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
@@ -898,7 +886,7 @@ Revision store:
          1 revision
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -941,7 +929,7 @@ Revision store:
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
        repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
@@ -987,7 +975,7 @@ Revision store:
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
@@ -1011,23 +999,20 @@ Revision store:
          1 revision
          %d KiB
 """ % (repo.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
        repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ),
        out)
         self.assertEqual('', err)
-
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
     
     def test_info_shared_repository_with_tree_in_root(self):
-        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirMetaFormat1())
+        format = bzrdir.format_registry.make_bzrdir('metaweave')
         transport = self.get_transport()
 
         # Create shared repository with working trees
-        repo = self.make_repository('repo', shared=True)
+        repo = self.make_repository('repo', shared=True, format=format)
         repo.set_make_working_trees(True)
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
@@ -1044,7 +1029,7 @@ Revision store:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
@@ -1081,11 +1066,9 @@ Revision store:
          0 revisions
          0 KiB
 """ % (repo.bzrdir.root_transport.base,
-       repo._format.get_format_description(),
+       format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
-
-        bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
 
     def assertCheckoutStatusOutput(self, 
         command_string, lco_tree, shared_repo=None,
