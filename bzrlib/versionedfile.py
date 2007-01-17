@@ -60,8 +60,8 @@ class VersionedFile(object):
         self._access_mode = access_mode
 
     @staticmethod
-    def reserved_id(version_id):
-        return revision.reserved_id(version_id)
+    def check_not_reserved_id(version_id):
+        revision.check_not_reserved_id(version_id)
 
     def copy_to(self, name, transport):
         """Copy this versioned file to name on transport."""

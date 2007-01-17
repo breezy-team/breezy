@@ -97,8 +97,7 @@ class Repository(object):
 
         returns the sha1 of the serialized inventory.
         """
-        if _mod_revision.reserved_id(revid):
-            raise errors.ReservedId(revid)
+        _mod_revision.check_not_reserved_id(revid)
         assert inv.revision_id is None or inv.revision_id == revid, \
             "Mismatch between inventory revision" \
             " id and insertion revid (%r, %r)" % (inv.revision_id, revid)
@@ -130,8 +129,7 @@ class Repository(object):
                        If supplied its signature_needed method will be used
                        to determine if a signature should be made.
         """
-        if _mod_revision.reserved_id(rev_id):
-            raise errors.ReservedId(rev_id)
+        _mod_revision.check_not_reserved_id(rev_id)
         if config is not None and config.signature_needed():
             if inv is None:
                 inv = self.get_inventory(rev_id)

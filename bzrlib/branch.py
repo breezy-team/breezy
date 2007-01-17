@@ -1077,8 +1077,7 @@ class BzrBranch(Branch):
     def append_revision(self, *revision_ids):
         """See Branch.append_revision."""
         for revision_id in revision_ids:
-            if _mod_revision.reserved_id(revision_id):
-                raise errors.ReservedId(revision_id)
+            _mod_revision.check_not_reserved_id(revision_id)
             mutter("add {%s} to revision-history" % revision_id)
         rev_history = self.revision_history()
         rev_history.extend(revision_ids)

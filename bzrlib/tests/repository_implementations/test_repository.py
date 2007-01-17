@@ -522,7 +522,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
                           None, None)
         self.assertRaises(errors.ReservedId, repo.add_revision, 'reserved:',
                           None)
- 
+
 
 class TestCaseWithCorruptRepository(TestCaseWithRepository):
 
