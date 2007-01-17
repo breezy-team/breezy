@@ -27,6 +27,12 @@ bzr-builddeb (0.14) unstable; urgency=low
     option to configure what it does.
   * Change to use the new version of the python-debian API, so that 0.1.1 is
     now required.
+  * Builddeb configuration files that are used in the branch are marked as
+    non-trusted. This means that you can no longer set any of the builders in
+    them, as this would be arbitrary code execution. You have to set the
+    builders in your ~/.bazaar/builddeb.conf now. If you don't like this
+    change then please propose a scheme that allows you to do what you want,
+    but doesn't expose people to the security threat.
 
  -- James Westby <jw+debian@jameswestby.net>  Tue, 16 Jan 2007 22:41:35 +0000
 
