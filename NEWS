@@ -2,6 +2,25 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``ls`` now works on treeless branches and remote branches.
+      (Aaron Bentley)
+
+    * ``bzr help global-options`` describes the global options.
+      (Aaron Bentley)
+
+  INTERNALS:
+
+  BUGFIXES:
+
+  TESTING:
+
+    * New ``--first`` option to ``bzr selftest`` to run specified tests
+      before the rest of the suite.  (Martin Pool)
+
+bzr 0.14rc1  2007-01-16
+
+  IMPROVEMENTS:
+
     * New connection: ``bzr+http://`` which supports tunnelling the smart
       protocol over an HTTP connection. If writing is enabled on the bzr
       server, then you can write over the http connection.
