@@ -5,6 +5,9 @@ IN DEVELOPMENT
     * ``ls`` now works on treeless branches and remote branches.
       (Aaron Bentley)
 
+    * ``bzr help global-options`` describes the global options.
+      (Aaron Bentley)
+
   INTERNALS:
 
   BUGFIXES:
