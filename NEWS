@@ -10,6 +10,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * Reserved ids (any revision-id ending in a colon) are rejected by
+      versionedfiles, repositories, branches, and working trees
+      (Aaron Bentley)
+
   BUGFIXES:
 
   TESTING:
