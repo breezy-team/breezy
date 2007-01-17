@@ -6,6 +6,11 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+  TESTING:
+
+    * New ``--first`` option to ``bzr selftest`` to run specified tests
+      before the rest of the suite.  (Martin Pool)
+
 bzr 0.14rc1  2007-01-16
 
   IMPROVEMENTS:
