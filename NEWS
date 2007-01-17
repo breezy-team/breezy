@@ -2,6 +2,9 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``ls`` now works on treeless branches and remote branches.
+      (Aaron Bentley)
+
   INTERNALS:
 
   BUGFIXES:
