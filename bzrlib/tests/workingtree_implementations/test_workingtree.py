@@ -288,6 +288,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.branch.set_revision_history(['A', 'B'])
         wt.set_last_revision('A')
         self.assertEqual(['A'], wt.get_parent_ids())
+        self.assertRaises(errors.ReservedId, wt.set_last_revision, 'A:')
 
     def test_set_last_revision_different_to_branch(self):
         # working tree formats from the meta-dir format and newer support

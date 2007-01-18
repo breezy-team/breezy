@@ -200,6 +200,12 @@ class InvalidRevisionId(BzrError):
         self.revision_id = revision_id
         self.branch = branch
 
+class ReservedId(BzrError):
+
+    _fmt = "Reserved revision-id {%(revision_id)s}"
+
+    def __init__(self, revision_id):
+        self.revision_id = revision_id
 
 class NoSuchId(BzrError):
 
@@ -288,6 +294,14 @@ class NotWriteLocked(BzrError):
 class BzrOptionError(BzrCommandError):
 
     _fmt = "Error in command line options"
+
+
+class BadOptionValue(BzrError):
+
+    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
+
+    def __init__(self, name, value):
+        BzrError.__init__(self, name=name, value=value)
 
     
 class StrictCommitFailed(BzrError):

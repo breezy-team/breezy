@@ -518,6 +518,7 @@ class KnitVersionedFile(VersionedFile):
 
     def get_delta(self, version_id):
         """Get a delta for constructing version from some other version."""
+        self.check_not_reserved_id(version_id)
         if not self.has_version(version_id):
             raise RevisionNotPresent(version_id, self.filename)
         
@@ -685,6 +686,7 @@ class KnitVersionedFile(VersionedFile):
         ### FIXME escape. RBC 20060228
         if contains_whitespace(version_id):
             raise InvalidRevisionId(version_id, self.filename)
+        self.check_not_reserved_id(version_id)
         if self.has_version(version_id):
             raise RevisionAlreadyPresent(version_id, self.filename)
         self._check_lines_not_unicode(lines)
@@ -797,6 +799,8 @@ class KnitVersionedFile(VersionedFile):
 
     def get_line_list(self, version_ids):
         """Return the texts of listed versions as a list of strings."""
+        for version_id in version_ids:
+            self.check_not_reserved_id(version_id)
         text_map, content_map = self._get_content_maps(version_ids)
         return [text_map[v] for v in version_ids]
 
