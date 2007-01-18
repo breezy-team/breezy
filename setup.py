@@ -197,6 +197,12 @@ elif 'py2exe' in sys.argv:
     if sys.version.startswith('2.4'):
         # adding elementtree package
         additional_packages.append('elementtree')
+    elif sys.version.startswith('2.5'):
+        additional_packages.append('xml.etree')
+    else:
+        import warnings
+        warnings.warn('Unknown Python version.\n'
+                      'Please check setup.py script for compatibility.')
 
     options_list = {"py2exe": {"packages": BZRLIB['packages'] +
                                            additional_packages,
