@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,7 +63,9 @@ class TestCommitMerge(TestCaseWithTransport):
         wtx = self.make_branch_and_tree('x')
         base_rev = wtx.commit('common parent')
         bx = wtx.branch
+        wtx.commit('establish root id')
         wty = wtx.bzrdir.sprout('y').open_workingtree()
+        self.assertEqual(wtx.get_root_id(), wty.get_root_id())
         by = wty.branch
 
         self.build_tree(['x/ecks', 'y/why'])

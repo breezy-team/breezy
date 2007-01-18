@@ -118,6 +118,7 @@ from bzrlib.trace import mutter, note
 from bzrlib.transport import Transport
 from bzrlib.osutils import rand_chars, format_delta
 from bzrlib.rio import read_stanza, Stanza
+import bzrlib.ui
 
 
 # XXX: At the moment there is no consideration of thread safety on LockDir

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -71,7 +71,8 @@ def _run_editor(filename):
         else:
             break
     raise BzrError("Could not start any editor.\nPlease specify one with:\n"
-                   " - $BZR_EDITOR\n - editor=/some/path in %s\n - $EDITOR" % \
+                   " - $BZR_EDITOR\n - editor=/some/path in %s\n"
+                   " - $VISUAL\n - $EDITOR" % \
                     config.config_filename())
 
 

@@ -31,6 +31,7 @@ class TreeBuilder(object):
     def __init__(self):
         """Construct a TreeBuilder."""
         self._tree = None
+        self._root_done = False
 
     def build(self, recipe):
         """Build recipe into the current tree.
@@ -40,6 +41,9 @@ class TreeBuilder(object):
             '/' then a directory is added, otherwise a regular file is added.
         """
         self._ensure_building()
+        if not self._root_done:
+            self._tree.add('', 'root-id', 'directory')
+            self._root_done = True
         for name in recipe:
             assert isinstance(name, basestring)
             if name[-1] == '/':
@@ -73,4 +77,3 @@ class TreeBuilder(object):
             raise errors.AlreadyBuilding
         self._tree = tree
         self._tree.lock_tree_write()
-

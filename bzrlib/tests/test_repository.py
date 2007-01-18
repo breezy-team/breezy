@@ -25,6 +25,7 @@ also see this file.
 from stat import S_ISDIR
 from StringIO import StringIO
 
+from bzrlib import symbol_versioning
 import bzrlib
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
@@ -36,7 +37,6 @@ from bzrlib.errors import (NotBranchError,
 import bzrlib.repository as repository
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
-from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
 from bzrlib import upgrade, workingtree
 
@@ -47,7 +47,9 @@ class TestDefaultFormat(TestCase):
         private_default = repository._default_format.__class__
         old_format = repository.RepositoryFormat.get_default_format()
         self.assertTrue(isinstance(old_format, private_default))
-        repository.RepositoryFormat.set_default_format(SampleRepositoryFormat())
+        self.applyDeprecated(symbol_versioning.zero_fourteen, 
+            repository.RepositoryFormat.set_default_format, 
+            SampleRepositoryFormat())
         # creating a repository should now create an instrumented dir.
         try:
             # the default branch format is used by the meta dir format
@@ -56,7 +58,8 @@ class TestDefaultFormat(TestCase):
             result = dir.create_repository()
             self.assertEqual(result, 'A bzr repository dir')
         finally:
-            repository.RepositoryFormat.set_default_format(old_format)
+            self.applyDeprecated(symbol_versioning.zero_fourteen, 
+                repository.RepositoryFormat.set_default_format, old_format)
         self.assertEqual(old_format, repository.RepositoryFormat.get_default_format())
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,18 +50,24 @@ form.
 # is quite expensive, even when the message is not printed by any handlers.
 # We should perhaps change back to just simply doing it here.
 
-
-import errno
 import os
 import sys
 import re
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import errno
 import logging
+""")
 
 import bzrlib
-from bzrlib.errors import BzrError, BzrNewError
 from bzrlib.symbol_versioning import (deprecated_function,
         zero_nine,
         )
+
+lazy_import(globals(), """
+from bzrlib import debug
+""")
 
 _file_handler = None
 _stderr_handler = None
@@ -116,7 +122,6 @@ def mutter(fmt, *args):
     _trace_file.write(out)
     # TODO: jam 20051227 Consider flushing the trace file to help debugging
     #_trace_file.flush()
-debug = mutter
 
 
 def _rollover_trace_maybe(trace_fname):
@@ -180,7 +185,7 @@ def log_exception_quietly():
     errors loading plugins.
     """
     import traceback
-    debug(traceback.format_exc())
+    mutter(traceback.format_exc())
 
 
 def enable_default_logging():
@@ -267,7 +272,7 @@ def report_exception(exc_info, err_file):
         print >>err_file, "bzr: broken pipe"
     elif isinstance(exc_object, KeyboardInterrupt):
         print >>err_file, "bzr: interrupted"
-    elif getattr(exc_object, 'is_user_error', False):
+    elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
     elif isinstance(exc_object, (OSError, IOError)):
         # Might be nice to catch all of these and show them as something more
@@ -279,6 +284,13 @@ def report_exception(exc_info, err_file):
 
 # TODO: Should these be specially encoding the output?
 def report_user_error(exc_info, err_file):
+    """Report to err_file an error that's not an internal error.
+
+    These don't get a traceback unless -Derror was given.
+    """
+    if 'error' in debug.debug_flags:
+        report_bug(exc_info, err_file)
+        return
     print >>err_file, "bzr: ERROR:", str(exc_info[1])
 
 

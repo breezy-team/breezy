@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
+# Copyright (C) 2004, 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,20 +39,34 @@ new command to the plugin_cmds variable.
 # That could be either a separate Python interpreter or perhaps a new
 # namespace inside this interpreter.
 
-import imp
 import os
 import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import imp
 import types
 
-import bzrlib
-from bzrlib.config import config_dir
-from bzrlib.trace import log_error, mutter, warning, \
-        log_exception_quietly
-from bzrlib.errors import BzrError
-from bzrlib import plugins
-from bzrlib.osutils import pathjoin
+from bzrlib import (
+    config,
+    osutils,
+    plugins,
+    )
+""")
 
-DEFAULT_PLUGIN_PATH = pathjoin(config_dir(), 'plugins')
+from bzrlib.trace import mutter, warning, log_exception_quietly
+
+
+DEFAULT_PLUGIN_PATH = None
+
+
+def get_default_plugin_path():
+    """Get the DEFAULT_PLUGIN_PATH"""
+    global DEFAULT_PLUGIN_PATH
+    if DEFAULT_PLUGIN_PATH is None:
+        DEFAULT_PLUGIN_PATH = osutils.pathjoin(config.config_dir(), 'plugins')
+    return DEFAULT_PLUGIN_PATH
+
 
 _loaded = False
 
@@ -60,7 +74,7 @@ _loaded = False
 def all_plugins():
     """Return a dictionary of the plugins."""
     result = {}
-    for name, plugin in bzrlib.plugins.__dict__.items():
+    for name, plugin in plugins.__dict__.items():
         if isinstance(plugin, types.ModuleType):
             result[name] = plugin
     return result
@@ -92,13 +106,14 @@ def load_plugins():
     if _loaded:
         # People can make sure plugins are loaded, they just won't be twice
         return
-        #raise BzrError("plugins already initialized")
     _loaded = True
 
-    dirs = os.environ.get('BZR_PLUGIN_PATH', DEFAULT_PLUGIN_PATH).split(os.pathsep)
+    dirs = os.environ.get('BZR_PLUGIN_PATH',
+                          get_default_plugin_path()).split(os.pathsep)
     dirs.insert(0, os.path.dirname(plugins.__file__))
 
     load_from_dirs(dirs)
+    load_from_zips(dirs)
 
 
 def load_from_dirs(dirs):
@@ -125,12 +140,12 @@ def load_from_dirs(dirs):
         if not os.path.isdir(d):
             continue
         for f in os.listdir(d):
-            path = pathjoin(d, f)
+            path = osutils.pathjoin(d, f)
             if os.path.isdir(path):
                 for entry in package_entries:
                     # This directory should be a package, and thus added to
                     # the list
-                    if os.path.isfile(pathjoin(path, entry)):
+                    if os.path.isfile(osutils.pathjoin(path, entry)):
                         break
                 else: # This directory is not a package
                     continue
@@ -143,10 +158,10 @@ def load_from_dirs(dirs):
                         break
                 else:
                     continue
-            if getattr(bzrlib.plugins, f, None):
+            if getattr(plugins, f, None):
                 mutter('Plugin name %s already loaded', f)
             else:
-                mutter('add plugin name %s', f)
+                # mutter('add plugin name %s', f)
                 plugin_names.add(f)
 
         plugin_names = list(plugin_names)
@@ -154,19 +169,101 @@ def load_from_dirs(dirs):
         for name in plugin_names:
             try:
                 plugin_info = imp.find_module(name, [d])
-                mutter('load plugin %r', plugin_info)
+                # mutter('load plugin %r', plugin_info)
                 try:
                     plugin = imp.load_module('bzrlib.plugins.' + name,
                                              *plugin_info)
-                    setattr(bzrlib.plugins, name, plugin)
+                    setattr(plugins, name, plugin)
                 finally:
                     if plugin_info[0] is not None:
                         plugin_info[0].close()
-
-                mutter('loaded succesfully')
+                # mutter('loaded succesfully')
             except KeyboardInterrupt:
                 raise
             except Exception, e:
                 ## import pdb; pdb.set_trace()
                 warning('Unable to load plugin %r from %r' % (name, d))
+                log_exception_quietly()
+
+
+def load_from_zips(zips):
+    """Load bzr plugins from zip archives with zipimport.
+    It's similar to load_from_dirs but plugins searched inside archives.
+    """
+    import zipfile
+    import zipimport
+
+    valid_suffixes = ('.py', '.pyc', '.pyo')    # only python modules/packages
+                                                # is allowed
+    for zip_name in zips:
+        if '.zip' not in zip_name:
+            continue
+        try:
+            ziobj = zipimport.zipimporter(zip_name)
+        except zipimport.ZipImportError:
+            # not a valid zip
+            continue
+        mutter('Looking for plugins in %r', zip_name)
+
+        # use zipfile to get list of files/dirs inside zip
+        z = zipfile.ZipFile(ziobj.archive)
+        namelist = z.namelist()
+        z.close()
+
+        if ziobj.prefix:
+            prefix = ziobj.prefix.replace('\\','/')
+            ix = len(prefix)
+            namelist = [name[ix:]
+                        for name in namelist
+                        if name.startswith(prefix)]
+
+        mutter('Names in archive: %r', namelist)
+
+        for name in namelist:
+            if not name or name.endswith('/'):
+                continue
+
+            # '/' is used to separate pathname components inside zip archives
+            ix = name.rfind('/')
+            if ix == -1:
+                head, tail = '', name
+            else:
+                head, tail = name.rsplit('/',1)
+            if '/' in head:
+                # we don't need looking in subdirectories
+                continue
+
+            base, suffix = osutils.splitext(tail)
+            if suffix not in valid_suffixes:
+                continue
+
+            if base == '__init__':
+                # package
+                plugin_name = head
+            elif head == '':
+                # module
+                plugin_name = base
+            else:
+                continue
+
+            if not plugin_name:
+                continue
+            if getattr(plugins, plugin_name, None):
+                mutter('Plugin name %s already loaded', plugin_name)
+                continue
+
+            try:
+                plugin = ziobj.load_module(plugin_name)
+                setattr(plugins, plugin_name, plugin)
+                mutter('Load plugin %s from zip %r', plugin_name, zip_name)
+            except zipimport.ZipImportError, e:
+                mutter('Unable to load plugin %r from %r: %s',
+                       plugin_name, zip_name, str(e))
+                continue
+            except KeyboardInterrupt:
+                raise
+            except Exception, e:
+                ## import pdb; pdb.set_trace()
+                warning('Unable to load plugin %r from %r'
+                        % (name, zip_name))
                 log_exception_quietly()

@@ -1,8 +1,9 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,6 +18,7 @@
 
 import os
 
+from bzrlib import ignores
 from bzrlib.benchmarks import Benchmark
 from bzrlib.workingtree import WorkingTree
 
@@ -53,3 +55,33 @@ class WorkingTreeBenchmark(Benchmark):
             for x in xrange(10824):
                 t.is_ignored(str(x))
         self.time(call_is_ignored_10824_not_ignored)
+
+    def test_is_ignored_10_patterns(self):
+        t = self.make_branch_and_tree('.')
+        ignores.add_runtime_ignores([u'*.%i' % i for i in range(1, 9)])
+        ignores.add_runtime_ignores(['./foo', 'foo/bar'])
+        self.time(t.is_ignored,'bar')
+        ignores._runtime_ignores = set()
+
+    def test_is_ignored_50_patterns(self):
+        t = self.make_branch_and_tree('.')
+        ignores.add_runtime_ignores([u'*.%i' % i for i in range(1, 49)])
+        ignores.add_runtime_ignores(['./foo', 'foo/bar'])
+        self.time(t.is_ignored,'bar')
+        ignores._runtime_ignores = set()
+
+    def test_is_ignored_100_patterns(self):
+        t = self.make_branch_and_tree('.')
+        ignores.add_runtime_ignores([u'*.%i' % i for i in range(1, 99)])
+        ignores.add_runtime_ignores(['./foo', 'foo/bar'])
+        self.time(t.is_ignored,'bar')
+        ignores._runtime_ignores = set()
+
+    def test_is_ignored_1000_patterns(self):
+        t = self.make_branch_and_tree('.')
+        ignores.add_runtime_ignores([u'*.%i' % i for i in range(1, 999)])
+        ignores.add_runtime_ignores(['./foo', 'foo/bar'])
+        self.time(t.is_ignored,'bar')
+        ignores._runtime_ignores = set()
+
+

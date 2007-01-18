@@ -30,7 +30,7 @@ from bzrlib.errors import (FileExists,
                            UninitializableFormat,
                            NotBranchError,
                            )
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, InventoryDirectory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
@@ -153,13 +153,18 @@ class TestRepository(TestCaseWithRepository):
 
     def test_revision_tree(self):
         wt = self.make_branch_and_tree('.')
+        wt.set_root_id('fixed-root')
         wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = wt.branch.repository.revision_tree('revision-1')
-        self.assertEqual(list(tree.list_files()), [])
+        self.assertEqual('revision-1', tree.inventory.root.revision) 
+        expected = InventoryDirectory('fixed-root', '', None)
+        expected.revision = 'revision-1'
+        self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
+                         list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(None)
-        self.assertEqual([], list(tree.list_files()))
+        self.assertEqual([], list(tree.list_files(include_root=True)))
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
-        self.assertEqual([], list(tree.list_files()))
+        self.assertEqual([], list(tree.list_files(include_root=True)))
 
     def test_fetch(self):
         # smoke test fetch to ensure that the convenience function works.
@@ -268,11 +273,8 @@ class TestRepository(TestCaseWithRepository):
             old_format = bzrdir.BzrDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
             # it would be nice to have a 'latest' vs 'default' concept.
-            bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
-            try:
-                upgrade(wt.basedir)
-            finally:
-                bzrdir.BzrDirFormat.set_default_format(old_format)
+            format = bzrdir.format_registry.make_bzrdir('experimental-knit2')
+            upgrade(wt.basedir, format=format)
         except errors.UpToDateFormat:
             # this is in the most current format already.
             return
@@ -513,6 +515,13 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         graph = repo.get_revision_graph_with_ghosts([NULL_REVISION])
         self.assertEqual({}, graph.get_ancestors())
         self.assertEqual({}, graph.get_descendants())
+
+    def test_reserved_id(self):
+        repo = self.make_repository('repository')
+        self.assertRaises(errors.ReservedId, repo.add_inventory, 'reserved:',
+                          None, None)
+        self.assertRaises(errors.ReservedId, repo.add_revision, 'reserved:',
+                          None)
 
 
 class TestCaseWithCorruptRepository(TestCaseWithRepository):

@@ -1,8 +1,9 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published by
-# the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -61,7 +62,6 @@ class SelftestTests(TestCase):
         self.assertRaises(ImportError,
                           _load_module_by_name,
                           'bzrlib.no-name-yet')
-
 
 class MetaTestLog(TestCase):
 
@@ -467,7 +467,9 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         a branch and checking no directory was created at its relpath.
         """
         tree = self.make_branch_and_memory_tree('dir')
-        self.failIfExists('dir')
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
         self.assertIsInstance(tree, memorytree.MemoryTree)
 
     def test_make_branch_and_memory_tree_with_format(self):
@@ -475,7 +477,9 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = repository.RepositoryFormat7()
         tree = self.make_branch_and_memory_tree('dir', format=format)
-        self.failIfExists('dir')
+        # Guard against regression into MemoryTransport leaking
+        # files to disk instead of keeping them in memory.
+        self.failIf(osutils.lexists('dir'))
         self.assertIsInstance(tree, memorytree.MemoryTree)
         self.assertEqual(format.repository_format.__class__,
             tree.branch.repository._format.__class__)
@@ -501,10 +505,11 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
+        from bzrlib.tests.HttpServer import HttpServer
         from bzrlib.transport import get_transport
-        from bzrlib.transport.local import LocalRelpathServer
-        from bzrlib.transport.http import HttpServer, HttpTransportBase
-        self.transport_server = LocalRelpathServer
+        from bzrlib.transport.local import LocalURLServer
+        from bzrlib.transport.http import HttpTransportBase
+        self.transport_server = LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
         url = self.get_readonly_url()
@@ -574,64 +579,8 @@ class MockProgress(_BaseProgressBar):
 
 class TestTestResult(TestCase):
 
-    def test_progress_bar_style_quiet(self):
-        # test using a progress bar.
-        dummy_test = TestTestResult('test_progress_bar_style_quiet')
-        dummy_error = (Exception, None, [])
-        mypb = MockProgress()
-        mypb.update('Running tests', 0, 4)
-        last_calls = mypb.calls[:]
-
-        result = bzrlib.tests._MyResult(self._log_file,
-                                        descriptions=0,
-                                        verbosity=1,
-                                        pb=mypb)
-        self.assertEqual(last_calls, mypb.calls)
-
-        def shorten(s):
-            """Shorten a string based on the terminal width"""
-            return result._ellipsise_unimportant_words(s,
-                                 osutils.terminal_width())
-
-        # an error 
-        result.startTest(dummy_test)
-        # starting a test prints the test name
-        last_calls += [('update', '...tyle_quiet', 0, None)]
-        self.assertEqual(last_calls, mypb.calls)
-        result.addError(dummy_test, dummy_error)
-        last_calls += [('update', 'ERROR        ', 1, None),
-                       ('note', shorten(dummy_test.id() + ': ERROR'), ())
-                      ]
-        self.assertEqual(last_calls, mypb.calls)
-
-        # a failure
-        result.startTest(dummy_test)
-        last_calls += [('update', '...tyle_quiet', 1, None)]
-        self.assertEqual(last_calls, mypb.calls)
-        last_calls += [('update', 'FAIL         ', 2, None),
-                       ('note', shorten(dummy_test.id() + ': FAIL'), ())
-                      ]
-        result.addFailure(dummy_test, dummy_error)
-        self.assertEqual(last_calls, mypb.calls)
-
-        # a success
-        result.startTest(dummy_test)
-        last_calls += [('update', '...tyle_quiet', 2, None)]
-        self.assertEqual(last_calls, mypb.calls)
-        result.addSuccess(dummy_test)
-        last_calls += [('update', 'OK           ', 3, None)]
-        self.assertEqual(last_calls, mypb.calls)
-
-        # a skip
-        result.startTest(dummy_test)
-        last_calls += [('update', '...tyle_quiet', 3, None)]
-        self.assertEqual(last_calls, mypb.calls)
-        result.addSkipped(dummy_test, dummy_error)
-        last_calls += [('update', 'SKIP         ', 4, None)]
-        self.assertEqual(last_calls, mypb.calls)
-
     def test_elapsed_time_with_benchmarking(self):
-        result = bzrlib.tests._MyResult(self._log_file,
+        result = bzrlib.tests.TextTestResult(self._log_file,
                                         descriptions=0,
                                         verbosity=1,
                                         )
@@ -640,29 +589,30 @@ class TestTestResult(TestCase):
         result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
         # without explicit benchmarking, we should get a simple time.
-        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms$")
         # if a benchmark time is given, we want a x of y style result.
         self.time(time.sleep, 0.001)
         result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^   [ 1-9][0-9]ms/   [ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms/ *[ 1-9][0-9]ms$")
         # extracting the time from a non-bzrlib testcase sets to None
         result._recordTestStartTime()
         result.extractBenchmarkTime(
             unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^ *[ 1-9][0-9]ms$")
         # cheat. Yes, wash thy mouth out with soap.
         self._benchtime = None
 
     def test_assigned_benchmark_file_stores_date(self):
         output = StringIO()
-        result = bzrlib.tests._MyResult(self._log_file,
+        result = bzrlib.tests.TextTestResult(self._log_file,
                                         descriptions=0,
                                         verbosity=1,
                                         bench_history=output
                                         )
         output_string = output.getvalue()
+        
         # if you are wondering about the regexp please read the comment in
         # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
         # XXX: what comment?  -- Andrew Bennetts
@@ -670,7 +620,7 @@ class TestTestResult(TestCase):
 
     def test_benchhistory_records_test_times(self):
         result_stream = StringIO()
-        result = bzrlib.tests._MyResult(
+        result = bzrlib.tests.TextTestResult(
             self._log_file,
             descriptions=0,
             verbosity=1,
@@ -703,7 +653,7 @@ class TestTestResult(TestCase):
         except ImportError:
             raise TestSkipped("lsprof not installed.")
         result_stream = StringIO()
-        result = bzrlib.tests._MyResult(
+        result = bzrlib.tests.VerboseTestResult(
             unittest._WritelnDecorator(result_stream),
             descriptions=0,
             verbosity=2,
@@ -757,20 +707,6 @@ class TestRunner(TestCase):
             return testrunner.run(test)
         finally:
             TestCaseInTempDir.TEST_ROOT = old_root
-
-    def test_accepts_and_uses_pb_parameter(self):
-        test = TestRunner('dummy_test')
-        mypb = MockProgress()
-        self.assertEqual([], mypb.calls)
-        runner = TextTestRunner(stream=self._log_file, pb=mypb)
-        result = self.run_test_runner(runner, test)
-        self.assertEqual(1, result.testsRun)
-        self.assertEqual(('update', 'Running tests', 0, 1), mypb.calls[0])
-        self.assertEqual(('update', '...dummy_test', 0, None), mypb.calls[1])
-        self.assertEqual(('update', 'OK           ', 1, None), mypb.calls[2])
-        self.assertEqual(('update', 'Cleaning up', 0, 1), mypb.calls[3])
-        self.assertEqual(('clear',), mypb.calls[4])
-        self.assertEqual(5, len(mypb.calls))
 
     def test_skipped_test(self):
         # run a test that is skipped, and check the suite as a whole still
@@ -872,7 +808,7 @@ class TestTestCase(TestCase):
         # the outer child test
         note("outer_start")
         self.inner_test = TestTestCase("inner_child")
-        result = bzrlib.tests._MyResult(self._log_file,
+        result = bzrlib.tests.TextTestResult(self._log_file,
                                         descriptions=0,
                                         verbosity=1)
         self.inner_test.run(result)
@@ -892,7 +828,7 @@ class TestTestCase(TestCase):
         # the outer child test
         original_trace = bzrlib.trace._trace_file
         outer_test = TestTestCase("outer_child")
-        result = bzrlib.tests._MyResult(self._log_file,
+        result = bzrlib.tests.TextTestResult(self._log_file,
                                         descriptions=0,
                                         verbosity=1)
         outer_test.run(result)
@@ -907,14 +843,15 @@ class TestTestCase(TestCase):
         """Test that the TestCase.time() method accumulates a benchmark time."""
         sample_test = TestTestCase("method_that_times_a_bit_twice")
         output_stream = StringIO()
-        result = bzrlib.tests._MyResult(
+        result = bzrlib.tests.VerboseTestResult(
             unittest._WritelnDecorator(output_stream),
             descriptions=0,
-            verbosity=2)
+            verbosity=2,
+            num_tests=sample_test.countTestCases())
         sample_test.run(result)
         self.assertContainsRe(
             output_stream.getvalue(),
-            "[1-9][0-9]ms/   [1-9][0-9]ms\n$")
+            r"\d+ms/ +\d+ms\n$")
         
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
@@ -1066,3 +1003,34 @@ class TestSelftest(TestCase):
         self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
+
+
+class TestSelftestCleanOutput(TestCaseInTempDir):
+
+    def test_clean_output(self):
+        # test functionality of clean_selftest_output()
+        from bzrlib.tests import clean_selftest_output
+
+        dirs = ('test0000.tmp', 'test0001.tmp', 'bzrlib', 'tests')
+        files = ('bzr', 'setup.py', 'test9999.tmp')
+        for i in dirs:
+            os.mkdir(i)
+        for i in files:
+            f = file(i, 'wb')
+            f.write('content of ')
+            f.write(i)
+            f.close()
+
+        root = os.getcwdu()
+        before = os.listdir(root)
+        before.sort()
+        self.assertEquals(['bzr','bzrlib','setup.py',
+                           'test0000.tmp','test0001.tmp',
+                           'test9999.tmp','tests'],
+                           before)
+        clean_selftest_output(root, quiet=True)
+        after = os.listdir(root)
+        after.sort()
+        self.assertEquals(['bzr','bzrlib','setup.py',
+                           'test9999.tmp','tests'],
+                           after)
