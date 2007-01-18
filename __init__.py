@@ -63,7 +63,7 @@ def check_subversion_version():
         from svn.delta import svn_delta_invoke_txdelta_window_handler
     except:
         warning('Installed Subversion version does not have updated Python bindings. See the bzr-svn README for details.')
-        raise BzrError("incompatible python subversion bindings")
+        raise bzrlib.errors.BzrError("incompatible python subversion bindings")
 
 check_bzrlib_version(required_bzr_version)
 check_subversion_version()
