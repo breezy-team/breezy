@@ -2092,13 +2092,15 @@ format_registry.register('weave', BzrDirFormat6,
     ' support checkouts or shared repositories.', deprecated=True)
 format_registry.register_metadir('knit', 'RepositoryFormatKnit1',
     'Format using knits.  Recommended.', branch_format='BzrBranchFormat5')
-format_registry.set_default('knit')
 format_registry.register_metadir('metaweave', 'RepositoryFormat7',
-    'Transitional format in 0.8.  Slower than knit.',
+    'Transitional format in 0.8.  Slower than knit.', 
+    branch_format='BzrBranchFormat5',
     deprecated=True)
 format_registry.register_metadir('experimental-knit2', 'RepositoryFormatKnit2',
-    'Experimental successor to knit.  Use at your own risk.')
+    'Experimental successor to knit.  Use at your own risk.',
+    branch_format='BzrBranchFormat5')
 format_registry.register_metadir('experimental-branch6',
     'RepositoryFormatKnit2',
     'Experimental successor to knit.  Use at your own risk.',
     branch_format='BzrBranchFormat6')
+format_registry.set_default('experimental-branch6') 
