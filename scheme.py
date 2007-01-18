@@ -67,8 +67,25 @@ class BranchingScheme:
         return None
 
     def is_branch_parent(self, path):
+        """Check whether the specified path is the parent directory of branches.
+        The path may not be a branch itself.
+        
+        :param path: path to check
+        :returns: boolean
+        """
         raise NotImplementedError
-                
+
+    def is_tag_parent(self, path):
+        """Check whether the specified path is the parent directory of tags.
+        The path may not be a tag itself.
+        
+        :param path: path to check
+        :returns: boolean
+        """
+        raise NotImplementedError
+
+    def is_tag(self, path):
+        raise NotImplementedError
 
 class TrunkBranchingScheme(BranchingScheme):
     """Standard Subversion repository layout. Each project contains three 
@@ -83,8 +100,16 @@ class TrunkBranchingScheme(BranchingScheme):
         if len(parts) == self.level+1 and parts[self.level] == "trunk":
             return True
 
+        if len(parts) == self.level+2 and parts[self.level] == "branches":
+            return True
+
+        return False
+
+    def is_tag(self, path):
+        """See BranchingScheme.is_branch()."""
+        parts = path.strip("/").split("/")
         if len(parts) == self.level+2 and \
-           (parts[self.level] == "branches" or parts[self.level] == "tags"):
+           (parts[self.level] == "tags"):
             return True
 
         return False
@@ -114,12 +139,19 @@ class TrunkBranchingScheme(BranchingScheme):
             return True
         return self.is_branch(path+"/trunk")
 
+    def is_tag_parent(self, path):
+        parts = path.strip("/").split("/")
+        return self.is_tag(path+"/aname")
+
 class NoBranchingScheme(BranchingScheme):
     """Describes a scheme where there is just one branch, the 
     root of the repository."""
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
         return path.strip("/") == ""
+
+    def is_tag(self, path):
+        return False
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
@@ -129,6 +161,9 @@ class NoBranchingScheme(BranchingScheme):
         return "null"
 
     def is_branch_parent(self, path):
+        return False
+
+    def is_tag_parent(self, path):
         return False
 
 
@@ -141,6 +176,10 @@ class ListBranchingScheme(BranchingScheme):
         self.branch_list = []
         for p in branch_list:
             self.branch_list.append(p.strip("/"))
+
+    def is_tag(self, path):
+        """See BranchingScheme.is_tag()."""
+        return False
 
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""

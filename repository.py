@@ -467,7 +467,8 @@ class SvnRepository(Repository):
     def follow_branch(self, branch_path, revnum):
         assert branch_path is not None
         assert isinstance(revnum, int) and revnum >= 0
-        if not self.scheme.is_branch(branch_path):
+        if not self.scheme.is_branch(branch_path) and \
+           not self.scheme.is_tag(branch_path):
             raise errors.NotSvnBranchPath(branch_path, revnum)
         branch_path = branch_path.strip("/")
 
@@ -482,7 +483,8 @@ class SvnRepository(Repository):
                 paths[branch_path][0] in ('R', 'A')):
                 if paths[branch_path][1] is None:
                     return
-                if not self.scheme.is_branch(paths[branch_path][1]):
+                if not self.scheme.is_branch(paths[branch_path][1]) and \
+                   not self.scheme.is_tag(paths[branch_path][1]):
                     # FIXME: if copyfrom_path is not a branch path, 
                     # should simulate a reverse "split" of a branch
                     # for now, just make it look like the branch ended here
@@ -494,14 +496,16 @@ class SvnRepository(Repository):
 
     def follow_branch_history(self, branch_path, revnum):
         assert branch_path is not None
-        if not self.scheme.is_branch(branch_path):
+        if not self.scheme.is_branch(branch_path) and \
+           not self.scheme.is_tag(branch_path):
             raise errors.NotSvnBranchPath(branch_path, revnum)
 
         for (bp, paths, revnum) in self._log.follow_path(branch_path, revnum):
             # FIXME: what if one of the parents of branch_path was moved?
             if (paths.has_key(bp) and 
-                paths[bp][1] is not None and
-                not self.scheme.is_branch(paths[bp][1])):
+                paths[bp][1] is not None and 
+                not self.scheme.is_branch(paths[bp][1]) and
+                not self.scheme.is_tag(paths[bp][1])):
                 # FIXME: if copyfrom_path is not a branch path, 
                 # should simulate a reverse "split" of a branch
                 # for now, just make it look like the branch ended here
@@ -560,14 +564,14 @@ class SvnRepository(Repository):
             names = paths.keys()
             names.sort()
             for p in names:
-                if self.scheme.is_branch(p):
+                if self.scheme.is_branch(p) or self.scheme.is_tag(p):
                     if paths[p][0] in ('R', 'D'):
                         del created_branches[p]
                         yield (p, i, False)
 
                     if paths[p][0] in ('A', 'R'): 
                         created_branches[p] = i
-                elif self.scheme.is_branch_parent(p):
+                elif self.scheme.is_branch_parent(p) or self.scheme.is_tag_parent(p):
                     if paths[p][0] in ('R', 'D'):
                         k = created_branches.keys()
                         for c in k:
@@ -580,9 +584,9 @@ class SvnRepository(Repository):
                             p = parents.pop()
                             for c in self.transport.get_dir(p, i)[0].keys():
                                 n = p+"/"+c
-                                if self.scheme.is_branch(n):
+                                if self.scheme.is_branch(n) or self.scheme.is_tag(n):
                                     created_branches[n] = i
-                                elif self.scheme.is_branch_parent(n):
+                                elif self.scheme.is_branch_parent(n) or self.scheme.is_tag_parent(n):
                                     parents.append(n)
 
         for p in created_branches:

@@ -593,7 +593,7 @@ class SvnCheckout(BzrDir):
         self.branch_path = svn_url[len(bzr_to_svn_url(self.svn_root_transport.base)):]
         self.scheme = BranchingScheme.guess_scheme(self.branch_path)
         mutter('scheme for %r is %r' % (self.branch_path, self.scheme))
-        if not self.scheme.is_branch(self.branch_path):
+        if not self.scheme.is_branch(self.branch_path) and not self.scheme.is_tag(self.branch_path):
             raise NotBranchError(path=self.transport.base)
 
     def clone(self, path):

@@ -24,9 +24,16 @@ class BranchingSchemeTest(TestCase):
     def test_is_branch(self):
         self.assertRaises(NotImplementedError, BranchingScheme().is_branch, "")
 
+    def test_is_tag(self):
+        self.assertRaises(NotImplementedError, BranchingScheme().is_tag, "")
+
     def test_is_branch_parent(self):
         self.assertRaises(NotImplementedError, 
                 BranchingScheme().is_branch_parent, "")
+
+    def test_is_tag_parent(self):
+        self.assertRaises(NotImplementedError, 
+                BranchingScheme().is_tag_parent, "")
 
     def test_unprefix(self):
         self.assertRaises(NotImplementedError, 
@@ -89,6 +96,12 @@ class NoScheme(TestCase):
     def test_is_branch_dir_doubleslash(self):
         self.assertFalse(NoBranchingScheme().is_branch("//foo/bar"))
 
+    def test_is_tag_empty(self):
+        self.assertFalse(NoBranchingScheme().is_tag(""))
+
+    def test_is_tag_slash(self):
+        self.assertFalse(NoBranchingScheme().is_tag("/"))
+
     def test_unprefix(self):
         self.assertEqual(NoBranchingScheme().unprefix(""), ("", ""))
 
@@ -107,9 +120,25 @@ class NoScheme(TestCase):
     def test_is_branch_parent_other(self):
         self.assertFalse(NoBranchingScheme().is_branch_parent("trunk/foo"))
 
+    def test_is_tag_parent_root(self):
+        self.assertFalse(NoBranchingScheme().is_tag_parent(""))
+
+    def test_is_tag_parent_other(self):
+        self.assertFalse(NoBranchingScheme().is_tag_parent("trunk/foo"))
+
+
 class ListScheme(TestCase):
     def setUp(self):
         self.scheme = ListBranchingScheme(["foo", "bar/bloe"])
+
+    def test_is_tag_empty(self):
+        self.assertFalse(self.scheme.is_tag(""))
+
+    def test_is_tag_sub(self):
+        self.assertFalse(self.scheme.is_tag("foo"))
+
+    def test_is_tag_tag(self):
+        self.assertFalse(self.scheme.is_tag("tags/foo"))
 
     def test_is_branch_empty(self):
         self.assertFalse(self.scheme.is_branch(""))
@@ -193,6 +222,9 @@ class TrunkScheme(TestCase):
     def test_is_branch_trunk(self):
         self.assertTrue(TrunkBranchingScheme().is_branch("/trunk/"))
 
+    def test_is_branch_tag(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch("tags/foo"))
+
     def test_is_branch_trunk_slashes(self):
         self.assertTrue(TrunkBranchingScheme().is_branch("////trunk"))
 
@@ -216,6 +248,21 @@ class TrunkScheme(TestCase):
 
     def test_is_branch_branches(self):
         self.assertFalse(TrunkBranchingScheme().is_branch("/branches"))
+
+    def test_is_tag_empty(self):
+        self.assertFalse(TrunkBranchingScheme().is_tag(""))
+
+    def test_is_tag_sub(self):
+        self.assertFalse(TrunkBranchingScheme().is_tag("foo"))
+
+    def test_is_tag_tag(self):
+        self.assertTrue(TrunkBranchingScheme().is_tag("tags/foo"))
+
+    def test_is_tag_tag_slash(self):
+        self.assertTrue(TrunkBranchingScheme().is_tag("tags/branches/"))
+
+    def test_is_tag_nested(self):
+        self.assertFalse(TrunkBranchingScheme().is_tag("tags/foo/bla"))
 
     def test_is_branch_level(self):
         scheme = TrunkBranchingScheme(2)
@@ -304,14 +351,29 @@ class TrunkScheme(TestCase):
     def test_is_branch_parent_root(self):
         self.assertTrue(TrunkBranchingScheme().is_branch_parent(""))
 
+    def test_is_tag_parent_root(self):
+        self.assertFalse(TrunkBranchingScheme().is_tag_parent(""))
+
     def test_is_branch_parent_branches(self):
         self.assertTrue(TrunkBranchingScheme().is_branch_parent("branches"))
+
+    def test_is_tagparent_branches(self):
+        self.assertFalse(TrunkBranchingScheme().is_tag_parent("branches"))
+
+    def test_is_tagparent_tags(self):
+        self.assertTrue(TrunkBranchingScheme().is_tag_parent("tags"))
+
+    def test_is_branch_parent_tags(self):
+        self.assertFalse(TrunkBranchingScheme().is_branch_parent("tags"))
 
     def test_is_branch_parent_trunk(self):
         self.assertFalse(TrunkBranchingScheme().is_branch_parent("trunk"))
 
     def test_is_branch_parent_level(self):
         self.assertTrue(TrunkBranchingScheme(1).is_branch_parent("anything"))
+
+    def test_is_tag_parent_level(self):
+        self.assertFalse(TrunkBranchingScheme(1).is_tag_parent("anything"))
 
     def test_is_branch_parent_level_root(self):
         self.assertTrue(TrunkBranchingScheme(1).is_branch_parent(""))
@@ -324,6 +386,9 @@ class TrunkScheme(TestCase):
 
     def test_is_branch_parent_level_branches(self):
         self.assertTrue(TrunkBranchingScheme(1).is_branch_parent("anything/branches"))
+
+    def test_is_tag_parent_level_tags(self):
+        self.assertTrue(TrunkBranchingScheme(1).is_tag_parent("anything/tags"))
 
     def test_is_branch_parent_other(self):
         self.assertFalse(TrunkBranchingScheme().is_branch_parent("trunk/foo"))
