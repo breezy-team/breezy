@@ -17,7 +17,7 @@ import bzrlib
 META_INFO = {'name':         'bzr',
              'version':      bzrlib.__version__,
              'author':       'Canonical Ltd',
-             'author_email': 'bazaar-ng@lists.ubuntu.com',
+             'author_email': 'bazaar@lists.canonical.com',
              'url':          'http://www.bazaar-vcs.org/',
              'description':  'Friendly distributed version control system',
              'license':      'GNU GPL v2',
