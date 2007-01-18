@@ -32,7 +32,7 @@ class DebBuildConfig(object):
   ~/.bazaar/builddeb.conf, finally .bzr-builddeb/default.conf. The value is 
   taken from the first file in which it is specified."""
 
-  def __init__(self, files):
+  def __init__(self, files=None):
     """ 
     Creates a config to read from config files in a hierarchy.
 
