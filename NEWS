@@ -1,5 +1,8 @@
 IN DEVELOPMENT
 
+  IMPROVEMENTS:
+    * ``bzr help global-options`` describes the global options. (Aaron Bentley)
+
   BUG FIXES:
     
     * Skip documentation generation tests if the tools to do so are not
