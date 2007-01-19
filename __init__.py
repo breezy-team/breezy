@@ -65,8 +65,23 @@ def check_subversion_version():
         warning('Installed Subversion version does not have updated Python bindings. See the bzr-svn README for details.')
         raise bzrlib.errors.BzrError("incompatible python subversion bindings")
 
+def check_pysqlite_version():
+    """Check that sqlite library is compatible.
+
+    """
+    from bzrlib.trace import warning
+    try:
+        try:
+            import sqlite3
+        except ImportError:
+            from pysqlite2 import dbapi2 
+    except:
+        warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 module')
+        raise bzrlib.errors.BzrError("missing sqlite library")
+
 check_bzrlib_version(required_bzr_version)
 check_subversion_version()
+check_pysqlite_version()
 
 import branch
 import convert
