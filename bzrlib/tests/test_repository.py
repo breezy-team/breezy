@@ -462,10 +462,10 @@ class TestRepositoryFormatKnit2(TestCaseWithTransport):
         """Test the precise representation of tag dicts."""
         # Don't change this after we commit to this format, as it checks 
         # that the format is stable and compatible across releases
-        format = repository.RepositoryFormatKnit2()
+        store = repository._BasicTagStore(repository=None)
         td = dict(stable='stable-revid', boring='boring-revid')
-        packed = format._serialize_tag_dict(td)
+        packed = store._serialize_tag_dict(td)
         expected = 'boring\tboring-revid\nstable\tstable-revid\n'
         self.assertEqualDiff(packed, expected)
-        self.assertEqual(format._deserialize_tag_dict(packed), td)
+        self.assertEqual(store._deserialize_tag_dict(packed), td)
 

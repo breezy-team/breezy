@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,11 +19,17 @@ import os
 import time
 
 from bzrlib import (
+    bzrdir,
     errors,
+    repository,
     )
 from bzrlib.builtins import merge
 from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revno
+from bzrlib.revisionspec import (
+    RevisionSpec,
+    RevisionSpec_revno,
+    RevisionSpec_tag,
+    )
 
 
 def spec_in_history(spec, branch):
@@ -335,9 +341,28 @@ class TestRevisionSpec_before(TestRevisionSpec):
 
 class TestRevisionSpec_tag(TestRevisionSpec):
     
-    def test_invalid(self):
-        self.assertInvalid('tag:foo', extra='\ntag: namespace registered,'
-                                            ' but not implemented')
+    def make_branch_and_tree(self, relpath):
+        # override format as the default one may not support tags
+        control = bzrdir.BzrDir.create(relpath)
+        repo = repository.RepositoryFormatKnit2().initialize(control)
+        control.create_branch()
+        return control.create_workingtree()
+
+    def test_from_string_tag(self):
+        spec = RevisionSpec.from_string('tag:bzr-0.14')
+        self.assertIsInstance(spec, RevisionSpec_tag)
+        self.assertEqual(spec.spec, 'bzr-0.14')
+
+    def test_lookup_tag(self):
+        self.tree.branch.repository.set_tag('bzr-0.14', 'r1')
+        self.assertInHistoryIs(1, 'r1', 'tag:bzr-0.14')
+
+    def test_failed_lookup(self):
+        # tags that don't exist give a specific message: arguably we should
+        # just give InvalidRevisionSpec but I think this is more helpful
+        self.assertRaises(errors.NoSuchTag,
+            self.get_in_history,
+            'tag:some-random-tag')
 
 
 class TestRevisionSpec_date(TestRevisionSpec):

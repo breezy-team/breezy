@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -92,6 +92,18 @@ class RevisionInfo(object):
     def __repr__(self):
         return '<bzrlib.revisionspec.RevisionInfo object %s, %s for %r>' % (
             self.revno, self.rev_id, self.branch)
+
+    @staticmethod
+    def from_revision_id(branch, revision_id, revs):
+        """Construct a RevisionInfo given just the id.
+
+        Use this if you don't know or care what the revno is.
+        """
+        try:
+            revno = revs.index(revision_id) + 1
+        except ValueError:
+            revno = None
+        return RevisionInfo(branch, revno, revision_id)
 
 
 # classes in this list should have a "prefix" attribute, against which
@@ -365,11 +377,7 @@ class RevisionSpec_revid(RevisionSpec):
     prefix = 'revid:'
 
     def _match_on(self, branch, revs):
-        try:
-            revno = revs.index(self.spec) + 1
-        except ValueError:
-            revno = None
-        return RevisionInfo(branch, revno, self.spec)
+        return RevisionInfo.from_revision_id(branch, self.spec, revs)
 
 SPEC_TYPES.append(RevisionSpec_revid)
 
@@ -463,16 +471,21 @@ SPEC_TYPES.append(RevisionSpec_before)
 
 
 class RevisionSpec_tag(RevisionSpec):
-    """To be implemented."""
+    """Select a revision identified by tag name"""
 
-    help_txt = """To be implemented."""
+    help_txt = """Selects a revision identified by a tag name.
+
+    Tags are stored in the repository and created by the 'tag'
+    command.
+    """
 
     prefix = 'tag:'
 
     def _match_on(self, branch, revs):
-        raise errors.InvalidRevisionSpec(self.user_spec, branch,
-                                         'tag: namespace registered,'
-                                         ' but not implemented')
+        # Can raise tags not supported, NoSuchTag, etc
+        return RevisionInfo.from_revision_id(branch,
+            branch.repository.lookup_tag(self.spec),
+            revs)
 
 SPEC_TYPES.append(RevisionSpec_tag)
 

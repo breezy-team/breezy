@@ -3009,7 +3009,7 @@ class cmd_tag(Command):
     def run(self, tag_name, directory='.'):
         branch, relpath = Branch.open_containing(directory)
         revision_id = branch.last_revision()
-        branch.repository.make_tag(tag_name, revision_id)
+        branch.repository.set_tag(tag_name, revision_id)
         self.outf.write('created tag %s' % tag_name)
 
 

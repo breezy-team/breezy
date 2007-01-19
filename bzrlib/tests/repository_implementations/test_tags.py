@@ -51,18 +51,17 @@ class TestRepositoryTags(TestCaseWithRepository):
         tags = repo.get_tag_dict()
         self.assertEqual(tags, {})
 
-    def test_set_get_tags(self):
-        # add two tags, 
-        repo = self.make_repository('repo')
-        td = dict(stable='stable-revid', boring='boring-revid')
-        repo._set_tag_dict(td)
-        # then reopen the repo and see they're still there
-        repo = Repository.open('repo')
-        self.assertEqual(repo.get_tag_dict(), td)
-
     def test_make_and_lookup_tag(self):
         repo = self.make_repository('repo')
-        repo.make_tag('tag-name', 'target-revid-1')
+        repo.set_tag('tag-name', 'target-revid-1')
+        repo.set_tag('other-name', 'target-revid-2')
+        # then reopen the repo and see they're still there
+        repo = Repository.open('repo')
+        self.assertEqual(repo.get_tag_dict(), 
+            {'tag-name': 'target-revid-1',
+             'other-name': 'target-revid-2',
+            })
+        # read one at a time
         result = repo.lookup_tag('tag-name')
         self.assertEqual(result, 'target-revid-1')
 

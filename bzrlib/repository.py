@@ -71,6 +71,91 @@ from bzrlib.trace import mutter, note, warning
 _deprecation_warning_done = False
 
 
+######################################################################
+# tag storage
+
+
+class _TagStore(object):
+    def __init__(self, repository):
+        self.repository = repository
+
+class _DisabledTagStore(_TagStore):
+    """Tag storage that refuses to store anything.
+
+    This is used by older formats that can't store tags.
+    """
+
+    def _not_supported(self, *a, **k):
+        raise errors.TagsNotSupported(self.repository)
+
+    set_tag = _not_supported
+
+
+class _BasicTagStore(_TagStore):
+    """Tag storage in an unversioned repository control file.
+    """
+
+    def set_tag(self, tag_name, tag_target):
+        """Add a tag definition to the repository.
+
+        Behaviour if the tag is already present is not defined (yet).
+        """
+        # all done with a write lock held, so this looks atomic
+        self.repository.lock_write()
+        try:
+            td = self.get_tag_dict()
+            td[tag_name] = tag_target
+            self._set_tag_dict(td)
+        finally:
+            self.repository.unlock()
+
+    def lookup_tag(self, tag_name):
+        """Return the referent string of a tag"""
+        td = self.get_tag_dict()
+        try:
+            return td[tag_name]
+        except KeyError:
+            raise errors.NoSuchTag(tag_name)
+
+    def get_tag_dict(self):
+        self.repository.lock_read()
+        try:
+            tag_content = self.repository.control_files.get_utf8('tags').read()
+            return self._deserialize_tag_dict(tag_content)
+        finally:
+            self.repository.unlock()
+
+    def _set_tag_dict(self, new_dict):
+        """Replace all tag definitions
+
+        :param new_dict: Dictionary from tag name to target.
+        """
+        self.repository.lock_read()
+        try:
+            self.repository.control_files.put_utf8('tags',
+                self._serialize_tag_dict(new_dict))
+        finally:
+            self.repository.unlock()
+
+    def _serialize_tag_dict(self, tag_dict):
+        s = []
+        for tag, target in sorted(tag_dict.items()):
+            # TODO: check that tag names and targets are acceptable
+            s.append(tag + '\t' + target + '\n')
+        return ''.join(s)
+
+    def _deserialize_tag_dict(self, tag_content):
+        """Convert the tag file into a dictionary of tags"""
+        d = {}
+        for l in tag_content.splitlines():
+            tag, target = l.split('\t', 1)
+            d[tag] = target
+        return d
+
+
+######################################################################
+# Repositories
+
 class Repository(object):
     """Repository holding history for one or more branches.
 
@@ -82,6 +167,9 @@ class Repository(object):
     describe the disk data format and the way of accessing the (possibly 
     remote) disk.
     """
+
+    # override this to set the strategy for storing tags
+    _tag_store_class = _DisabledTagStore
 
     _file_ids_altered_regex = lazy_regex.lazy_compile(
         r'file_id="(?P<file_id>[^"]+)"'
@@ -222,6 +310,7 @@ class Repository(object):
         # on whether escaping is required.
         self._warn_if_deprecated()
         self._serializer = xml5.serializer_v5
+        self._tag_store = self._tag_store_class(self)
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, 
@@ -775,6 +864,15 @@ class Repository(object):
                 except UnicodeEncodeError:
                     raise errors.NonAsciiRevisionId(method, self)
 
+    def set_tag(self, tag_name, tag_target):
+        self._tag_store.set_tag(tag_name, tag_target)
+
+    def lookup_tag(self, tag_name):
+        return self._tag_store.lookup_tag(tag_name)
+
+    def get_tag_dict(self):
+        return self._tag_store.get_tag_dict()
+
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
@@ -1093,6 +1191,8 @@ class KnitRepository2(KnitRepository):
     # corresponds to RepositoryFormatKnit2
     
     # TODO: within a lock scope, we could keep the tags in memory...
+    
+    _tag_store_class = _BasicTagStore
 
     def __init__(self, _format, a_bzrdir, control_files, _revision_store,
                  control_store, text_store):
@@ -1138,38 +1238,9 @@ class KnitRepository2(KnitRepository):
         return RootCommitBuilder(self, parents, config, timestamp, timezone,
                                  committer, revprops, revision_id)
 
-    @needs_read_lock
-    def get_tag_dict(self):
-        tag_content = self.control_files.get_utf8('tags').read()
-        return self._format._deserialize_tag_dict(tag_content)
 
-    @needs_write_lock
-    def _set_tag_dict(self, new_dict):
-        """Replace all tag definitions
-
-        :param new_dict: Dictionary from tag name to target.
-        """
-        self.control_files.put_utf8('tags', self._format._serialize_tag_dict(new_dict))
-
-    @needs_write_lock
-    def make_tag(self, tag_name, tag_target):
-        """Add a tag definition to the repository.
-
-        Behaviour if the tag is already present is not defined (yet).
-        """
-        # all done with a write lock held, so this looks atomic
-        td = self.get_tag_dict()
-        td[tag_name] = tag_target
-        self._set_tag_dict(td)
-
-    def lookup_tag(self, tag_name):
-        """Return the referent string of a tag"""
-        td = self.get_tag_dict()
-        try:
-            return td[tag_name]
-        except KeyError:
-            raise errors.NoSuchTag(tag_name)
-
+#####################################################################
+# Repository Formats
 
 class RepositoryFormat(object):
     """A repository format.
@@ -1844,21 +1915,6 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
 
     def supports_tags(self):
         return True
-
-    def _serialize_tag_dict(self, tag_dict):
-        s = []
-        for tag, target in sorted(tag_dict.items()):
-            # TODO: check that tag names and targets are acceptable
-            s.append(tag + '\t' + target + '\n')
-        return ''.join(s)
-
-    def _deserialize_tag_dict(self, tag_content):
-        """Convert the tag file into a dictionary of tags"""
-        d = {}
-        for l in tag_content.splitlines():
-            tag, target = l.split('\t', 1)
-            d[tag] = target
-        return d
 
 
 
