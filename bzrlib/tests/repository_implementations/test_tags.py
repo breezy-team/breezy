@@ -75,3 +75,30 @@ class TestRepositoryTags(TestCaseWithRepository):
         else:
             self.fail("didn't get expected exception")
 
+
+class TestUnsupportedTags(TestCaseWithRepository):
+    """Formats that don't support tags should give reasonable errors."""
+
+    def setUp(self):
+        fmt = self.repository_format
+        supported = getattr(fmt, 'supports_tags')
+        if supported is None:
+            warn("Format %s doesn't declare whether it supports tags or not"
+                 % fmt)
+            raise TestSkipped('No tag support at all')
+        if supported():
+            raise TestSkipped("Format %s declares that tags are supported"
+                              % fmt)
+            # it's covered by TestRepositoryTags
+        TestCaseWithRepository.setUp(self)
+    
+    def test_tag_methods_raise(self):
+        repo = self.make_repository('repo')
+        self.assertRaises(errors.TagsNotSupported,
+            repo.set_tag, 'foo', 'bar')
+        self.assertRaises(errors.TagsNotSupported,
+            repo.lookup_tag, 'foo')
+        self.assertRaises(errors.TagsNotSupported,
+            repo.set_tag, 'foo', 'bar')
+
+
