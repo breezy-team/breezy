@@ -3004,15 +3004,21 @@ class cmd_tag(Command):
             short_name='d',
             type=unicode,
             ),
+        'revision',
         ]
 
-    def run(self, tag_name, directory='.'):
+    def run(self, tag_name, directory='.', revision=None):
         branch, relpath = Branch.open_containing(directory)
-        revision_id = branch.last_revision()
+        if revision:
+            if len(revision) != 1:
+                raise errors.BzrCommandError(
+                    "Tags can only be placed on a single revision, "
+                    "not on a range")
+            revision_id = revision[0].in_history(branch).rev_id
+        else:
+            revision_id = branch.last_revision()
         branch.repository.set_tag(tag_name, revision_id)
         self.outf.write('created tag %s' % tag_name)
-
-
 
 
 # command-line interpretation helper for merge-related commands

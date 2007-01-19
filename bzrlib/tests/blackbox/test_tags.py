@@ -37,9 +37,12 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr_captured(['help', 'tag'])
         self.assertContainsRe(out, 'Create a tag')
 
+    def test_cannot_tag_range(self):
+        out, err = self.run_bzr('tag', '-r1..10', 'name', retcode=3)
+        self.assertContainsRe(err,
+            "Tags can only be placed on a single revision")
+
     def test_tag_current_rev(self):
-        ## b = self.make_branch('branch')
-        ## b.repository.tag
         t = self.make_branch_and_tree('branch')
         t.commit(allow_pointless=True, message='initial commit',
             rev_id='first-revid')
@@ -49,3 +52,6 @@ class TestTagging(TestCaseWithTransport):
         # tag should be observable through the api
         repo = t.branch.repository
         self.assertEquals(repo.get_tag_dict(), dict(NEWTAG='first-revid'))
+        # can also create tags using -r
+        self.run_bzr('tag', '-d', 'branch', 'tag2', '-r1')
+        self.assertEquals(repo.lookup_tag('tag2'), 'first-revid')
