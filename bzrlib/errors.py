@@ -334,25 +334,20 @@ class FileExists(PathError):
     _fmt = "File exists: %(path)r%(extra)s"
 
 
-class FilesExist(PathError):
-    """Used when reporting that files do exist"""
+class RenameFailedFilesExist(BzrError):
+    """Used when renaming and both source and dest exist."""
 
-    _fmt = "File%(plural)s exist: %(paths_as_string)s%(extra)s"
+    _fmt = ("Could not rename %(source)s to %(dest)s because both files exist."
+         "%(extra)s")
 
-    def __init__(self, paths, extra=None):
-        # circular import
-        from bzrlib.osutils import quotefn
+    def __init__(self, source, dest, extra=None):
         BzrError.__init__(self)
-        self.paths = paths
-        self.paths_as_string = ' '.join(paths)
+        self.source = str(source)
+        self.dest = str(dest)
         if extra:
-            self.extra = ': ' + str(extra)
+            self.extra = ' ' + str(extra)
         else:
             self.extra = ''
-        if len(paths) > 1:
-            self.plural = 's'
-        else:
-            self.plural = ''
 
 
 class NotADirectory(PathError):
