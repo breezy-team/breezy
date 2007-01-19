@@ -661,19 +661,19 @@ class TestCase(unittest.TestCase):
                 excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
-    def assertIs(self, left, right):
+    def assertIs(self, left, right, message=None):
         if not (left is right):
-            raise AssertionError("%r is not %r." % (left, right))
+            if message is not None:
+                raise AssertionError(message)
+            else:
+                raise AssertionError("%r is not %r." % (left, right))
 
-    def assertNone(self, obj, msg):
-        """Fail if obj is not None"""
-        if (obj is not None):
-            raise AssertionError(msg)
-
-    def assertNotNone(self, obj, msg):
-        """Fail if obj is None"""
-        if (obj is None):
-            raise AssertionError(msg)
+    def assertIsNot(self, left, right, message=None):
+        if (left is right):
+            if message is not None:
+                raise AssertionError(message)
+            else:
+                raise AssertionError("%r is %r." % (left, right))
 
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
