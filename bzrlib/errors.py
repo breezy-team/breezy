@@ -18,13 +18,17 @@
 """
 
 
-from bzrlib import (symbol_versioning,
-                    osutils,)
-from bzrlib.patches import (PatchSyntax, 
-                            PatchConflict, 
-                            MalformedPatchHeader,
-                            MalformedHunkHeader,
-                            MalformedLine,)
+from bzrlib import (
+    osutils,
+    symbol_versioning,
+    )
+from bzrlib.patches import (
+    MalformedHunkHeader,
+    MalformedLine,
+    MalformedPatchHeader,
+    PatchConflict,
+    PatchSyntax,
+    )
 
 
 # TODO: is there any value in providing the .args field used by standard
@@ -337,7 +341,7 @@ class FileExists(PathError):
 class RenameFailedFilesExist(BzrError):
     """Used when renaming and both source and dest exist."""
 
-    _fmt = ("Could not rename %(source)s to %(dest)s because both files exist."
+    _fmt = ("Could not rename %(source)s => %(dest)s because both files exist."
          "%(extra)s")
 
     def __init__(self, source, dest, extra=None):

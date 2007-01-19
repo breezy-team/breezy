@@ -72,7 +72,6 @@ import bzrlib.ui
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-
 from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
@@ -1147,47 +1146,41 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         for entry in rename_entries:
             try:
                 self._move_entry(entry)
-            except OSError, e:
-                self._rollback_move(moved)
-                raise errors.BzrRenameFailedError(entry.from_rel, entry.to_rel,
-                    e[1])
-            except errors.BzrError, e:
+            except:
                 self._rollback_move(moved)
                 raise
             moved.append(entry)
 
     def _rollback_move(self, moved):
-        """Try to rollback a previous move in case of an error in the
-        filesystem.
-        """
+        """Try to rollback a previous move in case of an filesystem error."""
         inv = self.inventory
         for entry in moved:
             try:
-                self._move_entry(entry, inverse=True)
+                self._move_entry(_RenameEntry(entry.to_rel, entry.from_id,
+                    entry.to_tail, entry.to_parent_id, entry.from_rel,
+                    entry.from_tail, entry.from_parent_id,
+                    entry.only_change_inv))
             except OSError, e:
-                raise errors.BzrMoveFailedError( '', '',
-                    errors.BzrError("Rollback failed."
+                raise errors.BzrMoveFailedError( '', '', "Rollback failed."
                         " The working tree is in an inconsistent state."
                         " Please consider doing a 'bzr revert'."
-                        " Error message is: %s" % e[1]))
+                        " Error message is: %s" % e[1])
 
-    def _move_entry(self, entry, inverse=False):
+    def _move_entry(self, entry):
         inv = self.inventory
         from_rel_abs = self.abspath(entry.from_rel)
         to_rel_abs = self.abspath(entry.to_rel)
-
         if from_rel_abs == to_rel_abs:
-            raise errors.BzrMoveFailedError(from_rel, to_rel,
+            raise errors.BzrMoveFailedError(entry.from_rel, entry.to_rel,
                 "Source and target are identical.")
 
-        if inverse:
-            if not entry.only_change_inv:
-                osutils.rename(to_rel_abs, from_rel_abs)
-            inv.rename(entry.from_id, entry.from_parent_id, entry.from_tail)
-        else:
-            if not entry.only_change_inv:
+        if not entry.only_change_inv:
+            try:
                 osutils.rename(from_rel_abs, to_rel_abs)
-            inv.rename(entry.from_id, entry.to_parent_id, entry.to_tail)
+            except OSError, e:
+                raise errors.BzrMoveFailedError(entry.from_rel,
+                    entry.to_rel, e[1])
+        inv.rename(entry.from_id, entry.to_parent_id, entry.to_tail)
 
     @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel, after=False):
@@ -1257,7 +1250,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     class _RenameEntry(object):
         def __init__(self, from_rel, from_id, from_tail, from_parent_id,
-                     to_rel, to_tail, to_parent_id):
+                     to_rel, to_tail, to_parent_id, only_change_inv=False):
             self.from_rel = from_rel
             self.from_id = from_id
             self.from_tail = from_tail
@@ -1265,7 +1258,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self.to_rel = to_rel
             self.to_tail = to_tail
             self.to_parent_id = to_parent_id
-            self.only_change_inv = False
+            self.only_change_inv = only_change_inv
 
     @needs_read_lock
     def unknowns(self):

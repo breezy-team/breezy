@@ -165,7 +165,6 @@ class TestMove(TestCaseWithTransport):
         is handled correctly by bzr mv.
         Setup: a is in the working tree, b does not exist.
         User does: mv a b; bzr mv a b
-
         """
         self.build_tree(['a'])
         tree = self.make_branch_and_tree('.')
@@ -182,7 +181,6 @@ class TestMove(TestCaseWithTransport):
         to another versiond file will fail.
         Setup: a and b are in the working tree.
         User does: rm b; mv a b; bzr mv a b
-
         """
         self.build_tree(['a', 'b'])
         tree = self.make_branch_and_tree('.')
@@ -204,7 +202,6 @@ class TestMove(TestCaseWithTransport):
         directory by an external tool, is handled correctly by bzr mv.
         Setup: a and sub/ are in the working tree.
         User does: mv a sub/a; bzr mv a sub/a
-
         """
         self.build_tree(['a', 'sub/'])
         tree = self.make_branch_and_tree('.')
@@ -221,7 +218,6 @@ class TestMove(TestCaseWithTransport):
         into an unversioned directory will fail.
         Setup: a is in the working tree, sub/ is not.
         User does: mv a sub/a; bzr mv a sub/a
-
         """
         self.build_tree(['a', 'sub/'])
         tree = self.make_branch_and_tree('.')
@@ -241,7 +237,6 @@ class TestMove(TestCaseWithTransport):
         directory by an external tool, is handled correctly by bzr mv.
         Setup: a1, a2, sub are in the working tree.
         User does: mv a1 sub/.; bzr mv a1 a2 sub
-
         """
         self.build_tree(['a1', 'a2', 'sub/'])
         tree = self.make_branch_and_tree('.')
@@ -259,7 +254,6 @@ class TestMove(TestCaseWithTransport):
         into an unversioned directory will fail.
         Setup: a1, a2 are in the working tree, sub is not.
         User does: mv a1 sub/.; bzr mv a1 a2 sub
-
         """
         self.build_tree(['a1', 'a2', 'sub/'])
         tree = self.make_branch_and_tree('.')
@@ -282,7 +276,6 @@ class TestMove(TestCaseWithTransport):
         option to force this.
         Setup: a is in the working tree, b not versioned.
         User does: mv a b; touch a; bzr mv a b
-
         """
         self.build_tree(['a', 'b'])
         tree = self.make_branch_and_tree('.')
@@ -291,7 +284,7 @@ class TestMove(TestCaseWithTransport):
         os.rename('a', 'b')
         self.build_tree(['a']) #touch a
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not rename a to b because both files exist."
+            ["^bzr: ERROR: Could not rename a => b because both files exist."
              " \(Use --after to update the Bazaar id\)$"],
             'mv', 'a', 'b')
         self.failUnlessExists('a')
@@ -307,7 +300,6 @@ class TestMove(TestCaseWithTransport):
         Setup: a is in the working tree and b exists.
         User does: mv a b; touch a; bzr mv a b --after
         Resulting in a => b and a is unknown.
-
         """
         self.build_tree(['a', 'b'])
         tree = self.make_branch_and_tree('.')
@@ -331,7 +323,6 @@ class TestMove(TestCaseWithTransport):
         Setup: a1, a2, sub are versioned and in the working tree,
                sub/a1, sub/a2 are in working tree.
         User does: mv a* sub; touch a1; touch a2; bzr mv a1 a2 sub
-
         """
         self.build_tree(['a1', 'a2', 'sub/', 'sub/a1', 'sub/a2'])
         tree = self.make_branch_and_tree('.')
@@ -342,7 +333,7 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a2']) #touch a2
 
         self.run_bzr_error(
-            ["^bzr: ERROR: Could not rename a1 to sub/a1 because both files exist."
+            ["^bzr: ERROR: Could not rename a1 => sub/a1 because both files exist."
              " \(Use --after to update the Bazaar id\)$"],
             'mv', 'a1', 'a2', 'sub')
         self.failUnlessExists('a1')
@@ -362,7 +353,6 @@ class TestMove(TestCaseWithTransport):
         Setup: a1, a2, sub are versioned and in the working tree,
                sub/a1, sub/a2 are in working tree.
         User does: mv a* sub; touch a1; touch a2; bzr mv a1 a2 sub --after
-
         """
         self.build_tree(['a1', 'a2', 'sub/', 'sub/a1', 'sub/a2'])
         tree = self.make_branch_and_tree('.')
