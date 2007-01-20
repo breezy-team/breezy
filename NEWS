@@ -1,4 +1,22 @@
-IN DEVELOPMENT
+bzr-svn 0.4	UNRELEASED
+
+  BUG FIXES
+
+   * Non-ascii characters in file ids are now supported (fixes imports 
+     of the Python repository).
+
+   * Fixed error raised during version incompatibility. (Wouter van Heyst)
+
+  IMPROVEMENTS
+
+   * A proper warning will now be printed if no sqlite implementation is 
+     available.
+
+   * Working tree copies will be disabled if the version of python-subversion 
+     is too old.
+
+
+bzr-svn 0.3	2007-01-16
 
   BUG FIXES
 
