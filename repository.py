@@ -86,12 +86,13 @@ def parse_svn_revision_id(revid):
     return (uuid, unescape_svn_path(branch_path), int(srevnum))
 
 
-def generate_svn_revision_id(uuid, revnum, path):
+def generate_svn_revision_id(uuid, revnum, path, scheme="undefined"):
     """Generate a unambiguous revision id. 
     
     :param uuid: UUID of the repository.
     :param revnum: Subversion revision number.
     :param path: Branch path.
+    :param scheme: Name of the branching scheme in use
 
     :return: New revision id.
     """
@@ -100,7 +101,7 @@ def generate_svn_revision_id(uuid, revnum, path):
     assert revnum >= 0
     if revnum == 0:
         return NULL_REVISION
-    return unicode("%sundefined:%s:%s:%d" % (REVISION_ID_PREFIX, uuid, \
+    return unicode("%s%s:%s:%s:%d" % (REVISION_ID_PREFIX, scheme, uuid, \
                    escape_svn_path(path.strip("/")), revnum))
 
 

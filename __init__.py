@@ -101,7 +101,13 @@ from fetch import InterSvnRepository
 
 BzrDirFormat.register_control_format(format.SvnFormat)
 
-BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
+import svn.core
+subr_version = svn.core.svn_subr_version()
+
+if subr_version.major == 1 and subr_version.minor < 4:
+    warning('Subversion version too old for working tree support.')
+else:
+    BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
 
 InterRepository.register_optimiser(InterSvnRepository)
 
