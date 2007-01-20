@@ -1,3 +1,15 @@
+bzr-svn 0.3.1	UNRELEASED
+
+  BUG FIXES
+
+  IMPROVEMENTS
+
+   * A proper warning will now be printed if no sqlite implementation is 
+     available.
+
+   * Working tree copies will be disabled if the version of python-subversion 
+     is too old.
+
 bzr-svn 0.3	2007-01-16
 
   BUG FIXES
