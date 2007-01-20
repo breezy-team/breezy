@@ -3,7 +3,7 @@
 #    
 #    This file is part of bzr-builddeb.
 #
-#    bzr-builldeb is free software; you can redistribute it and/or modify
+#    bzr-builddeb is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
 #    (at your option) any later version.
@@ -22,7 +22,7 @@ from bzrlib.errors import BzrError
 
 
 class DebianError(BzrError):
-  _fmt = """A Debian packaging error occured: %(message)s"""
+  _fmt = """A Debian packaging error occurred: %(message)s"""
 
   def __init__(self, message):
     BzrError.__init__(self)
