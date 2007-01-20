@@ -661,9 +661,19 @@ class TestCase(unittest.TestCase):
                 excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
-    def assertIs(self, left, right):
+    def assertIs(self, left, right, message=None):
         if not (left is right):
-            raise AssertionError("%r is not %r." % (left, right))
+            if message is not None:
+                raise AssertionError(message)
+            else:
+                raise AssertionError("%r is not %r." % (left, right))
+
+    def assertIsNot(self, left, right, message=None):
+        if (left is right):
+            if message is not None:
+                raise AssertionError(message)
+            else:
+                raise AssertionError("%r is %r." % (left, right))
 
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
@@ -1539,11 +1549,11 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(osutils.lexists(path))
+        self.failUnless(osutils.lexists(path),path+" does not exist")
 
     def failIfExists(self, path):
         """Fail if path, which may be abs or relative, exists."""
-        self.failIf(osutils.lexists(path))
+        self.failIf(osutils.lexists(path),path+" exists")
 
 
 class TestCaseWithTransport(TestCaseInTempDir):
