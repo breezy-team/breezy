@@ -24,5 +24,19 @@ class NotSvnBranchPath(BzrError):
         self.branch_path = branch_path
         self.revnum = revnum
 
+def convert_svn_exception(unbound):
+    """Decorator that catches particular Subversion exceptions and 
+    converts them to Bazaar exceptions.
+    """
+    def convert(self, *args, **kwargs):
+        try:
+            unbound(self, *args, **kwargs)
+        except SubversionException, (msg, num):
+            if num == svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED:
+                raise ConnectionReset(msg=msg)
+            else:
+                raise
 
-
+    convert.__doc__ = unbound.__doc__
+    convert.__name__ = unbound.__name__
+    return convert

@@ -5,7 +5,8 @@ bzr-svn 0.4	UNRELEASED
    * Non-ascii characters in file ids are now supported (fixes imports 
      of the Python repository).
 
-   * Fixed error raised during version incompatibility. (Wouter van Heyst)
+   * Fixed error raised during version incompatibility. (Wouter van Heyst, 
+                                                         #80467)
 
   IMPROVEMENTS
 
