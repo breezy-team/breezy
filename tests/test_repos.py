@@ -414,6 +414,26 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertRaises(NoSuchRevision, repository.get_revision_graph, 
                           "nonexisting")
 
+    def test_get_revision_graph_all_empty(self):
+        repos_url = self.make_client('d', 'dc')
+        repository = Repository.open(repos_url)
+        self.assertEqual({}, repository.get_revision_graph())
+
+    def test_get_revision_graph_all(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/a': 'data', 'dc/branches/foo/b': 'alsodata'})
+        self.client_add("dc/trunk")
+        self.client_add("dc/branches")
+        self.client_commit("dc", "initial commit")
+        self.build_tree({'dc/trunk/a': "bloe"})
+        self.client_commit("dc", "second commit")
+        repository = Repository.open(repos_url)
+        repository.set_branching_scheme(TrunkBranchingScheme())
+        self.assertEqual({repository.generate_revision_id(1, "trunk"): [],
+                          repository.generate_revision_id(2, "trunk"): [repository.generate_revision_id(1, "trunk")],
+                          repository.generate_revision_id(1, "branches/foo"): []
+                          }, repository.get_revision_graph())
+
     def test_get_revision_graph(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)

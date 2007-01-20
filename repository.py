@@ -529,9 +529,20 @@ class SvnRepository(Repository):
         # SVN doesn't store GPG signatures
         raise NoSuchRevision(self, revision_id)
 
-    def get_revision_graph(self, revision_id):
+    def _full_revision_graph(self):
+        graph = {}
+        for (branch, revnum) in self.follow_history(self._latest_revnum):
+            mutter('%r, %r' % (branch, revnum))
+            revid = self.generate_revision_id(revnum, branch)
+            graph[revid] = self.revision_parents(revid)
+        return graph
+
+    def get_revision_graph(self, revision_id=None):
         if revision_id == NULL_REVISION:
             return {}
+
+        if revision_id is None:
+            return self._full_revision_graph()
 
         (path, revnum) = self.parse_revision_id(revision_id)
 

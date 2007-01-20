@@ -8,6 +8,8 @@ bzr-svn 0.4	UNRELEASED
    * Fixed error raised during version incompatibility. (Wouter van Heyst, 
                                                          #80467)
 
+   * Implemented Repository.get_revision_graph(None)
+
   IMPROVEMENTS
 
    * A proper warning will now be printed if no sqlite implementation is 
