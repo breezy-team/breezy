@@ -22,13 +22,12 @@ from bzrlib import (
     osutils,
     workingtree,
     )
+
 from bzrlib.tests import (
     TestCaseWithTransport,
     TestSkipped,
     )
-from bzrlib.osutils import (
-    splitpath
-    )
+
 
 class TestMove(TestCaseWithTransport):
 
@@ -86,7 +85,7 @@ class TestMove(TestCaseWithTransport):
 
     def test_mv_unqualified(self):
         self.run_bzr_error(['^bzr: ERROR: missing file argument$'], 'mv')
-
+        
     def test_mv_invalid(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['test.txt', 'sub1/'])
@@ -100,7 +99,7 @@ class TestMove(TestCaseWithTransport):
             ["^bzr: ERROR: Could not move test.txt => .*hello.txt: "
              "sub1 is not versioned$"],
             'mv', 'test.txt', 'sub1/hello.txt')
-
+        
     def test_mv_dirs(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt', 'sub1/'])

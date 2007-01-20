@@ -1160,11 +1160,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     entry.to_tail, entry.to_parent_id, entry.from_rel,
                     entry.from_tail, entry.from_parent_id,
                     entry.only_change_inv))
-            except OSError, e:
+            except errors.BzrMoveFailedError, e:
                 raise errors.BzrMoveFailedError( '', '', "Rollback failed."
                         " The working tree is in an inconsistent state."
                         " Please consider doing a 'bzr revert'."
-                        " Error message is: %s" % e[1])
+                        " Error message is: %s" % e)
 
     def _move_entry(self, entry):
         inv = self.inventory
