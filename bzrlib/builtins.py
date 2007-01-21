@@ -499,18 +499,29 @@ class cmd_pull(Command):
     location can be accessed.
     """
 
-    takes_options = ['remember', 'overwrite', 'revision', 'verbose']
+    takes_options = ['remember', 'overwrite', 'revision', 'verbose',
+        Option('directory',
+            help='branch to pull into, '
+                 'rather than the one containing the working directory',
+            short_name='d',
+            type=unicode,
+            ),
+        ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
-    def run(self, location=None, remember=False, overwrite=False, revision=None, verbose=False):
+    def run(self, location=None, remember=False, overwrite=False,
+            revision=None, verbose=False,
+            directory=None):
         # FIXME: too much stuff is in the command class
+        if directory is None:
+            directory = u'.'
         try:
-            tree_to = WorkingTree.open_containing(u'.')[0]
+            tree_to = WorkingTree.open_containing(directory)[0]
             branch_to = tree_to.branch
         except errors.NoWorkingTree:
             tree_to = None
-            branch_to = Branch.open_containing(u'.')[0]
+            branch_to = Branch.open_containing(directory)[0]
 
         reader = None
         if location is not None:
@@ -529,7 +540,6 @@ class cmd_pull(Command):
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
-
 
         if reader is not None:
             install_bundle(branch_to.repository, reader)
@@ -554,6 +564,7 @@ class cmd_pull(Command):
             count = tree_to.pull(branch_from, overwrite, rev_id)
         else:
             count = branch_to.pull(branch_from, overwrite, rev_id)
+        _copy_tags_maybe(branch_from, branch_to)
         note('%d revision(s) pulled.' % (count,))
 
         if verbose:
@@ -592,18 +603,27 @@ class cmd_push(Command):
     """
 
     takes_options = ['remember', 'overwrite', 'verbose',
-                     Option('create-prefix', 
-                            help='Create the path leading up to the branch '
-                                 'if it does not already exist')]
+        Option('create-prefix', 
+               help='Create the path leading up to the branch '
+                    'if it does not already exist'),
+        Option('directory',
+            help='branch to push from, '
+                 'rather than the one containing the working directory',
+            short_name='d',
+            type=unicode,
+            ),
+        ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
-            create_prefix=False, verbose=False):
+            create_prefix=False, verbose=False,
+            directory=None):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
-        
-        br_from = Branch.open_containing('.')[0]
+        if directory is None:
+            directory = '.'
+        br_from = Branch.open_containing(directory)[0]
         stored_loc = br_from.get_push_location()
         if location is None:
             if stored_loc is None:
@@ -674,6 +694,7 @@ class cmd_push(Command):
             except errors.DivergedBranches:
                 raise errors.BzrCommandError('These branches have diverged.'
                                         '  Try using "merge" and then "push".')
+        _copy_tags_maybe(br_from, br_to)
         note('%d revision(s) pushed.' % (count,))
 
         if verbose:
@@ -759,9 +780,26 @@ class cmd_branch(Command):
                 raise errors.BzrCommandError(msg)
             if name:
                 branch.control_files.put_utf8('branch-name', name)
+            _copy_tags_maybe(br_from, branch)
             note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
+
+
+def _copy_tags_maybe(from_branch, to_branch):
+    """Copy tags between repositories if necessary and possible.
+    
+    This method has common command-line behaviour about handling 
+    error cases.
+    """
+    from_repo = from_branch.repository
+    to_repo = to_branch.repository
+    if not from_repo.supports_tags():
+        # obviously nothing to copy
+        return
+    # TODO: give a warning if the source format supports tags and actually has
+    # tags, but the destination doesn't accept them.
+    from_repo.copy_tags_to(to_repo)
 
 
 class cmd_checkout(Command):
@@ -2235,6 +2273,10 @@ class cmd_merge(Command):
     default, use --remember. The value will only be saved if the remote
     location can be accessed.
 
+    The results of the merge are placed into the destination working
+    directory, where they can be reviewed (with bzr diff), tested, and then
+    committed to record the result of the merge.
+
     Examples:
 
     To merge the latest revision from bzr.dev
@@ -2253,15 +2295,21 @@ class cmd_merge(Command):
     """
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
-                     Option('show-base', help="Show base revision text in "
-                            "conflicts"),
-                     Option('uncommitted', help='Apply uncommitted changes'
-                            ' from a working copy, instead of branch changes'),
-                     Option('pull', help='If the destination is already'
-                             ' completely merged into the source, pull from the'
-                             ' source rather than merging. When this happens,'
-                             ' you do not need to commit the result.'),
-                     ]
+        Option('show-base', help="Show base revision text in "
+               "conflicts"),
+        Option('uncommitted', help='Apply uncommitted changes'
+               ' from a working copy, instead of branch changes'),
+        Option('pull', help='If the destination is already'
+                ' completely merged into the source, pull from the'
+                ' source rather than merging. When this happens,'
+                ' you do not need to commit the result.'),
+        Option('directory',
+            help='branch to push from, '
+                 'rather than the one containing the working directory',
+            short_name='d',
+            type=unicode,
+            ),
+    ]
 
     def help(self):
         from inspect import getdoc
@@ -2269,11 +2317,13 @@ class cmd_merge(Command):
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False, 
-            uncommitted=False, pull=False):
+            uncommitted=False, pull=False,
+            directory=None,
+            ):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
-
-        tree = WorkingTree.open_containing(u'.')[0]
+        if directory is None: directory = u'.'
+        tree = WorkingTree.open_containing(directory)[0]
 
         if branch is not None:
             try:
@@ -2328,6 +2378,10 @@ class cmd_merge(Command):
         if tree.branch.get_parent() is None or remember:
             tree.branch.set_parent(other_branch.base)
 
+        # pull tags now... it's a bit inconsistent to do it ahead of copying
+        # the history but that's done inside the merge code
+        _copy_tags_maybe(other_branch, tree.branch)
+
         if path != "":
             interesting_files = [path]
         else:
@@ -2341,6 +2395,7 @@ class cmd_merge(Command):
                     reprocess=reprocess,
                     show_base=show_base,
                     pull=pull,
+                    this_dir=directory,
                     pb=pb, file_list=interesting_files)
             finally:
                 pb.finished()
@@ -2995,7 +3050,16 @@ class cmd_serve(Command):
 
 
 class cmd_tag(Command):
-    """Create a tag naming a revision"""
+    """Create a tag naming a revision.
+    
+    Tags give human-meaningful names to revisions.  Commands that take a -r
+    (--revision) option can be given -rtag:X, where X is any previously
+    created tag.
+
+    Tags are stored in the repository, and apply to all branches stored
+    in the repository.  Tags are copied from one branch to another along
+    when you branch, push, pull or merge.
+    """
 
     takes_args = ['tag_name']
     takes_options = [

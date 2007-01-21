@@ -1,3 +1,12 @@
+  IMPROVEMENTS:
+
+    * New option ``-d`` for pull and other commands, specifying the
+      branch or tree to operate on rather than the working directory.
+      (Martin Pool)
+
+    * Builtin tags support, created by the ``tag`` command and stored 
+      in the repository.  (Martin Pool)
+
 IN DEVELOPMENT
 
   IMPROVEMENTS:

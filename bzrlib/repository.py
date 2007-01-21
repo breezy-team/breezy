@@ -88,12 +88,21 @@ class _DisabledTagStore(_TagStore):
     def _not_supported(self, *a, **k):
         raise errors.TagsNotSupported(self.repository)
 
+    def supports_tags(self):
+        return False
+
     set_tag = _not_supported
+    get_tag_dict = _not_supported
+    _set_tag_dict = _not_supported
+    lookup_tag = _not_supported
 
 
 class _BasicTagStore(_TagStore):
     """Tag storage in an unversioned repository control file.
     """
+
+    def supports_tags(self):
+        return True
 
     def set_tag(self, tag_name, tag_target):
         """Add a tag definition to the repository.
@@ -875,6 +884,9 @@ class Repository(object):
 
     def _set_tag_dict(self, new_dict):
         return self._tag_store._set_tag_dict(new_dict)
+
+    def supports_tags(self):
+        return self._tag_store.supports_tags()
 
     def copy_tags_to(self, to_repository):
         """Copy tags to another repository.
@@ -2003,6 +2015,8 @@ class InterRepository(InterObject):
         # A default implementation is provided even though not all
         # Repositories will support tags... we'll just get an error back from
         # the underlying method.
+        if self.target == self.source:
+            return
         self.target.lock_write()
         try:
             self.target._set_tag_dict(self.source.get_tag_dict())

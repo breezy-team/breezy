@@ -19,7 +19,11 @@
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.repository import RepositoryFormatKnit2
+from bzrlib.repository import (
+    Repository,
+    RepositoryFormatKnit2,
+    )
+from bzrlib.workingtree import WorkingTree
 
 
 class TestTagging(TestCaseWithTransport):
@@ -55,3 +59,30 @@ class TestTagging(TestCaseWithTransport):
         # can also create tags using -r
         self.run_bzr('tag', '-d', 'branch', 'tag2', '-r1')
         self.assertEquals(repo.lookup_tag('tag2'), 'first-revid')
+
+    def test_branch_push_pull_merge_copies_tags(self):
+        t = self.make_branch_and_tree('branch1')
+        t.commit(allow_pointless=True, message='initial commit',
+            rev_id='first-revid')
+        repo1 = t.branch.repository
+        repo1.set_tag('tag1', 'first-revid')
+        # branching copies the tag across
+        self.run_bzr('branch', 'branch1', 'branch2')
+        repo2 = Repository.open('branch2')
+        self.assertEquals(repo2.lookup_tag('tag1'), 'first-revid')
+        # make a new tag and pull it
+        repo1.set_tag('tag2', 'twa')
+        self.run_bzr('pull', '-d', 'branch2', 'branch1')
+        self.assertEquals(repo2.lookup_tag('tag2'), 'twa')
+        # make a new tag and push it
+        repo1.set_tag('tag3', 'san')
+        self.run_bzr('push', '-d', 'branch1', 'branch2')
+        self.assertEquals(repo2.lookup_tag('tag3'), 'san')
+        # make a new tag and merge it
+        t.commit(allow_pointless=True, message='second commit',
+            rev_id='second-revid')
+        t2 = WorkingTree.open('branch2')
+        t2.commit(allow_pointless=True, message='commit in second')
+        repo1.set_tag('tag4', 'second-revid')
+        self.run_bzr('merge', '-d', 'branch2', 'branch1')
+        self.assertEquals(repo2.lookup_tag('tag4'), 'second-revid')
