@@ -873,6 +873,17 @@ class Repository(object):
     def get_tag_dict(self):
         return self._tag_store.get_tag_dict()
 
+    def _set_tag_dict(self, new_dict):
+        return self._tag_store._set_tag_dict(new_dict)
+
+    def copy_tags_to(self, to_repository):
+        """Copy tags to another repository.
+
+        Subclasses should not override this, but rather customize copying 
+        through the InterRepository mechanism.
+        """
+        return InterRepository.get(self, to_repository).copy_tags()
+
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
@@ -1986,6 +1997,17 @@ class InterRepository(InterObject):
         # other_ids had while only returning the members from other_ids
         # that we've decided we need.
         return [rev_id for rev_id in source_ids if rev_id in result_set]
+
+    def copy_tags(self):
+        """Copy all tags from source to the target."""
+        # A default implementation is provided even though not all
+        # Repositories will support tags... we'll just get an error back from
+        # the underlying method.
+        self.target.lock_write()
+        try:
+            self.target._set_tag_dict(self.source.get_tag_dict())
+        finally:
+            self.target.unlock()
 
 
 class InterSameDataRepository(InterRepository):

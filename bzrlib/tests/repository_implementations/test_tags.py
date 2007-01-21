@@ -75,6 +75,14 @@ class TestRepositoryTags(TestCaseWithRepository):
         else:
             self.fail("didn't get expected exception")
 
+    def test_copy_tags(self):
+        repo1 = self.make_repository('repo1')
+        repo2 = self.make_repository('repo2')
+        repo1.set_tag('tagname', 'revid')
+        repo1.copy_tags_to(repo2)
+        self.assertEquals(repo2.lookup_tag('tagname'), 'revid')
+
+
 
 class TestUnsupportedTags(TestCaseWithRepository):
     """Formats that don't support tags should give reasonable errors."""
