@@ -194,16 +194,15 @@ register_command(cmd_svn_upgrade)
 def test_suite():
     from unittest import TestSuite, TestLoader
     import tests
-
     suite = TestSuite()
-
     suite.addTest(tests.test_suite())
-
     return suite
 
 if __name__ == '__main__':
     print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "
           "to use it.\n")
+    runner = unittest.TextTestRunner()
+    runner.run(test_suite())
 else:
     sys.path.append(os.path.dirname(__file__))
 
