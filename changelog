@@ -1,3 +1,9 @@
+bzr (0.14-1) experimental; urgency=low
+
+  * New upstream release
+
+ -- Wouter van Heyst <larstiq@larstiq.dyndns.org>  Wed, 24 Jan 2007 00:05:48 +0100
+
 bzr (0.14~rc1-1) experimental; urgency=low
 
   * New upstream release candidate.
