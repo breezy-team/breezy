@@ -110,6 +110,8 @@ class EmailSender(object):
         """What URL to display in the subject of the mail"""
         url = self.config.get_user_option('post_commit_url')
         if url is None:
+            url = self.config.get_user_option('public_branch')
+        if url is None:
             url = self.branch.base
         return url
     
