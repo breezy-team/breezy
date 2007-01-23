@@ -1,6 +1,7 @@
-IN DEVELOPMENT
+bzr 0.14  2007-01-23
 
   IMPROVEMENTS:
+
     * ``bzr help global-options`` describes the global options. (Aaron Bentley)
 
   BUG FIXES:
