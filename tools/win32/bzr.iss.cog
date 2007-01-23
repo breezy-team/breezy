@@ -7,6 +7,14 @@
 AppName=Bazaar
 
 ; [[[cog
+; # Python 2.5 compatibility code
+; import os
+; import sys
+; cwd = os.getcwd()
+; if cwd not in sys.path:
+;     sys.path.insert(0, cwd)
+; #/Python 2.5 compatibility code
+;
 ; import bzrlib
 ; try: 
 ;     VERSION = bzrlib.__version__

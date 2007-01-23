@@ -1,4 +1,37 @@
 IN DEVELOPMENT
+  IMPROVEMENTS:
+
+    * ``bzr mv`` enhanced to support already moved files.
+      In the past the mv command would have failed if the source file doesn't
+      exist. In this situation ``bzr mv`` would now detect that the file has
+      already moved and update the repository accordingly, if the target file
+      does exist.
+      A new option ``--after`` has been added so that if two files already
+      exist, you could notify Bazaar that you have moved a (versioned) file and
+      replaced it with another. Thus in this case ``bzr move --after`` will
+      only update the Bazaar identifier.
+      (Steffen Eichenberg, Marius Kruger)
+
+    * ``ls`` now works on treeless branches and remote branches.
+      (Aaron Bentley)
+
+    * ``bzr help global-options`` describes the global options.
+      (Aaron Bentley)
+
+  INTERNALS:
+
+    * Reserved ids (any revision-id ending in a colon) are rejected by
+      versionedfiles, repositories, branches, and working trees
+      (Aaron Bentley)
+
+  BUGFIXES:
+
+  TESTING:
+
+    * New ``--first`` option to ``bzr selftest`` to run specified tests
+      before the rest of the suite.  (Martin Pool)
+
+bzr 0.14rc1  2007-01-16
 
   IMPROVEMENTS:
 

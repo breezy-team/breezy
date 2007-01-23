@@ -296,3 +296,16 @@ class TestMultipleRevisionSources(TestCaseWithTransport):
         self.assertEqual({'B':['A'],
                           'A':[]},
                          source.get_revision_graph('B'))
+
+
+class TestReservedId(TestCase):
+
+    def test_is_reserved_id(self):
+        self.assertEqual(True, revision.is_reserved_id(NULL_REVISION))
+        self.assertEqual(True, revision.is_reserved_id(
+            revision.CURRENT_REVISION))
+        self.assertEqual(True, revision.is_reserved_id('arch:'))
+        self.assertEqual(False, revision.is_reserved_id('null'))
+        self.assertEqual(False, revision.is_reserved_id(
+            'arch:a@example.com/c--b--v--r'))
+        self.assertEqual(False, revision.is_reserved_id(None))

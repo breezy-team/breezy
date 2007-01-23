@@ -18,12 +18,17 @@
 """
 
 
-from bzrlib import symbol_versioning
-from bzrlib.patches import (PatchSyntax, 
-                            PatchConflict, 
-                            MalformedPatchHeader,
-                            MalformedHunkHeader,
-                            MalformedLine,)
+from bzrlib import (
+    osutils,
+    symbol_versioning,
+    )
+from bzrlib.patches import (
+    MalformedHunkHeader,
+    MalformedLine,
+    MalformedPatchHeader,
+    PatchConflict,
+    PatchSyntax,
+    )
 
 
 # TODO: is there any value in providing the .args field used by standard
@@ -199,6 +204,12 @@ class InvalidRevisionId(BzrError):
         self.revision_id = revision_id
         self.branch = branch
 
+class ReservedId(BzrError):
+
+    _fmt = "Reserved revision-id {%(revision_id)s}"
+
+    def __init__(self, revision_id):
+        self.revision_id = revision_id
 
 class NoSuchId(BzrError):
 
@@ -288,6 +299,14 @@ class BzrOptionError(BzrCommandError):
 
     _fmt = "Error in command line options"
 
+
+class BadOptionValue(BzrError):
+
+    _fmt = """Bad value "%(value)s" for option "%(name)s"."""
+
+    def __init__(self, name, value):
+        BzrError.__init__(self, name=name, value=value)
+
     
 class StrictCommitFailed(BzrError):
 
@@ -317,6 +336,32 @@ class NoSuchFile(PathError):
 class FileExists(PathError):
 
     _fmt = "File exists: %(path)r%(extra)s"
+
+
+class RenameFailedFilesExist(BzrError):
+    """Used when renaming and both source and dest exist."""
+
+    _fmt = ("Could not rename %(source)s => %(dest)s because both files exist."
+         "%(extra)s")
+
+    def __init__(self, source, dest, extra=None):
+        BzrError.__init__(self)
+        self.source = str(source)
+        self.dest = str(dest)
+        if extra:
+            self.extra = ' ' + str(extra)
+        else:
+            self.extra = ''
+
+
+class NotADirectory(PathError):
+
+    _fmt = "%(path)r is not a directory %(extra)s"
+
+
+class NotInWorkingDirectory(PathError):
+
+    _fmt = "%(path)r is not in the working directory %(extra)s"
 
 
 class DirectoryNotEmpty(PathError):
@@ -491,17 +536,50 @@ class IncompatibleRevision(BzrError):
         self.repo_format = repo_format
 
 
-class NotVersionedError(BzrError):
+class AlreadyVersionedError(BzrError):
+    """Used when a path is expected not to be versioned, but it is."""
 
-    _fmt = "%(path)s is not versioned"
+    _fmt = "%(context_info)s%(path)s is already versioned"
 
-    def __init__(self, path):
+    def __init__(self, path, context_info=None):
+        """Construct a new NotVersionedError.
+
+        :param path: This is the path which is versioned,
+        which should be in a user friendly form.
+        :param context_info: If given, this is information about the context,
+        which could explain why this is expected to not be versioned.
+        """
         BzrError.__init__(self)
         self.path = path
+        if context_info is None:
+            self.context_info = ''
+        else:
+            self.context_info = context_info + ". "
+
+
+class NotVersionedError(BzrError):
+    """Used when a path is expected to be versioned, but it is not."""
+
+    _fmt = "%(context_info)s%(path)s is not versioned"
+
+    def __init__(self, path, context_info=None):
+        """Construct a new NotVersionedError.
+
+        :param path: This is the path which is not versioned,
+        which should be in a user friendly form.
+        :param context_info: If given, this is information about the context,
+        which could explain why this is expected to be versioned.
+        """
+        BzrError.__init__(self)
+        self.path = path
+        if context_info is None:
+            self.context_info = ''
+        else:
+            self.context_info = context_info + ". "
 
 
 class PathsNotVersionedError(BzrError):
-    # used when reporting several paths are not versioned
+    """Used when reporting several paths which are not versioned"""
 
     _fmt = "Path(s) are not versioned: %(paths_as_string)s"
 
@@ -514,17 +592,21 @@ class PathsNotVersionedError(BzrError):
 
 class PathsDoNotExist(BzrError):
 
-    _fmt = "Path(s) do not exist: %(paths_as_string)s"
+    _fmt = "Path(s) do not exist: %(paths_as_string)s%(extra)s"
 
     # used when reporting that paths are neither versioned nor in the working
     # tree
 
-    def __init__(self, paths):
+    def __init__(self, paths, extra=None):
         # circular import
         from bzrlib.osutils import quotefn
         BzrError.__init__(self)
         self.paths = paths
         self.paths_as_string = ' '.join([quotefn(p) for p in paths])
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
 
 
 class BadFileKindError(BzrError):
@@ -1299,6 +1381,48 @@ class ReusingTransform(BzrError):
 class CantMoveRoot(BzrError):
 
     _fmt = "Moving the root directory is not supported at this time"
+
+
+class BzrMoveFailedError(BzrError):
+
+    _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
+
+    def __init__(self, from_path='', to_path='', extra=None):
+        BzrError.__init__(self)
+        if extra:
+            self.extra = ': ' + str(extra)
+        else:
+            self.extra = ''
+
+        has_from = len(from_path) > 0
+        has_to = len(to_path) > 0
+        if has_from:
+            self.from_path = osutils.splitpath(from_path)[-1]
+        else:
+            self.from_path = ''
+
+        if has_to:
+            self.to_path = osutils.splitpath(to_path)[-1]
+        else:
+            self.to_path = ''
+
+        self.operator = ""
+        if has_from and has_to:
+            self.operator = " =>"
+        elif has_from:
+            self.from_path = "from " + from_path
+        elif has_to:
+            self.operator = "to"
+        else:
+            self.operator = "file"
+
+
+class BzrRenameFailedError(BzrMoveFailedError):
+
+    _fmt = "Could not rename %(from_path)s%(operator)s %(to_path)s%(extra)s"
+
+    def __init__(self, from_path, to_path, extra=None):
+        BzrMoveFailedError.__init__(self, from_path, to_path, extra)
 
 
 class BzrBadParameterNotString(BzrBadParameter):
