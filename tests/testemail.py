@@ -21,7 +21,8 @@ from unittest import TestLoader
 from bzrlib.bzrdir import BzrDir
 import bzrlib.config as config
 from bzrlib.tests import TestCaseInTempDir
-from bzrlib.plugins.email import post_commit, EmailSender
+from bzrlib.plugins.email import post_commit
+from bzrlib.plugins.email.emailer import EmailSender
 
 
 def test_suite():
