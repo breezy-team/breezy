@@ -20,6 +20,8 @@ _inspect = None
 
 __all__ = ['needs_read_lock',
            'needs_write_lock',
+           'use_fast_decorators',
+           'use_pretty_decorators',
            ]
 
 
