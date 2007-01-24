@@ -20,9 +20,9 @@ from unittest import TestLoader
 
 from bzrlib.bzrdir import BzrDir
 import bzrlib.config as config
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir, TestCaseWithMemoryTransport
 from bzrlib.plugins.email import post_commit
-from bzrlib.plugins.email.emailer import EmailSender
+from bzrlib.plugins.email.emailer import EmailSender, SMTPConnection
 
 
 def test_suite():
@@ -134,7 +134,99 @@ class TestGetTo(TestCaseInTempDir):
             timezone=0,
             committer="Sample <john@example.com>",
             )
-        my_config = config.BranchConfig(self.branch)
+        my_config = self.branch.get_config()
         config_file = StringIO(text)
         (my_config._get_global_config()._get_parser(config_file))
         return EmailSender(self.branch, 'A', my_config)
+
+
+class InstrumentedSMTPConnection(SMTPConnection):
+    """Instrument SMTPConnection.
+
+    We don't want to actually connect or send messages, so this just
+    fakes it.
+    """
+    
+    class FakeSMTP(object):
+        """Fakes an SMTP connection."""
+    
+        def __init__(self, actions):
+            self.actions = actions
+        
+        def sendmail(self, from_addr, to_addrs, msg):
+            self.actions.append(('sendmail', from_addr, to_addrs, msg))
+        
+        def login(self, username, password):
+            self.actions.append(('login', username, password))
+        
+    def __init__(self, config):
+        super(InstrumentedSMTPConnection, self).__init__(config)
+        self.actions = []
+
+    def _create_connection(self):
+        self.actions.append(('create_connection',))
+        self._connection = InstrumentedSMTPConnection.FakeSMTP(self.actions)
+
+    def _basic_message(self, *args, **kwargs):
+        """Override to force the boundary for easier testing."""
+        msg = super(InstrumentedSMTPConnection,
+        self)._basic_message(*args, **kwargs)
+        msg.set_boundary('=====123456==')
+        return msg
+
+           
+class TestSMTPConnection(TestCaseWithMemoryTransport):
+
+    def get_connection(self, text):
+        self.tree = self.make_branch_and_memory_tree('tree')
+        self.tree.lock_write()
+        self.addCleanup(self.tree.unlock)
+
+        self.tree.add('') # You have to add the root directory
+        self.tree.commit(u'Commit message\nfoo b\xe5r baz\n',
+                         rev_id='A',
+                         allow_pointless=True,
+                         timestamp=1,
+                         timezone=0,
+                         committer=u'Jerry F\xb5z <jerry@fooz.com>',
+                         )
+        my_config = self.tree.branch.get_config()
+        config_file = StringIO(text)
+        (my_config._get_global_config()._get_parser(config_file))
+        return InstrumentedSMTPConnection(my_config)
+
+    def test_defaults(self):
+        conn = self.get_connection(unconfigured_config)
+        self.assertEqual('localhost', conn._smtp_server)
+        self.assertEqual(None, conn._smtp_username)
+        self.assertEqual(None, conn._smtp_password)
+
+    def test_simple_send(self):
+        conn = self.get_connection(unconfigured_config)
+        from_addr = u'Jerry F\xb5z <jerry@fooz.com>'
+        to_addr = u'Biz N\xe5 <biz@na.com>'
+        subject = u'Hello Biz N\xe5'
+        message=(u'Hello Biz N\xe5\n'
+                 u'I haven\'t heard\n'
+                 u'from you in a while\n')
+        conn.send_text_email(from_addr, [to_addr], subject, message)
+        self.assertEqual(('create_connection',), conn.actions[0])
+        self.assertEqual(('sendmail', 'jerry@fooz.com', ['biz@na.com']),
+                         conn.actions[1][:3])
+        self.assertEqualDiff((
+                           'MIME-Version: 1.0\n'
+                           'Content-Type: multipart/mixed; charset="utf-8"; boundary="=====123456=="\n'
+                           'Content-Transfer-Encoding: base64\n'
+                           'From: =?utf-8?b?SmVycnkgRsK1eiA8amVycnlAZm9vei5jb20+?=\n'
+                           'To: =?utf-8?b?Qml6IE7DpSA8Yml6QG5hLmNvbT4=?=\n'
+                           'Subject: =?utf-8?q?Hello_Biz_N=C3=A5?=\n'
+                           '\n'
+                           '--=====123456==\n'
+                           'Content-Type: text/plain; charset="utf-8"\n'
+                           'MIME-Version: 1.0\n'
+                           'Content-Transfer-Encoding: base64\n'
+                           '\n'
+                           'SGVsbG8gQml6IE7DpQpJIGhhdmVuJ3QgaGVhcmQKZnJvbSB5b3UgaW4gYSB3aGlsZQo=\n'
+                           '\n'
+                           '--=====123456==--'
+                           ), conn.actions[1][3])

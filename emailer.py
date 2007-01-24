@@ -15,13 +15,25 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from StringIO import StringIO
+from email.Header import Header
+from email.Message import Message
+try:
+    # python <= 2.4
+    from email.MIMEText import MIMEText
+    from email.MIMEMultipart import MIMEMultipart
+except ImportError:
+    # python 2.5 moved MIMEText into a better namespace
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
 import errno
 import smtplib
 import subprocess
 
 from bzrlib import (
+    config,
     errors,
     revision as _mod_revision,
+    ui,
     )
 
 
@@ -121,7 +133,6 @@ class EmailSender(object):
         if url is None:
             url = self.branch.base
         return url
-    
 
     def from_address(self):
         """What address should I send from."""
@@ -131,6 +142,19 @@ class EmailSender(object):
         return result
 
     def send(self):
+        """Send the email.
+
+        Depending on the configuration, this will either use smtplib, or it
+        will call out to the 'mail' program.
+        """
+        mailer = self.mailer()
+        if mailer == 'smtplib':
+            self._send_using_smtplib()
+        else:
+            self._send_using_mail()
+
+    def _send_using_mail(self):
+        """Spawn a 'mail' subprocess to send the email."""
         # TODO think up a good test for this, but I think it needs
         # a custom binary shipped with. RBC 20051021
         try:
@@ -157,6 +181,9 @@ class EmailSender(object):
             else:
                 raise
 
+    def _send_using_smtplib(self):
+        """Use python's smtplib to send the email."""
+
     def should_send(self):
         return self.to() is not None and self.from_address() is not None
 
@@ -169,3 +196,125 @@ class EmailSender(object):
                 (self.revno,
                  self.revision.get_summary(),
                  self.url()))
+
+
+class SMTPConnection(object):
+    """Connecting to an SMTP server and send an email.
+
+    This is a gateway between bzrlib.config.Config and smtplib.SMTP. It
+    understands the basic bzr SMTP configuration information.
+    """
+
+    _default_smtp_server = 'localhost'
+
+    def __init__(self, config):
+        self._config = config
+        self._smtp_server = config.get_user_option('smtp_server')
+        if self._smtp_server is None:
+            self._smtp_server = self._default_smtp_server
+
+        self._smtp_username = config.get_user_option('smtp_username')
+        self._smtp_password = config.get_user_option('smtp_password')
+
+        self._connection = None
+
+    def _connect(self):
+        """If we haven't connected, connect and authenticate."""
+        if self._connection is not None:
+            return
+
+        self._create_connection()
+        self._authenticate()
+
+    def _create_connection(self):
+        """Create an SMTP connection."""
+        self._connection = smtplib.SMTP()
+        self._connection.connect(self._smtp_server)
+
+        # If this fails, it just returns an error, but it shouldn't raise an
+        # exception unless something goes really wrong (in which case we want
+        # to fail anyway).
+        self._connection.starttls()
+
+    def _authenticate(self):
+        """If necessary authenticate yourself to the server."""
+        if self._smtp_username is None:
+            return
+
+        if self._smtp_password is None:
+            self._smtp_password = ui.ui_factory.get_password(
+                'Please enter the SMTP password: %(user)@%(host)s',
+                user=self._smtp_username,
+                host=self._smtp_server)
+        try:
+            self._connection.login(self._smtp_username, self._smtp_password)
+        except smtplib.SMTPHeloError, e:
+            raise BzrCommandError('SMTP server refused HELO: %d %s'
+                                  % (e.smtp_code, e.smtp_error))
+        except smtplib.SMTPAuthenticationError, e:
+            raise BzrCommandError('SMTP server refused authentication: %d %s'
+                                  % (e.smtp_code, e.smtp_error))
+        except smtplib.SMTPException, e:
+            raise BzrCommandError(str(e))
+
+    def _basic_message(self, from_address, to_addresses, subject):
+        """Create the basic Message using the right Header info.
+
+        This creates an email Message with no payload.
+        :param from_address: The Unicode from address.
+        :param to_addresses: A list of Unicode destination addresses.
+        :param subject: A Unicode subject for the email.
+        """
+        # It would be nice to use a single part if we only had one, but we
+        # would have to know ahead of time how many parts we needed.
+        # So instead, just default to multipart.
+        msg = MIMEMultipart()
+        msg.set_charset('utf-8')
+        msg['From'] = Header(from_address)
+        msg['To'] = Header(u', '.join(to_addresses))
+        msg['Subject'] = Header(subject)
+        return msg
+
+    def send_text_email(self, from_address, to_addresses, subject, message):
+        """Send a single text-only email.
+
+        This is a helper when you know you are just sending a simple text
+        message. See create_email for an explanation of parameters.
+        """
+        msg, from_email, to_emails = self.create_email(from_address,
+                                            to_addresses, subject, message)
+        self._send_message(msg, from_email, to_emails)
+
+    def create_email(self, from_address, to_addresses, subject, message):
+        """Create an email.Message object.
+
+        This function allows you to create a basic email, and then add extra
+        payload to it.
+
+        :param from_address: A Unicode string with the source email address.
+            Example: u'Joe B\xe5 <joe@bar.com>'
+        :param to_addresses: A list of addresses to send to.
+            Example: [u'Joe B\xe5 <joe@bar.com>', u'Lilly <lilly@nowhere.com>']
+        :param subject: A Unicode Subject for the email.
+            Example: u'Use Bazaar, its c\xb5l'
+        :param message: A Unicode message (will be encoded into utf-8)
+            Example: u'I started using Bazaar today.\nI highly recommend it.\n'
+        :return: (message, from_email, to_emails)
+            message: is a MIME wrapper with the email headers setup. You can add
+                more payload by using .attach()
+            from_email: the email address extracted from from_address
+            to_emails: the list of email addresses extracted from to_addresses
+        """
+        msg = self._basic_message(from_address, to_addresses, subject)
+        payload = MIMEText(message.encode('utf-8'), 'plain', 'utf-8')
+        msg.attach(payload)
+        # email addresses should be ascii only
+        from_email = config.extract_email_address(from_address).encode('ascii')
+        to_emails = [config.extract_email_address(address).encode('ascii')
+                     for address in to_addresses]
+        return msg, from_email, to_emails
+
+    def _send_message(self, msg, from_email, to_emails):
+        """Actually send an email to the server."""
+        self._connect()
+        self._connection.sendmail(from_email, to_emails, msg.as_string())
