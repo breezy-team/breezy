@@ -87,6 +87,7 @@ class TestBranch(TestCaseWithBranch):
         self.assertEquals(br.revision_history(), ["rev1",])
         br.append_revision("rev2", "rev3")
         self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
+        self.assertRaises(errors.ReservedId, br.append_revision, 'current:')
 
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
