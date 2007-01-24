@@ -1,4 +1,5 @@
 IN DEVELOPMENT
+
   IMPROVEMENTS:
 
     * ``bzr mv`` enhanced to support already moved files.
@@ -30,6 +31,24 @@ IN DEVELOPMENT
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
       before the rest of the suite.  (Martin Pool)
+
+
+bzr 0.14  2007-01-23
+
+  IMPROVEMENTS:
+
+    * ``bzr help global-options`` describes the global options. (Aaron Bentley)
+
+  BUG FIXES:
+    
+    * Skip documentation generation tests if the tools to do so are not
+      available. Fixes running selftest for installled copies of bzr. 
+      (John Arbash Meinel, #80330)
+
+    * Fix the code that discovers whether bzr is being run from it's
+      working tree to handle the case when it isn't but the directory
+      it is in is below a repository. (James Westby, #77306)
+
 
 bzr 0.14rc1  2007-01-16
 
