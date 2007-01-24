@@ -1,5 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +19,9 @@
 
 import os
 
-import bzrlib
+from bzrlib import (
+    urlutils,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.osutils import abspath
@@ -97,7 +98,7 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push', 'pushed-location')
         self.assertEqual('', out)
         self.assertEqual('0 revision(s) pushed.\n', err)
-        b2 = bzrlib.branch.Branch.open('pushed-location')
+        b2 = Branch.open('pushed-location')
         self.assertEndsWith(b2.base, 'pushed-location/')
 
     def test_push_new_branch_revision_count(self):
@@ -160,3 +161,13 @@ class TestPush(ExternalBase):
         t.add('filename', 'funky-chars<>%&;"\'')
         t.commit('commit filename')
         self.run_bzr('push', '../new-tree')
+
+    def test_push_dash_d(self):
+        t = self.make_branch_and_tree('from')
+        t.commit(allow_pointless=True,
+                message='first commit')
+        self.runbzr('push -d from to-one')
+        self.failUnlessExists('to-one')
+        self.runbzr('push -d %s %s' 
+            % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
+        self.failUnlessExists('to-two')
