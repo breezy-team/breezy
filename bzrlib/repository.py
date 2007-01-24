@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ from bzrlib import (
     lockable_files,
     lockdir,
     osutils,
+    registry,
     revision as _mod_revision,
     symbol_versioning,
     transactions,
@@ -1159,35 +1160,58 @@ class RepositoryFormat(object):
     parameterisation.
     """
 
-    _default_format = None
-    """The default format used for new repositories."""
-
-    _formats = {}
-    """The known formats."""
+    _registry = registry.Registry()
+    """Registry of formats, indexed by their identifying format string."""
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
 
     @classmethod
     def find_format(klass, a_bzrdir):
-        """Return the format for the repository object in a_bzrdir."""
+        """Return the format for the repository object in a_bzrdir.
+        
+        This is used by bzr native formats that have a "format" file in
+        the repository.  Other methods may be used by different types of 
+        control directory.
+        """
         try:
             transport = a_bzrdir.get_repository_transport(None)
             format_string = transport.get("format").read()
-            return klass._formats[format_string]
+            return klass._registry.get(format_string)
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string)
 
-    def _get_control_store(self, repo_transport, control_files):
-        """Return the control store for this repository."""
-        raise NotImplementedError(self._get_control_store)
+    @classmethod
+    def register_format(klass, format):
+        klass._registry.register(format.get_format_string(), format)
+
+    @classmethod
+    @deprecated_method(symbol_versioning.zero_fourteen)
+    def set_default_format(klass, format):
+        klass._set_default_format(format)
+
+    @classmethod
+    def _set_default_format(klass, format):
+        """Set the default format for new Repository creation.
+
+        The format must already be registered.
+        """
+        klass._registry.default_key = format.get_format_string()
+
+    @classmethod
+    def unregister_format(klass, format):
+        klass._registry.remove(format.get_format_string())
     
     @classmethod
     def get_default_format(klass):
         """Return the current default format."""
-        return klass._default_format
+        return klass._registry.get(klass._registry.default_key)
+
+    def _get_control_store(self, repo_transport, control_files):
+        """Return the control store for this repository."""
+        raise NotImplementedError(self._get_control_store)
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format.
@@ -1274,24 +1298,6 @@ class RepositoryFormat(object):
         _found is a private parameter, do not use it.
         """
         raise NotImplementedError(self.open)
-
-    @classmethod
-    def register_format(klass, format):
-        klass._formats[format.get_format_string()] = format
-
-    @classmethod
-    @deprecated_method(symbol_versioning.zero_fourteen)
-    def set_default_format(klass, format):
-        klass._set_default_format(format)
-
-    @classmethod
-    def _set_default_format(klass, format):
-        klass._default_format = format
-
-    @classmethod
-    def unregister_format(klass, format):
-        assert klass._formats[format.get_format_string()] is format
-        del klass._formats[format.get_format_string()]
 
 
 class PreSplitOutRepositoryFormat(RepositoryFormat):
@@ -1807,7 +1813,8 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 RepositoryFormat.register_format(RepositoryFormat7())
-# KEEP in sync with bzrdir.format_registry default
+# KEEP in sync with bzrdir.format_registry default, which controls the overall
+# default control directory format
 _default_format = RepositoryFormatKnit1()
 RepositoryFormat.register_format(_default_format)
 RepositoryFormat.register_format(RepositoryFormatKnit2())

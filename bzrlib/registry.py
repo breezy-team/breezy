@@ -200,6 +200,14 @@ class Registry(object):
         for key, getter in self._dict.iteritems():
             yield key, getter.get_obj()
 
+    def itervalues(self):
+        """Iterate all registry values in key order.
+
+        This imports any lazily registered entries.
+        """
+        for key in self.keys():
+            yield self.get(key)
+
     def _set_default_key(self, key):
         if not self._dict.has_key(key):
             raise KeyError('No object registered under key %s.' % key)
