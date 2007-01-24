@@ -944,7 +944,7 @@ class Inventory(object):
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
-    def iter_entries_by_dir(self, from_dir=None):
+    def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None):
         """Iterate over the entries in a directory first order.
 
         This returns all entries for a directory before returning
@@ -959,10 +959,34 @@ class Inventory(object):
         if from_dir is None:
             if self.root is None:
                 return
+            # Optimize a common case
+            if specific_file_ids is not None and len(specific_file_ids) == 1:
+                file_id = list(specific_file_ids)[0]
+                if file_id in self:
+                    yield self.id2path(file_id), self[file_id]
+                return 
             from_dir = self.root
-            yield '', self.root
+            if (specific_file_ids is None or 
+                self.root.file_id in specific_file_ids):
+                yield '', self.root
         elif isinstance(from_dir, basestring):
             from_dir = self._byid[from_dir]
+
+        if specific_file_ids is not None:
+            parents = set()
+            def add_ancestors(file_id):
+                if file_id not in self:
+                    return
+                parent_id = self[file_id].parent_id
+                if parent_id is None:
+                    return
+                if parent_id not in parents:
+                    parents.add(parent_id)
+                    add_ancestors(parent_id)
+            for file_id in specific_file_ids:
+                add_ancestors(file_id)
+        else:
+            parents = None
             
         stack = [(u'', from_dir)]
         while stack:
@@ -973,10 +997,13 @@ class Inventory(object):
 
                 child_relpath = cur_relpath + child_name
 
-                yield child_relpath, child_ie
+                if (specific_file_ids is None or 
+                    child_ie.file_id in specific_file_ids):
+                    yield child_relpath, child_ie
 
                 if child_ie.kind == 'directory':
-                    child_dirs.append((child_relpath+'/', child_ie))
+                    if parents is None or child_ie.file_id in parents:
+                        child_dirs.append((child_relpath+'/', child_ie))
             stack.extend(reversed(child_dirs))
 
     def entries(self):

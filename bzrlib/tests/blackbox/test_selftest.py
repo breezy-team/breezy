@@ -479,9 +479,9 @@ class TestSelftestCleanOutput(TestCaseInTempDir):
         out,err = self.run_bzr_captured(['selftest','--clean-output'],
                                         working_dir=root)
 
-        self.assertEquals('delete directory: test0000.tmp\n'
-                          'delete directory: test0001.tmp\n',
-                          out)
+        self.assertEquals(['delete directory: test0000.tmp',
+                          'delete directory: test0001.tmp'],
+                          sorted(out.splitlines()))
         self.assertEquals('', err)
 
         after = os.listdir(root)

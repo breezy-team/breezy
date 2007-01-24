@@ -95,25 +95,15 @@ def internal_tree_files(file_list, default_branch=u'.'):
 
 def get_format_type(typestring):
     """Parse and return a format specifier."""
-    if typestring == "weave":
-        return bzrdir.BzrDirFormat6()
+    # Have to use BzrDirMetaFormat1 directly, so that
+    # RepositoryFormat.set_default_format works
     if typestring == "default":
         return bzrdir.BzrDirMetaFormat1()
-    if typestring == "metaweave":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormat7()
-        return format
-    if typestring == "knit":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit1()
-        return format
-    if typestring == "experimental-knit2":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormatKnit2()
-        return format
-    msg = "Unknown bzr format %s. Current formats are: default, knit,\n" \
-          "metaweave and weave" % typestring
-    raise errors.BzrCommandError(msg)
+    try:
+        return bzrdir.format_registry.make_bzrdir(typestring)
+    except KeyError:
+        msg = 'Unknown bzr format "%s". See "bzr help formats".' % typestring
+        raise errors.BzrCommandError(msg)
 
 
 # TODO: Make sure no commands unconditionally use the working directory as a
@@ -844,12 +834,7 @@ class cmd_checkout(Command):
                                              % to_location)
             else:
                 raise
-        old_format = bzrdir.BzrDirFormat.get_default_format()
-        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
-        try:
-            source.create_checkout(to_location, revision_id, lightweight)
-        finally:
-            bzrdir.BzrDirFormat.set_default_format(old_format)
+        source.create_checkout(to_location, revision_id, lightweight)
 
 
 class cmd_renames(Command):
@@ -1213,9 +1198,14 @@ class cmd_diff(Command):
     #       deleted files.
 
     # TODO: This probably handles non-Unix newlines poorly.
-    
+
     takes_args = ['file*']
-    takes_options = ['revision', 'diff-options', 'prefix']
+    takes_options = ['revision', 'diff-options',
+        Option('prefix', type=str,
+               short_name='p',
+               help='Set prefixes to added to old and new filenames, as '
+                    'two values separated by a colon.'),
+        ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
@@ -1231,11 +1221,15 @@ class cmd_diff(Command):
         elif prefix == '1':
             old_label = 'old/'
             new_label = 'new/'
-        else:
-            if not ':' in prefix:
-                 raise BzrCommandError(
-                     "--diff-prefix expects two values separated by a colon")
+        elif ':' in prefix:
             old_label, new_label = prefix.split(":")
+        else:
+            raise BzrCommandError(
+                "--prefix expects two values separated by a colon")
+
+        if revision and len(revision) > 2:
+            raise errors.BzrCommandError('bzr diff --revision takes exactly'
+                                         ' one or two revision specifiers')
         
         try:
             tree1, file_list = internal_tree_files(file_list)
@@ -1261,29 +1255,23 @@ class cmd_diff(Command):
                 tree1, tree2 = None, None
             else:
                 raise
-        if revision is not None:
-            if tree2 is not None:
-                raise errors.BzrCommandError("Can't specify -r with two branches")
-            if (len(revision) == 1) or (revision[1].spec is None):
-                return diff_cmd_helper(tree1, file_list, diff_options,
-                                       revision[0], 
-                                       old_label=old_label, new_label=new_label)
-            elif len(revision) == 2:
-                return diff_cmd_helper(tree1, file_list, diff_options,
-                                       revision[0], revision[1],
-                                       old_label=old_label, new_label=new_label)
-            else:
-                raise errors.BzrCommandError('bzr diff --revision takes exactly'
-                                             ' one or two revision identifiers')
-        else:
-            if tree2 is not None:
-                return show_diff_trees(tree1, tree2, sys.stdout, 
-                                       specific_files=file_list,
-                                       external_diff_options=diff_options,
-                                       old_label=old_label, new_label=new_label)
-            else:
-                return diff_cmd_helper(tree1, file_list, diff_options,
-                                       old_label=old_label, new_label=new_label)
+
+        if tree2 is not None:
+            if revision is not None:
+                # FIXME: but there should be a clean way to diff between
+                # non-default versions of two trees, it's not hard to do
+                # internally...
+                raise errors.BzrCommandError(
+                        "Sorry, diffing arbitrary revisions across branches "
+                        "is not implemented yet")
+            return show_diff_trees(tree1, tree2, sys.stdout, 
+                                   specific_files=file_list,
+                                   external_diff_options=diff_options,
+                                   old_label=old_label, new_label=new_label)
+
+        return diff_cmd_helper(tree1, file_list, diff_options,
+                               revision_specs=revision,
+                               old_label=old_label, new_label=new_label)
 
 
 class cmd_deleted(Command):
@@ -1375,11 +1363,13 @@ class cmd_log(Command):
                             help='show from oldest to newest'),
                      'timezone', 
                      Option('verbose', 
+                             short_name='v',
                              help='show files changed in each revision'),
                      'show-ids', 'revision',
                      'log-format',
                      'line', 'long', 
                      Option('message',
+                            short_name='m',
                             help='show revisions whose message matches this regexp',
                             type=str),
                      'short',
@@ -1516,8 +1506,9 @@ class cmd_touching_revisions(Command):
 class cmd_ls(Command):
     """List files in a tree.
     """
+
+    takes_args = ['path?']
     # TODO: Take a revision or remote path and list that tree instead.
-    hidden = True
     takes_options = ['verbose', 'revision',
                      Option('non-recursive',
                             help='don\'t recurse into sub-directories'),
@@ -1528,12 +1519,16 @@ class cmd_ls(Command):
                      Option('ignored', help='Print ignored files'),
 
                      Option('null', help='Null separate the files'),
+                     'kind', 'show-ids'
                     ]
     @display_command
     def run(self, revision=None, verbose=False, 
             non_recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
-            null=False):
+            null=False, kind=None, show_ids=False, path=None):
+
+        if kind and kind not in ('file', 'directory', 'symlink'):
+            raise errors.BzrCommandError('invalid kind specified')
 
         if verbose and null:
             raise errors.BzrCommandError('Cannot set both --verbose and --null')
@@ -1541,7 +1536,16 @@ class cmd_ls(Command):
 
         selection = {'I':ignored, '?':unknown, 'V':versioned}
 
-        tree, relpath = WorkingTree.open_containing(u'.')
+        if path is None:
+            fs_path = '.'
+            prefix = ''
+        else:
+            if from_root:
+                raise errors.BzrCommandError('cannot specify both --from-root'
+                                             ' and PATH')
+            fs_path = path
+            prefix = path
+        tree, relpath = WorkingTree.open_containing(fs_path)
         if from_root:
             relpath = u''
         elif relpath:
@@ -1550,21 +1554,37 @@ class cmd_ls(Command):
             tree = tree.branch.repository.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
 
-        for fp, fc, kind, fid, entry in tree.list_files(include_root=False):
+        for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
             if fp.startswith(relpath):
-                fp = fp[len(relpath):]
+                fp = osutils.pathjoin(prefix, fp[len(relpath):])
                 if non_recursive and '/' in fp:
                     continue
                 if not all and not selection[fc]:
                     continue
+                if kind is not None and fkind != kind:
+                    continue
                 if verbose:
                     kindch = entry.kind_character()
-                    self.outf.write('%-8s %s%s\n' % (fc, fp, kindch))
+                    outstring = '%-8s %s%s' % (fc, fp, kindch)
+                    if show_ids and fid is not None:
+                        outstring = "%-50s %s" % (outstring, fid)
+                    self.outf.write(outstring + '\n')
                 elif null:
                     self.outf.write(fp + '\0')
+                    if show_ids:
+                        if fid is not None:
+                            self.outf.write(fid)
+                        self.outf.write('\0')
                     self.outf.flush()
                 else:
-                    self.outf.write(fp + '\n')
+                    if fid is not None:
+                        my_id = fid
+                    else:
+                        my_id = ''
+                    if show_ids:
+                        self.outf.write('%-50s %s\n' % (fp, my_id))
+                    else:
+                        self.outf.write(fp + '\n')
 
 
 class cmd_unknowns(Command):
@@ -1750,6 +1770,7 @@ class cmd_cat(Command):
 
     takes_options = ['revision', 'name-from-revision']
     takes_args = ['filename']
+    encoding_type = 'exact'
 
     @display_command
     def run(self, filename, revision=None, name_from_revision=False):
@@ -1829,6 +1850,7 @@ class cmd_commit(Command):
                      Option('unchanged',
                             help='commit even if nothing has changed'),
                      Option('file', type=str, 
+                            short_name='F',
                             argname='msgfile',
                             help='file containing commit message'),
                      Option('strict',
@@ -2025,22 +2047,29 @@ class cmd_nick(Command):
 class cmd_selftest(Command):
     """Run internal test suite.
     
-    This creates temporary test directories in the working directory,
-    but not existing data is affected.  These directories are deleted
-    if the tests pass, or left behind to help in debugging if they
-    fail and --keep-output is specified.
+    This creates temporary test directories in the working directory, but not
+    existing data is affected.  These directories are deleted if the tests
+    pass, or left behind to help in debugging if they fail and --keep-output
+    is specified.
     
-    If arguments are given, they are regular expressions that say
-    which tests should run.
+    If arguments are given, they are regular expressions that say which tests
+    should run.  Tests matching any expression are run, and other tests are
+    not run.
+
+    Alternatively if --first is given, matching tests are run first and then
+    all other tests are run.  This is useful if you have been working in a
+    particular area, but want to make sure nothing else was broken.
 
     If the global option '--no-plugins' is given, plugins are not loaded
     before running the selftests.  This has two effects: features provided or
     modified by plugins will not be tested, and tests provided by plugins will
     not be run.
 
-    examples:
+    examples::
         bzr selftest ignore
+            run only tests relating to 'ignore'
         bzr --no-plugins selftest -v
+            disable plugins and list tests as they're run
     """
     # TODO: --list should give a list of all available tests
 
@@ -2081,11 +2110,16 @@ class cmd_selftest(Command):
                      Option('clean-output',
                             help='clean temporary tests directories'
                                  ' without running tests'),
+                     Option('first',
+                            help='run all tests, but run specified tests first',
+                            )
                      ]
+    encoding_type = 'replace'
 
     def run(self, testspecs_list=None, verbose=None, one=False,
             keep_output=False, transport=None, benchmark=None,
-            lsprof_timed=None, cache_dir=None, clean_output=False):
+            lsprof_timed=None, cache_dir=None, clean_output=False,
+            first=False):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -2110,7 +2144,7 @@ class cmd_selftest(Command):
             if verbose is None:
                 verbose = True
             # TODO: should possibly lock the history file...
-            benchfile = open(".perf_history", "at")
+            benchfile = open(".perf_history", "at", buffering=1)
         else:
             test_suite_factory = None
             if verbose is None:
@@ -2124,7 +2158,9 @@ class cmd_selftest(Command):
                               transport=transport,
                               test_suite_factory=test_suite_factory,
                               lsprof_timed=lsprof_timed,
-                              bench_history=benchfile)
+                              bench_history=benchfile,
+                              matching_tests_first=first,
+                              )
         finally:
             if benchfile is not None:
                 benchfile.close()
@@ -2226,9 +2262,14 @@ class cmd_merge(Command):
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
                      Option('show-base', help="Show base revision text in "
-                            "conflicts"), 
+                            "conflicts"),
                      Option('uncommitted', help='Apply uncommitted changes'
-                            ' from a working copy, instead of branch changes')]
+                            ' from a working copy, instead of branch changes'),
+                     Option('pull', help='If the destination is already'
+                             ' completely merged into the source, pull from the'
+                             ' source rather than merging. When this happens,'
+                             ' you do not need to commit the result.'),
+                     ]
 
     def help(self):
         from inspect import getdoc
@@ -2236,7 +2277,7 @@ class cmd_merge(Command):
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False, 
-            uncommitted=False):
+            uncommitted=False, pull=False):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
 
@@ -2307,6 +2348,7 @@ class cmd_merge(Command):
                     merge_type=merge_type,
                     reprocess=reprocess,
                     show_base=show_base,
+                    pull=pull,
                     pb=pb, file_list=interesting_files)
             finally:
                 pb.finished()
@@ -2969,6 +3011,7 @@ def _merge_helper(other_revision, base_revision,
                   this_dir=None, backup_files=False,
                   merge_type=None,
                   file_list=None, show_base=False, reprocess=False,
+                  pull=False,
                   pb=DummyProgress()):
     """Merge changes into a tree.
 
@@ -3023,6 +3066,12 @@ def _merge_helper(other_revision, base_revision,
         if merger.base_rev_id == merger.other_rev_id:
             note('Nothing to do.')
             return 0
+        if file_list is None:
+            if pull and merger.base_rev_id == merger.this_rev_id:
+                count = merger.this_tree.pull(merger.this_branch,
+                        False, merger.other_rev_id)
+                note('%d revision(s) pulled.' % (count,))
+                return 0
         merger.backup_files = backup_files
         merger.merge_type = merge_type 
         merger.set_interesting_files(file_list)

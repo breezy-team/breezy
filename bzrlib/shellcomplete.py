@@ -25,7 +25,8 @@ def shellcomplete(context=None, outfile = None):
     else:
         shellcomplete_on_command(context, outfile = outfile)
 
-def shellcomplete_on_command(cmdname, outfile = None):
+
+def shellcomplete_on_command(cmdname, outfile=None):
     cmdname = str(cmdname)
 
     if outfile is None:
@@ -39,25 +40,18 @@ def shellcomplete_on_command(cmdname, outfile = None):
     if doc is None:
         raise NotImplementedError("sorry, no detailed shellcomplete yet for %r" % cmdname)
 
-    shellcomplete_on_option(cmdobj.takes_options, outfile = None)
+    shellcomplete_on_options(cmdobj.options().values(), outfile=outfile)
     for aname in cmdobj.takes_args:
         outfile.write(aname + '\n')
 
 
-def shellcomplete_on_option(options, outfile=None):
-    from bzrlib.option import Option
-    if not options:
-        return
-    if outfile is None:
-        outfile = sys.stdout
-    for on in options:
-        for shortname, longname in Option.SHORT_OPTIONS.items():
-            if longname == on:
-                l = '"(--' + on + ' -' + shortname + ')"{--' + on + ',-' + shortname + '}'
-                break
-            else:
-                l = '--' + on
-        outfile.write(l + '\n')
+def shellcomplete_on_options(options, outfile=None):
+    for opt in options:
+        if opt.short_name:
+            outfile.write('"(--%s -%s)"{--%s,-%s}\n'
+                    % (opt.name, opt.short_name, opt.name, opt.short_name))
+        else:
+            outfile.write('--%s\n' % opt.name)
 
 
 def shellcomplete_commands(outfile = None):

@@ -39,7 +39,7 @@ class TestLS(TestCaseWithTransport):
     def ls_equals(self, value, *args):
         out, err = self.run_bzr('ls', *args)
         self.assertEqual('', err)
-        self.assertEqual(value, out)
+        self.assertEqualDiff(value, out)
 
     def test_ls_null_verbose(self):
         # Can't supply both
@@ -83,6 +83,23 @@ class TestLS(TestCaseWithTransport):
                        'V        subdir/b\n'
                        , '--verbose')
 
+    def test_show_ids(self):
+        self.build_tree(['subdir/'])
+        self.wt.add(['a', 'subdir'], ['a-id', 'subdir-id'])
+        self.ls_equals(
+            '.bzrignore                                         \n'
+            'a                                                  a-id\n'
+            'subdir                                             subdir-id\n', 
+            '--show-ids')
+        self.ls_equals(
+            '?        .bzrignore\n'
+            'V        a                                         a-id\n'
+            'V        subdir/                                   subdir-id\n', 
+            '--show-ids', '--verbose')
+        self.ls_equals('.bzrignore\0\0'
+                       'a\0a-id\0'
+                       'subdir\0subdir-id\0', '--show-ids', '--null')
+
     def test_ls_recursive(self):
         self.build_tree(['subdir/', 'subdir/b'])
         self.wt.add(['a', 'subdir/', 'subdir/b', '.bzrignore'])
@@ -116,6 +133,31 @@ class TestLS(TestCaseWithTransport):
                        'a\n'
                        'subdir\n'
                        , '--from-root', '--non-recursive')
+
+    def test_ls_path(self):
+        """If a path is specified, files are listed with that prefix"""
+        self.build_tree(['subdir/', 'subdir/b'])
+        self.wt.add(['subdir', 'subdir/b'])
+        self.ls_equals('subdir/b\n' ,
+                       'subdir')
+        os.chdir('subdir')
+        self.ls_equals('../.bzrignore\n'
+                       '../a\n'
+                       '../subdir\n'
+                       '../subdir/b\n' ,
+                       '..')
+        self.ls_equals('../.bzrignore\0'
+                       '../a\0'
+                       '../subdir\0'
+                       '../subdir/b\0' ,
+                       '..', '--null')
+        self.ls_equals('?        ../.bzrignore\n'
+                       '?        ../a\n'
+                       'V        ../subdir/\n'
+                       'V        ../subdir/b\n' ,
+                       '..', '--verbose')
+        self.run_bzr_error('cannot specify both --from-root and PATH', 'ls',
+                           '--from-root', '..')
 
     def test_ls_revision(self):
         self.wt.add(['a'])
@@ -157,3 +199,13 @@ class TestLS(TestCaseWithTransport):
                        'a\n'
                        , '--versioned')
 
+    def test_kinds(self):
+        self.build_tree(['subdir/'])
+        self.ls_equals('.bzrignore\n' 
+                       'a\n', 
+                       '--kind=file')
+        self.ls_equals('subdir\n',
+                       '--kind=directory')
+        self.ls_equals('',
+                       '--kind=symlink')
+        self.run_bzr_error('invalid kind specified', 'ls', '--kind=pile')

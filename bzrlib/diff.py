@@ -306,29 +306,41 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
 
 def diff_cmd_helper(tree, specific_files, external_diff_options, 
                     old_revision_spec=None, new_revision_spec=None,
+                    revision_specs=None,
                     old_label='a/', new_label='b/'):
     """Helper for cmd_diff.
 
-   tree 
+    :param tree:
         A WorkingTree
 
-    specific_files
+    :param specific_files:
         The specific files to compare, or None
 
-    external_diff_options
+    :param external_diff_options:
         If non-None, run an external diff, and pass it these options
 
-    old_revision_spec
+    :param old_revision_spec:
         If None, use basis tree as old revision, otherwise use the tree for
         the specified revision. 
 
-    new_revision_spec
+    :param new_revision_spec:
         If None, use working tree as new revision, otherwise use the tree for
         the specified revision.
     
+    :param revision_specs: 
+        Zero, one or two RevisionSpecs from the command line, saying what revisions 
+        to compare.  This can be passed as an alternative to the old_revision_spec 
+        and new_revision_spec parameters.
+
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
+
+    # TODO: perhaps remove the old parameters old_revision_spec and
+    # new_revision_spec, since this is only really for use from cmd_diff and
+    # it now always passes through a sequence of revision_specs -- mbp
+    # 20061221
+
     def spec_tree(spec):
         if tree:
             revision = spec.in_store(tree.branch)
@@ -337,15 +349,26 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
         revision_id = revision.rev_id
         branch = revision.branch
         return branch.repository.revision_tree(revision_id)
+
+    if revision_specs is not None:
+        assert (old_revision_spec is None
+                and new_revision_spec is None)
+        if len(revision_specs) > 0:
+            old_revision_spec = revision_specs[0]
+        if len(revision_specs) > 1:
+            new_revision_spec = revision_specs[1]
+
     if old_revision_spec is None:
         old_tree = tree.basis_tree()
     else:
         old_tree = spec_tree(old_revision_spec)
 
-    if new_revision_spec is None:
+    if (new_revision_spec is None
+        or new_revision_spec.spec is None):
         new_tree = tree
     else:
         new_tree = spec_tree(new_revision_spec)
+
     if new_tree is not tree:
         extra_trees = (tree,)
     else:

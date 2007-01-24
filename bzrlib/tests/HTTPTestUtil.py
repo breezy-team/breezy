@@ -18,6 +18,7 @@ from cStringIO import StringIO
 import errno
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 import socket
+import urlparse
 
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.HttpServer import (
@@ -206,7 +207,22 @@ class FakeProxyRequestHandler(TestingHTTPRequestHandler):
     """Append a '-proxied' suffix to file served"""
 
     def translate_path(self, path):
-        return TestingHTTPRequestHandler.translate_path(self,
-                                                        path + '-proxied')
+        # We need to act as a proxy and accept absolute urls,
+        # which SimpleHTTPRequestHandler (grand parent) is not
+        # ready for. So we just drop the protocol://host:port
+        # part in front of the request-url (because we know we
+        # would not forward the request to *another* proxy).
+
+        # So we do what SimpleHTTPRequestHandler.translate_path
+        # do beginning with python 2.4.3: abandon query
+        # parameters, scheme, host port, etc (which ensure we
+        # provide the right behaviour on all python versions).
+        path = urlparse.urlparse(path)[2]
+        # And now, we can apply *our* trick to proxy files
+        self.path += '-proxied'
+        # An finally we leave our mother class do whatever it
+        # wants with the path
+        return TestingHTTPRequestHandler.translate_path(self, path)
+
 
 
