@@ -23,7 +23,7 @@ import unittest
 import bzrlib
 
 __version__ = '0.3.0'
-required_bzr_version = (0,14)
+required_bzr_version = (0,15)
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
@@ -105,6 +105,7 @@ import svn.core
 subr_version = svn.core.svn_subr_version()
 
 if subr_version.major == 1 and subr_version.minor < 4:
+    from bzrlib.trace import warning
     warning('Subversion version too old for working tree support.')
 else:
     BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
