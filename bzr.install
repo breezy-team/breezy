@@ -1,5 +1,3 @@
 contrib/bash/*			etc/bash_completion.d/
-debian/tmp/usr/bin/*
-debian/tmp/usr/lib/*
 doc/*.txt			usr/share/doc/bzr/txt
 doc/*.htm			usr/share/doc/bzr/html

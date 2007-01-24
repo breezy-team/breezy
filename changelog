@@ -3,6 +3,7 @@ bzr (0.14-1) experimental; urgency=low
   * New upstream release
     + More gracefully deals with readonly branches (Closes: #374673)
   * Acknowledge NMUs. (Closes: #395203, #389518, #397535, #397852)
+  * Bump debhelper compat to 5.
 
  -- Wouter van Heyst <larstiq@larstiq.dyndns.org>  Wed, 24 Jan 2007 00:05:48 +0100
 
