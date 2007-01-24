@@ -20,11 +20,13 @@
 
 import os
 
+from bzrlib import osutils
+
 from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestMissing(TestCaseInTempDir):
+class TestMissing(TestCaseWithTransport):
 
     def test_missing(self):
         def bzr(*args, **kwargs):
@@ -120,23 +122,24 @@ class TestMissing(TestCaseInTempDir):
 
     def test_missing_check_last_location(self):
         # check that last location shown as filepath not file URL
-        def bzr(*args, **kwargs):
-            return self.run_bzr(*args, **kwargs)[0]
 
         # create a source branch
         os.mkdir('a')
         os.chdir('a')
-        location = os.getcwd().replace('\\','/') + '/'
-        bzr('init')
-        open('a', 'wb').write('initial\n')
-        bzr('add', 'a')
-        bzr('commit', '-m', 'inital')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['foo'])
+        wt.add('foo')
+        wt.commit('initial')
+
+        location = osutils.getcwd() + '/'
+
         # clone
-        bzr('branch', '.', '../b')
-        os.chdir('../b')
+        b.bzrdir.sprout('../b')
 
         # check last location
-        lines = bzr('missing')
+        lines, err = self.run_bzr('missing', working_dir='../b')
         self.assertEquals('Using last location: %s\n'
                           'Branches are up to date.\n' % location,
                           lines)
+        self.assertEquals('', err)
