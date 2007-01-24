@@ -22,7 +22,7 @@ and produce non-empty output.
 
 from cStringIO import StringIO
 
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestSkipped
 
 
 class Options:
@@ -38,13 +38,19 @@ class TestGenerateDocs(TestCase):
         self.options.bzr_name = 'bzr'
 
     def test_man_page(self):
-        from tools.doc_generate import autodoc_man
+        try:
+            from tools.doc_generate import autodoc_man
+        except ImportError:
+            raise TestSkipped('The package "tools" is not available to test.')
 
         autodoc_man.infogen(self.options, self.sio)
         self.assertNotEqual('', self.sio.getvalue())
 
     def test_rstx_man(self):
-        from tools.doc_generate import autodoc_rstx
+        try:
+            from tools.doc_generate import autodoc_rstx
+        except ImportError:
+            raise TestSkipped('The package "tools" is not available to test.')
 
         autodoc_rstx.infogen(self.options, self.sio)
         self.assertNotEqual('', self.sio.getvalue())
