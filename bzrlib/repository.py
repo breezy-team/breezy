@@ -1136,6 +1136,15 @@ class KnitRepository2(KnitRepository):
                                  committer, revprops, revision_id)
 
 
+class RepositoryFormatRegistry(registry.Registry):
+    """Registry of RepositoryFormats.
+    """
+    
+
+format_registry = RepositoryFormatRegistry()
+"""Registry of formats, indexed by their identifying format string."""
+
+
 class RepositoryFormat(object):
     """A repository format.
 
@@ -1160,9 +1169,6 @@ class RepositoryFormat(object):
     parameterisation.
     """
 
-    _registry = registry.Registry()
-    """Registry of formats, indexed by their identifying format string."""
-
     def __str__(self):
         return "<%s>" % self.__class__.__name__
 
@@ -1177,15 +1183,11 @@ class RepositoryFormat(object):
         try:
             transport = a_bzrdir.get_repository_transport(None)
             format_string = transport.get("format").read()
-            return klass._registry.get(format_string)
+            return format_registry.get(format_string)
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string)
-
-    @classmethod
-    def register_format(klass, format):
-        klass._registry.register(format.get_format_string(), format)
 
     @classmethod
     @deprecated_method(symbol_versioning.zero_fourteen)
@@ -1198,16 +1200,20 @@ class RepositoryFormat(object):
 
         The format must already be registered.
         """
-        klass._registry.default_key = format.get_format_string()
+        format_registry.default_key = format.get_format_string()
+
+    @classmethod
+    def register_format(klass, format):
+        format_registry.register(format.get_format_string(), format)
 
     @classmethod
     def unregister_format(klass, format):
-        klass._registry.remove(format.get_format_string())
+        format_registry.remove(format.get_format_string())
     
     @classmethod
     def get_default_format(klass):
         """Return the current default format."""
-        return klass._registry.get(klass._registry.default_key)
+        return format_registry.get(format_registry.default_key)
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""

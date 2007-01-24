@@ -24,8 +24,10 @@ Specific tests for individual formats are in the tests/test_repository.py file
 rather than in tests/branch_implementations/*.py.
 """
 
+from bzrlib import (
+    repository,
+    )
 from bzrlib.repository import (_legacy_formats,
-                               RepositoryFormat,
                                RepositoryTestProviderAdapter,
                                )
                             
@@ -47,7 +49,7 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_repository',
         'bzrlib.tests.repository_implementations.test_revision',
         ]
-    all_formats = list(RepositoryFormat._registry.itervalues()) \
+    all_formats = list(repository.format_registry.itervalues()) \
         + _legacy_formats
     adapter = RepositoryTestProviderAdapter(
         default_transport,
