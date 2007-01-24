@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-import inspect
+_inspect = None
 
 
 __all__ = ['needs_read_lock',
@@ -32,10 +32,14 @@ def _get_parameters(func):
         passed_params is how you would pass the parameters to a new function.
         This is something like "a=a, b=b, c=c, d=d"
     """
-    args, varargs, varkw, defaults = inspect.getargspec(func)
-    formatted = inspect.formatargspec(args, varargs=varargs,
-                                      varkw=varkw,
-                                      defaults=defaults)
+    global _inspect
+    if _inspect is None:
+        import inspect
+        _inspect = inspect
+    args, varargs, varkw, defaults = _inspect.getargspec(func)
+    formatted = _inspect.formatargspec(args, varargs=varargs,
+                                       varkw=varkw,
+                                       defaults=defaults)
     if defaults is None:
         args_passed = args
     else:
@@ -52,7 +56,7 @@ def _get_parameters(func):
     return formatted[1:-1], args_passed
 
 
-def needs_read_lock(unbound):
+def _pretty_needs_read_lock(unbound):
     """Decorate unbound to take out and release a read lock.
 
     This decorator can be applied to methods of any class with lock_read() and
@@ -97,7 +101,31 @@ read_locked = %(name)s_read_locked
     return read_locked
 
 
-def needs_write_lock(unbound):
+def _fast_needs_read_lock(unbound):
+    """Decorate unbound to take out and release a read lock.
+
+    This decorator can be applied to methods of any class with lock_read() and
+    unlock() methods.
+    
+    Typical usage:
+        
+    class Branch(...):
+        @needs_read_lock
+        def branch_method(self, ...):
+            stuff
+    """
+    def read_locked(self, *args, **kwargs):
+        self.lock_read()
+        try:
+            return unbound(self, *args, **kwargs)
+        finally:
+            self.unlock()
+    read_locked.__doc__ = unbound.__doc__
+    read_locked.__name__ = unbound.__name__
+    return read_locked
+
+
+def _pretty_needs_write_lock(unbound):
     """Decorate unbound to take out and release a write lock."""
     template = """\
 def %(name)s_write_locked(%(params)s):
@@ -121,3 +149,39 @@ write_locked = %(name)s_write_locked
     write_locked.__name__ = unbound.__name__
     return write_locked
 
+
+def _fast_needs_write_lock(unbound):
+    """Decorate unbound to take out and release a write lock."""
+    def write_locked(self, *args, **kwargs):
+        self.lock_write()
+        try:
+            return unbound(self, *args, **kwargs)
+        finally:
+            self.unlock()
+    write_locked.__doc__ = unbound.__doc__
+    write_locked.__name__ = unbound.__name__
+    return write_locked
+
+
+# Default is more functionality, 'bzr' the commandline will request fast
+# versions.
+needs_read_lock = _pretty_needs_read_lock
+needs_write_lock = _pretty_needs_write_lock
+
+
+def use_fast_decorators():
+    """Change the default decorators to be fast loading ones.
+
+    The alternative is to have decorators that do more work to produce
+    nice-looking decorated functions, but this slows startup time.
+    """
+    global needs_read_lock, needs_write_lock
+    needs_read_lock = _fast_needs_read_lock
+    needs_write_lock = _fast_needs_write_lock
+
+
+def use_pretty_decorators():
+    """Change the default decorators to be pretty ones."""
+    global needs_read_lock, needs_write_lock
+    needs_read_lock = _pretty_needs_read_lock
+    needs_write_lock = _pretty_needs_write_lock
