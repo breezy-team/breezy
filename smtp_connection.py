@@ -81,7 +81,7 @@ class SMTPConnection(object):
 
         if self._smtp_password is None:
             self._smtp_password = ui.ui_factory.get_password(
-                'Please enter the SMTP password: %(user)@%(host)s',
+                'Please enter the SMTP password: %(user)s@%(host)s',
                 user=self._smtp_username,
                 host=self._smtp_server)
         try:
