@@ -49,8 +49,8 @@ def test_suite():
         'bzrlib.tests.repository_implementations.test_repository',
         'bzrlib.tests.repository_implementations.test_revision',
         ]
-    all_formats = list(repository.format_registry.itervalues()) \
-        + _legacy_formats
+    all_formats = [v for (k, v) in repository.format_registry.iteritems()]
+    all_formats.extend(_legacy_formats)
     adapter = RepositoryTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
