@@ -258,6 +258,8 @@ class TestSource(TestSourceHelper):
         incorrect = []
 
         for fname, text in self.get_source_file_contents():
+            if '/util/' in fname or '/plugins/' in fname:
+                continue
             if '\t' in text:
                 incorrect.append(fname)
 
