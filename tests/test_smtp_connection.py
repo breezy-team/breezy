@@ -74,6 +74,24 @@ class TestSMTPConnection(TestCase):
         self.assertEqual(None, conn._smtp_username)
         self.assertEqual(None, conn._smtp_password)
 
+    def test_smtp_server(self):
+        conn = self.get_connection('[DEFAULT]\nsmtp_server=host:10\n')
+        self.assertEqual('host:10', conn._smtp_server)
+
+    def test_smtp_username(self):
+        conn = self.get_connection('')
+        self.assertIs(None, conn._smtp_username)
+
+        conn = self.get_connection('[DEFAULT]\nsmtp_username=joebody\n')
+        self.assertEqual(u'joebody', conn._smtp_username)
+
+    def test_smtp_password(self):
+        conn = self.get_connection('')
+        self.assertIs(None, conn._smtp_password)
+
+        conn = self.get_connection('[DEFAULT]\nsmtp_password=mypass\n')
+        self.assertEqual(u'mypass', conn._smtp_password)
+
     def assertSplitEquals(self, username, email, address):
         actual = SMTPConnection._split_address(address)
         self.assertEqual((username, email), actual)
@@ -81,11 +99,9 @@ class TestSMTPConnection(TestCase):
     def test__split_address(self):
         self.assertSplitEquals(u'Joe Foo', 'joe@foo.com',
                                u'Joe Foo <joe@foo.com>')
-        self.assertSplitEquals(u'Joe Foo', 'joe@foo.com',
-                               u'Joe Foo joe@foo.com')
         self.assertSplitEquals(u'Joe F\xb5', 'joe@foo.com',
-                               u'Joe F\xb5 joe@foo.com')
-        self.assertSplitEquals('joe', 'joe', 'joe')
+                               u'Joe F\xb5 <joe@foo.com>')
+        self.assertSplitEquals('', 'joe', 'joe')
 
     def test_simple_send(self):
         """Test that we build up a reasonable looking email.
@@ -226,3 +242,58 @@ class TestSMTPConnection(TestCase):
    'AGZvb/////8=\n'
    '--=====123456==--'
    ) % _bzrlib_version, conn.actions[1][3])
+
+    def test_email_parse(self):
+        """Check that python's email can parse our emails."""
+        conn = self.get_connection('')
+        from_addr = u'Jerry F\xb5z <jerry@fooz.com>'
+        to_addr = u'Biz N\xe5 <biz@na.com>'
+        subject = u'Hello Biz N\xe5'
+        message=(u'Hello Biz N\xe5\n'
+                 u'See my attached patch\n')
+        diff_txt = ('=== diff contents\n'
+                    '--- old\n'
+                    '+++ new\n'
+                    ' unchanged\n'
+                    '-old binary\xb5\n'
+                    '-new binary\xe5\n'
+                    ' unchanged\n')
+        conn.send_text_and_attachment_email(from_addr, [to_addr], subject,
+                                            message, diff_txt, 'test.diff')
+        self.assertEqual(('create_connection',), conn.actions[0])
+        self.assertEqual(('sendmail', 'jerry@fooz.com', ['biz@na.com']),
+                         conn.actions[1][:3])
+        email_message_text = conn.actions[1][3]
+
+        try:
+            # python 2.5
+            from email.parser import Parser
+            from email.header import decode_header
+        except ImportError:
+            # python 2.4
+            from email.Parser import Parser
+            from email.Header import decode_header
+
+        def decode(s):
+            """Convert a header string to a unicode string.
+
+            This handles '=?utf-8?q?foo=C2=B5?=' => u'Foo\\xb5'
+            """
+            return ' '.join([chunk.decode(encoding or 'ascii')
+                             for chunk, encoding in decode_header(s)])
+
+        p = Parser()
+        email_message = p.parsestr(email_message_text)
+
+        self.assertEqual(from_addr, decode(email_message['From']))
+        self.assertEqual(to_addr, decode(email_message['To']))
+        self.assertEqual(subject, decode(email_message['Subject']))
+        text_payload = email_message.get_payload(0)
+        diff_payload = email_message.get_payload(1)
+        # I haven't found a way to have python's email read the charset=""
+        # portion of the Content-Type header. So I'm doing it manually
+        # The 'decode=True' here means to decode from base64 => 8-bit text.
+        # text_payload.get_charset() returns None
+        text = text_payload.get_payload(decode=True).decode('utf-8')
+        self.assertEqual(message, text)
+        self.assertEqual(diff_txt, diff_payload.get_payload(decode=True))

@@ -22,14 +22,15 @@ try:
     # python <= 2.4
     from email.MIMEText import MIMEText
     from email.MIMEMultipart import MIMEMultipart
+    from email.Utils import parseaddr
 except ImportError:
     # python 2.5 moved MIMEText into a better namespace
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
+    from email.utils import parseaddr
 import smtplib
 
 from bzrlib import (
-    lazy_regex,
     ui,
     __version__ as _bzrlib_version,
     )
@@ -43,10 +44,6 @@ class SMTPConnection(object):
     """
 
     _default_smtp_server = 'localhost'
-    _user_and_email_re = lazy_regex.lazy_compile(
-        r'(?P<username>.*?)\s*<?' # user and optional opening '<'
-        r'(?P<email>[\w+.-]+@[\w+.-]+)>?' # email and closing '>'
-        )
 
     def __init__(self, config):
         self._config = config
@@ -107,15 +104,7 @@ class SMTPConnection(object):
         :param address: A combined username
         :return: (username, email)
         """
-        m = SMTPConnection._user_and_email_re.match(address)
-        if m is None:
-            # We didn't find an email address, so lets just assume that the
-            # username == address
-            # That way if someone configures "user" then we send an email to:
-            # user <user>, which could actually be correct.
-            return address, address
-
-        return m.group('username'), m.group('email').encode('ascii')
+        return parseaddr(address)
 
     def _basic_message(self, from_address, to_addresses, subject):
         """Create the basic Message using the right Header info.
