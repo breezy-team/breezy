@@ -15,9 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-_inspect = None
-
-
 __all__ = ['needs_read_lock',
            'needs_write_lock',
            'use_fast_decorators',
@@ -28,20 +25,28 @@ __all__ = ['needs_read_lock',
 def _get_parameters(func):
     """Recreate the parameters for a function using introspection.
 
-    :return: (function_params, passed_params)
-        function_params is the list of parameters to the original function.
-        This is something like "a, b, c=None, d=1"
-        passed_params is how you would pass the parameters to a new function.
-        This is something like "a=a, b=b, c=c, d=d"
+    :return: (function_params, calling_params)
+        function_params: is a string representing the parameters of the
+            function. (such as "a, b, c=None, d=1")
+            This is used in the function declaration.
+        calling_params: is another string representing how you would call the
+            function with the correct parameters. (such as "a, b, c=c, d=d")
+            Assuming you sued function_params in the function declaration, this
+            is the parameters to put in the function call.
+
+        For example:
+
+        def wrapper(%(function_params)s):
+            return original(%(calling_params)s)
     """
-    global _inspect
-    if _inspect is None:
-        import inspect
-        _inspect = inspect
-    args, varargs, varkw, defaults = _inspect.getargspec(func)
-    formatted = _inspect.formatargspec(args, varargs=varargs,
-                                       varkw=varkw,
-                                       defaults=defaults)
+    # "import inspect" should stay in local scope. 'inspect' takes a long time
+    # to import the first time. And since we don't always need it, don't import
+    # it globally.
+    import inspect
+    args, varargs, varkw, defaults = inspect.getargspec(func)
+    formatted = inspect.formatargspec(args, varargs=varargs,
+                                      varkw=varkw,
+                                      defaults=defaults)
     if defaults is None:
         args_passed = args
     else:
