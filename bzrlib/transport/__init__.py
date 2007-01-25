@@ -132,7 +132,9 @@ def register_lazy_transport(scheme, module, classname):
         if _add_hints_to_get(klass):
             symbol_versioning.warn('Transport %s should declare a **hints'
                                    ' parameter for its get method'
-                                   % classname, DeprecationWarning)
+                                   % classname,
+                                   DeprecationWarning,
+                                   stacklevel=4)
         return klass(base)
     _loader.module = module
     _loader.classname = classname

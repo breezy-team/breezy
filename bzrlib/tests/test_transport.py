@@ -33,6 +33,7 @@ from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import (_CoalescedOffset,
                               _get_protocol_handlers,
                               _get_transport_modules,
+                              _add_hints_to_get,
                               get_transport,
                               register_lazy_transport,
                               _set_protocol_handlers,
@@ -551,3 +552,55 @@ class TestLocalTransports(TestCase):
         t = get_transport(here_url)
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, here_url)
+
+
+class TestTransportAPI(TestCase):
+
+    def assert_get_modified(self, klass):
+        """Asserts that the 'hints' parameter have been added to klass.get"""
+        self.assertTrue(_add_hints_to_get(klass))
+
+    def assert_get_not_modified(self, klass):
+        """Asserts that the 'hints' parameter have been added to klass.get"""
+        self.assertFalse(_add_hints_to_get(klass))
+
+    def test_get(self):
+
+        class SimpleGetWithoutHintsTransport(Transport):
+            """A transport implementing get without hints"""
+
+            def get(self, relpath):
+                return super(SimpleGetWithoutHintsTransport, self).get(relpath)
+
+
+        self.assert_get_modified(SimpleGetWithoutHintsTransport)
+
+        class LessSimpleGetWoHintsTransport(Transport):
+            """A transport implementing get without hints"""
+
+            def get(self, relpath, par1, par2=None):
+                return super(LessSimpleGetWoHintsTransport, self).get(relpath)
+
+
+        self.assert_get_modified(LessSimpleGetWoHintsTransport)
+
+        class SimpleGetWithHintsTransport(Transport):
+            """A transport implementing get with hints"""
+
+            def get(self, relpath, par1, **hints):
+                return super(SimpleGetWithHintsTransport, self).get(relpath)
+
+
+        self.assert_get_not_modified(SimpleGetWithHintsTransport)
+
+        class StrangeGetWithHintsTransport(Transport):
+            """A transport implementing get with hints but named differently"""
+
+            def get(self, relpath, par1, **not_hints_but_something_else):
+                return super(SimpleGetWithHintsTransport, self).get(relpath)
+
+        # Borderline case, not existing today: someone use a
+        # kwargs for get but for another purpose than hints. The
+        # consequences are unclear, but at least this test
+        # document it.
+        self.assert_get_not_modified(StrangeGetWithHintsTransport)

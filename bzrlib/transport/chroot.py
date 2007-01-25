@@ -71,7 +71,9 @@ class ChrootTransportDecorator(TransportDecorator):
 
     def get(self, relpath, **hints):
         self._ensure_relpath_is_child(relpath)
-        # FIXME: Is it wise to forward the follow_redirection hint ?
+        # FIXME: Is it wise to forward the follow_redirection
+        # hint ? Shouldn't we force it to never follow
+        # redirectons instead ?
         return TransportDecorator.get(self, relpath, **hints)
 
     def get_bytes(self, relpath):

@@ -222,7 +222,7 @@ class HttpTransportBase(Transport, smart.SmartClientMedium):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
-        :param hints: A dict of hints applicable to the get.
+        :param hints: A TransportHints applicable to the get.
             follow_redirections: False
                 will raise RedirectRequested instead of silently
                 following the redirections.

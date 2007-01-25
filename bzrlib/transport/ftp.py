@@ -252,8 +252,7 @@ class FtpTransport(Transport):
             mutter("FTP has not: %s: %s", abspath, e)
             return False
 
-    # FIXME: the 'hints' parameter is commented out
-    def get(self, relpath, decode=False, retries=0):#, **hints):
+    def get(self, relpath, decode=False, retries=0, **hints):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file

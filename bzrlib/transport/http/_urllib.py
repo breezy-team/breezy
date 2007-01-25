@@ -110,14 +110,13 @@ class HttpTransport_urllib(HttpTransportBase):
             self._password = request.password
 
         code = response.code
-        if request.follow_redirections is False and code in (301, 302, 303, 307):
+        if request.follow_redirections is False \
+                and code in (301, 302, 303, 307):
             raise errors.RedirectRequested(request.get_full_url(),
                                            request.redirected_to,
                                            is_permament=(code == 301))
 
         if request.redirected_to is not None:
-            # TODO: Update the transport so that subsequent
-            # requests goes directly to the right host
             mutter('redirected from: %s to: %s' % (request.get_full_url(),
                                                    request.redirected_to))
 
