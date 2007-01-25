@@ -15,11 +15,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from unittest import TestSuite
+from unittest import TestLoader, TestSuite
 
 def test_suite():
     result = TestSuite()
-    import bzrlib.plugins.email.tests.testemail as testemail
-    result.addTest(testemail.test_suite())
+    import testemail
+    import test_smtp_connection
+
+    loader = TestLoader()
+    result.addTests(loader.loadTestsFromModule(testemail))
+    result.addTests(loader.loadTestsFromModule(test_smtp_connection))
     return result
 
