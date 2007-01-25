@@ -102,8 +102,9 @@ class EmailSender(object):
             if numlines <= difflimit:
                 outf.write(diff_content.getvalue())
             else:
-                outf.write("\nDiff too large for email (%d, the limit is %d).\n"
-                    % (numlines, difflimit))
+                outf.write("\nDiff too large for email"
+                           " (%d lines, the limit is %d).\n"
+                           % (numlines, difflimit))
 
     def difflimit(self):
         """maximum number of lines of diff to show."""
@@ -201,7 +202,7 @@ class EmailSender(object):
 
 
 class SMTPConnection(object):
-    """Connecting to an SMTP server and send an email.
+    """Connect to an SMTP server and send an email.
 
     This is a gateway between bzrlib.config.Config and smtplib.SMTP. It
     understands the basic bzr SMTP configuration information.
@@ -316,17 +317,7 @@ class SMTPConnection(object):
         msg['Subject'] = Header(subject)
         return msg, from_email, to_emails
 
-    def send_text_email(self, from_address, to_addresses, subject, message):
-        """Send a single text-only email.
-
-        This is a helper when you know you are just sending a simple text
-        message. See create_email for an explanation of parameters.
-        """
-        msg, from_email, to_emails = self.create_email(from_address,
-                                            to_addresses, subject, message)
-        self._send_message(msg, from_email, to_emails)
-
-    def create_email(self, from_address, to_addresses, subject, message):
+    def create_email(self, from_address, to_addresses, subject, text):
         """Create an email.Message object.
 
         This function allows you to create a basic email, and then add extra
@@ -338,43 +329,72 @@ class SMTPConnection(object):
             Example: [u'Joe B\xe5 <joe@bar.com>', u'Lilly <lilly@nowhere.com>']
         :param subject: A Unicode Subject for the email.
             Example: u'Use Bazaar, its c\xb5l'
-        :param message: A Unicode message (will be encoded into utf-8)
+        :param text: A Unicode message (will be encoded into utf-8)
             Example: u'I started using Bazaar today.\nI highly recommend it.\n'
-        :return: (message, from_email, to_emails)
-            message: is a MIME wrapper with the email headers setup. You can add
-                more payload by using .attach()
+        :return: (email_message, from_email, to_emails)
+            email_message: is a MIME wrapper with the email headers setup. You
+                can add more payload by using .attach()
             from_email: the email address extracted from from_address
             to_emails: the list of email addresses extracted from to_addresses
         """
         msg, from_email, to_emails = self._basic_message(from_address,
                                                          to_addresses, subject)
-        payload = MIMEText(message.encode('utf-8'), 'plain', 'utf-8')
+        payload = MIMEText(text.encode('utf-8'), 'plain', 'utf-8')
         msg.attach(payload)
         return msg, from_email, to_emails
 
-    def _send_message(self, msg, from_email, to_emails):
-        """Actually send an email to the server."""
-        self._connect()
-        self._connection.sendmail(from_email, to_emails, msg.as_string())
+    def send_email(self, email_message, from_email, to_emails):
+        """Actually send an email to the server.
 
-    def send_text_and_diff_email(self, from_address, to_addresses, subject,
-                                 message, diff_txt, fname='patch.diff'):
-        """Send a message with a Unicode message and an 8-bit text diff.
+        If your requirements are simple, you can simply:
+        smtp.send_email(*smtp.create_email(...))
+        because the parameters passed to send_email() are the same as the
+        parameters returned from create_email.
+
+        :param email_message: An email.Message object. You can just pass the
+            value from create_email().
+        :param from_email: The email address to send from. Usually just the
+            value returned from create_email()
+        :param to_emails: A list of emails to send to.
+        :return: None
+        """
+        self._connect()
+        self._connection.sendmail(from_email, to_emails,
+                                  email_message.as_string())
+
+    def send_text_email(self, from_address, to_addresses, subject, message):
+        """Send a single text-only email.
+
+        This is a helper when you know you are just sending a simple text
+        message. See create_email for an explanation of parameters.
+        """
+        msg, from_email, to_emails = self.create_email(from_address,
+                                            to_addresses, subject, message)
+        self.send_email(msg, from_email, to_emails)
+
+    def send_text_and_attachment_email(self, from_address, to_addresses,
+                                       subject, message, attachment_text,
+                                       attachment_filename='patch.diff'):
+        """Send a Unicode message and an 8-bit attachment.
 
         See create_email for common parameter definitions.
-        :param diff_txt: The 8-bit diff text. This will not be translated.
-            It must be an 8-bit string, since we don't do any encoding.
+        :param attachment_text: This is assumed to be an 8-bit text attachment.
+            This assumes you want the attachment to be shown in the email.
+            So don't use this for binary file attachments.
+        :param attachment_filename: The name for the attachement. This will
+            give a default name for email programs to save the attachment.
         """
         msg, from_email, to_emails = self.create_email(from_address,
                                             to_addresses, subject, message)
         # Must be an 8-bit string
-        assert isinstance(diff_txt, str)
+        assert isinstance(attachment_text, str)
 
-        diff_payload = MIMEText(diff_txt, 'plain', '8-bit')
+        diff_payload = MIMEText(attachment_text, 'plain', '8-bit')
         # Override Content-Type so that we can include the name
         content_type = diff_payload['Content-Type']
-        content_type += '; name="%s"' % (fname,)
+        content_type += '; name="%s"' % (attachment_filename,)
         diff_payload.replace_header('Content-Type', content_type)
-        diff_payload['Content-Disposition'] = 'inline; filename="%s"' % (fname,)
+        diff_payload['Content-Disposition'] = ('inline; filename="%s"'
+                                               % (attachment_filename,))
         msg.attach(diff_payload)
-        self._send_message(msg, from_email, to_emails)
+        self.send_email(msg, from_email, to_emails)

@@ -252,7 +252,7 @@ class TestSMTPConnection(TestCaseWithMemoryTransport):
    '--=====123456==--'
    ) % _bzrlib_version, conn.actions[1][3])
 
-    def test_send_text_and_diff_email(self):
+    def test_send_text_and_attachment_email(self):
         conn = self.get_connection(unconfigured_config)
         from_addr = u'Jerry F\xb5z <jerry@fooz.com>'
         to_addr = u'Biz N\xe5 <biz@na.com>'
@@ -266,8 +266,8 @@ class TestSMTPConnection(TestCaseWithMemoryTransport):
                     '-old binary\xb5\n'
                     '-new binary\xe5\n'
                     ' unchanged\n')
-        conn.send_text_and_diff_email(from_addr, [to_addr], subject,
-                                      message, diff_txt, 'test.diff')
+        conn.send_text_and_attachment_email(from_addr, [to_addr], subject,
+                                            message, diff_txt, 'test.diff')
         self.assertEqual(('create_connection',), conn.actions[0])
         self.assertEqual(('sendmail', 'jerry@fooz.com', ['biz@na.com']),
                          conn.actions[1][:3])
@@ -295,5 +295,64 @@ class TestSMTPConnection(TestCaseWithMemoryTransport):
    'PT09IGRpZmYgY29udGVudHMKLS0tIG9sZAorKysgbmV3CiB1bmNoYW5nZWQKLW9sZCBiaW5hcnm1\n'
    'Ci1uZXcgYmluYXJ55QogdW5jaGFuZ2VkCg==\n'
    '\n'
+   '--=====123456==--'
+   ) % _bzrlib_version, conn.actions[1][3])
+
+    def test_create_and_send(self):
+        """Test that you can create a custom email, and send it."""
+        conn = self.get_connection(unconfigured_config)
+        email_msg, from_email, to_emails = conn.create_email(
+            'Joe Foo <joe@foo.com>',
+            ['Jane Foo <jane@foo.com>', 'Barry Foo <barry@foo.com>'],
+            'Hi Jane and Barry',
+            'Check out the attachment\n')
+        self.assertEqual('joe@foo.com', from_email)
+        self.assertEqual(['jane@foo.com', 'barry@foo.com'], to_emails)
+
+        try:
+            # python 2.5
+            from email.mime.nonmultipart import MIMENonMultipart
+            from email.encoders import encode_base64
+        except ImportError:
+            # python 2.4
+            from email.MIMENonMultipart import MIMENonMultipart
+            from email.Encoders import encode_base64
+
+        attachment_txt = '\x00foo\xff\xff\xff\xff'
+        attachment = MIMENonMultipart('application', 'octet-stream')
+        attachment.set_payload(attachment_txt)
+        encode_base64(attachment)
+
+        email_msg.attach(attachment)
+
+        # This will add someone to send to, but not include it in the To list.
+        to_emails.append('b@cc.com')
+        conn.send_email(email_msg, from_email, to_emails)
+
+        self.assertEqual(('create_connection',), conn.actions[0])
+        self.assertEqual(('sendmail', 'joe@foo.com',
+                          ['jane@foo.com', 'barry@foo.com', 'b@cc.com']),
+                         conn.actions[1][:3])
+        self.assertEqualDiff((
+   'Content-Type: multipart/mixed; boundary="=====123456=="\n'
+   'MIME-Version: 1.0\n'
+   'From: =?utf8?q?Joe_Foo?= <joe@foo.com>\n'
+   'User-Agent: bzr/%s\n'
+   'To: =?utf8?q?Jane_Foo?= <jane@foo.com>, =?utf8?q?Barry_Foo?= <barry@foo.com>\n'
+   'Subject: Hi Jane and Barry\n'
+   '\n'
+   '--=====123456==\n'
+   'Content-Type: text/plain; charset="utf-8"\n'
+   'MIME-Version: 1.0\n'
+   'Content-Transfer-Encoding: base64\n'
+   '\n'
+   'Q2hlY2sgb3V0IHRoZSBhdHRhY2htZW50Cg==\n'
+   '\n'
+   '--=====123456==\n'
+   'Content-Type: application/octet-stream\n'
+   'MIME-Version: 1.0\n'
+   'Content-Transfer-Encoding: base64\n'
+   '\n'
+   'AGZvb/////8=\n'
    '--=====123456==--'
    ) % _bzrlib_version, conn.actions[1][3])
