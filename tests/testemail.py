@@ -18,8 +18,11 @@
 from cStringIO import StringIO
 from unittest import TestLoader
 
+from bzrlib import (
+    config,
+    __version__ as _bzrlib_version,
+    )
 from bzrlib.bzrdir import BzrDir
-import bzrlib.config as config
 from bzrlib.tests import TestCaseInTempDir, TestCaseWithMemoryTransport
 from bzrlib.plugins.email import post_commit
 from bzrlib.plugins.email.emailer import EmailSender, SMTPConnection
@@ -169,10 +172,10 @@ class InstrumentedSMTPConnection(SMTPConnection):
 
     def _basic_message(self, *args, **kwargs):
         """Override to force the boundary for easier testing."""
-        msg = super(InstrumentedSMTPConnection,
+        msg, from_email, to_emails = super(InstrumentedSMTPConnection,
         self)._basic_message(*args, **kwargs)
         msg.set_boundary('=====123456==')
-        return msg
+        return msg, from_email, to_emails
 
            
 class TestSMTPConnection(TestCaseWithMemoryTransport):
@@ -201,7 +204,25 @@ class TestSMTPConnection(TestCaseWithMemoryTransport):
         self.assertEqual(None, conn._smtp_username)
         self.assertEqual(None, conn._smtp_password)
 
+    def assertSplitEquals(self, username, email, address):
+        actual = SMTPConnection._split_address(address)
+        self.assertEqual((username, email), actual)
+
+    def test__split_address(self):
+        self.assertSplitEquals(u'Joe Foo', 'joe@foo.com',
+                               u'Joe Foo <joe@foo.com>')
+        self.assertSplitEquals(u'Joe Foo', 'joe@foo.com',
+                               u'Joe Foo joe@foo.com')
+        self.assertSplitEquals(u'Joe F\xb5', 'joe@foo.com',
+                               u'Joe F\xb5 joe@foo.com')
+        self.assertSplitEquals('joe', 'joe', 'joe')
+
     def test_simple_send(self):
+        """Test that we build up a reasonable looking email.
+        
+        This also tests that we extract the right email addresses, etc, and it
+        gets passed to sendmail() with the right parameters.
+        """
         conn = self.get_connection(unconfigured_config)
         from_addr = u'Jerry F\xb5z <jerry@fooz.com>'
         to_addr = u'Biz N\xe5 <biz@na.com>'
@@ -214,19 +235,65 @@ class TestSMTPConnection(TestCaseWithMemoryTransport):
         self.assertEqual(('sendmail', 'jerry@fooz.com', ['biz@na.com']),
                          conn.actions[1][:3])
         self.assertEqualDiff((
-                           'MIME-Version: 1.0\n'
-                           'Content-Type: multipart/mixed; charset="utf-8"; boundary="=====123456=="\n'
-                           'Content-Transfer-Encoding: base64\n'
-                           'From: =?utf-8?b?SmVycnkgRsK1eiA8amVycnlAZm9vei5jb20+?=\n'
-                           'To: =?utf-8?b?Qml6IE7DpSA8Yml6QG5hLmNvbT4=?=\n'
-                           'Subject: =?utf-8?q?Hello_Biz_N=C3=A5?=\n'
-                           '\n'
-                           '--=====123456==\n'
-                           'Content-Type: text/plain; charset="utf-8"\n'
-                           'MIME-Version: 1.0\n'
-                           'Content-Transfer-Encoding: base64\n'
-                           '\n'
-                           'SGVsbG8gQml6IE7DpQpJIGhhdmVuJ3QgaGVhcmQKZnJvbSB5b3UgaW4gYSB3aGlsZQo=\n'
-                           '\n'
-                           '--=====123456==--'
-                           ), conn.actions[1][3])
+   'Content-Type: multipart/mixed; boundary="=====123456=="\n'
+   'MIME-Version: 1.0\n'
+   'From: =?utf8?q?Jerry_F=C2=B5z?= <jerry@fooz.com>\n'
+   'User-Agent: bzr/%s\n'
+   'To: =?utf8?q?Biz_N=C3=A5?= <biz@na.com>\n'
+   'Subject: =?utf-8?q?Hello_Biz_N=C3=A5?=\n'
+   '\n'
+   '--=====123456==\n'
+   'Content-Type: text/plain; charset="utf-8"\n'
+   'MIME-Version: 1.0\n'
+   'Content-Transfer-Encoding: base64\n'
+   '\n'
+   'SGVsbG8gQml6IE7DpQpJIGhhdmVuJ3QgaGVhcmQKZnJvbSB5b3UgaW4gYSB3aGlsZQo=\n'
+   '\n'
+   '--=====123456==--'
+   ) % _bzrlib_version, conn.actions[1][3])
+
+    def test_send_text_and_diff_email(self):
+        conn = self.get_connection(unconfigured_config)
+        from_addr = u'Jerry F\xb5z <jerry@fooz.com>'
+        to_addr = u'Biz N\xe5 <biz@na.com>'
+        subject = u'Hello Biz N\xe5'
+        message=(u'Hello Biz N\xe5\n'
+                 u'See my attached patch\n')
+        diff_txt = ('=== diff contents\n'
+                    '--- old\n'
+                    '+++ new\n'
+                    ' unchanged\n'
+                    '-old binary\xb5\n'
+                    '-new binary\xe5\n'
+                    ' unchanged\n')
+        conn.send_text_and_diff_email(from_addr, [to_addr], subject,
+                                      message, diff_txt, 'test.diff')
+        self.assertEqual(('create_connection',), conn.actions[0])
+        self.assertEqual(('sendmail', 'jerry@fooz.com', ['biz@na.com']),
+                         conn.actions[1][:3])
+        self.assertEqualDiff((
+   'Content-Type: multipart/mixed; boundary="=====123456=="\n'
+   'MIME-Version: 1.0\n'
+   'From: =?utf8?q?Jerry_F=C2=B5z?= <jerry@fooz.com>\n'
+   'User-Agent: bzr/%s\n'
+   'To: =?utf8?q?Biz_N=C3=A5?= <biz@na.com>\n'
+   'Subject: =?utf-8?q?Hello_Biz_N=C3=A5?=\n'
+   '\n'
+   '--=====123456==\n'
+   'Content-Type: text/plain; charset="utf-8"\n'
+   'MIME-Version: 1.0\n'
+   'Content-Transfer-Encoding: base64\n'
+   '\n'
+   'SGVsbG8gQml6IE7DpQpTZWUgbXkgYXR0YWNoZWQgcGF0Y2gK\n'
+   '\n'
+   '--=====123456==\n'
+   'Content-Type: text/plain; charset="8-bit"; name="test.diff"\n'
+   'MIME-Version: 1.0\n'
+   'Content-Transfer-Encoding: base64\n'
+   'Content-Disposition: inline; filename="test.diff"\n'
+   '\n'
+   'PT09IGRpZmYgY29udGVudHMKLS0tIG9sZAorKysgbmV3CiB1bmNoYW5nZWQKLW9sZCBiaW5hcnm1\n'
+   'Ci1uZXcgYmluYXJ55QogdW5jaGFuZ2VkCg==\n'
+   '\n'
+   '--=====123456==--'
+   ) % _bzrlib_version, conn.actions[1][3])

@@ -32,8 +32,10 @@ import subprocess
 from bzrlib import (
     config,
     errors,
+    lazy_regex,
     revision as _mod_revision,
     ui,
+    __version__ as _bzrlib_version,
     )
 
 
@@ -206,6 +208,10 @@ class SMTPConnection(object):
     """
 
     _default_smtp_server = 'localhost'
+    _user_and_email_re = lazy_regex.lazy_compile(
+        r'(?P<username>.*?)\s*<?' # user and optional opening '<'
+        r'(?P<email>[\w+.-]+@[\w+.-]+)>?' # email and closing '>'
+        )
 
     def __init__(self, config):
         self._config = config
@@ -257,6 +263,25 @@ class SMTPConnection(object):
         except smtplib.SMTPException, e:
             raise BzrCommandError(str(e))
 
+    @staticmethod
+    def _split_address(address):
+        """Split an username + email address into its parts.
+
+        This takes "Joe Foo <joe@foo.com>" and returns "Joe Foo",
+        "joe@foo.com".
+        :param address: A combined username
+        :return: (username, email)
+        """
+        m = SMTPConnection._user_and_email_re.match(address)
+        if m is None:
+            # We didn't find an email address, so lets just assume that the
+            # username == address
+            # That way if someone configures "user" then we send an email to:
+            # user <user>, which could actually be correct.
+            return address, address
+
+        return m.group('username'), m.group('email').encode('ascii')
+
     def _basic_message(self, from_address, to_addresses, subject):
         """Create the basic Message using the right Header info.
 
@@ -269,11 +294,27 @@ class SMTPConnection(object):
         # would have to know ahead of time how many parts we needed.
         # So instead, just default to multipart.
         msg = MIMEMultipart()
-        msg.set_charset('utf-8')
-        msg['From'] = Header(from_address)
-        msg['To'] = Header(u', '.join(to_addresses))
+
+        # Header() does a good job of doing the proper encoding. However it
+        # confuses my SMTP server because it doesn't decode the strings. So it
+        # is better to send the addresses as:
+        #   =?utf-8?q?username?= <email@addr.com>
+        # Which is how Thunderbird does it
+
+        from_user, from_email = self._split_address(from_address)
+        msg['From'] = '%s <%s>' % (Header(from_user, 'utf8'), from_email)
+        msg['User-Agent'] = 'bzr/%s' % _bzrlib_version
+
+        to_emails = []
+        to_header = []
+        for addr in to_addresses:
+            to_user, to_email = self._split_address(addr)
+            to_emails.append(to_email)
+            to_header.append('%s <%s>' % (Header(to_user, 'utf8'), to_email))
+
+        msg['To'] = ', '.join(to_header)
         msg['Subject'] = Header(subject)
-        return msg
+        return msg, from_email, to_emails
 
     def send_text_email(self, from_address, to_addresses, subject, message):
         """Send a single text-only email.
@@ -305,16 +346,35 @@ class SMTPConnection(object):
             from_email: the email address extracted from from_address
             to_emails: the list of email addresses extracted from to_addresses
         """
-        msg = self._basic_message(from_address, to_addresses, subject)
+        msg, from_email, to_emails = self._basic_message(from_address,
+                                                         to_addresses, subject)
         payload = MIMEText(message.encode('utf-8'), 'plain', 'utf-8')
         msg.attach(payload)
-        # email addresses should be ascii only
-        from_email = config.extract_email_address(from_address).encode('ascii')
-        to_emails = [config.extract_email_address(address).encode('ascii')
-                     for address in to_addresses]
         return msg, from_email, to_emails
 
     def _send_message(self, msg, from_email, to_emails):
         """Actually send an email to the server."""
         self._connect()
         self._connection.sendmail(from_email, to_emails, msg.as_string())
+
+    def send_text_and_diff_email(self, from_address, to_addresses, subject,
+                                 message, diff_txt, fname='patch.diff'):
+        """Send a message with a Unicode message and an 8-bit text diff.
+
+        See create_email for common parameter definitions.
+        :param diff_txt: The 8-bit diff text. This will not be translated.
+            It must be an 8-bit string, since we don't do any encoding.
+        """
+        msg, from_email, to_emails = self.create_email(from_address,
+                                            to_addresses, subject, message)
+        # Must be an 8-bit string
+        assert isinstance(diff_txt, str)
+
+        diff_payload = MIMEText(diff_txt, 'plain', '8-bit')
+        # Override Content-Type so that we can include the name
+        content_type = diff_payload['Content-Type']
+        content_type += '; name="%s"' % (fname,)
+        diff_payload.replace_header('Content-Type', content_type)
+        diff_payload['Content-Disposition'] = 'inline; filename="%s"' % (fname,)
+        msg.attach(diff_payload)
+        self._send_message(msg, from_email, to_emails)
