@@ -16,13 +16,6 @@
 
 """Launchpad.net integration plugin for Bazaar
 
-This adds two features:
-
-  * A register-branch command that tells launchpad about the existence
-    of a branch
-
-  * A lp: transport that uses Launchpad as a directory to find a branch
-
 To install this file, put the 'bzr_lp' directory, or a symlink to it,
 in your ~/.bazaar/plugins/ directory.
 """
@@ -34,7 +27,7 @@ in your ~/.bazaar/plugins/ directory.
 
 from bzrlib.commands import Command, Option, register_command
 from bzrlib.transport import register_lazy_transport
-
+from bzrlib.help_topics import topic_registry
 
 
 class cmd_register_branch(Command):
@@ -142,3 +135,27 @@ def test_suite():
     for m in [test_register, test_lp_indirect]:
         suite.addTests(loader.loadTestsFromModule(m))
     return suite
+
+_launchpad_help = """Integration with Launchpad.net
+
+Launchpad.net provides free Bazaar branch hosting with integrated bug and
+specification tracking.
+
+The bzr client (through the plugin called 'launchpad') has two special
+features to communicate with Launchpad:
+
+    * The register-branch command tells launchpad about the url of a 
+      public branch.  Launchpad will then mirror the branch, display
+      its contents and allow it to be attached to bugs and other 
+      objects.
+
+    * The 'lp:' transport uses Launchpad as a directory service: 
+      for example 'lp:bzr' and 'lp:python' refer to the main branches of the
+      relevant projects and may be branched, logged, etc.  (Only read access
+      is supported at present.)
+
+For more information see http://help.launchpad.net/
+"""
+topic_registry.register('launchpad',
+    _launchpad_help,
+    'Using Bazaar with Launchpad.net')
