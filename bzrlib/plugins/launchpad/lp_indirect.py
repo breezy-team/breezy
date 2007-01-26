@@ -22,11 +22,22 @@ on Launchpad, which can then either serve the branch itself or redirect
 again.
 """
 
-from bzrlib.transport import Transport
+from bzrlib import (
+    errors,
+    )
+from bzrlib.transport import (
+    get_transport,
+    Transport,
+    )
 
-class LaunchpadIndirectTransport(Transport):
 
-    pass
+def launchpad_transport_indirect(base_url):
+    """Factory that returns the real transport for a lp: url"""
+    if base_url.startswith('lp:///'):
+        real_url = 'http://code.launchpad.net/' + base_url[6:]
+    else:
+        raise errors.InvalidURL(path=base_url)
+    return get_transport(real_url)
 
 
 def get_test_permutations():

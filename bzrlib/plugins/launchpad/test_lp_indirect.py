@@ -17,6 +17,7 @@
 """Tests for indirect branch urls through Launchpad.net"""
 
 from bzrlib import (
+    errors,
     transport,
     )
 from bzrlib.transport import get_transport
@@ -28,8 +29,14 @@ class IndirectUrlTests(TestCase):
         """A launchpad url should map to a http url"""
         # These can change to use the smartserver protocol or something 
         # else in the future.
-        url = 'lp:///plone'
+        url = 'lp:///apt'
         t = get_transport(url)
         real_url = t.base
-        self.assertStartsWith(real_url, 'http')
+        self.assertEquals(real_url, 'http://code.launchpad.net/apt/')
+
+    # TODO: check we get an error if the url is unreasonable
+    def test_error_for_bad_indirection(self):
+        self.assertRaises(errors.InvalidURL,
+            get_transport,
+            'lp://ratotehunoahu')
 

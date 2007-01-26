@@ -120,10 +120,11 @@ class cmd_register_branch(Command):
         print 'Branch registered.'
 
 register_command(cmd_register_branch)
+
 register_lazy_transport(
     'lp://',
     'bzrlib.plugins.launchpad.lp_indirect',
-    'LaunchpadIndirectTransport')
+    'launchpad_transport_indirect')
 
 def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""
