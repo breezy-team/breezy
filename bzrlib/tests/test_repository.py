@@ -34,11 +34,15 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-import bzrlib.repository as repository
+from bzrlib.repository import RepositoryFormat
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
-from bzrlib import upgrade, workingtree
+from bzrlib import (
+    repository,
+    upgrade,
+    workingtree,
+    )
 
 
 class TestDefaultFormat(TestCase):
