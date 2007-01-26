@@ -61,88 +61,27 @@ from bzrlib.symbol_versioning import (
 from bzrlib.trace import mutter, warning
 from bzrlib import registry
 
-# {prefix: [transport_classes]}
-# Transports are inserted onto the list LIFO and tried in order; as a result
-# transports provided by plugins are tried first, which is usually what we
-# want.
-_protocol_handlers = {
-}
-
-def register_transport__(prefix, klass, override=DEPRECATED_PARAMETER):
-    """Register a transport that can be used to open URLs
-
-    Normally you should use register_lazy_transport, which defers loading the
-    implementation until it's actually used, and so avoids pulling in possibly
-    large implementation libraries.
-    """
-    # Note that this code runs very early in library setup -- trace may not be
-    # working, etc.
-    global _protocol_handlers
-    if deprecated_passed(override):
-        warnings.warn("register_transport(override) is deprecated")
-    _protocol_handlers.setdefault(prefix, []).insert(0, klass)
-
-
-def register_lazy_transport__(scheme, module, classname):
-    """Register lazy-loaded transport class.
-
-    When opening a URL with the given scheme, load the module and then
-    instantiate the particular class.  
-
-    If the module raises DependencyNotPresent when it's imported, it is
-    skipped and another implementation of the protocol is tried.  This is
-    intended to be used when the implementation depends on an external
-    implementation that may not be present.  If any other error is raised, it
-    propagates up and the attempt to open the url fails.
-    """
-    # TODO: If no implementation of a protocol is available because of missing
-    # dependencies, we should perhaps show the message about what dependency
-    # was missing.
-    def _loader(base):
-        mod = __import__(module, globals(), locals(), [classname])
-        klass = getattr(mod, classname)
-        return klass(base)
-    _loader.module = module
-    register_transport(scheme, _loader)
-
-
 def _get_protocol_handlers():
     """Return a dictionary of {urlprefix: [factory]}"""
-    return transport_registry
-
+    return transport_list_registry
 
 def _set_protocol_handlers(new_handlers):
     """Replace the current protocol handlers dictionary.
 
     WARNING this will remove all build in protocols. Use with care.
     """
-    global transport_registry
-    transport_registry = new_handlers
-
+    global transport_list_registry
+    transport_list_registry = new_handlers
 
 def _clear_protocol_handlers():
-    global transport_registry
-    transport_registry = TransportRegistry()
-
+    global transport_list_registry
+    transport_list_registry = TransportListRegistry()
 
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in transport_registry.iter_transports_list():
+    for prefix, factory_list in transport_list_registry.iteritems():
         for factory in factory_list:
-            #if factory.__module__ == "bzrlib.registry":
-                # this is a lazy load transport, because no real ones
-                # are directlry in bzrlib.transport
-                #rint "+++++++++++++++++++>",factory, str(factory.__class__.__name__),str(factory.__name__).endswith("_LazyObjectGetter")
-                #f str(factory.__class__.__name__).endswith("_LazyObjectGetter"):
-                #    modules.add(factory._module_name)
-                #lse:
-                #    print "------------->",factory, factory._obj
-                #    modules.add(factory._obj.__module__)
-            #lse:
-                #modules.add(factory.__module__)
-
-
             if hasattr(factory, "_module_name"):
                 modules.add(factory._module_name)
             else:
@@ -151,54 +90,40 @@ def _get_transport_modules():
     result.sort()
     return result
 
+class TransportListRegistry(registry.Registry):
+    def register_transport_provider(self, key, obj):
+        self.get(key).insert(0, registry._ObjectGetter(obj))
 
-
-class TransportRegistry(registry.Registry):
-    def register_to_key(self, key, obj):
-        self._dict.setdefault(key, []).insert(0, registry._ObjectGetter(obj))
-
-    def register_lazy_to_key(self, key, module_name, member_name):
-        self._dict[key].insert(0,
+    def register_lazy_transport_provider(self, key, module_name, member_name):
+        self.get(key).insert(0, 
                 registry._LazyObjectGetter(module_name, member_name))
 
     def register_transport(self, key, help=None, info=None):
-        self._dict[key] = []
-        self._add_help_and_info(key, help=help, info=info)
-
-    def get_transports_list(self, key=None):
-        return self._dict[self._get_key_or_default(key)]
-
-    def iter_transports_list(self):
-        for key, transports_list in self._dict.iteritems():
-                yield key, transports_list
+        self.register(key, [], help, info)
 
     def set_default_transport(self, key=None):
         """Return either 'key' or the default key if key is None"""
         self._default_key = key
 
-        
-
-transport_registry = TransportRegistry( )
+transport_list_registry = TransportListRegistry( )
 
 def register_transport_proto(prefix, help=None, info=None):
-    transport_registry.register_transport(prefix, help, info)
+    transport_list_registry.register_transport(prefix, help, info)
 
 def register_lazy_transport(prefix, module, classname):
-    if not prefix in transport_registry:
+    if not prefix in transport_list_registry:
         register_transport_proto(prefix)
-    transport_registry.register_lazy_to_key(prefix, module, classname)
+    transport_list_registry.register_lazy_transport_provider(prefix, module, classname)
     
 def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
-    if not prefix in transport_registry:
+    if not prefix in transport_list_registry:
         register_transport_proto(prefix)
-    transport_registry.register_to_key(prefix, klass)
+    transport_list_registry.register_transport_provider(prefix, klass)
 
-    
 def register_urlparse_netloc_protocol(protocol):
     """Ensure that protocol is setup to be used with urlparse netloc parsing."""
     if protocol not in urlparse.uses_netloc:
         urlparse.uses_netloc.append(protocol)
-
 
 def split_url(url):
     # TODO: jam 20060606 urls should only be ascii, or they should raise InvalidURL
@@ -1084,7 +1009,7 @@ def get_transport(base):
         base = convert_path_to_url(base,
             'URLs must be properly escaped (protocol: %s)')
     
-    for proto, factory_list in transport_registry.iter_transports_list():
+    for proto, factory_list in transport_list_registry.iteritems():
         if proto is not None and base.startswith(proto):
             t, last_err = _try_transport_factories(base, factory_list)
             if t:
@@ -1096,7 +1021,7 @@ def get_transport(base):
 
     # The default handler is the filesystem handler, stored as protocol None
     return _try_transport_factories(base,
-                    transport_registry.get_transports_list(None))[0]
+                    transport_list_registry.get(None))[0]
                                                    
 
 def _try_transport_factories(base, factory_list):
@@ -1217,11 +1142,11 @@ class TransportLogger(object):
         
 
 # None is the default transport, for things with no url scheme
-register_transport_proto(None)
-register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
+#register_transport_proto(None)
+#register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
 register_transport_proto('file://')
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
-transport_registry.set_default_transport("file://")
+transport_list_registry.set_default_transport("file://")
 register_transport_proto('sftp://')
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
 register_transport_proto('http+urllib://')

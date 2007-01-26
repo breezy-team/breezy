@@ -39,7 +39,6 @@ from bzrlib.transport import (_CoalescedOffset,
                               register_transport_proto,
                               _clear_protocol_handlers,
                               Transport,
-                              transport_registry,
                               )
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.local import LocalTransport
