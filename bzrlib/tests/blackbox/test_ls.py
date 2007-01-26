@@ -173,6 +173,20 @@ class TestLS(TestCaseWithTransport):
         os.chdir('subdir')
         self.ls_equals('', '--revision', '1')
 
+    def test_ls_branch(self):
+        """If a branch is specified, files are listed from it"""
+        self.build_tree(['subdir/', 'subdir/b'])
+        self.wt.add(['subdir', 'subdir/b'])
+        self.wt.commit('committing')
+        branch = self.make_branch('branchdir')
+        branch.pull(self.wt.branch)
+        self.ls_equals('branchdir/subdir\n'
+                       'branchdir/subdir/b\n',
+                       'branchdir')
+        self.ls_equals('branchdir/subdir\n'
+                       'branchdir/subdir/b\n',
+                       'branchdir', '--revision', '1')
+
     def test_ls_ignored(self):
         # Now try to do ignored files.
         self.wt.add(['a', '.bzrignore'])
