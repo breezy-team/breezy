@@ -644,19 +644,19 @@ class BzrDir(object):
                 source_repository = related_repository(self)
             result_format.repository_format = source_repository._format
         except errors.NoRepositoryPresent:
-            pass
+            source_repository = None
         return result_format, source_repository
 
     def cloning_metadir(self, basis=None):
         """Produce a metadir suitable for cloning with"""
-        result_format, repository = _cloning_metadir(self, basis)
+        result_format, repository = self._cloning_metadir(basis)
         return result_format
 
     def checkout_metadir(self):
         format, repository = self._cloning_metadir()
         try:
             tree = self.open_workingtree()
-        except errors.NoWorkingTree:
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
             tree_format = repository._format._matchingbzrdir.workingtree_format
         else:
             tree_format =  tree._format
