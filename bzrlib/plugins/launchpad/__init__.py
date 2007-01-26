@@ -14,9 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Launchpad.net branch registration plugin for bzr
+"""Launchpad.net integration plugin for Bazaar
 
-This adds commands that tell launchpad about newly-created branches, etc.
+This adds two features:
+
+  * A register-branch command that tells launchpad about the existence
+    of a branch
+
+  * A lp: transport that uses Launchpad as a directory to find a branch
 
 To install this file, put the 'bzr_lp' directory, or a symlink to it,
 in your ~/.bazaar/plugins/ directory.
@@ -28,6 +33,7 @@ in your ~/.bazaar/plugins/ directory.
 # see http://bazaar-vcs.org/Specs/BranchRegistrationTool
 
 from bzrlib.commands import Command, Option, register_command
+from bzrlib.transport import register_lazy_transport
 
 
 
@@ -114,6 +120,10 @@ class cmd_register_branch(Command):
         print 'Branch registered.'
 
 register_command(cmd_register_branch)
+register_lazy_transport(
+    'lp://',
+    'bzrlib.plugins.launchpad.lp_indirect',
+    'LaunchpadIndirectTransport')
 
 def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""

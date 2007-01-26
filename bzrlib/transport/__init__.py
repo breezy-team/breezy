@@ -93,6 +93,8 @@ def register_lazy_transport(scheme, module, classname):
     intended to be used when the implementation depends on an external
     implementation that may not be present.  If any other error is raised, it
     propagates up and the attempt to open the url fails.
+
+    :param scheme: The url scheme part, eg "ftp://"
     """
     # TODO: If no implementation of a protocol is available because of missing
     # dependencies, we should perhaps show the message about what dependency

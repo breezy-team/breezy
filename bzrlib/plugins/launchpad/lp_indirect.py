@@ -14,22 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for indirect branch urls through Launchpad.net"""
 
-from bzrlib import (
-    transport,
-    )
-from bzrlib.transport import get_transport
-from bzrlib.tests import TestCase, TestSkipped
+"""Transport indirection that uses Launchpad as a directory lookup.
 
-class IndirectUrlTests(TestCase):
+When the transport is opened, it immediately redirects to a url
+on Launchpad, which can then either serve the branch itself or redirect
+again.
+"""
 
-    def test_indirect_through_url(self):
-        """A launchpad url should map to a http url"""
-        # These can change to use the smartserver protocol or something 
-        # else in the future.
-        url = 'lp:///plone'
-        t = get_transport(url)
-        real_url = t.base
-        self.assertStartsWith(real_url, 'http')
+from bzrlib.transport import Transport
 
+class LaunchpadIndirectTransport(Transport):
+
+    pass
+
+
+def get_test_permutations():
+    # Since this transport doesn't do anything once opened, it's not subjected
+    # to the usual transport tests.
+    return []
