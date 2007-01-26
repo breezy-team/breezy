@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1004,12 +1004,9 @@ def get_transport(base):
 
     base is either a URL or a directory name.  
     """
-    # TODO: give a better error if base looks like a url but there's no
-    # handler for the scheme?
     global _protocol_handlers
     if base is None:
         base = '.'
-
     last_err = None
 
     def convert_path_to_url(base, error_str):
