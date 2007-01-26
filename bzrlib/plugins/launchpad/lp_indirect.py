@@ -35,6 +35,8 @@ def launchpad_transport_indirect(base_url):
     """Factory that returns the real transport for a lp: url"""
     if base_url.startswith('lp:///'):
         real_url = 'http://code.launchpad.net/' + base_url[6:]
+    elif base_url.startswith('lp:') and base_url[3] != '/':
+        real_url = 'http://code.launchpad.net/' + base_url[3:]
     else:
         raise errors.InvalidURL(path=base_url)
     return get_transport(real_url)

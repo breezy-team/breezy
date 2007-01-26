@@ -25,6 +25,12 @@ from bzrlib.tests import TestCase, TestSkipped
 
 class IndirectUrlTests(TestCase):
 
+    def test_short_form(self):
+        """A launchpad url should map to a http url"""
+        url = 'lp:apt'
+        t = get_transport(url)
+        self.assertEquals(t.base, 'http://code.launchpad.net/apt/')
+
     def test_indirect_through_url(self):
         """A launchpad url should map to a http url"""
         # These can change to use the smartserver protocol or something 

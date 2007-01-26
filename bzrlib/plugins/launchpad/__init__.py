@@ -122,6 +122,11 @@ class cmd_register_branch(Command):
 register_command(cmd_register_branch)
 
 register_lazy_transport(
+    'lp:',
+    'bzrlib.plugins.launchpad.lp_indirect',
+    'launchpad_transport_indirect')
+
+register_lazy_transport(
     'lp://',
     'bzrlib.plugins.launchpad.lp_indirect',
     'launchpad_transport_indirect')
