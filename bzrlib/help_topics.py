@@ -99,6 +99,63 @@ def _help_on_revisionspec(name):
 
     return ''.join(out)
 
+def _help_on_transport(name):
+    from bzrlib.transport import (
+        transport_list_registry,
+    )
+    import textwrap
+
+    out = []
+
+    #keys = protocol_list_registry.keys( )
+    #keys.sorted( )
+
+    #out.append("\nSupported transport protocols:\n--------------------------\n")
+    #for proto in keys:
+        #out.append("*%-20s\t%s\n    %s\n\n"%doc)
+
+    #out.append("\nSupported decorators:\n--------------------------\n")
+    #for i in l:
+        #protos, doc = transport_sorted[i]
+        #if not protos[0].endswith("+"): continue
+        #out.append("* Decorator: ");
+        #first = True
+        #for proto in protos:
+            #if not first: out.append(", ")
+            #out.append("%s"%proto)
+            #first = False
+
+        #out.append("\n    %s\n\n"%doc)
+
+    #return ''.join(out)
+
+
+    def add_string(proto, help, maxl, prefix_width=20):
+       help_lines = textwrap.wrap(help, maxl - prefix_width)
+       line_with_indent = '\n' + ' ' * prefix_width
+       help_text = line_with_indent.join(help_lines)
+       return "%-20s%s\n" % (proto, help_text)
+
+    protl = []
+    decl = []
+    protl.append("\nSupported transport protocols:\n------------------------------\n")
+    decl.append("\nSupported modifiers:\n-------------------\n")
+    protos = transport_list_registry.keys( )
+    protos.sort( )
+    for proto in protos:
+        shorthelp = transport_list_registry.get_help(proto)
+        if not shorthelp:
+            continue
+        if proto.endswith("://"):
+            protl.extend(add_string(proto, shorthelp, 79))
+        else:
+            decl.extend(add_string(proto, shorthelp, 79))
+
+
+    out = ''.join(protl+decl)
+
+    return out
+
 
 _basic_help= \
 """Bazaar -- a free distributed version-control tool
@@ -162,3 +219,5 @@ def get_format_topic(topic):
 topic_registry.register('formats', get_format_topic, 'Directory formats')
 topic_registry.register('global-options', _global_options,
                         'Options that can be used with any command')
+topic_registry.register('transport', _help_on_transport,
+                        "Supported transport protocols")

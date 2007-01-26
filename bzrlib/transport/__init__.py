@@ -1145,33 +1145,42 @@ register_transport_proto('file://')
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 transport_list_registry.set_default_transport("file://")
 
-register_transport_proto('sftp://')
+register_transport_proto('sftp://',
+            help="Access using SFTP (most SSH servers provide SFTP).")
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
 
-register_transport_proto('http+urllib://')
+register_transport_proto('http+urllib://',
+            help="Read-only access of branches exported on the web.")
 register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
-register_transport_proto('https+urllib://')
+register_transport_proto('https+urllib://',
+            help="Read-only access of branches exported on the web using SSL.")
 register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
-register_transport_proto('http+pycurl://')
+register_transport_proto('http+pycurl://',
+            help="Read-only access of branches exported on the web.")
 register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
-register_transport_proto('https+pycurl://')
+register_transport_proto('https+pycurl://',
+            help="Read-only access of branches exported on the web using SSL.")
 register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
-register_transport_proto('http://')
+register_transport_proto('http://',
+            help="Read-only access of branches exported on the web.")
+register_transport_proto('https://',
+            help="Read-only access of branches exported on the web using SSL.")
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
-register_transport_proto('https://')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 
-register_transport_proto('ftp://')
+register_transport_proto('ftp://',
+            help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
-register_transport_proto('aftp://')
+register_transport_proto('aftp://',
+            help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
 register_transport_proto('memory://')
@@ -1179,7 +1188,8 @@ register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport
 register_transport_proto('chroot+')
 register_lazy_transport('chroot+', 'bzrlib.transport.chroot',
                         'ChrootTransportDecorator')
-register_transport_proto('readonly+')
+register_transport_proto('readonly+',
+            help="This modifier converts any transport to be readonly.")
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_transport_proto('fakenfs+')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
@@ -1187,15 +1197,19 @@ register_transport_proto('vfat+')
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
-register_transport_proto('bzr://')
+register_transport_proto('bzr://',
+            help="Fast access using the Bazaar smart server.")
+
 register_lazy_transport('bzr://',
                         'bzrlib.transport.smart',
                         'SmartTCPTransport')
-register_transport_proto('bzr+http://')
+register_transport_proto('bzr+http://',
+            help="Fast access using the Bazaar smart server over HTTP.")
 register_lazy_transport('bzr+http://',
                         'bzrlib.transport.smart',
                         'SmartHTTPTransport')
-register_transport_proto('bzr+ssh://')
+register_transport_proto('bzr+ssh://',
+            help="Fast access using the Bazaar smart server over SSH.")
 register_lazy_transport('bzr+ssh://',
                         'bzrlib.transport.smart',
                         'SmartSSHTransport')
