@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -119,4 +119,10 @@ def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""
     from unittest import TestSuite, TestLoader
     import test_register
-    return TestLoader().loadTestsFromModule(test_register)
+    import test_lp_indirect
+
+    loader = TestLoader()
+    suite = TestSuite()
+    for m in [test_register, test_lp_indirect]:
+        suite.addTests(loader.loadTestsFromModule(m))
+    return suite
