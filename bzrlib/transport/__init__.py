@@ -108,7 +108,7 @@ def register_lazy_transport__(scheme, module, classname):
 
 def _get_protocol_handlers():
     """Return a dictionary of {urlprefix: [factory]}"""
-    return _protocol_handlers
+    return transport_registry
 
 
 def _set_protocol_handlers(new_handlers):
@@ -116,26 +116,37 @@ def _set_protocol_handlers(new_handlers):
 
     WARNING this will remove all build in protocols. Use with care.
     """
-    global _protocol_handlers
-    _protocol_handlers = new_handlers
+    global transport_registry
+    transport_registry = new_handlers
 
 
 def _clear_protocol_handlers():
-    global _protocol_handlers
-    _protocol_handlers = {}
+    global transport_registry
+    transport_registry = TransportRegistry()
 
 
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in _protocol_handlers.items():
+    for prefix, factory_list in transport_registry.iter_transports_list():
         for factory in factory_list:
-            if factory.__module__ == "bzrlib.transport":
+            #if factory.__module__ == "bzrlib.registry":
                 # this is a lazy load transport, because no real ones
                 # are directlry in bzrlib.transport
-                modules.add(factory.module)
+                #rint "+++++++++++++++++++>",factory, str(factory.__class__.__name__),str(factory.__name__).endswith("_LazyObjectGetter")
+                #f str(factory.__class__.__name__).endswith("_LazyObjectGetter"):
+                #    modules.add(factory._module_name)
+                #lse:
+                #    print "------------->",factory, factory._obj
+                #    modules.add(factory._obj.__module__)
+            #lse:
+                #modules.add(factory.__module__)
+
+
+            if hasattr(factory, "_module_name"):
+                modules.add(factory._module_name)
             else:
-                modules.add(factory.__module__)
+                modules.add(factory._obj.__module__)
     result = list(modules)
     result.sort()
     return result
@@ -143,9 +154,8 @@ def _get_transport_modules():
 
 
 class TransportRegistry(registry.Registry):
-
     def register_to_key(self, key, obj):
-        self._dict.setdefault(key, []).insert(0, _ObjectGetter(obj))
+        self._dict.setdefault(key, []).insert(0, registry._ObjectGetter(obj))
 
     def register_lazy_to_key(self, key, module_name, member_name):
         self._dict[key].insert(0,
@@ -166,15 +176,21 @@ class TransportRegistry(registry.Registry):
         """Return either 'key' or the default key if key is None"""
         self._default_key = key
 
+        
+
 transport_registry = TransportRegistry( )
 
 def register_transport_proto(prefix, help=None, info=None):
     transport_registry.register_transport(prefix, help, info)
 
 def register_lazy_transport(prefix, module, classname):
+    if not prefix in transport_registry:
+        register_transport_proto(prefix)
     transport_registry.register_lazy_to_key(prefix, module, classname)
     
 def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
+    if not prefix in transport_registry:
+        register_transport_proto(prefix)
     transport_registry.register_to_key(prefix, klass)
 
     
