@@ -153,6 +153,7 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         subtree.add('file')
         tree.add_reference(subtree)
         tree.commit('a revision')
+        subtree.commit('a subtree file')
         tree.branch.create_checkout('target')
         self.failUnlessExists('target')
         self.failUnlessExists('target/subtree')

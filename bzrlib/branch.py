@@ -629,11 +629,15 @@ class Branch(object):
         tree = checkout.create_workingtree(revision_id)
         for path, entry in tree.inventory.iter_entries_by_dir():
             if entry.kind == 'tree-reference':
-                path = id2abspath(entry.file_id)
-                reference_parent = self.reference_parent(entry.file_id)
-                reference_parent.create_checkout(path, entry.reference_revision,
+                path = tree.id2path(entry.file_id)
+                reference_parent = self.reference_parent(entry.file_id, path)
+                reference_parent.create_checkout(tree.abspath(path),
+                                                 entry.reference_revision,
                                                  lightweight)
         return tree
+
+    def reference_parent(self, file_id, path):
+        return Branch.open(self.bzrdir.root_transport.clone(path).base)
 
 
 class BranchFormat(object):
