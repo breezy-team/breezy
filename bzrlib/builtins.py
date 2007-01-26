@@ -37,6 +37,7 @@ from bzrlib import (
     merge as _mod_merge,
     osutils,
     repository,
+    symbol_versioning,
     transport,
     tree as _mod_tree,
     ui,
@@ -93,6 +94,7 @@ def internal_tree_files(file_list, default_branch=u'.'):
     return tree, new_list
 
 
+@symbol_versioning.deprecated_function(symbol_versioning.zero_fifteen)
 def get_format_type(typestring):
     """Parse and return a format specifier."""
     # Have to use BzrDirMetaFormat1 directly, so that
@@ -1094,13 +1096,13 @@ class cmd_init(Command):
                                  ' formats are: default, knit, metaweave and'
                                  ' weave. Default is knit; metaweave and'
                                  ' weave are deprecated',
+                            converter=bzrdir.format_registry.make_bzrdir,
                             registry=bzrdir.format_registry,
-                            converter=get_format_type,
                             value_switches=True),
                      ]
     def run(self, location=None, format=None):
         if format is None:
-            format = get_format_type('default')
+            format = bzrdir.format_registry.make_bzrdir('default')
         if location is None:
             location = u'.'
 
@@ -1155,7 +1157,7 @@ class cmd_init_repository(Command):
                                  ' metaweave and weave. Default is knit;'
                                  ' metaweave and weave are deprecated',
                             registry=bzrdir.format_registry,
-                            converter=get_format_type,
+                            converter=bzrdir.format_registry.make_bzrdir,
                             value_switches=True),
                      Option('trees',
                              help='Allows branches in repository to have'
@@ -1163,7 +1165,7 @@ class cmd_init_repository(Command):
     aliases = ["init-repo"]
     def run(self, location, format=None, trees=False):
         if format is None:
-            format = get_format_type('default')
+            format = bzrdir.format_registry.make_bzrdir('default')
 
         if location is None:
             location = '.'
@@ -1987,7 +1989,7 @@ class cmd_upgrade(Command):
                              ' Default is knit; metaweave and weave are'
                              ' deprecated',
                         registry=bzrdir.format_registry,
-                        converter=get_format_type,
+                        converter=bzrdir.format_registry.make_bzrdir,
                         value_switches=True),
                     ]
 
@@ -1995,7 +1997,7 @@ class cmd_upgrade(Command):
     def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
         if format is None:
-            format = get_format_type('default')
+            format = bzrdir.format_registry.make_bzrdir('default')
         upgrade(url, format)
 
 
