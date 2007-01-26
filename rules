@@ -14,7 +14,7 @@ clean::
 	rm -f bzr.1
 	rm -f debian/stamp-doc
 
-ifeq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
+ifneq (,$(findstring test,$(DEB_BUILD_OPTIONS)))
 common-post-build-indep::	
 	./bzr selftest --no-plugins --one
 endif
