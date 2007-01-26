@@ -105,37 +105,13 @@ def _help_on_transport(name):
     )
     import textwrap
 
-    out = []
-
-    #keys = protocol_list_registry.keys( )
-    #keys.sorted( )
-
-    #out.append("\nSupported transport protocols:\n--------------------------\n")
-    #for proto in keys:
-        #out.append("*%-20s\t%s\n    %s\n\n"%doc)
-
-    #out.append("\nSupported decorators:\n--------------------------\n")
-    #for i in l:
-        #protos, doc = transport_sorted[i]
-        #if not protos[0].endswith("+"): continue
-        #out.append("* Decorator: ");
-        #first = True
-        #for proto in protos:
-            #if not first: out.append(", ")
-            #out.append("%s"%proto)
-            #first = False
-
-        #out.append("\n    %s\n\n"%doc)
-
-    #return ''.join(out)
-
-
     def add_string(proto, help, maxl, prefix_width=20):
        help_lines = textwrap.wrap(help, maxl - prefix_width)
        line_with_indent = '\n' + ' ' * prefix_width
        help_text = line_with_indent.join(help_lines)
        return "%-20s%s\n" % (proto, help_text)
 
+    out = []
     protl = []
     decl = []
     protl.append("\nSupported transport protocols:\n------------------------------\n")
