@@ -1139,16 +1139,15 @@ class TransportLogger(object):
     def readv(self, name, offsets):
         self._calls.append((name, offsets))
         return self._adapted.readv(name, offsets)
-        
 
 # None is the default transport, for things with no url scheme
-#register_transport_proto(None)
-#register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
 register_transport_proto('file://')
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 transport_list_registry.set_default_transport("file://")
+
 register_transport_proto('sftp://')
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
+
 register_transport_proto('http+urllib://')
 register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
@@ -1169,10 +1168,12 @@ register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
+
 register_transport_proto('ftp://')
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
+
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
 register_transport_proto('chroot+')
