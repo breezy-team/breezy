@@ -126,7 +126,7 @@ class SMTPConnection(object):
         # Which is how Thunderbird does it
 
         from_user, from_email = self._split_address(from_address)
-        msg['From'] = '%s <%s>' % (Header(from_user, 'utf8'), from_email)
+        msg['From'] = '%s <%s>' % (Header(unicode(from_user)), from_email)
         msg['User-Agent'] = 'bzr/%s' % _bzrlib_version
 
         to_emails = []
@@ -134,7 +134,7 @@ class SMTPConnection(object):
         for addr in to_addresses:
             to_user, to_email = self._split_address(addr)
             to_emails.append(to_email)
-            to_header.append('%s <%s>' % (Header(to_user, 'utf8'), to_email))
+            to_header.append('%s <%s>' % (Header(unicode(to_user)), to_email))
 
         msg['To'] = ', '.join(to_header)
         msg['Subject'] = Header(subject)

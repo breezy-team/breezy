@@ -47,7 +47,8 @@ class EmailSender(object):
         # use 'replace' so that we don't abort if trying to write out
         # in e.g. the default C locale.
 
-        # We must use StringIO.StringIO because we want a Unicode string
+        # We must use StringIO.StringIO because we want a Unicode string that
+        # we can pass to send_email and have that do the proper encoding.
         from StringIO import StringIO
         outf = StringIO()
         lf = log_formatter('long',
@@ -87,12 +88,12 @@ class EmailSender(object):
             tree_new = self.branch.repository.revision_tree(revid_new)
             tree_old = self.branch.repository.revision_tree(revid_old)
 
-        # We want a cStringIO because we want an 8-bit string
+        # We can use a cStringIO because show_diff_trees should only write
+        # 8-bit strings. It is an error to write a Unicode string here.
         from cStringIO import StringIO
         diff_content = StringIO()
         show_diff_trees(tree_old, tree_new, diff_content)
-        lines = diff_content.getvalue().split("\n")
-        numlines = len(lines)
+        numlines = diff_content.getvalue().count('\n')+1
         if numlines <= difflimit:
             return diff_content.getvalue()
         else:
@@ -101,7 +102,7 @@ class EmailSender(object):
                     % (numlines, difflimit))
 
     def difflimit(self):
-        """maximum number of lines of diff to show."""
+        """Maximum number of lines of diff to show."""
         result = self.config.get_user_option('post_commit_difflimit')
         if result is None:
             result = 1000

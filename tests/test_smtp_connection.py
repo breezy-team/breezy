@@ -65,7 +65,7 @@ class TestSMTPConnection(TestCase):
     def get_connection(self, text):
         my_config = config.GlobalConfig()
         config_file = StringIO(text)
-        (my_config._get_parser(config_file))
+        my_config._get_parser(config_file)
         return InstrumentedSMTPConnection(my_config)
 
     def test_defaults(self):
@@ -123,9 +123,9 @@ class TestSMTPConnection(TestCase):
         self.assertEqualDiff((
    'Content-Type: multipart/mixed; boundary="=====123456=="\n'
    'MIME-Version: 1.0\n'
-   'From: =?utf8?q?Jerry_F=C2=B5z?= <jerry@fooz.com>\n'
+   'From: =?utf-8?q?Jerry_F=C2=B5z?= <jerry@fooz.com>\n'
    'User-Agent: bzr/%s\n'
-   'To: =?utf8?q?Biz_N=C3=A5?= <biz@na.com>\n'
+   'To: =?utf-8?q?Biz_N=C3=A5?= <biz@na.com>\n'
    'Subject: =?utf-8?q?Hello_Biz_N=C3=A5?=\n'
    '\n'
    '--=====123456==\n'
@@ -160,9 +160,9 @@ class TestSMTPConnection(TestCase):
         self.assertEqualDiff((
    'Content-Type: multipart/mixed; boundary="=====123456=="\n'
    'MIME-Version: 1.0\n'
-   'From: =?utf8?q?Jerry_F=C2=B5z?= <jerry@fooz.com>\n'
+   'From: =?utf-8?q?Jerry_F=C2=B5z?= <jerry@fooz.com>\n'
    'User-Agent: bzr/%s\n'
-   'To: =?utf8?q?Biz_N=C3=A5?= <biz@na.com>\n'
+   'To: =?utf-8?q?Biz_N=C3=A5?= <biz@na.com>\n'
    'Subject: =?utf-8?q?Hello_Biz_N=C3=A5?=\n'
    '\n'
    '--=====123456==\n'
@@ -222,9 +222,9 @@ class TestSMTPConnection(TestCase):
         self.assertEqualDiff((
    'Content-Type: multipart/mixed; boundary="=====123456=="\n'
    'MIME-Version: 1.0\n'
-   'From: =?utf8?q?Joe_Foo?= <joe@foo.com>\n'
+   'From: Joe Foo <joe@foo.com>\n'
    'User-Agent: bzr/%s\n'
-   'To: =?utf8?q?Jane_Foo?= <jane@foo.com>, =?utf8?q?Barry_Foo?= <barry@foo.com>\n'
+   'To: Jane Foo <jane@foo.com>, Barry Foo <barry@foo.com>\n'
    'Subject: Hi Jane and Barry\n'
    '\n'
    '--=====123456==\n'
