@@ -209,7 +209,7 @@ class EmailSender(object):
             self.send()
 
     def subject(self):
-        return ("Rev %d: %s in %s" % 
+        return ("Rev %d: %s in %s" %
                 (self.revno,
                  self.revision.get_summary(),
                  self.url()))

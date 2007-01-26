@@ -31,19 +31,19 @@ class InstrumentedSMTPConnection(SMTPConnection):
     We don't want to actually connect or send messages, so this just
     fakes it.
     """
-    
+
     class FakeSMTP(object):
         """Fakes an SMTP connection."""
-    
+
         def __init__(self, actions):
             self.actions = actions
-        
+
         def sendmail(self, from_addr, to_addrs, msg):
             self.actions.append(('sendmail', from_addr, to_addrs, msg))
-        
+
         def login(self, username, password):
             self.actions.append(('login', username, password))
-        
+
     def __init__(self, config):
         super(InstrumentedSMTPConnection, self).__init__(config)
         self.actions = []
@@ -59,7 +59,7 @@ class InstrumentedSMTPConnection(SMTPConnection):
         msg.set_boundary('=====123456==')
         return msg, from_email, to_emails
 
-           
+
 class TestSMTPConnection(TestCase):
 
     def get_connection(self, text):
@@ -105,7 +105,7 @@ class TestSMTPConnection(TestCase):
 
     def test_simple_send(self):
         """Test that we build up a reasonable looking email.
-        
+
         This also tests that we extract the right email addresses, etc, and it
         gets passed to sendmail() with the right parameters.
         """

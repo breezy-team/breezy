@@ -2,7 +2,7 @@ This is a plugin to implement post commmit emails for bzr.
 This should eventually automatically activate if an email
 address is set, and should allow format specifiers too.
 
-Until then, it is activated by setting 
+Until then, it is activated by setting
 post_commit=bzrlib.plugins.email.post_commit in bazaar.conf or locations.conf.
 The plugin must be installed as "email" (i.e. ~/.bazaar/plugins/email/).
 

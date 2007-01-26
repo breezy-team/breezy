@@ -72,7 +72,7 @@ class TestGetTo(TestCaseInTempDir):
 
     def test_command_line(self):
         sender = self.get_sender()
-        self.assertEqual(['mail', '-s', sender.subject(), '-a', 
+        self.assertEqual(['mail', '-s', sender.subject(), '-a',
                           'From: ' + sender.from_address(), sender.to()],
                          sender._command_line())
 
@@ -134,7 +134,7 @@ class TestGetTo(TestCaseInTempDir):
 
     def test_subject(self):
         sender = self.get_sender()
-        self.assertEqual("Rev 1: foo bar baz in %s" % 
+        self.assertEqual("Rev 1: foo bar baz in %s" %
                             sender.branch.base,
                          sender.subject())
 
