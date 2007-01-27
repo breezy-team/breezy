@@ -149,15 +149,22 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         tree = self.make_branch_and_tree('source', format='experimental-knit3')
         subtree = self.make_branch_and_tree('source/subtree', 
                                             format='experimental-knit3')
-        self.build_tree(['source/subtree/file'])
+        subsubtree = self.make_branch_and_tree('source/subtree/subsubtree',
+                                               format='experimental-knit3')
+        self.build_tree(['source/subtree/file',
+                         'source/subtree/subsubtree/file'])
+        subsubtree.add('file')
         subtree.add('file')
+        subtree.add_reference(subsubtree)
         tree.add_reference(subtree)
         tree.commit('a revision')
         subtree.commit('a subtree file')
+        subsubtree.commit('a subsubtree file')
         tree.branch.create_checkout('target')
         self.failUnlessExists('target')
         self.failUnlessExists('target/subtree')
         self.failUnlessExists('target/subtree/file')
+        self.failUnlessExists('target/subtree/subsubtree/file')
 
 
 class TestBranchReference(TestCaseWithTransport):
