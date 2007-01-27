@@ -1141,7 +1141,8 @@ class TransportLogger(object):
         return self._adapted.readv(name, offsets)
 
 # None is the default transport, for things with no url scheme
-register_transport_proto('file://')
+register_transport_proto('file://',
+            help="Access using the standard filesystem (default)")
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 transport_list_registry.set_default_transport("file://")
 
