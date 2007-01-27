@@ -31,14 +31,18 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         sub_tree.commit('commit', rev_id='sub_1')
         return tree, sub_tree
 
-    def test_add_reference(self):
+    def make_nested_trees(self):
         tree, sub_tree = self.make_trees()
         try:
             tree.add_reference(sub_tree)
         except errors.UnsupportedOperation:
-            assert tree.__class__ in (workingtree.WorkingTree2, 
+            assert tree.__class__ in (workingtree.WorkingTree2,
                                       workingtree.WorkingTree3)
             raise tests.TestSkipped('Tree format does not support references')
+        return tree, sub_tree
+
+    def test_add_reference(self):
+        self.make_nested_trees()
         tree = workingtree.WorkingTree.open('tree')
         self.assertEqual(tree.path2id('sub-tree'), 'sub-tree-root-id')
         self.assertEqual(tree.inventory['sub-tree-root-id'].kind, 
@@ -87,3 +91,16 @@ class TestBasisInventory(TestCaseWithWorkingTree):
                                       workingtree.WorkingTree3)
             raise tests.TestSkipped('Tree format does not support references')
 
+    def test_get_nested_tree(self):
+        tree, sub_tree = self.make_nested_trees()
+        sub_tree2 = tree.get_nested_tree(tree.inventory['sub-tree-root-id'])
+        self.assertEqual(sub_tree.basedir, sub_tree2.basedir)
+        sub_tree2 = tree.get_nested_tree(tree.inventory['sub-tree-root-id'],
+                                         'sub-tree')
+
+    def test_iter_nested_trees(self):
+        tree, sub_tree = self.make_nested_trees()
+        iterator = tree.iter_nested_trees()
+        sub_tree2 = iterator.next()
+        self.assertEqual(sub_tree.basedir, sub_tree2.basedir)
+        self.assertRaises(StopIteration, iterator.next)

@@ -2157,10 +2157,13 @@ class WorkingTree4(WorkingTree3):
         self.inventory.add(entry)
         self._write_inventory(self.inventory)
 
-    def get_reference_revision(self, entry, path=None):
+    def get_nested_tree(self, entry, path=None):
         if path is None:
             path = self.id2path(entry.file_id)
-        return WorkingTree.open(self.abspath(path)).last_revision()
+        return WorkingTree.open(self.abspath(path))
+
+    def get_reference_revision(self, entry, path=None):
+        return self.get_nested_tree(entry, path).last_revision()
 
 
 def get_conflicted_stem(path):

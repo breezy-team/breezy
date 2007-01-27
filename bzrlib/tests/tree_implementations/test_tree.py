@@ -34,7 +34,7 @@ class TestReference(TestCaseWithTree):
         if not getattr(tree, 'supports_tree_reference', lambda: False)():
             raise tests.TestSkipped('Tree references not supported')
 
-    def test_get_reference_revision(self):
+    def create_nested(self):
         work_tree = self.make_branch_and_tree('wt')
         self.skip_if_no_reference(work_tree)
         subtree = self.make_branch_and_tree('wt/subtree')
@@ -43,6 +43,16 @@ class TestReference(TestCaseWithTree):
         work_tree.add_reference(subtree)
         tree = self._convert_tree(work_tree)
         self.skip_if_no_reference(tree)
+        return tree
+
+    def test_get_reference_revision(self):
+        tree = self.create_nested()
         entry = tree.inventory['sub-root']
         path = tree.id2path('sub-root')
         self.assertEqual('sub-1', tree.get_reference_revision(entry, path))
+
+    def test_iter_reference_entries(self):
+        tree = self.create_nested()
+        entry = tree.inventory['sub-root']
+        self.assertEqual([entry], [e for p, e in
+                                   tree.iter_reference_entries()])

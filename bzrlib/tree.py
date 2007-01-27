@@ -152,6 +152,11 @@ class Tree(object):
         return self.inventory.iter_entries_by_dir(
             specific_file_ids=specific_file_ids)
 
+    def iter_reference_entries(self):
+        for path, entry in self.iter_entries_by_dir():
+            if entry.kind == 'tree-reference':
+                yield path, entry
+
     def kind(self, file_id):
         raise NotImplementedError("subclasses must implement kind")
 

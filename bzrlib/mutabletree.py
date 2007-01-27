@@ -20,7 +20,10 @@ See MutableTree for more details.
 """
 
 
-from bzrlib import tree
+from bzrlib import (
+    errors,
+    tree,
+    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.osutils import splitpath
 from bzrlib.symbol_versioning import DEPRECATED_PARAMETER
@@ -111,7 +114,14 @@ class MutableTree(tree.Tree):
         raise NotImplementedError(self._add)
 
     @needs_write_lock
-    def commit(self, message=None, revprops=None, *args, **kwargs):
+    def commit(self, message=None, revprops=None, recursive='down', *args,
+               **kwargs):
+        if recursive == 'down':
+            for tree in self.iter_nested_trees():
+                try:
+                    tree.commit(message, revprops, recursive, *args, **kwargs)
+                except errors.PointlessCommit:
+                    pass
         # avoid circular imports
         from bzrlib import commit
         if revprops is None:
@@ -184,3 +194,7 @@ class MutableTree(tree.Tree):
             parent tree - i.e. a ghost.
         """
         raise NotImplementedError(self.set_parent_trees)
+
+    def iter_nested_trees(self):
+        for path, entry in self.iter_reference_entries():
+            yield self.get_nested_tree(entry, path)

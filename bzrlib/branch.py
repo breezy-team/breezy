@@ -628,13 +628,12 @@ class Branch(object):
             # branch tip correctly, and seed it with history.
             checkout_branch.pull(self, stop_revision=revision_id)
         tree = checkout.create_workingtree(revision_id)
-        for path, entry in tree.inventory.iter_entries_by_dir():
-            if entry.kind == 'tree-reference':
-                path = tree.id2path(entry.file_id)
-                reference_parent = self.reference_parent(entry.file_id, path)
-                reference_parent.create_checkout(tree.abspath(path),
-                                                 entry.reference_revision,
-                                                 lightweight)
+        for path, entry in tree.iter_reference_entries():
+            path = tree.id2path(entry.file_id)
+            reference_parent = self.reference_parent(entry.file_id, path)
+            reference_parent.create_checkout(tree.abspath(path),
+                                             entry.reference_revision,
+                                             lightweight)
         return tree
 
     def reference_parent(self, file_id, path):
