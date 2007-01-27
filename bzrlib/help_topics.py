@@ -111,13 +111,23 @@ def _help_on_transport(name):
        help_text = line_with_indent.join(help_lines)
        return "%-20s%s\n" % (proto, help_text)
 
+    def sort_func(a,b):
+        a1 = a[:a.rfind("://")]
+        b1 = b[:b.rfind("://")]
+        if a1>b1:
+            return +1
+        elif a1<b1:
+            return -1
+        else:
+            return 0
+
     out = []
     protl = []
     decl = []
-    protl.append("\nSupported transport protocols:\n------------------------------\n")
-    decl.append("\nSupported modifiers:\n-------------------\n")
+    protl.append("\nSupported URL prefix\n--------------------\n")
+    decl.append("\nSupported modifiers\n-------------------\n")
     protos = transport_list_registry.keys( )
-    protos.sort( )
+    protos.sort(sort_func)
     for proto in protos:
         shorthelp = transport_list_registry.get_help(proto)
         if not shorthelp:
@@ -195,5 +205,5 @@ def get_format_topic(topic):
 topic_registry.register('formats', get_format_topic, 'Directory formats')
 topic_registry.register('global-options', _global_options,
                         'Options that can be used with any command')
-topic_registry.register('transport', _help_on_transport,
+topic_registry.register('urlspec', _help_on_transport,
                         "Supported transport protocols")
