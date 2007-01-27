@@ -645,6 +645,12 @@ class BzrDir(object):
             result_format.repository_format = source_repository._format
         except errors.NoRepositoryPresent:
             source_repository = None
+        try:
+            tree = self.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            result_format.workingtree_format = None
+        else:
+            result_format.workingtree_format = tree._format.__class__()
         return result_format, source_repository
 
     def cloning_metadir(self, basis=None):
@@ -654,16 +660,13 @@ class BzrDir(object):
 
     def checkout_metadir(self):
         format, repository = self._cloning_metadir()
-        try:
-            tree = self.open_workingtree()
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
+        if format.workingtree_format is None:
             tree_format = repository._format._matchingbzrdir.workingtree_format
-        else:
-            tree_format =  tree._format
-        format.workingtree_format = tree_format.__class__()
+            format.workingtree_format = tree_format.__class__()
         return format
 
-    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
+    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False,
+               recurse='down'):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -731,6 +734,23 @@ class BzrDir(object):
                     wt.set_root_id(self.open_workingtree.get_root_id())
                 except errors.NoWorkingTree:
                     pass
+        else:
+            wt = None
+        if recurse == 'down':
+            if wt is not None:
+                entries = wt.iter_reference_entries()
+                recurse_branch = wt.branch
+            elif source_branch is not None:
+                entries = source_branch.basis_tree.iter_reference_entries()
+                recurse_branch = source_branch
+            else:
+                entries = []
+            for path, entry in entries:
+                target = urlutils.join(url, urlutils.escape(path))
+                sublocation = source_branch.reference_parent(entry.file_id,
+                                                             path)
+                sublocation.bzrdir.sprout(target, entry.reference_revision,
+                    force_new_repo=force_new_repo, recurse=recurse)
         return result
 
 

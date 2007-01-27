@@ -479,6 +479,17 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport,
                           transport)
 
+    def test_sprout_recursive(self):
+        tree = self.make_branch_and_tree('tree1', format='experimental-knit3')
+        sub_tree = self.make_branch_and_tree('tree1/subtree',
+                                             format='experimental-knit3')
+        tree.add_reference(sub_tree)
+        self.build_tree(['tree1/subtree/file'])
+        sub_tree.add('file')
+        tree.commit('Initial commit')
+        tree.bzrdir.sprout('tree2')
+        self.failUnlessExists('tree2/subtree/file')
+
 
 class TestMeta1DirFormat(TestCaseWithTransport):
     """Tests specific to the meta1 dir format."""
