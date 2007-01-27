@@ -51,6 +51,9 @@ class EmailSender(object):
         # we can pass to send_email and have that do the proper encoding.
         from StringIO import StringIO
         outf = StringIO()
+
+        outf.write('At %s\n\n' % self.url())
+
         lf = log_formatter('long',
                            show_ids=True,
                            to_file=outf

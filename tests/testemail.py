@@ -59,6 +59,8 @@ class TestGetTo(TestCaseInTempDir):
         sender = self.get_sender()
         # FIXME: this should not use a literal log, rather grab one from bzrlib.log
         self.assertEqual(
+            'At %s\n'
+            '\n'
             '------------------------------------------------------------\n'
             'revno: 1\n'
             'revision-id: A\n'
@@ -68,7 +70,7 @@ class TestGetTo(TestCaseInTempDir):
             'message:\n'
             '  foo bar baz\n'
             '  fuzzy\n'
-            '  wuzzy\n', sender.body())
+            '  wuzzy\n' % sender.url(), sender.body())
 
     def test_command_line(self):
         sender = self.get_sender()
