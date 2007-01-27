@@ -615,7 +615,8 @@ class Branch(object):
         except errors.FileExists:
             pass
         if lightweight:
-            checkout = bzrdir.BzrDirMetaFormat1().initialize_on_transport(t)
+            format = self._get_checkout_format()
+            checkout = format.initialize_on_transport(t)
             BranchReferenceFormat().initialize(checkout, self)
         else:
             format = self._get_checkout_format()

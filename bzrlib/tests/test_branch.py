@@ -24,10 +24,11 @@ also see this file.
 
 from StringIO import StringIO
 
+from bzrlib import branch
+from bzrlib import bzrdir
 import bzrlib.branch
 from bzrlib.branch import (BzrBranch5, 
                            BzrBranchFormat5)
-import bzrlib.bzrdir as bzrdir
 from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
                            BzrDir, BzrDirFormat)
 from bzrlib.errors import (NotBranchError,
@@ -145,7 +146,7 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         # unregister the format
         bzrlib.branch.BranchFormat.unregister_format(format)
 
-    def test_checkout_with_references(self):
+    def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source', format='experimental-knit3')
         subtree = self.make_branch_and_tree('source/subtree', 
                                             format='experimental-knit3')
@@ -160,12 +161,23 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         tree.commit('a revision')
         subtree.commit('a subtree file')
         subsubtree.commit('a subsubtree file')
-        tree.branch.create_checkout('target')
+        tree.branch.create_checkout('target', lightweight=lightweight)
         self.failUnlessExists('target')
         self.failUnlessExists('target/subtree')
         self.failUnlessExists('target/subtree/file')
         self.failUnlessExists('target/subtree/subsubtree/file')
+        subbranch = branch.Branch.open('target/subtree/subsubtree')
+        if lightweight:
+            self.assertEndsWith(subbranch.base, 'source/subtree/subsubtree/')
+        else:
+            self.assertEndsWith(subbranch.base, 'target/subtree/subsubtree/')
 
+
+    def test_checkout_with_references(self):
+        self.do_checkout_test()
+
+    def test_light_checkout_with_references(self):
+        self.do_checkout_test(lightweight=True)
 
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
