@@ -73,6 +73,14 @@ bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
 import bzrlib.lazy_regex
 bzrlib.lazy_regex.install_lazy_compile()
 
+import bzrlib.decorators
+if ('--lsprof' in sys.argv
+    or '--lsprof-file' in sys.argv
+    or '--profile' in sys.argv):
+    bzrlib.decorators.use_pretty_decorators()
+else:
+    bzrlib.decorators.use_fast_decorators()
+
 import bzrlib.commands
 import bzrlib.trace
 
