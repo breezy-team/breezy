@@ -75,7 +75,13 @@ class LocalTransport(Transport):
         if offset is None:
             return LocalTransport(self.base)
         else:
-            return LocalTransport(self.abspath(offset))
+            abspath = self.abspath(offset)
+            if abspath == 'file://':
+                # fix upwalk for UNC path
+                # when clone from //HOST/path updir recursively
+                # we should stop at least at //HOST part
+                abspath = self.base
+            return LocalTransport(abspath)
 
     def _abspath(self, relative_reference):
         """Return a path for use in os calls.
@@ -472,6 +478,22 @@ class LocalTransport(Transport):
             return False
         else:
             return True
+
+
+class Win32LocalTransport(LocalTransport):
+    """Special transport for testing Win32 [UNC] paths on non-windows"""
+
+    def __init__(self, base):
+        if base[-1] != '/':
+            base = base + '/'
+        super(LocalTransport, self).__init__(base)
+        self._local_base = urlutils._win32_local_path_from_url(base)
+
+    def abspath(self, relpath):
+        assert isinstance(relpath, basestring), (type(relpath), relpath)
+        path = osutils.normpath(osutils.pathjoin(
+                    self._local_base, urlutils.unescape(relpath)))
+        return urlutils._win32_local_path_to_url(path)
 
 
 class LocalURLServer(Server):
