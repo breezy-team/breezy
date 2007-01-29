@@ -83,7 +83,7 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         prevanno=anno
 
 
-def _annotate_file(branch, rev_id, file_id ):
+def _annotate_file(branch, rev_id, file_id):
     """Yield the origins for each line of a file.
 
     This includes detailed information, such as the committer name, and
@@ -91,10 +91,11 @@ def _annotate_file(branch, rev_id, file_id ):
     """
 
     rh = branch.revision_history()
-    revision_graph = branch.repository.get_revision_graph(rev_id)
+    branch_last_revision = branch.last_revision()
+    revision_graph = branch.repository.get_revision_graph(branch_last_revision)
     merge_sorted_revisions = tsort.merge_sort(
         revision_graph,
-        rev_id,
+        branch_last_revision,
         None,
         generate_revno=True)
     revision_id_to_revno = dict((rev_id, revno)
