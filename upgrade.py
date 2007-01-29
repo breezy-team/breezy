@@ -1,5 +1,3 @@
-#!/usr/bin/env python2.4
-#
 # Copyright (C) 2006 by Jelmer Vernooij
 # 
 # This program is free software; you can redistribute it and/or modify
