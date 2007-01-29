@@ -22,6 +22,12 @@ import sys
 import unittest
 import bzrlib
 
+try:
+    from bzrlib.trace import warning
+except ImportError:
+    # get the message out any way we can
+    from warnings import warn as warning
+
 __version__ = '0.3.0'
 required_bzr_version = (0,15)
 
@@ -37,11 +43,6 @@ def check_bzrlib_version(desired):
     bzrlib_version = bzrlib.version_info[:2]
     if bzrlib_version == desired:
         return
-    try:
-        from bzrlib.trace import warning
-    except ImportError:
-        # get the message out any way we can
-        from warnings import warn as warning
     if bzrlib_version < desired:
         warning('Installed bzr version %s is too old to be used with bzr-svn'
                 ' %s.' % (bzrlib.__version__, __version__))
@@ -58,7 +59,6 @@ def check_subversion_version():
     """Check that Subversion is compatible.
 
     """
-    from bzrlib.trace import warning
     try:
         from svn.delta import svn_delta_invoke_txdelta_window_handler
     except:
@@ -69,7 +69,6 @@ def check_pysqlite_version():
     """Check that sqlite library is compatible.
 
     """
-    from bzrlib.trace import warning
     try:
         try:
             import sqlite3
@@ -111,7 +110,6 @@ import svn.core
 subr_version = svn.core.svn_subr_version()
 
 if subr_version.major == 1 and subr_version.minor < 4:
-    from bzrlib.trace import warning
     warning('Subversion version too old for working tree support.')
 else:
     BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
