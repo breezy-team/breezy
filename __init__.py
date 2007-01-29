@@ -69,9 +69,11 @@ class EmailSender(object):
         revid_new = self.revision.revision_id
         if self.revision.parent_ids:
             revid_old = self.revision.parent_ids[0]
+            tree_new, tree_old = self.branch.repository.revision_trees((revid_new, revid_old))
         else:
-            revid_old = None
-        tree_new, tree_old = self.branch.repository.revision_trees((revid_new, revid_old))
+            tree_new = self.branch.repository.revision_tree(revid_new)
+            tree_old = self.branch.repository.revision_tree(None)
+
         diff_content = StringIO()
         show_diff_trees(tree_old, tree_new, diff_content)
         lines = diff_content.getvalue().split("\n")
