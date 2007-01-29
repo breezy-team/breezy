@@ -17,7 +17,6 @@
 from bzrlib.errors import BzrError, ConnectionReset
 
 import svn.core
-from svn.core import SubversionException
 
 class NotSvnBranchPath(BzrError):
     _fmt = """{%(branch_path)s}:%(revnum)s is not a valid Svn branch path"""
@@ -44,8 +43,8 @@ def convert_svn_error(unbound):
     def convert(*args, **kwargs):
         try:
             unbound(*args, **kwargs)
-        except SubversionException, e:
-            return convert_error(e)
+        except svn.core.SubversionException, e:
+            raise convert_error(e)
 
     convert.__doc__ = unbound.__doc__
     convert.__name__ = unbound.__name__

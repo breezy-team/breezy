@@ -38,10 +38,10 @@ class TestConvertError(TestCase):
         self.assertRaises(ConnectionReset, test_throws_svn)
 
     def test_convert_error_unknown(self):
-        self.assertEqual(SubversionException(100, "foo"),
-                         convert_error(SubversionException(100, "foo")))
+        self.assertIsInstance(convert_error(SubversionException(100, "foo")),
+                SubversionException)
 
     def test_convert_error_reset(self):
-        self.assertEqual(ConnectionReset(), convert_error(SubversionException(svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED, "Connection closed")))
+        self.assertIsInstance(convert_error(SubversionException(svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED, "Connection closed")), ConnectionReset)
 
 
