@@ -162,3 +162,17 @@ class TestBranchReference(TestCaseWithTransport):
         self.assertEqual(made_branch.base, target_branch.base)
         opened_branch = branch_dir.open_branch()
         self.assertEqual(opened_branch.base, target_branch.base)
+
+
+class TestHooks(TestCase):
+
+    def test_set_rh_in_defaults(self):
+        """Check that the set_rh hook exists in the defaults."""
+        default_hooks = bzrlib.branch.Branch.DefaultHooks()
+        self.assertTrue("set_rh" in default_hooks,
+            "set_rh not in %s" % default_hooks)
+
+    def test_set_rh_in_actual_hooks(self):
+        """Check that the set_rh hook exists in the saved hook set."""
+        self.assertTrue("set_rh" in self._preserved_hooks,
+            "set_rh not in %s" % self._preserved_hooks)

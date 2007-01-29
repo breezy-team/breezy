@@ -25,6 +25,12 @@ IN DEVELOPMENT
       versionedfiles, repositories, branches, and working trees
       (Aaron Bentley)
 
+    * New Branch hooks facility, with one initial hook 'set_rh' which triggers
+      whenever the revision history is set. This allows triggering on e.g.
+      push, pull, commit, and so on. Developed for use with the branchrss
+      plugin. See bzrlib/tests/branch_implementations/test_hooks for more
+      details. (Robert Collins)
+
   BUGFIXES:
 
   TESTING:

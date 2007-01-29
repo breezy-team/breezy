@@ -852,7 +852,12 @@ class TestTestCase(TestCase):
         self.assertContainsRe(
             output_stream.getvalue(),
             r"\d+ms/ +\d+ms\n$")
-        
+
+    def test_hooks_sanitised(self):
+        """The bzrlib hooks should be sanitised by setUp."""
+        self.assertEqual(bzrlib.branch.Branch.DefaultHooks(),
+            bzrlib.branch.Branch.hooks)
+
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
         

@@ -81,6 +81,10 @@ class Branch(object):
 
     base
         Base directory/url of the branch.
+
+    hooks: A dictionary mapping hook actions to callables to invoke.
+        e.g. 'set_rh':[] is the set_rh hook list. See DefaultHooks for
+        full details.
     """
     # this is really an instance variable - FIXME move it there
     # - RBC 20060112
@@ -102,6 +106,16 @@ class Branch(object):
         master = self.get_master_branch()
         if master is not None:
             master.break_lock()
+
+    @staticmethod
+    def DefaultHooks():
+        """Return a dict of the default branch hook settings."""
+        return {
+            'set_rh':[], # invoked whenever the revision history has been set
+                         # with set_revision_history. The api signature is
+                         # (branch, revision_history), and the branch will
+                         # be write-locked.
+            }
 
     @staticmethod
     @deprecated_method(zero_eight)
@@ -629,6 +643,10 @@ class Branch(object):
         return checkout.create_workingtree(revision_id)
 
 
+# install the default hooks into the class.
+Branch.hooks = Branch.DefaultHooks()
+
+
 class BranchFormat(object):
     """An encapsulation of the initialization and open routines for a format.
 
@@ -1101,6 +1119,8 @@ class BzrBranch(Branch):
             # this call is disabled because revision_history is 
             # not really an object yet, and the transaction is for objects.
             # transaction.register_clean(history)
+        for hook in Branch.hooks['set_rh']:
+            hook(self, rev_history)
 
     @needs_read_lock
     def revision_history(self):
