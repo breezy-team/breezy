@@ -3,7 +3,7 @@
 #    
 #    This file is part of bzr-builddeb.
 #
-#    bzr-builldeb is free software; you can redistribute it and/or modify
+#    bzr-builddeb is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
 #    (at your option) any later version.
@@ -87,7 +87,7 @@ class DebBuild(object):
       raise DebianError('Could not find dir with upstream tarballs: '
           +tarballdir)
     if not os.path.exists(tarball):
-      raise DebianError('Could not find upstrean tarball at '+tarball)
+      raise DebianError('Could not find upstream tarball at '+tarball)
     return tarball
 
   def _tarball_name(self):
