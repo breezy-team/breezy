@@ -19,13 +19,14 @@ Written by Alexander Belchenko
 """
 
 import os
+import shutil
 import sys
 
 
 ##
 # CONSTANTS
 
-VERSION = "1.3.20060513"
+VERSION = "1.4.20070130"
 
 USAGE = """Bzr postinstall helper for win32 installation
 Usage: %s [options]
@@ -44,6 +45,16 @@ OPTIONS:
     --delete-shell-menu         - delete context menu from shell
     --check-mfc71               - check if MFC71.DLL present in system
 """ % os.path.basename(sys.argv[0])
+
+# Windows version
+_major,_minor,_build,_platform,_text = sys.getwindowsversion()
+if _platform == 0:
+    raise Exception('This platform does not supported!')
+elif _platform == 1:
+    winver = 'Windows 98'
+else:
+    winver = 'Windows NT'
+
 
 ##
 # INTERNAL VARIABLES
@@ -155,7 +166,7 @@ def main():
             f.write(''.join(content))
             f.close()
 
-    if add_path or delete_path:
+    if (add_path or delete_path) and winver == 'Windows NT':
         # find appropriate registry key:
         # 1. HKLM\System\CurrentControlSet\Control\SessionManager\Environment
         # 2. HKCU\Environment
@@ -213,6 +224,55 @@ def main():
         if not hkey is None:
             _winreg.CloseKey(hkey)
 
+    if (add_path or delete_path) and winver == 'Windows 98':
+        # mutating autoexec.bat
+        # adding or delete string:
+        # SET PATH=%PATH%;C:\PROGRA~1\Bazaar
+        cur_path = os.environ.get('PATH')
+        if cur_path.find(bzr_dir) != -1:
+            bzr_dir_in_path = True
+        else:
+            bzr_dir_in_path = False
+
+        abat = 'C:\\autoexec.bat'
+        abak = 'C:\\autoexec.bak'
+
+        def backup_autoexec_bat(name, backupname, dry_run):
+            # backup autoexec.bat
+            if os.path.isfile(name):
+                if not dry_run:
+                    shutil.copyfile(name, backupname)
+                else:
+                    print '*** backup copy of autoexec.bat created'
+
+        if delete_path and bzr_dir_in_path:
+            backup_autoexec_bat(abat, abak, dry_run)
+            f = file(abat, 'r')
+            lines = f.readlines()
+            f.close()
+
+            pattern = 'SET PATH=%PATH%;' + bzr_dir
+            if not dry_run:
+                f = file(abat, 'w')
+                for i in lines:
+                    if i.rstrip('\r\n') != pattern:
+                        f.write(i)
+                f.close()
+            else:
+                print '*** Remove line <%s> from autoexec.bat' % pattern
+                    
+        elif add_path and not bzr_dir_in_path:
+            backup_autoexec_bat(abat, abak, dry_run)
+
+            pattern = 'SET PATH=%PATH%;' + bzr_dir
+            if not dry_run:
+                f = file(abat, 'a')
+                f.write(pattern)
+                f.write('\n')
+                f.close()
+            else:
+                print '*** Add line <%s> to autoexec.bat' % pattern
+
     if add_shell_menu and not delete_shell_menu:
         hkey = None
         try:
@@ -229,8 +289,9 @@ def main():
             _winreg.SetValue(hkey, '', _winreg.REG_SZ, 'Bzr Here')
             hkey2 = _winreg.CreateKey(hkey, 'command')
             _winreg.SetValue(hkey2, '', _winreg.REG_SZ,
-                             'cmd /K "%s"' % os.path.join(bzr_dir,
-                                                          'start_bzr.bat'))
+                             '%s /K "%s"' % (
+                                    os.environ.get('COMSPEC', '%COMSPEC%'),
+                                    os.path.join(bzr_dir, 'start_bzr.bat'))
             _winreg.CloseKey(hkey2)
             _winreg.CloseKey(hkey)
 

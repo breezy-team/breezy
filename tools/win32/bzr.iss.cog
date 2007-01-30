@@ -44,7 +44,7 @@ SetupIconFile="..\bzr.ico"
 InfoBeforeFile="..\tools\win32\info.txt"
 
 VersionInfoCompany="Canonical Ltd."
-VersionInfoCopyright="Canonical Ltd., 2005-2006"
+VersionInfoCopyright="Canonical Ltd., 2005-2007"
 VersionInfoDescription="Installer for stand-alone bzr.exe"
 ; [[[cog
 ; import bzrlib
@@ -90,7 +90,7 @@ Name: "{userappdata}\bazaar\2.0"
 [Icons]
 Name: "{group}\Documentation index"; Filename: "{app}\doc\index.htm"; WorkingDir: "{app}\doc";
 Name: "{group}\Bazaar Home Page"; Filename: "{app}\bazaar.url"; Comment: "http://www.bazaar-vcs.org";
-Name: "{group}\Start Bzr in cmd shell"; Filename: "{sys}\cmd.exe"; Parameters: "/K start_bzr.bat"; WorkingDir: "{app}"; IconFilename: "{app}\bzr.exe"; Comment: "Open new Bzr session";
+Name: "{group}\Start Bzr in cmd shell"; Filename: "%COMSPEC%"; Parameters: "/K start_bzr.bat"; WorkingDir: "{app}"; IconFilename: "{app}\bzr.exe"; Comment: "Open new Bzr session";
 Name: "{group}\Uninstall Bzr"; Filename: "{uninstallexe}"; IconFileName: "{sys}\shell32.dll"; IconIndex: 101; Comment: "Remove Bzr completely";
 
 [Tasks]
