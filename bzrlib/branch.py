@@ -375,7 +375,18 @@ class Branch(object):
         return history[revno - 1]
 
     def pull(self, source, overwrite=False, stop_revision=None):
+        """Mirror source into this branch.
+
+        This branch is considered to be 'local', having low latency.
+        """
         raise NotImplementedError(self.pull)
+
+    def push(self, target, overwrite=False, stop_revision=None):
+        """Mirror this branch into target.
+
+        This branch is considered to be 'local', having low latency.
+        """
+        raise NotImplementedError(self.push)
 
     def basis_tree(self):
         """Return `Tree` object for last revision."""
@@ -599,7 +610,7 @@ class Branch(object):
             format = self.repository.bzrdir.cloning_metadir()
         return format
 
-    def create_checkout(self, to_location, revision_id=None, 
+    def create_checkout(self, to_location, revision_id=None,
                         lightweight=False):
         """Create a checkout of a branch.
         
@@ -1205,6 +1216,24 @@ class BzrBranch(Branch):
         finally:
             source.unlock()
 
+    @needs_read_lock
+    def push(self, target, overwrite=False, stop_revision=None):
+        """See Branch.push."""
+        target.lock_write()
+        try:
+            old_count = len(target.revision_history())
+            try:
+                target.update_revisions(self, stop_revision)
+            except DivergedBranches:
+                if not overwrite:
+                    raise
+            if overwrite:
+                target.set_revision_history(self.revision_history())
+            new_count = len(target.revision_history())
+            return new_count - old_count
+        finally:
+            target.unlock()
+
     def get_parent(self):
         """See Branch.get_parent."""
 
@@ -1283,7 +1312,7 @@ class BzrBranch5(BzrBranch):
         
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None):
-        """Updates branch.pull to be bound branch aware."""
+        """Extends branch.pull to be bound branch aware."""
         bound_location = self.get_bound_location()
         if source.base != bound_location:
             # not pulling from master, so we need to update master.
@@ -1292,6 +1321,22 @@ class BzrBranch5(BzrBranch):
                 master_branch.pull(source)
                 source = master_branch
         return super(BzrBranch5, self).pull(source, overwrite, stop_revision)
+
+    @needs_write_lock
+    def push(self, target, overwrite=False, stop_revision=None):
+        """Updates branch.push to be bound branch aware."""
+        bound_location = target.get_bound_location()
+        if target.base != bound_location:
+            # not pushing to master, so we need to update master.
+            master_branch = target.get_master_branch()
+            if master_branch:
+                # push into the master from this branch.
+                super(BzrBranch5, self).push(master_branch, overwrite,
+                    stop_revision)
+        # and push into the target branch from this. Note that we push from
+        # this branch again, because its considered the highest bandwidth
+        # repository.
+        return super(BzrBranch5, self).push(target, overwrite, stop_revision)
 
     def get_bound_location(self):
         try:
