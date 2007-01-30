@@ -49,6 +49,7 @@ import unicodedata
 
 from bzrlib import (
     errors,
+    win32utils,
     )
 """)
 
@@ -890,8 +891,7 @@ else:
 def terminal_width():
     """Return estimated terminal width."""
     if sys.platform == 'win32':
-        import bzrlib.win32console
-        return bzrlib.win32console.get_console_size()[0]
+        return win32utils.get_console_size()[0]
     width = 0
     try:
         import struct, fcntl, termios
