@@ -58,6 +58,14 @@ that values will be used if found::
 
 All configuration can be overriden on the command line.
 
+There is one complication to this however. As arbitrary commands can be
+specified for some of the options there is a potential security hole. This
+is closed by only taking these options from the configuration file in your
+home directory, which can't be changed by another committer to the branch.
+I apologise if this breaks your setup, and if you can't work around it please
+talk to me to try to find an approach that satisfies you and does not open
+any security holes.
+
 These files must start with::
 
   [BUILDDEB]
@@ -150,19 +158,21 @@ descriptions.
   * ``builder = command``
 
     The command to use to build the package. Defaults to ``dpkg-buildpackage 
-    -rfakeroot -uc -us``).
+    -rfakeroot -uc -us``). Will only be read from the file in your home
+    directory.
 
   * ``quick-builder = command``
 
     The command used to build the package if the ``--quick`` option is used. 
-    (Defaults to ``fakeroot debian/rules binary``).
+    (Defaults to ``fakeroot debian/rules binary``). Will only be read from
+    the file in your home directory.
 
   * ``source-builder = command``
 
     The command used to build a source package if the ``--short`` or ``-S``
     options are used. Overriden if ``--builder`` or ``--quick`` are given on
     the command line. (Defaults to ``dpkg-buildpackage -rfakeroot -uc -us 
-    -S``.)
+    -S``). Will only be read from the file in your home directory.
 
   * ``ignore-unknowns = True``
 
