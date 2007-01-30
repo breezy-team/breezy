@@ -25,6 +25,10 @@ IN DEVELOPMENT
       versionedfiles, repositories, branches, and working trees
       (Aaron Bentley)
 
+    * New method ``Branch.push()`` which should be used when pushing from a
+      branch as it makes performance and policy decisions to match the UI
+      level command ``push``. (Robert Collins).
+
   BUGFIXES:
 
   TESTING:
