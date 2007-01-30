@@ -166,13 +166,12 @@ class TestBranchReference(TestCaseWithTransport):
 
 class TestHooks(TestCase):
 
-    def test_set_rh_in_defaults(self):
-        """Check that the set_rh hook exists in the defaults."""
-        default_hooks = bzrlib.branch.Branch.DefaultHooks()
-        self.assertTrue("set_rh" in default_hooks,
-            "set_rh not in %s" % default_hooks)
+    def test_constructor(self):
+        """Check that creating a BranchHooks instance has the right defaults."""
+        hooks = bzrlib.branch.BranchHooks()
+        self.assertTrue("set_rh" in hooks, "set_rh not in %s" % hooks)
 
-    def test_set_rh_in_actual_hooks(self):
-        """Check that the set_rh hook exists in the saved hook set."""
-        self.assertTrue("set_rh" in self._preserved_hooks,
-            "set_rh not in %s" % self._preserved_hooks)
+    def test_installed_hooks_are_BranchHooks(self):
+        """The installed hooks object should be a BranchHooks."""
+        # the installed hooks are saved in self._preserved_hooks.
+        self.assertIsInstance(self._preserved_hooks, bzrlib.branch.BranchHooks)

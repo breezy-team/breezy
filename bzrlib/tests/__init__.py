@@ -574,7 +574,7 @@ class TestCase(unittest.TestCase):
         self.addCleanup(self._restoreHooks)
         # this list of hooks must be kept in sync with the defaults
         # in branch.py
-        bzrlib.branch.Branch.hooks = bzrlib.branch.Branch.DefaultHooks()
+        bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""

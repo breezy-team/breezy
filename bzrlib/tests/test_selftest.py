@@ -855,7 +855,7 @@ class TestTestCase(TestCase):
 
     def test_hooks_sanitised(self):
         """The bzrlib hooks should be sanitised by setUp."""
-        self.assertEqual(bzrlib.branch.Branch.DefaultHooks(),
+        self.assertEqual(bzrlib.branch.BranchHooks(),
             bzrlib.branch.Branch.hooks)
 
     def test__gather_lsprof_in_benchmarks(self):

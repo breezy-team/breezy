@@ -82,9 +82,7 @@ class Branch(object):
     base
         Base directory/url of the branch.
 
-    hooks: A dictionary mapping hook actions to callables to invoke.
-        e.g. 'set_rh':[] is the set_rh hook list. See DefaultHooks for
-        full details.
+    hooks: An instance of BranchHooks.
     """
     # this is really an instance variable - FIXME move it there
     # - RBC 20060112
@@ -106,16 +104,6 @@ class Branch(object):
         master = self.get_master_branch()
         if master is not None:
             master.break_lock()
-
-    @staticmethod
-    def DefaultHooks():
-        """Return a dict of the default branch hook settings."""
-        return {
-            'set_rh':[], # invoked whenever the revision history has been set
-                         # with set_revision_history. The api signature is
-                         # (branch, revision_history), and the branch will
-                         # be write-locked.
-            }
 
     @staticmethod
     @deprecated_method(zero_eight)
@@ -643,8 +631,28 @@ class Branch(object):
         return checkout.create_workingtree(revision_id)
 
 
+class BranchHooks(dict):
+    """A dictionary mapping hook name to a list of callables for branch hooks.
+    
+    e.g. ['set_rh'] Is the list of items to be called when the
+    set_revision_history function is invoked.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        dict.__init__(self)
+        # invoked whenever the revision history has been set
+        # with set_revision_history. The api signature is
+        # (branch, revision_history), and the branch will
+        # be write-locked.
+        self['set_rh'] = []
+
 # install the default hooks into the class.
-Branch.hooks = Branch.DefaultHooks()
+Branch.hooks = BranchHooks()
 
 
 class BranchFormat(object):
