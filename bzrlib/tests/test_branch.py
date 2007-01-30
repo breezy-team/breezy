@@ -32,6 +32,7 @@ from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1,
                            BzrDir, BzrDirFormat)
 from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
+                           UnknownHook,
                            UnsupportedFormatError,
                            )
 
@@ -175,3 +176,14 @@ class TestHooks(TestCase):
         """The installed hooks object should be a BranchHooks."""
         # the installed hooks are saved in self._preserved_hooks.
         self.assertIsInstance(self._preserved_hooks, bzrlib.branch.BranchHooks)
+
+    def test_install_hook_raises_unknown_hook(self):
+        """install_hook should raise UnknownHook if a hook is unknown."""
+        hooks = bzrlib.branch.BranchHooks()
+        self.assertRaises(UnknownHook, hooks.install_hook, 'silly', None)
+
+    def test_install_hook_appends_known_hook(self):
+        """install_hook should append the callable for known hooks."""
+        hooks = bzrlib.branch.BranchHooks()
+        hooks.install_hook('set_rh', None)
+        self.assertEqual(hooks['set_rh'], [None])

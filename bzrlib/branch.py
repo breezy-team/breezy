@@ -631,30 +631,6 @@ class Branch(object):
         return checkout.create_workingtree(revision_id)
 
 
-class BranchHooks(dict):
-    """A dictionary mapping hook name to a list of callables for branch hooks.
-    
-    e.g. ['set_rh'] Is the list of items to be called when the
-    set_revision_history function is invoked.
-    """
-
-    def __init__(self):
-        """Create the default hooks.
-
-        These are all empty initially, because by default nothing should get
-        notified.
-        """
-        dict.__init__(self)
-        # invoked whenever the revision history has been set
-        # with set_revision_history. The api signature is
-        # (branch, revision_history), and the branch will
-        # be write-locked.
-        self['set_rh'] = []
-
-# install the default hooks into the class.
-Branch.hooks = BranchHooks()
-
-
 class BranchFormat(object):
     """An encapsulation of the initialization and open routines for a format.
 
@@ -740,6 +716,45 @@ class BranchFormat(object):
 
     def __str__(self):
         return self.get_format_string().rstrip()
+
+
+class BranchHooks(dict):
+    """A dictionary mapping hook name to a list of callables for branch hooks.
+    
+    e.g. ['set_rh'] Is the list of items to be called when the
+    set_revision_history function is invoked.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        dict.__init__(self)
+        # invoked whenever the revision history has been set
+        # with set_revision_history. The api signature is
+        # (branch, revision_history), and the branch will
+        # be write-locked. Introduced in 0.15.
+        self['set_rh'] = []
+
+    def install_hook(self, hook_name, a_callable):
+        """Install a_callable in to the hook hook_name.
+
+        :param hook_name: A hook name. See the __init__ method of BranchHooks
+            for the complete list of hooks.
+        :param a_callable: The callable to be invoked when the hook triggers.
+            The exact signature will depend on the hook - see the __init__ 
+            method of BranchHooks for details on each hook.
+        """
+        try:
+            self[hook_name].append(a_callable)
+        except KeyError:
+            raise errors.UnknownHook('branch', hook_name)
+
+
+# install the default hooks into the Branch class.
+Branch.hooks = BranchHooks()
 
 
 class BzrBranchFormat4(BranchFormat):
