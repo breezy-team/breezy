@@ -1,4 +1,4 @@
-bzr-builddeb (0.14) unstable; urgency=low
+bzr-builddeb (0.14) UNRELEASED; urgency=low
 
   * Compatible with bzr 0.14.
   * Drop the silly restriction on only invoking the command from the root
