@@ -1641,18 +1641,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         for f in files:
             fid = inv.path2id(f)
             if not fid:
-                # TODO: Perhaps make this just a warning, and continue?
-                # This tends to happen when 
-                raise errors.NotVersionedError(path=f)
-            if verbose:
-                # having remove it, it must be either ignored or unknown
-                if self.is_ignored(f):
-                    new_status = 'I'
-                else:
-                    new_status = '?'
-                textui.show_status(new_status, inv[fid].kind, f,
-                                   to_file=to_file)
-            del inv[fid]
+                note("%s is not versioned."%f)
+            else:
+                if verbose:
+                    # having remove it, it must be either ignored or unknown
+                    if self.is_ignored(f):
+                        new_status = 'I'
+                    else:
+                        new_status = '?'
+                    textui.show_status(new_status, inv[fid].kind, f,
+                                       to_file=to_file)
+                del inv[fid]
 
         self._write_inventory(inv)
 
