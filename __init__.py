@@ -22,7 +22,7 @@ import sys
 import unittest
 import bzrlib
 
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 required_bzr_version = (0,15)
 
 def check_bzrlib_version(desired):
