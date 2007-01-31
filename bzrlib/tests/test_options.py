@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,14 +14,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib import (
+    builtins,
+    bzrdir,
+    errors,
+    option,
+    repository,
+    symbol_versioning,
+    )
 from bzrlib.builtins import cmd_commit, cmd_log, cmd_status
 from bzrlib.commands import Command, parse_args
-from bzrlib import errors
-from bzrlib import option
 from bzrlib.tests import TestCase
 
-# TODO: might be nice to just parse them into a structured form and test
-# against that, rather than running the whole command.
+def parse(options, args):
+    parser = option.get_optparser(dict((o.name, o) for o in options))
+    return parser.parse_args(args)
 
 class OptionTests(TestCase):
     """Command-line option tests"""
@@ -69,27 +76,105 @@ class OptionTests(TestCase):
         force_opt = option.Option.OPTIONS['force']
         self.assertEquals(force_opt.short_name(), None)
 
+    def test_set_short_name(self):
+        o = option.Option('wiggle')
+        o.set_short_name('w')
+        self.assertEqual(o.short_name(), 'w')
+
+    def test_old_short_names(self):
+        # test the deprecated method for getting and setting short option
+        # names
+        expected_warning = (
+            "access to SHORT_OPTIONS was deprecated in version 0.14."
+            " Set the short option name when constructing the Option.",
+            DeprecationWarning, 2)
+        _warnings = []
+        def capture_warning(message, category, stacklevel=None):
+            _warnings.append((message, category, stacklevel))
+        old_warning_method = symbol_versioning.warn
+        try:
+            # an example of the kind of thing plugins might want to do through
+            # the old interface - make a new option and then give it a short
+            # name.
+            symbol_versioning.set_warning_method(capture_warning)
+            example_opt = option.Option('example', help='example option')
+            option.Option.SHORT_OPTIONS['w'] = example_opt
+            self.assertEqual(example_opt.short_name(), 'w')
+            self.assertEqual([expected_warning], _warnings)
+            # now check that it can actually be parsed with the registered
+            # value
+            opts, args = parse([example_opt], ['-w', 'foo'])
+            self.assertEqual(opts.example, True)
+            self.assertEqual(args, ['foo'])
+        finally:
+            symbol_versioning.set_warning_method(old_warning_method)
+
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
         self.assertEqual((['-'], {}), parse_args(cmd_commit(), ['-']))
 
+    def parse(self, options, args):
+        parser = option.get_optparser(dict((o.name, o) for o in options))
+        return parser.parse_args(args)
+
     def test_conversion(self):
-        def parse(options, args):
-            parser = option.get_optparser(dict((o.name, o) for o in options))
-            return parser.parse_args(args)
         options = [option.Option('hello')]
-        opts, args = parse(options, ['--no-hello', '--hello'])
+        opts, args = self.parse(options, ['--no-hello', '--hello'])
         self.assertEqual(True, opts.hello)
-        opts, args = parse(options, [])
+        opts, args = self.parse(options, [])
         self.assertEqual(option.OptionParser.DEFAULT_VALUE, opts.hello)
-        opts, args = parse(options, ['--hello', '--no-hello'])
+        opts, args = self.parse(options, ['--hello', '--no-hello'])
         self.assertEqual(False, opts.hello)
         options = [option.Option('number', type=int)]
-        opts, args = parse(options, ['--number', '6'])
+        opts, args = self.parse(options, ['--number', '6'])
         self.assertEqual(6, opts.number)
-        self.assertRaises(errors.BzrCommandError, parse, options, ['--number'])
-        self.assertRaises(errors.BzrCommandError, parse, options, 
+        self.assertRaises(errors.BzrCommandError, self.parse, options,
+                          ['--number'])
+        self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--no-number'])
+
+    def test_registry_conversion(self):
+        registry = bzrdir.BzrDirFormatRegistry()
+        registry.register_metadir('one', 'RepositoryFormat7', 'one help')
+        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
+        registry.set_default('one')
+        options = [option.RegistryOption('format', '', registry, str)]
+        opts, args = self.parse(options, ['--format', 'one'])
+        self.assertEqual({'format':'one'}, opts)
+        opts, args = self.parse(options, ['--format', 'two'])
+        self.assertEqual({'format':'two'}, opts)
+        self.assertRaises(errors.BadOptionValue, self.parse, options,
+                          ['--format', 'three'])
+        self.assertRaises(errors.BzrCommandError, self.parse, options,
+                          ['--two'])
+        options = [option.RegistryOption('format', '', registry, str,
+                   value_switches=True)]
+        opts, args = self.parse(options, ['--two'])
+        self.assertEqual({'format':'two'}, opts)
+        opts, args = self.parse(options, ['--two', '--one'])
+        self.assertEqual({'format':'one'}, opts)
+        opts, args = self.parse(options, ['--two', '--one',
+                                          '--format', 'two'])
+        self.assertEqual({'format':'two'}, opts)
+
+    def test_registry_converter(self):
+        options = [option.RegistryOption('format', '',
+                   bzrdir.format_registry, builtins.get_format_type)]
+        opts, args = self.parse(options, ['--format', 'knit'])
+        self.assertIsInstance(opts.format.repository_format,
+                              repository.RepositoryFormatKnit1)
+
+    def test_help(self):
+        registry = bzrdir.BzrDirFormatRegistry()
+        registry.register_metadir('one', 'RepositoryFormat7', 'one help')
+        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
+        registry.set_default('one')
+        options = [option.RegistryOption('format', 'format help', registry,
+                   str, value_switches=True)]
+        parser = option.get_optparser(dict((o.name, o) for o in options))
+        value = parser.format_option_help()
+        self.assertContainsRe(value, 'format.*format help')
+        self.assertContainsRe(value, 'one.*one help')
 
     def test_iter_switches(self):
         opt = option.Option('hello', help='fg')
@@ -101,6 +186,22 @@ class OptionTests(TestCase):
         opt = option.Option('hello', help='fg', type=int, argname='gar')
         self.assertEqual(list(opt.iter_switches()),
                          [('hello', None, 'GAR', 'fg')])
+        registry = bzrdir.BzrDirFormatRegistry()
+        registry.register_metadir('one', 'RepositoryFormat7', 'one help')
+        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
+        registry.set_default('one')
+        opt = option.RegistryOption('format', 'format help', registry,
+                                    value_switches=False)
+        self.assertEqual(list(opt.iter_switches()),
+                         [('format', None, 'ARG', 'format help')])
+        opt = option.RegistryOption('format', 'format help', registry,
+                                    value_switches=True)
+        self.assertEqual(list(opt.iter_switches()),
+                         [('format', None, 'ARG', 'format help'),
+                          ('default', None, None, 'one help'),
+                          ('one', None, None, 'one help'),
+                          ('two', None, None, 'two help'),
+                          ])
 
 #     >>> parse_args('log -r 500'.split())
 #     (['log'], {'revision': [<RevisionSpec_int 500>]})

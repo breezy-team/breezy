@@ -127,6 +127,31 @@ Basic commands:
 """
 
 
+_global_options =\
+"""Global Options
+
+These options may be used with any command, and may appear in front of any
+command.  (e.g. "bzr --quiet help").
+
+--quiet        Suppress informational output; only print errors and warnings
+--version      Print the version number
+
+--no-aliases   Do not process command aliases when running this command
+--builtin      Use the built-in version of a command, not the plugin version.
+               This does not suppress other plugin effects
+--no-plugins   Do not process any plugins
+
+--Derror       Instead of normal error handling, always print a traceback on
+               error.
+--profile      Profile execution using the hotshot profiler
+--lsprof       Profile execution using the lsprof profiler
+--lsprof-file  Profile execution using the lsprof profiler, and write the
+               results to a specified file.
+
+Note: --version must be supplied before any command.
+"""
+
+
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
 topic_registry.register('basic', _basic_help, "Basic commands")
@@ -135,3 +160,5 @@ def get_format_topic(topic):
     from bzrlib import bzrdir
     return bzrdir.format_registry.help_topic(topic)
 topic_registry.register('formats', get_format_topic, 'Directory formats')
+topic_registry.register('global-options', _global_options,
+                        'Options that can be used with any command')
