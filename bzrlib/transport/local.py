@@ -481,6 +481,12 @@ class LocalURLServer(Server):
     this just exists to tell the test code how to get to it.
     """
 
+    def setUp(self, decorated_transport=None):
+        """Setup the server to service requests.
+        
+        :param decorated_transport: ignored by this implementation.
+        """
+
     def get_url(self):
         """See Transport.Server.get_url."""
         return urlutils.local_path_to_url('')

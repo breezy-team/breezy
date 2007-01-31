@@ -304,7 +304,7 @@ class HttpServer(Server):
         """Capture Server log output."""
         self.logs.append(format % args)
 
-    def setUp(self, decorated_transport):
+    def setUp(self, decorated_transport=None):
         """See bzrlib.transport.Server.setUp.
         
         :param decorated_transport: The transport that requests over this

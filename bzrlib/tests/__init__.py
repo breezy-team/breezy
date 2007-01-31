@@ -1262,6 +1262,7 @@ class TestCaseWithMemoryTransport(TestCase):
         self.vfs_transport_factory = default_transport
         self.transport_server = None
         self.transport_readonly_server = None
+        self.__vfs_server = None
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
@@ -1327,7 +1328,7 @@ class TestCaseWithMemoryTransport(TestCase):
         return base
 
     def get_vfs_only_server(self):
-        """Get thae vfs only read/write server instance.
+        """Get the vfs only read/write server instance.
 
         This is useful for some tests with specific servers that need
         diagnostics.
