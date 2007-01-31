@@ -33,9 +33,11 @@ bzr-builddeb (0.14) UNRELEASED; urgency=low
     builders in your ~/.bazaar/builddeb.conf now. If you don't like this
     change then please propose a scheme that allows you to do what you want,
     but doesn't expose people to the security threat.
-  * Bump the required version of bzr to 0.14~rc1 or greater and less than 0.15. 
+  * Bump the required version of bzr to 0.14~rc1 or greater and less than 0.15.
+  * Depend on dpkg-dev and fakeroot as they are used in the default builder
+    commands.
 
- -- James Westby <jw+debian@jameswestby.net>  Tue, 30 Jan 2007 21:39:56 +0000
+ -- James Westby <jw+debian@jameswestby.net>  Wed, 31 Jan 2007 20:15:42 +0000
 
 bzr-builddeb (0.13) unstable; urgency=low
 
