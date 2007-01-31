@@ -17,3 +17,6 @@
 - more efficient implementation for applying txdeltas to weaves. perhaps convert svn deltas to bzr deltas?
 - free memory!
 - implement BzrDirFormat.get_converter()
+- implement find_children by doing a checkout of the subdirectory in 
+  question, rather then using recursive ls. Should improve the speed of 
+  a first use of bzr-svn in a lightweight checkout significantly.

@@ -29,6 +29,8 @@ import svn.ra
 import svn.core
 import svn.client
 
+from errors import convert_svn_error
+
 # Some older versions of the Python bindings need to be 
 # explicitly initialized
 svn.ra.initialize()
@@ -95,6 +97,7 @@ class SvnRaTransport(Transport):
     
     This implements just as much of Transport as is necessary 
     to fool Bazaar. """
+    @convert_svn_error
     def __init__(self, url=""):
         self.pool = Pool()
         self.is_locked = False
@@ -142,31 +145,37 @@ class SvnRaTransport(Transport):
         raise TransportNotPossible('stat not supported on Subversion')
 
     @need_lock
+    @convert_svn_error
     def get_uuid(self):
         mutter('svn get-uuid')
         return svn.ra.get_uuid(self._ra)
 
     @need_lock
+    @convert_svn_error
     def get_repos_root(self):
         mutter("svn get-repos-root")
         return svn.ra.get_repos_root(self._ra)
 
     @need_lock
+    @convert_svn_error
     def get_latest_revnum(self):
         mutter("svn get-latest-revnum")
         return svn.ra.get_latest_revnum(self._ra)
 
     @need_lock
+    @convert_svn_error
     def do_switch(self, switch_rev, switch_target, recurse, switch_url, *args, **kwargs):
         mutter('svn switch -r %d %r -> %r' % (switch_rev, switch_target, switch_url))
         return svn.ra.do_switch(self._ra, switch_rev, switch_target, recurse, switch_url, *args, **kwargs)
 
     @need_lock
+    @convert_svn_error
     def get_log(self, path, from_revnum, to_revnum, *args, **kwargs):
         mutter('svn log %r:%r %r' % (from_revnum, to_revnum, path))
         return svn.ra.get_log(self._ra, [path], from_revnum, to_revnum, *args, **kwargs)
 
     @need_lock
+    @convert_svn_error
     def reparent(self, url):
         url = url.rstrip("/")
         if url == self.svn_url:
@@ -180,6 +189,7 @@ class SvnRaTransport(Transport):
             self._ra = svn.client.open_ra_session(self.svn_url.encode('utf8'), 
                     self._client, self.pool)
     @need_lock
+    @convert_svn_error
     def get_dir(self, path, revnum, pool=None, kind=False):
         mutter("svn ls -r %d '%r'" % (revnum, path))
         path = path.rstrip("/")
@@ -194,6 +204,7 @@ class SvnRaTransport(Transport):
         else:
             return svn.ra.get_dir(self._ra, path, revnum)
 
+    @convert_svn_error
     def list_dir(self, relpath):
         assert len(relpath) == 0 or relpath[0] != "/"
         if relpath == ".":
@@ -208,12 +219,14 @@ class SvnRaTransport(Transport):
         return dirents.keys()
 
     @need_lock
+    @convert_svn_error
     def check_path(self, path, revnum, *args, **kwargs):
         assert len(path) == 0 or path[0] != "/"
         mutter("svn check_path -r%d %s" % (revnum, path))
         return svn.ra.check_path(self._ra, path, revnum, *args, **kwargs)
 
     @need_lock
+    @convert_svn_error
     def mkdir(self, relpath, mode=None):
         path = "%s/%s" % (self.svn_url, relpath)
         try:
@@ -226,11 +239,13 @@ class SvnRaTransport(Transport):
             raise
 
     @need_lock
+    @convert_svn_error
     def do_update(self, revnum, path, *args, **kwargs):
         mutter('svn update -r %r %r' % (revnum, path))
         return svn.ra.do_update(self._ra, revnum, path, *args, **kwargs)
 
     @need_lock
+    @convert_svn_error
     def get_commit_editor(self, *args, **kwargs):
         return svn.ra.get_commit_editor(self._ra, *args, **kwargs)
 
