@@ -78,6 +78,11 @@ used as command line arguments by prepending ``--`` to the names and not using
 the ``\=`` symbol. There are a few exceptions to this that are noted in the
 descriptions.
 
+Directories
+###########
+
+These change the directories that the plugin uses for various things.
+
   * ``build-dir = path``
 
     The directory in which the build takes place. (Defaults to 
@@ -87,6 +92,17 @@ descriptions.
 
     The directory the resulting files will be placed in. (Defaults to whatever
     is being used for ``build_dir``).
+
+  * ``orig-dir = path``
+
+    The directory to search for the ``.orig.tar.gz`` when not in native mode. 
+    (Defaults to ``../tarballs`` relative to the branch).
+
+Modes
+#####
+
+These change the way in which the plugin operates. They can be set depending
+on the type of package you are building.
 
   * ``merge = True``
 
@@ -123,6 +139,13 @@ descriptions.
     effect if ``merge`` is set, and causes any ``orig-dir`` setting to be
     ignored.
 
+Interaction with an upstream branch
+###################################
+
+When the upstream source is in ``bazaar`` and you use the ``export-upstream``
+mode then these options control how the plugin interacts with the upstream
+branch.
+
   * ``export-upstream-revision = revision``
 
     This sets the revision that the upstream code will be branched at. It takes
@@ -150,10 +173,11 @@ descriptions.
     the ``export-upstream-prepull`` option is true. [Not a command line
     option.]
 
-  * ``orig-dir = path``
+Builders
+########
 
-    The directory to search for the ``.orig.tar.gz`` when not in native mode. 
-    (Defaults to ``../tarballs`` relative to the branch).
+These configure the commands that are used to build the package in different
+situations.
 
   * ``builder = command``
 
@@ -173,6 +197,9 @@ descriptions.
     options are used. Overriden if ``--builder`` or ``--quick`` are given on
     the command line. (Defaults to ``dpkg-buildpackage -rfakeroot -uc -us 
     -S``). Will only be read from the file in your home directory.
+
+Others
+######
 
   * ``ignore-unknowns = True``
 
