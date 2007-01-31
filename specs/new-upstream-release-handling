@@ -1,0 +1,76 @@
+Handling of new upstream releases
+=================================
+
+Status: Draft
+
+Rationale
+---------
+
+A new upstream version is a very common task in packaging. I believe it is
+possible for the plugin to understand how the package is structured enough
+for this to work, at least for current configurations.
+
+Implementing this spec would add a way to simply update the package to a 
+new upstream version.
+
+It is part of a bigger idea to do similar things for other packaging tasks,
+making it more uniform across packages to do common tasks.
+
+Idea
+----
+
+The plugin works in several modes, and it should be able to infer from which
+mode it is in to work out how to import a new upstream release.
+
+A new upstream release is a very easy task in most cases (ignoring actual
+changes in the new version, thinking only in terms of versions/tarballs etc.)
+
+The following modes are currently supported by the plugin. For each the
+basic idea of a new upstream is shown.
+
+Native package - it is upstream, so a new version is just a dch to add a new
+                 changelog stanza
+
+Full source basic - This requires the branch updating with the code from the
+                    new release, the changelog stanza being created and the
+                    appropriate tarball being available.
+
+Full source split - This just requires a new changelog stanza.
+
+Merge mode basic - Requires the new tarball and the changelog stanza.
+
+Merge mode export upstream - Requires the new changelog stanza, and the
+                             revision id of the release in the upstream branch.
+
+As you can see each requires the changelog stanza, which is easy. The tarball
+requirements could be made easy if upstream-tarball-fetching is implemented.
+
+The two complicated ones are Full source basic and merge mode export upstream.
+
+The latter is slightly easier, either the user is using a mirror they only
+pull on releases, in which case the revision id isn't needed (but a flag should
+be required, as this case shouldn't be assumed as it would cause problems if it
+was got wrong). If the revision id is needed then the user can provide it, and
+the plugin update the config file as required. There needs to be consideration
+of whether to pull before the revision is checked for or needed.
+
+The full source basic case is more complicated. It works like basic merge mode
+in but the branch needs to be updated somehow. Either unpacked from the 
+new tarball or got via a pull. Actually the split case might need a pull
+as well. In these cases it is hard to know what to do. I need to think about
+it.
+
+Design
+------
+
+A new command something like ``deb-new-upstream`` that takes the version number
+and does the right thing, or errors out if it doesn't have the information to
+decide. Perhaps it could prompt for the information it needs.
+
+Code changes
+------------
+
+* New command
+* "Intelligence" to infer what needs to be done from config files and any other
+  information it can grab.
+
