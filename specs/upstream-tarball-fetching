@@ -1,0 +1,76 @@
+Fetching the upstream tarball from some other location
+------------------------------------------------------
+
+Status: Draft
+
+Rationale
+=========
+
+For a user of the plugin who is using a non-bzr upstream mode, but is not
+upstream they will have to get download the tarball from a website of FTP
+site or similar.
+
+In order to make moving to a new upstream version in this case easier
+the plugin could look for the tarball in a remote location if it's not found
+locally, then download it and place it locally.
+
+It's not a huge win, but it does mean that if it is set up correctly a new
+upstream just needs dch to try and test build.
+
+Design
+======
+
+A new config variable 
+
+tarball-fetch-location
+
+that takes a URI to a directory that upstream uses for releases on a server.
+
+When building a package it will look for the tarball in orig-dir. If it is
+not found it will assume that it is a new release, and try and download the
+tarball from tarball-fetch-location. If this fails then it will error out
+as usual. If it suceeds the tarball will be placed in the build area. Also
+the plugin will try and create orig-dir if it doesn't already exist, and try
+and put it in there. This will save downloading each time (and the reason
+for not supporting remote orig-dir). If it can't put the file there it will
+just mention that and carry on, as we can assume that the user doesn't want
+the cacheing.
+
+Unsolved Problems
+=================
+
+There are two problems I envisage
+
+1. The upstream provides a different format tarball.
+
+This could be done later, but it would be easy to add auto-repacking of
+at least .bz2 tarballs. However the naming differences lead to point 2.
+
+2. The upstream has a different tarball name.
+
+Debian has strict rules on the name of the tarball. Upstream wont follow this.
+This means that builddeb needs to be able to infer the upstream tarball
+name from the debian name (or the information).
+
+There are a few alternatives as I see it.
+
+  * Require the upstream name.
+
+    Broken as it removes the generality of the solution.
+
+  * Require a mapping from debian version etc. to upstream name.
+
+    This seems best. The implementation needs some thought, as it needs to
+    be flexible enough for correct specification but not overly complicated.
+    For instance uscan already has this sort of thing, so perhaps use that,
+    or even just parse debian/watch if present.
+
+Code changes
+============
+
+Add support for the option.
+Add command line option.
+Add transports for at least HTTP and FTP.
+Add name mangling support.
+Change the error message for no tarball in orig-dir to mention this option.
+
