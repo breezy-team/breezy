@@ -16,6 +16,8 @@
 
 """bzr postinstall helper for win32 installation
 Written by Alexander Belchenko
+
+Dependency: ctypes
 """
 
 import os
@@ -26,7 +28,7 @@ import sys
 ##
 # CONSTANTS
 
-VERSION = "1.4.20070130"
+VERSION = "1.5.20070131"
 
 USAGE = """Bzr postinstall helper for win32 installation
 Usage: %s [options]
@@ -64,6 +66,7 @@ VERSION_FORMAT = "%-50s%s"
 
 
 def main():
+    import ctypes
     import getopt
     import re
     import _winreg
@@ -137,7 +140,7 @@ def main():
     MB_ICONERROR = 16
     MB_ICONEXCLAMATION = 48
 
-    bzr_dir = os.path.dirname(sys.argv[0])
+    bzr_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 
     if start_bzr:
         fname = os.path.join(bzr_dir, "start_bzr.bat")
@@ -228,12 +231,6 @@ def main():
         # mutating autoexec.bat
         # adding or delete string:
         # SET PATH=%PATH%;C:\PROGRA~1\Bazaar
-        cur_path = os.environ.get('PATH')
-        if cur_path.find(bzr_dir) != -1:
-            bzr_dir_in_path = True
-        else:
-            bzr_dir_in_path = False
-
         abat = 'C:\\autoexec.bat'
         abak = 'C:\\autoexec.bak'
 
@@ -245,13 +242,26 @@ def main():
                 else:
                     print '*** backup copy of autoexec.bat created'
 
-        if delete_path and bzr_dir_in_path:
-            backup_autoexec_bat(abat, abak, dry_run)
-            f = file(abat, 'r')
-            lines = f.readlines()
-            f.close()
+        GetShortPathName = ctypes.windll.kernel32.GetShortPathNameA
+        buf = ctypes.create_string_buffer(260)
+        if GetShortPathName(bzr_dir, buf, 260):
+            bzr_dir_8_3 = buf.value
+        else:
+            bzr_dir_8_3 = bzr_dir
+        pattern = 'SET PATH=%PATH%;' + bzr_dir_8_3
 
-            pattern = 'SET PATH=%PATH%;' + bzr_dir
+        # search pattern
+        f = file(abat, 'r')
+        lines = f.readlines()
+        f.close()
+        found = False
+        for i in lines:
+            if i.rstrip('\r\n') == pattern:
+                found = True
+                break
+
+        if delete_path and found:
+            backup_autoexec_bat(abat, abak, dry_run)
             if not dry_run:
                 f = file(abat, 'w')
                 for i in lines:
@@ -261,10 +271,8 @@ def main():
             else:
                 print '*** Remove line <%s> from autoexec.bat' % pattern
                     
-        elif add_path and not bzr_dir_in_path:
+        elif add_path and not found:
             backup_autoexec_bat(abat, abak, dry_run)
-
-            pattern = 'SET PATH=%PATH%;' + bzr_dir
             if not dry_run:
                 f = file(abat, 'a')
                 f.write(pattern)
@@ -291,7 +299,7 @@ def main():
             _winreg.SetValue(hkey2, '', _winreg.REG_SZ,
                              '%s /K "%s"' % (
                                     os.environ.get('COMSPEC', '%COMSPEC%'),
-                                    os.path.join(bzr_dir, 'start_bzr.bat'))
+                                    os.path.join(bzr_dir, 'start_bzr.bat')))
             _winreg.CloseKey(hkey2)
             _winreg.CloseKey(hkey)
 
