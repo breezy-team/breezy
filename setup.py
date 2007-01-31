@@ -31,5 +31,6 @@ setup(name="bzr-builddeb",
       url="http://jameswestby.net/bzr/bzr-builddeb/",
       packages=['bzrlib.plugins.bzr-builddeb'],
       package_dir={'bzrlib.plugins.bzr-builddeb': '.'},
-      scripts=['bzr-buildpackage'])
+      scripts=['bzr-buildpackage'],
+      data_files=[('share/man/man1', ['bzr-buildpackage.1'])])
 
