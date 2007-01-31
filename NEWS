@@ -27,6 +27,9 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * Lock operations no longer hang if they encounter a permission problem.
+      (Aaron Bentley)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
