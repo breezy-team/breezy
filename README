@@ -234,6 +234,10 @@ your liking and tweak the commands below as necessary.
 Using merge mode
 ~~~~~~~~~~~~~~~~
 
+Merge mode is when only the ``debian/`` directory of the package is versioned,
+with the upstream version of the code living elsewhere. It allows for clear
+separation of the Debian specific changes from the upstream code.
+
 If you want to use merge mode you need to create a tarballs directory for
 the ``.orig.tar.gz`` files:: 
 
