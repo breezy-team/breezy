@@ -29,6 +29,10 @@ IN DEVELOPMENT
       whenever the revision history is set. This allows triggering on e.g.
       push, pull, commit, and so on. Developed for use with the branchrss
       plugin. See bzrlib.branch.BranchHooks for more details. (Robert Collins)
+    
+    * Minor performance improvement by not creating a ProgressBar for
+      every KnitIndex we create. (about 90ms for a bzr.dev tree)
+      (John Arbash Meinel)
 
   BUGFIXES:
 
