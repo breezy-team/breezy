@@ -30,6 +30,10 @@ IN DEVELOPMENT
       push, pull, commit, and so on. Developed for use with the branchrss
       plugin. See bzrlib.branch.BranchHooks for more details. (Robert Collins)
 
+    * New method ``Branch.push()`` which should be used when pushing from a
+      branch as it makes performance and policy decisions to match the UI
+      level command ``push``. (Robert Collins).
+
   BUGFIXES:
 
   TESTING:
