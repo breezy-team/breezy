@@ -177,14 +177,6 @@ class TestSmartServerRequestOpenBranch(tests.TestCaseWithTransport):
 
 class TestSmartServerRequestRevisionHistory(tests.TestCaseWithTransport):
 
-    def test_no_branch(self):
-        """When there is a bzrdir and no branch, NotBranchError is raised."""
-        backing = self.get_transport()
-        request = smart.branch.SmartServerRequestRevisionHistory(backing)
-        self.make_bzrdir('.')
-        self.assertRaises(errors.NotBranchError,
-            request.execute, backing.local_abspath(''))
-
     def test_empty(self):
         """For an empty branch, the body is empty."""
         backing = self.get_transport()
@@ -207,10 +199,21 @@ class TestSmartServerRequestRevisionHistory(tests.TestCaseWithTransport):
             ('\x00'.join([r1, r2])).encode('utf8')),
             request.execute(backing.local_abspath('')))
 
+
+class TestSmartServerBranchRequest(tests.TestCaseWithTransport):
+
+    def test_no_branch(self):
+        """When there is a bzrdir and no branch, NotBranchError is raised."""
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequest(backing)
+        self.make_bzrdir('.')
+        self.assertRaises(errors.NotBranchError,
+            request.execute, backing.local_abspath(''))
+
     def test_branch_reference(self):
         """When there is a branch reference, NotBranchError is raised."""
         backing = self.get_transport()
-        request = smart.branch.SmartServerRequestRevisionHistory(backing)
+        request = smart.branch.SmartServerBranchRequest(backing)
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('reference',lightweight=True)
         self.assertRaises(errors.NotBranchError,

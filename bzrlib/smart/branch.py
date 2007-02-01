@@ -22,19 +22,29 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
 
 
-class SmartServerRequestRevisionHistory(SmartServerRequest):
+class SmartServerBranchRequest(SmartServerRequest):
+    """Base class for handling common branch request logic."""
 
     def do(self, path):
-        """Get the revision history for the branch at path.
+        """Execute a request for a branch at path.
 
         If the branch is a branch reference, NotBranchError is raised.
-        The revision list is returned as the body content,
-        with each revision utf8 encoded and \x00 joined.
         """
         transport = self._backing_transport.clone(path)
         bzrdir = BzrDir.open_from_transport(transport)
         if bzrdir.get_branch_reference() is not None:
             raise errors.NotBranchError(transport.base)
         branch = bzrdir.open_branch()
+        return self.do_with_branch(branch)
+
+
+class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        """Get the revision history for the branch.
+
+        The revision list is returned as the body content,
+        with each revision utf8 encoded and \x00 joined.
+        """
         return SmartServerResponse(('ok', ),
             ('\x00'.join(branch.revision_history())).encode('utf8'))
