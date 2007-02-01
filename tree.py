@@ -29,6 +29,7 @@ from bzrlib.revisiontree import RevisionTree
 import os
 import md5
 from cStringIO import StringIO
+import urllib
 
 import svn.core, svn.wc, svn.delta, svn.ra
 from svn.core import SubversionException, Pool
@@ -176,6 +177,7 @@ class TreeBuildEditor(svn.delta.Editor):
             ie.text_sha1 = None
             ie.text_size = None
             ie.text_id = None
+            ie.executable = False
         else:
             ie.text_sha1 = osutils.sha_string(file_data)
             ie.text_size = len(file_data)
@@ -206,42 +208,38 @@ class SvnBasisTree(RevisionTree):
         self._inventory = Inventory()
         self._repository = workingtree.branch.repository
 
-        def _get_props(relpath):
-            path = self.workingtree.abspath(relpath)
-            wc = workingtree._get_wc()
-            try:
-                return svn.wc.get_prop_diffs(path, wc)
-            finally:
-                svn.wc.adm_close(wc)
-
-        def add_file_to_inv(relpath, id, revid):
-            props = _get_props(relpath)
+        def add_file_to_inv(relpath, id, revid, wc):
+            props = svn.wc.get_prop_diffs(self.workingtree.abspath(relpath), wc)
             if props.has_key(svn.core.SVN_PROP_SPECIAL):
                 ie = self._inventory.add_path(relpath, 'symlink', id)
                 ie.symlink_target = open(self._abspath(relpath)).read()[len("link "):]
                 ie.text_sha1 = None
                 ie.text_size = None
                 ie.text_id = None
+                ie.executable = False
             else:
                 ie = self._inventory.add_path(relpath, 'file', id)
                 data = osutils.fingerprint_file(open(self._abspath(relpath)))
                 ie.text_sha1 = data['sha1']
                 ie.text_size = data['size']
-            ie.executable = props.has_key(svn.core.SVN_PROP_EXECUTABLE)
+                ie.executable = props.has_key(svn.core.SVN_PROP_EXECUTABLE)
             ie.revision = revid
             return ie
 
         def find_ids(entry):
-            relpath = entry.url[len(entry.repos):].strip("/")
+            relpath = urllib.unquote(entry.url[len(entry.repos):].strip("/"))
             if entry.schedule in (svn.wc.schedule_normal, 
                                   svn.wc.schedule_delete, 
                                   svn.wc.schedule_replace):
                 return self.id_map[workingtree.branch.repository.scheme.unprefix(relpath)[1]]
+            return (None, None)
 
         def add_dir_to_inv(relpath, wc, parent_id):
             entries = svn.wc.entries_read(wc, False)
             entry = entries[""]
             (id, revid) = find_ids(entry)
+            if id == None:
+                return
 
             # First handle directory itself
             ie = self._inventory.add_path(relpath, 'directory', id)
@@ -266,7 +264,8 @@ class SvnBasisTree(RevisionTree):
                         svn.wc.adm_close(subwc)
                 else:
                     (subid, subrevid) = find_ids(entry)
-                    add_file_to_inv(subrelpath, subid, subrevid)
+                    if subid is not None:
+                        add_file_to_inv(subrelpath, subid, subrevid, wc)
 
         wc = workingtree._get_wc() 
         try:

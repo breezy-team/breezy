@@ -33,7 +33,7 @@ from svn.core import SubversionException
 
 from commit import push_as_merged
 from repository import SvnRepository
-from transport import bzr_to_svn_url
+from transport import bzr_to_svn_url, svn_config
 from tree import SvnRevisionTree
 
 
@@ -101,6 +101,7 @@ class SvnBranch(Branch):
             mutter('hist: %r' % self.revision_history())
 
         client_ctx = svn.client.create_context()
+        client_ctx.config = svn_config
         svn.client.checkout(bzr_to_svn_url(self.base), to_location, rev, 
                             True, client_ctx)
 
@@ -111,6 +112,9 @@ class SvnBranch(Branch):
             return self._create_lightweight_checkout(to_location, revision_id)
         else:
             return self._create_heavyweight_checkout(to_location, revision_id)
+
+    def generate_revision_id(self, revnum):
+        return self.repository.generate_revision_id(revnum, self.branch_path)
        
     def _generate_revision_history(self, last_revnum):
         self._revision_history = []

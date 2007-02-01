@@ -234,6 +234,7 @@ def test_suite():
             'test_checkout',
             'test_commit',
             'test_convert',
+            'test_errors',
             'test_fileids', 
             'test_logwalker',
             'test_radir',

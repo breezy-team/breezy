@@ -47,8 +47,8 @@ import errors
 import logwalker
 from tree import SvnRevisionTree
 
-MAPPING_VERSION = 2
-REVISION_ID_PREFIX = "svn-v%d:" % MAPPING_VERSION
+MAPPING_VERSION = 3
+REVISION_ID_PREFIX = "svn-v%d-" % MAPPING_VERSION
 SVN_PROP_BZR_MERGE = 'bzr:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_SVK_MERGE = 'svk:merge'
@@ -56,25 +56,11 @@ SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
+import urllib
 
-def escape_svn_path(id, unsafe="%/-\t \n"):
-    assert "%" in unsafe
-    r = [((c in unsafe) and ('%%%02x' % ord(c)) or c)
-         for c in id]
-    return ''.join(r)
-
-
-def unescape_svn_path(id):
-    ret = ""
-    i = 0
-    while i < len(id): 
-        if id[i] == '%':
-            ret += chr(int(id[i+1:i+3], 16))
-            i+=3
-        else:
-            ret += str(id[i])
-            i+=1
-    return ret
+def escape_svn_path(x):
+    return urllib.quote(x, "")
+unescape_svn_path = urllib.unquote
 
 
 def parse_svn_revision_id(revid):
@@ -91,24 +77,23 @@ def parse_svn_revision_id(revid):
     if not revid.startswith(REVISION_ID_PREFIX):
         raise InvalidRevisionId(revid, "")
 
+    try:
+        (version, uuid, branch_path, srevnum)= revid.split(":")
+    except ValueError:
+        raise InvalidRevisionId(revid, "")
+
     revid = revid[len(REVISION_ID_PREFIX):]
 
-    at = revid.index("@")
-    fash = revid.rindex("-")
-    uuid = revid[at+1:fash]
-
-    branch_path = unescape_svn_path(revid[fash+1:])
-    revnum = int(revid[0:at])
-    assert revnum >= 0
-    return (uuid, branch_path, revnum)
+    return (uuid, unescape_svn_path(branch_path), int(srevnum))
 
 
-def generate_svn_revision_id(uuid, revnum, path):
+def generate_svn_revision_id(uuid, revnum, path, scheme="undefined"):
     """Generate a unambiguous revision id. 
     
     :param uuid: UUID of the repository.
     :param revnum: Subversion revision number.
     :param path: Branch path.
+    :param scheme: Name of the branching scheme in use
 
     :return: New revision id.
     """
@@ -117,7 +102,8 @@ def generate_svn_revision_id(uuid, revnum, path):
     assert revnum >= 0
     if revnum == 0:
         return NULL_REVISION
-    return "%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, uuid, escape_svn_path(path.strip("/")))
+    return unicode("%s%s:%s:%s:%d" % (REVISION_ID_PREFIX, scheme, uuid, \
+                   escape_svn_path(path.strip("/")), revnum))
 
 
 def svk_feature_to_revision_id(feature):
@@ -465,9 +451,6 @@ class SvnRepository(Repository):
         return bzrlib.xml5.serializer_v5.write_revision_to_string(
             self.get_revision(revision_id))
 
-    def get_revision_sha1(self, revision_id):
-        return osutils.sha_string(self.get_revision_xml(revision_id))
-
     def follow_history(self, revnum):
         while revnum > 0:
             yielded_paths = []
@@ -486,7 +469,8 @@ class SvnRepository(Repository):
     def follow_branch(self, branch_path, revnum):
         assert branch_path is not None
         assert isinstance(revnum, int) and revnum >= 0
-        if not self.scheme.is_branch(branch_path):
+        if not self.scheme.is_branch(branch_path) and \
+           not self.scheme.is_tag(branch_path):
             raise errors.NotSvnBranchPath(branch_path, revnum)
         branch_path = branch_path.strip("/")
 
@@ -501,7 +485,8 @@ class SvnRepository(Repository):
                 paths[branch_path][0] in ('R', 'A')):
                 if paths[branch_path][1] is None:
                     return
-                if not self.scheme.is_branch(paths[branch_path][1]):
+                if not self.scheme.is_branch(paths[branch_path][1]) and \
+                   not self.scheme.is_tag(paths[branch_path][1]):
                     # FIXME: if copyfrom_path is not a branch path, 
                     # should simulate a reverse "split" of a branch
                     # for now, just make it look like the branch ended here
@@ -513,14 +498,16 @@ class SvnRepository(Repository):
 
     def follow_branch_history(self, branch_path, revnum):
         assert branch_path is not None
-        if not self.scheme.is_branch(branch_path):
+        if not self.scheme.is_branch(branch_path) and \
+           not self.scheme.is_tag(branch_path):
             raise errors.NotSvnBranchPath(branch_path, revnum)
 
         for (bp, paths, revnum) in self._log.follow_path(branch_path, revnum):
             # FIXME: what if one of the parents of branch_path was moved?
             if (paths.has_key(bp) and 
-                paths[bp][1] is not None and
-                not self.scheme.is_branch(paths[bp][1])):
+                paths[bp][1] is not None and 
+                not self.scheme.is_branch(paths[bp][1]) and
+                not self.scheme.is_tag(paths[bp][1])):
                 # FIXME: if copyfrom_path is not a branch path, 
                 # should simulate a reverse "split" of a branch
                 # for now, just make it look like the branch ended here
@@ -544,9 +531,20 @@ class SvnRepository(Repository):
         # SVN doesn't store GPG signatures
         raise NoSuchRevision(self, revision_id)
 
-    def get_revision_graph(self, revision_id):
+    def _full_revision_graph(self):
+        graph = {}
+        for (branch, revnum) in self.follow_history(self._latest_revnum):
+            mutter('%r, %r' % (branch, revnum))
+            revid = self.generate_revision_id(revnum, branch)
+            graph[revid] = self.revision_parents(revid)
+        return graph
+
+    def get_revision_graph(self, revision_id=None):
         if revision_id == NULL_REVISION:
             return {}
+
+        if revision_id is None:
+            return self._full_revision_graph()
 
         (path, revnum) = self.parse_revision_id(revision_id)
 
@@ -579,14 +577,14 @@ class SvnRepository(Repository):
             names = paths.keys()
             names.sort()
             for p in names:
-                if self.scheme.is_branch(p):
+                if self.scheme.is_branch(p) or self.scheme.is_tag(p):
                     if paths[p][0] in ('R', 'D'):
                         del created_branches[p]
                         yield (p, i, False)
 
                     if paths[p][0] in ('A', 'R'): 
                         created_branches[p] = i
-                elif self.scheme.is_branch_parent(p):
+                elif self.scheme.is_branch_parent(p) or self.scheme.is_tag_parent(p):
                     if paths[p][0] in ('R', 'D'):
                         k = created_branches.keys()
                         for c in k:
@@ -599,9 +597,9 @@ class SvnRepository(Repository):
                             p = parents.pop()
                             for c in self.transport.get_dir(p, i)[0].keys():
                                 n = p+"/"+c
-                                if self.scheme.is_branch(n):
+                                if self.scheme.is_branch(n) or self.scheme.is_tag(n):
                                     created_branches[n] = i
-                                elif self.scheme.is_branch_parent(n):
+                                elif self.scheme.is_branch_parent(n) or self.scheme.is_tag_parent(n):
                                     parents.append(n)
 
         for p in created_branches:

@@ -53,6 +53,7 @@ class SvnRemoteAccess(BzrDir):
             self.scheme = scheme
 
         if (not self.scheme.is_branch(self.branch_path) and 
+            not self.scheme.is_tag(self.branch_path) and 
                 self.branch_path != ""):
             raise NotBranchError(path=self.root_transport.base)
 
@@ -130,7 +131,8 @@ class SvnRemoteAccess(BzrDir):
     def open_branch(self, unsupported=True):
         """See BzrDir.open_branch()."""
 
-        if not self.scheme.is_branch(self.branch_path):
+        if not self.scheme.is_branch(self.branch_path) and \
+           not self.scheme.is_tag(self.branch_path):
             raise NotBranchError(path=self.root_transport.base)
 
         repos = self.find_repository()

@@ -22,8 +22,14 @@ import sys
 import unittest
 import bzrlib
 
-__version__ = '0.2.0'
-required_bzr_version = (0,14)
+try:
+    from bzrlib.trace import warning
+except ImportError:
+    # get the message out any way we can
+    from warnings import warn as warning
+
+__version__ = '0.3.0'
+required_bzr_version = (0,15)
 
 def check_bzrlib_version(desired):
     """Check that bzrlib is compatible.
@@ -37,11 +43,6 @@ def check_bzrlib_version(desired):
     bzrlib_version = bzrlib.version_info[:2]
     if bzrlib_version == desired:
         return
-    try:
-        from bzrlib.trace import warning
-    except ImportError:
-        # get the message out any way we can
-        from warnings import warn as warning
     if bzrlib_version < desired:
         warning('Installed bzr version %s is too old to be used with bzr-svn'
                 ' %s.' % (bzrlib.__version__, __version__))
@@ -54,34 +55,51 @@ def check_bzrlib_version(desired):
         if bzrlib_version != desired_plus:
             raise Exception, 'Version mismatch'
 
+def check_subversion_version():
+    """Check that Subversion is compatible.
+
+    """
+    try:
+        from svn.delta import svn_delta_invoke_txdelta_window_handler
+    except:
+        warning('Installed Subversion version does not have updated Python bindings. See the bzr-svn README for details.')
+        raise bzrlib.errors.BzrError("incompatible python subversion bindings")
+
+def check_pysqlite_version():
+    """Check that sqlite library is compatible.
+
+    """
+    try:
+        try:
+            import sqlite3
+        except ImportError:
+            from pysqlite2 import dbapi2 as sqlite3
+    except:
+        warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 module')
+        raise bzrlib.errors.BzrError("missing sqlite library")
+
+    if (sqlite3.sqlite_version_info[0] < 3 or 
+            (sqlite3.sqlite_version_info[0] == 3 and 
+             sqlite3.sqlite_version_info[1] < 3)):
+        warning('Needs at least sqlite 3.3.x')
+        raise bzrlib.errors.BzrError("incompatible sqlite library")
+
 check_bzrlib_version(required_bzr_version)
-try:
-    from bzrlib.workingtree import WorkingTreeFormat4
-except ImportError:
-    warning('this version of bzr-svn requires WorkingTreeFormat4 to be available to work properly')
+
+def check_workingtree_format():
+    try:
+        from bzrlib.workingtree import WorkingTreeFormat4
+    except ImportError:
+        warning('this version of bzr-svn requires WorkingTreeFormat4 to be available to work properly')
+check_workingtree_format()
+check_subversion_version()
+check_pysqlite_version()
 
 import branch
 import convert
 import format
 import transport
 import checkout
-
-def convert_svn_exception(unbound):
-    """Decorator that catches particular Subversion exceptions and 
-    converts them to Bazaar exceptions.
-    """
-    def convert(self, *args, **kwargs):
-        try:
-            unbound(self, *args, **kwargs)
-        except SubversionException, (msg, num):
-            if num == svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED:
-                raise ConnectionReset(msg=msg)
-            else:
-                raise
-
-    convert.__doc__ = unbound.__doc__
-    convert.__name__ = unbound.__name__
-    return convert
 
 from bzrlib.transport import register_transport
 register_transport('svn://', transport.SvnRaTransport)
@@ -95,7 +113,13 @@ from fetch import InterSvnRepository
 
 BzrDirFormat.register_control_format(format.SvnFormat)
 
-BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
+import svn.core
+subr_version = svn.core.svn_subr_version()
+
+if subr_version.major == 1 and subr_version.minor < 4:
+    warning('Subversion version too old for working tree support.')
+else:
+    BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
 
 InterRepository.register_optimiser(InterSvnRepository)
 
@@ -182,15 +206,14 @@ register_command(cmd_svn_upgrade)
 def test_suite():
     from unittest import TestSuite, TestLoader
     import tests
-
     suite = TestSuite()
-
     suite.addTest(tests.test_suite())
-
     return suite
 
 if __name__ == '__main__':
     print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "
           "to use it.\n")
+    runner = unittest.TextTestRunner()
+    runner.run(test_suite())
 else:
-    sys.path.append(os.path.dirname(__file__))
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))

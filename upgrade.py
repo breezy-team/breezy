@@ -19,6 +19,7 @@
 
 from bzrlib.config import Config
 from bzrlib.errors import BzrError, InvalidRevisionId
+from bzrlib.trace import mutter
 from bzrlib.ui import ui_factory
 
 from repository import (MAPPING_VERSION, parse_svn_revision_id, 
@@ -42,6 +43,7 @@ class UpgradeChangesContent(BzrError):
 # Change the parent of a revision
 def change_revision_parent(repository, oldrevid, newrevid, new_parents):
     assert isinstance(new_parents, list)
+    mutter('creating copy %r of %r with new parents %r' % (newrevid, oldrevid, new_parents))
     oldrev = repository.get_revision(oldrevid)
 
     builder = repository.get_commit_builder(branch=None, parents=new_parents, 
@@ -52,13 +54,67 @@ def change_revision_parent(repository, oldrevid, newrevid, new_parents):
                                   revprops=oldrev.properties,
                                   revision_id=newrevid)
 
-    for path, ie in repository.get_revision_inventory(oldrevid).iter_entries():
-        new_ie = ie.copy()
-        if new_ie.revision == oldrevid:
-            new_ie.revision = None
-        builder.record_entry_contents(new_ie, 
-               map(repository.get_revision_inventory, new_parents), 
-               path, repository.revision_tree(oldrevid))
+    # Check what new_ie.file_id should be
+    # use old and new parent inventories to generate new_id map
+    old_parents = oldrev.parent_ids
+    new_id = {}
+    for (oldp, newp) in zip(old_parents, new_parents):
+        oldinv = repository.get_revision_inventory(oldp)
+        newinv = repository.get_revision_inventory(newp)
+        for path, ie in oldinv.iter_entries():
+            if newinv.has_filename(path):
+                new_id[ie.file_id] = newinv.path2id(path)
+
+    mutter('new id %r' % new_id)
+    i = 0
+    class MapTree:
+        def __init__(self, oldtree, map):
+            self.oldtree = oldtree
+            self.map = map
+
+        def old_id(self, file_id):
+            for x in self.map:
+                if self.map[x] == file_id:
+                    return x
+            return file_id
+
+        def get_file_sha1(self, file_id, path=None):
+            return self.oldtree.get_file_sha1(file_id=self.old_id(file_id), 
+                                              path=path)
+
+        def get_file(self, file_id):
+            return self.oldtree.get_file(self.old_id(file_id=file_id))
+
+        def is_executable(self, file_id, path=None):
+            return self.oldtree.is_executable(self.old_id(file_id=file_id), 
+                                              path=path)
+
+    oldtree = MapTree(repository.revision_tree(oldrevid), new_id)
+    oldinv = repository.get_revision_inventory(oldrevid)
+    total = len(oldinv)
+    pb = ui_factory.nested_progress_bar()
+    try:
+        for path, ie in oldinv.iter_entries():
+            pb.update('upgrading revision', i, total)
+            i+=1
+            new_ie = ie.copy()
+            if new_ie.revision == oldrevid:
+                new_ie.revision = None
+            def lookup(file_id):
+                if new_id.has_key(file_id):
+                    return new_id[file_id]
+                return file_id
+
+            new_ie.file_id = lookup(new_ie.file_id)
+            new_ie.parent_id = lookup(new_ie.parent_id)
+            versionedfile = repository.weave_store.get_weave_or_empty(new_ie.file_id, 
+                    repository.get_transaction())
+            if not versionedfile.has_version(newrevid):
+                builder.record_entry_contents(new_ie, 
+                       map(repository.get_revision_inventory, new_parents), 
+                       path, oldtree)
+    finally:
+        pb.finished()
 
     builder.finish_inventory()
     return builder.commit(oldrev.message)
@@ -75,8 +131,17 @@ def parse_legacy_revision_id(revid):
         assert revnum >= 0
         return (uuid, branch_path, revnum, 1)
     elif revid.startswith("svn-v2:"):
+        revid = revid[len("svn-v2:"):]
+        at = revid.index("@")
+        fash = revid.rindex("-")
+        uuid = revid[at+1:fash]
+        branch_path = unescape_svn_path(revid[fash+1:])
+        revnum = int(revid[0:at])
+        assert revnum >= 0
+        return (uuid, branch_path, revnum, 2)
+    elif revid.startswith("svn-v3-"):
         (uuid, bp, rev) = parse_svn_revision_id(revid)
-        return (uuid, bp, rev, 2)
+        return (uuid, bp, rev, 3)
 
     raise InvalidRevisionId(revid, None)
 
@@ -88,11 +153,24 @@ def create_upgraded_revid(revid):
     else:
         return revid + suffix
 
+
 def upgrade_branch(branch, svn_repository, allow_change=False):
     renames = upgrade_repository(branch.repository, svn_repository, 
               branch.last_revision(), allow_change)
+    mutter('renames %r' % renames)
     if len(renames) > 0:
         branch.generate_revision_history(renames[branch.last_revision()])
+
+
+def revision_changed(oldrev, newrev):
+    if (newrev.inventory_sha1 != oldrev.inventory_sha1 or
+        newrev.timestamp != oldrev.timestamp or
+        newrev.message != oldrev.message or
+        newrev.timezone != oldrev.timezone or
+        newrev.committer != oldrev.committer or
+        newrev.properties != oldrev.properties):
+        return True
+    return False
 
 
 def upgrade_repository(repository, svn_repository, revision_id=None, 
@@ -123,6 +201,13 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                     newrevid = generate_svn_revision_id(uuid, rev, bp)
                     if svn_repository.has_revision(newrevid):
                         rename_map[revid] = newrevid
+                        if not repository.has_revision(newrevid):
+                            if not allow_change:
+                                oldrev = repository.get_revision(revid)
+                                newrev = svn_repository.get_revision(newrevid)
+                                if revision_changed(oldrev, newrev):
+                                    raise UpgradeChangesContent(revid)
+                            needed_revs.append(newrevid)
                         continue
                 except InvalidRevisionId:
                     pass
@@ -132,8 +217,15 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
                         (uuid, bp, rev, version) = parse_legacy_revision_id(parent)
                         new_parent = generate_svn_revision_id(uuid, rev, bp)
                         if new_parent != parent:
-                            needed_revs.append(new_parent)
+                            if not repository.has_revision(revid):
+                                needed_revs.append(new_parent)
                             needs_upgrading.append(revid)
+
+                            if not allow_change:
+                                oldrev = repository.get_revision(parent)
+                                newrev = svn_repository.get_revision(new_parent)
+                                if revision_changed(oldrev, newrev):
+                                    raise UpgradeChangesContent(parent)
                         new_parents[revid].append(new_parent)
                     except InvalidRevisionId:
                         new_parents[revid].append(parent)
@@ -153,10 +245,11 @@ def upgrade_repository(repository, svn_repository, revision_id=None,
 
         pb = ui_factory.nested_progress_bar()
         i = 0
+        total = len(needs_upgrading)
         try:
             while len(needs_upgrading) > 0:
                 revid = needs_upgrading.pop()
-                pb.update('upgrading revisions', i, len(needs_upgrading))
+                pb.update('upgrading revisions', i, total)
                 i+=1
                 newrevid = create_upgraded_revid(revid)
                 rename_map[revid] = newrevid

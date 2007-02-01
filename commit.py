@@ -288,7 +288,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             self.date = date
             self.author = author
             mutter('committed %r, author: %r, date: %r' % (revision, author, date))
-
+        
         mutter('obtaining commit editor')
         self.editor, editor_baton = self.repository.transport.get_commit_editor(
             message, done, None, False)
@@ -357,7 +357,7 @@ class SvnCommitBuilder(RootCommitBuilder):
             if not self._svnprops.has_key(SVN_PROP_BZR_FILEIDS):
                 self._svnprops[SVN_PROP_BZR_FILEIDS] = ""
             mutter('adding fileid mapping %s -> %s' % (path, ie.file_id))
-            self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (escape_svn_path(path, "%\t\n"), ie.file_id)
+            self._svnprops[SVN_PROP_BZR_FILEIDS] += "%s\t%s\n" % (escape_svn_path(path), ie.file_id)
 
         previous_entries = ie.find_previous_heads(
             parent_invs,

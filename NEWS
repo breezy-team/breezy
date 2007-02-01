@@ -1,4 +1,25 @@
-IN DEVELOPMENT
+bzr-svn 0.4	UNRELEASED
+
+  BUG FIXES
+
+   * Non-ascii characters in file ids are now supported (fixes imports 
+     of the Python repository).
+
+   * Fixed error raised during version incompatibility. (Wouter van Heyst, 
+                                                         #80467)
+
+   * Implemented Repository.get_revision_graph(None)
+
+  IMPROVEMENTS
+
+   * A proper warning will now be printed if no sqlite implementation is 
+     available.
+
+   * Working tree copies will be disabled if the version of python-subversion 
+     is too old.
+
+
+bzr-svn 0.3	2007-01-16
 
   BUG FIXES
 
@@ -34,6 +55,8 @@ IN DEVELOPMENT
 
    * Store file id map when committing to Subversion. (#54738)
 
+   * Support spaces in filenames in working trees.
+
   IMPROVEMENTS
 
    * Implemented SvnRepository.all_revision_ids().
@@ -53,6 +76,11 @@ IN DEVELOPMENT
    * Implemented SvnRaTransport.list_dir().
 
    * Conversion output can now be on a remote transport.
+
+   * Upgrade command can be used to upgrade branches created with 
+     older versions of the plugin.
+
+   * Fail early when unpatched python Subversion bindings are installed.
 
   PERFORMANCE IMPROVEMENTS
 

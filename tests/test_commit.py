@@ -33,13 +33,11 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
         wt = WorkingTree.open("dc")
-        self.assertEqual(
-            "svn-v%d:1@%s-" % (MAPPING_VERSION, wt.branch.repository.uuid), 
-                         wt.commit(message="data"))
+        self.assertEqual(wt.branch.generate_revision_id(1), 
+                wt.commit(message="data"))
         self.client_update("dc")
-        self.assertEqual(
-            "svn-v%d:1@%s-" % (MAPPING_VERSION, wt.branch.repository.uuid), 
-                         wt.branch.last_revision())
+        self.assertEqual(wt.branch.generate_revision_id(1), 
+                wt.branch.last_revision())
         wt = WorkingTree.open("dc")
         new_inventory = wt.branch.repository.get_inventory(
                             wt.branch.last_revision())
@@ -52,11 +50,9 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         wt = WorkingTree.open("dc")
         self.assertEqual(
-            "svn-v%d:1@%s-" % (MAPPING_VERSION, wt.branch.repository.uuid), 
-                         wt.commit(message="data"))
+            wt.branch.generate_revision_id(1), wt.commit(message="data"))
         self.assertEqual(
-                "svn-v%d:1@%s-" % (MAPPING_VERSION, wt.branch.repository.uuid), 
-                         wt.branch.last_revision())
+                wt.branch.generate_revision_id(1), wt.branch.last_revision())
         new_revision = wt.branch.repository.get_revision(
                             wt.branch.last_revision())
         self.assertEqual(wt.branch.last_revision(), new_revision.revision_id)
@@ -70,7 +66,7 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
         wt.set_pending_merges(["some-ghost-revision"])
         wt.commit(message="data")
         self.assertEqual(
-                'svn-v%d:1@%s-' % (MAPPING_VERSION, wt.branch.repository.uuid), 
+                wt.branch.generate_revision_id(1),
                 wt.branch.last_revision())
 
     def test_commit_parents(self):
@@ -149,7 +145,7 @@ class TestCommitFromBazaar(TestCaseWithSubversionRepository):
         wt.set_pending_merges(["some-ghost-revision"])
         wt.commit(message="data")
         self.assertEqual([
-            "svn-v%d:1@%s-" % (MAPPING_VERSION, wt.branch.repository.uuid), 
+            wt.branch.generate_revision_id(1),
             "some-ghost-revision"],
             wt.branch.repository.revision_parents(wt.branch.last_revision()))
         self.assertEqual("some-ghost-revision\n", 
@@ -243,15 +239,15 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
         repos = self.olddir.find_repository()
-        inv = repos.get_inventory("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid))
-        self.assertEqual("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid), 
+        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
+        self.assertEqual(repos.generate_revision_id(2, ""),
                          inv[inv.path2id('foo/bla')].revision)
         self.assertTrue(wt.branch.last_revision() in 
-         repos.revision_parents("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid)))
-        self.assertEqual("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid), 
+          repos.revision_parents(repos.generate_revision_id(2, "")))
+        self.assertEqual(repos.generate_revision_id(2, ""),
                         self.olddir.open_branch().last_revision())
         self.assertEqual("other data", 
-            repos.revision_tree("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid)).get_file_text( inv.path2id("foo/bla")))
+            repos.revision_tree(repos.generate_revision_id(2, "")).get_file_text( inv.path2id("foo/bla")))
 
     def test_simple(self):
         self.build_tree({'dc/file': 'data'})
@@ -262,12 +258,12 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
         repos = self.olddir.find_repository()
-        inv = repos.get_inventory("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid))
+        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
         self.assertTrue(inv.has_filename('file'))
         self.assertTrue(wt.branch.last_revision() in 
             repos.revision_parents(
-                "svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid)))
-        self.assertEqual("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid), 
+                repos.generate_revision_id(2, "")))
+        self.assertEqual(repos.generate_revision_id(2, ""),
                         self.olddir.open_branch().last_revision())
 
     def test_pull_after_push(self):
@@ -279,16 +275,16 @@ class TestPush(TestCaseWithSubversionRepository):
         self.olddir.open_branch().pull(self.newdir.open_branch())
 
         repos = self.olddir.find_repository()
-        inv = repos.get_inventory("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid))
+        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
         self.assertTrue(inv.has_filename('file'))
         self.assertTrue(wt.branch.last_revision() in 
-                         repos.revision_parents("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid)))
-        self.assertEqual("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid), 
+                         repos.revision_parents(repos.generate_revision_id(2, "")))
+        self.assertEqual(repos.generate_revision_id(2, ""),
                         self.olddir.open_branch().last_revision())
 
         self.newdir.open_branch().pull(self.olddir.open_branch())
 
-        self.assertEqual("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid), 
+        self.assertEqual(repos.generate_revision_id(2, ""),
                         self.newdir.open_branch().last_revision())
 
     def test_message(self):
@@ -301,7 +297,7 @@ class TestPush(TestCaseWithSubversionRepository):
 
         repos = self.olddir.find_repository()
         self.assertEqual("Commit from Bzr",
-            repos.get_revision("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid)).message)
+            repos.get_revision(repos.generate_revision_id(2, "")).message)
 
     def test_multiple(self):
         self.build_tree({'dc/file': 'data'})
@@ -317,17 +313,17 @@ class TestPush(TestCaseWithSubversionRepository):
 
         repos = self.olddir.find_repository()
 
-        self.assertEqual("svn-v%d:3@%s-" % (MAPPING_VERSION, repos.uuid), 
+        self.assertEqual(repos.generate_revision_id(3, ""), 
                         self.olddir.open_branch().last_revision())
 
-        inv = repos.get_inventory("svn-v%d:2@%s-" % (MAPPING_VERSION, repos.uuid))
+        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
         self.assertTrue(inv.has_filename('file'))
         self.assertFalse(inv.has_filename('adir'))
 
-        inv = repos.get_inventory("svn-v%d:3@%s-" % (MAPPING_VERSION, repos.uuid))
+        inv = repos.get_inventory(repos.generate_revision_id(3, ""))
         self.assertTrue(inv.has_filename('file'))
         self.assertTrue(inv.has_filename('adir'))
 
         self.assertTrue(wt.branch.last_revision() in 
-             repos.get_ancestry("svn-v%d:3@%s-" % (MAPPING_VERSION, repos.uuid)))
+             repos.get_ancestry(repos.generate_revision_id(3, "")))
 

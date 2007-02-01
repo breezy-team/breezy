@@ -14,7 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, ConnectionReset
+
+import svn.core
 
 class NotSvnBranchPath(BzrError):
     _fmt = """{%(branch_path)s}:%(revnum)s is not a valid Svn branch path"""
@@ -25,4 +27,25 @@ class NotSvnBranchPath(BzrError):
         self.revnum = revnum
 
 
+def convert_error(err):
+    (num, msg) = err.args
 
+    if num == svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED:
+        return ConnectionReset(msg=msg)
+    else:
+        return err
+
+
+def convert_svn_error(unbound):
+    """Decorator that catches particular Subversion exceptions and 
+    converts them to Bazaar exceptions.
+    """
+    def convert(*args, **kwargs):
+        try:
+            unbound(*args, **kwargs)
+        except svn.core.SubversionException, e:
+            raise convert_error(e)
+
+    convert.__doc__ = unbound.__doc__
+    convert.__name__ = unbound.__name__
+    return convert

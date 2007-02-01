@@ -17,9 +17,9 @@
 from binascii import hexlify
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import (InvalidRevisionId, NotBranchError, NoSuchFile,
-                           NoRepositoryPresent)
-from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile, 
-                              InventoryLink)
+                           NoRepositoryPresent, BzrError)
+from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile,
+                              InventoryLink, ROOT_ID)
 from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import rand_bytes, fingerprint_file
@@ -31,15 +31,27 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
 from repository import (SvnRepository, escape_svn_path, SVN_PROP_BZR_MERGE,
-                        SVN_PROP_SVK_MERGE, revision_id_to_svk_feature) 
+                        SVN_PROP_SVK_MERGE, SVN_PROP_BZR_FILEIDS, 
+                        revision_id_to_svk_feature) 
 from scheme import BranchingScheme
-from transport import (SvnRaTransport, svn_config, bzr_to_svn_url) 
+from transport import (SvnRaTransport, svn_config, bzr_to_svn_url, 
+                       _create_auth_baton) 
 from tree import SvnBasisTree
 
+from copy import copy
 import os
+import urllib
 
 import svn.core, svn.wc
-from svn.core import SubversionException
+from svn.core import SubversionException, Pool
+
+class WorkingTreeInconsistent(BzrError):
+    _fmt = """Working copy is in inconsistent state (%(min_revnum)d:%(max_revnum)d)"""
+
+    def __init__(self, min_revnum, max_revnum):
+        self.min_revnum = min_revnum
+        self.max_revnum = max_revnum
+
 
 class SvnWorkingTree(WorkingTree):
     """Implementation of WorkingTree that uses a Subversion 
@@ -50,26 +62,28 @@ class SvnWorkingTree(WorkingTree):
         self.bzrdir = bzrdir
         self._branch = branch
         self.base_revnum = 0
+        self.pool = Pool()
         self.client_ctx = svn.client.create_context()
+        self.client_ctx.config = svn_config
         self.client_ctx.log_msg_func2 = svn.client.svn_swig_py_get_commit_log_func
-        self.client_ctx.log_msg_baton2 = self.log_message_func
+        self.client_ctx.auth_baton = _create_auth_baton(self.pool)
 
         wc = self._get_wc()
-        try:
-            self.base_revnum = svn.wc.get_ancestry(self.basedir, wc)[1]
-        finally:
-            svn.wc.adm_close(wc)
+        status = svn.wc.revision_status(self.basedir, None, True, None, None)
+        if status.min_rev != status.max_rev:
+            #raise WorkingTreeInconsistent(status.min_rev, status.max_rev)
+            rev = svn.core.svn_opt_revision_t()
+            rev.kind = svn.core.svn_opt_revision_number
+            rev.value.number = status.max_rev
+            assert status.max_rev == svn.client.update(self.basedir, rev,
+                                     True, self.client_ctx, Pool())
 
+        self.base_revnum = status.max_rev
+        self.base_tree = SvnBasisTree(self)
         self.base_revid = branch.repository.generate_revision_id(
                     self.base_revnum, branch.branch_path)
 
-        if self.base_revid != NULL_REVISION:
-            (bp, rev) = self.branch.repository.parse_revision_id(self.base_revid)
-            self.base_fileids = self.branch.repository.get_fileid_map(rev, bp)
-        else:
-            self.base_fileids = {"": (ROOT_ID, NULL_REVISION)}
-
-        self._set_inventory(self.read_working_inventory(), dirty=False)
+        self.read_working_inventory()
 
         self.controldir = os.path.join(self.basedir, svn.wc.get_adm_dir(), 'bzr')
         try:
@@ -129,13 +143,17 @@ class SvnWorkingTree(WorkingTree):
         return svn.wc.is_adm_dir(path)
 
     def remove(self, files, verbose=False, to_file=None):
+        assert isinstance(files, list)
         wc = self._get_wc(write_lock=True)
         try:
             for file in files:
                 svn.wc.delete2(self.abspath(file), wc, None, None, None)
-                # FIXME: Make sure bzr:file-ids entry also gets deleted
         finally:
             svn.wc.adm_close(wc)
+
+        for file in files:
+            self._change_fileid_mapping(None, file)
+        self.read_working_inventory()
 
     def _get_wc(self, relpath="", write_lock=False):
         return svn.wc.adm_open3(None, self.abspath(relpath).rstrip("/"), 
@@ -149,28 +167,37 @@ class SvnWorkingTree(WorkingTree):
     def move(self, from_paths, to_name):
         revt = svn.core.svn_opt_revision_t()
         revt.kind = svn.core.svn_opt_revision_working
-        to_wc = self._get_wc(to_name, write_lock=True)
-        try:
-            for entry in from_paths:
+        for entry in from_paths:
+            try:
+                to_wc = self._get_wc(to_name, write_lock=True)
                 svn.wc.copy(self.abspath(entry), to_wc, 
                             os.path.basename(entry), None, None)
-                # FIXME: Make sure bzr:file-ids entry gets added
-        finally:
-            svn.wc.adm_close(to_wc)
+            finally:
+                svn.wc.adm_close(to_wc)
+            try:
+                from_wc = self._get_wc(write_lock=True)
+                svn.wc.delete2(self.abspath(entry), from_wc, None, None, None)
+            finally:
+                svn.wc.adm_close(from_wc)
+            new_name = "%s/%s" % (to_name, os.path.basename(entry))
+            self._change_fileid_mapping(self.inventory.path2id(entry), new_name)
+            self._change_fileid_mapping(None, entry)
 
-        for entry in from_paths:
-            self.remove([entry])
+        self.read_working_inventory()
 
     def rename_one(self, from_rel, to_rel):
         revt = svn.core.svn_opt_revision_t()
         revt.kind = svn.core.svn_opt_revision_unspecified
         (to_wc, to_file) = self._get_rel_wc(to_rel, write_lock=True)
+        from_id = self.inventory.path2id(from_rel)
         try:
             svn.wc.copy(self.abspath(from_rel), to_wc, to_file, None, None)
             svn.wc.delete2(self.abspath(from_rel), to_wc, None, None, None)
-            # FIXME: Make sure bzr:file-ids entry gets renamed
         finally:
             svn.wc.adm_close(to_wc)
+        self._change_fileid_mapping(None, from_rel)
+        self._change_fileid_mapping(from_id, to_rel)
+        self.read_working_inventory()
 
     def path_to_file_id(self, revnum, current_revnum, path):
         """Generate a bzr file id from a Subversion file name. 
@@ -183,7 +210,9 @@ class SvnWorkingTree(WorkingTree):
         assert isinstance(path, basestring)
 
         (bp, rp) = self.branch.repository.scheme.unprefix(path)
-        return self.base_fileids[rp]
+        entry = self.base_tree.id_map[rp]
+        assert entry[0] is not None
+        return entry
 
     def read_working_inventory(self):
         inv = Inventory()
@@ -227,9 +256,8 @@ class SvnWorkingTree(WorkingTree):
                     find_copies(subrelpath)
             svn.wc.adm_close(wc)
 
-        def find_ids(entry):
-            # FIXME: Check bzr:file-ids property as well
-            relpath = entry.url[len(entry.repos):].strip("/")
+        def find_ids(entry, rootwc):
+            relpath = urllib.unquote(entry.url[len(entry.repos):].strip("/"))
             assert entry.schedule in (svn.wc.schedule_normal, 
                                       svn.wc.schedule_delete,
                                       svn.wc.schedule_add,
@@ -248,12 +276,15 @@ class SvnWorkingTree(WorkingTree):
                 if entry.copyfrom_url and list(find_copies(entry.copyfrom_url)) == [relpath]:
                     return self.path_to_file_id(entry.copyfrom_rev, entry.revision,
                             entry.copyfrom_url[len(entry.repos):])
+                ids = self._get_new_file_ids(rootwc)
+                if ids.has_key(relpath):
+                    return (ids[relpath], None)
                 return ("NEW-" + escape_svn_path(entry.url[len(entry.repos):].strip("/")), None)
 
         def add_dir_to_inv(relpath, wc, parent_id):
             entries = svn.wc.entries_read(wc, False)
             entry = entries[""]
-            (id, revid) = find_ids(entry)
+            (id, revid) = find_ids(entry, rootwc)
             if id is None:
                 mutter('no id for %r' % entry.url)
                 return
@@ -278,28 +309,35 @@ class SvnWorkingTree(WorkingTree):
                     finally:
                         svn.wc.adm_close(subwc)
                 else:
-                    (subid, subrevid) = find_ids(entry)
+                    (subid, subrevid) = find_ids(entry, rootwc)
                     if subid:
-                        mutter('no id for %r' % entry.url)
                         add_file_to_inv(subrelpath, subid, subrevid, id)
+                    else:
+                        mutter('no id for %r' % entry.url)
 
-        wc = self._get_wc() 
+        rootwc = self._get_wc() 
         try:
-            add_dir_to_inv("", wc, None)
+            add_dir_to_inv("", rootwc, None)
         finally:
-            svn.wc.adm_close(wc)
+            svn.wc.adm_close(rootwc)
 
+        self._set_inventory(inv, dirty=False)
         return inv
 
     def set_last_revision(self, revid):
         mutter('setting last revision to %r' % revid)
         if revid is None or revid == NULL_REVISION:
             self.base_revid = revid
-            self.base_fileids = self.branch.repository.get_fileid_map(0, "")
+            self.base_revnum = 0
+            self.base_tree = RevisionTree(self, Inventory(), revid)
             return
 
         (bp, rev) = self.branch.repository.parse_revision_id(revid)
-        self.base_fileids = self.branch.repository.get_fileid_map(rev, bp)
+        assert bp == self.branch.branch_path
+        self.base_revnum = rev
+        self.base_revid = revid
+        self.base_tree = SvnBasisTree(self)
+
         # TODO: Implement more efficient version
         newrev = self.branch.repository.get_revision(revid)
         newrevtree = self.branch.repository.revision_tree(revid)
@@ -337,12 +375,9 @@ class SvnWorkingTree(WorkingTree):
             svn.wc.adm_close(wc)
         self.base_revid = revid
 
-    def log_message_func(self, items, pool):
-        """ Simple log message provider for unit tests. """
-        return self._message
-
-    def commit(self, message=None, revprops=None, timestamp=None, timezone=None, committer=None, rev_id=None, allow_pointless=True, 
-            strict=False, verbose=False, local=False, reporter=None, config=None, specific_files=None):
+    def commit(self, message=None, message_callback=None, revprops=None, timestamp=None, timezone=None, committer=None, 
+               rev_id=None, allow_pointless=True, strict=False, verbose=False, local=False, reporter=None, config=None, 
+               specific_files=None):
         assert timestamp is None
         assert timezone is None
         assert rev_id is None
@@ -352,17 +387,27 @@ class SvnWorkingTree(WorkingTree):
         else:
             specific_files = [self.basedir.encode('utf8')]
 
-        assert isinstance(message, basestring)
-        self._message = message
+        if message_callback is not None:
+            def log_message_func(items, pool):
+                """ Simple log message provider for unit tests. """
+                return str(message_callback(self))
+        else:
+            assert isinstance(message, basestring)
+            def log_message_func(items, pool):
+                """ Simple log message provider for unit tests. """
+                return str(message)
 
+        self.client_ctx.log_msg_baton2 = log_message_func
         commit_info = svn.client.commit3(specific_files, True, False, self.client_ctx)
+        self.client_ctx.log_msg_baton2 = None
 
         revid = self.branch.repository.generate_revision_id(
                 commit_info.revision, self.branch.branch_path)
 
         self.base_revid = revid
-        self.base_fileids = self.branch.repository.get_fileid_map(
-                commit_info.revision, self.branch.branch_path)
+        self.base_revnum = commit_info.revision
+        self.base_tree = SvnBasisTree(self)
+
         #FIXME: Use public API:
         self.branch.revision_history()
         self.branch._revision_history.append(revid)
@@ -370,31 +415,33 @@ class SvnWorkingTree(WorkingTree):
         return revid
 
     def add(self, files, ids=None):
+        if ids:
+            ids = copy(ids)
+            ids.reverse()
         assert isinstance(files, list)
-        wc = self._get_wc(write_lock=True)
-        try:
-            for f in files:
+        for f in files:
+            try:
+                wc = self._get_wc(os.path.dirname(f), write_lock=True)
                 try:
                     svn.wc.add2(os.path.join(self.basedir, f), wc, None, 0, 
                             None, None, None)
                     if ids:
-                        # FIXME: set bzr:file-ids instead
-                        svn.wc.prop_set2('bzr:fileid', ids.pop(), relpath, wc, 
-                                False)
+                        self._change_fileid_mapping(ids.pop(), f, wc)
                 except SubversionException, (_, num):
                     if num == svn.core.SVN_ERR_ENTRY_EXISTS:
                         continue
                     elif num == svn.core.SVN_ERR_WC_PATH_NOT_FOUND:
                         raise NoSuchFile(path=f)
                     raise
-        finally:
-            svn.wc.adm_close(wc)
+            finally:
+                svn.wc.adm_close(wc)
+        self.read_working_inventory()
 
     def basis_tree(self):
         if self.base_revid is None or self.base_revid == NULL_REVISION:
             return self.branch.repository.revision_tree(self.base_revid)
 
-        return SvnBasisTree(self)
+        return self.base_tree
 
     def pull(self, source, overwrite=False, stop_revision=None):
         if stop_revision is None:
@@ -410,6 +457,38 @@ class SvnWorkingTree(WorkingTree):
         if not path:
             path = self._inventory.id2path(file_id)
         return fingerprint_file(open(self.abspath(path)))['sha1']
+
+    def _change_fileid_mapping(self, id, path, wc=None):
+        if wc is None:
+            subwc = self._get_wc(write_lock=True)
+        else:
+            subwc = wc
+        new_entries = self._get_new_file_ids(subwc)
+        if id is None:
+            if new_entries.has_key(path):
+                del new_entries[path]
+        else:
+            new_entries[path] = id
+        committed = self.branch.repository.branchprop_list.get_property(
+                self.branch.branch_path, 
+                self.base_revnum, 
+                SVN_PROP_BZR_FILEIDS, "")
+        existing = committed + "".join(map(lambda (path, id): "%s\t%s\n" % (path, id), new_entries.items()))
+        if existing != "":
+            svn.wc.prop_set(SVN_PROP_BZR_FILEIDS, str(existing), self.basedir, subwc)
+        if wc is None:
+            svn.wc.adm_close(subwc)
+
+    def _get_new_file_ids(self, wc):
+        committed = self.branch.repository.branchprop_list.get_property(
+                self.branch.branch_path, 
+                self.base_revnum, 
+                SVN_PROP_BZR_FILEIDS, "")
+        existing = svn.wc.prop_get(SVN_PROP_BZR_FILEIDS, self.basedir, wc)
+        if existing is None:
+            return {}
+        else:
+            return dict(map(lambda x: x.split("\t"), existing[len(committed):].splitlines()))
 
     def _get_bzr_merges(self):
         return self.branch.repository.branchprop_list.get_property(
@@ -508,7 +587,7 @@ class SvnCheckout(BzrDir):
         self.branch_path = svn_url[len(bzr_to_svn_url(self.svn_root_transport.base)):]
         self.scheme = BranchingScheme.guess_scheme(self.branch_path)
         mutter('scheme for %r is %r' % (self.branch_path, self.scheme))
-        if not self.scheme.is_branch(self.branch_path):
+        if not self.scheme.is_branch(self.branch_path) and not self.scheme.is_tag(self.branch_path):
             raise NotBranchError(path=self.transport.base)
 
     def clone(self, path):
