@@ -225,12 +225,7 @@ class Branch(object):
         try:
             if last_revision is None:
                 pb.update('get source history')
-                from_history = from_branch.revision_history()
-                if from_history:
-                    last_revision = from_history[-1]
-                else:
-                    # no history in the source branch
-                    last_revision = _mod_revision.NULL_REVISION
+                last_revision = from_branch.last_revision_info()[1]
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
                                          pb=nested_pb)
@@ -1247,7 +1242,7 @@ class BzrBranch(Branch):
         """See Branch.pull."""
         source.lock_read()
         try:
-            old_count = len(self.revision_history())
+            old_count = self.last_revision_info()[0]
             try:
                 self.update_revisions(source, stop_revision)
             except DivergedBranches:
@@ -1255,7 +1250,7 @@ class BzrBranch(Branch):
                     raise
             if overwrite:
                 self.set_revision_history(source.revision_history())
-            new_count = len(self.revision_history())
+            new_count = self.last_revision_info()[0]
             return new_count - old_count
         finally:
             source.unlock()

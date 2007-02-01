@@ -90,7 +90,6 @@ def _annotate_file(branch, rev_id, file_id ):
     date string for the commit, rather than just the revision id.
     """
 
-    rh = branch.revision_history()
     revision_graph = branch.repository.get_revision_graph(rev_id)
     merge_sorted_revisions = tsort.merge_sort(
         revision_graph,
