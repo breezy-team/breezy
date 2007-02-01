@@ -209,6 +209,9 @@ words: "filename", "revno".
 
 Consider naming classes as nouns and functions/methods as verbs.
 
+Try to avoid using abbreviations in names, because there can be
+inconsistency if other people use the full name.
+
 
 Standard names
 --------------
@@ -590,7 +593,7 @@ Merge/review process
 ====================
 
 If you'd like to propose a change, please post to the
-bazaar-ng@lists.canonical.com list with a patch, bzr changeset, or link to a
+bazaar@lists.canonical.com list with a patch, bzr changeset, or link to a
 branch.  Please put '[patch]' in the subject so we can pick them out, and
 include some text explaining the change.  Remember to put an update to the NEWS
 file in your diff, if it makes any changes visible to users or plugin

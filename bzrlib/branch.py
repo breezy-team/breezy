@@ -81,6 +81,8 @@ class Branch(object):
 
     base
         Base directory/url of the branch.
+
+    hooks: An instance of BranchHooks.
     """
     # this is really an instance variable - FIXME move it there
     # - RBC 20060112
@@ -728,6 +730,45 @@ class BranchFormat(object):
         return self.get_format_string().rstrip()
 
 
+class BranchHooks(dict):
+    """A dictionary mapping hook name to a list of callables for branch hooks.
+    
+    e.g. ['set_rh'] Is the list of items to be called when the
+    set_revision_history function is invoked.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        dict.__init__(self)
+        # invoked whenever the revision history has been set
+        # with set_revision_history. The api signature is
+        # (branch, revision_history), and the branch will
+        # be write-locked. Introduced in 0.15.
+        self['set_rh'] = []
+
+    def install_hook(self, hook_name, a_callable):
+        """Install a_callable in to the hook hook_name.
+
+        :param hook_name: A hook name. See the __init__ method of BranchHooks
+            for the complete list of hooks.
+        :param a_callable: The callable to be invoked when the hook triggers.
+            The exact signature will depend on the hook - see the __init__ 
+            method of BranchHooks for details on each hook.
+        """
+        try:
+            self[hook_name].append(a_callable)
+        except KeyError:
+            raise errors.UnknownHook('branch', hook_name)
+
+
+# install the default hooks into the Branch class.
+Branch.hooks = BranchHooks()
+
+
 class BzrBranchFormat4(BranchFormat):
     """Bzr branch format 4.
 
@@ -1098,6 +1139,7 @@ class BzrBranch(Branch):
     def append_revision(self, *revision_ids):
         """See Branch.append_revision."""
         for revision_id in revision_ids:
+            _mod_revision.check_not_reserved_id(revision_id)
             mutter("add {%s} to revision-history" % revision_id)
         rev_history = self.revision_history()
         rev_history.extend(revision_ids)
@@ -1121,6 +1163,8 @@ class BzrBranch(Branch):
             # this call is disabled because revision_history is 
             # not really an object yet, and the transaction is for objects.
             # transaction.register_clean(history)
+        for hook in Branch.hooks['set_rh']:
+            hook(self, rev_history)
 
     @needs_read_lock
     def revision_history(self):

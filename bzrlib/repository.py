@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@ from bzrlib import (
     lockable_files,
     lockdir,
     osutils,
+    registry,
     revision as _mod_revision,
     symbol_versioning,
     transactions,
@@ -97,6 +98,7 @@ class Repository(object):
 
         returns the sha1 of the serialized inventory.
         """
+        _mod_revision.check_not_reserved_id(revid)
         assert inv.revision_id is None or inv.revision_id == revid, \
             "Mismatch between inventory revision" \
             " id and insertion revid (%r, %r)" % (inv.revision_id, revid)
@@ -128,6 +130,7 @@ class Repository(object):
                        If supplied its signature_needed method will be used
                        to determine if a signature should be made.
         """
+        _mod_revision.check_not_reserved_id(rev_id)
         if config is not None and config.signature_needed():
             if inv is None:
                 inv = self.get_inventory(rev_id)
@@ -445,10 +448,13 @@ class Repository(object):
         unescape_revid_cache = {}
         unescape_fileid_cache = {}
 
+        # jam 20061218 In a big fetch, this handles hundreds of thousands
+        # of lines, so it has had a lot of inlining and optimizing done.
+        # Sorry that it is a little bit messy.
         # Move several functions to be local variables, since this is a long
         # running loop.
         search = self._file_ids_altered_regex.search
-        unescape = _unescape_xml_cached
+        unescape = _unescape_xml
         setdefault = result.setdefault
         pb = ui.ui_factory.nested_progress_bar()
         try:
@@ -457,10 +463,33 @@ class Repository(object):
                 match = search(line)
                 if match is None:
                     continue
+                # One call to match.group() returning multiple items is quite a
+                # bit faster than 2 calls to match.group() each returning 1
                 file_id, revision_id = match.group('file_id', 'revision_id')
-                revision_id = unescape(revision_id, unescape_revid_cache)
+
+                # Inlining the cache lookups helps a lot when you make 170,000
+                # lines and 350k ids, versus 8.4 unique ids.
+                # Using a cache helps in 2 ways:
+                #   1) Avoids unnecessary decoding calls
+                #   2) Re-uses cached strings, which helps in future set and
+                #      equality checks.
+                # (2) is enough that removing encoding entirely along with
+                # the cache (so we are using plain strings) results in no
+                # performance improvement.
+                try:
+                    revision_id = unescape_revid_cache[revision_id]
+                except KeyError:
+                    unescaped = unescape(revision_id)
+                    unescape_revid_cache[revision_id] = unescaped
+                    revision_id = unescaped
+
                 if revision_id in selected_revision_ids:
-                    file_id = unescape(file_id, unescape_fileid_cache)
+                    try:
+                        file_id = unescape_fileid_cache[file_id]
+                    except KeyError:
+                        unescaped = unescape(file_id)
+                        unescape_fileid_cache[file_id] = unescaped
+                        file_id = unescaped
                     setdefault(file_id, set()).add(revision_id)
         finally:
             pb.finished()
@@ -1107,6 +1136,15 @@ class KnitRepository2(KnitRepository):
                                  committer, revprops, revision_id)
 
 
+class RepositoryFormatRegistry(registry.Registry):
+    """Registry of RepositoryFormats.
+    """
+    
+
+format_registry = RepositoryFormatRegistry()
+"""Registry of formats, indexed by their identifying format string."""
+
+
 class RepositoryFormat(object):
     """A repository format.
 
@@ -1131,35 +1169,55 @@ class RepositoryFormat(object):
     parameterisation.
     """
 
-    _default_format = None
-    """The default format used for new repositories."""
-
-    _formats = {}
-    """The known formats."""
-
     def __str__(self):
         return "<%s>" % self.__class__.__name__
 
     @classmethod
     def find_format(klass, a_bzrdir):
-        """Return the format for the repository object in a_bzrdir."""
+        """Return the format for the repository object in a_bzrdir.
+        
+        This is used by bzr native formats that have a "format" file in
+        the repository.  Other methods may be used by different types of 
+        control directory.
+        """
         try:
             transport = a_bzrdir.get_repository_transport(None)
             format_string = transport.get("format").read()
-            return klass._formats[format_string]
+            return format_registry.get(format_string)
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string)
 
-    def _get_control_store(self, repo_transport, control_files):
-        """Return the control store for this repository."""
-        raise NotImplementedError(self._get_control_store)
+    @classmethod
+    @deprecated_method(symbol_versioning.zero_fourteen)
+    def set_default_format(klass, format):
+        klass._set_default_format(format)
+
+    @classmethod
+    def _set_default_format(klass, format):
+        """Set the default format for new Repository creation.
+
+        The format must already be registered.
+        """
+        format_registry.default_key = format.get_format_string()
+
+    @classmethod
+    def register_format(klass, format):
+        format_registry.register(format.get_format_string(), format)
+
+    @classmethod
+    def unregister_format(klass, format):
+        format_registry.remove(format.get_format_string())
     
     @classmethod
     def get_default_format(klass):
         """Return the current default format."""
-        return klass._default_format
+        return format_registry.get(format_registry.default_key)
+
+    def _get_control_store(self, repo_transport, control_files):
+        """Return the control store for this repository."""
+        raise NotImplementedError(self._get_control_store)
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format.
@@ -1248,19 +1306,6 @@ class RepositoryFormat(object):
         _found is a private parameter, do not use it.
         """
         raise NotImplementedError(self.open)
-
-    @classmethod
-    def register_format(klass, format):
-        klass._formats[format.get_format_string()] = format
-
-    @classmethod
-    def set_default_format(klass, format):
-        klass._default_format = format
-
-    @classmethod
-    def unregister_format(klass, format):
-        assert klass._formats[format.get_format_string()] is format
-        del klass._formats[format.get_format_string()]
 
 
 class PreSplitOutRepositoryFormat(RepositoryFormat):
@@ -1776,10 +1821,12 @@ class RepositoryFormatKnit2(RepositoryFormatKnit):
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 RepositoryFormat.register_format(RepositoryFormat7())
+# KEEP in sync with bzrdir.format_registry default, which controls the overall
+# default control directory format
 _default_format = RepositoryFormatKnit1()
 RepositoryFormat.register_format(_default_format)
 RepositoryFormat.register_format(RepositoryFormatKnit2())
-RepositoryFormat.set_default_format(_default_format)
+RepositoryFormat._set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
                    RepositoryFormat6()]
@@ -2574,12 +2621,3 @@ def _unescape_xml(data):
     if _unescape_re is None:
         _unescape_re = re.compile('\&([^;]*);')
     return _unescape_re.sub(_unescaper, data)
-
-
-def _unescape_xml_cached(data, cache):
-    try:
-        return cache[data]
-    except KeyError:
-        unescaped = _unescape_xml(data)
-        cache[data] = unescaped
-        return unescaped

@@ -176,7 +176,6 @@ def _show_missing_revisions_working(working):
     branch = working.branch
     basis = working.basis_tree()
     work_inv = working.inventory
-    delta = working.changes_from(basis, want_unchanged=True)
     history = branch.revision_history()
     try:
         tree_last_id = working.get_parent_ids()[0]

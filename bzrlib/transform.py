@@ -273,8 +273,7 @@ class TreeTransform(object):
                 os.unlink(name)
                 raise
 
-            for segment in contents:
-                f.write(segment)
+            f.writelines(contents)
         finally:
             f.close()
         self._set_mode(trans_id, mode_id, S_ISREG)

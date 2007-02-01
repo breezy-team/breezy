@@ -56,6 +56,13 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual("Knit header error: 'line foo\\n' unexpected"
                          " for file path/to/file", str(error))
 
+    def test_knit_index_unknown_method(self):
+        error = errors.KnitIndexUnknownMethod('http://host/foo.kndx',
+                                              ['bad', 'no-eol'])
+        self.assertEqual("Knit index http://host/foo.kndx does not have a"
+                         " known method in options: ['bad', 'no-eol']",
+                         str(error))
+
     def test_medium_not_connected(self):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
@@ -90,6 +97,16 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff("The medium 'a medium' has reached its concurrent "
             "request limit. Be sure to finish_writing and finish_reading on "
             "the current request that is open.",
+            str(error))
+
+    def test_unknown_hook(self):
+        error = errors.UnknownHook("branch", "foo")
+        self.assertEqualDiff("The branch hook 'foo' is unknown in this version"
+            " of bzrlib.",
+            str(error))
+        error = errors.UnknownHook("tree", "bar")
+        self.assertEqualDiff("The tree hook 'bar' is unknown in this version"
+            " of bzrlib.",
             str(error))
 
     def test_up_to_date(self):

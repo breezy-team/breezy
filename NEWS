@@ -2,6 +2,63 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr mv`` enhanced to support already moved files.
+      In the past the mv command would have failed if the source file doesn't
+      exist. In this situation ``bzr mv`` would now detect that the file has
+      already moved and update the repository accordingly, if the target file
+      does exist.
+      A new option ``--after`` has been added so that if two files already
+      exist, you could notify Bazaar that you have moved a (versioned) file and
+      replaced it with another. Thus in this case ``bzr move --after`` will
+      only update the Bazaar identifier.
+      (Steffen Eichenberg, Marius Kruger)
+
+    * ``ls`` now works on treeless branches and remote branches.
+      (Aaron Bentley)
+
+    * ``bzr help global-options`` describes the global options.
+      (Aaron Bentley)
+
+  INTERNALS:
+
+    * Reserved ids (any revision-id ending in a colon) are rejected by
+      versionedfiles, repositories, branches, and working trees
+      (Aaron Bentley)
+
+    * New Branch hooks facility, with one initial hook 'set_rh' which triggers
+      whenever the revision history is set. This allows triggering on e.g.
+      push, pull, commit, and so on. Developed for use with the branchrss
+      plugin. See bzrlib.branch.BranchHooks for more details. (Robert Collins)
+
+  BUGFIXES:
+
+  TESTING:
+
+    * New ``--first`` option to ``bzr selftest`` to run specified tests
+      before the rest of the suite.  (Martin Pool)
+
+
+bzr 0.14  2007-01-23
+
+  IMPROVEMENTS:
+
+    * ``bzr help global-options`` describes the global options. (Aaron Bentley)
+
+  BUG FIXES:
+    
+    * Skip documentation generation tests if the tools to do so are not
+      available. Fixes running selftest for installled copies of bzr. 
+      (John Arbash Meinel, #80330)
+
+    * Fix the code that discovers whether bzr is being run from it's
+      working tree to handle the case when it isn't but the directory
+      it is in is below a repository. (James Westby, #77306)
+
+
+bzr 0.14rc1  2007-01-16
+
+  IMPROVEMENTS:
+
     * New connection: ``bzr+http://`` which supports tunnelling the smart
       protocol over an HTTP connection. If writing is enabled on the bzr
       server, then you can write over the http connection.
@@ -56,6 +113,8 @@ IN DEVELOPMENT
     * ``bzr merge`` now has an option ``--pull`` to fall back to pull if
       local is fully merged into remote. (Jan Hudec)
 
+    * ``bzr help formats`` describes available directory formats. (Aaron Bentley)
+
   INTERNALS:
 
     * A few tweaks directly to ``fileids_affected_by_revision_ids`` to
@@ -76,6 +135,11 @@ IN DEVELOPMENT
 
     * Single-letter short options are no longer globally declared.  (Martin
       Pool)
+
+    * Before using detected user/terminal encoding bzr should check
+      that Python has corresponding codec. (Alexander Belchenko)
+
+    * Formats for end-user selection are provided via a FormatRegistry (Aaron Bentley)
 
   BUG FIXES:
 
@@ -117,6 +181,9 @@ IN DEVELOPMENT
 
     * Mention the revisionspec topic for the revision option help.
       (Wouter van Heyst, #31663)
+
+    * Allow plugins import from zip archives.
+      (Alexander Belchenko, #68124)
 
 
 bzr 0.13  2006-12-05
@@ -181,6 +248,10 @@ bzr 0.13rc1  2006-11-27
       Bennetts)
 
   BUG FIXES:
+
+    * Now _KnitIndex properly decode revision ids when loading index data.
+      And optimize the knit index parsing code.  (Dmitry Vasiliev, John
+      Arbash Meinel)
 
     * ``bzrlib/bzrdir.py`` was directly referencing ``bzrlib.workingtree``,
       without importing it. This prevented ``bzr upgrade`` from working

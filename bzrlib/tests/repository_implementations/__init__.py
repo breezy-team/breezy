@@ -1,6 +1,6 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
-# -*- coding: utf-8 -*-
+#          and others
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,8 +24,10 @@ Specific tests for individual formats are in the tests/test_repository.py file
 rather than in tests/branch_implementations/*.py.
 """
 
+from bzrlib import (
+    repository,
+    )
 from bzrlib.repository import (_legacy_formats,
-                               RepositoryFormat,
                                RepositoryTestProviderAdapter,
                                )
                             
@@ -54,13 +56,14 @@ def test_suite():
         )
     from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
 
+    all_formats = [v for (k, v) in repository.format_registry.iteritems()]
+    all_formats.extend(_legacy_formats)
     adapter = RepositoryTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        [(format, format._matchingbzrdir) for format in 
-         RepositoryFormat._formats.values() + _legacy_formats])
+        [(format, format._matchingbzrdir) for format in all_formats])
     loader = TestLoader()
     adapt_modules(test_repository_implementations, adapter, loader, result)
 
