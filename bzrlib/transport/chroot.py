@@ -20,7 +20,6 @@ root.
 from urlparse import urlparse
 
 from bzrlib import errors, urlutils
-from bzrlib.osutils import pathjoin
 from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
 
 
@@ -28,6 +27,11 @@ class ChrootTransportDecorator(TransportDecorator):
     """A decorator that can convert any transport to be chrooted.
 
     This is requested via the 'chroot+' prefix to get_transport().
+
+    :ivar chroot_url: the root of this chroot
+    :ivar chroot_relative: this transport's location relative to the chroot
+        root.  e.g. A chroot_relative of '/' means this location is the same as
+        chroot_url.
     """
 
     def __init__(self, url, _decorated=None, chroot=None):
@@ -65,12 +69,16 @@ class ChrootTransportDecorator(TransportDecorator):
         # the new URL we want to clone to is
         # self.chroot_url + an adjusted self.chroot_relative, with the leading
         # / removed.
-        newrelative = pathjoin(self.chroot_relative, offset)
-        newabs = self.chroot_url + newrelative[1:]
-        # now split to get a abspath without scheme
-        parsed = urlparse(newabs)
-        decorated_clone = self._decorated.clone(parsed[2])
-        return ChrootTransportDecorator(self._get_url_prefix() + newabs,
+        new_relpath = urlutils.joinpath(self.chroot_relative, offset)
+        assert new_relpath.startswith('/')
+        new_url = self.chroot_url + new_relpath[1:]
+        # Clone the decorated transport according to this new path.
+        assert new_url.startswith(self.chroot_url), (
+            'new_url (%r) does not start with %r'
+            % (new_url, self._decorated.base))
+        path = urlutils.relative_url(self._decorated.base, new_url)
+        decorated_clone = self._decorated.clone(path)
+        return ChrootTransportDecorator(self._get_url_prefix() + new_url,
             decorated_clone, self.chroot_url)
 
     def delete(self, relpath):

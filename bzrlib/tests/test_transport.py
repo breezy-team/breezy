@@ -328,6 +328,27 @@ class ChrootDecoratorTransportTest(TestCase):
         # clone preserves chroot_url and adjusts chroot_relative
         self.assertEqual('memory:///foo/bar/', transport.chroot_url)
         self.assertEqual('/otherdir/', transport.chroot_relative)
+    
+    def test_clone_to_root(self):
+        # cloning to "/" (and similarly any offset beginning with "/") goes to
+        # the chroot_url, not to root of the decorated transport.
+        transport = get_transport('chroot+memory:///foo/bar/baz/')
+        transport.clone('subdir')
+        # now clone to "/" will take us back to the initial location, not to
+        # "chroot_memory:///".
+        transport.clone('/')
+        self.assertEqual('chroot+memory:///foo/bar/baz/', transport.base)
+
+    def test_clone_offset(self):
+        # transport.clone('some offset') should call clone('some offset') on the
+        # decorated transport, not some surprising variation like
+        # ('/some offset').
+        from bzrlib.transport import chroot
+        decorated_transport = FakeTransport()
+        transport = chroot.ChrootTransportDecorator(
+            'chroot+fake:///', _decorated=decorated_transport)
+        transport.clone('foo/bar')
+        self.assertEqual([('clone', 'foo/bar')] , decorated_transport.calls)
 
     def test_delete(self):
         transport = get_transport('chroot+memory:///foo/bar')
@@ -385,6 +406,21 @@ class ChrootDecoratorTransportTest(TestCase):
     def test_stat(self):
         transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.stat, '/foo')
+
+
+class FakeTransport(object):
+    # XXX: FakeTransport copied from test_wsgi.py
+
+    def __init__(self):
+        self.calls = []
+        self.base = 'fake:///'
+
+    def abspath(self, relpath):
+        return 'fake:///' + relpath
+
+    def clone(self, relpath):
+        self.calls.append(('clone', relpath))
+        return self
 
 
 class ReadonlyDecoratorTransportTest(TestCase):

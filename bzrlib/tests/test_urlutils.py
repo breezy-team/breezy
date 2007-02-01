@@ -224,6 +224,34 @@ class TestUrlToPath(TestCase):
         self.assertRaises(InvalidURLJoin, urlutils.join,
                 'http://foo', '../baz')
 
+    def test_joinpath(self):
+        def test(expected, *args):
+            joined = urlutils.joinpath(*args)
+            self.assertEqual(expected, joined)
+
+        # Test a single element
+        test('foo', 'foo')
+
+        # Test relative path joining
+        test('foo/bar', 'foo', 'bar')
+        test('foo/bar', 'foo', '.', 'bar')
+        test('foo/baz', 'foo', 'bar', '../baz')
+        test('foo/bar/baz', 'foo', 'bar/baz')
+        test('foo/baz', 'foo', 'bar/../baz')
+
+        # Test joining to an absolute path
+        test('/foo', '/foo')
+        test('/foo', '/foo', '.')
+        test('/foo/bar', '/foo', 'bar')
+        test('/', '/foo', '..')
+
+        # Test joining with an absolute path
+        test('/bar', 'foo', '/bar')
+        
+        # Invalid joinings
+        # Cannot go above root
+        self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '../baz')
+
     def test_function_type(self):
         if sys.platform == 'win32':
             self.assertEqual(urlutils._win32_local_path_to_url, urlutils.local_path_to_url)

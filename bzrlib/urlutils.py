@@ -157,6 +157,39 @@ def join(base, *args):
     return scheme + '://' + '/'.join(path)
 
 
+def joinpath(base, *args):
+    """Join URL path segments to a URL path segment.
+    
+    This is somewhat like osutils.joinpath, but intended for URLs.
+
+    XXX: this duplicates some normalisation logic, and also duplicates a lot of
+    path handling logic that already exists in some Transport implementations.
+    We really should try to have exactly one place in the code base responsible
+    for combining paths of URLs.
+    """
+    if base == '/':
+        path = ['']
+    else:
+        path = base.split('/')
+    for arg in args:
+        if arg.startswith('/'):
+            path = []
+        for chunk in arg.split('/'):
+            if chunk == '.':
+                continue
+            elif chunk == '..':
+                if path == ['']:
+                    raise errors.InvalidURLJoin('Cannot go above root',
+                            base, args)
+                path.pop()
+            else:
+                path.append(chunk)
+    if path == ['']:
+        return '/'
+    else:
+        return '/'.join(path)
+
+
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
 def _posix_local_path_from_url(url):
     """Convert a url like file:///path/to/foo into /path/to/foo"""
