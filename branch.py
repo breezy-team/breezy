@@ -132,9 +132,10 @@ class SvnBranch(Branch):
         return inv.root.file_id
 
     def _get_nick(self):
+        bp = self.branch_path.strip("/")
         if self.branch_path == "":
             return None
-        return self.branch_path.strip("/")
+        return bp
 
     nick = property(_get_nick)
 

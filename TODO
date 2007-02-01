@@ -1,5 +1,5 @@
 - simplify find_branches by using Transport.list_dir() ?
-- make scheme name part of revision id
+- replace 'undefined' by scheme name in revision ids
 - fix commits in heavyweight checkouts somehow
 - fix autorealm repository
 - handle parent directories of branches being moved correctly
@@ -9,7 +9,6 @@
 - custom implementation of WorkingTree.revert()
 - don't update all entries to the same revnum when opening working tree
 - avoid extra connect in logwalker?
-- get rid of use of `svn ls' in logwalker
 - make ListBranchingScheme() support wildcards
  - rewrite TrunkBranchingScheme() and ListBranchingScheme() as subclasses of 
    ListBranchingScheme()

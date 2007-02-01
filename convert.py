@@ -1,5 +1,3 @@
-#!/usr/bin/env python2.4
-#
 # Copyright (C) 2005-2006 by Jelmer Vernooij
 # 
 # Early versions based on svn2bzr

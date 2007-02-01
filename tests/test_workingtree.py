@@ -496,4 +496,11 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree.commit("msg")
         self.assertEqual("fooid", tree.inventory.path2id("file with spaces"))
 
+    def test_get_branch_nick(self):
+        self.make_client('a', 'dc')
+        self.build_tree({'dc/some strange file': 'data'})
+        tree = WorkingTree.open("dc")
+        tree.add(["some strange file"])
+        tree.commit("message")
+        self.assertEqual(None, tree.branch.nick)
 

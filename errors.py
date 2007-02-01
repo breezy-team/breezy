@@ -42,7 +42,7 @@ def convert_svn_error(unbound):
     """
     def convert(*args, **kwargs):
         try:
-            unbound(*args, **kwargs)
+            return unbound(*args, **kwargs)
         except svn.core.SubversionException, e:
             raise convert_error(e)
 

@@ -44,4 +44,9 @@ class TestConvertError(TestCase):
     def test_convert_error_reset(self):
         self.assertIsInstance(convert_error(SubversionException(svn.core.SVN_ERR_RA_SVN_CONNECTION_CLOSED, "Connection closed")), ConnectionReset)
 
+    def test_decorator_nothrow(self):
+        @convert_svn_error
+        def test_nothrow(foo):
+            return foo+1
+        self.assertEqual(2, test_nothrow(1))
 
