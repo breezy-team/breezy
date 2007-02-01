@@ -19,6 +19,7 @@
 
 from bzrlib import errors
 from bzrlib.bzrdir import BzrDir
+from bzrlib.revision import NULL_REVISION
 from bzrlib.smart.request import SmartServerRequest, SmartServerResponse
 
 
@@ -48,3 +49,19 @@ class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
         """
         return SmartServerResponse(('ok', ),
             ('\x00'.join(branch.revision_history())).encode('utf8'))
+
+
+class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
+    
+    def do_with_branch(self, branch):
+        """Return branch.last_revision_info().
+        
+        The revno is encoded in decimal, the revision_id is encoded as utf8.
+        """
+        revno, last_revision = branch.last_revision_info()
+        if last_revision == NULL_REVISION:
+            last_revision = ''
+        return SmartServerResponse(
+            ('ok', str(revno), last_revision.encode('utf8')))
+
+

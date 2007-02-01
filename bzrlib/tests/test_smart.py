@@ -220,6 +220,31 @@ class TestSmartServerBranchRequest(tests.TestCaseWithTransport):
             request.execute, backing.local_abspath('checkout'))
 
 
+class TestSmartServerBranchRequestLastRevisionInfo(tests.TestCaseWithTransport):
+
+    def test_empty(self):
+        """For an empty branch, the result is ('ok', '0', '')."""
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestLastRevisionInfo(backing)
+        self.make_branch('.')
+        self.assertEqual(SmartServerResponse(('ok', '0', '')),
+            request.execute(backing.local_abspath('')))
+
+    def test_not_empty(self):
+        """For a non-empty branch, the result is ('ok', 'revno', 'revid')."""
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchRequestLastRevisionInfo(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('1st commit')
+        r2 = tree.commit('2nd commit', rev_id=u'\xc8')
+        tree.unlock()
+        self.assertEqual(
+            SmartServerResponse(('ok', '2', u'\xc8'.encode('utf8'))),
+            request.execute(backing.local_abspath('')))
+
+
 class TestHandlers(tests.TestCase):
     """Tests for the request.request_handlers object."""
 
