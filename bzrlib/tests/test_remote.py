@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,12 +22,18 @@ the object given a transport that supports smartserver rpc operations.
 """
 
 from bzrlib import bzrdir, remote, tests
-from bzrlib.transport import remote as remote_transport
-from bzrlib import smart
-from bzrlib.smart import server
-from bzrlib.bzrdir import BzrDir, BzrDirFormat
-from bzrlib.remote import RemoteBzrDir, RemoteBzrDirFormat
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir, BzrDirFormat
+from bzrlib.remote import (
+    RemoteBranch,
+    RemoteBzrDir,
+    RemoteBzrDirFormat,
+    )
+from bzrlib.revision import NULL_REVISION
+from bzrlib.smart import server
+from bzrlib.smart.client import SmartClient
+from bzrlib.transport import remote as remote_transport
+from bzrlib.transport.memory import MemoryTransport
 
 
 class BasicRemoteObjectTests(tests.TestCaseWithTransport):
@@ -74,3 +80,52 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         fmt = BzrDirFormat.find_format(self.transport)
         d = fmt.open(self.transport)
         self.assertIsInstance(d, BzrDir)
+
+
+class FakeClient(SmartClient):
+    """Lookalike for SmartClient allowing testing."""
+    
+    def __init__(self, responses):
+        # We don't call the super init because there is no medium.
+        self.responses = responses
+        self._calls = []
+
+    def call(self, method, *args):
+        self._calls.append(('call', method, args))
+        return self.responses.pop(0)
+
+
+class TestBranchLastRevisionInfo(tests.TestCase):
+
+    def test_empty_branch(self):
+        # in an empty branch we decode the response properly
+        client = FakeClient([('ok', '0', '')])
+        transport = MemoryTransport()
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        # we do not want bzrdir to make any remote calls
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        result = branch.last_revision_info()
+
+        self.assertEqual(
+            [('call', 'Branch.last_revision_info', ('///quack/',))],
+            client._calls)
+        self.assertEqual((0, NULL_REVISION), result)
+
+    def test_non_empty_branch(self):
+        # in a non-empty branch we also decode the response properly
+
+        client = FakeClient([('ok', '2', u'\xc8'.encode('utf8'))])
+        transport = MemoryTransport()
+        transport.mkdir('kwaak')
+        transport = transport.clone('kwaak')
+        # we do not want bzrdir to make any remote calls
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        result = branch.last_revision_info()
+
+        self.assertEqual(
+            [('call', 'Branch.last_revision_info', ('///kwaak/',))],
+            client._calls)
+        self.assertEqual((2, u'\xc8'), result)

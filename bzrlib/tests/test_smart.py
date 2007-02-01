@@ -251,6 +251,9 @@ class TestHandlers(tests.TestCase):
     def test_registered_methods(self):
         """Test that known methods are registered to the correct object."""
         self.assertEqual(
+            smart.request.request_handlers.get('Branch.last_revision_info'),
+            smart.branch.SmartServerBranchRequestLastRevisionInfo)
+        self.assertEqual(
             smart.request.request_handlers.get('Branch.revision_history'),
             smart.branch.SmartServerRequestRevisionHistory)
         self.assertEqual(

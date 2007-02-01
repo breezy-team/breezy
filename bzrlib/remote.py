@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,8 +20,9 @@
 from urlparse import urlparse
 
 from bzrlib import branch, errors, repository
-from bzrlib.bzrdir import BzrDir, BzrDirFormat, RemoteBzrDirFormat
 from bzrlib.branch import BranchReferenceFormat
+from bzrlib.bzrdir import BzrDir, BzrDirFormat, RemoteBzrDirFormat
+from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, vfs
 from bzrlib.urlutils import unescape
 
@@ -30,8 +31,17 @@ from bzrlib.urlutils import unescape
 class RemoteBzrDir(BzrDir):
     """Control directory on a remote server, accessed by HPSS."""
 
-    def __init__(self, transport):
+    def __init__(self, transport, _client=None):
+        """Construct a RemoteBzrDir.
+
+        :param _client: Private parameter for testing. Disables probing and the
+            use of a real bzrdir.
+        """
         BzrDir.__init__(self, transport, RemoteBzrDirFormat())
+        if _client is not None:
+            self.client = _client
+            return
+
         self.client = transport.get_smart_client()
         # this object holds a delegated bzrdir that uses file-level operations
         # to talk to the other side
@@ -49,7 +59,6 @@ class RemoteBzrDir(BzrDir):
         response = smartclient.call('probe_dont_use', path)
         if response == ('no',):
             raise errors.NotBranchError(path=transport.base)
-        self._branch = None
 
     def create_repository(self, shared=False):
         return RemoteRepository(
@@ -205,14 +214,19 @@ class RemoteBranch(branch.Branch):
     At the moment most operations are mapped down to simple file operations.
     """
 
-    def __init__(self, remote_bzrdir, remote_repository, real_branch=None):
+    def __init__(self, remote_bzrdir, remote_repository, real_branch=None,
+        _client=None):
         """Create a RemoteBranch instance.
 
         :param real_branch: An optional local implementation of the branch
             format, usually accessing the data via the VFS.
+        :param _client: Private parameter for testing.
         """
         self.bzrdir = remote_bzrdir
-        self._client = client.SmartClient(self.bzrdir.client)
+        if _client is not None:
+            self._client = _client
+        else:
+            self._client = client.SmartClient(self.bzrdir.client)
         self.repository = remote_repository
         if real_branch is not None:
             self._real_branch = real_branch
@@ -229,6 +243,17 @@ class RemoteBranch(branch.Branch):
 
     def break_lock(self):
         return self._real_branch.break_lock()
+
+    def last_revision_info(self):
+        """See Branch.last_revision_info()."""
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response = self._client.call('Branch.last_revision_info', path)
+        assert response[0] == 'ok', 'unexpected response code %s' % response
+        revno = int(response[1])
+        last_revision = response[2].decode('utf8')
+        if last_revision == '':
+            last_revision = NULL_REVISION
+        return (revno, last_revision)
 
     def revision_history(self):
         """See Branch.revision_history()."""
