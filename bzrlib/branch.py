@@ -324,6 +324,18 @@ class Branch(object):
         else:
             return None
 
+    def last_revision_info(self):
+        """Return information about the last revision.
+
+        :return: A tuple (revno, last_revision_id).
+        """
+        rh = self.revision_history()
+        revno = len(rh)
+        if revno:
+            return (revno, rh[-1])
+        else:
+            return (0, _mod_revision.NULL_REVISION)
+
     def missing_revisions(self, other, stop_revision=None):
         """Return a list of new revisions that would perfectly fit.
         
