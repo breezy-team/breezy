@@ -237,6 +237,7 @@ def test_suite():
             'test_errors',
             'test_fileids', 
             'test_logwalker',
+            'test_push',
             'test_radir',
             'test_repos', 
             'test_scheme', 

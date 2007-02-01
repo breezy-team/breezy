@@ -26,14 +26,16 @@ from bzrlib.trace import mutter, warning
 
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_BZR_FILEIDS,
                         SVN_PROP_SVK_MERGE, SVN_PROP_BZR_REVPROP_PREFIX, 
-                        revision_id_to_svk_feature, escape_svn_path)
+                        SVN_PROP_BZR_REVISION_ID, revision_id_to_svk_feature, 
+                        escape_svn_path)
 
 import os
 
 class SvnCommitBuilder(RootCommitBuilder):
     """Commit Builder implementation wrapped around svn_delta_editor. """
 
-    def __init__(self, repository, branch, parents, config, revprops):
+    def __init__(self, repository, branch, parents, config, revprops, 
+                 revision_id):
         """Instantiate a new SvnCommitBuilder.
 
         :param repository: SvnRepository to commit to.
@@ -41,6 +43,7 @@ class SvnCommitBuilder(RootCommitBuilder):
         :param parents: List of parent revision ids.
         :param config: Branch configuration to use.
         :param revprops: Revision properties to set.
+        :param revision_id: Revision id for the new revision.
         """
         super(SvnCommitBuilder, self).__init__(repository, parents, 
             config, None, None, None, revprops, None)
@@ -79,6 +82,9 @@ class SvnCommitBuilder(RootCommitBuilder):
 
             if new != "":
                 self._svnprops[SVN_PROP_SVK_MERGE] = old + new
+
+        if revision_id is not None:
+            self._svnprops[SVN_PROP_BZR_REVISION_ID] = revision_id
 
         # At least one of the parents has to be the last revision on the 
         # mainline in # Subversion.

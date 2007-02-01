@@ -20,6 +20,7 @@ from bzrlib.errors import DivergedBranches
 from bzrlib.inventory import Inventory
 from bzrlib.workingtree import WorkingTree
 
+from copy import copy
 import os
 import format
 import checkout
@@ -190,140 +191,22 @@ class TestCommitFromBazaar(TestCaseWithSubversionRepository):
         self.assertEqual("mybranch", 
                 self.client_get_prop(self.repos_url, "bzr:revprop:branch-nick", 2))
 
-class TestPush(TestCaseWithSubversionRepository):
-    def setUp(self):
-        super(TestPush, self).setUp()
-        self.repos_url = self.make_client('d', 'sc')
+    def test_commit_revision_id(self):
+        wt = self.checkout.create_workingtree()
+        self.build_tree({'dc/foo/bla': "data", 'dc/bla': "otherdata"})
+        wt.add('bla')
+        wt.commit(message="data")
 
-        self.build_tree({'sc/foo/bla': "data"})
-        self.client_add("sc/foo")
-        self.client_commit("sc", "foo")
+        branch = Branch.open(self.repos_url)
+        builder = branch.get_commit_builder([branch.last_revision()], revision_id="my-revision-id")
+        tree = branch.repository.revision_tree(branch.last_revision())
+        new_tree = copy(tree)
+        ie = new_tree.inventory.root
+        ie.revision = None
+        builder.record_entry_contents(ie, [tree.inventory], '', new_tree)
+        builder.finish_inventory()
+        builder.commit("foo")
 
-        self.olddir = BzrDir.open("sc")
-        os.mkdir("dc")
-        self.newdir = self.olddir.sprout("dc")
-
-    def test_empty(self):
-        self.assertEqual(0, self.olddir.open_branch().pull(
-                                self.newdir.open_branch()))
-
-    def test_child(self):
-        self.build_tree({'sc/foo/bar': "data"})
-        self.client_add("sc/foo/bar")
-        self.client_commit("sc", "second message")
-
-        self.assertEqual(0, self.olddir.open_branch().pull(
-                                self.newdir.open_branch()))
-
-    def test_diverged(self):
-        self.build_tree({'sc/foo/bar': "data"})
-        self.client_add("sc/foo/bar")
-        self.client_commit("sc", "second message")
-
-        olddir = BzrDir.open("sc")
-
-        self.build_tree({'dc/file': 'data'})
-        wt = self.newdir.open_workingtree()
-        wt.add('file')
-        wt.commit(message="Commit from Bzr")
-
-        self.assertRaises(DivergedBranches, 
-                          olddir.open_branch().pull,
-                          self.newdir.open_branch())
-
-    def test_change(self):
-        self.build_tree({'dc/foo/bla': 'other data'})
-        wt = self.newdir.open_workingtree()
-        wt.commit(message="Commit from Bzr")
-
-        self.olddir.open_branch().pull(self.newdir.open_branch())
-
-        repos = self.olddir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
-        self.assertEqual(repos.generate_revision_id(2, ""),
-                         inv[inv.path2id('foo/bla')].revision)
-        self.assertTrue(wt.branch.last_revision() in 
-          repos.revision_parents(repos.generate_revision_id(2, "")))
-        self.assertEqual(repos.generate_revision_id(2, ""),
-                        self.olddir.open_branch().last_revision())
-        self.assertEqual("other data", 
-            repos.revision_tree(repos.generate_revision_id(2, "")).get_file_text( inv.path2id("foo/bla")))
-
-    def test_simple(self):
-        self.build_tree({'dc/file': 'data'})
-        wt = self.newdir.open_workingtree()
-        wt.add('file')
-        wt.commit(message="Commit from Bzr")
-
-        self.olddir.open_branch().pull(self.newdir.open_branch())
-
-        repos = self.olddir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
-        self.assertTrue(inv.has_filename('file'))
-        self.assertTrue(wt.branch.last_revision() in 
-            repos.revision_parents(
-                repos.generate_revision_id(2, "")))
-        self.assertEqual(repos.generate_revision_id(2, ""),
-                        self.olddir.open_branch().last_revision())
-
-    def test_pull_after_push(self):
-        self.build_tree({'dc/file': 'data'})
-        wt = self.newdir.open_workingtree()
-        wt.add('file')
-        wt.commit(message="Commit from Bzr")
-
-        self.olddir.open_branch().pull(self.newdir.open_branch())
-
-        repos = self.olddir.find_repository()
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
-        self.assertTrue(inv.has_filename('file'))
-        self.assertTrue(wt.branch.last_revision() in 
-                         repos.revision_parents(repos.generate_revision_id(2, "")))
-        self.assertEqual(repos.generate_revision_id(2, ""),
-                        self.olddir.open_branch().last_revision())
-
-        self.newdir.open_branch().pull(self.olddir.open_branch())
-
-        self.assertEqual(repos.generate_revision_id(2, ""),
-                        self.newdir.open_branch().last_revision())
-
-    def test_message(self):
-        self.build_tree({'dc/file': 'data'})
-        wt = self.newdir.open_workingtree()
-        wt.add('file')
-        wt.commit(message="Commit from Bzr")
-
-        self.olddir.open_branch().pull(self.newdir.open_branch())
-
-        repos = self.olddir.find_repository()
-        self.assertEqual("Commit from Bzr",
-            repos.get_revision(repos.generate_revision_id(2, "")).message)
-
-    def test_multiple(self):
-        self.build_tree({'dc/file': 'data'})
-        wt = self.newdir.open_workingtree()
-        wt.add('file')
-        wt.commit(message="Commit from Bzr")
-
-        self.build_tree({'dc/file': 'data2', 'dc/adir': None})
-        wt.add('adir')
-        wt.commit(message="Another commit from Bzr")
-
-        self.olddir.open_branch().pull(self.newdir.open_branch())
-
-        repos = self.olddir.find_repository()
-
-        self.assertEqual(repos.generate_revision_id(3, ""), 
-                        self.olddir.open_branch().last_revision())
-
-        inv = repos.get_inventory(repos.generate_revision_id(2, ""))
-        self.assertTrue(inv.has_filename('file'))
-        self.assertFalse(inv.has_filename('adir'))
-
-        inv = repos.get_inventory(repos.generate_revision_id(3, ""))
-        self.assertTrue(inv.has_filename('file'))
-        self.assertTrue(inv.has_filename('adir'))
-
-        self.assertTrue(wt.branch.last_revision() in 
-             repos.get_ancestry(repos.generate_revision_id(3, "")))
+        self.assertEqual("my-revision-id", 
+                self.client_get_prop(self.repos_url, "bzr:revision-id-%d" % MAPPING_VERSION, 2))
 

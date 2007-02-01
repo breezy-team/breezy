@@ -54,6 +54,7 @@ SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_FILEIDS = 'bzr:file-ids'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
+SVN_PROP_BZR_REVISION_ID = 'svn:revision-id-v%d' % MAPPING_VERSION
 
 import urllib
 
@@ -629,11 +630,8 @@ class SvnRepository(Repository):
             raise NotImplementedError(self.get_commit_builder, 
                 "committer can not be user-specified for Subversion repositories")
 
-        if revision_id != None:
-            raise NotImplementedError(self.get_commit_builder, 
-                "revision_id can not be user-specified for Subversion repositories")
-
         from commit import SvnCommitBuilder
-        return SvnCommitBuilder(self, branch, parents, config, revprops)
+        return SvnCommitBuilder(self, branch, parents, config, revprops,
+                                revision_id)
 
 
