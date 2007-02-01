@@ -40,7 +40,6 @@ import shutil
 from shutil import (
     rmtree,
     )
-import string
 import tempfile
 from tempfile import (
     mkdtemp,
@@ -777,7 +776,15 @@ def has_symlinks():
 
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
-    for ch in string.whitespace:
+    # string.whitespace can include '\xa0' in certain locales, because it is
+    # considered "non-breaking-space" as part of ISO-8859-1. But it
+    # 1) Isn't a breaking whitespace
+    # 2) Isn't one of ' \t\r\n' which are characters we sometimes use as
+    #    separators
+    # 3) '\xa0' isn't unicode safe since it is >128.
+    # So we are following textwrap's example and hard-coding our own.
+    # We probably could ignore \v and \f, too.
+    for ch in u' \t\n\r\v\f':
         if ch in s:
             return True
     else:
