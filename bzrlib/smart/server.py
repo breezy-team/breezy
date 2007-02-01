@@ -115,8 +115,11 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         """Get a backing transport from a server we are decorating."""
         return transport.get_transport('chroot+' + backing_transport_server.get_url())
 
-    def setUp(self, backing_transport_server):
+    def setUp(self, backing_transport_server=None):
         """Set up server for testing"""
+        if backing_transport_server is None:
+            from bzrlib.transport.local import LocalURLServer
+            backing_transport_server = LocalURLServer()
         self.backing_transport = self.get_backing_transport(backing_transport_server)
         self.start_background_thread()
 
