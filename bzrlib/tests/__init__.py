@@ -569,6 +569,12 @@ class TestCase(unittest.TestCase):
         self._startLogFile()
         self._benchcalls = []
         self._benchtime = None
+        # prevent hooks affecting tests
+        self._preserved_hooks = bzrlib.branch.Branch.hooks
+        self.addCleanup(self._restoreHooks)
+        # this list of hooks must be kept in sync with the defaults
+        # in branch.py
+        bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -834,6 +840,9 @@ class TestCase(unittest.TestCase):
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
             osutils.set_or_unset_env(name, value)
+
+    def _restoreHooks(self):
+        bzrlib.branch.Branch.hooks = self._preserved_hooks
 
     def tearDown(self):
         self._runCleanups()
