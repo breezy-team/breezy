@@ -676,11 +676,16 @@ class cmd_push(Command):
                 except errors.NotLocalUrl:
                     warning('This transport does not update the working '
                             'tree of: %s' % (br_to.base,))
-                    count = br_to.pull(br_from, overwrite)
+                    count = br_from.push(br_to, overwrite)
                 except errors.NoWorkingTree:
-                    count = br_to.pull(br_from, overwrite)
+                    count = br_from.push(br_to, overwrite)
                 else:
-                    count = tree_to.pull(br_from, overwrite)
+                    tree_to.lock_write()
+                    try:
+                        count = br_from.push(tree_to.branch, overwrite)
+                        tree_to.update()
+                    finally:
+                        tree_to.unlock()
             except errors.DivergedBranches:
                 raise errors.BzrCommandError('These branches have diverged.'
                                         '  Try using "merge" and then "push".')
