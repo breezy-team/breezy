@@ -251,25 +251,59 @@ class LogWalker(object):
 
     def find_children(self, path, revnum):
         """Find all children of path in revnum."""
-        # TODO: Find children by walking history, or use 
-        # cache?
+        path = path.strip("/")
+        if self.transport.check_path(path, revnum) == svn.core.svn_node_file:
+            return []
+        class TreeLister(svn.delta.Editor):
+            def __init__(self, base):
+                self.files = []
+                self.base = base
 
-        try:
-            (dirents, _, _) = self.transport.get_dir(
-                path.lstrip("/").encode('utf8'), revnum, kind=True)
-        except SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_FS_NOT_DIRECTORY:
-                return
-            raise
+            def set_target_revision(self, revnum):
+                pass
 
-        for p in dirents:
-            yield os.path.join(path, p)
-            # This needs to be != svn.core.svn_node_file because 
-            # some ra backends seem to return negative values for .kind.
-            # however, dirents[p].node seems to contain semi-random 
-            # values.
-            for c in self.find_children(os.path.join(path, p), revnum):
-                yield c
+            def open_root(self, revnum, baton):
+                return path
+
+            def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
+                self.files.append(os.path.join(self.base, path))
+                return path
+
+            def change_dir_prop(self, id, name, value, pool):
+                pass
+
+            def change_file_prop(self, id, name, value, pool):
+                pass
+
+            def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
+                self.files.append(os.path.join(self.base, path))
+                return path
+
+            def close_dir(self, id):
+                pass
+
+            def close_file(self, path, checksum):
+                pass
+
+            def close_edit(self):
+                pass
+
+            def abort_edit(self):
+                pass
+
+            def apply_textdelta(self, file_id, base_checksum):
+                pass
+        pool = Pool()
+        editor = TreeLister(path)
+        edit, baton = svn.delta.make_editor(editor, pool)
+        root_repos = self.transport.get_repos_root()
+        self.transport.reparent(os.path.join(root_repos, path))
+        reporter, reporter_baton = self.transport.do_update(
+                        revnum, "", True, edit, baton, pool)
+        svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", revnum, 
+                                         True, None, pool)
+        svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
+        return editor.files
 
     def get_previous(self, path, revnum):
         """Return path,revnum pair specified pair was derived from.
