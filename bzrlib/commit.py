@@ -428,9 +428,9 @@ class Commit(object):
         #       to local.
         
         # Make sure the local branch is identical to the master
-        master_rh = self.master_branch.revision_history()
-        local_rh = self.branch.revision_history()
-        if local_rh != master_rh:
+        master_info = self.master_branch.last_revision_info()
+        local_info = self.branch.last_revision_info()
+        if local_info != master_info:
             raise errors.BoundBranchOutOfDate(self.branch,
                     self.master_branch)
 

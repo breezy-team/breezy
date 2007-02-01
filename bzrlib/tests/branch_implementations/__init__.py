@@ -44,6 +44,7 @@ def test_suite():
         'bzrlib.tests.branch_implementations.test_break_lock',
         'bzrlib.tests.branch_implementations.test_hooks',
         'bzrlib.tests.branch_implementations.test_http',
+        'bzrlib.tests.branch_implementations.test_last_revision_info',
         'bzrlib.tests.branch_implementations.test_locking',
         'bzrlib.tests.branch_implementations.test_parent',
         'bzrlib.tests.branch_implementations.test_permissions',

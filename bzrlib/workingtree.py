@@ -1321,16 +1321,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         try:
             pp = ProgressPhase("Pull phase", 2, top_pb)
             pp.next_phase()
-            old_revision_history = self.branch.revision_history()
+            old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision)
-            new_revision_history = self.branch.revision_history()
-            if new_revision_history != old_revision_history:
+            new_revision_info = self.branch.last_revision_info()
+            if new_revision_info != old_revision_info:
                 pp.next_phase()
-                if len(old_revision_history):
-                    other_revision = old_revision_history[-1]
-                else:
-                    other_revision = None
                 repository = self.branch.repository
                 pb = bzrlib.ui.ui_factory.nested_progress_bar()
                 try:

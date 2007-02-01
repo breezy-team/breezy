@@ -30,6 +30,11 @@ IN DEVELOPMENT
       push, pull, commit, and so on. Developed for use with the branchrss
       plugin. See bzrlib.branch.BranchHooks for more details. (Robert Collins)
 
+    * New Branch.last_revision_info method, this is being done to allow
+      optimization of requests for both the number of revisions and the last
+      revision of a branch with smartservers and potentially future branch
+      formats. (Wouter van Heyst, Robert Collins)
+
   BUGFIXES:
 
   TESTING:
