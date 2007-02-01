@@ -36,6 +36,10 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
+      branch, rather than the last changed revision of the file.
+      (John Arbash Meinel, #82158)
+
     * Lock operations no longer hang if they encounter a permission problem.
       (Aaron Bentley)
 
