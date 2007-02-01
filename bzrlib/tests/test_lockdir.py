@@ -17,13 +17,16 @@
 """Tests for LockDir"""
 
 from cStringIO import StringIO
+import os
 from threading import Thread, Lock
 import time
 
 import bzrlib
 from bzrlib import (
     config,
+    errors,
     osutils,
+    tests,
     )
 from bzrlib.errors import (
         LockBreakMismatch,
@@ -600,3 +603,12 @@ class TestLockDir(TestCaseWithTransport):
         ld1.create()
         ld1.lock_write()
         ld1.unlock()
+
+    def test_lock_permission(self):
+        if not osutils.supports_posix_readonly():
+            raise tests.TestSkipped('Cannot induce a permission failure')
+        ld1 = self.get_lock()
+        lock_path = ld1.transport.local_abspath('test_lock')
+        os.mkdir(lock_path)
+        osutils.make_readonly(lock_path)
+        self.assertRaises(errors.PermissionDenied, ld1.attempt_lock)

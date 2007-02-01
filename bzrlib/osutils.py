@@ -915,6 +915,19 @@ def supports_executable():
     return sys.platform != "win32"
 
 
+def supports_posix_readonly():
+    """Return True if 'readonly' has POSIX semantics, False otherwise.
+
+    Notably, a win32 readonly file cannot be deleted, unlike POSIX where the
+    directory controls creation/deletion, etc.
+
+    And under win32, readonly means that the directory itself cannot be
+    deleted.  The contents of a readonly directory can be changed, unlike POSIX
+    where files in readonly directories cannot be added, deleted or renamed.
+    """
+    return sys.platform != "win32"
+
+
 def set_or_unset_env(env_variable, value):
     """Modify the environment, setting or removing the env_variable.
 
