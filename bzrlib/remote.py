@@ -79,7 +79,7 @@ class RemoteBzrDir(BzrDir):
         smartclient = client.SmartClient(self.client)
         path = self._path_for_remote_call(smartclient)
         response = smartclient.call('BzrDir.open_branch', path)
-        assert response[0] == 'ok', 'unexpected response code %s' % response[0]
+        assert response[0] == 'ok', 'unexpected response code %s' % (response,)
         if response[0] != 'ok':
             # this should probably be a regular translate no ?
             raise errors.NotBranchError(path=self.root_transport.base)
@@ -106,7 +106,7 @@ class RemoteBzrDir(BzrDir):
         path = self._path_for_remote_call(smartclient)
         response = smartclient.call('BzrDir.find_repository', path)
         assert response[0] in ('ok', 'norepository'), \
-            'unexpected response code %s' % response[0]
+            'unexpected response code %s' % (response,)
         if response[0] == 'norepository':
             raise errors.NoRepositoryPresent(self)
         if response[1] == '':
@@ -193,7 +193,7 @@ class RemoteRepository(object):
         """See Repository.has_revision()."""
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Repository.has_revision', path, revision_id.encode('utf8'))
-        assert response[0] in ('ok', 'no'), 'unexpected response code %s' % response[0]
+        assert response[0] in ('ok', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'ok'
 
 
@@ -248,7 +248,7 @@ class RemoteBranch(branch.Branch):
         """See Branch.last_revision_info()."""
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call('Branch.last_revision_info', path)
-        assert response[0] == 'ok', 'unexpected response code %s' % response
+        assert response[0] == 'ok', 'unexpected response code %s' % (response,)
         revno = int(response[1])
         last_revision = response[2].decode('utf8')
         if last_revision == '':
@@ -262,7 +262,7 @@ class RemoteBranch(branch.Branch):
         # for details.
         path = self.bzrdir._path_for_remote_call(self._client)
         response = self._client.call2('Branch.revision_history', path)
-        assert response[0][0] == 'ok', 'unexpected response code %s' % response[0]
+        assert response[0][0] == 'ok', 'unexpected response code %s' % (response[0],)
         result = response[1].read_body_bytes().decode('utf8').split('\x00')
         if result == ['']:
             return []

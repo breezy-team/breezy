@@ -2025,7 +2025,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         client = SmartClient(medium)
         path = client.remote_path_from_transport(transport)
         response = SmartClient(medium).call('BzrDirFormat.initialize', path)
-        assert response[0] in ('ok', ), 'unexpected response code %s' % response[0]
+        assert response[0] in ('ok', ), 'unexpected response code %s' % (response,)
         return remote.RemoteBzrDir(transport)
 
     def _open(self, transport):
