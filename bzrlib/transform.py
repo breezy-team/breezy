@@ -1230,11 +1230,11 @@ def revert(working_tree, target_tree, filenames, backups=False,
     return conflicts
 
 
-def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups, 
+def _alter_files(working_tree, target_tree, tt, pb, interesting_ids, backups,
                  report_changes):
     from bzrlib import delta
     merge_modified = working_tree.merge_modified()
-    change_list = list(target_tree._iter_changes(working_tree, 
+    change_list = list(target_tree._iter_changes(working_tree,
         specific_file_ids=interesting_ids, pb=pb))
     if target_tree.inventory.root is None:
         skip_root = True

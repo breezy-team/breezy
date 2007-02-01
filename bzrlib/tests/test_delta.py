@@ -60,7 +60,7 @@ class TestReportChanges(tests.TestCase):
         self.assertReport(' K  path/ => path', modified='kind changed',
                           kind=('directory', 'file'), old_path='old')
         self.assertReport('RK  old => path/', renamed=True,
-                          modified='kind changed', 
+                          modified='kind changed',
                           kind=('file', 'directory'), old_path='old')
     def test_new(self):
         self.assertReport(' N  path/', modified='created',
