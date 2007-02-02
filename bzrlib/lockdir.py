@@ -118,6 +118,7 @@ from bzrlib.trace import mutter, note
 from bzrlib.transport import Transport
 from bzrlib.osutils import rand_chars, format_delta
 from bzrlib.rio import read_stanza, Stanza
+import bzrlib.ui
 
 
 # XXX: At the moment there is no consideration of thread safety on LockDir
@@ -219,6 +220,8 @@ class LockDir(object):
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
             self.confirm()
+        except errors.PermissionDenied:
+            raise
         except (PathError, DirectoryNotEmpty, FileExists, ResourceBusy), e:
             mutter("contention on %r: %s", self, e)
             raise LockContention(self)

@@ -319,14 +319,12 @@ class TestAddFrom(TestCaseWithTransport):
 
         self.build_tree(['new/a', 'new/b', 'new/c',
                          'new/subdir/', 'new/subdir/b', 'new/subdir/d'])
+        new_tree.set_root_id(self.base_tree.get_root_id())
         self.add_helper(self.base_tree, 'dir', new_tree, ['new'])
 
-        # We 'a' and 'b' exist in the root, and they are being added
-        # in a new 'root'. Since ROOT ids are not unique, we will
+        # We know 'a' and 'b' exist in the root, and they are being added
+        # in a new 'root'. Since ROOT ids have been set as the same, we will
         # use those ids
-        # TODO: This will probably change once trees have a unique root id
-        # It is definitely arguable that 'a' should get the id of
-        # 'dir/a' not of 'a'.
         self.assertEqual(self.base_tree.path2id('a'),
                          new_tree.path2id('a'))
         self.assertEqual(self.base_tree.path2id('b'),

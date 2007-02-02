@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -9,11 +9,10 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
 
 """Tests for plugins"""
 
@@ -23,6 +22,7 @@
 
 import os
 from StringIO import StringIO
+import zipfile
 
 import bzrlib.plugin
 import bzrlib.plugins
@@ -191,6 +191,37 @@ class TestPluginHelp(TestCaseInTempDir):
             help = self.split_help_commands()['myplug']
             self.assertContainsRe(help, '\[myplug\]')
         finally:
-            # remove the plugin 'plugin'
-            if getattr(bzrlib.plugins, 'plugin', None):
-                del bzrlib.plugins.plugin
+            # unregister command
+            if bzrlib.commands.plugin_cmds.get('myplug', None):
+                del bzrlib.commands.plugin_cmds['myplug']
+            # remove the plugin 'myplug'
+            if getattr(bzrlib.plugins, 'myplug', None):
+                delattr(bzrlib.plugins, 'myplug')
+
+
+class TestPluginFromZip(TestCaseInTempDir):
+
+    def make_zipped_plugin(self, zip_name, filename):
+        z = zipfile.ZipFile(zip_name, 'w')
+        z.writestr(filename, PLUGIN_TEXT)
+        z.close()
+
+    def check_plugin_load(self, zip_name, plugin_name):
+        self.assertFalse(plugin_name in dir(bzrlib.plugins),
+                         'Plugin already loaded')
+        try:
+            bzrlib.plugin.load_from_zips([zip_name])
+            self.assertTrue(plugin_name in dir(bzrlib.plugins),
+                            'Plugin is not loaded')
+        finally:
+            # unregister plugin
+            if getattr(bzrlib.plugins, plugin_name, None):
+                delattr(bzrlib.plugins, plugin_name)
+
+    def test_load_module(self):
+        self.make_zipped_plugin('./test.zip', 'ziplug.py')
+        self.check_plugin_load('./test.zip', 'ziplug')
+
+    def test_load_package(self):
+        self.make_zipped_plugin('./test.zip', 'ziplug/__init__.py')
+        self.check_plugin_load('./test.zip', 'ziplug')

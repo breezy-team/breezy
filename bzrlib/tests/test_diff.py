@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Development Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -9,7 +9,7 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -112,8 +112,10 @@ class TestDiff(TestCase):
 
     def test_external_diff_binary_lang_c(self):
         orig_lang = os.environ.get('LANG')
+        orig_lc_all = os.environ.get('LC_ALL')
         try:
             os.environ['LANG'] = 'C'
+            os.environ['LC_ALL'] = 'C'
             lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
             # Older versions of diffutils say "Binary files", newer
             # versions just say "Files".
@@ -121,10 +123,11 @@ class TestDiff(TestCase):
                                   '(Binary f|F)iles old and new differ\n')
             self.assertEquals(lines[1:], ['\n'])
         finally:
-            if orig_lang is None:
-                del os.environ['LANG']
-            else:
-                os.environ['LANG'] = orig_lang
+            for name, value in [('LANG', orig_lang), ('LC_ALL', orig_lc_all)]:
+                if value is None:
+                    del os.environ[name]
+                else:
+                    os.environ[name] = value
 
     def test_no_external_diff(self):
         """Check that NoDiff is raised when diff is not available"""

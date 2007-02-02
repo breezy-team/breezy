@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,9 @@
 import os
 import unittest
 
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.branch import Branch
 from bzrlib.errors import PathNotChild
@@ -33,7 +36,6 @@ class MoreTests(TestCaseWithTransport):
         if it is inside a branch and return the path relative to the base.
         """
         import tempfile
-        from bzrlib.osutils import rmtree
         
         savedir = os.getcwdu()
         dtmp = tempfile.mkdtemp()
@@ -81,4 +83,4 @@ class MoreTests(TestCaseWithTransport):
 
         finally:
             os.chdir(savedir)
-            rmtree(dtmp)
+            osutils.rmtree(dtmp)

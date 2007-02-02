@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -40,13 +40,14 @@ import re
 import sys
 
 import bzrlib
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import (
     has_symlinks,
     pathjoin,
-    rmtree,
     terminal_width,
     )
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
@@ -56,17 +57,6 @@ from bzrlib.workingtree import WorkingTree
 
 
 class TestCommands(ExternalBase):
-
-    def test_nick_command(self):
-        """bzr nick for viewing, setting nicknames"""
-        os.mkdir('me.dev')
-        os.chdir('me.dev')
-        self.runbzr('init')
-        nick = self.runbzr("nick",backtick=True)
-        self.assertEqual(nick, 'me.dev\n')
-        nick = self.runbzr("nick moo")
-        nick = self.runbzr("nick",backtick=True)
-        self.assertEqual(nick, 'moo\n')
 
     def test_invalid_commands(self):
         self.runbzr("pants", retcode=3)
@@ -208,7 +198,7 @@ class TestCommands(ExternalBase):
         self.runbzr('pull')
         self.runbzr('pull ../c')
         self.runbzr('branch ../c ../d')
-        rmtree('../c')
+        osutils.rmtree('../c')
         self.runbzr('pull')
         os.chdir('../b')
         self.runbzr('pull')
