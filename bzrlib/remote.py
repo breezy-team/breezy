@@ -175,18 +175,23 @@ class RemoteRepository(object):
     the transport.
     """
 
-    def __init__(self, remote_bzrdir, real_repository=None):
+    def __init__(self, remote_bzrdir, real_repository=None, _client=None):
         """Create a RemoteRepository instance.
         
         :param remote_bzrdir: The bzrdir hosting this repository.
         :param real_repository: If not None, a local implementation of the
             repository logic for the repository, usually accessing the data
             via the VFS.
+        :param _client: Private testing parameter - override the smart client
+            to be used by the repository.
         """
         if real_repository:
             self._real_repository = real_repository
         self.bzrdir = remote_bzrdir
-        self._client = client.SmartClient(self.bzrdir.client)
+        if _client is None:
+            self._client = client.SmartClient(self.bzrdir.client)
+        else:
+            self._client = _client
         self._format = RemoteRepositoryFormat()
 
     def has_revision(self, revision_id):
@@ -195,6 +200,13 @@ class RemoteRepository(object):
         response = self._client.call('Repository.has_revision', path, revision_id.encode('utf8'))
         assert response[0] in ('ok', 'no'), 'unexpected response code %s' % (response,)
         return response[0] == 'ok'
+
+    def is_shared(self):
+        """See Repository.is_shared()."""
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response = self._client.call('Repository.is_shared', path)
+        assert response[0] in ('yes', 'no'), 'unexpected response code %s' % (response,)
+        return response[0] == 'yes'
 
 
 class RemoteBranchFormat(branch.BranchFormat):

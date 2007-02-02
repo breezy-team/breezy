@@ -56,3 +56,18 @@ class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
             return SmartServerResponse(('ok', ))
         else:
             return SmartServerResponse(('no', ))
+
+
+class SmartServerRepositoryIsShared(SmartServerRepositoryRequest):
+
+    def do_repository_request(self, repository):
+        """Return the result of repository.is_shared().
+
+        :param repository: The repository to query in.
+        :return: A smart server response of ('yes', ) if the repository is
+            shared, and ('no', ) if it is not.
+        """
+        if repository.is_shared():
+            return SmartServerResponse(('yes', ))
+        else:
+            return SmartServerResponse(('no', ))

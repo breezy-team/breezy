@@ -250,6 +250,24 @@ class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
                 u'\xc8abc'.encode('utf8')))
 
 
+class TestSmartServerRepositoryIsShared(tests.TestCaseWithTransport):
+
+    def test_is_shared(self):
+        """For a shared repository, ('yes', ) is returned."""
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryIsShared(backing)
+        self.make_repository('.', shared=True)
+        self.assertEqual(SmartServerResponse(('yes', )),
+            request.execute(backing.local_abspath(''), ))
+
+    def test_is_not_shared(self):
+        """For a shared repository, ('yes', ) is returned."""
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryIsShared(backing)
+        self.make_repository('.', shared=False)
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute(backing.local_abspath(''), ))
+
 
 class TestHandlers(tests.TestCase):
     """Tests for the request.request_handlers object."""
@@ -274,3 +292,6 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Repository.has_revision'),
             smart.repository.SmartServerRequestHasRevision)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.is_shared'),
+            smart.repository.SmartServerRepositoryIsShared)

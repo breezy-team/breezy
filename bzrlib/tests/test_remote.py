@@ -28,6 +28,7 @@ from bzrlib.remote import (
     RemoteBranch,
     RemoteBzrDir,
     RemoteBzrDirFormat,
+    RemoteRepository,
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server
@@ -129,3 +130,41 @@ class TestBranchLastRevisionInfo(tests.TestCase):
             [('call', 'Branch.last_revision_info', ('///kwaak/',))],
             client._calls)
         self.assertEqual((2, u'\xc8'), result)
+
+
+class TestRepositoryIsShared(tests.TestCase):
+
+    def setup_fake_client_and_repository(self, responses, transport_path):
+        """Create the fake client and repository for testing with."""
+        client = FakeClient(responses)
+        transport = MemoryTransport()
+        transport.mkdir(transport_path)
+        transport = transport.clone(transport_path)
+        # we do not want bzrdir to make any remote calls
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        repo = RemoteRepository(bzrdir, None, _client=client)
+        return repo, client
+
+    def test_is_shared(self):
+        # ('yes', ) for Repository.is_shared -> 'True'.
+        responses = [('yes', )]
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        result = repo.is_shared()
+        self.assertEqual(
+            [('call', 'Repository.is_shared', ('///quack/',))],
+            client._calls)
+        self.assertEqual(True, result)
+
+    def test_is_not_shared(self):
+        # ('no', ) for Repository.is_shared -> 'False'.
+        responses = [('no', )]
+        transport_path = 'qwack'
+        repo, client = self.setup_fake_client_and_repository(
+            responses, transport_path)
+        result = repo.is_shared()
+        self.assertEqual(
+            [('call', 'Repository.is_shared', ('///qwack/',))],
+            client._calls)
+        self.assertEqual(False, result)
