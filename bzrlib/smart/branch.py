@@ -39,6 +39,20 @@ class SmartServerBranchRequest(SmartServerRequest):
         return self.do_with_branch(branch)
 
 
+class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
+    
+    def do_with_branch(self, branch):
+        """Return the content of branch.control_files.get('branch.conf').
+        
+        The body is not utf8 decoded - its the literal bytestream from disk.
+        """
+        try:
+            content = branch.control_files.get('branch.conf').read()
+        except errors.NoSuchFile:
+            content = ''
+        return SmartServerResponse( ('ok', ), content)
+
+
 class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):

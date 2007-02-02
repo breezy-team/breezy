@@ -23,6 +23,21 @@ import bzrlib.smart.branch
 import bzrlib.smart.repository
 
 
+class TestCaseWithSmartMedium(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestCaseWithSmartMedium, self).setUp()
+        # We're allowed to set  the transport class here, so that we don't use
+        # the default or a parameterized class, but rather use the
+        # TestCaseWithTransport infrastructure to set up a smart server and
+        # transport.
+        self.transport_server = smart.server.SmartTCPServer_for_testing
+
+    def get_smart_medium(self):
+        """Get a smart medium to use in tests."""
+        return self.get_transport().get_smart_medium()
+
+
 class TestSmartServerResponse(tests.TestCase):
 
     def test__eq__(self):
@@ -209,6 +224,30 @@ class TestSmartServerBranchRequestLastRevisionInfo(tests.TestCaseWithTransport):
             request.execute(backing.local_abspath('')))
 
 
+class TestSmartServerBranchGetConfigFile(tests.TestCaseWithTransport):
+
+    def test_default(self):
+        """With no file, we get empty content."""
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchGetConfigFile(backing)
+        branch = self.make_branch('.')
+        # there should be no file by default
+        content = ''
+        self.assertEqual(SmartServerResponse(('ok', ), content),
+            request.execute(backing.local_abspath('')))
+
+    def test_with_content(self):
+        # SmartServerBranchGetConfigFile should return the content from
+        # branch.control_files.get('branch.conf') for now - in the future it may
+        # perform more complex processing. 
+        backing = self.get_transport()
+        request = smart.branch.SmartServerBranchGetConfigFile(backing)
+        branch = self.make_branch('.')
+        branch.control_files.put_utf8('branch.conf', 'foo bar baz')
+        self.assertEqual(SmartServerResponse(('ok', ), 'foo bar baz'),
+            request.execute(backing.local_abspath('')))
+
+
 class TestSmartServerRepositoryRequest(tests.TestCaseWithTransport):
 
     def test_no_repository(self):
@@ -274,6 +313,9 @@ class TestHandlers(tests.TestCase):
 
     def test_registered_methods(self):
         """Test that known methods are registered to the correct object."""
+        self.assertEqual(
+            smart.request.request_handlers.get('Branch.get_config_file'),
+            smart.branch.SmartServerBranchGetConfigFile)
         self.assertEqual(
             smart.request.request_handlers.get('Branch.last_revision_info'),
             smart.branch.SmartServerBranchRequestLastRevisionInfo)

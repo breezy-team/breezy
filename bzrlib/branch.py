@@ -442,7 +442,8 @@ class Branch(object):
 
     def get_push_location(self):
         """Return the None or the location to push this branch to."""
-        raise NotImplementedError(self.get_push_location)
+        push_loc = self.get_config().get_user_option('push_location')
+        return push_loc
 
     def set_push_location(self, location):
         """Set a new push location for this branch."""
@@ -1295,11 +1296,6 @@ class BzrBranch(Branch):
             except errors.InvalidURLJoin, e:
                 raise errors.InaccessibleParent(parent, self.base)
         return None
-
-    def get_push_location(self):
-        """See Branch.get_push_location."""
-        push_loc = self.get_config().get_user_option('push_location')
-        return push_loc
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""

@@ -43,6 +43,7 @@ from bzrlib.tests.HTTPTestUtil import (
         HTTPServerWithSmarts,
         SmartRequestHandler,
         )
+from bzrlib.tests.test_smart import TestCaseWithSmartMedium
 from bzrlib.transport import (
         get_transport,
         local,
@@ -521,15 +522,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         self.assertRaises(errors.ReadingCompleted, request.read_bytes, None)
 
 
-class RemoteTransportTests(tests.TestCaseWithTransport):
-
-    def setUp(self):
-        super(RemoteTransportTests, self).setUp()
-        # We're allowed to set  the transport class here, so that we don't use
-        # the default or a parameterized class, but rather use the
-        # TestCaseWithTransport infrastructure to set up a smart server and
-        # transport.
-        self.transport_server = server.SmartTCPServer_for_testing
+class RemoteTransportTests(TestCaseWithSmartMedium):
 
     def test_plausible_url(self):
         self.assert_(self.get_url().startswith('bzr://'))

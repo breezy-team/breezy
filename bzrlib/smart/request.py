@@ -234,6 +234,8 @@ request_handlers = registry.Registry()
 request_handlers.register_lazy(
     'append', 'bzrlib.smart.vfs', 'AppendRequest')
 request_handlers.register_lazy(
+    'Branch.get_config_file', 'bzrlib.smart.branch', 'SmartServerBranchGetConfigFile')
+request_handlers.register_lazy(
     'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
 request_handlers.register_lazy(
     'Branch.revision_history', 'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')

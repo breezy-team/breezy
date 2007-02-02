@@ -21,6 +21,8 @@ through a smart client.  The proxies are to be created when attempting to open
 the object given a transport that supports smartserver rpc operations. 
 """
 
+from cStringIO import StringIO
+
 from bzrlib import bzrdir, remote, tests
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
@@ -83,24 +85,44 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.assertIsInstance(d, BzrDir)
 
 
+class FakeProtocol(object):
+    """Lookalike SmartClientRequestProtocolOne allowing body reading tests."""
+
+    def __init__(self, body):
+        self._body_buffer = StringIO(body)
+
+    def read_body_bytes(self, count=-1):
+        return self._body_buffer.read(count)
+
+
 class FakeClient(SmartClient):
     """Lookalike for SmartClient allowing testing."""
     
     def __init__(self, responses):
         # We don't call the super init because there is no medium.
+        """create a FakeClient.
+
+        :param respones: A list of response-tuple, body-data pairs to be sent
+            back to callers.
+        """
         self.responses = responses
         self._calls = []
 
     def call(self, method, *args):
         self._calls.append(('call', method, args))
-        return self.responses.pop(0)
+        return self.responses.pop(0)[0]
+
+    def call2(self, method, *args):
+        self._calls.append(('call2', method, args))
+        result = self.responses.pop(0)
+        return result[0], FakeProtocol(result[1])
 
 
 class TestBranchLastRevisionInfo(tests.TestCase):
 
     def test_empty_branch(self):
         # in an empty branch we decode the response properly
-        client = FakeClient([('ok', '0', '')])
+        client = FakeClient([(('ok', '0', ''), )])
         transport = MemoryTransport()
         transport.mkdir('quack')
         transport = transport.clone('quack')
@@ -117,7 +139,7 @@ class TestBranchLastRevisionInfo(tests.TestCase):
     def test_non_empty_branch(self):
         # in a non-empty branch we also decode the response properly
 
-        client = FakeClient([('ok', '2', u'\xc8'.encode('utf8'))])
+        client = FakeClient([(('ok', '2', u'\xc8'.encode('utf8')), )])
         transport = MemoryTransport()
         transport.mkdir('kwaak')
         transport = transport.clone('kwaak')
@@ -130,6 +152,31 @@ class TestBranchLastRevisionInfo(tests.TestCase):
             [('call', 'Branch.last_revision_info', ('///kwaak/',))],
             client._calls)
         self.assertEqual((2, u'\xc8'), result)
+
+
+class TestBranchControlGetBranchConf(tests.TestCase):
+    """Test branch.control_files api munging...
+
+    we special case RemoteBranch.control_files.get('branch.conf') to 
+    call a specific API so that RemoteBranch's can intercept configuration
+    file reading, allowing them to signal to the client about things like
+    'email is configured for commits'.
+    """
+
+    def test_get_branch_conf(self):
+        # in an empty branch we decode the response properly
+        client = FakeClient([(('ok', ), 'config file body')])
+        transport = MemoryTransport()
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        # we do not want bzrdir to make any remote calls
+        bzrdir = RemoteBzrDir(transport, _client=False)
+        branch = RemoteBranch(bzrdir, None, _client=client)
+        result = branch.control_files.get('branch.conf')
+        self.assertEqual(
+            [('call2', 'Branch.get_config_file', ('///quack/',))],
+            client._calls)
+        self.assertEqual('config file body', result.read())
 
 
 class TestRepositoryIsShared(tests.TestCase):
@@ -147,7 +194,7 @@ class TestRepositoryIsShared(tests.TestCase):
 
     def test_is_shared(self):
         # ('yes', ) for Repository.is_shared -> 'True'.
-        responses = [('yes', )]
+        responses = [(('yes', ), )]
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)
@@ -159,7 +206,7 @@ class TestRepositoryIsShared(tests.TestCase):
 
     def test_is_not_shared(self):
         # ('no', ) for Repository.is_shared -> 'False'.
-        responses = [('no', )]
+        responses = [(('no', ), )]
         transport_path = 'qwack'
         repo, client = self.setup_fake_client_and_repository(
             responses, transport_path)

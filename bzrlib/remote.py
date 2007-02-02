@@ -17,6 +17,7 @@
 # TODO: At some point, handle upgrades by just passing the whole request
 # across to run on the server.
 
+from cStringIO import StringIO
 from urlparse import urlparse
 
 from bzrlib import branch, errors, repository
@@ -209,6 +210,30 @@ class RemoteRepository(object):
         return response[0] == 'yes'
 
 
+class RemoteBranchLockableFiles(object):
+    """A 'LockableFiles' implementation that talks to a smart server.
+    
+    This is not a public interface class.
+    """
+
+    def __init__(self, bzrdir, _client):
+        self.bzrdir = bzrdir
+        self._client = _client
+
+    def get(self, path):
+        """'get' a remote path as per the LockableFiles interface.
+
+        :param path: the file to 'get'. If this is 'branch.conf', we do not
+             just retrieve a file, instead we ask the smart server to generate
+             a configuration for us - which is retrieved as an INI file.
+        """
+        assert path == 'branch.conf'
+        path = self.bzrdir._path_for_remote_call(self._client)
+        response = self._client.call2('Branch.get_config_file', path)
+        assert response[0][0] == 'ok', 'unexpected response code %s' % (response[0],)
+        return StringIO(response[1].read_body_bytes())
+
+
 class RemoteBranchFormat(branch.BranchFormat):
 
     def open(self, a_bzrdir):
@@ -242,8 +267,10 @@ class RemoteBranch(branch.Branch):
         self.repository = remote_repository
         if real_branch is not None:
             self._real_branch = real_branch
+        # Fill out expected attributes of branch for bzrlib api users.
         self._format = RemoteBranchFormat()
         self.base = self.bzrdir.root_transport.base
+        self.control_files = RemoteBranchLockableFiles(self.bzrdir, self._client)
 
     def lock_read(self):
         return self._real_branch.lock_read()

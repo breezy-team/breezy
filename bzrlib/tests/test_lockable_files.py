@@ -23,6 +23,7 @@ from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests.test_smart import TestCaseWithSmartMedium
 from bzrlib.tests.test_transactions import DummyWeave
 from bzrlib.transactions import (PassThroughTransaction,
                                  ReadOnlyTransaction,
@@ -175,3 +176,24 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
 
     # TODO: Test the lockdir inherits the right file and directory permissions
     # from the LockableFiles.
+        
+
+class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
+                              _TestLockableFiles_mixin):
+    """LockableFile tests run with RemoteLockDir on a branch."""
+
+    def setUp(self):
+        super(TestLockableFiles_RemoteLockDir, self).setUp()
+        # can only get a RemoteLockDir with some RemoteObject...
+        # use a branch as thats what we want. These mixin tests test the end
+        # to end behaviour, so stubbing out the backend and simulating would
+        # defeat the purpose. We test the protocol implementation separately
+        # in test_remote and test_smart as usual.
+        self.make_branch('foo')
+        self.transport = get_transport('.')
+        self.lockable = self.get_lockable()
+
+    def get_lockable(self):
+        # getting a new lockable involves opening a new instance of the branch
+        branch = bzrlib.branch.Branch.open(self.get_url('foo'))
+        return branch.control_files
