@@ -247,6 +247,9 @@ class TestUrlToPath(TestCase):
 
         # Test joining with an absolute path
         test('/bar', 'foo', '/bar')
+
+        # Test joining to a path with a trailing slash
+        test('foo/bar', 'foo/', 'bar')
         
         # Invalid joinings
         # Cannot go above root

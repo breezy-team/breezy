@@ -170,6 +170,7 @@ def joinpath(base, *args):
     if base == '/':
         path = ['']
     else:
+        base = base.rstrip('/')
         path = base.split('/')
     for arg in args:
         if arg.startswith('/'):

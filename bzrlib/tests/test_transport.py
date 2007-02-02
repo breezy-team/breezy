@@ -350,6 +350,14 @@ class ChrootDecoratorTransportTest(TestCase):
         transport.clone('foo/bar')
         self.assertEqual([('clone', 'foo/bar')] , decorated_transport.calls)
 
+    def test_clone_multiple_levels(self):
+        url='chroot+memory:///hello/'
+        transport = get_transport(url)
+        transport = transport.clone("subdir1")
+        transport = transport.clone("subdir2")
+        self.assertEqual(
+            'chroot+memory:///hello/subdir1/subdir2/', transport.base)
+
     def test_delete(self):
         transport = get_transport('chroot+memory:///foo/bar')
         self.assertRaises(PathNotChild, transport.delete, '/foo')
