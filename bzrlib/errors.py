@@ -786,6 +786,17 @@ class NoSuchRevisionSpec(BzrError):
         BzrError.__init__(self, spec=spec)
 
 
+class NoSuchRevisionInTree(NoSuchRevision):
+    """When using Tree.revision_tree, and the revision is not accessible."""
+    
+    _fmt = "The revision id %(revision_id)s is not present in the tree %(tree)s."
+
+    def __init__(self, tree, revision_id):
+        BzrError.__init__(self)
+        self.tree = tree
+        self.revision_id = revision_id
+
+
 class InvalidRevisionSpec(BzrError):
 
     _fmt = "Requested revision: %(spec)r does not exist in branch: %(branch)s%(extra)s"

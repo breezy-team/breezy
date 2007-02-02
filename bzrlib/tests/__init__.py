@@ -630,7 +630,7 @@ class TestCase(unittest.TestCase):
     def assertContainsRe(self, haystack, needle_re):
         """Assert that a contains something matching a regular expression."""
         if not re.search(needle_re, haystack):
-            raise AssertionError('pattern "%s" not found in "%s"'
+            raise AssertionError('pattern "%r" not found in "%r"'
                     % (needle_re, haystack))
 
     def assertNotContainsRe(self, haystack, needle_re):
@@ -1645,6 +1645,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
             self.fail("path %s is not a directory; has mode %#o"
                       % (relpath, mode))
 
+    def assertTreesEqual(self, left, right):
+        """Check that left and right have the same content and properties."""
+        # we use a tree delta to check for equality of the content, and we
+        # manually check for equality of other things such as the parents list.
+        self.assertEqual(left.get_parent_ids(), right.get_parent_ids())
+        differences = left.changes_from(right)
+        self.assertFalse(differences.has_changed())
+
     def setUp(self):
         super(TestCaseWithTransport, self).setUp()
         self.__server = None
@@ -1771,6 +1779,7 @@ def test_suite():
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_diff',
+                   'bzrlib.tests.test_dirstate',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',

@@ -18,6 +18,7 @@
 
 from cStringIO import StringIO
 
+from bzrlib import revision
 from bzrlib.tree import Tree
 
 
@@ -47,11 +48,11 @@ class RevisionTree(Tree):
 
         A RevisionTree's parents match the revision graph.
         """
-        if self._revision_id not in (None, 'null:'):
+        if self._revision_id in (None, revision.NULL_REVISION):
+            parent_ids = []
+        else:
             parent_ids = self._repository.get_revision(
                 self._revision_id).parent_ids
-        else:
-            parent_ids = []
         return parent_ids
         
     def get_revision_id(self):
@@ -133,4 +134,31 @@ class RevisionTree(Tree):
     def unlock(self):
         self._repository.unlock()
 
-
+    def walkdirs(self, prefix=""):
+        _directory = 'directory'
+        inv = self.inventory
+        top_id = inv.path2id(prefix)
+        if top_id is None:
+            pending = []
+        else:
+            pending = [(prefix, '', _directory, None, top_id, None)]
+        while pending:
+            dirblock = []
+            currentdir = pending.pop()
+            # 0 - relpath, 1- basename, 2- kind, 3- stat, id, v-kind
+            if currentdir[0]:
+                relroot = currentdir[0] + '/'
+            else:
+                relroot = ""
+            # FIXME: stash the node in pending
+            entry = inv[currentdir[4]]
+            for name, child in entry.sorted_children():
+                toppath = relroot + name
+                dirblock.append((toppath, name, child.kind, None,
+                    child.file_id, child.kind
+                    ))
+            yield (currentdir[0], entry.file_id), dirblock
+            # push the user specified dirs from dirblock
+            for dir in reversed(dirblock):
+                if dir[2] == _directory:
+                    pending.append(dir)

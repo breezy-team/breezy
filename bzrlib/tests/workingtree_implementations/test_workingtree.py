@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@ import bzrlib
 from bzrlib import branch, bzrdir, errors, osutils, urlutils, workingtree
 from bzrlib.errors import (NotBranchError, NotVersionedError,
                            UnsupportedOperation, PathsNotVersionedError)
+from bzrlib.inventory import Inventory
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
@@ -729,3 +730,28 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                              ' in version 0.13. Use to_dir instead'],
                             tree.move, ['a1'], to_name='sub1',
                             after=False)
+
+    def test__write_inventory(self):
+        # The private interface _write_inventory is currently used by transform.
+        tree = self.make_branch_and_tree('.')
+        # if we write write an inventory then do a walkdirs we should get back
+        # missing entries, and actual, and unknowns as appropriate.
+        self.build_tree(['present', 'unknown'])
+        inventory = Inventory(tree.inventory.root.file_id)
+        inventory.add_path('missing', 'file', 'missing-id')
+        inventory.add_path('present', 'file', 'present-id')
+        tree._write_inventory(inventory)
+        tree.lock_read()
+        try:
+            present_stat = os.lstat('present')
+            unknown_stat = os.lstat('unknown')
+            expected_results = [
+                (('', tree.inventory.root.file_id),
+                 [('missing', 'missing', 'unknown', None, 'missing-id', 'file'),
+                  ('present', 'present', 'file', present_stat, 'present-id', 'file'),
+                  ('unknown', 'unknown', 'file', unknown_stat, None, None),
+                 ]
+                )]
+            self.assertEqual(expected_results, list(tree.walkdirs()))
+        finally:
+            tree.unlock()

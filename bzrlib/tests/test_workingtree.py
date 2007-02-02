@@ -18,7 +18,7 @@
 from cStringIO import StringIO
 import os
 
-from bzrlib import ignores
+from bzrlib import dirstate, ignores
 import bzrlib
 from bzrlib.branch import Branch
 from bzrlib import bzrdir, conflicts, errors, workingtree
@@ -224,6 +224,230 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         tree = workingtree.WorkingTreeFormat3().initialize(control)
         tree._control_files._transport.delete("pending-merges")
         self.assertEqual([], tree.get_parent_ids())
+
+
+class TestWorkingTreeFormat4(TestCaseWithTransport):
+    """Tests specific to WorkingTreeFormat4."""
+
+    def test_disk_layout(self):
+        control = bzrdir.BzrDir.create(self.get_url())
+        control.create_repository()
+        control.create_branch()
+        tree = workingtree.WorkingTreeFormat4().initialize(control)
+        # we want:
+        # format 'Bazaar-NG Working Tree format 4'
+        # inventory = blank inventory
+        # pending-merges = ''
+        # stat-cache = ??
+        # no inventory.basis yet
+        t = control.get_workingtree_transport(None)
+        self.assertEqualDiff('Bazaar-NG Working Tree format 4',
+                             t.get('format').read())
+        self.assertEqualDiff('<inventory format="5">\n'
+                             '</inventory>\n',
+                             t.get('inventory').read())
+        self.assertEqualDiff('### bzr hashcache v5\n',
+                             t.get('stat-cache').read())
+        self.assertFalse(t.has('inventory.basis'))
+        # no last-revision file means 'None' or 'NULLREVISION'
+        self.assertFalse(t.has('last-revision'))
+        # TODO RBC 20060210 do a commit, check the inventory.basis is created 
+        # correctly and last-revision file becomes present.
+        # manually make a dirstate toc check the format is as desired.
+        state = dirstate.DirState.on_file(t.local_abspath('dirstate'))
+        self.assertEqual([], state.get_parent_ids())
+
+    def test_uses_lockdir(self):
+        """WorkingTreeFormat4 uses its own LockDir:
+            
+            - lock is a directory
+            - when the WorkingTree is locked, LockDir can see that
+        """
+        # this test could be factored into a subclass of tests common to both
+        # format 3 and 4, but for now its not much of an issue as there is only one in common.
+        t = self.get_transport()
+        tree = self.make_workingtree()
+        self.assertIsDirectory('.bzr', t)
+        self.assertIsDirectory('.bzr/checkout', t)
+        self.assertIsDirectory('.bzr/checkout/lock', t)
+        our_lock = LockDir(t, '.bzr/checkout/lock')
+        self.assertEquals(our_lock.peek(), None)
+        tree.lock_write()
+        self.assertTrue(our_lock.peek())
+        tree.unlock()
+        self.assertEquals(our_lock.peek(), None)
+
+    def make_workingtree(self):
+        url = self.get_url()
+        dir = bzrdir.BzrDirMetaFormat1().initialize(url)
+        repo = dir.create_repository()
+        branch = dir.create_branch()
+        try:
+            return workingtree.WorkingTreeFormat4().initialize(dir)
+        except errors.NotLocalUrl:
+            raise TestSkipped('Not a local URL')
+
+    # TODO: test that dirstate also stores & retrieves the parent list of 
+    # workingtree-parent revisions, including when they have multiple parents.
+    # (in other words, the case when we're constructing a merge of 
+    # revisions which are themselves merges.)
+
+    # The simplest case is that the the workingtree's primary 
+    # parent tree can be retrieved.  This is required for all WorkingTrees, 
+    # and covered by the generic tests.
+
+    def test_dirstate_stores_all_parent_inventories(self):
+        tree = self.make_workingtree()
+
+        # We're going to build in tree a working tree 
+        # with three parent trees, with some files in common.  
+    
+        # We really don't want to do commit or merge in the new dirstate-based
+        # tree, because that might not work yet.  So instead we build
+        # revisions elsewhere and pull them across, doing by hand part of the
+        # work that merge would do.
+
+        subtree = self.make_branch_and_tree('subdir')
+        self.build_tree(['subdir/file-a',])
+        subtree.add(['file-a'], ['id-a'])
+        rev1 = subtree.commit('commit in subdir')
+        rev1_tree = subtree.basis_tree()
+
+        subtree2 = subtree.bzrdir.sprout('subdir2').open_workingtree()
+        self.build_tree(['subdir2/file-b'])
+        subtree2.add(['file-b'], ['id-b'])
+        rev2 = subtree2.commit('commit in subdir2')
+        rev2_tree = subtree2.basis_tree()
+
+        subtree.merge_from_branch(subtree2.branch)
+        rev3 = subtree.commit('merge from subdir2')
+        rev3_tree = subtree.basis_tree()
+
+        repo = tree.branch.repository
+        repo.fetch(subtree.branch.repository, rev3)
+        # will also pull the others...
+
+        # tree doesn't contain a text merge yet but we'll just
+        # set the parents as if a merge had taken place. 
+        # this should cause the tree data to be folded into the 
+        # dirstate.
+        ## import pdb;pdb.set_trace()
+        tree.set_parent_trees([
+            (rev1, rev1_tree),
+            (rev2, rev2_tree),
+            (rev3, rev3_tree), ])
+
+        # now we should be able to get them back out
+        self.assertTreesEqual(tree.revision_tree(rev1), rev1_tree)
+        self.assertTreesEqual(tree.revision_tree(rev2), rev2_tree)
+        self.assertTreesEqual(tree.revision_tree(rev3), rev3_tree)
+
+    def test_dirstate_doesnt_read_parents_from_repo_when_setting(self):
+        """Setting parent trees on a dirstate working tree takes
+        the trees it's given and doesn't need to read them from the 
+        repository.
+        """
+        tree = self.make_workingtree()
+
+        subtree = self.make_branch_and_tree('subdir')
+        rev1 = subtree.commit('commit in subdir')
+        rev1_tree = subtree.basis_tree()
+
+        tree.branch.pull(subtree.branch)
+
+        # break the repository's legs to make sure it only uses the trees
+        # it's given; any calls to forbidden methods will raise an 
+        # AssertionError
+        repo = tree.branch.repository
+        repo.get_revision = self.fail
+        repo.get_inventory = self.fail
+        repo.get_inventory_xml = self.fail
+        # try to set the parent trees.
+        tree.set_parent_trees([(rev1, rev1_tree)])
+
+    def test_dirstate_doesnt_read_from_repo_when_returning_cache_tree(self):
+        """Getting parent trees from a dirstate tree does not read from the 
+        repos inventory store. This is an important part of the dirstate
+        performance optimisation work.
+        """
+        tree = self.make_workingtree()
+
+        subtree = self.make_branch_and_tree('subdir')
+        rev1 = subtree.commit('commit in subdir')
+        rev1_tree = subtree.basis_tree()
+        rev2 = subtree.commit('second commit in subdir', allow_pointless=True)
+        rev2_tree = subtree.basis_tree()
+
+        tree.branch.pull(subtree.branch)
+
+        # break the repository's legs to make sure it only uses the trees
+        # it's given; any calls to forbidden methods will raise an 
+        # AssertionError
+        repo = tree.branch.repository
+        repo.get_revision = self.fail
+        repo.get_inventory = self.fail
+        repo.get_inventory_xml = self.fail
+        # set the parent trees.
+        tree.set_parent_trees([(rev1, rev1_tree), (rev2, rev2_tree)])
+        # read the first tree
+        result_rev1_tree = tree.revision_tree(rev1)
+        # read the second
+        result_rev2_tree = tree.revision_tree(rev2)
+        # compare - there should be no differences between the handed and 
+        # returned trees
+        self.assertTreesEqual(rev1_tree, result_rev1_tree)
+        self.assertTreesEqual(rev2_tree, result_rev2_tree)
+
+    def test_dirstate_doesnt_cache_non_parent_trees(self):
+        """Getting parent trees from a dirstate tree does not read from the 
+        repos inventory store. This is an important part of the dirstate
+        performance optimisation work.
+        """
+        tree = self.make_workingtree()
+
+        # make a tree that we can try for, which is able to be returned but
+        # must not be
+        subtree = self.make_branch_and_tree('subdir')
+        rev1 = subtree.commit('commit in subdir')
+        tree.branch.pull(subtree.branch)
+        # check it fails
+        self.assertRaises(errors.NoSuchRevision, tree.revision_tree, rev1)
+
+    def test_no_dirstate_outside_lock(self):
+        # temporary test until the code is mature enough to test from outside.
+        """Getting a dirstate object fails if there is no lock."""
+        def lock_and_call_current_dirstate(tree, lock_method):
+            getattr(tree, lock_method)()
+            tree.current_dirstate()
+            tree.unlock()
+        tree = self.make_workingtree()
+        self.assertRaises(errors.NotWriteLocked, tree.current_dirstate)
+        lock_and_call_current_dirstate(tree, 'lock_read')
+        self.assertRaises(errors.NotWriteLocked, tree.current_dirstate)
+        lock_and_call_current_dirstate(tree, 'lock_write')
+        self.assertRaises(errors.NotWriteLocked, tree.current_dirstate)
+        lock_and_call_current_dirstate(tree, 'lock_tree_write')
+        self.assertRaises(errors.NotWriteLocked, tree.current_dirstate)
+
+    def test_new_dirstate_on_new_lock(self):
+        # until we have detection for when a dirstate can be reused, we
+        # want to reparse dirstate on every new lock.
+        known_dirstates = set()
+        def lock_and_compare_all_current_dirstate(tree, lock_method):
+            getattr(tree, lock_method)()
+            state = tree.current_dirstate()
+            self.assertFalse(state in known_dirstates)
+            known_dirstates.add(state)
+            tree.unlock()
+        tree = self.make_workingtree()
+        # lock twice with each type to prevent silly per-lock-type bugs.
+        # each lock and compare looks for a unique state object.
+        lock_and_compare_all_current_dirstate(tree, 'lock_read')
+        lock_and_compare_all_current_dirstate(tree, 'lock_read')
+        lock_and_compare_all_current_dirstate(tree, 'lock_tree_write')
+        lock_and_compare_all_current_dirstate(tree, 'lock_tree_write')
+        lock_and_compare_all_current_dirstate(tree, 'lock_write')
+        lock_and_compare_all_current_dirstate(tree, 'lock_write')
 
 
 class TestFormat2WorkingTree(TestCaseWithTransport):

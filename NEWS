@@ -34,6 +34,13 @@ IN DEVELOPMENT
       branch as it makes performance and policy decisions to match the UI
       level command ``push``. (Robert Collins).
 
+    * Add a new method ``Tree.revision_tree`` which allows access to cached
+      trees for arbitrary revisions. This allows the in development dirstate
+      tree format to provide access to the callers to cached copies of 
+      inventory data which are cheaper to access than inventories from the
+      repository.
+      (Robert Collins, Martin Pool)
+
   BUGFIXES:
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the

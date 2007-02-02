@@ -41,9 +41,12 @@ import os
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+from bisect import bisect_left
 import collections
 from copy import deepcopy
 import errno
+import itertools
+import operator
 import stat
 from time import time
 import warnings
@@ -52,6 +55,7 @@ import bzrlib
 from bzrlib import (
     bzrdir,
     conflicts as _mod_conflicts,
+    dirstate,
     errors,
     generate_ids,
     globbing,
@@ -59,6 +63,7 @@ from bzrlib import (
     ignores,
     merge,
     osutils,
+    revisiontree,
     textui,
     transform,
     urlutils,
@@ -91,10 +96,8 @@ from bzrlib.osutils import (
     )
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
-import bzrlib.tree
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import NULL_REVISION, CURRENT_REVISION
-import bzrlib.revisiontree
 from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_method,
@@ -379,15 +382,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # in the future this should return the tree for
             # 'empty:' - the implicit root empty tree.
             return self.branch.repository.revision_tree(None)
-        else:
-            try:
-                xml = self.read_basis_inventory()
-                inv = xml6.serializer_v6.read_inventory_from_string(xml)
-                if inv is not None and inv.revision_id == revision_id:
-                    return bzrlib.revisiontree.RevisionTree(
-                        self.branch.repository, inv, revision_id)
-            except (errors.NoSuchFile, errors.BadInventoryFormat):
-                pass
+        try:
+            return self.revision_tree(revision_id)
+        except errors.NoSuchRevision:
+            pass
         # No cached copy available, retrieve from the repository.
         # FIXME? RBC 20060403 should we cache the inventory locally
         # at this point ?
@@ -1671,6 +1669,30 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             resolve(self, filenames, ignore_misses=True)
         return conflicts
 
+    def revision_tree(self, revision_id):
+        """See Tree.revision_tree.
+
+        WorkingTree can supply revision_trees for the basis revision only
+        because there is only one cached inventory in the bzr directory.
+        """
+        if revision_id == self.last_revision():
+            try:
+                xml = self.read_basis_inventory()
+            except errors.NoSuchFile:
+                pass
+            else:
+                try:
+                    inv = xml6.serializer_v6.read_inventory_from_string(xml)
+                    # dont use the repository revision_tree api because we want
+                    # to supply the inventory.
+                    if inv.revision_id == revision_id:
+                        return revisiontree.RevisionTree(self.branch.repository,
+                            inv, revision_id)
+                except errors.BadInventoryFormat:
+                    pass
+        # raise if there was no inventory, or if we read the wrong inventory.
+        raise errors.NoSuchRevisionInTree(self, revision_id)
+
     # XXX: This method should be deprecated in favour of taking in a proper
     # new Inventory object.
     @needs_tree_write_lock
@@ -1905,6 +1927,131 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                              file_id=self.path2id(conflicted)))
         return conflicts
 
+    def walkdirs(self, prefix=""):
+        disk_top = self.abspath(prefix)
+        if disk_top.endswith('/'):
+            disk_top = disk_top[:-1]
+        top_strip_len = len(disk_top) + 1
+        inventory_iterator = self._walkdirs(prefix)
+        disk_iterator = osutils.walkdirs(disk_top, prefix)
+        try:
+            current_disk = disk_iterator.next()
+            disk_finished = False
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
+            current_disk = None
+            disk_finished = True
+        try:
+            current_inv = inventory_iterator.next()
+            inv_finished = False
+        except StopIteration:
+            current_inv = None
+            inv_finished = True
+        while not inv_finished or not disk_finished:
+            if not disk_finished:
+                # strip out .bzr dirs
+                if current_disk[0][1][top_strip_len:] == '':
+                    # osutils.walkdirs can be made nicer - 
+                    # yield the path-from-prefix rather than the pathjoined
+                    # value.
+                    bzrdir_loc = bisect_left(current_disk[1], ('.bzr', '.bzr'))
+                    if current_disk[1][bzrdir_loc][0] == '.bzr':
+                        # we dont yield the contents of, or, .bzr itself.
+                        del current_disk[1][bzrdir_loc]
+            if inv_finished:
+                # everything is unknown
+                direction = 1
+            elif disk_finished:
+                # everything is missing
+                direction = -1
+            else:
+                direction = cmp(current_inv[0][0], current_disk[0][0])
+            if direction > 0:
+                # disk is before inventory - unknown
+                dirblock = [(relpath, basename, kind, stat, None, None) for
+                    relpath, basename, kind, stat, top_path in current_disk[1]]
+                yield (current_disk[0][0], None), dirblock
+                try:
+                    current_disk = disk_iterator.next()
+                except StopIteration:
+                    disk_finished = True
+            elif direction < 0:
+                # inventory is before disk - missing.
+                dirblock = [(relpath, basename, 'unknown', None, fileid, kind)
+                    for relpath, basename, dkind, stat, fileid, kind in 
+                    current_inv[1]]
+                yield (current_inv[0][0], current_inv[0][1]), dirblock
+                try:
+                    current_inv = inventory_iterator.next()
+                except StopIteration:
+                    inv_finished = True
+            else:
+                # versioned present directory
+                # merge the inventory and disk data together
+                dirblock = []
+                for relpath, subiterator in itertools.groupby(sorted(
+                    current_inv[1] + current_disk[1], key=operator.itemgetter(0)), operator.itemgetter(1)):
+                    path_elements = list(subiterator)
+                    if len(path_elements) == 2:
+                        inv_row, disk_row = path_elements
+                        # versioned, present file
+                        dirblock.append((inv_row[0],
+                            inv_row[1], disk_row[2],
+                            disk_row[3], inv_row[4],
+                            inv_row[5]))
+                    elif len(path_elements[0]) == 5:
+                        # unknown disk file
+                        dirblock.append((path_elements[0][0],
+                            path_elements[0][1], path_elements[0][2],
+                            path_elements[0][3], None, None))
+                    elif len(path_elements[0]) == 6:
+                        # versioned, absent file.
+                        dirblock.append((path_elements[0][0],
+                            path_elements[0][1], 'unknown', None,
+                            path_elements[0][4], path_elements[0][5]))
+                    else:
+                        raise NotImplementedError('unreachable code')
+                yield current_inv[0], dirblock
+                try:
+                    current_inv = inventory_iterator.next()
+                except StopIteration:
+                    inv_finished = True
+                try:
+                    current_disk = disk_iterator.next()
+                except StopIteration:
+                    disk_finished = True
+
+    def _walkdirs(self, prefix=""):
+        _directory = 'directory'
+        # get the root in the inventory
+        inv = self.inventory
+        top_id = inv.path2id(prefix)
+        if top_id is None:
+            pending = []
+        else:
+            pending = [(prefix, '', _directory, None, top_id, None)]
+        while pending:
+            dirblock = []
+            currentdir = pending.pop()
+            # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-id, 5-kind
+            top_id = currentdir[4]
+            if currentdir[0]:
+                relroot = currentdir[0] + '/'
+            else:
+                relroot = ""
+            # FIXME: stash the node in pending
+            entry = inv[top_id]
+            for name, child in entry.sorted_children():
+                dirblock.append((relroot + name, name, child.kind, None,
+                    child.file_id, child.kind
+                    ))
+            yield (currentdir[0], entry.file_id), dirblock
+            # push the user specified dirs from dirblock
+            for dir in reversed(dirblock):
+                if dir[2] == _directory:
+                    pending.append(dir)
+
 
 class WorkingTree2(WorkingTree):
     """This is the Format 2 working tree.
@@ -2009,6 +2156,181 @@ class WorkingTree3(WorkingTree):
         finally:
             self.branch.unlock()
 
+
+class WorkingTree4(WorkingTree3):
+    """This is the Format 4 working tree.
+
+    This differs from WorkingTree3 by:
+     - having a consolidated internal dirstate.
+
+    This is new in bzr TODO FIXME SETMEBEFORE MERGE.
+    """
+
+    def __init__(self, basedir,
+                 branch,
+                 _inventory=None,
+                 _control_files=None,
+                 _format=None,
+                 _bzrdir=None):
+        """Construct a WorkingTree for basedir.
+
+        If the branch is not supplied, it is opened automatically.
+        If the branch is supplied, it must be the branch for this basedir.
+        (branch.base is not cross checked, because for remote branches that
+        would be meaningless).
+        """
+        self._format = _format
+        self.bzrdir = _bzrdir
+        from bzrlib.hashcache import HashCache
+        from bzrlib.trace import note, mutter
+        assert isinstance(basedir, basestring), \
+            "base directory %r is not a string" % basedir
+        basedir = safe_unicode(basedir)
+        mutter("opening working tree %r", basedir)
+        self._branch = branch
+        assert isinstance(self.branch, bzrlib.branch.Branch), \
+            "branch %r is not a Branch" % self.branch
+        self.basedir = realpath(basedir)
+        # if branch is at our basedir and is a format 6 or less
+        # assume all other formats have their own control files.
+        assert isinstance(_control_files, LockableFiles), \
+            "_control_files must be a LockableFiles, not %r" % _control_files
+        self._control_files = _control_files
+        # update the whole cache up front and write to disk if anything changed;
+        # in the future we might want to do this more selectively
+        # two possible ways offer themselves : in self._unlock, write the cache
+        # if needed, or, when the cache sees a change, append it to the hash
+        # cache file, and have the parser take the most recent entry for a
+        # given path only.
+        cache_filename = self.bzrdir.get_workingtree_transport(None).local_abspath('stat-cache')
+        hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
+        hc.read()
+        # is this scan needed ? it makes things kinda slow.
+        #hc.scan()
+
+        if hc.needs_write:
+            mutter("write hc")
+            hc.write()
+
+        if _inventory is None:
+            self._inventory_is_modified = False
+            self.read_working_inventory()
+        else:
+            # the caller of __init__ has provided an inventory,
+            # we assume they know what they are doing - as its only
+            # the Format factory and creation methods that are
+            # permitted to do this.
+            self._set_inventory(_inventory, dirty=False)
+        self._dirty = None
+        self._parent_revisions = None
+        self._dirstate = None
+
+    def current_dirstate(self):
+        """Return the current dirstate object. 
+
+        This is not part of the tree interface and only exposed for ease of
+        testing.
+
+        :raises errors.NotWriteLocked: when not in a lock. 
+            XXX: This should probably be errors.NotLocked.
+        """
+        if not self._control_files._lock_count:
+            raise errors.NotWriteLocked(self)
+        if self._dirstate is not None:
+            return self._dirstate
+        local_path = self.bzrdir.get_workingtree_transport(None
+            ).local_abspath('dirstate')
+        self._dirstate = dirstate.DirState.on_file(local_path)
+        return self._dirstate
+
+    def _new_tree(self):
+        """Initialize the state in this tree to be a new tree."""
+        self._parent_revisions = [NULL_REVISION]
+        self._inventory = Inventory()
+        self._dirty = True
+
+    @needs_read_lock
+    def revision_tree(self, revision_id):
+        """See Tree.revision_tree.
+
+        WorkingTree4 supplies revision_trees for any basis tree.
+        """
+        dirstate = self.current_dirstate()
+        parent_ids = dirstate.get_parent_ids()
+        if revision_id not in parent_ids:
+            raise errors.NoSuchRevisionInTree(self, revision_id)
+        raise NotImplementedError(self.revision_tree)
+
+    @needs_write_lock
+    def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
+        """Set the parent ids to revision_ids.
+        
+        See also set_parent_trees. This api will try to retrieve the tree data
+        for each element of revision_ids from the trees repository. If you have
+        tree data already available, it is more efficient to use
+        set_parent_trees rather than set_parent_ids. set_parent_ids is however
+        an easier API to use.
+
+        :param revision_ids: The revision_ids to set as the parent ids of this
+            working tree. Any of these may be ghosts.
+        """
+        trees = []
+        for revision_id in revision_ids:
+            try:
+                revtree = self.branch.repository.revision_tree(revision_id)
+            except errors.NoSuchRevision:
+                revtree = None
+            trees.append((revision_id, revtree))
+        self.set_parent_trees(trees,
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
+    @needs_write_lock
+    def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
+        """Set the parents of the working tree.
+
+        :param parents_list: A list of (revision_id, tree) tuples. 
+            If tree is None, then that element is treated as an unreachable
+            parent tree - i.e. a ghost.
+        """
+        dirstate = self.current_dirstate()
+        if len(parents_list) > 0:
+            if not allow_leftmost_as_ghost and parents_list[0][1] is None:
+                raise errors.GhostRevisionUnusableHere(leftmost_id)
+        real_trees = []
+        ghosts = []
+        # convert absent trees to the null tree, which we convert back to 
+        # missing on access.
+        for rev_id, tree in parents_list:
+            if tree is not None:
+                real_trees.append((rev_id, tree))
+            else:
+                real_trees.append((rev_id,
+                    self.branch.repository.revision_tree(None)))
+                ghosts.append(rev_id)
+        dirstate.set_parent_trees(real_trees, ghosts=ghosts)
+        self._dirty = True
+
+    def unlock(self):
+        """Unlock in format 4 trees needs to write the entire dirstate."""
+        if self._control_files._lock_count == 1:
+            if self._hashcache.needs_write:
+                self._hashcache.write()
+            # eventually we should do signature checking during read locks for
+            # dirstate updates.
+            if self._control_files._lock_mode == 'w':
+                if self._dirty:
+                    self.flush()
+            self._dirstate = None
+        # reverse order of locking.
+        try:
+            return self._control_files.unlock()
+        finally:
+            self.branch.unlock()
+
+    def flush(self):
+        """Write the full dirstate to disk."""
+        self.current_dirstate().save()
+        
 
 def get_conflicted_stem(path):
     for suffix in _mod_conflicts.CONFLICT_SUFFIXES:
@@ -2291,11 +2613,83 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return self.get_format_string()
 
 
-# formats which have no format string are not discoverable
-# and not independently creatable, so are not registered.
+class WorkingTreeFormat4(WorkingTreeFormat3):
+    """The first consolidated dirstate working tree format.
+
+    This format:
+        - exists within a metadir controlling .bzr
+        - includes an explicit version marker for the workingtree control
+          files, separate from the BzrDir format
+        - modifies the hash cache format
+        - is new in bzr TODO FIXME SETBEFOREMERGE
+        - uses a LockDir to guard access to it.
+    """
+
+    def get_format_string(self):
+        """See WorkingTreeFormat.get_format_string()."""
+        return "Bazaar Working Tree format 4\n"
+
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 4"
+
+    def initialize(self, a_bzrdir, revision_id=None):
+        """See WorkingTreeFormat.initialize().
+        
+        revision_id allows creating a working tree at a different
+        revision than the branch is at.
+        """
+        if not isinstance(a_bzrdir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        transport = a_bzrdir.get_workingtree_transport(self)
+        control_files = self._open_control_files(a_bzrdir)
+        control_files.create_lock()
+        control_files.lock_write()
+        control_files.put_utf8('format', self.get_format_string())
+        branch = a_bzrdir.open_branch()
+        if revision_id is None:
+            revision_id = branch.last_revision()
+        inv = Inventory()
+        local_path = transport.local_abspath('dirstate')
+        dirstate.DirState.initialize(local_path)
+        wt = WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
+                         branch,
+                         inv,
+                         _format=self,
+                         _bzrdir=a_bzrdir,
+                         _control_files=control_files)
+        wt._new_tree()
+        wt.lock_write()
+        try:
+            wt._write_inventory(inv)
+            wt.set_root_id(inv.root.file_id)
+            wt.set_last_revision(revision_id)
+            build_tree(wt.basis_tree(), wt)
+        finally:
+            control_files.unlock()
+            wt.unlock()
+        return wt
+
+
+    def _open(self, a_bzrdir, control_files):
+        """Open the tree itself.
+        
+        :param a_bzrdir: the dir for the tree.
+        :param control_files: the control files for the tree.
+        """
+        return WorkingTree4(a_bzrdir.root_transport.local_abspath('.'),
+                           branch=a_bzrdir.open_branch(),
+                           _format=self,
+                           _bzrdir=a_bzrdir,
+                           _control_files=control_files)
+
+
 __default_format = WorkingTreeFormat3()
 WorkingTreeFormat.register_format(__default_format)
+WorkingTreeFormat.register_format(WorkingTreeFormat4())
 WorkingTreeFormat.set_default_format(__default_format)
+# formats which have no format string are not discoverable
+# and not independently creatable, so are not registered.
 _legacy_formats = [WorkingTreeFormat2(),
                    ]
 
