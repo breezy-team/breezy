@@ -223,6 +223,8 @@ class TestUrlToPath(TestCase):
         # Cannot go above root
         self.assertRaises(InvalidURLJoin, urlutils.join,
                 'http://foo', '../baz')
+        self.assertRaises(InvalidURLJoin, urlutils.join,
+                'http://foo', '/..')
 
     def test_joinpath(self):
         def test(expected, *args):
@@ -254,6 +256,8 @@ class TestUrlToPath(TestCase):
         # Invalid joinings
         # Cannot go above root
         self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '../baz')
+        self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '..')
+        self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '/..')
 
     def test_function_type(self):
         if sys.platform == 'win32':

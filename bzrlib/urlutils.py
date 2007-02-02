@@ -130,6 +130,11 @@ def join(base, *args):
     else:
         path = base.split('/')
 
+    if scheme is not None and len(path) >= 1:
+        host = path[:2]
+        path = path[2:]
+    else:
+        host = []
     for arg in args:
         m = _url_scheme_re.match(arg)
         if m:
@@ -138,19 +143,23 @@ def join(base, *args):
             # this skips .. normalisation, making http://host/../../..
             # be rather strange.
             path = m.group('path').split('/')
+            # set the host and path according to new absolute URL, discarding
+            # any previous values.
+            # XXX: duplicates mess from earlier in this function.  This URL
+            # manipulation code needs some cleaning up.
+            if scheme is not None and len(path) >= 1:
+                host = path[:2]
+                path = path[2:]
+            else:
+                host = []
         else:
-            for chunk in arg.split('/'):
-                if chunk == '.':
-                    continue
-                elif chunk == '..':
-                    if len(path) >= 2:
-                        # Don't pop off the host portion
-                        path.pop()
-                    else:
-                        raise errors.InvalidURLJoin('Cannot go above root',
-                                base, args)
-                else:
-                    path.append(chunk)
+            path = '/'.join(path)
+            path = joinpath(path, arg)
+            path = path.split('/')
+    if host:
+        if path and path[0] == '':
+            del path[0]
+        path = host + path
 
     if scheme is None:
         return '/'.join(path)

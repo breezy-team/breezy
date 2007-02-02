@@ -56,6 +56,14 @@ class ChrootTransportDecorator(TransportDecorator):
             raise errors.PathNotChild(relpath, self.chroot_url)
 
     # decorated methods
+    def abspath(self, relpath):
+        try:
+            url = urlutils.join('fake:///', relpath)
+        except errors.InvalidURLJoin:
+            raise errors.PathNotChild(relpath, self.chroot_url)
+        normalised_abspath = url[len('fake:///'):]
+        return self._get_url_prefix() + self.chroot_url + normalised_abspath[1:]
+
     def append_file(self, relpath, f, mode=None):
         self._ensure_relpath_is_child(relpath)
         return TransportDecorator.append_file(self, relpath, f, mode=mode)
