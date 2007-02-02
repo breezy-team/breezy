@@ -231,6 +231,7 @@ class RemoteBranch(branch.Branch):
         if real_branch is not None:
             self._real_branch = real_branch
         self._format = RemoteBranchFormat()
+        self.base = self.bzrdir.root_transport.base
 
     def lock_read(self):
         return self._real_branch.lock_read()
