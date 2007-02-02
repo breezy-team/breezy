@@ -2,6 +2,17 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr mv`` enhanced to support already moved files.
+      In the past the mv command would have failed if the source file doesn't
+      exist. In this situation ``bzr mv`` would now detect that the file has
+      already moved and update the repository accordingly, if the target file
+      does exist.
+      A new option ``--after`` has been added so that if two files already
+      exist, you could notify Bazaar that you have moved a (versioned) file and
+      replaced it with another. Thus in this case ``bzr move --after`` will
+      only update the Bazaar identifier.
+      (Steffen Eichenberg, Marius Kruger)
+
     * ``ls`` now works on treeless branches and remote branches.
       (Aaron Bentley)
 
@@ -14,6 +25,15 @@ IN DEVELOPMENT
       versionedfiles, repositories, branches, and working trees
       (Aaron Bentley)
 
+    * New Branch hooks facility, with one initial hook 'set_rh' which triggers
+      whenever the revision history is set. This allows triggering on e.g.
+      push, pull, commit, and so on. Developed for use with the branchrss
+      plugin. See bzrlib.branch.BranchHooks for more details. (Robert Collins)
+
+    * New method ``Branch.push()`` which should be used when pushing from a
+      branch as it makes performance and policy decisions to match the UI
+      level command ``push``. (Robert Collins).
+
     * Add a new method ``Tree.revision_tree`` which allows access to cached
       trees for arbitrary revisions. This allows the in development dirstate
       tree format to provide access to the callers to cached copies of 
@@ -23,10 +43,35 @@ IN DEVELOPMENT
 
   BUGFIXES:
 
+    * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
+      branch, rather than the last changed revision of the file.
+      (John Arbash Meinel, #82158)
+
+    * Lock operations no longer hang if they encounter a permission problem.
+      (Aaron Bentley)
+
   TESTING:
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
       before the rest of the suite.  (Martin Pool)
+
+
+bzr 0.14  2007-01-23
+
+  IMPROVEMENTS:
+
+    * ``bzr help global-options`` describes the global options. (Aaron Bentley)
+
+  BUG FIXES:
+    
+    * Skip documentation generation tests if the tools to do so are not
+      available. Fixes running selftest for installled copies of bzr. 
+      (John Arbash Meinel, #80330)
+
+    * Fix the code that discovers whether bzr is being run from it's
+      working tree to handle the case when it isn't but the directory
+      it is in is below a repository. (James Westby, #77306)
+
 
 bzr 0.14rc1  2007-01-16
 

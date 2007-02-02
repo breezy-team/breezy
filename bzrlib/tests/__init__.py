@@ -569,6 +569,12 @@ class TestCase(unittest.TestCase):
         self._startLogFile()
         self._benchcalls = []
         self._benchtime = None
+        # prevent hooks affecting tests
+        self._preserved_hooks = bzrlib.branch.Branch.hooks
+        self.addCleanup(self._restoreHooks)
+        # this list of hooks must be kept in sync with the defaults
+        # in branch.py
+        bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -661,9 +667,19 @@ class TestCase(unittest.TestCase):
                 excName = str(excClass)
             raise self.failureException, "%s not raised" % excName
 
-    def assertIs(self, left, right):
+    def assertIs(self, left, right, message=None):
         if not (left is right):
-            raise AssertionError("%r is not %r." % (left, right))
+            if message is not None:
+                raise AssertionError(message)
+            else:
+                raise AssertionError("%r is not %r." % (left, right))
+
+    def assertIsNot(self, left, right, message=None):
+        if (left is right):
+            if message is not None:
+                raise AssertionError(message)
+            else:
+                raise AssertionError("%r is %r." % (left, right))
 
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
@@ -824,6 +840,9 @@ class TestCase(unittest.TestCase):
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
             osutils.set_or_unset_env(name, value)
+
+    def _restoreHooks(self):
+        bzrlib.branch.Branch.hooks = self._preserved_hooks
 
     def tearDown(self):
         self._runCleanups()
@@ -1539,11 +1558,11 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(osutils.lexists(path))
+        self.failUnless(osutils.lexists(path),path+" does not exist")
 
     def failIfExists(self, path):
         """Fail if path, which may be abs or relative, exists."""
-        self.failIf(osutils.lexists(path))
+        self.failIf(osutils.lexists(path),path+" exists")
 
 
 class TestCaseWithTransport(TestCaseInTempDir):
@@ -1750,6 +1769,7 @@ def test_suite():
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_decorators',
+                   'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',

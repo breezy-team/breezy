@@ -101,6 +101,16 @@ class TestErrors(TestCaseWithTransport):
             "the current request that is open.",
             str(error))
 
+    def test_unknown_hook(self):
+        error = errors.UnknownHook("branch", "foo")
+        self.assertEqualDiff("The branch hook 'foo' is unknown in this version"
+            " of bzrlib.",
+            str(error))
+        error = errors.UnknownHook("tree", "bar")
+        self.assertEqualDiff("The tree hook 'bar' is unknown in this version"
+            " of bzrlib.",
+            str(error))
+
     def test_up_to_date(self):
         error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
         self.assertEqualDiff("The branch format Bazaar-NG branch, "

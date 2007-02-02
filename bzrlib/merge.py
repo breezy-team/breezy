@@ -141,7 +141,8 @@ class Merger(object):
 
     def check_basis(self, check_clean, require_commits=True):
         if self.this_basis is None and require_commits is True:
-            raise BzrCommandError("This branch has no commits")
+            raise BzrCommandError("This branch has no commits."
+                                  " (perhaps you would prefer 'bzr pull')")
         if check_clean:
             self.compare_basis()
             if self.this_basis != self.this_rev_id:
@@ -572,7 +573,8 @@ class Merge3Merger(object):
             parent_id = self.tt.final_parent(trans_id)
             if file_id in self.this_tree.inventory:
                 self.tt.unversion_file(trans_id)
-                self.tt.delete_contents(trans_id)
+                if file_id in self.this_tree:
+                    self.tt.delete_contents(trans_id)
             file_group = self._dump_conflicts(name, parent_id, file_id, 
                                               set_version=True)
             self._raw_conflicts.append(('contents conflict', file_group))
