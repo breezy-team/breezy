@@ -450,3 +450,13 @@ class GitModel(object):
             if name.startswith('"'):
                 name = name[1:-1].decode('string_escape').decode('utf-8')
             yield (sections[0], sections[1], obj_id, name)
+
+def test_suite():
+    from unittest import TestSuite, TestLoader
+    import tests
+
+    suite = TestSuite()
+
+    suite.addTest(tests.test_suite())
+
+    return suite      
