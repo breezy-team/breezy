@@ -28,7 +28,7 @@ import md5
 import os
 
 from svn.core import SubversionException, Pool
-import svn.core, svn.ra
+import svn.core
 
 from fileids import generate_file_id
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
@@ -375,31 +375,29 @@ class InterSvnRepository(InterRepository):
 
                 if parent_revid is None:
                     transport.reparent("%s/%s" % (repos_root, branch))
-                    reporter, reporter_baton = transport.do_update(
+                    reporter = transport.do_update(
                                    revnum, "", True, edit, edit_baton, pool)
 
                     # Report status of existing paths
-                    svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
-                        "", revnum, True, None, pool)
+                    reporter.set_path("", revnum, True, None, pool)
                 else:
                     (parent_branch, parent_revnum) = self.source.parse_revision_id(parent_revid)
                     transport.reparent("%s/%s" % (repos_root, parent_branch))
 
                     if parent_branch != branch:
                         switch_url = "%s/%s" % (repos_root, branch)
-                        reporter, reporter_baton = transport.do_switch(
+                        reporter = transport.do_switch(
                                    revnum, "", True, 
                                    switch_url, edit, edit_baton, pool)
                     else:
-                        reporter, reporter_baton = transport.do_update(
+                        reporter = transport.do_update(
                                    revnum, "", True, edit, edit_baton, pool)
 
                     # Report status of existing paths
-                    svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, 
-                        "", parent_revnum, False, None, pool)
+                    reporter.set_path("", parent_revnum, False, None, pool)
 
                 transport.lock()
-                svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
+                reporter.finish_report(pool)
                 transport.unlock()
 
                 prev_inv = editor.inventory

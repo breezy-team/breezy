@@ -24,7 +24,7 @@ from bzrlib.trace import mutter
 
 RENAMES = False
 
-import svn.ra, svn.repos, svn.wc
+import svn.repos, svn.wc
 
 class TestCaseWithSubversionRepository(TestCaseInTempDir):
     """A test case that provides the ability to build Subversion 
@@ -190,17 +190,6 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         repos_url = self.make_repository(repospath)
         self.make_checkout(repos_url, clientpath)
         return repos_url
-
-    def make_ra(self, relpath):
-        """Create a repository and a ra connection to it. 
-        
-        :param relpath: Path to create repository at.
-        :return: The ra connection.
-        """
-
-        repos_url = self.make_repository(relpath)
-
-        return svn.ra.open2(repos_url, svn.ra.callbacks2_t(), None, None)
 
     def dumpfile(self, repos):
         """Create a dumpfile for the specified repository.

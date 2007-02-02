@@ -13,6 +13,9 @@ bzr-svn 0.4	UNRELEASED
    * svn-import will no longer spin using CPU if the target directory 
      did not exist (#80223).
 
+   * Remove branches when they are being replaced. Fixes DivergedBranches 
+     error when using svn-import (#81908).
+
   IMPROVEMENTS
 
    * A proper warning will now be printed if no sqlite implementation is 

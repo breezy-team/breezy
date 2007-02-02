@@ -298,11 +298,10 @@ class LogWalker(object):
         edit, baton = svn.delta.make_editor(editor, pool)
         root_repos = self.transport.get_repos_root()
         self.transport.reparent(os.path.join(root_repos, path))
-        reporter, reporter_baton = self.transport.do_update(
+        reporter = self.transport.do_update(
                         revnum, "", True, edit, baton, pool)
-        svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", revnum, 
-                                         True, None, pool)
-        svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton, pool)
+        reporter.set_path("", revnum, True, None, pool)
+        reporter.finish_report(pool)
         return editor.files
 
     def get_previous(self, path, revnum):
