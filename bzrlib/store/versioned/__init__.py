@@ -294,15 +294,17 @@ class VersionedFileStore(TransportStore):
             # so again with the passthrough
             to_transaction = PassThroughTransaction()
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        for count, f in enumerate(file_ids):
-            mutter("copy weave {%s} into %s", f, self)
-            pb.update('copy', count, len(file_ids))
-            # if we have it in cache, its faster.
-            # joining is fast with knits, and bearable for weaves -
-            # indeed the new case can be optimised if needed.
-            target = self._make_new_versionedfile(f, to_transaction)
-            target.join(from_store.get_weave(f, from_transaction))
-        pb.finished()
+        try:
+            for count, f in enumerate(file_ids):
+                mutter("copy weave {%s} into %s", f, self)
+                pb.update('copy', count, len(file_ids))
+                # if we have it in cache, its faster.
+                # joining is fast with knits, and bearable for weaves -
+                # indeed the new case can be optimised if needed.
+                target = self._make_new_versionedfile(f, to_transaction)
+                target.join(from_store.get_weave(f, from_transaction))
+        finally:
+            pb.finished()
 
     def total_size(self):
         count, bytes =  super(VersionedFileStore, self).total_size()

@@ -1,5 +1,4 @@
-# Copyright (C) 2006 Michael Ellerman
-#           modified by John Arbash Meinel (Canonical Ltd)
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -251,10 +250,16 @@ def handle_response(url, code, headers, data):
         try:
             content_type = headers['Content-Type']
         except KeyError:
-            raise errors.InvalidHttpContentType(url, '',
-                msg='Missing Content-Type')
+            # When there is no content-type header we treat
+            # the response as being of type 'application/octet-stream' as per
+            # RFC2616 section 7.2.1.
+            # Therefore it is obviously not multipart
+            content_type = 'application/octet-stream'
+            is_multipart = False
+        else:
+            is_multipart = _is_multipart(content_type)
 
-        if _is_multipart(content_type):
+        if is_multipart:
             # Full fledged multipart response
             return HttpMultipartRangeResponse(url, content_type, data)
         else:
@@ -274,6 +279,11 @@ def handle_response(url, code, headers, data):
         return data
     elif code == 404:
         raise errors.NoSuchFile(url)
+    elif code == 416:
+        # We don't know which, but one of the ranges we specified
+        # was wrong. So we raise with 0 for a lack of a better
+        # magic value.
+        raise errors.InvalidRange(url,0)
 
     # TODO: jam 20060713 Properly handle redirects (302 Found, etc)
     #       The '_get' code says to follow redirects, we probably 

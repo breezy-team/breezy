@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -139,6 +139,21 @@ class VersionedFileTestMixIn(object):
             vf.add_lines_with_ghosts('b', [], ['a\r\n'])
         except NotImplementedError:
             pass
+
+    def test_add_reserved(self):
+        vf = self.get_file()
+        self.assertRaises(errors.ReservedId,
+            vf.add_lines, 'a:', [], ['a\n', 'b\n', 'c\n'])
+
+        self.assertRaises(errors.ReservedId,
+            vf.add_delta, 'a:', [], None, 'sha1', False, ((0, 0, 0, []),))
+
+    def test_get_reserved(self):
+        vf = self.get_file()
+        self.assertRaises(errors.ReservedId, vf.get_delta, 'b:')
+        self.assertRaises(errors.ReservedId, vf.get_texts, ['b:'])
+        self.assertRaises(errors.ReservedId, vf.get_lines, 'b:')
+        self.assertRaises(errors.ReservedId, vf.get_text, 'b:')
 
     def test_get_delta(self):
         f = self.get_file()
@@ -586,10 +601,9 @@ class VersionedFileTestMixIn(object):
             if []!= progress.updates: 
                 self.assertEqual(expected, progress.updates)
             return lines
-        lines = iter_with_versions(['child', 'otherchild'], 
-                                   [('Walking content.', 0, 2), 
-                                    ('Walking content.', 0, 2), 
-                                    ('Walking content.', 3, 2), 
+        lines = iter_with_versions(['child', 'otherchild'],
+                                   [('Walking content.', 0, 2),
+                                    ('Walking content.', 1, 2),
                                     ('Walking content.', 2, 2)])
         # we must see child and otherchild
         self.assertTrue(lines['child\n'] > 0)
@@ -597,12 +611,11 @@ class VersionedFileTestMixIn(object):
         # we dont care if we got more than that.
         
         # test all lines
-        lines = iter_with_versions(None, [('Walking content.', 0, 5), 
-                                          ('Walking content.', 0, 5), 
-                                          ('Walking content.', 1, 5), 
-                                          ('Walking content.', 2, 5), 
-                                          ('Walking content.', 2, 5), 
-                                          ('Walking content.', 3, 5), 
+        lines = iter_with_versions(None, [('Walking content.', 0, 5),
+                                          ('Walking content.', 1, 5),
+                                          ('Walking content.', 2, 5),
+                                          ('Walking content.', 3, 5),
+                                          ('Walking content.', 4, 5),
                                           ('Walking content.', 5, 5)])
         # all lines must be seen at least once
         self.assertTrue(lines['base\n'] > 0)
@@ -664,6 +677,7 @@ class VersionedFileTestMixIn(object):
             self.assertRaises(NotImplementedError, vf.get_parents_with_ghosts, 'foo')
             self.assertRaises(NotImplementedError, vf.get_graph_with_ghosts)
             return
+        vf = self.reopen_file()
         # test key graph related apis: getncestry, _graph, get_parents
         # has_version
         # - these are ghost unaware and must not be reflect ghosts

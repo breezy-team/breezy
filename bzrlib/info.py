@@ -1,15 +1,15 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -19,11 +19,14 @@ __all__ = ['show_bzrdir_info']
 import time
 
 
-import bzrlib.diff as diff
+from bzrlib import (
+    diff,
+    osutils,
+    urlutils,
+    )
 from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
-import bzrlib.osutils as osutils
 from bzrlib.symbol_versioning import (deprecated_function, 
         zero_eight)
 
@@ -37,20 +40,22 @@ def plural(n, base='', pl=None):
         return 's'
 
 
-def _repo_relpath(repo_path, path):
+def _repo_rel_url(repo_url, inner_url):
     """Return path with common prefix of repository path removed.
 
     If path is not part of the repository, the original path is returned.
     If path is equal to the repository, the current directory marker '.' is
     returned.
+    Otherwise, a relative path is returned, with trailing '/' stripped.
     """
-    path = osutils.normalizepath(path)
-    repo_path = osutils.normalizepath(repo_path)
-    if path == repo_path:
+    inner_url = urlutils.normalize_url(inner_url)
+    repo_url = urlutils.normalize_url(repo_url)
+    if inner_url == repo_url:
         return '.'
-    if osutils.is_inside(repo_path, path):
-        return osutils.relpath(repo_path, path)
-    return path
+    result = urlutils.relative_url(repo_url, inner_url)
+    if result != inner_url:
+        result = result.rstrip('/')
+    return result
 
 
 def _show_location_info(repository, branch=None, working=None):
@@ -67,7 +72,7 @@ def _show_location_info(repository, branch=None, working=None):
                 # lightweight checkout of branch in shared repository
                 print '   shared repository: %s' % repository_path
                 print '   repository branch: %s' % (
-                    _repo_relpath(repository_path, branch_path))
+                    _repo_rel_url(repository_path, branch_path))
             else:
                 # lightweight checkout of standalone branch
                 print '  checkout of branch: %s' % branch_path
@@ -75,7 +80,7 @@ def _show_location_info(repository, branch=None, working=None):
             # branch with tree inside shared repository
             print '    shared repository: %s' % repository_path
             print '  repository checkout: %s' % (
-                _repo_relpath(repository_path, branch_path))
+                _repo_rel_url(repository_path, branch_path))
         elif branch.get_bound_location():
             # normal checkout
             print '       checkout root: %s' % working_path
@@ -89,7 +94,7 @@ def _show_location_info(repository, branch=None, working=None):
             # branch is part of shared repository
             print '  shared repository: %s' % repository_path
             print '  repository branch: %s' % (
-                _repo_relpath(repository_path, branch_path))
+                _repo_rel_url(repository_path, branch_path))
         else:
             # standalone branch
             print '  branch root: %s' % branch_path
@@ -171,7 +176,6 @@ def _show_missing_revisions_working(working):
     branch = working.branch
     basis = working.basis_tree()
     work_inv = working.inventory
-    delta = working.changes_from(basis, want_unchanged=True)
     history = branch.revision_history()
     try:
         tree_last_id = working.get_parent_ids()[0]
@@ -210,9 +214,10 @@ def _show_working_stats(working):
     print '  %8d ignored' % ignore_cnt
 
     dir_cnt = 0
-    entries = work_inv.iter_entries()
-    entries.next()
-    dir_cnt = sum(1 for path, ie in entries if ie.kind == 'directory')
+    for file_id in work_inv:
+        if (work_inv.get_file_kind(file_id) == 'directory' and 
+            not work_inv.is_root(file_id)):
+            dir_cnt += 1
     print '  %8d versioned %s' \
           % (dir_cnt,
              plural(dir_cnt, 'subdirectory', 'subdirectories'))

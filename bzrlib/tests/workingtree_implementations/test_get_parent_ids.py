@@ -1,4 +1,4 @@
-# (C) 2006 Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify

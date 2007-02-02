@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,14 @@ from bzrlib.uncommit import uncommit
 
 
 class TestInventory(TestCase):
+
+    def test_add_path(self):
+
+        inv = Inventory(root_id=None)
+        self.assertIs(None, inv.root)
+        ie = inv.add_path("", "directory", "my-root")
+        self.assertEqual("my-root", ie.file_id)
+        self.assertIs(ie, inv.root)
 
     def test_is_within(self):
 
@@ -74,6 +82,16 @@ class TestInventory(TestCase):
         self.assertEqual(inv.path2id('src/bye.c'), 'bye-id')
         
         self.assert_('src-id' in inv)
+
+    def test_non_directory_children(self):
+        """Test path2id when a parent directory has no children"""
+        inv = inventory.Inventory('tree_root')
+        inv.add(inventory.InventoryFile('file-id','file', 
+                                        parent_id='tree_root'))
+        inv.add(inventory.InventoryLink('link-id','link', 
+                                        parent_id='tree_root'))
+        self.assertIs(None, inv.path2id('file/subfile'))
+        self.assertIs(None, inv.path2id('link/subfile'))
 
     def test_iter_entries(self):
         inv = Inventory()
@@ -121,6 +139,51 @@ class TestInventory(TestCase):
             ('src/sub/a', 'a-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir()])
             
+        self.assertEqual([
+            ('', ROOT_ID),
+            ('Makefile', 'makefile-id'),
+            ('doc', 'doc-id'),
+            ('src', 'src-id'),
+            ('zz', 'zz-id'),
+            ('src/bye.c', 'bye-id'),
+            ('src/hello.c', 'hello-id'),
+            ('src/sub', 'sub-id'),
+            ('src/zz.c', 'zzc-id'),
+            ('src/sub/a', 'a-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('a-id', 'zzc-id', 'doc-id', ROOT_ID,
+                'hello-id', 'bye-id', 'zz-id', 'src-id', 'makefile-id', 
+                'sub-id'))])
+
+        self.assertEqual([
+            ('Makefile', 'makefile-id'),
+            ('doc', 'doc-id'),
+            ('zz', 'zz-id'),
+            ('src/bye.c', 'bye-id'),
+            ('src/hello.c', 'hello-id'),
+            ('src/zz.c', 'zzc-id'),
+            ('src/sub/a', 'a-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('a-id', 'zzc-id', 'doc-id',
+                'hello-id', 'bye-id', 'zz-id', 'makefile-id'))])
+
+        self.assertEqual([
+            ('Makefile', 'makefile-id'),
+            ('src/bye.c', 'bye-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('bye-id', 'makefile-id'))])
+
+        self.assertEqual([
+            ('Makefile', 'makefile-id'),
+            ('src/bye.c', 'bye-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('bye-id', 'makefile-id'))])
+
+        self.assertEqual([
+            ('src/bye.c', 'bye-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
+                specific_file_ids=('bye-id',))])
+
     def test_version(self):
         """Inventory remembers the text's version."""
         inv = Inventory()
@@ -544,3 +607,19 @@ class TestRevert(TestCaseWithTransport):
         os.unlink('b1/a')
         wt.revert([])
         self.assertEqual(len(wt.inventory), 1)
+
+
+class TestIsRoot(TestCase):
+    """Ensure our root-checking code is accurate."""
+
+    def test_is_root(self):
+        inv = Inventory('TREE_ROOT')
+        self.assertTrue(inv.is_root('TREE_ROOT'))
+        self.assertFalse(inv.is_root('booga'))
+        inv.root.file_id = 'booga'
+        self.assertFalse(inv.is_root('TREE_ROOT'))
+        self.assertTrue(inv.is_root('booga'))
+        # works properly even if no root is set
+        inv.root = None
+        self.assertFalse(inv.is_root('TREE_ROOT'))
+        self.assertFalse(inv.is_root('booga'))
