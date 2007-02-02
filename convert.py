@@ -87,6 +87,7 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
 
     dirs = {}
     to_transport = get_transport(output_url)
+    to_transport.stat('.')
     def get_dir(path):
         if dirs.has_key(path):
             return dirs[path]

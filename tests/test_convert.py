@@ -16,7 +16,7 @@
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, NoSuchFile
 from bzrlib.repository import Repository
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.trace import mutter
@@ -169,6 +169,9 @@ class TestConversion(TestCaseWithSubversionRepository):
         self.assertTrue(os.path.isdir(os.path.join(self.test_dir, "e", "trunk")))
         self.assertTrue(os.path.isdir(os.path.join(self.test_dir, "e", "branches", "abranch")))
 
+    def test_convert_to_nonexistant(self):
+        self.assertRaises(NoSuchFile, convert_repository,"svn+"+self.repos_url, os.path.join(self.test_dir, "e", "foo", "bar"), TrunkBranchingScheme())
+
     def test_notshared_import(self):
         convert_repository("svn+"+self.repos_url, "e", TrunkBranchingScheme(), 
                            False)
@@ -284,3 +287,5 @@ data
         branch = Branch.open(os.path.join(self.test_dir, "e", "trunk"))
         self.assertEqual("file://%s/e/trunk" % self.test_dir, branch.base.rstrip("/"))
         self.assertEqual(generate_svn_revision_id("6987ef2d-cd6b-461f-9991-6f1abef3bd59", 1, 'trunk'), branch.last_revision())
+
+
