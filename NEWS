@@ -39,6 +39,11 @@ IN DEVELOPMENT
       revision of a branch with smartservers and potentially future branch
       formats. (Wouter van Heyst, Robert Collins)
 
+    * Allow 'import bzrlib.plugins.NAME' to work when the plugin NAME has not
+      yet been loaded by load_plugins(). This allows plugins to depend on each
+      other for code reuse without requiring users to perform file-renaming
+      gymnastics. (Robert Collins)
+
   BUGFIXES:
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
