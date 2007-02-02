@@ -1,3 +1,19 @@
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 """Display what revisions are missing in 'other' from 'this' and vice versa."""
 
 import bzrlib.ui as ui
@@ -18,7 +34,7 @@ def iter_log_data(revisions, revision_source, verbose):
             revision_tree = revision_source.revision_tree(rev_id)
             last_rev_id = rev_id
             last_tree = revision_tree
-            delta = parent_tree.changes_from(revision_tree)
+            delta = revision_tree.changes_from(parent_tree)
         else:
             delta = None
         yield revno, rev, delta

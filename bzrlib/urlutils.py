@@ -1,6 +1,6 @@
 # Bazaar -- distributed version control
 #
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,13 +19,19 @@
 """A collection of function for handling URL operations."""
 
 import os
-from posixpath import split as _posix_split, normpath as _posix_normpath
 import re
 import sys
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from posixpath import split as _posix_split, normpath as _posix_normpath
 import urllib
 
-import bzrlib.errors as errors
-import bzrlib.osutils
+from bzrlib import (
+    errors,
+    osutils,
+    )
+""")
 
 
 def basename(url, exclude_trailing_slash=True):
@@ -75,7 +81,7 @@ def file_relpath(base, path):
 
     base = local_path_from_url(base)
     path = local_path_from_url(path)
-    return escape(bzrlib.osutils.relpath(base, path))
+    return escape(osutils.relpath(base, path))
 
 
 def _find_scheme_and_separator(url):
@@ -168,22 +174,31 @@ def _posix_local_path_to_url(path):
     # importing directly from posixpath allows us to test this 
     # on non-posix platforms
     return 'file://' + escape(_posix_normpath(
-        bzrlib.osutils._posix_abspath(path)))
+        osutils._posix_abspath(path)))
 
 
 def _win32_local_path_from_url(url):
     """Convert a url like file:///C:/path/to/foo into C:/path/to/foo"""
-    if not url.startswith('file:///'):
-        raise errors.InvalidURL(url, 'local urls must start with file:///')
+    if not url.startswith('file://'):
+        raise errors.InvalidURL(url, 'local urls must start with file:///, '
+                                     'UNC path urls must start with file://')
     # We strip off all 3 slashes
-    win32_url = url[len('file:///'):]
-    if (win32_url[0] not in ('abcdefghijklmnopqrstuvwxyz'
+    win32_url = url[len('file:'):]
+    # check for UNC path: //HOST/path
+    if not win32_url.startswith('///'):
+        if (win32_url[2] == '/'
+            or win32_url[3] in '|:'):
+            raise errors.InvalidURL(url, 'Win32 UNC path urls'
+                ' have form file://HOST/path')
+        return unescape(win32_url)
+    # usual local path with drive letter
+    if (win32_url[3] not in ('abcdefghijklmnopqrstuvwxyz'
                              'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-        or win32_url[1] not in  '|:'
-        or win32_url[2] != '/'):
+        or win32_url[4] not in  '|:'
+        or win32_url[5] != '/'):
         raise errors.InvalidURL(url, 'Win32 file urls start with'
                 ' file:///x:/, where x is a valid drive letter')
-    return win32_url[0].upper() + u':' + unescape(win32_url[2:])
+    return win32_url[3].upper() + u':' + unescape(win32_url[5:])
 
 
 def _win32_local_path_to_url(path):
@@ -197,8 +212,11 @@ def _win32_local_path_to_url(path):
     #       which actually strips trailing space characters.
     #       The worst part is that under linux ntpath.abspath has different
     #       semantics, since 'nt' is not an available module.
-    win32_path = bzrlib.osutils._nt_normpath(
-        bzrlib.osutils._win32_abspath(path)).replace('\\', '/')
+    win32_path = osutils._nt_normpath(
+        osutils._win32_abspath(path)).replace('\\', '/')
+    # check for UNC path \\HOST\path
+    if win32_path.startswith('//'):
+        return 'file:' + escape(win32_path)
     return 'file:///' + win32_path[0].upper() + ':' + escape(win32_path[2:])
 
 
@@ -253,7 +271,7 @@ def normalize_url(url):
         if path[i] not in _url_safe_characters:
             chars = path[i].encode('utf-8')
             path[i] = ''.join(['%%%02X' % ord(c) for c in path[i].encode('utf-8')])
-    return scheme + '://' + ''.join(path)
+    return str(scheme + '://' + ''.join(path))
 
 
 def relative_url(base, other):
@@ -440,11 +458,14 @@ _hex_display_map = dict(([('%02x' % o, chr(o)) for o in range(256)]
 _hex_display_map.update((hex,'%'+hex) for hex in _no_decode_hex)
 
 # These characters should not be escaped
-_url_safe_characters = set('abcdefghijklmnopqrstuvwxyz'
-                        'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                        '0123456789' '_.-/'
-                        ';?:@&=+$,%#')
-
+_url_safe_characters = set(
+   "abcdefghijklmnopqrstuvwxyz" # Lowercase alpha
+   "ABCDEFGHIJKLMNOPQRSTUVWXYZ" # Uppercase alpha
+   "0123456789" # Numbers
+   "_.-!~*'()"  # Unreserved characters
+   "/;?:@&=+$," # Reserved characters
+   "%#"         # Extra reserved characters
+)
 
 def unescape_for_display(url, encoding):
     """Decode what you can for a URL, so that we get a nice looking path.

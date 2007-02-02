@@ -17,6 +17,7 @@
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
 from cStringIO import StringIO
+import errno
 import os
 from stat import S_ISDIR
 import sys
@@ -536,11 +537,28 @@ class TestBzrDir(TestCaseWithBzrDir):
         repo = dir.create_repository()
         repo.fetch(tree.branch.repository)
         self.assertTrue(repo.has_revision('1'))
+        try:
+            self.assertIs(dir.open_branch().last_revision(), None)
+        except errors.NotBranchError:
+            pass
         target = self.sproutOrSkip(dir, self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
+        # testing inventory isn't reasonable for repositories
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/repository/inventory.knit',
+                                     './.bzr/inventory'
                                      ])
+        try:
+            # If we happen to have a tree, we'll guarantee everything
+            # except for the tree root is the same.
+            inventory_f = file(dir.transport.base+'inventory', 'rb')
+            self.assertContainsRe(inventory_f.read(), 
+                                  '<inventory file_id="TREE_ROOT[^"]*"'
+                                  ' format="5">\n</inventory>\n')
+            inventory_f.close()
+        except IOError, e:
+            if e.errno != errno.ENOENT:
+                raise
 
     def test_sprout_bzrdir_with_repository_to_shared(self):
         tree = self.make_branch_and_tree('commit_tree')
@@ -1243,15 +1261,10 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('.')
         if dir.can_convert_format():
             # if its default updatable there must be an updater 
-            # (we change the default to match the lastest known format
-            # as downgrades may not be available
-            old_format = bzrdir.BzrDirFormat.get_default_format()
-            bzrdir.BzrDirFormat.set_default_format(dir._format)
-            try:
-                self.assertTrue(isinstance(dir._format.get_converter(),
-                                           bzrdir.Converter))
-            finally:
-                bzrdir.BzrDirFormat.set_default_format(old_format)
+            # (we force the latest known format as downgrades may not be
+            # available
+            self.assertTrue(isinstance(dir._format.get_converter(
+                format=dir._format), bzrdir.Converter))
         dir.needs_format_conversion(None)
 
     def test_upgrade_new_instance(self):
@@ -1263,15 +1276,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.createWorkingTreeOrSkip(dir)
         if dir.can_convert_format():
             # if its default updatable there must be an updater 
-            # (we change the default to match the lastest known format
-            # as downgrades may not be available
-            old_format = bzrdir.BzrDirFormat.get_default_format()
-            bzrdir.BzrDirFormat.set_default_format(dir._format)
+            # (we force the latest known format as downgrades may not be
+            # available
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                dir._format.get_converter(None).convert(dir, pb)
+                dir._format.get_converter(format=dir._format).convert(dir, pb)
             finally:
-                bzrdir.BzrDirFormat.set_default_format(old_format)
                 pb.finished()
             # and it should pass 'check' now.
             check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)
