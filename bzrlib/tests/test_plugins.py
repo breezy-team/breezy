@@ -22,13 +22,14 @@
 
 import os
 from StringIO import StringIO
+import sys
 import zipfile
 
 import bzrlib.plugin
 import bzrlib.plugins
 import bzrlib.commands
 import bzrlib.help
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.osutils import pathjoin, abspath
 
 
@@ -43,21 +44,21 @@ class cmd_myplug(bzrlib.commands.Command):
 
 # TODO: Write a test for plugin decoration of commands.
 
-class TestOneNamedPluginOnly(TestCaseInTempDir):
+class TestLoadingPlugins(TestCaseInTempDir):
 
     activeattributes = {}
 
     def test_plugins_with_the_same_name_are_not_loaded(self):
-        # This test tests that having two plugins in different
-        # directories does not result in both being loaded.
-        # get a file name we can use which is also a valid attribute
-        # for accessing in activeattributes. - we cannot give import parameters.
+        # This test tests that having two plugins in different directories does
+        # not result in both being loaded when they have the same name.  get a
+        # file name we can use which is also a valid attribute for accessing in
+        # activeattributes. - we cannot give import parameters.
         tempattribute = "0"
         self.failIf(tempattribute in self.activeattributes)
         # set a place for the plugins to record their loading, and at the same
         # time validate that the location the plugins should record to is
         # valid and correct.
-        bzrlib.tests.test_plugins.TestOneNamedPluginOnly.activeattributes \
+        bzrlib.tests.test_plugins.TestLoadingPlugins.activeattributes \
             [tempattribute] = []
         self.failUnless(tempattribute in self.activeattributes)
         # create two plugin directories
@@ -65,13 +66,51 @@ class TestOneNamedPluginOnly(TestCaseInTempDir):
         os.mkdir('second')
         # write a plugin that will record when its loaded in the 
         # tempattribute list.
-        template = ("from bzrlib.tests.test_plugins import TestOneNamedPluginOnly\n"
-                    "TestOneNamedPluginOnly.activeattributes[%r].append('%s')\n")
+        template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
+                    "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
         print >> file(os.path.join('first', 'plugin.py'), 'w'), template % (tempattribute, 'first')
         print >> file(os.path.join('second', 'plugin.py'), 'w'), template % (tempattribute, 'second')
         try:
-            bzrlib.plugin.load_from_dirs(['first', 'second'])
+            bzrlib.plugin.load_from_path(['first', 'second'])
             self.assertEqual(['first'], self.activeattributes[tempattribute])
+        finally:
+            # remove the plugin 'plugin'
+            del self.activeattributes[tempattribute]
+            if getattr(bzrlib.plugins, 'plugin', None):
+                del bzrlib.plugins.plugin
+        self.failIf(getattr(bzrlib.plugins, 'plugin', None))
+
+    def test_plugins_from_different_dirs_can_demand_load(self):
+        # This test tests that having two plugins in different
+        # directories with different names allows them both to be loaded, when
+        # we do a direct import statement.
+        # Determine a file name we can use which is also a valid attribute
+        # for accessing in activeattributes. - we cannot give import parameters.
+        tempattribute = "different-dirs"
+        self.failIf(tempattribute in self.activeattributes)
+        # set a place for the plugins to record their loading, and at the same
+        # time validate that the location the plugins should record to is
+        # valid and correct.
+        bzrlib.tests.test_plugins.TestLoadingPlugins.activeattributes \
+            [tempattribute] = []
+        self.failUnless(tempattribute in self.activeattributes)
+        # create two plugin directories
+        os.mkdir('first')
+        os.mkdir('second')
+        # write plugins that will record when they are loaded in the 
+        # tempattribute list.
+        template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
+                    "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
+        print >> file(os.path.join('first', 'pluginone.py'), 'w'), template % (tempattribute, 'first')
+        print >> file(os.path.join('second', 'plugintwo.py'), 'w'), template % (tempattribute, 'second')
+        oldpath = bzrlib.plugins.__path__
+        try:
+            bzrlib.plugins.__path__ = ['first', 'second']
+            exec "import bzrlib.plugins.pluginone"
+            self.assertEqual(['first'], self.activeattributes[tempattribute])
+            exec "import bzrlib.plugins.plugintwo"
+            self.assertEqual(['first', 'second'],
+                self.activeattributes[tempattribute])
         finally:
             # remove the plugin 'plugin'
             del self.activeattributes[tempattribute]
@@ -89,13 +128,15 @@ class TestAllPlugins(TestCaseInTempDir):
         # write a plugin that _cannot_ fail to load.
         print >> file('plugin.py', 'w'), ""
         try:
-            bzrlib.plugin.load_from_dirs(['.'])
+            bzrlib.plugin.load_from_path(['.'])
             self.failUnless('plugin' in bzrlib.plugin.all_plugins())
             self.failUnless(getattr(bzrlib.plugins, 'plugin', None))
             self.assertEqual(bzrlib.plugin.all_plugins()['plugin'],
                              bzrlib.plugins.plugin)
         finally:
             # remove the plugin 'plugin'
+            if 'bzrlib.plugins.plugin' in sys.modules:
+                del sys.modules['bzrlib.plugins.plugin']
             if getattr(bzrlib.plugins, 'plugin', None):
                 del bzrlib.plugins.plugin
         self.failIf(getattr(bzrlib.plugins, 'plugin', None))
@@ -143,7 +184,7 @@ class TestPluginHelp(TestCaseInTempDir):
 
         try:
             # Check its help
-            bzrlib.plugin.load_from_dirs(['plugin_test'])
+            bzrlib.plugin.load_from_path(['plugin_test'])
             bzrlib.commands.register_command( bzrlib.plugins.myplug.cmd_myplug)
             help = self.capture('help myplug')
             self.assertContainsRe(help, 'From plugin "myplug"')
@@ -169,7 +210,7 @@ class TestPluginFromZip(TestCaseInTempDir):
         self.assertFalse(plugin_name in dir(bzrlib.plugins),
                          'Plugin already loaded')
         try:
-            bzrlib.plugin.load_from_zips([zip_name])
+            bzrlib.plugin.load_from_zip(zip_name)
             self.assertTrue(plugin_name in dir(bzrlib.plugins),
                             'Plugin is not loaded')
         finally:
@@ -184,3 +225,16 @@ class TestPluginFromZip(TestCaseInTempDir):
     def test_load_package(self):
         self.make_zipped_plugin('./test.zip', 'ziplug/__init__.py')
         self.check_plugin_load('./test.zip', 'ziplug')
+
+
+class TestSetPluginsPath(TestCase):
+    
+    def test_set_plugins_path(self):
+        """set_plugins_path should set the module __path__ correctly."""
+        old_path = bzrlib.plugins.__path__
+        try:
+            bzrlib.plugins.__path__ = []
+            expected_path = bzrlib.plugin.set_plugins_path()
+            self.assertEqual(expected_path, bzrlib.plugins.__path__)
+        finally:
+            bzrlib.plugins.__path__ = old_path
