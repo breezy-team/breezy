@@ -371,6 +371,11 @@ Medium things
   This has been implemented, but it does not remove the texts from
   the store.
 
+* ``bzrlib.lazy_import.lazy_import`` could check to see if a given
+  module has already been imported (look at ``sys.modules``). If it
+  has, then just import it directly, rather than creating a lazy
+  object.
+
 
 Large things
 ------------

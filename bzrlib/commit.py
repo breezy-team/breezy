@@ -15,15 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-# XXX: Can we do any better about making interrupted commits change
-# nothing?  
-
-# TODO: Separate 'prepare' phase where we find a list of potentially
-# committed files.  We then can then pause the commit to prompt for a
-# commit message, knowing the summary will be the same as what's
-# actually used for the commit.  (But perhaps simpler to simply get
-# the tree status, then use that for a selective commit?)
-
 # The newly committed revision is going to have a shape corresponding
 # to that of the working inventory.  Files that are not in the
 # working tree and that were in the predecessor are reported as
@@ -55,12 +46,6 @@
 # merges from, then it should still be reported as newly added
 # relative to the basis revision.
 
-# TODO: Do checks that the tree can be committed *before* running the 
-# editor; this should include checks for a pointless commit and for 
-# unknown or missing files.
-
-# TODO: If commit fails, leave the message in a file somewhere.
-
 # TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
 # the rest of the code; add a deprecation of the old name.
 
@@ -86,12 +71,13 @@ from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any,
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
-from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
+from bzrlib.inventory import Inventory, InventoryEntry
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
         DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
+import bzrlib.ui
 
 
 class NullCommitReporter(object):
@@ -125,6 +111,8 @@ class ReportCommitToLog(NullCommitReporter):
 
     def snapshot_change(self, change, path):
         if change == 'unchanged':
+            return
+        if change == 'added' and path == '':
             return
         note("%s %s", change, path)
 
@@ -182,13 +170,14 @@ class Commit(object):
                working_tree=None,
                local=False,
                reporter=None,
-               config=None):
+               config=None,
+               message_callback=None):
         """Commit working copy as a new revision.
 
         branch -- the deprecated branch to commit to. New callers should pass in 
                   working_tree instead
 
-        message -- the commit message, a mandatory parameter
+        message -- the commit message (it or message_callback is required)
 
         timestamp -- if not None, seconds-since-epoch for a
              postdated/predated commit.
@@ -223,8 +212,14 @@ class Commit(object):
         else:
             self.work_tree = working_tree
             self.branch = self.work_tree.branch
-        if message is None:
-            raise BzrError("The message keyword parameter is required for commit().")
+        if message_callback is None:
+            if message is not None:
+                if isinstance(message, str):
+                    message = message.decode(bzrlib.user_encoding)
+                message_callback = lambda x: message
+            else:
+                raise BzrError("The message or message_callback keyword"
+                               " parameter is required for commit().")
 
         self.bound_branch = None
         self.local = local
@@ -270,12 +265,6 @@ class Commit(object):
                    
             if self.config is None:
                 self.config = self.branch.get_config()
-      
-            if isinstance(message, str):
-                message = message.decode(bzrlib.user_encoding)
-            assert isinstance(message, unicode), type(message)
-            self.message = message
-            self._escape_commit_message()
 
             self.work_inv = self.work_tree.inventory
             self.basis_tree = self.work_tree.basis_tree()
@@ -315,6 +304,11 @@ class Commit(object):
             # that commit will succeed.
             self.builder.finish_inventory()
             self._emit_progress_update()
+            message = message_callback(self)
+            assert isinstance(message, unicode), type(message)
+            self.message = message
+            self._escape_commit_message()
+
             self.rev_id = self.builder.commit(self.message)
             self._emit_progress_update()
             # revision data is in the local branch now.
@@ -390,6 +384,10 @@ class Commit(object):
         # A merge with no effect on files
         if len(self.parents) > 1:
             return
+        # work around the fact that a newly-initted tree does differ from its
+        # basis
+        if len(self.basis_inv) == 0 and len(self.builder.new_inventory) == 1:
+            raise PointlessCommit()
         # Shortcut, if the number of entries changes, then we obviously have
         # a change
         if len(self.builder.new_inventory) != len(self.basis_inv):
@@ -550,6 +548,7 @@ class Commit(object):
         # in bugs like #46635.  Any reason not to use/enhance Tree.changes_from?
         # ADHB 11-07-2006
         mutter("Selecting files for commit with filter %s", self.specific_files)
+        assert self.work_inv.root is not None
         entries = self.work_inv.iter_entries()
         if not self.builder.record_root_entry:
             symbol_versioning.warn('CommitBuilders should support recording'
@@ -574,7 +573,6 @@ class Commit(object):
                 else:
                     # this entry is new and not being committed
                     continue
-
             self.builder.record_entry_contents(ie, self.parent_invs, 
                 path, self.work_tree)
             # describe the nature of the change that has occurred relative to

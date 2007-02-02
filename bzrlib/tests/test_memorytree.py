@@ -86,7 +86,8 @@ class TestMemoryTree(TestCaseWithTransport):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
         tree.lock_write()
-        tree.add(['afile', 'adir'], None, ['file', 'directory'])
+        tree.add(['', 'afile', 'adir'], None, 
+                 ['directory', 'file', 'directory'])
         self.assertEqual('afile', tree.id2path(tree.path2id('afile')))
         self.assertEqual('adir', tree.id2path(tree.path2id('adir')))
         self.assertFalse(tree.has_filename('afile'))
@@ -97,7 +98,8 @@ class TestMemoryTree(TestCaseWithTransport):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
         tree.lock_write()
-        tree.add(['foo'], ids=['foo-id'], kinds=['file'])
+        tree.add(['', 'foo'], ids=['root-id', 'foo-id'], 
+                  kinds=['directory', 'file'])
         tree.put_file_bytes_non_atomic('foo-id', 'barshoom')
         self.assertEqual('barshoom', tree.get_file('foo-id').read())
         tree.unlock()
@@ -106,7 +108,8 @@ class TestMemoryTree(TestCaseWithTransport):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
         tree.lock_write()
-        tree.add(['foo'], ids=['foo-id'], kinds=['file'])
+        tree.add(['', 'foo'], ids=['root-id', 'foo-id'], 
+                 kinds=['directory', 'file'])
         tree.put_file_bytes_non_atomic('foo-id', 'first-content')
         tree.put_file_bytes_non_atomic('foo-id', 'barshoom')
         self.assertEqual('barshoom', tree.get_file('foo-id').read())
@@ -121,7 +124,8 @@ class TestMemoryTree(TestCaseWithTransport):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
         tree.lock_write()
-        tree.add(['foo'], ids=['foo-id'], kinds=['file'])
+        tree.add(['', 'foo'], ids=['root-id', 'foo-id'], 
+                 kinds=['directory', 'file'])
         tree.put_file_bytes_non_atomic('foo-id', 'barshoom')
         revision_id = tree.commit('message baby')
         # the parents list for the tree should have changed.
@@ -136,7 +140,8 @@ class TestMemoryTree(TestCaseWithTransport):
         branch = self.make_branch('branch')
         tree = MemoryTree.create_on_branch(branch)
         tree.lock_write()
-        tree.add(['foo'], ids=['foo-id'], kinds=['file'])
+        tree.add(['', 'foo'], ids=['root-id', 'foo-id'], 
+                 kinds=['directory', 'file'])
         tree.unversion(['foo-id'])
         self.assertFalse(tree.has_id('foo-id'))
         tree.unlock()
@@ -144,5 +149,8 @@ class TestMemoryTree(TestCaseWithTransport):
     def test_last_revision(self):
         """There should be a last revision method we can call."""
         tree = self.make_branch_and_memory_tree('branch')
+        tree.lock_write()
+        tree.add('')
         rev_id = tree.commit('first post')
+        tree.unlock()
         self.assertEqual(rev_id, tree.last_revision())

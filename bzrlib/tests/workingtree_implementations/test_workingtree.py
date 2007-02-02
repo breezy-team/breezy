@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -289,6 +289,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.branch.set_revision_history(['A', 'B'])
         wt.set_last_revision('A')
         self.assertEqual(['A'], wt.get_parent_ids())
+        self.assertRaises(errors.ReservedId, wt.set_last_revision, 'A:')
 
     def test_set_last_revision_different_to_branch(self):
         # working tree formats from the meta-dir format and newer support
@@ -413,6 +414,28 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(0, old_tree.update())
         self.failUnlessExists('checkout/file')
         self.assertEqual(['A'], old_tree.get_parent_ids())
+
+    def test_update_sets_root_id(self):
+        """Ensure tree root is set properly by update.
+        
+        Since empty trees don't have root_ids, but workingtrees do,
+        an update of a checkout of revision 0 to a new revision,  should set
+        the root id.
+        """
+        wt = self.make_branch_and_tree('tree')
+        main_branch = wt.branch
+        # create an out of date working tree by making a checkout in this
+        # current format
+        self.build_tree(['checkout/', 'tree/file'])
+        checkout = main_branch.create_checkout('checkout')
+        # now commit to 'tree'
+        wt.add('file')
+        wt.commit('A', rev_id='A')
+        # and update checkout 
+        self.assertEqual(0, checkout.update())
+        self.failUnlessExists('checkout/file')
+        self.assertEqual(wt.get_root_id(), checkout.get_root_id())
+        self.assertNotEqual(None, wt.get_root_id())
 
     def test_update_returns_conflict_count(self):
         # working tree formats from the meta-dir format and newer support
@@ -660,6 +683,53 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 tree.add, [u'a\u030a'])
         finally:
             osutils.normalized_filename = orig
+
+    def test_move_deprecated_correct_call_named(self):
+        """tree.move has the deprecated parameter 'to_name'.
+        It has been replaced by 'to_dir' for consistency.
+        Test the new API using named parameter"""
+        self.build_tree(['a1', 'sub1/'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a1', 'sub1'])
+        tree.commit('initial commit')
+        tree.move(['a1'], to_dir='sub1', after=False)
+
+    def test_move_deprecated_correct_call_unnamed(self):
+        """tree.move has the deprecated parameter 'to_name'.
+        It has been replaced by 'to_dir' for consistency.
+        Test the new API using unnamed parameter"""
+        self.build_tree(['a1', 'sub1/'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a1', 'sub1'])
+        tree.commit('initial commit')
+        tree.move(['a1'], 'sub1', after=False)
+
+    def test_move_deprecated_wrong_call(self):
+        """tree.move has the deprecated parameter 'to_name'.
+        It has been replaced by 'to_dir' for consistency.
+        Test the new API using wrong parameter"""
+        self.build_tree(['a1', 'sub1/'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a1', 'sub1'])
+        tree.commit('initial commit')
+        self.assertRaises(TypeError, tree.move, ['a1'],
+                          to_this_parameter_does_not_exist='sub1',
+                          after=False)
+
+    def test_move_deprecated_deprecated_call(self):
+        """tree.move has the deprecated parameter 'to_name'.
+        It has been replaced by 'to_dir' for consistency.
+        Test the new API using deprecated parameter"""
+        self.build_tree(['a1', 'sub1/'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a1', 'sub1'])
+        tree.commit('initial commit')
+
+        #tree.move(['a1'], to_name='sub1', after=False)
+        self.callDeprecated(['The parameter to_name was deprecated'
+                             ' in version 0.13. Use to_dir instead'],
+                            tree.move, ['a1'], to_name='sub1',
+                            after=False)
 
     def test__write_inventory(self):
         # The private interface _write_inventory is currently used by transform.

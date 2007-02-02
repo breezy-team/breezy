@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -108,6 +108,13 @@ class TestLog(ExternalBase):
         self.assertTrue('branch nick: branch2\n' in log)
         self.assertTrue('branch nick: branch1\n' not in log)
         
+    def test_log_nonexistent_file(self):
+        # files that don't exist in either the basis tree or working tree
+        # should give an error
+        wt = self.make_branch_and_tree('.')
+        out, err = self.run_bzr('log', 'does-not-exist', retcode=3)
+        self.assertContainsRe(
+            err, 'Path does not have any revision history: does-not-exist')
 
 class TestLogMerges(ExternalBase):
 
@@ -136,6 +143,7 @@ class TestLogMerges(ExternalBase):
 #message:
 #  merge branch 1
 #    ------------------------------------------------------------
+#    revno: 1.1.2  
 #    merged: foo@example.com-20060328113140-91f43cfb46dc2863
 #    committer: Robert Collins <foo@example.com>
 #    branch nick: child
@@ -143,6 +151,7 @@ class TestLogMerges(ExternalBase):
 #    message:
 #      merge branch 2
 #        ------------------------------------------------------------
+#        revno: 1.1.1.1
 #        merged: foo@example.com-20060328113140-1ba24f850a0ef573
 #        committer: Robert Collins <foo@example.com>
 #        branch nick: smallerchild
@@ -150,6 +159,7 @@ class TestLogMerges(ExternalBase):
 #        message:
 #          branch 2
 #    ------------------------------------------------------------
+#    revno: 1.1.1
 #    merged: foo@example.com-20060328113140-5749a4757a8ac792
 #    committer: Robert Collins <foo@example.com>
 #    branch nick: child
@@ -165,11 +175,17 @@ class TestLogMerges(ExternalBase):
 #  first post
 #""", out)
         # but we dont have a nice pattern matcher hooked up yet, so:
-        # we check for the indenting of the commit message:
+        # we check for the indenting of the commit message and the 
+        # revision numbers 
+        self.assertTrue('revno: 2' in out)
         self.assertTrue('  merge branch 1' in out)
+        self.assertTrue('    revno: 1.1.2' in out)
         self.assertTrue('      merge branch 2' in out)
+        self.assertTrue('        revno: 1.1.1.1' in out)
         self.assertTrue('          branch 2' in out)
+        self.assertTrue('    revno: 1.1.1' in out)
         self.assertTrue('      branch 1' in out)
+        self.assertTrue('revno: 1' in out)
         self.assertTrue('  first post' in out)
         self.assertEqual('', err)
 

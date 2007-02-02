@@ -82,7 +82,7 @@ Congratulation! Bzr successfully installed.
             batch_str = ("@SET BZR_HOME=" + _quoted_path(bzr_home) + "\n" +
                          batch_str)
 
-        batch_path = script_path + ".bat"
+        batch_path = os.path.join(scripts_dir, "bzr.bat")
         f = file(batch_path, "w")
         f.write(batch_str)
         f.close()

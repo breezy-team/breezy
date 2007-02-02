@@ -17,6 +17,9 @@
 
 """Tests for the RevisionTree class."""
 
+from bzrlib import (
+    revision,
+    )
 import bzrlib
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tree import RevisionTree
@@ -51,3 +54,8 @@ class TestTreeWithCommits(TestCaseWithTransport):
         # the parents for a revision_tree(None) are []:
         self.assertEqual([],
             self.t.branch.repository.revision_tree(None).get_parent_ids())
+
+    def test_empty_no_root(self):
+        null_tree = self.t.branch.repository.revision_tree(
+            revision.NULL_REVISION)
+        self.assertIs(None, null_tree.inventory.root)

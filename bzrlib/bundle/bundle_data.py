@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -648,22 +648,16 @@ class BundleTree(Tree):
 
         assert self.base_tree is not None
         base_inv = self.base_tree.inventory
-        root_id = base_inv.root.file_id
-        try:
-            # New inventories have a unique root_id
-            inv = Inventory(root_id, self.revision_id)
-        except TypeError:
-            inv = Inventory(revision_id=self.revision_id)
-        inv.root.revision = self.get_last_changed(root_id)
+        inv = Inventory(None, self.revision_id)
 
         def add_entry(file_id):
             path = self.id2path(file_id)
             if path is None:
                 return
-            parent_path = dirname(path)
-            if parent_path == u'':
-                parent_id = root_id
+            if path == '':
+                parent_id = None
             else:
+                parent_path = dirname(path)
                 parent_id = self.path2id(parent_path)
 
             kind = self.get_kind(file_id)
@@ -690,8 +684,6 @@ class BundleTree(Tree):
 
         sorted_entries = self.sorted_path_id()
         for path, file_id in sorted_entries:
-            if file_id == inv.root.file_id:
-                continue
             add_entry(file_id)
 
         return inv

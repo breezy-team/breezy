@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,8 +23,11 @@ import stat
 import sys
 
 import bzrlib
+from bzrlib import (
+    errors,
+    osutils,
+    )
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
-import bzrlib.osutils as osutils
 from bzrlib.tests import (
         StringIOWrapper,
         TestCase, 
@@ -34,6 +37,20 @@ from bzrlib.tests import (
 
 
 class TestOSUtils(TestCaseInTempDir):
+
+    def test_contains_whitespace(self):
+        self.failUnless(osutils.contains_whitespace(u' '))
+        self.failUnless(osutils.contains_whitespace(u'hello there'))
+        self.failUnless(osutils.contains_whitespace(u'hellothere\n'))
+        self.failUnless(osutils.contains_whitespace(u'hello\nthere'))
+        self.failUnless(osutils.contains_whitespace(u'hello\rthere'))
+        self.failUnless(osutils.contains_whitespace(u'hello\tthere'))
+
+        # \xa0 is "Non-breaking-space" which on some python locales thinks it
+        # is whitespace, but we do not.
+        self.failIf(osutils.contains_whitespace(u''))
+        self.failIf(osutils.contains_whitespace(u'hellothere'))
+        self.failIf(osutils.contains_whitespace(u'hello\xa0there'))
 
     def test_fancy_rename(self):
         # This should work everywhere
@@ -78,6 +95,14 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual(type(result), str)
         self.assertContainsRe(result, r'^[a-z0-9]{100}$')
 
+    def test_is_inside(self):
+        is_inside = osutils.is_inside
+        self.assertTrue(is_inside('src', 'src/foo.c'))
+        self.assertFalse(is_inside('src', 'srccontrol'))
+        self.assertTrue(is_inside('src', 'src/a/a/a/foo.c'))
+        self.assertTrue(is_inside('foo.c', 'foo.c'))
+        self.assertFalse(is_inside('foo.c', ''))
+        self.assertTrue(is_inside('', 'foo.c'))
 
     def test_rmtree(self):
         # Check to remove tree with read-only files/dirs
@@ -185,6 +210,34 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertFormatedDelta('84 hours, 10 minutes in the future', -303002)
         self.assertFormatedDelta('1 second in the future', -1)
         self.assertFormatedDelta('2 seconds in the future', -2)
+
+    def test_dereference_path(self):
+        if not osutils.has_symlinks():
+            raise TestSkipped('Symlinks are not supported on this platform')
+        cwd = osutils.realpath('.')
+        os.mkdir('bar')
+        bar_path = osutils.pathjoin(cwd, 'bar')
+        # Using './' to avoid bug #1213894 (first path component not
+        # dereferenced) in Python 2.4.1 and earlier
+        self.assertEqual(bar_path, osutils.realpath('./bar'))
+        os.symlink('bar', 'foo')
+        self.assertEqual(bar_path, osutils.realpath('./foo'))
+        
+        # Does not dereference terminal symlinks
+        foo_path = osutils.pathjoin(cwd, 'foo')
+        self.assertEqual(foo_path, osutils.dereference_path('./foo'))
+
+        # Dereferences parent symlinks
+        os.mkdir('bar/baz')
+        baz_path = osutils.pathjoin(bar_path, 'baz')
+        self.assertEqual(baz_path, osutils.dereference_path('./foo/baz'))
+
+        # Dereferences parent symlinks that are the first path element
+        self.assertEqual(baz_path, osutils.dereference_path('foo/baz'))
+
+        # Dereferences parent symlinks in absolute paths
+        foo_baz_path = osutils.pathjoin(foo_path, 'baz')
+        self.assertEqual(baz_path, osutils.dereference_path(foo_baz_path))
 
 
 class TestSafeUnicode(TestCase):
@@ -311,6 +364,18 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         except (IOError, OSError), e:
             self.assertEqual(errno.ENOENT, e.errno)
 
+    def test_splitpath(self):
+        def check(expected, path):
+            self.assertEqual(expected, osutils.splitpath(path))
+
+        check(['a'], 'a')
+        check(['a', 'b'], 'a/b')
+        check(['a', 'b'], 'a/./b')
+        check(['a', '.b'], 'a/.b')
+        check(['a', '.b'], 'a\\.b')
+
+        self.assertRaises(errors.BzrError, osutils.splitpath, 'a/../b')
+
 
 class TestMacFuncsDirs(TestCaseInTempDir):
     """Test mac special functions that require directories."""
@@ -335,6 +400,7 @@ class TestMacFuncsDirs(TestCaseInTempDir):
 
         os.chdir(u'Ba\u030agfors')
         self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
+
 
 class TestSplitLines(TestCase):
 
@@ -480,14 +546,14 @@ class TestCopyTree(TestCaseInTempDir):
     def test_copy_basic_tree(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         osutils.copy_tree('source', 'target')
-        self.assertEqual(['a', 'b'], os.listdir('target'))
+        self.assertEqual(['a', 'b'], sorted(os.listdir('target')))
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_target_exists(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c',
                          'target/'])
         osutils.copy_tree('source', 'target')
-        self.assertEqual(['a', 'b'], os.listdir('target'))
+        self.assertEqual(['a', 'b'], sorted(os.listdir('target')))
         self.assertEqual(['c'], os.listdir('target/b'))
 
     def test_copy_tree_symlinks(self):
@@ -528,42 +594,8 @@ class TestCopyTree(TestCaseInTempDir):
             self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
 
 
-class TestTerminalEncoding(TestCase):
-    """Test the auto-detection of proper terminal encoding."""
-
-    def setUp(self):
-        self._stdout = sys.stdout
-        self._stderr = sys.stderr
-        self._stdin = sys.stdin
-        self._user_encoding = bzrlib.user_encoding
-
-        self.addCleanup(self._reset)
-
-        sys.stdout = StringIOWrapper()
-        sys.stdout.encoding = 'stdout_encoding'
-        sys.stderr = StringIOWrapper()
-        sys.stderr.encoding = 'stderr_encoding'
-        sys.stdin = StringIOWrapper()
-        sys.stdin.encoding = 'stdin_encoding'
-        bzrlib.user_encoding = 'user_encoding'
-
-    def _reset(self):
-        sys.stdout = self._stdout
-        sys.stderr = self._stderr
-        sys.stdin = self._stdin
-        bzrlib.user_encoding = self._user_encoding
-
-    def test_get_terminal_encoding(self):
-        # first preference is stdout encoding
-        self.assertEqual('stdout_encoding', osutils.get_terminal_encoding())
-
-        sys.stdout.encoding = None
-        # if sys.stdout is None, fall back to sys.stdin
-        self.assertEqual('stdin_encoding', osutils.get_terminal_encoding())
-
-        sys.stdin.encoding = None
-        # and in the worst case, use bzrlib.user_encoding
-        self.assertEqual('user_encoding', osutils.get_terminal_encoding())
+#class TestTerminalEncoding has been moved to test_osutils_encodings.py
+# [bialix] 2006/12/26
 
 
 class TestSetUnsetEnv(TestCase):
@@ -625,3 +657,24 @@ class TestSetUnsetEnv(TestCase):
         self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'))
         self.failIf('BZR_TEST_ENV_VAR' in os.environ)
 
+
+class TestLocalTimeOffset(TestCase):
+
+    def test_local_time_offset(self):
+        """Test that local_time_offset() returns a sane value."""
+        offset = osutils.local_time_offset()
+        self.assertTrue(isinstance(offset, int))
+        # Test that the offset is no more than a eighteen hours in
+        # either direction.
+        # Time zone handling is system specific, so it is difficult to
+        # do more specific tests, but a value outside of this range is
+        # probably wrong.
+        eighteen_hours = 18 * 3600
+        self.assertTrue(-eighteen_hours < offset < eighteen_hours)
+
+    def test_local_time_offset_with_timestamp(self):
+        """Test that local_time_offset() works with a timestamp."""
+        offset = osutils.local_time_offset(1000000000.1234567)
+        self.assertTrue(isinstance(offset, int))
+        eighteen_hours = 18 * 3600
+        self.assertTrue(-eighteen_hours < offset < eighteen_hours)
