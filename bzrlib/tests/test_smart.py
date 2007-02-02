@@ -218,11 +218,11 @@ class TestSmartServerRepositoryRequest(tests.TestCaseWithTransport):
         # its the exact path being looked at and the server is not
         # searching.
         backing = self.get_transport()
-        request = smart.repository.SmartServerRequestHasRevision(backing)
+        request = smart.repository.SmartServerRepositoryRequest(backing)
         self.make_repository('.', shared=True)
         self.make_bzrdir('subdir')
         self.assertRaises(errors.NoRepositoryPresent,
-            request.execute, backing.local_abspath('subdir'), 'revid')
+            request.execute, backing.local_abspath('subdir'))
 
 
 class TestSmartServerRequestHasRevision(tests.TestCaseWithTransport):
@@ -261,7 +261,7 @@ class TestSmartServerRepositoryIsShared(tests.TestCaseWithTransport):
             request.execute(backing.local_abspath(''), ))
 
     def test_is_not_shared(self):
-        """For a shared repository, ('yes', ) is returned."""
+        """For a shared repository, ('no', ) is returned."""
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryIsShared(backing)
         self.make_repository('.', shared=False)
