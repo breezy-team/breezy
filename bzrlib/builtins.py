@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1169,7 +1169,7 @@ class cmd_init_repository(Command):
                              help='Disallows branches in repository to have'
                              ' a working tree')]
     aliases = ["init-repo"]
-    def run(self, location, format=None, trees=True):
+    def run(self, location, format=None, no_trees=False):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
 
@@ -1184,7 +1184,7 @@ class cmd_init_repository(Command):
 
         newdir = format.initialize_on_transport(to_transport)
         repo = newdir.create_repository(shared=True)
-        repo.set_make_working_trees(trees)
+        repo.set_make_working_trees(not no_trees)
 
 
 class cmd_diff(Command):
