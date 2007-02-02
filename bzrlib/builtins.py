@@ -1150,7 +1150,7 @@ class cmd_init_repository(Command):
     shared storage.
 
     example:
-        bzr init-repo repo
+        bzr init-repo --no-trees repo
         bzr init repo/trunk
         bzr checkout --lightweight repo/trunk trunk-checkout
         cd trunk-checkout
@@ -1165,11 +1165,11 @@ class cmd_init_repository(Command):
                             registry=bzrdir.format_registry,
                             converter=bzrdir.format_registry.make_bzrdir,
                             value_switches=True),
-                     Option('trees',
-                             help='Allows branches in repository to have'
+                     Option('no-trees',
+                             help='Disallows branches in repository to have'
                              ' a working tree')]
     aliases = ["init-repo"]
-    def run(self, location, format=None, trees=False):
+    def run(self, location, format=None, trees=True):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
 

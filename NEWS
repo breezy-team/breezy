@@ -1,5 +1,11 @@
 IN DEVELOPMENT
 
+  NOTES WHEN UPGRADING:
+        
+    Release 0.15 of bzr changes the ``bzr init-repo`` command to default to
+    ``--trees`` instead of ``--no-trees``.
+    Existing shared repositories are not affected.
+
   IMPROVEMENTS:
 
     * ``bzr mv`` enhanced to support already moved files.
@@ -40,6 +46,9 @@ IN DEVELOPMENT
       formats. (Wouter van Heyst, Robert Collins)
 
   BUGFIXES:
+    
+    * Switch the ``bzr init-repo`` default from --no-trees to --trees. 
+      (Wouter van Heyst, #53483)
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
       branch, rather than the last changed revision of the file.

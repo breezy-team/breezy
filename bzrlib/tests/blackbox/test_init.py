@@ -93,7 +93,8 @@ class TestInit(ExternalBase):
 
     def test_init_existing_without_workingtree(self):
         # make a repository
-        self.run_bzr('init-repo', '.')
+        repo = self.make_repository('.', shared=True)
+        repo.set_make_working_trees(False)
         # make a branch; by default without a working tree
         self.run_bzr('init', 'subdir')
         # fail

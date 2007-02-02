@@ -53,7 +53,7 @@ class TestSharedRepo(TestCaseInTempDir):
         bdir = bzrlib.bzrdir.BzrDir.open('a/b')
         bdir.open_branch()
         self.assertRaises(errors.NoRepositoryPresent, bdir.open_repository)
-        self.assertRaises(errors.NoWorkingTree, bdir.open_workingtree)
+        wt = bdir.open_workingtree()
 
     def test_branch(self):
         self.run_bzr("init-repo", "a")
@@ -62,7 +62,7 @@ class TestSharedRepo(TestCaseInTempDir):
         cdir = bzrlib.bzrdir.BzrDir.open('a/c')
         cdir.open_branch()
         self.assertRaises(errors.NoRepositoryPresent, cdir.open_repository)
-        self.assertRaises(errors.NoWorkingTree, cdir.open_workingtree)
+        cdir.open_workingtree()
 
     def test_branch_tree(self):
         self.run_bzr("init-repo", "--trees", "a")
