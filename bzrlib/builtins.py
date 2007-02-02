@@ -663,7 +663,7 @@ class cmd_push(Command):
             dir_to = br_from.bzrdir.clone(location_url,
                 revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
-            count = len(br_to.revision_history())
+            count = br_to.last_revision_info()[0]
             # We successfully created the target, remember it
             if br_from.get_push_location() is None or remember:
                 br_from.set_push_location(br_to.base)
@@ -2230,9 +2230,6 @@ class cmd_find_merge_base(Command):
         
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
-
-        history_1 = branch1.revision_history()
-        history_2 = branch2.revision_history()
 
         last1 = branch1.last_revision()
         last2 = branch2.last_revision()

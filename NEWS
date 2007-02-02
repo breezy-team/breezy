@@ -34,6 +34,11 @@ IN DEVELOPMENT
       branch as it makes performance and policy decisions to match the UI
       level command ``push``. (Robert Collins).
 
+    * New Branch.last_revision_info method, this is being done to allow
+      optimization of requests for both the number of revisions and the last
+      revision of a branch with smartservers and potentially future branch
+      formats. (Wouter van Heyst, Robert Collins)
+
   BUGFIXES:
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
