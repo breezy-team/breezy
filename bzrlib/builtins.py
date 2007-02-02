@@ -793,6 +793,8 @@ class cmd_checkout(Command):
     --basis is to speed up checking out from remote branches.  When specified, it
     uses the inventory and file contents from the basis branch in preference to the
     branch being checked out.
+
+    See "help checkouts" for more information on checkouts.
     """
     takes_args = ['branch_location?', 'to_location?']
     takes_options = ['revision', # , 'basis']
@@ -2826,7 +2828,10 @@ class cmd_bind(Command):
     """Bind the current branch to a master branch.
 
     After binding, commits must succeed on the master branch
-    before they are executed on the local one.
+    before they are executed on the local one, turning the current branch
+    in to a checkout of the master.
+
+    See "help checkouts" for more information on checkouts.
     """
 
     takes_args = ['location']
@@ -2846,7 +2851,10 @@ class cmd_unbind(Command):
     """Unbind the current branch from its master branch.
 
     After unbinding, the local branch is considered independent.
-    All subsequent commits will be local.
+    All subsequent commits will be local. This turns a heavy checkout in to
+    a normal branch.
+
+    See "help checkouts" for more information on checkouts.
     """
 
     takes_args = []
