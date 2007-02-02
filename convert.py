@@ -49,6 +49,8 @@ def transport_makedirs(transport, location_url):
             transport.mkdir(relpath)
             needed.pop()
         except NoSuchFile:
+            if relpath == "":
+                raise
             needed.append((transport, urlutils.dirname(relpath)))
 
 
@@ -87,7 +89,6 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
 
     dirs = {}
     to_transport = get_transport(output_url)
-    to_transport.stat('.')
     def get_dir(path):
         if dirs.has_key(path):
             return dirs[path]
@@ -143,6 +144,14 @@ def convert_repository(url, output_url, scheme, create_shared_repo=True,
                     target_branch = target_dir.create_branch()
                 if not revid in target_branch.revision_history():
                     source_branch = Branch.open(urlutils.join(url, branch))
+                    # Check if target_branch contains a subset of 
+                    # source_branch. If that is not the case, 
+                    # assume that source_branch has been replaced 
+                    # and remove target_branch
+                    if not target_branch.last_revision() in \
+                            source_branch.revision_history():
+                        target_branch.set_revision_history([])
+
                     target_branch.pull(source_branch)
                 if working_trees and not target_dir.has_workingtree():
                     target_dir.create_workingtree()
