@@ -54,6 +54,11 @@ DEFAULT_IGNORE = deprecated_list(zero_nine, 'DEFAULT_IGNORE', [],
                     'Consider using bzrlib.ignores.add_unique_user_ignores'
                     ' or bzrlib.ignores.add_runtime_ignores')
 
+# allow bzrlib plugins to be imported.
+import bzrlib.plugin
+bzrlib.plugin.set_plugins_path()
+
+
 def test_suite():
     import tests
     return tests.test_suite()
