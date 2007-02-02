@@ -31,47 +31,6 @@ import bzrlib.help
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.osutils import pathjoin, abspath
 
-class PluginTest(TestCaseInTempDir):
-    """Create an external plugin and test loading."""
-#    def test_plugin_loading(self):
-#        orig_help = self.run_bzr_captured('bzr help commands')[0]
-#        os.mkdir('plugin_test')
-#        f = open(pathjoin('plugin_test', 'myplug.py'), 'wt')
-#        f.write(PLUGIN_TEXT)
-#        f.close()
-#        newhelp = self.run_bzr_captured('bzr help commands')[0]
-#        assert newhelp.startswith('You have been overridden\n')
-#        # We added a line, but the rest should work
-#        assert newhelp[25:] == help
-#
-#        assert backtick('bzr commit -m test') == "I'm sorry dave, you can't do that\n"
-#
-#        shutil.rmtree('plugin_test')
-#
-
-#         os.environ['BZRPLUGINPATH'] = abspath('plugin_test')
-#         help = backtick('bzr help commands')
-#         assert help.find('myplug') != -1
-#         assert help.find('Just a simple test plugin.') != -1
-
-
-#         assert backtick('bzr myplug') == 'Hello from my plugin\n'
-#         assert backtick('bzr mplg') == 'Hello from my plugin\n'
-
-#         f = open(pathjoin('plugin_test', 'override.py'), 'wb')
-#         f.write("""import bzrlib, bzrlib.commands
-#     class cmd_commit(bzrlib.commands.cmd_commit):
-#         '''Commit changes into a new revision.'''
-#         def run(self, *args, **kwargs):
-#             print "I'm sorry dave, you can't do that"
-
-#     class cmd_help(bzrlib.commands.cmd_help):
-#         '''Show help on a command or other topic.'''
-#         def run(self, *args, **kwargs):
-#             print "You have been overridden"
-#             bzrlib.commands.cmd_help.run(self, *args, **kwargs)
-
-#         """
 
 PLUGIN_TEXT = """\
 import bzrlib.commands
